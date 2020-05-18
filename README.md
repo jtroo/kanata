@@ -33,6 +33,7 @@ impl KbdOut {
 
 ### Ktrl
 
+```
 struct Ktrl {
   in: KbdIn,
   out: KbdOut,
@@ -42,3 +43,4 @@ impl Ktrl {
     new(in: KbdIn, out: KbdOut) -> Self
     event_loop(&mut self) -> Result<()>
 }
+```
