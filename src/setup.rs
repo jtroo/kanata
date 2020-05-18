@@ -1,7 +1,3 @@
-// evdev-rs
-use evdev_rs::Device;
-use evdev_rs::GrabMode;
-
 // uinput-rs
 use uinput_sys;
 use uinput_sys::uinput_user_dev;
