@@ -3,6 +3,10 @@ use uinput_sys;
 use uinput_sys::uinput_user_dev;
 
 use evdev_rs::InputEvent;
+use evdev_rs::enums::EventCode;
+use evdev_rs::enums::EV_KEY;
+use evdev_rs::enums::EV_SYN;
+use evdev_rs::TimeVal;
 use libc::input_event as raw_event;
 
 // file i/o
@@ -60,6 +64,34 @@ impl KbdOut {
             self.device.write(ev_bytes)?;
         };
 
+        Ok(())
+    }
+
+    pub fn write_key(&mut self, key: EV_KEY, value: i32) -> Result<(), io::Error> {
+        let time = TimeVal::new(0, 0);
+        let event = InputEvent::new(&time, &EventCode::EV_KEY(key), value);
+        self.write(&event)?;
+
+        let sync = InputEvent::new(&time, &EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
+        self.write(&sync)?;
+
+        Ok(())
+    }
+
+    pub fn press_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+        const PRESS: i32 = 1;
+        self.write_key(key, PRESS)
+    }
+
+    pub fn release_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+        const RELEASE: i32 = 0;
+        self.write_key(key, RELEASE)
+    }
+
+    // press + release
+    pub fn tap_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+        self.press_key(key.clone())?;
+        self.release_key(key)?;
         Ok(())
     }
 }
