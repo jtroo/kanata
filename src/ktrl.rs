@@ -1,17 +1,22 @@
-use evdev_rs::ReadFlag;
-use evdev_rs::Device;
+use crate::KbdIn;
+use crate::KbdOut;
 
-pub fn ktrl_process(kbd_in: Device, kbd_out: UInputDevice) -> Result<(), std::io::Error> {
-    loop {
-        let a = kbd_in.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING);
-        match a {
-            Ok(k) => println!("Event: time {}.{}, ++++++++++++++++++++ {} +++++++++++++++",
-                              k.1.time.tv_sec,
-                              k.1.time.tv_usec,
-                              k.1.event_type),
-            Err(e) => (),
-        }
+pub struct Ktrl {
+    kbd_in: KbdIn,
+    kbd_out: KbdOut,
+}
+
+impl Ktrl {
+    pub fn new(kbd_in: KbdIn, kbd_out: KbdOut) -> Self {
+        return Self{kbd_in, kbd_out}
     }
 
-    Ok(())
+    pub fn event_loop(&mut self) -> Result<(), std::io::Error> {
+        println!("Ktrl: Entering the event loop");
+        loop {
+            let in_event = self.kbd_in.read()?;
+            dbg!(&in_event.event_code);
+            self.kbd_out.write(&in_event)?;
+        }
+    }
 }

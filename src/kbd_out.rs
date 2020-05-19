@@ -1,13 +1,27 @@
+// uinput-rs
+use uinput_sys;
+use uinput_sys::uinput_user_dev;
+
+use evdev_rs::InputEvent;
+use libc::input_event as raw_event;
+
+// file i/o
 use std::fs::OpenOptions;
 use std::fs::File;
-use std::io::Write;
+use std::os::unix::io::AsRawFd;
+use std::io;
+use io::Write;
+
+// unsafe
+use std::slice;
+use std::mem;
 
 pub struct KbdOut {
     device: File,
 }
 
 impl KbdOut {
-    fn new() -> Result<Self, std::io::Error> {
+    pub fn new() -> Result<Self, io::Error> {
         let mut uinput_out_file = OpenOptions::new().read(true).write(true).open("/dev/uinput")?;
 
         unsafe {
@@ -18,7 +32,7 @@ impl KbdOut {
                 uinput_sys::ui_set_keybit(uinput_out_file.as_raw_fd(), key);
             }
 
-            let mut uidev: uinput_user_dev = std::mem::zeroed();
+            let mut uidev: uinput_user_dev = mem::zeroed();
             uidev.name[0] = 'k' as i8;
             uidev.name[1] = 't' as i8;
             uidev.name[2] = 'r' as i8;
@@ -28,11 +42,24 @@ impl KbdOut {
             uidev.id.product = 0x1;
             uidev.id.version = 1;
 
-            let uidev_bytes: &[u8] = std::slice::from_raw_parts(std::mem::transmute(&uidev), std::mem::size_of::<uinput_user_dev>());
+            let uidev_bytes = slice::from_raw_parts(mem::transmute(&uidev),
+                                                    mem::size_of::<uinput_user_dev>());
             uinput_out_file.write(uidev_bytes)?;
             uinput_sys::ui_dev_create(uinput_out_file.as_raw_fd());
         }
 
-        Ok((KbdOut{device: uinput_out_file}))
+        Ok(KbdOut{device: uinput_out_file})
+    }
+
+    pub fn write(&mut self, event: &InputEvent) -> Result<(), io::Error> {
+        let ev = event.as_raw();
+
+        unsafe {
+            let ev_bytes = slice::from_raw_parts(mem::transmute(&ev as *const raw_event),
+                                                 mem::size_of::<raw_event>());
+            self.device.write(ev_bytes)?;
+        };
+
+        Ok(())
     }
 }
