@@ -43,7 +43,7 @@ impl KeyState {
 }
 
 struct Layer {
-    keys: HashMap<KeyCode, KeyState>,
+    keys: HashMap<KeyCode, Action>,
 }
 
 // Max size is KEY_MAX
@@ -82,7 +82,7 @@ fn get_layers_from_cfg(cfg: Vec<LayerCfg>) -> Vec<Layer> {
 
     for (i, layer_cfg) in cfg.iter().enumerate() {
         for (code, action) in layer_cfg {
-            out[i].keys.insert(*code, KeyState::new(action.clone()));
+            out[i].keys.insert(*code, action.clone());
         }
     }
 
