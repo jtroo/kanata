@@ -27,8 +27,10 @@ type LayerCfg = HashMap<KeyCode, Action>;
 
 // -------------- Runtime Types -------------
 
+#[derive(Clone)]
 struct KeyStateImpl {}
 
+#[derive(Clone)]
 struct KeyState {
     state: KeyStateImpl,
     action: Action,
@@ -44,36 +46,55 @@ struct Layer {
     keys: HashMap<KeyCode, KeyState>,
 }
 
-// -------------- Implementation -------------
+// Max size is KEY_MAX
+type Merged = Vec<KeyState>;
 
 struct Layers {
 
     // Serves as a cache of the result
     // of stacking all the layers on top of each other.
-    merged: [KeyCode; KEY_MAX],
+    merged: Merged,
 
     // This is a read-only representation of the user's layer configuration.
     // The 0th layer is the base and will always be active
     layers: Vec<Layer>,
 }
 
+// -------------- Implementation -------------
+
+fn init_merged(base_layer: &LayerCfg) -> Merged {
+    let mut merged: Merged = vec![];
+    for i in 0..KEY_MAX {
+        let code: u32 = i.try_into().unwrap();
+        merged[i] = KeyState::new(Action::Regular(code));
+    }
+
+    for (code, action) in base_layer {
+        merged[*code as usize].action = action.clone();
+    }
+
+    merged
+}
+
+fn get_layers_from_cfg(cfg: Vec<LayerCfg>) -> Vec<Layer> {
+    let mut out: Vec<Layer> = vec![];
+    out.reserve(cfg.len());
+
+    for (i, layer_cfg) in cfg.iter().enumerate() {
+        for (code, action) in layer_cfg {
+            out[i].keys.insert(*code, KeyState::new(action.clone()));
+        }
+    }
+
+    out
+}
+
 impl Layers {
-    pub fn new(layers: Vec<LayerCfg>) -> Self {
-        let mut merged = [0 as KeyCode; KEY_MAX];
-        for i in 0..KEY_MAX {
-            merged[i] = i.try_into().unwrap();
-        }
-
-        let mut _layers: Vec<Layer> = vec![];
-        _layers.reserve(layers.len());
-
-        for (i, layer_cfg) in layers.iter().enumerate() {
-            for (code, action) in layer_cfg {
-                _layers[i].keys.insert(*code, KeyState::new(action.clone()));
-            }
-        }
-
-        Layers{merged, layers:_layers}
+    pub fn new(cfg: Vec<LayerCfg>) -> Self {
+        let base_layer = &cfg[0];
+        let merged = init_merged(base_layer);
+        let layers = get_layers_from_cfg(cfg);
+        Layers{merged, layers}
     }
 
     // pub fn turn_layer_on(layer_num: usize) {}
