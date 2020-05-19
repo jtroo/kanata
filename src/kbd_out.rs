@@ -20,6 +20,18 @@ use io::Write;
 use std::slice;
 use std::mem;
 
+struct KeyEvent {
+    event: InputEvent,
+}
+
+impl KeyEvent {
+    pub fn new(code: &EventCode, value: i32) -> Self {
+        let time = TimeVal::new(0, 0);
+        let event = InputEvent::new(&time, code, value);
+        Self{event}
+    }
+}
+
 pub struct KbdOut {
     device: File,
 }
@@ -55,8 +67,8 @@ impl KbdOut {
         Ok(KbdOut{device: uinput_out_file})
     }
 
-    pub fn write(&mut self, event: &InputEvent) -> Result<(), io::Error> {
-        let ev = event.as_raw();
+    pub fn write(&mut self, event: &KeyEvent) -> Result<(), io::Error> {
+        let ev = event.event.as_raw();
 
         unsafe {
             let ev_bytes = slice::from_raw_parts(mem::transmute(&ev as *const raw_event),
@@ -67,12 +79,12 @@ impl KbdOut {
         Ok(())
     }
 
+
     pub fn write_key(&mut self, key: EV_KEY, value: i32) -> Result<(), io::Error> {
-        let time = TimeVal::new(0, 0);
-        let event = InputEvent::new(&time, &EventCode::EV_KEY(key), value);
+        let event = KeyEvent::new(&EventCode::EV_KEY(key), value);
         self.write(&event)?;
 
-        let sync = InputEvent::new(&time, &EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
+        let sync = KeyEvent::new(&EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
         self.write(&sync)?;
 
         Ok(())
