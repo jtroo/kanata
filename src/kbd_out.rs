@@ -67,8 +67,8 @@ impl KbdOut {
         Ok(KbdOut{device: uinput_out_file})
     }
 
-    pub fn write(&mut self, event: &KeyEvent) -> Result<(), io::Error> {
-        let ev = event.event.as_raw();
+    pub fn write(&mut self, event: &InputEvent) -> Result<(), io::Error> {
+        let ev = event.as_raw();
 
         unsafe {
             let ev_bytes = slice::from_raw_parts(mem::transmute(&ev as *const raw_event),
@@ -81,11 +81,11 @@ impl KbdOut {
 
 
     pub fn write_key(&mut self, key: EV_KEY, value: i32) -> Result<(), io::Error> {
-        let event = KeyEvent::new(&EventCode::EV_KEY(key), value);
-        self.write(&event)?;
+        let key_ev = KeyEvent::new(&EventCode::EV_KEY(key), value);
+        self.write(&key_ev.event)?;
 
         let sync = KeyEvent::new(&EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
-        self.write(&sync)?;
+        self.write(&sync.event)?;
 
         Ok(())
     }

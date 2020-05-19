@@ -4,6 +4,7 @@ use std::path::Path;
 mod kbd_in;
 mod kbd_out;
 mod ktrl;
+mod layers;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
