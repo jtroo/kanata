@@ -12,15 +12,26 @@ const KEY_MAX: usize = EV_KEY::KEY_MAX as usize;
 type DanceCount = usize;
 type KeyCode = u32;
 type LayerIndex = usize;
-type ActionRef = Box<Action>;
+
+#[derive(Clone)]
+enum Effect {
+    Default(KeyCode),
+
+    // Not Implemented Yet
+    Sticky(KeyCode),
+    ToggleLayer(LayerIndex),
+    MomentaryLayer(LayerIndex),
+}
 
 #[derive(Clone)]
 enum Action {
-    Regular(KeyCode),
-    TapHold(ActionRef, ActionRef),
-    TapDance(DanceCount, ActionRef, ActionRef),
-    ToggleLayer(LayerIndex),
-    MomentaryLayer(LayerIndex),
+    Tap(Effect),
+    TapHold(Effect, Effect),
+
+    // Not Implemented Yet
+    TapDance(DanceCount, Effect, Effect),
+    Sequence(Vec<KeyCode>, Effect),
+    Combo(Vec<KeyCode>, Effect),
 }
 
 type LayerCfg = HashMap<KeyCode, Action>;
@@ -66,9 +77,12 @@ fn init_merged(base_layer: &LayerCfg) -> Merged {
     let mut merged: Merged = vec![];
     for i in 0..KEY_MAX {
         let code: u32 = i.try_into().unwrap();
-        merged[i] = KeyState::new(Action::Regular(code));
+        let effect = Effect::Default(code);
+        let action = Action::Tap(effect);
+        merged[i] = KeyState::new(action);
     }
 
+    // TODO: Refactor to `turn_layer_on`
     for (code, action) in base_layer {
         merged[*code as usize].action = action.clone();
     }
