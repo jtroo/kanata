@@ -65,8 +65,9 @@ struct MergedKey {
 
 type Merged = Vec<MergedKey>;
 type Layers = Vec<Layer>;
+type LayersStates = Vec<bool>;
 
-struct LayersState {
+struct LayersManager {
 
     // Serves as a cache of the result
     // of stacking all the layers on top of each other.
@@ -75,6 +76,9 @@ struct LayersState {
     // This is a read-only representation of the user's layer configuration.
     // The 0th layer is the base and will always be active
     layers: Layers,
+
+    // Holds the on/off state for each layer
+    layers_states: LayersStates,
 }
 
 // -------------- Implementation -------------
@@ -90,24 +94,6 @@ fn idx_to_keycode(x: usize) -> KeyCode {
 fn is_overriding_key(merged: &Merged, candidate_code: KeyCode, candidate_layer_index: LayerIndex) -> bool {
     let current = &merged[keycode_to_idx(candidate_code)];
     return candidate_layer_index > current.layer_index
-}
-
-fn turn_layer_on_impl(merged: &mut Merged, layers: &Layers, index: LayerIndex) {
-    let layer = &layers[index];
-    for (code, action) in layer {
-        let is_overriding = is_overriding_key(merged, *code, index);
-
-        if is_overriding {
-            let new_entry = MergedKey{
-                code: *code,
-                state: KeyState::new(action.clone()),
-                layer_index: index
-            };
-
-            // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
-            merged[keycode_to_idx(*code)] = new_entry;
-        }
-    }
 }
 
 fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code: KeyCode) -> MergedKey {
@@ -130,16 +116,6 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
     MergedKey{code: 0, state: KeyState::new(Action::Transparent), layer_index: 0}
 }
 
-fn turn_layer_off_impl(merged: &mut Merged, layers: &Layers, index: LayerIndex) {
-    std::assert!(index > 0); // Can't turn off the base layer
-
-    let layer = &layers[index];
-    for (code, _action) in layer {
-        let replacement_entry = get_replacement_merged_key(merged, layers, *code);
-        // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
-        merged[keycode_to_idx(*code)] = replacement_entry;
-    }
-}
 
 fn init_merged(layers: &Layers) -> Merged {
     let mut merged: Merged = vec![];
@@ -151,7 +127,6 @@ fn init_merged(layers: &Layers) -> Merged {
         merged[i] = MergedKey{code: code_idx, state, layer_index: 0};
     }
 
-    turn_layer_on_impl(&mut merged, layers, 0);
     merged
 }
 
@@ -168,21 +143,62 @@ fn get_layers_from_cfg(cfg: Layers) -> Layers {
     out
 }
 
-impl LayersState {
+impl LayersManager {
     pub fn new(cfg: Layers) -> Self {
         let base_layer = &cfg[0];
         let merged = init_merged(&cfg);
         let layers = get_layers_from_cfg(cfg);
-        LayersState{merged, layers}
+        let layers_states = vec![];
+        LayersManager{merged, layers, layers_states}
+    }
+
+    pub fn init(&mut self) {
+        self.turn_layer_on(0);
     }
 
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
-        turn_layer_on_impl(&mut self.merged, &self.layers, index);
+        std::assert!(self.layers_states[index]);
+
+        let layer = &self.layers[index];
+        for (code, action) in layer {
+            let is_overriding = is_overriding_key(&self.merged, *code, index);
+
+            if is_overriding {
+                let new_entry = MergedKey{
+                    code: *code,
+                    state: KeyState::new(action.clone()),
+                    layer_index: index
+                };
+
+                // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
+                self.merged[keycode_to_idx(*code)] = new_entry;
+            }
+        }
+
+        self.layers_states[index] = true;
     }
 
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
-        turn_layer_off_impl(&mut self.merged, &self.layers, index);
+        std::assert!(index > 0); // Can't turn off the base layer
+        std::assert!(!self.layers_states[index]);
+
+        let layer = &self.layers[index];
+        for (code, _action) in layer {
+            let replacement_entry = get_replacement_merged_key(&mut self.merged, &self.layers, *code);
+            // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
+            self.merged[keycode_to_idx(*code)] = replacement_entry;
+        }
+
+        self.layers_states[index] = false;
     }
 
-    // pub fn toggle_layer(index: LayerIndex) {}
+    pub fn toggle_layer(&mut self, index: LayerIndex) {
+        let is_layer_on = self.layers_states[index];
+
+        if (is_layer_on) {
+            self.turn_layer_off(index);
+        } else {
+            self.turn_layer_on(index);
+        }
+    }
 }
