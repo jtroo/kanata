@@ -23,6 +23,7 @@ const REPEAT: i32 = 2;
 //
 // 2. Don't use ktrl.kbd_out directly!
 //    Make these functions as pure as possible for unit-testing!!!
+//    Let's return KtrlTask instead
 //
 
 fn get_keycode_from_event(event: &InputEvent) -> Option<KeyCode> {
@@ -44,7 +45,7 @@ fn handle_th_idle(ktrl: &Ktrl,
     if value == RELEASE {
         tap_fx.release(ktrl);
     } else if value == PRESS {
-        *state = TapHoldState::TH_WAITING(TapHoldWaiting{timestamp: event.time})
+        *state = TapHoldState::ThWaiting(TapHoldWaiting{timestamp: event.time})
     } else if value == REPEAT {
         // drop repeats
     } else {
@@ -60,9 +61,9 @@ fn process_tap_hold_impl(ktrl: &Ktrl,
                          hold_fx: &Effect) {
     if let KeyState::KsTapHold(th_state) = state {
         match th_state {
-            TH_IDLE => handle_th_idle(ktrl, event, state, tap_fx, hold_fx),
-            // TH_WAITING => handle_th_waiting(event, state, tap_fx, hold_fx),
-            // TH_HOLDING => handle_th_holding(event, state, tap_fx, hold_fx),
+            ThIdle => handle_th_idle(ktrl, event, state, tap_fx, hold_fx),
+            // ThWaiting => handle_th_waiting(event, state, tap_fx, hold_fx),
+            // ThHolding => handle_th_holding(event, state, tap_fx, hold_fx),
         }
     } else {
         assert!(false);

@@ -7,6 +7,7 @@ mod ktrl;
 mod layers;
 mod keycode;
 mod actions;
+mod effects;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;

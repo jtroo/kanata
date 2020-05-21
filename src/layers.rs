@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fmt;
 use crate::keycode::KeyCode;
+pub use crate::effects::Effect;
 
 // -------------- Constants -------------
 
@@ -57,20 +58,6 @@ type DanceCount = usize;
 type LayerIndex = usize;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Effect {
-    Default(KeyCode),
-
-    // Not Implemented Yet
-    Sticky(KeyCode),
-    ToggleLayer(LayerIndex),
-    MomentaryLayer(LayerIndex),
-
-    // TODO: Consider how to implement KeyChords.
-    // e.g pressing shift-keys ('!', '@', '#').
-    // or ctrl-keys ('ctrl-j', 'ctrl-k')
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Action {
     Transparent,
     Tap(Effect),
@@ -91,9 +78,9 @@ pub struct TapHoldWaiting {
 
 #[derive(Clone, Debug)]
 pub enum TapHoldState {
-    TH_IDLE,
-    TH_WAITING(TapHoldWaiting),
-    TH_HOLDING,
+    ThIdle,
+    ThWaiting(TapHoldWaiting),
+    ThHolding,
 }
 
 #[derive(Clone, Debug)]
