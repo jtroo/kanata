@@ -1,4 +1,5 @@
 use evdev_rs::enums::EV_KEY;
+use evdev_rs::enums::EV_KEY::*;
 use std::vec::Vec;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -6,7 +7,8 @@ use std::fmt;
 
 // -------------- Constants -------------
 
-const KEY_MAX: usize = EV_KEY::KEY_MAX as usize;
+const MAX_KEY: usize = KEY_MAX as usize;
+
 lazy_static::lazy_static! {
     static ref MISSING_KEYCODES: HashSet<u32> = {
         let mut m = HashSet::new();
@@ -91,6 +93,10 @@ pub enum Effect {
     Sticky(KeyCode),
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
+
+    // TODO: Consider how to implement KeyChords.
+    // e.g pressing shift-keys ('!', '@', '#').
+    // or ctrl-keys ('ctrl-j', 'ctrl-k')
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -110,10 +116,8 @@ pub enum Action {
 #[derive(Clone, Debug)]
 struct KeyState {}
 
-// TODO: check that max size is KEY_MAX
 type Layer = HashMap<KeyCode, Action>;
 
-// TODO: check that max size is KEY_MAX
 #[derive(Clone, Debug)]
 struct MergedKey {
     code: KeyCode,
@@ -165,11 +169,9 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
         }
     }
 
-    // This should never happen
-    assert!(false);
     MergedKey{
-        code: Default::default(),
-        action: Action::Transparent,
+        code: removed_code,
+        action: Action::Tap(Effect::Default(removed_code)),
         state: KeyState{},
         layer_index: 0
     }
@@ -177,9 +179,9 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
 
 
 fn init_merged(layers: &Layers) -> Merged {
-    let mut merged: Merged = Vec::with_capacity(KEY_MAX);
+    let mut merged: Merged = Vec::with_capacity(MAX_KEY);
 
-    for i in 0..KEY_MAX {
+    for i in 0..MAX_KEY {
         let code: KeyCode = i.into();
         let effect = Effect::Default(code);
         let action = Action::Tap(effect);
@@ -188,6 +190,7 @@ fn init_merged(layers: &Layers) -> Merged {
         merged.push(MergedKey{code, action, state, layer_index});
     }
 
+    assert!(merged.len() == MAX_KEY);
     merged
 }
 
@@ -196,6 +199,7 @@ fn get_layers_from_cfg(cfg: Layers) -> Layers {
     out.resize_with(cfg.len(), Default::default);
 
     for (i, layer_cfg) in cfg.iter().enumerate() {
+        assert!(layer_cfg.len() < MAX_KEY);
         for (code, action) in layer_cfg {
             out[i].insert(*code, action.clone());
         }
@@ -218,6 +222,14 @@ impl LayersManager {
 
     pub fn init(&mut self) {
         self.turn_layer_on(0);
+    }
+
+    pub fn get(&self, key: KeyCode) -> &MergedKey {
+        &self.merged[usize::from(key)]
+    }
+
+    pub fn get_mut(&mut self, key: KeyCode) -> &mut MergedKey {
+        &mut self.merged[usize::from(key)]
     }
 
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
@@ -269,31 +281,66 @@ impl LayersManager {
 }
 
 #[cfg(test)]
+fn make_default_action(code: EV_KEY) -> Action {
+    let effect = Effect::Default(code.into());
+    Action::Tap(effect)
+}
+
+#[cfg(test)]
+fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
+    let tap_effect = Effect::Default(tap.into());
+    let hold_effect = Effect::Default(hold.into());
+    Action::TapHold(tap_effect, hold_effect)
+}
+
+#[cfg(test)]
 fn make_default_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
-    let dst_code: KeyCode = dst.into();
-    let effect = Effect::Default(dst_code);
-    let action = Action::Tap(effect);
+    let action = make_default_action(dst);
+    return (src_code, action)
+}
+
+#[cfg(test)]
+fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyCode, Action) {
+    let src_code: KeyCode = src.into();
+    let action = make_taphold_action(tap, hold);
     return (src_code, action)
 }
 
 #[test]
-fn test_mgr_init() {
+fn test_mgr() {
 
-    let swap: HashMap<EV_KEY, EV_KEY> = [(EV_KEY::KEY_LEFTCTRL, EV_KEY::KEY_CAPSLOCK),
-                                         (EV_KEY::KEY_CAPSLOCK, EV_KEY::KEY_LEFTCTRL)].iter().cloned().collect();
+    let swap: HashMap<EV_KEY, EV_KEY> = [(KEY_LEFTCTRL, KEY_CAPSLOCK),
+                                         (KEY_CAPSLOCK, KEY_LEFTCTRL)].iter().cloned().collect();
     let layers: Layers = vec![
         // 0: base layer
         [
             // Ex: switch CTRL <--> Capslock
-            make_default_layer_entry(EV_KEY::KEY_LEFTCTRL, EV_KEY::KEY_CAPSLOCK),
-            make_default_layer_entry(EV_KEY::KEY_CAPSLOCK, EV_KEY::KEY_LEFTCTRL),
+            make_default_layer_entry(KEY_LEFTCTRL, KEY_CAPSLOCK),
+            make_default_layer_entry(KEY_CAPSLOCK, KEY_LEFTCTRL),
+        ].iter().cloned().collect(),
+
+        // 1: arrows layer
+        [
+            // Ex: switch CTRL <--> Capslock
+            make_default_layer_entry(KEY_H, KEY_LEFT),
+            make_default_layer_entry(KEY_J, KEY_DOWN),
+            make_default_layer_entry(KEY_K, KEY_UP),
+            make_default_layer_entry(KEY_L, KEY_RIGHT),
+        ].iter().cloned().collect(),
+
+        // 2: asdf modifiers
+        [
+            // Ex: switch CTRL <--> Capslock
+            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
+            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTSHIFT),
+            make_taphold_layer_entry(KEY_D, KEY_D, KEY_LEFTALT),
         ].iter().cloned().collect()
     ];
 
     let mut mgr = LayersManager::new(layers);
     mgr.init();
-    assert_eq!(mgr.layers_states.len(), 1);
+    assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
 
     // TODO: This should fail due to the capslock reassignment above
@@ -307,6 +354,56 @@ fn test_mgr_init() {
 
         assert_eq!(merged_key.code, i_evkey.into());
         assert_eq!(merged_key.layer_index, 0);
-        assert_eq!(merged_key.action, Action::Tap(Effect::Default(expected_code.into())));
+        assert_eq!(merged_key.action, make_default_action(expected_code));
     }
+
+    mgr.turn_layer_on(2);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_H));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_J));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_K));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_L));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
+
+    mgr.turn_layer_on(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
+
+    mgr.turn_layer_off(2);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
+
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_H));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_J));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_K));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_L));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
+
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
 }
