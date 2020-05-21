@@ -307,6 +307,6 @@ fn test_mgr_init() {
 
         assert_eq!(merged_key.code, i_evkey.into());
         assert_eq!(merged_key.layer_index, 0);
-        // assert_eq!(merged_key.action, Action::Tap(Effect::Default(expected_code.into())));
+        assert_eq!(merged_key.action, Action::Tap(Effect::Default(expected_code.into())));
     }
 }
