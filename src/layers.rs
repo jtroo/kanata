@@ -71,12 +71,12 @@ pub enum Action {
 
 // -------------- Runtime Types -------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TapHoldWaiting {
-    timestamp: evdev_rs::TimeVal,
+    pub timestamp: evdev_rs::TimeVal,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TapHoldState {
     ThIdle,
     ThWaiting(TapHoldWaiting),

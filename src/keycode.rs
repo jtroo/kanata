@@ -1,4 +1,5 @@
 use evdev_rs::enums::EV_KEY;
+use evdev_rs::enums::EventCode;
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct KeyCode {
@@ -14,6 +15,15 @@ impl From<usize> for KeyCode {
 impl From<EV_KEY> for KeyCode {
     fn from(item: EV_KEY) -> Self {
         Self{c: item as u32}
+    }
+}
+
+impl From<EventCode> for KeyCode {
+    fn from(item: EventCode) -> Self {
+        match item {
+            EventCode::EV_KEY(evkey) => Self::from(evkey),
+            _ => { assert!(false); 0.into() }
+        }
     }
 }
 
