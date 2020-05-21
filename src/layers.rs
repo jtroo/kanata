@@ -4,6 +4,7 @@ use std::vec::Vec;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fmt;
+use crate::keycode::KeyCode;
 
 // -------------- Constants -------------
 
@@ -38,36 +39,6 @@ lazy_static::lazy_static! {
 }
 
 // -------------- Config Types -------------
-
-#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
-pub struct KeyCode {
-    c: u32,
-}
-
-impl From<usize> for KeyCode {
-    fn from(item: usize) -> Self {
-        Self{c: item as u32}
-    }
-}
-
-impl From<EV_KEY> for KeyCode {
-    fn from(item: EV_KEY) -> Self {
-        Self{c: item as u32}
-    }
-}
-
-impl From<KeyCode> for usize {
-    fn from(item: KeyCode) -> Self {
-        item.c as usize
-    }
-}
-
-impl From<KeyCode> for EV_KEY {
-    fn from(item: KeyCode) -> Self {
-        evdev_rs::enums::int_to_ev_key(item.c)
-            .expect(&format!("Invalid KeyCode: {}", item.c))
-    }
-}
 
 fn idx_to_ev_key(i: usize) -> EV_KEY {
     let narrow: u32 = i.try_into().expect(&format!("Invalid KeyCode: {}", i));
@@ -114,16 +85,31 @@ pub enum Action {
 // -------------- Runtime Types -------------
 
 #[derive(Clone, Debug)]
-struct KeyState {}
+pub struct TapHoldWaiting {
+    timestamp: evdev_rs::TimeVal,
+}
+
+#[derive(Clone, Debug)]
+pub enum TapHoldState {
+    TH_IDLE,
+    TH_WAITING(TapHoldWaiting),
+    TH_HOLDING,
+}
+
+#[derive(Clone, Debug)]
+pub enum KeyState {
+    KsTap,
+    KsTapHold(TapHoldState),
+}
 
 type Layer = HashMap<KeyCode, Action>;
 
 #[derive(Clone, Debug)]
-struct MergedKey {
-    code: KeyCode,
-    action: Action,
-    state: KeyState,
-    layer_index: LayerIndex,
+pub struct MergedKey {
+    pub code: KeyCode,
+    pub action: Action,
+    pub state: KeyState,
+    pub layer_index: LayerIndex,
 }
 
 type Merged = Vec<MergedKey>;
@@ -161,7 +147,7 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
             let replacement = MergedKey{
                 code: removed_code,
                 action: lower_action.clone(),
-                state: KeyState{},
+                state: KeyState::KsTap,
                 layer_index: i
             };
 
@@ -172,7 +158,7 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
     MergedKey{
         code: removed_code,
         action: Action::Tap(Effect::Default(removed_code)),
-        state: KeyState{},
+        state: KeyState::KsTap,
         layer_index: 0
     }
 }
@@ -185,7 +171,7 @@ fn init_merged(layers: &Layers) -> Merged {
         let code: KeyCode = i.into();
         let effect = Effect::Default(code);
         let action = Action::Tap(effect);
-        let state = KeyState{};
+        let state = KeyState::KsTap;
         let layer_index = 0;
         merged.push(MergedKey{code, action, state, layer_index});
     }
@@ -243,7 +229,7 @@ impl LayersManager {
                 let new_entry = MergedKey{
                     code: *code,
                     action: action.clone(),
-                    state: KeyState{},
+                    state: KeyState::KsTap,
                     layer_index: index
                 };
 
@@ -292,9 +278,9 @@ fn make_default_action(code: EV_KEY) -> Action {
 
 #[cfg(test)]
 fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
-    let tap_effect = Effect::Default(tap.into());
-    let hold_effect = Effect::Default(hold.into());
-    Action::TapHold(tap_effect, hold_effect)
+    let tap_fx = Effect::Default(tap.into());
+    let hold_fx = Effect::Default(hold.into());
+    Action::TapHold(tap_fx, hold_fx)
 }
 
 #[cfg(test)]
