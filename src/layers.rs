@@ -3,6 +3,7 @@ use std::vec::Vec;
 use std::collections::HashMap;
 use crate::keys::KeyCode;
 pub use crate::actions::Action;
+pub use crate::actions::tap_hold::TapHoldState;
 pub use crate::effects::Effect;
 use crate::cfg::CfgLayers;
 
@@ -12,19 +13,7 @@ const MAX_KEY: usize = KEY_MAX as usize;
 
 // ---------------- Types ---------------
 
-type LayerIndex = usize;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TapHoldWaiting {
-    pub timestamp: evdev_rs::TimeVal,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum TapHoldState {
-    ThIdle,
-    ThWaiting(TapHoldWaiting),
-    ThHolding,
-}
+pub type LayerIndex = usize;
 
 #[derive(Clone, Debug)]
 pub enum KeyState {

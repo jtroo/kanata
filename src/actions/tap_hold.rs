@@ -14,18 +14,9 @@ use crate::keys::KeyValue;
 // inner
 use inner::*;
 
-//
-// TODO:
-// 1. Refactor this file. Tons of boilerplate
-// 2. Refactor the inner!(inner!(...)) is there a better way?
-//    E.g nested match? https://aminb.gitbooks.io/rust-for-c/content/destructuring/index.html
-//
-
 use crate::layers::{
     Effect,
     Action,
-    TapHoldWaiting,
-    TapHoldState,
     KeyState,
     MergedKey,
 };
@@ -33,6 +24,18 @@ use crate::layers::{
 const STOP: bool = true;
 const CONTINUE: bool = false;
 const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TapHoldWaiting {
+    pub timestamp: evdev_rs::TimeVal,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TapHoldState {
+    ThIdle,
+    ThWaiting(TapHoldWaiting),
+    ThHolding,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TapHoldEffect {
