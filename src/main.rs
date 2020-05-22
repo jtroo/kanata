@@ -5,8 +5,7 @@ mod kbd_in;
 mod kbd_out;
 mod ktrl;
 mod layers;
-mod keycode;
-mod keyevent;
+mod keys;
 mod actions;
 mod effects;
 
@@ -23,8 +22,7 @@ use actions::TapHoldMgr;
 
 use evdev_rs::enums::EV_KEY;
 use evdev_rs::enums::EV_KEY::*;
-use keyevent::KeyEvent;
-use keycode::KeyCode;
+use keys::KeyCode;
 use layers::Action;
 use layers::Effect;
 
@@ -45,7 +43,7 @@ fn my_layers() -> Layers {
         // 0: base layer
         [
             make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTSHIFT),
-            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTSHIFT),
+            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
         ].iter().cloned().collect(),
     ]
 }

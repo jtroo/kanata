@@ -2,9 +2,8 @@ use evdev_rs::enums::EV_KEY;
 use evdev_rs::enums::EV_KEY::*;
 use std::vec::Vec;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
 use std::fmt;
-use crate::keycode::KeyCode;
+use crate::keys::KeyCode;
 pub use crate::effects::Effect;
 
 // -------------- Constants -------------
@@ -41,11 +40,6 @@ lazy_static::lazy_static! {
 
 // -------------- Config Types -------------
 
-fn idx_to_ev_key(i: usize) -> EV_KEY {
-    let narrow: u32 = i.try_into().expect(&format!("Invalid KeyCode: {}", i));
-    evdev_rs::enums::int_to_ev_key(narrow).expect(&format!("Invalid KeyCode: {}", narrow))
-}
-
 impl fmt::Debug for KeyCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let evkey: EV_KEY = evdev_rs::enums::int_to_ev_key(self.c)
@@ -54,19 +48,19 @@ impl fmt::Debug for KeyCode {
     }
 }
 
-type DanceCount = usize;
+// type DanceCount = usize;
 type LayerIndex = usize;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Action {
-    Transparent,
     Tap(Effect),
     TapHold(Effect, Effect),
 
     // Not Implemented Yet
-    TapDance(DanceCount, Effect, Effect),
-    Sequence(Vec<KeyCode>, Effect),
-    Combo(Vec<KeyCode>, Effect),
+    // -------------------
+    // TapDance(DanceCount, Effect, Effect),
+    // Sequence(Vec<KeyCode>, Effect),
+    // Combo(Vec<KeyCode>, Effect),
 }
 
 // -------------- Runtime Types -------------
@@ -94,7 +88,6 @@ impl KeyState {
         match action {
             Action::Tap(_) => Self::KsTap,
             Action::TapHold(..) => Self::KsTapHold(TapHoldState::ThIdle),
-            _ => Self::KsTap
         }
     }
 }
@@ -134,22 +127,21 @@ fn is_overriding_key(merged: &Merged, candidate_code: KeyCode, candidate_layer_i
     return candidate_layer_index >= current.layer_index
 }
 
+#[cfg(test)]
 fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code: KeyCode) -> MergedKey {
     let current: &MergedKey = &merged[usize::from(removed_code)];
     let lower_layer_idx = current.layer_index-1;
 
     for i in lower_layer_idx..0 {
         let lower_action = &layers[i][&removed_code];
-        if *lower_action != Action::Transparent {
-            let replacement = MergedKey{
-                code: removed_code,
-                action: lower_action.clone(),
-                state: KeyState::from_action(&lower_action),
-                layer_index: i
-            };
+        let replacement = MergedKey{
+            code: removed_code,
+            action: lower_action.clone(),
+            state: KeyState::from_action(&lower_action),
+            layer_index: i
+        };
 
-            return replacement;
-        }
+        return replacement;
     }
 
     MergedKey{
@@ -161,7 +153,7 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
 }
 
 
-fn init_merged(layers: &Layers) -> Merged {
+fn init_merged() -> Merged {
     let mut merged: Merged = Vec::with_capacity(MAX_KEY);
 
     for i in 0..MAX_KEY {
@@ -193,7 +185,7 @@ fn get_layers_from_cfg(cfg: Layers) -> Layers {
 
 impl LayersManager {
     pub fn new(cfg: Layers) -> Self {
-        let merged = init_merged(&cfg);
+        let merged = init_merged();
         let layers_count = cfg.len();
         let layers = get_layers_from_cfg(cfg);
 
@@ -207,6 +199,7 @@ impl LayersManager {
         self.turn_layer_on(0);
     }
 
+    #[cfg(test)]
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         &self.merged[usize::from(key)]
     }
@@ -238,6 +231,7 @@ impl LayersManager {
         self.layers_states[index] = true;
     }
 
+    #[cfg(test)]
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
         std::assert!(index > 0); // Can't turn off the base layer
         std::assert!(self.layers_states[index]);
@@ -252,6 +246,7 @@ impl LayersManager {
         self.layers_states[index] = false;
     }
 
+    #[cfg(test)]
     pub fn toggle_layer(&mut self, index: LayerIndex) {
         let is_layer_on = self.layers_states[index];
 
@@ -266,6 +261,15 @@ impl LayersManager {
 // ----------------------------------------------------------
 // ----------------------- Tests ----------------------------
 // ----------------------------------------------------------
+
+#[cfg(test)]
+use std::convert::TryInto;
+
+#[cfg(test)]
+fn idx_to_ev_key(i: usize) -> EV_KEY {
+    let narrow: u32 = i.try_into().expect(&format!("Invalid KeyCode: {}", i));
+    evdev_rs::enums::int_to_ev_key(narrow).expect(&format!("Invalid KeyCode: {}", narrow))
+}
 
 #[cfg(test)]
 fn make_default_action(code: EV_KEY) -> Action {

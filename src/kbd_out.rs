@@ -20,8 +20,8 @@ use std::slice;
 use std::mem;
 
 // ktrl
-use crate::keyevent::KeyValue;
-use crate::keyevent::KeyEvent;
+use crate::keys::KeyValue;
+use crate::keys::KeyEvent;
 
 pub struct KbdOut {
     device: File,
@@ -89,10 +89,9 @@ impl KbdOut {
         self.write_key(key, KeyValue::Release as i32)
     }
 
-    // press + release
-    pub fn tap_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
-        self.press_key(key.clone())?;
-        self.release_key(key)?;
-        Ok(())
-    }
+    // pub fn tap_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    //     self.press_key(key.clone())?;
+    //     self.release_key(key)?;
+    //     Ok(())
+    // }
 }

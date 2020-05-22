@@ -1,18 +1,14 @@
 // evdev-rs
 use evdev_rs::enums::EventCode;
-use evdev_rs::enums::EV_KEY;
-use evdev_rs::enums::EV_KEY::*;
 use evdev_rs::InputEvent;
-use evdev_rs::TimeVal;
 
 // std
 use std::vec::Vec;
 
 // ktrl
-use crate::layers::Layers;
 use crate::layers::LayersManager;
-use crate::keycode::KeyCode;
-use crate::keyevent::KeyValue;
+use crate::keys::KeyCode;
+use crate::keys::KeyValue;
 
 // inner
 use inner::*;
@@ -63,6 +59,7 @@ impl TapHoldOut {
         }
     }
 
+    #[cfg(test)]
     fn new_multiple(stop_processing: bool, effects: Vec<TapHoldEffect>) -> Self {
         TapHoldOut {
             stop_processing,
@@ -223,7 +220,7 @@ impl TapHoldMgr {
 
     // --------------- Non-TapHold Functions ----------------------
 
-    fn is_waiting_over(merged_key: &MergedKey, waiting: KeyCode, event: &InputEvent) -> bool {
+    fn is_waiting_over(merged_key: &MergedKey, event: &InputEvent) -> bool {
         let new_timestamp = event.time.clone();
         let wait_start_timestamp = inner!(inner!(&merged_key.state, if KeyState::KsTapHold), if TapHoldState::ThWaiting).timestamp.clone();
 
@@ -247,7 +244,7 @@ impl TapHoldMgr {
         for waiting in self.waiting_keys.drain(..) {
             let merged_key: &mut MergedKey = l_mgr.get_mut(waiting.clone());
 
-            if Self::is_waiting_over(merged_key, waiting, event) {
+            if Self::is_waiting_over(merged_key, event) {
                 // Append the press hold_fx to the output
                 let hold_fx = match merged_key.action {
                     Action::TapHold(_tap_fx, hold_fx) => hold_fx,
@@ -293,7 +290,14 @@ impl TapHoldMgr {
 }
 
 #[cfg(test)]
-use crate::keyevent::KeyEvent;
+use crate::keys::KeyEvent;
+#[cfg(test)]
+use crate::layers::Layers;
+
+#[cfg(test)]
+use evdev_rs::enums::EV_KEY;
+#[cfg(test)]
+use evdev_rs::enums::EV_KEY::*;
 
 #[cfg(test)]
 fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {

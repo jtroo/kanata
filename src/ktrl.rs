@@ -1,7 +1,6 @@
 use evdev_rs::InputEvent;
 use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EventType;
-use inner::*;
 
 use crate::KbdIn;
 use crate::KbdOut;
@@ -10,7 +9,7 @@ use crate::actions::TapHoldMgr;
 
 // TODO: TapHold handling, move this...
 use crate::layers::Effect;
-use crate::keyevent::KeyValue;
+use crate::keys::KeyValue;
 use crate::actions::tap_hold::TapHoldEffect;
 
 pub struct Ktrl {

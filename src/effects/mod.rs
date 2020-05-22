@@ -1,6 +1,4 @@
-use crate::keycode::KeyCode;
-
-type LayerIndex = usize;
+use crate::keys::KeyCode;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
@@ -8,9 +6,12 @@ pub enum Effect {
     Default(KeyCode),
 
     // Not Implemented Yet
-    Sticky(KeyCode),
-    ToggleLayer(LayerIndex),
-    MomentaryLayer(LayerIndex),
+    // ---------------------
+    // ToggleLayer(LayerIndex),
+    // OneShotLayer(LayerIndex),
+
+    // ToggleModifier(KeyCode)
+    // OneShotModifier(KeyCode)
 
     // TODO: Consider how to implement KeyChords.
     // e.g pressing shift-keys ('!', '@', '#').
