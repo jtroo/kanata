@@ -36,7 +36,7 @@ impl Ktrl {
                 continue;
             }
 
-            let th_out = self.th_mgr.process_tap_hold(&mut self.l_mgr, &in_event);
+            let th_out = self.th_mgr.process(&mut self.l_mgr, &in_event);
             if let Some(th_effects) = th_out.effects {
                 for fx in th_effects {
                     match fx {
