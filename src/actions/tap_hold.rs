@@ -2,6 +2,7 @@ use evdev_rs::enums::EventCode;
 use evdev_rs::InputEvent;
 use std::collections::HashSet;
 use std::vec::Vec;
+use crate::layers::LayersManager;
 use inner::*;
 
 //
@@ -246,12 +247,12 @@ impl TapHoldMgr {
     }
 
     fn process_non_tap_hold_key(&mut self,
-                                ktrl: &mut Ktrl,
+                                l_mgr: &mut LayersManager,
                                 event: &InputEvent) -> TapHoldOut {
         let mut out = TapHoldOut::empty(CONTINUE);
 
         for waiting in &self.waiting_keys {
-            let merged_key: &mut MergedKey = ktrl.l_mgr.get_mut(waiting.clone());
+            let merged_key: &mut MergedKey = l_mgr.get_mut(waiting.clone());
 
             if self.is_waiting_over(merged_key, *waiting, event) {
                 // Append the press hold_fx to the output
@@ -284,14 +285,14 @@ impl TapHoldMgr {
     // --------------- High-Level Functions ----------------------
 
     // Returns true if processed, false if skipped
-    pub fn process_tap_hold(&mut self, ktrl: &mut Ktrl, event: &InputEvent) -> TapHoldOut {
+    pub fn process_tap_hold(&mut self, l_mgr: &mut LayersManager, event: &InputEvent) -> TapHoldOut {
         let code = get_keycode_from_event(event)
             .expect(&format!("Invalid code in event {}", event.event_code));
-        let merged_key: &mut MergedKey = ktrl.l_mgr.get_mut(code);
+        let merged_key: &mut MergedKey = l_mgr.get_mut(code);
         if let Action::TapHold(tap_fx, hold_fx) = merged_key.action.clone() {
             self.process_tap_hold_key(event, &mut merged_key.state, &tap_fx, &hold_fx)
         } else {
-            self.process_non_tap_hold_key(ktrl, event)
+            self.process_non_tap_hold_key(l_mgr, event)
         }
     }
 }
