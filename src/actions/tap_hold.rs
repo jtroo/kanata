@@ -1,12 +1,14 @@
 use evdev_rs::enums::EventCode;
 use evdev_rs::InputEvent;
 use std::collections::HashSet;
+use std::vec::Vec;
 use inner::*;
 
 //
 // TODO:
 // 1. Refactor this file. Tons of boilerplate
 // 2. Refactor the inner!(inner!(...)) is there a better way?
+//    E.g nested match? https://aminb.gitbooks.io/rust-for-c/content/destructuring/index.html
 // 3. Refactor taking in both `&mut self` and `&mut Ktrl`
 //
 
@@ -24,6 +26,7 @@ use crate::keycode::KeyCode;
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
+const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum KeyValue {
@@ -55,24 +58,35 @@ struct TapHoldEffect {
 #[derive(Clone, Debug)]
 struct TapHoldOut {
     stop_processing: bool,
-    effect: Option<TapHoldEffect>,
+    effects: Option<Vec<TapHoldEffect>>,
 }
 
 impl TapHoldOut {
     fn new(stop_processing: bool, effect: Effect, value: KeyValue) -> Self {
         TapHoldOut {
             stop_processing,
-            effect: Some(TapHoldEffect{
+            effects: Some(vec![TapHoldEffect{
                 fx: effect,
                 val: value
-            })
+            }])
         }
     }
 
     fn empty(stop_processing: bool) -> Self {
         TapHoldOut {
             stop_processing,
-            effect: None,
+            effects: None,
+        }
+    }
+
+    fn insert(&mut self, effect: Effect, value: KeyValue) {
+        if let Some(effects) = &mut self.effects {
+            effects.push(TapHoldEffect{fx: effect, val: value});
+        } else {
+            self.effects = Some(vec![TapHoldEffect{
+                fx: effect,
+                val: value
+            }]);
         }
     }
 }
@@ -215,17 +229,16 @@ impl TapHoldMgr {
 
     // --------------- Non-TapHold Functions ----------------------
 
-    fn is_waiting_over(&self, ktrl: &Ktrl, waiting: KeyCode, event: &InputEvent) -> bool {
-        let merged_key: &MergedKey = ktrl.l_mgr.get(waiting);
-        let new_timestamp = event.time;
-        let wait_start_timestamp = inner!(inner!(merged_key.state, if KeyState::KsTapHold), if TapHoldState::ThWaiting).timestamp;
+    fn is_waiting_over(&self, merged_key: &MergedKey, waiting: KeyCode, event: &InputEvent) -> bool {
+        let new_timestamp = event.time.clone();
+        let wait_start_timestamp = inner!(inner!(&merged_key.state, if KeyState::KsTapHold), if TapHoldState::ThWaiting).timestamp.clone();
 
         let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
         let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
 
         if secs_diff > 0 {
             true
-        } else if usecs_diff > 200000 {
+        } else if usecs_diff > TAP_HOLD_WAIT_PERIOD {
             true
         } else {
             false
@@ -235,16 +248,37 @@ impl TapHoldMgr {
     fn process_non_tap_hold_key(&mut self,
                                 ktrl: &mut Ktrl,
                                 event: &InputEvent) -> TapHoldOut {
+        let mut out = TapHoldOut::empty(CONTINUE);
+
         for waiting in &self.waiting_keys {
-            if self.is_waiting_over(ktrl, waiting, event) {
-                // TODO: return hold_fx and change to ThHolding
+            let merged_key: &mut MergedKey = ktrl.l_mgr.get_mut(waiting.clone());
+
+            if self.is_waiting_over(merged_key, *waiting, event) {
+                // Append the press hold_fx to the output
+                let hold_fx = match merged_key.action {
+                    Action::TapHold(_tap_fx, hold_fx) => hold_fx,
+                    _ => {assert!(false); Effect::Default(0.into())},
+                };
+                out.insert(hold_fx, KeyValue::Press);
+
+                // Change to the holding state
+                merged_key.state = KeyState::KsTapHold(TapHoldState::ThHolding);
+
             } else {
-                // TODO: flush waiting and reset to ThIdle
+                // Flush the press and release tap_fx
+                let tap_fx = match merged_key.action {
+                    Action::TapHold(tap_fx, _hold_fx) => tap_fx,
+                    _ => {assert!(false); Effect::Default(0.into())},
+                };
+                out.insert(tap_fx, KeyValue::Press);
+                out.insert(tap_fx, KeyValue::Release);
+
+                // Revert to the idle state
+                merged_key.state = KeyState::KsTapHold(TapHoldState::ThIdle);
             }
         }
 
-        assert!(false);
-        TapHoldOut::empty(STOP)
+        out
     }
 
     // --------------- High-Level Functions ----------------------
