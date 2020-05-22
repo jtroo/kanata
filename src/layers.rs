@@ -1,8 +1,6 @@
-use evdev_rs::enums::EV_KEY;
 use evdev_rs::enums::EV_KEY::*;
 use std::vec::Vec;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::collections::HashMap;
 use crate::keys::KeyCode;
 pub use crate::effects::Effect;
 
@@ -10,43 +8,7 @@ pub use crate::effects::Effect;
 
 const MAX_KEY: usize = KEY_MAX as usize;
 
-lazy_static::lazy_static! {
-    static ref MISSING_KEYCODES: HashSet<u32> = {
-        let mut m = HashSet::new();
-        let ranges = vec![
-            84..85,
-            195..200,
-            249..352,
-            443..448,
-            452..464,
-            485..497,
-            507..512,
-            543..560,
-            562..576,
-            585..592,
-            594..608,
-            633..767
-        ];
-
-        for range in ranges {
-            for i in range {
-                m.insert(i);
-            }
-        }
-
-        m
-    };
-}
-
 // -------------- Config Types -------------
-
-impl fmt::Debug for KeyCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let evkey: EV_KEY = evdev_rs::enums::int_to_ev_key(self.c)
-            .expect(&format!("Invalid KeyCode: {}", self.c));
-        evkey.fmt(f)
-    }
-}
 
 // type DanceCount = usize;
 type LayerIndex = usize;
@@ -261,6 +223,41 @@ impl LayersManager {
 // ----------------------------------------------------------
 // ----------------------- Tests ----------------------------
 // ----------------------------------------------------------
+
+#[cfg(test)]
+use std::collections::HashSet;
+
+#[cfg(test)]
+use evdev_rs::enums::EV_KEY;
+
+#[cfg(test)]
+lazy_static::lazy_static! {
+    static ref MISSING_KEYCODES: HashSet<u32> = {
+        let mut m = HashSet::new();
+        let ranges = vec![
+            84..85,
+            195..200,
+            249..352,
+            443..448,
+            452..464,
+            485..497,
+            507..512,
+            543..560,
+            562..576,
+            585..592,
+            594..608,
+            633..767
+        ];
+
+        for range in ranges {
+            for i in range {
+                m.insert(i);
+            }
+        }
+
+        m
+    };
+}
 
 #[cfg(test)]
 use std::convert::TryInto;

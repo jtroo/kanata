@@ -1,3 +1,4 @@
+use std::fmt;
 use evdev_rs::enums::{EV_KEY, EventCode};
 use evdev_rs::{InputEvent, TimeVal};
 
@@ -39,6 +40,14 @@ impl From<KeyCode> for EV_KEY {
     fn from(item: KeyCode) -> Self {
         evdev_rs::enums::int_to_ev_key(item.c)
             .expect(&format!("Invalid KeyCode: {}", item.c))
+    }
+}
+
+impl fmt::Debug for KeyCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let evkey: EV_KEY = evdev_rs::enums::int_to_ev_key(self.c)
+            .expect(&format!("Invalid KeyCode: {}", self.c));
+        evkey.fmt(f)
     }
 }
 
