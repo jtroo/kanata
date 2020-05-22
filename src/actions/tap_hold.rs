@@ -38,21 +38,21 @@ const CONTINUE: bool = false;
 const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct TapHoldEffect {
-    fx: Effect,
-    val: KeyValue,
+pub struct TapHoldEffect {
+    pub fx: Effect,
+    pub val: KeyValue,
 }
 
 impl TapHoldEffect {
-    fn new(fx: Effect, val: KeyValue) -> Self {
+    pub fn new(fx: Effect, val: KeyValue) -> Self {
         Self{fx, val}
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct TapHoldOut {
-    stop_processing: bool,
-    effects: Option<Vec<TapHoldEffect>>,
+pub struct TapHoldOut {
+    pub stop_processing: bool,
+    pub effects: Option<Vec<TapHoldEffect>>,
 }
 
 impl TapHoldOut {
@@ -278,8 +278,11 @@ impl TapHoldMgr {
 
     // Returns true if processed, false if skipped
     pub fn process_tap_hold(&mut self, l_mgr: &mut LayersManager, event: &InputEvent) -> TapHoldOut {
-        let code = get_keycode_from_event(event)
-            .expect(&format!("Invalid code in event {}", event.event_code));
+        let code = match get_keycode_from_event(event) {
+            Some(code) => code,
+            None => { return TapHoldOut::empty(CONTINUE) },
+        };
+
         let merged_key: &mut MergedKey = l_mgr.get_mut(code);
         if let Action::TapHold(tap_fx, hold_fx) = merged_key.action.clone() {
             self.process_tap_hold_key(event, &mut merged_key.state, &tap_fx, &hold_fx)

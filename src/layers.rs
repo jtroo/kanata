@@ -117,14 +117,14 @@ pub struct LayersManager {
 
     // Serves as a cache of the result
     // of stacking all the layers on top of each other.
-    merged: Merged,
+    pub merged: Merged,
 
     // This is a read-only representation of the user's layer configuration.
     // The 0th layer is the base and will always be active
-    layers: Layers,
+    pub layers: Layers,
 
     // Holds the on/off state for each layer
-    layers_states: LayersStates,
+    pub layers_states: LayersStates,
 }
 
 // -------------- Implementation -------------
