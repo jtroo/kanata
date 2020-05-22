@@ -10,7 +10,7 @@ use crate::actions::TapHoldMgr;
 // TODO: TapHold handling, move this...
 use crate::layers::Effect;
 use crate::keys::KeyValue;
-use crate::actions::tap_hold::EffectValue;
+use crate::effects::EffectValue;
 
 pub struct Ktrl {
     pub kbd_in: KbdIn,

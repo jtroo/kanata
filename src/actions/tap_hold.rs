@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use crate::layers::LayersManager;
 use crate::keys::KeyCode;
 use crate::keys::KeyValue;
+use crate::effects::OutEffects;
 
 // inner
 use inner::*;
@@ -36,57 +37,6 @@ pub enum TapHoldState {
     ThWaiting(TapHoldWaiting),
     ThHolding,
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EffectValue {
-    pub fx: Effect,
-    pub val: KeyValue,
-}
-
-impl EffectValue {
-    pub fn new(fx: Effect, val: KeyValue) -> Self {
-        Self{fx, val}
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TapHoldOut {
-    pub stop_processing: bool,
-    pub effects: Option<Vec<EffectValue>>,
-}
-
-impl TapHoldOut {
-    fn new(stop_processing: bool, effect: Effect, value: KeyValue) -> Self {
-        TapHoldOut {
-            stop_processing,
-            effects: Some(vec![EffectValue::new(effect, value)])
-        }
-    }
-
-    #[cfg(test)]
-    fn new_multiple(stop_processing: bool, effects: Vec<EffectValue>) -> Self {
-        TapHoldOut {
-            stop_processing,
-            effects: Some(effects)
-        }
-    }
-
-    fn empty(stop_processing: bool) -> Self {
-        TapHoldOut {
-            stop_processing,
-            effects: None,
-        }
-    }
-
-    fn insert(&mut self, effect: Effect, value: KeyValue) {
-        if let Some(effects) = &mut self.effects {
-            effects.push(EffectValue::new(effect, value));
-        } else {
-            self.effects = Some(vec![EffectValue::new(effect, value)]);
-        }
-    }
-}
-
 pub struct TapHoldMgr {
     // A list of keys that are currently in ThWaiting
     waiting_keys: Vec<KeyCode>,
@@ -118,7 +68,7 @@ impl TapHoldMgr {
                          event: &InputEvent,
                          state: &mut TapHoldState,
                          _tap_fx: &Effect,
-                         hold_fx: &Effect) -> TapHoldOut {
+                         hold_fx: &Effect) -> OutEffects {
         assert!(*state == TapHoldState::ThHolding);
         let value = KeyValue::from(event.value);
 
@@ -127,7 +77,7 @@ impl TapHoldMgr {
                 // Should never happen.
                 // Should only see this in the idle state
                 assert!(false);
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             },
 
             KeyValue::Release => {
@@ -136,12 +86,12 @@ impl TapHoldMgr {
                 self.waiting_keys.clear();
                 let kc = get_keycode_from_event(event).unwrap();
                 self.holding_keys.remove(&kc);
-                TapHoldOut::new(STOP, *hold_fx, KeyValue::Release) // forward the release
+                OutEffects::new(STOP, *hold_fx, KeyValue::Release) // forward the release
             },
 
             KeyValue::Repeat => {
                 // Drop repeats. These aren't supported for TapHolds
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             }
         }
     }
@@ -150,7 +100,7 @@ impl TapHoldMgr {
                          event: &InputEvent,
                          state: &mut TapHoldState,
                          tap_fx: &Effect,
-                         _hold_fx: &Effect) -> TapHoldOut {
+                         _hold_fx: &Effect) -> OutEffects {
         let value = KeyValue::from(event.value);
 
         match value {
@@ -158,7 +108,7 @@ impl TapHoldMgr {
                 // Should never happen.
                 // Should only see this in the idle state
                 assert!(false);
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             },
 
             KeyValue::Release => {
@@ -166,14 +116,14 @@ impl TapHoldMgr {
                 // We didn't reach the hold state
                 *state = TapHoldState::ThIdle;
                 self.waiting_keys.clear();
-                let mut out = TapHoldOut::new(STOP, *tap_fx, KeyValue::Press);
+                let mut out = OutEffects::new(STOP, *tap_fx, KeyValue::Press);
                 out.insert(*tap_fx, KeyValue::Release);
                 out
             },
 
             KeyValue::Repeat => {
                 // Drop repeats. These aren't supported for TapHolds
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             }
         }
     }
@@ -182,7 +132,7 @@ impl TapHoldMgr {
                       event: &InputEvent,
                       state: &mut TapHoldState,
                       tap_fx: &Effect,
-                      _hold_fx: &Effect) -> TapHoldOut {
+                      _hold_fx: &Effect) -> OutEffects {
         assert!(*state == TapHoldState::ThIdle);
         let keycode: KeyCode = event.event_code.clone().into();
         let value = KeyValue::from(event.value);
@@ -196,17 +146,17 @@ impl TapHoldMgr {
                 *state = TapHoldState::ThWaiting(
                     TapHoldWaiting{timestamp: event.time.clone()}
                 );
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             },
 
             KeyValue::Release => {
                 // Forward the release
-                TapHoldOut::new(STOP, *tap_fx, KeyValue::Release)
+                OutEffects::new(STOP, *tap_fx, KeyValue::Release)
             },
 
             KeyValue::Repeat => {
                 // Drop repeats. These aren't supported for TapHolds
-                TapHoldOut::empty(STOP)
+                OutEffects::empty(STOP)
             }
         }
     }
@@ -216,7 +166,7 @@ impl TapHoldMgr {
                             event: &InputEvent,
                             state: &mut KeyState,
                             tap_fx: &Effect,
-                            hold_fx: &Effect) -> TapHoldOut {
+                            hold_fx: &Effect) -> OutEffects {
         if let KeyState::KsTapHold(th_state) = state {
             match &th_state {
                 TapHoldState::ThIdle => self.handle_th_idle(event, th_state, tap_fx, hold_fx),
@@ -225,7 +175,7 @@ impl TapHoldMgr {
             }
         } else {
             assert!(false);
-            TapHoldOut::empty(STOP)
+            OutEffects::empty(STOP)
         }
     }
 
@@ -249,8 +199,8 @@ impl TapHoldMgr {
 
     fn process_non_tap_hold_key(&mut self,
                                 l_mgr: &mut LayersManager,
-                                event: &InputEvent) -> TapHoldOut {
-        let mut out = TapHoldOut::empty(CONTINUE);
+                                event: &InputEvent) -> OutEffects {
+        let mut out = OutEffects::empty(CONTINUE);
 
         for waiting in self.waiting_keys.drain(..) {
             let merged_key: &mut MergedKey = l_mgr.get_mut(waiting.clone());
@@ -286,10 +236,10 @@ impl TapHoldMgr {
     // --------------- High-Level Functions ----------------------
 
     // Returns true if processed, false if skipped
-    pub fn process(&mut self, l_mgr: &mut LayersManager, event: &InputEvent) -> TapHoldOut {
+    pub fn process(&mut self, l_mgr: &mut LayersManager, event: &InputEvent) -> OutEffects {
         let code = match get_keycode_from_event(event) {
             Some(code) => code,
-            None => { return TapHoldOut::empty(CONTINUE) },
+            None => { return OutEffects::empty(CONTINUE) },
         };
 
         let merged_key: &mut MergedKey = l_mgr.get_mut(code);
@@ -311,7 +261,8 @@ impl TapHoldMgr {
 use crate::keys::KeyEvent;
 #[cfg(test)]
 use crate::cfg::*;
-
+#[cfg(test)]
+use crate::effects::EffectValue;
 #[cfg(test)]
 use evdev_rs::enums::EV_KEY::*;
 
@@ -321,8 +272,8 @@ fn test_skipped() {
     let mut l_mgr = LayersManager::new(CfgLayers::empty());
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_A)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::empty(CONTINUE));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 }
 
@@ -346,16 +297,16 @@ fn test_tap() {
     ev_th_release.time.tv_usec += 100;
 
     // 1st
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 
     // 2nd
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
@@ -365,20 +316,20 @@ fn test_tap() {
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_W)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_W)).event;
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 
     // interruptions: 2
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_W)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_W)).event;
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 }
 
@@ -402,8 +353,8 @@ fn test_hold() {
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
 
     // No hold + other key chord
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
@@ -419,10 +370,10 @@ fn test_hold() {
     ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 2;
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
 
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
 
     // -------------------------------
 
@@ -431,8 +382,8 @@ fn test_hold() {
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 2;
     ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
 
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
 }
