@@ -1,23 +1,43 @@
+use evdev_rs::enums::EventCode;
+use evdev_rs::InputEvent;
+
+pub mod perform;
+pub use perform::perform_effect;
+
 use crate::keys::KeyValue;
 use crate::keys::KeyCode;
-use crate::layers::LayerIndex;
+// use crate::layers::LayerIndex;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
     // Used externally for Press+Release
     Default(KeyCode),
 
+    // ToggleLayer(LayerIndex),
+    // MomentaryLayer(LayerIndex),
+
     // Not Implemented Yet
     // ---------------------
-    // ToggleLayer(LayerIndex),
     // OneShotLayer(LayerIndex),
-
-    // ToggleModifier(KeyCode)
     // OneShotModifier(KeyCode)
+    // ToggleModifier(KeyCode)
 
     // TODO: Consider how to implement KeyChords.
     // e.g pressing shift-keys ('!', '@', '#').
     // or ctrl-keys ('ctrl-j', 'ctrl-k')
+}
+
+pub fn event_to_default_fx_val(event: &InputEvent) -> Option<EffectValue> {
+    match &event.event_code {
+        EventCode::EV_KEY(evkey) => {
+            let kc = KeyCode::from(evkey.clone());
+            Some(EffectValue{
+                fx: Effect::Default(kc),
+                val: event.value.into(),
+            })
+        }
+        _ => None
+    }
 }
 
 // ------------------- Output Effects -----------------

@@ -1,16 +1,11 @@
-use evdev_rs::InputEvent;
-use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EventType;
 
 use crate::KbdIn;
 use crate::KbdOut;
 use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
-
-// TODO: TapHold handling, move this...
-use crate::layers::Effect;
-use crate::keys::KeyValue;
-use crate::effects::EffectValue;
+use crate::effects::event_to_default_fx_val;
+use crate::effects::perform_effect;
 
 pub struct Ktrl {
     pub kbd_in: KbdIn,
@@ -37,24 +32,17 @@ impl Ktrl {
             }
 
             let th_out = self.th_mgr.process(&mut self.l_mgr, &in_event);
-            if let Some(th_effects) = th_out.effects {
-                for fx in th_effects {
-                    match fx {
-                        EffectValue{fx: Effect::Default(kc), val: KeyValue::Press} => {
-                            self.kbd_out.press_key(kc.into())?;
-                        },
-                        EffectValue{fx: Effect::Default(kc), val: KeyValue::Release} => {
-                            self.kbd_out.release_key(kc.into())?;
-                        },
-                        _ => assert!(false),
-                    }
+            if let Some(th_fx_vals) = th_out.effects {
+                for fx_val in th_fx_vals {
+                    perform_effect(&mut self.kbd_out, fx_val)?
                 }
             }
 
             if !th_out.stop_processing {
-                match in_event {
-                    InputEvent{event_code: EventCode::EV_KEY(evkey), ..} => self.kbd_out.write_key(evkey, in_event.value)?,
-                    ev => self.kbd_out.write(&ev)?,
+                if let Some(leftover_fx_val) = event_to_default_fx_val(&in_event) {
+                    perform_effect(&mut self.kbd_out, leftover_fx_val)?;
+                } else {
+                    self.kbd_out.write(&in_event)?;
                 }
             }
         }

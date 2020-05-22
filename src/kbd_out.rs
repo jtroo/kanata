@@ -20,7 +20,6 @@ use std::slice;
 use std::mem;
 
 // ktrl
-use crate::keys::KeyValue;
 use crate::keys::KeyEvent;
 
 pub struct KbdOut {
@@ -81,13 +80,13 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn press_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
-        self.write_key(key, KeyValue::Press as i32)
-    }
+    // pub fn press_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    //     self.write_key(key, KeyValue::Press as i32)
+    // }
 
-    pub fn release_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
-        self.write_key(key, KeyValue::Release as i32)
-    }
+    // pub fn release_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    //     self.write_key(key, KeyValue::Release as i32)
+    // }
 
     // pub fn tap_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
     //     self.press_key(key.clone())?;
