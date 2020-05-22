@@ -2,30 +2,16 @@ use evdev_rs::enums::EV_KEY::*;
 use std::vec::Vec;
 use std::collections::HashMap;
 use crate::keys::KeyCode;
+pub use crate::actions::Action;
 pub use crate::effects::Effect;
 
 // -------------- Constants -------------
 
 const MAX_KEY: usize = KEY_MAX as usize;
 
-// -------------- Config Types -------------
+// ---------------- Types ---------------
 
-// type DanceCount = usize;
 type LayerIndex = usize;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Action {
-    Tap(Effect),
-    TapHold(Effect, Effect),
-
-    // Not Implemented Yet
-    // -------------------
-    // TapDance(DanceCount, Effect, Effect),
-    // Sequence(Vec<KeyCode>, Effect),
-    // Combo(Vec<KeyCode>, Effect),
-}
-
-// -------------- Runtime Types -------------
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TapHoldWaiting {
