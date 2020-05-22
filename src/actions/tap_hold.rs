@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use std::vec::Vec;
 
 // ktrl
+use crate::layers::Layers;
 use crate::layers::LayersManager;
 use crate::keycode::KeyCode;
 use crate::keyevent::KeyValue;
@@ -44,6 +45,12 @@ struct TapHoldEffect {
     val: KeyValue,
 }
 
+impl TapHoldEffect {
+    fn new(fx: Effect, val: KeyValue) -> Self {
+        Self{fx, val}
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct TapHoldOut {
     stop_processing: bool,
@@ -54,10 +61,14 @@ impl TapHoldOut {
     fn new(stop_processing: bool, effect: Effect, value: KeyValue) -> Self {
         TapHoldOut {
             stop_processing,
-            effects: Some(vec![TapHoldEffect{
-                fx: effect,
-                val: value
-            }])
+            effects: Some(vec![TapHoldEffect::new(effect, value)])
+        }
+    }
+
+    fn new_multiple(stop_processing: bool, effects: Vec<TapHoldEffect>) -> Self {
+        TapHoldOut {
+            stop_processing,
+            effects: Some(effects)
         }
     }
 
@@ -70,12 +81,9 @@ impl TapHoldOut {
 
     fn insert(&mut self, effect: Effect, value: KeyValue) {
         if let Some(effects) = &mut self.effects {
-            effects.push(TapHoldEffect{fx: effect, val: value});
+            effects.push(TapHoldEffect::new(effect, value));
         } else {
-            self.effects = Some(vec![TapHoldEffect{
-                fx: effect,
-                val: value
-            }]);
+            self.effects = Some(vec![TapHoldEffect::new(effect, value)]);
         }
     }
 }
@@ -107,7 +115,7 @@ impl TapHoldMgr {
                          state: &mut TapHoldState,
                          _tap_fx: &Effect,
                          hold_fx: &Effect) -> TapHoldOut {
-        assert!(*state == TapHoldState::ThIdle);
+        assert!(*state == TapHoldState::ThHolding);
         let value = KeyValue::from(event.value);
 
         match value {
@@ -137,7 +145,6 @@ impl TapHoldMgr {
                          state: &mut TapHoldState,
                          tap_fx: &Effect,
                          _hold_fx: &Effect) -> TapHoldOut {
-        assert!(*state == TapHoldState::ThIdle);
         let value = KeyValue::from(event.value);
 
         match value {
@@ -153,7 +160,9 @@ impl TapHoldMgr {
                 // We didn't reach the hold state
                 // TODO: release all the other waiting taphold
                 *state = TapHoldState::ThIdle;
-                TapHoldOut::new(STOP, *tap_fx, KeyValue::Release)
+                let mut out = TapHoldOut::new(STOP, *tap_fx, KeyValue::Press);
+                out.insert(*tap_fx, KeyValue::Release);
+                out
             },
 
             KeyValue::Repeat => {
@@ -168,6 +177,7 @@ impl TapHoldMgr {
                       state: &mut TapHoldState,
                       _tap_fx: &Effect,
                       _hold_fx: &Effect) -> TapHoldOut {
+        dbg!(&state);
         assert!(*state == TapHoldState::ThIdle);
         let keycode: KeyCode = event.event_code.clone().into();
         let value = KeyValue::from(event.value);
@@ -206,9 +216,9 @@ impl TapHoldMgr {
                             hold_fx: &Effect) -> TapHoldOut {
         if let KeyState::KsTapHold(th_state) = state {
             match &th_state {
-                ThIdle => self.handle_th_idle(event, th_state, tap_fx, hold_fx),
-                ThWaiting => self.handle_th_waiting(event, th_state, tap_fx, hold_fx),
-                ThHolding => self.handle_th_holding(event, th_state, tap_fx, hold_fx),
+                TapHoldState::ThIdle => self.handle_th_idle(event, th_state, tap_fx, hold_fx),
+                TapHoldState::ThWaiting(_) => self.handle_th_waiting(event, th_state, tap_fx, hold_fx),
+                TapHoldState::ThHolding => self.handle_th_holding(event, th_state, tap_fx, hold_fx),
             }
         } else {
             assert!(false);
@@ -286,21 +296,21 @@ impl TapHoldMgr {
 }
 
 #[cfg(test)]
-struct TestKtrl {
-    th_mgr: TapHoldMgr,
-    l_mgr: LayersManager,
-}
-
-#[cfg(test)]
-impl TestKtrl {
-    fn new() -> Self {
-        TestKtrl{th_mgr: TapHoldMgr::new(),
-                 l_mgr: LayersManager::new(vec![])}
-    }
-}
-
-#[cfg(test)]
 use crate::keyevent::KeyEvent;
+
+#[cfg(test)]
+fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
+    let tap_fx = Effect::Default(tap.into());
+    let hold_fx = Effect::Default(hold.into());
+    Action::TapHold(tap_fx, hold_fx)
+}
+
+#[cfg(test)]
+fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyCode, Action) {
+    let src_code: KeyCode = src.into();
+    let action = make_taphold_action(tap, hold);
+    return (src_code, action)
+}
 
 #[test]
 fn test_skipped() {
@@ -310,4 +320,36 @@ fn test_skipped() {
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
     assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_non_th_press), TapHoldOut::empty(CONTINUE));
     assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
+}
+
+#[test]
+fn test_tap() {
+    let layers: Layers = vec![
+        // 0: base layer
+        [
+            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
+            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
+        ].iter().cloned().collect(),
+    ];
+
+    let mut l_mgr = LayersManager::new(layers);
+    let mut th_mgr = TapHoldMgr::new();
+
+    l_mgr.init();
+
+    let ev_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_A)).event;
+    let mut ev_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
+    ev_th_release.time.tv_usec += 100;
+
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
+        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Press),
+        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+    ]));
+
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
+        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Press),
+        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+    ]));
 }

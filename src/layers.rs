@@ -89,7 +89,17 @@ pub enum KeyState {
     KsTapHold(TapHoldState),
 }
 
-type Layer = HashMap<KeyCode, Action>;
+impl KeyState {
+    fn from_action(action: &Action) -> Self {
+        match action {
+            Action::Tap(_) => Self::KsTap,
+            Action::TapHold(..) => Self::KsTapHold(TapHoldState::ThIdle),
+            _ => Self::KsTap
+        }
+    }
+}
+
+pub type Layer = HashMap<KeyCode, Action>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -99,8 +109,8 @@ pub struct MergedKey {
     pub layer_index: LayerIndex,
 }
 
-type Merged = Vec<MergedKey>;
-type Layers = Vec<Layer>;
+pub type Merged = Vec<MergedKey>;
+pub type Layers = Vec<Layer>;
 type LayersStates = Vec<bool>;
 
 pub struct LayersManager {
@@ -134,7 +144,7 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
             let replacement = MergedKey{
                 code: removed_code,
                 action: lower_action.clone(),
-                state: KeyState::KsTap,
+                state: KeyState::from_action(&lower_action),
                 layer_index: i
             };
 
@@ -216,7 +226,7 @@ impl LayersManager {
                 let new_entry = MergedKey{
                     code: *code,
                     action: action.clone(),
-                    state: KeyState::KsTap,
+                    state: KeyState::from_action(&action),
                     layer_index: index
                 };
 
