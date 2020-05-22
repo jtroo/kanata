@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::keys::KeyCode;
 pub use crate::actions::Action;
 pub use crate::effects::Effect;
+use crate::cfg::CfgLayers;
 
 // -------------- Constants -------------
 
@@ -117,25 +118,11 @@ fn init_merged() -> Merged {
     merged
 }
 
-fn get_layers_from_cfg(cfg: Layers) -> Layers {
-    let mut out: Layers = Vec::new();
-    out.resize_with(cfg.len(), Default::default);
-
-    for (i, layer_cfg) in cfg.iter().enumerate() {
-        assert!(layer_cfg.len() < MAX_KEY);
-        for (code, action) in layer_cfg {
-            out[i].insert(*code, action.clone());
-        }
-    }
-
-    out
-}
-
 impl LayersManager {
-    pub fn new(cfg: Layers) -> Self {
+    pub fn new(cfg: CfgLayers) -> Self {
         let merged = init_merged();
-        let layers_count = cfg.len();
-        let layers = get_layers_from_cfg(cfg);
+        let layers = cfg.layers;
+        let layers_count = layers.len();
 
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
@@ -249,36 +236,12 @@ lazy_static::lazy_static! {
 use std::convert::TryInto;
 
 #[cfg(test)]
+use crate::cfg::*;
+
+#[cfg(test)]
 fn idx_to_ev_key(i: usize) -> EV_KEY {
     let narrow: u32 = i.try_into().expect(&format!("Invalid KeyCode: {}", i));
     evdev_rs::enums::int_to_ev_key(narrow).expect(&format!("Invalid KeyCode: {}", narrow))
-}
-
-#[cfg(test)]
-fn make_default_action(code: EV_KEY) -> Action {
-    let effect = Effect::Default(code.into());
-    Action::Tap(effect)
-}
-
-#[cfg(test)]
-fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
-    let tap_fx = Effect::Default(tap.into());
-    let hold_fx = Effect::Default(hold.into());
-    Action::TapHold(tap_fx, hold_fx)
-}
-
-#[cfg(test)]
-fn make_default_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_default_action(dst);
-    return (src_code, action)
-}
-
-#[cfg(test)]
-fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_taphold_action(tap, hold);
-    return (src_code, action)
 }
 
 #[test]
@@ -286,31 +249,31 @@ fn test_mgr() {
 
     let swap: HashMap<EV_KEY, EV_KEY> = [(KEY_LEFTCTRL, KEY_CAPSLOCK),
                                          (KEY_CAPSLOCK, KEY_LEFTCTRL)].iter().cloned().collect();
-    let layers: Layers = vec![
+    let layers = CfgLayers::new(vec![
         // 0: base layer
-        [
+        vec![
             // Ex: switch CTRL <--> Capslock
             make_default_layer_entry(KEY_LEFTCTRL, KEY_CAPSLOCK),
             make_default_layer_entry(KEY_CAPSLOCK, KEY_LEFTCTRL),
-        ].iter().cloned().collect(),
+        ],
 
         // 1: arrows layer
-        [
+        vec![
             // Ex: switch CTRL <--> Capslock
             make_default_layer_entry(KEY_H, KEY_LEFT),
             make_default_layer_entry(KEY_J, KEY_DOWN),
             make_default_layer_entry(KEY_K, KEY_UP),
             make_default_layer_entry(KEY_L, KEY_RIGHT),
-        ].iter().cloned().collect(),
+        ],
 
         // 2: asdf modifiers
-        [
+        vec![
             // Ex: switch CTRL <--> Capslock
             make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
             make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTSHIFT),
             make_taphold_layer_entry(KEY_D, KEY_D, KEY_LEFTALT),
-        ].iter().cloned().collect()
-    ];
+        ],
+    ]);
 
     let mut mgr = LayersManager::new(layers);
     mgr.init();

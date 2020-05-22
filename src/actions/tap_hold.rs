@@ -307,31 +307,15 @@ impl TapHoldMgr {
 #[cfg(test)]
 use crate::keys::KeyEvent;
 #[cfg(test)]
-use crate::layers::Layers;
+use crate::cfg::*;
 
-#[cfg(test)]
-use evdev_rs::enums::EV_KEY;
 #[cfg(test)]
 use evdev_rs::enums::EV_KEY::*;
-
-#[cfg(test)]
-fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
-    let tap_fx = Effect::Default(tap.into());
-    let hold_fx = Effect::Default(hold.into());
-    Action::TapHold(tap_fx, hold_fx)
-}
-
-#[cfg(test)]
-fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_taphold_action(tap, hold);
-    return (src_code, action)
-}
 
 #[test]
 fn test_skipped() {
     let mut th_mgr = TapHoldMgr::new();
-    let mut l_mgr = LayersManager::new(vec![]);
+    let mut l_mgr = LayersManager::new(CfgLayers::empty());
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_A)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), TapHoldOut::empty(CONTINUE));
@@ -341,13 +325,13 @@ fn test_skipped() {
 
 #[test]
 fn test_tap() {
-    let layers: Layers = vec![
+    let layers = CfgLayers::new(vec![
         // 0: base layer
-        [
+        vec![
             make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
             make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
-        ].iter().cloned().collect(),
-    ];
+        ],
+    ]);
 
     let mut l_mgr = LayersManager::new(layers);
     let mut th_mgr = TapHoldMgr::new();
@@ -397,13 +381,13 @@ fn test_tap() {
 
 #[test]
 fn test_hold() {
-    let layers: Layers = vec![
+    let layers = CfgLayers::new(vec![
         // 0: base layer
-        [
+        vec![
             make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
             make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
-        ].iter().cloned().collect(),
-    ];
+        ],
+    ]);
 
     let mut l_mgr = LayersManager::new(layers);
     let mut th_mgr = TapHoldMgr::new();
