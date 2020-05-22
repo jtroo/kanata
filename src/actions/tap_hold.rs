@@ -250,11 +250,11 @@ impl TapHoldMgr {
         }
     }
 
-    // // Used by Ktrl to make sure toggling layers is okay
-    // pub fn is_idle(&self) -> bool {
-    //     self.waiting_keys.len() == 0 &&
-    //         self.holding_keys.len() == 0
-    // }
+    // Used by Ktrl to make sure toggling layers is okay
+    pub fn is_idle(&self) -> bool {
+        self.waiting_keys.len() == 0 &&
+            self.holding_keys.len() == 0
+    }
 }
 
 #[cfg(test)]
@@ -274,7 +274,7 @@ fn test_skipped() {
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 }
 
 #[test]
@@ -298,19 +298,21 @@ fn test_tap() {
 
     // 1st
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 
     // 2nd
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 
     // interruptions: 1
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
@@ -320,7 +322,7 @@ fn test_tap() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 
     // interruptions: 2
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
@@ -330,7 +332,7 @@ fn test_tap() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 }
 
 #[test]
@@ -358,7 +360,7 @@ fn test_hold() {
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
-    assert_eq!(th_mgr.waiting_keys.len(), 0);
+    assert_eq!(th_mgr.is_idle(), true);
 
 
     // -------------------------------
@@ -372,6 +374,7 @@ fn test_hold() {
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
 
@@ -384,6 +387,7 @@ fn test_hold() {
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
 }
