@@ -1,10 +1,11 @@
 use evdev_rs::enums::EventType;
+use log::info;
 
 use crate::KbdIn;
 use crate::KbdOut;
 use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
-use crate::effects::event_to_default_fx_val;
+use crate::effects::event_to_fx_val;
 use crate::effects::perform_effect;
 
 pub struct Ktrl {
@@ -20,7 +21,7 @@ impl Ktrl {
     }
 
     pub fn event_loop(&mut self) -> Result<(), std::io::Error> {
-        println!("Ktrl: Entering the event loop");
+        info!("Ktrl: Entering the event loop");
 
         loop {
             let in_event = self.kbd_in.read()?;
@@ -34,13 +35,13 @@ impl Ktrl {
             let th_out = self.th_mgr.process(&mut self.l_mgr, &in_event);
             if let Some(th_fx_vals) = th_out.effects {
                 for fx_val in th_fx_vals {
-                    perform_effect(&mut self.kbd_out, fx_val)?
+                    perform_effect(self, fx_val)?
                 }
             }
 
             if !th_out.stop_processing {
-                if let Some(leftover_fx_val) = event_to_default_fx_val(&in_event) {
-                    perform_effect(&mut self.kbd_out, leftover_fx_val)?;
+                if let Some(leftover_fx_val) = event_to_fx_val(&self.l_mgr, &in_event) {
+                    perform_effect(self, leftover_fx_val)?;
                 } else {
                     self.kbd_out.write(&in_event)?;
                 }

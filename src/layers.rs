@@ -1,6 +1,8 @@
 use evdev_rs::enums::EV_KEY::*;
 use std::vec::Vec;
 use std::collections::HashMap;
+use log::info;
+
 use crate::keys::KeyCode;
 pub use crate::actions::Action;
 pub use crate::actions::tap_hold::TapHoldState;
@@ -65,7 +67,6 @@ fn is_overriding_key(merged: &Merged, candidate_code: KeyCode, candidate_layer_i
     return candidate_layer_index >= current.layer_index
 }
 
-#[cfg(test)]
 fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code: KeyCode) -> MergedKey {
     let current: &MergedKey = &merged[usize::from(removed_code)];
     let lower_layer_idx = current.layer_index-1;
@@ -123,7 +124,6 @@ impl LayersManager {
         self.turn_layer_on(0);
     }
 
-    #[cfg(test)]
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         &self.merged[usize::from(key)]
     }
@@ -153,9 +153,9 @@ impl LayersManager {
         }
 
         self.layers_states[index] = true;
+        info!("Turned layer {} on", index);
     }
 
-    #[cfg(test)]
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
         std::assert!(index > 0); // Can't turn off the base layer
         std::assert!(self.layers_states[index]);
@@ -168,9 +168,9 @@ impl LayersManager {
         }
 
         self.layers_states[index] = false;
+        info!("Turned layer {} off", index);
     }
 
-    #[cfg(test)]
     pub fn toggle_layer(&mut self, index: LayerIndex) {
         let is_layer_on = self.layers_states[index];
 

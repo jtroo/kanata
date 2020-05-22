@@ -6,14 +6,17 @@ pub use perform::perform_effect;
 
 use crate::keys::KeyValue;
 use crate::keys::KeyCode;
-// use crate::layers::LayerIndex;
+use crate::layers::LayerIndex;
+use crate::layers::LayersManager;
+use crate::actions::Action;
+use inner::inner;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
     // Used externally for Press+Release
     Default(KeyCode),
 
-    // ToggleLayer(LayerIndex),
+    ToggleLayer(LayerIndex),
     // MomentaryLayer(LayerIndex),
 
     // Not Implemented Yet
@@ -27,12 +30,15 @@ pub enum Effect {
     // or ctrl-keys ('ctrl-j', 'ctrl-k')
 }
 
-pub fn event_to_default_fx_val(event: &InputEvent) -> Option<EffectValue> {
+pub fn event_to_fx_val(l_mgr: &LayersManager, event: &InputEvent) -> Option<EffectValue> {
     match &event.event_code {
         EventCode::EV_KEY(evkey) => {
             let kc = KeyCode::from(evkey.clone());
+            let merged = l_mgr.get(kc);
+            let effect = inner!(merged.action, if Action::Tap);
+
             Some(EffectValue{
-                fx: Effect::Default(kc),
+                fx: effect,
                 val: event.value.into(),
             })
         }

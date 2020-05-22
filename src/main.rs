@@ -1,5 +1,6 @@
 use std::env;
 use std::path::Path;
+use log::info;
 
 mod kbd_in;
 mod kbd_out;
@@ -19,6 +20,7 @@ use actions::TapHoldMgr;
 fn main() -> Result<(), std::io::Error> {
     let kbd_path_str = env::args().nth(1).expect("Missing keyboard path");
 
+    env_logger::init();
     let kbd_path = Path::new(&kbd_path_str);
     let kbd_in = KbdIn::new(kbd_path)?;
     let kbd_out = KbdOut::new()?;
@@ -27,7 +29,7 @@ fn main() -> Result<(), std::io::Error> {
     l_mgr.init();
 
     let th_mgr = TapHoldMgr::new();
-    println!("ktrl: Setup Complete");
+    info!("ktrl: Setup Complete");
 
     let mut ktrl = Ktrl::new(kbd_in, kbd_out, l_mgr, th_mgr);
     ktrl.event_loop()?;

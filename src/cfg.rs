@@ -3,6 +3,7 @@ use evdev_rs::enums::EV_KEY::*;
 
 use crate::keys::KeyCode;
 use crate::layers::Layer;
+use crate::layers::LayerIndex;
 use crate::layers::Layers;
 use crate::actions::Action;
 use crate::effects::Effect;
@@ -60,9 +61,23 @@ pub fn make_default_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
     return (src_code, action)
 }
 
+pub fn make_toggle_layer_action(idx: LayerIndex) -> Action {
+    let effect = Effect::ToggleLayer(idx);
+    Action::Tap(effect)
+}
+
+pub fn make_toggle_layer_entry(key: EV_KEY, idx: LayerIndex) -> (KeyCode, Action) {
+    let code: KeyCode = key.into();
+    let action = make_toggle_layer_action(idx);
+    return (code, action)
+}
+
 pub fn my_layers() -> CfgLayers {
     CfgLayers::new(vec![
         // 0: base layer
+        vec![
+            make_toggle_layer_entry(KEY_F12, 1),
+        ],
         vec![
             make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTSHIFT),
             make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),

@@ -13,7 +13,7 @@ use crate::keys::KeyValue;
 use crate::effects::OutEffects;
 
 // inner
-use inner::*;
+use inner::inner;
 
 use crate::layers::{
     Effect,
