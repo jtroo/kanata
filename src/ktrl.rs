@@ -10,7 +10,7 @@ use crate::actions::TapHoldMgr;
 // TODO: TapHold handling, move this...
 use crate::layers::Effect;
 use crate::keys::KeyValue;
-use crate::actions::tap_hold::TapHoldEffect;
+use crate::actions::tap_hold::EffectValue;
 
 pub struct Ktrl {
     pub kbd_in: KbdIn,
@@ -40,10 +40,10 @@ impl Ktrl {
             if let Some(th_effects) = th_out.effects {
                 for fx in th_effects {
                     match fx {
-                        TapHoldEffect{fx: Effect::Default(kc), val: KeyValue::Press} => {
+                        EffectValue{fx: Effect::Default(kc), val: KeyValue::Press} => {
                             self.kbd_out.press_key(kc.into())?;
                         },
-                        TapHoldEffect{fx: Effect::Default(kc), val: KeyValue::Release} => {
+                        EffectValue{fx: Effect::Default(kc), val: KeyValue::Release} => {
                             self.kbd_out.release_key(kc.into())?;
                         },
                         _ => assert!(false),

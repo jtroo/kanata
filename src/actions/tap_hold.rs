@@ -38,12 +38,12 @@ pub enum TapHoldState {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TapHoldEffect {
+pub struct EffectValue {
     pub fx: Effect,
     pub val: KeyValue,
 }
 
-impl TapHoldEffect {
+impl EffectValue {
     pub fn new(fx: Effect, val: KeyValue) -> Self {
         Self{fx, val}
     }
@@ -52,19 +52,19 @@ impl TapHoldEffect {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TapHoldOut {
     pub stop_processing: bool,
-    pub effects: Option<Vec<TapHoldEffect>>,
+    pub effects: Option<Vec<EffectValue>>,
 }
 
 impl TapHoldOut {
     fn new(stop_processing: bool, effect: Effect, value: KeyValue) -> Self {
         TapHoldOut {
             stop_processing,
-            effects: Some(vec![TapHoldEffect::new(effect, value)])
+            effects: Some(vec![EffectValue::new(effect, value)])
         }
     }
 
     #[cfg(test)]
-    fn new_multiple(stop_processing: bool, effects: Vec<TapHoldEffect>) -> Self {
+    fn new_multiple(stop_processing: bool, effects: Vec<EffectValue>) -> Self {
         TapHoldOut {
             stop_processing,
             effects: Some(effects)
@@ -80,9 +80,9 @@ impl TapHoldOut {
 
     fn insert(&mut self, effect: Effect, value: KeyValue) {
         if let Some(effects) = &mut self.effects {
-            effects.push(TapHoldEffect::new(effect, value));
+            effects.push(EffectValue::new(effect, value));
         } else {
-            self.effects = Some(vec![TapHoldEffect::new(effect, value)]);
+            self.effects = Some(vec![EffectValue::new(effect, value)]);
         }
     }
 }
@@ -348,16 +348,16 @@ fn test_tap() {
     // 1st
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 
     // 2nd
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 
@@ -404,8 +404,8 @@ fn test_hold() {
     // No hold + other key chord
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), TapHoldOut::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), TapHoldOut::new_multiple(STOP, vec![
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        TapHoldEffect::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.waiting_keys.len(), 0);
 
