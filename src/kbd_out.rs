@@ -6,7 +6,6 @@ use evdev_rs::InputEvent;
 use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EV_KEY;
 use evdev_rs::enums::EV_SYN;
-use evdev_rs::TimeVal;
 use libc::input_event as raw_event;
 
 // file i/o
@@ -20,17 +19,9 @@ use io::Write;
 use std::slice;
 use std::mem;
 
-struct KeyEvent {
-    event: InputEvent,
-}
-
-impl KeyEvent {
-    pub fn new(code: &EventCode, value: i32) -> Self {
-        let time = TimeVal::new(0, 0);
-        let event = InputEvent::new(&time, code, value);
-        Self{event}
-    }
-}
+// ktrl
+use crate::keyevent::KeyValue;
+use crate::keyevent::KeyEvent;
 
 pub struct KbdOut {
     device: File,
@@ -91,13 +82,11 @@ impl KbdOut {
     }
 
     pub fn press_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
-        const PRESS: i32 = 1;
-        self.write_key(key, PRESS)
+        self.write_key(key, KeyValue::Press as i32)
     }
 
     pub fn release_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
-        const RELEASE: i32 = 0;
-        self.write_key(key, RELEASE)
+        self.write_key(key, KeyValue::Release as i32)
     }
 
     // press + release

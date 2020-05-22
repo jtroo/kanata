@@ -6,6 +6,7 @@ mod kbd_out;
 mod ktrl;
 mod layers;
 mod keycode;
+mod keyevent;
 mod actions;
 mod effects;
 

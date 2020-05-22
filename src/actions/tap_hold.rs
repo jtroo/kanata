@@ -1,8 +1,20 @@
+// evdev-rs
 use evdev_rs::enums::EventCode;
+use evdev_rs::enums::EV_KEY;
+use evdev_rs::enums::EV_KEY::*;
 use evdev_rs::InputEvent;
+use evdev_rs::TimeVal;
+
+// std
 use std::collections::HashSet;
 use std::vec::Vec;
+
+// ktrl
 use crate::layers::LayersManager;
+use crate::keycode::KeyCode;
+use crate::keyevent::KeyValue;
+
+// inner
 use inner::*;
 
 //
@@ -22,41 +34,17 @@ use crate::layers::{
     MergedKey,
 };
 
-use crate::Ktrl;
-use crate::keycode::KeyCode;
-
 const STOP: bool = true;
 const CONTINUE: bool = false;
 const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum KeyValue {
-    Release = 0,
-    Press = 1,
-    Repeat = 2,
-}
-
-impl From<i32> for KeyValue {
-    fn from(item: i32) -> Self {
-        match item {
-            0 => Self::Release,
-            1 => Self::Press,
-            2 => Self::Repeat,
-            _ => {
-                assert!(false);
-                Self::Release
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct TapHoldEffect {
     fx: Effect,
     val: KeyValue,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct TapHoldOut {
     stop_processing: bool,
     effects: Option<Vec<TapHoldEffect>>,
@@ -295,4 +283,31 @@ impl TapHoldMgr {
             self.process_non_tap_hold_key(l_mgr, event)
         }
     }
+}
+
+#[cfg(test)]
+struct TestKtrl {
+    th_mgr: TapHoldMgr,
+    l_mgr: LayersManager,
+}
+
+#[cfg(test)]
+impl TestKtrl {
+    fn new() -> Self {
+        TestKtrl{th_mgr: TapHoldMgr::new(),
+                 l_mgr: LayersManager::new(vec![])}
+    }
+}
+
+#[cfg(test)]
+use crate::keyevent::KeyEvent;
+
+#[test]
+fn test_skipped() {
+    let mut th_mgr = TapHoldMgr::new();
+    let mut l_mgr = LayersManager::new(vec![]);
+    let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_A)).event;
+    let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_A)).event;
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_non_th_press), TapHoldOut::empty(CONTINUE));
+    assert_eq!(th_mgr.process_tap_hold(&mut l_mgr, &ev_non_th_release), TapHoldOut::empty(CONTINUE));
 }
