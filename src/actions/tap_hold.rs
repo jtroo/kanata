@@ -4,6 +4,7 @@ use evdev_rs::InputEvent;
 
 // std
 use std::vec::Vec;
+use std::collections::HashSet;
 
 // ktrl
 use crate::layers::LayersManager;
@@ -84,12 +85,17 @@ impl TapHoldOut {
 }
 
 pub struct TapHoldMgr {
+    // A list of keys that are currently in ThWaiting
     waiting_keys: Vec<KeyCode>,
+
+    // A list of keys that are currently in ThHolding
+    holding_keys: HashSet<KeyCode>,
 }
 
 impl TapHoldMgr {
     pub fn new() -> Self {
-        Self{waiting_keys: Vec::new()}
+        Self{waiting_keys: Vec::new(),
+             holding_keys: HashSet::new()}
     }
 }
 
@@ -125,6 +131,8 @@ impl TapHoldMgr {
                 // Cleanup the hold
                 *state = TapHoldState::ThIdle;
                 self.waiting_keys.clear();
+                let kc = get_keycode_from_event(event).unwrap();
+                self.holding_keys.remove(&kc);
                 TapHoldOut::new(STOP, *hold_fx, KeyValue::Release) // forward the release
             },
 
@@ -254,6 +262,7 @@ impl TapHoldMgr {
 
                 // Change to the holding state
                 merged_key.state = KeyState::KsTapHold(TapHoldState::ThHolding);
+                self.holding_keys.insert(waiting);
 
             } else {
                 // Flush the press and release tap_fx
@@ -287,6 +296,12 @@ impl TapHoldMgr {
             self.process_non_tap_hold_key(l_mgr, event)
         }
     }
+
+    // // Used by Ktrl to make sure toggling layers is okay
+    // pub fn is_idle(&self) -> bool {
+    //     self.waiting_keys.len() == 0 &&
+    //         self.holding_keys.len() == 0
+    // }
 }
 
 #[cfg(test)]
