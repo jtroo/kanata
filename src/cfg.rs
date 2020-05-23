@@ -59,6 +59,18 @@ pub fn make_key_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
     return (src_code, action)
 }
 
+pub fn make_meh_layer_entry(src: EV_KEY) -> (KeyCode, Action) {
+    let src_code: KeyCode = src.into();
+    let action = Action::Tap(Effect::Meh);
+    return (src_code, action)
+}
+
+pub fn make_hyper_layer_entry(src: EV_KEY) -> (KeyCode, Action) {
+    let src_code: KeyCode = src.into();
+    let action = Action::Tap(Effect::Hyper);
+    return (src_code, action)
+}
+
 pub fn make_keyseq_action(seq: Vec<EV_KEY>) -> Action {
     let kc_vec = seq.iter()
         .map(|evkey| KeyCode::from(evkey.clone()))
@@ -100,8 +112,10 @@ pub fn my_layers() -> CfgLayers {
     CfgLayers::new(vec![
         // 0: base layer
         vec![
-            make_momentary_layer_entry(KEY_Q, 1),
-            make_key_layer_entry(KEY_F10, KEY_A),
+            make_momentary_layer_entry(KEY_F7, 1),
+            make_key_layer_entry(KEY_F8, KEY_A),
+            make_meh_layer_entry(KEY_F9),
+            make_hyper_layer_entry(KEY_F10),
             make_keyseq_layer_entry(KEY_F11, vec![KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT]),
             make_toggle_layer_entry(KEY_F12, 1),
         ],

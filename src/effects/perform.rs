@@ -1,4 +1,5 @@
 use evdev_rs::enums::EV_KEY;
+use evdev_rs::enums::EV_KEY::*;
 use crate::keys::KeyCode;
 use crate::keys::KeyValue;
 use crate::effects::Effect;
@@ -10,6 +11,26 @@ use crate::ktrl::Ktrl;
 use log::warn;
 use std::io::Error;
 use std::vec::Vec;
+
+lazy_static::lazy_static! {
+    static ref HYPER: Vec<KeyCode> = {
+        vec![
+            KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT, KEY_LEFTMETA
+        ].iter()
+            .map(|evkey| KeyCode::from(evkey.clone()))
+            .collect()
+    };
+}
+
+lazy_static::lazy_static! {
+    static ref MEH: Vec<KeyCode> = {
+        vec![
+            KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT
+        ].iter()
+            .map(|evkey| KeyCode::from(evkey.clone()))
+            .collect()
+    };
+}
 
 fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
     if !ktrl.th_mgr.is_idle() {
@@ -50,6 +71,8 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
     match fx_val.fx {
         Effect::Key(code) => perform_key(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::KeySeq(seq) => perform_keyseq(&mut ktrl.kbd_out, seq, fx_val.val),
+        Effect::Meh => perform_keyseq(&mut ktrl.kbd_out, MEH.to_vec(), fx_val.val),
+        Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
     }

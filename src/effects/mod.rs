@@ -14,7 +14,10 @@ use inner::inner;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Key(KeyCode),
+
     KeySeq(Vec<KeyCode>),
+    Meh, // Ctrl+Alt+Shift
+    Hyper, // Ctrl+Alt+Shift+Win
 
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
