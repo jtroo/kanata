@@ -1,8 +1,10 @@
-use std::env;
 use std::path::Path;
-use log::info;
+use log::{info, error};
 use simplelog::*;
-use clap::{App, Arg, ArgMatches};
+use clap::{App, Arg};
+use nix::unistd::Uid;
+use std::io::{Error, ErrorKind::*};
+use std::fs::File;
 
 mod kbd_in;
 mod kbd_out;
@@ -20,8 +22,12 @@ use ktrl::Ktrl;
 use actions::TapHoldMgr;
 use effects::StickyState;
 
-const default_log_path: &str = "/opt/ktrl/cfg.ron";
-const default_cfg_path: &str = "/opt/ktrl/log.txt";
+const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
+const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
+
+fn is_root() -> bool {
+    Uid::effective().is_root()
+}
 
 fn main() -> Result<(), std::io::Error> {
     let matches =
@@ -39,20 +45,43 @@ fn main() -> Result<(), std::io::Error> {
         .arg(Arg::with_name("cfg")
              .long("cfg")
              .value_name("CONFIG")
-             .help(&format!("Path to your ktrl config file. Default: {}", default_cfg_path))
+             .help(&format!("Path to your ktrl config file. Default: {}", DEFAULT_CFG_PATH))
              .takes_value(true))
         .arg(Arg::with_name("logfile")
              .long("log")
              .value_name("LOGFILE")
-             .help(&format!("Path to the log file. Default: {}", default_log_path))
+             .help(&format!("Path to the log file. Default: {}", DEFAULT_LOG_PATH))
              .takes_value(true))
         .get_matches();
 
-    let config_path = Path::new(matches.value_of("cfg").unwrap_or(default_cfg_path));
-    let log_path = Path::new(matches.value_of("logfile").unwrap_or(default_log_path));
+    let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
+    let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
 
-    // env_logger::init();
+    if !is_root() {
+        return Err(Error::new(PermissionDenied, "Please re-run ktrl as root"));
+    }
+
+    CombinedLogger::init(
+        vec![
+            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed),
+            WriteLogger::new(LevelFilter::Info, Config::default(), File::create(log_path)
+                             .expect("Couldn't initialize the file logger")),
+        ]
+    ).expect("Couldn't initialize the logger");
+
+    if !config_path.exists() {
+        let err =  format!("Could not find your config file ({})",
+                           config_path.to_str().unwrap_or("?"));
+        return Err(Error::new(NotFound, err));
+    }
+
+    if !kbd_path.exists() {
+        let err =  format!("Could not find the keyboard device ({})",
+                           kbd_path.to_str().unwrap_or("?"));
+        return Err(Error::new(NotFound, err));
+    }
+
     let kbd_in = KbdIn::new(kbd_path)?;
     let kbd_out = KbdOut::new()?;
 
