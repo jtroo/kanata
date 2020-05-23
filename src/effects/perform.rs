@@ -10,6 +10,18 @@ use crate::ktrl::Ktrl;
 use log::warn;
 use std::io::Error;
 
+fn perform_momentary_layer(ktrl: &mut Ktrl, value: KeyValue, idx: LayerIndex) -> Result<(), Error> {
+    if !ktrl.th_mgr.is_idle() {
+        warn!("Can't make layer changes while tap-holding");
+    } else if value == KeyValue::Press {
+        ktrl.l_mgr.turn_layer_on(idx)
+    } else if value == KeyValue::Release {
+        ktrl.l_mgr.turn_layer_off(idx)
+    }
+
+    Ok(())
+}
+
 fn perform_toggle_layer(ktrl: &mut Ktrl, value: KeyValue, idx: LayerIndex) -> Result<(), Error> {
     if !ktrl.th_mgr.is_idle() {
         warn!("Can't make layer changes while tap-holding");
@@ -29,5 +41,6 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
     match fx_val.fx {
         Effect::Default(code) => perform_default(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, fx_val.val, idx),
+        Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, fx_val.val, idx),
     }
 }

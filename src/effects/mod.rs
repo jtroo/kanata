@@ -17,7 +17,7 @@ pub enum Effect {
     Default(KeyCode),
 
     ToggleLayer(LayerIndex),
-    // MomentaryLayer(LayerIndex),
+    MomentaryLayer(LayerIndex),
 
     // Not Implemented Yet
     // ---------------------

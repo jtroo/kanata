@@ -72,10 +72,22 @@ pub fn make_toggle_layer_entry(key: EV_KEY, idx: LayerIndex) -> (KeyCode, Action
     return (code, action)
 }
 
+pub fn make_momentary_layer_action(idx: LayerIndex) -> Action {
+    let effect = Effect::MomentaryLayer(idx);
+    Action::Tap(effect)
+}
+
+pub fn make_momentary_layer_entry(key: EV_KEY, idx: LayerIndex) -> (KeyCode, Action) {
+    let code: KeyCode = key.into();
+    let action = make_momentary_layer_action(idx);
+    return (code, action)
+}
+
 pub fn my_layers() -> CfgLayers {
     CfgLayers::new(vec![
         // 0: base layer
         vec![
+            make_momentary_layer_entry(KEY_Q, 1),
             make_toggle_layer_entry(KEY_F12, 1),
         ],
         vec![
