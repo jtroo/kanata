@@ -52,6 +52,9 @@ fn main() -> Result<(), std::io::Error> {
              .value_name("LOGFILE")
              .help(&format!("Path to the log file. Default: {}", DEFAULT_LOG_PATH))
              .takes_value(true))
+        .arg(Arg::with_name("debug")
+             .long("debug")
+             .help("Enables debug level logging"))
         .get_matches();
 
     let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
@@ -62,10 +65,15 @@ fn main() -> Result<(), std::io::Error> {
         return Err(Error::new(PermissionDenied, "Please re-run ktrl as root"));
     }
 
+    let log_lvl = match matches.is_present("debug") {
+        true => LevelFilter::Debug,
+        _ => LevelFilter::Info,
+    };
+
     CombinedLogger::init(
         vec![
-            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed),
-            WriteLogger::new(LevelFilter::Info, Config::default(), File::create(log_path)
+            TermLogger::new(log_lvl, Config::default(), TerminalMode::Mixed),
+            WriteLogger::new(log_lvl, Config::default(), File::create(log_path)
                              .expect("Couldn't initialize the file logger")),
         ]
     ).expect("Couldn't initialize the logger");
