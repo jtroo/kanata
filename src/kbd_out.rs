@@ -82,13 +82,13 @@ impl KbdOut {
         Ok(())
     }
 
-    // pub fn press_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
-    //     self.write_key(key, KeyValue::Press as i32)
-    // }
+    pub fn press_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
+        self.write_key(key, KeyValue::Press)
+    }
 
-    // pub fn release_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
-    //     self.write_key(key, KeyValue::Release as i32)
-    // }
+    pub fn release_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
+        self.write_key(key, KeyValue::Release)
+    }
 
     // pub fn tap_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
     //     self.press_key(key.clone())?;

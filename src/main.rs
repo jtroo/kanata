@@ -16,6 +16,7 @@ use kbd_out::KbdOut;
 use layers::LayersManager;
 use ktrl::Ktrl;
 use actions::TapHoldMgr;
+use effects::StickyState;
 
 fn main() -> Result<(), std::io::Error> {
     let kbd_path_str = env::args().nth(1).expect("Missing keyboard path");
@@ -29,9 +30,10 @@ fn main() -> Result<(), std::io::Error> {
     l_mgr.init();
 
     let th_mgr = TapHoldMgr::new();
+    let sticky = StickyState::new();
     info!("ktrl: Setup Complete");
 
-    let mut ktrl = Ktrl::new(kbd_in, kbd_out, l_mgr, th_mgr);
+    let mut ktrl = Ktrl{kbd_in, kbd_out, l_mgr, th_mgr, sticky};
     ktrl.event_loop()?;
 
     Ok(())

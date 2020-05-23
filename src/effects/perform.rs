@@ -31,9 +31,14 @@ lazy_static::lazy_static! {
     };
 }
 
+fn is_layer_change_safe(ktrl: &Ktrl) -> bool {
+    ktrl.th_mgr.is_idle() &&
+        ktrl.sticky.is_idle()
+}
+
 fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
-    if !ktrl.th_mgr.is_idle() {
-        warn!("Can't make layer changes while tap-holding");
+    if !is_layer_change_safe(ktrl) {
+        warn!("Can't make a layer change in the middle of a stateful effect");
     } else if value == KeyValue::Press {
         ktrl.l_mgr.turn_layer_on(idx)
     } else if value == KeyValue::Release {
@@ -44,13 +49,27 @@ fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) ->
 }
 
 fn perform_toggle_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
-    if !ktrl.th_mgr.is_idle() {
-        warn!("Can't make layer changes while tap-holding");
+    if !is_layer_change_safe(ktrl) {
+        warn!("Can't make a layer change in the middle of a stateful effect");
     } else if value == KeyValue::Press {
         ktrl.l_mgr.toggle_layer(idx)
     }
 
     Ok(())
+}
+
+fn perform_key_sticky(ktrl: &mut Ktrl, code: KeyCode, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Release {
+        return Ok(());
+    }
+
+    if !ktrl.sticky.is_pressed(code) {
+        ktrl.sticky.update_pressed(code);
+        ktrl.kbd_out.press_key(code)
+    } else {
+        ktrl.sticky.update_released(code);
+        ktrl.kbd_out.release_key(code)
+    }
 }
 
 fn perform_keyseq(kbd_out: &mut KbdOut, seq: Vec<KeyCode>, value: KeyValue) -> Result<(), Error> {
@@ -62,14 +81,14 @@ fn perform_keyseq(kbd_out: &mut KbdOut, seq: Vec<KeyCode>, value: KeyValue) -> R
 }
 
 fn perform_key(kbd_out: &mut KbdOut, code: KeyCode, value: KeyValue) -> Result<(), Error> {
-    let ev_key: KeyCode = code.into();
-    kbd_out.write_key(ev_key, value)
+    kbd_out.write_key(code, value)
 }
 
 pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error> {
     match fx_val.fx {
         Effect::Key(code) => perform_key(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::KeySeq(seq) => perform_keyseq(&mut ktrl.kbd_out, seq, fx_val.val),
+        Effect::KeySticky(code) => perform_key_sticky(ktrl, code, fx_val.val),
         Effect::Meh => perform_keyseq(&mut ktrl.kbd_out, MEH.to_vec(), fx_val.val),
         Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),

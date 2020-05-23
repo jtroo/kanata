@@ -9,19 +9,17 @@ use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
+use crate::effects::StickyState;
 
 pub struct Ktrl {
     pub kbd_in: KbdIn,
     pub kbd_out: KbdOut,
     pub l_mgr: LayersManager,
     pub th_mgr: TapHoldMgr,
+    pub sticky: StickyState,
 }
 
 impl Ktrl {
-    pub fn new(kbd_in: KbdIn, kbd_out: KbdOut, l_mgr: LayersManager, th_mgr: TapHoldMgr) -> Self {
-        return Self{kbd_in, kbd_out, l_mgr, th_mgr}
-    }
-
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), std::io::Error> {
         // Handle TapHold action keys
         let th_out = self.th_mgr.process(&mut self.l_mgr, event);

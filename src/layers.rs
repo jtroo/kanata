@@ -2,7 +2,7 @@ use crate::keys::KeyCode::*;
 use std::vec::Vec;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use log::info;
+use log::debug;
 
 use crate::keys::KeyCode;
 pub use crate::actions::Action;
@@ -167,7 +167,7 @@ impl LayersManager {
         }
 
         self.layers_states[index] = true;
-        info!("Turned layer {} on", index);
+        debug!("Turned layer {} on", index);
     }
 
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
@@ -181,7 +181,7 @@ impl LayersManager {
         }
 
         self.layers_states[index] = false;
-        info!("Turned layer {} off", index);
+        debug!("Turned layer {} off", index);
     }
 
     pub fn toggle_layer(&mut self, index: LayerIndex) {

@@ -1,4 +1,6 @@
+mod sticky;
 pub mod perform;
+pub use sticky::StickyState;
 pub use perform::perform_effect;
 
 use crate::keys::KeyValue;
@@ -12,8 +14,9 @@ use inner::inner;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Key(KeyCode),
-
+    KeySticky(KeyCode),
     KeySeq(Vec<KeyCode>),
+
     Meh, // Ctrl+Alt+Shift
     Hyper, // Ctrl+Alt+Shift+Win
 

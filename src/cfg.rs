@@ -39,6 +39,7 @@ pub fn my_layers() -> CfgLayers {
     CfgLayers::new(vec![
         // 0: base layer
         vec![
+            (KEY_F6, Tap(KeySticky(KEY_LEFTSHIFT))),
             (KEY_F7, Tap(MomentaryLayer(1))),
             (KEY_F8, Tap(Key(KEY_A))),
             (KEY_F9, Tap(Meh)),
