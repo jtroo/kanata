@@ -27,10 +27,6 @@ pub enum Effect {
     // OneShotLayer(LayerIndex),
     // OneShotModifier(KeyCode)
     // ToggleModifier(KeyCode)
-
-    // TODO: Consider how to implement KeyChords.
-    // e.g pressing shift-keys ('!', '@', '#').
-    // or ctrl-keys ('ctrl-j', 'ctrl-k')
 }
 
 pub fn event_to_fx_val(l_mgr: &LayersManager, event: &InputEvent) -> Option<EffectValue> {
