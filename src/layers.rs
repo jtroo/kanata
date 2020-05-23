@@ -147,7 +147,6 @@ impl LayersManager {
                     layer_index: index
                 };
 
-                // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
                 self.merged[usize::from(*code)] = new_entry;
             }
         }
@@ -163,7 +162,6 @@ impl LayersManager {
         let layer = &self.layers[index];
         for (code, _action) in layer {
             let replacement_entry = get_replacement_merged_key(&mut self.merged, &self.layers, *code);
-            // TODO: handle dropping the existing KeyState gracefully (ex: if currently held...)
             self.merged[usize::from(*code)] = replacement_entry;
         }
 
@@ -269,7 +267,6 @@ fn test_mgr() {
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
 
-    // TODO: This should fail due to the capslock reassignment above
     for (i, merged_key) in mgr.merged.iter().enumerate() {
         if MISSING_KEYCODES.contains(&(i as u32)) { // missing keycode
             continue;
