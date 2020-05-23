@@ -10,8 +10,9 @@ use crate::layers::LayerIndex;
 use crate::layers::LayersManager;
 use crate::actions::Action;
 use inner::inner;
+use serde::Deserialize;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum Effect {
     Key(KeyCode),
     KeySticky(KeyCode),
