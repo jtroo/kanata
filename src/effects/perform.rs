@@ -32,8 +32,7 @@ lazy_static::lazy_static! {
 }
 
 fn is_layer_change_safe(ktrl: &Ktrl) -> bool {
-    ktrl.th_mgr.is_idle() &&
-        ktrl.sticky.is_idle()
+    false
 }
 
 fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {

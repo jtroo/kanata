@@ -24,8 +24,4 @@ impl StickyState {
     pub fn is_pressed(&mut self, key: KeyCode) -> bool {
         self.pressed.contains(&key)
     }
-
-    pub fn is_idle(&self) -> bool {
-        self.pressed.len() == 0
-    }
 }

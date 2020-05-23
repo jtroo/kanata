@@ -2,7 +2,7 @@ use crate::keys::KeyCode::*;
 use std::vec::Vec;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use log::debug;
+use log::{warn, debug};
 
 use crate::keys::KeyCode;
 pub use crate::actions::Action;
@@ -17,29 +17,12 @@ const MAX_KEY: usize = KEY_MAX as usize;
 // ---------------- Types ---------------
 
 pub type LayerIndex = usize;
-
-#[derive(Clone, Debug)]
-pub enum KeyState {
-    KsTap,
-    KsTapHold(TapHoldState),
-}
-
-impl KeyState {
-    fn from_action(action: &Action) -> Self {
-        match action {
-            Action::Tap(_) => Self::KsTap,
-            Action::TapHold(..) => Self::KsTapHold(TapHoldState::ThIdle),
-        }
-    }
-}
-
 pub type Layer = HashMap<KeyCode, Action>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
     pub code: KeyCode,
     pub action: Action,
-    pub state: KeyState,
     pub layer_index: LayerIndex,
 }
 
@@ -50,6 +33,12 @@ pub type Merged = Vec<Option<MergedKey>>;
 
 pub type Layers = Vec<Layer>;
 type LayersStates = Vec<bool>;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LockOwner {
+    LkTapHold,
+    LkSticky,
+}
 
 pub struct LayersManager {
 
@@ -63,6 +52,11 @@ pub struct LayersManager {
 
     // Holds the on/off state for each layer
     pub layers_states: LayersStates,
+
+    // Allows stateful modules (like TapHold)
+    // to lock certain keys. This'll prevent them
+    // from being changed by layer changes
+    pub locks: HashMap<KeyCode, LockOwner>
 }
 
 // -------------- Implementation -------------
@@ -74,9 +68,8 @@ fn init_merged() -> Merged {
         if let Ok(code) = KeyCode::try_from(i) {
             let effect = Effect::Key(code);
             let action = Action::Tap(effect);
-            let state = KeyState::KsTap;
             let layer_index = 0;
-            merged.push(Some(MergedKey{code, action, state, layer_index}));
+            merged.push(Some(MergedKey{code, action, layer_index}));
         } else {
             merged.push(None);
         }
@@ -91,11 +84,22 @@ impl LayersManager {
         let merged = init_merged();
         let layers = cfg.layers;
         let layers_count = layers.len();
+        let locks = HashMap::new();
 
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
 
-        LayersManager{merged, layers, layers_states}
+        LayersManager{merged, layers, layers_states, locks}
+    }
+
+    pub fn lock_key(&mut self, key: KeyCode, owner: LockOwner) {
+        assert!(!self.locks.contains_key(&key));
+        self.locks.insert(key, owner);
+    }
+
+    pub fn unlock_key(&mut self, key: KeyCode, owner: LockOwner) {
+        assert!(self.locks[&key] == owner);
+        self.locks.remove(&key);
     }
 
     pub fn init(&mut self) {
@@ -116,7 +120,6 @@ impl LayersManager {
             let replacement = MergedKey{
                 code: removed_code,
                 action: lower_action.clone(),
-                state: KeyState::from_action(&lower_action),
                 layer_index: i
             };
 
@@ -126,7 +129,6 @@ impl LayersManager {
         MergedKey{
             code: removed_code,
             action: Action::Tap(Effect::Key(removed_code)),
-            state: KeyState::KsTap,
             layer_index: 0
         }
     }
@@ -150,6 +152,11 @@ impl LayersManager {
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
         std::assert!(!self.layers_states[index]);
 
+        if self.locks.len() > 0 {
+            warn!("Can't turn layer {} on. {:?} are in use", index, &self.locks);
+            return;
+        }
+
         let layer = &self.layers[index];
         for (code, action) in layer {
             let is_overriding = self.is_overriding_key(*code, index);
@@ -158,7 +165,6 @@ impl LayersManager {
                 let new_entry = MergedKey{
                     code: *code,
                     action: action.clone(),
-                    state: KeyState::from_action(&action),
                     layer_index: index
                 };
 
@@ -173,6 +179,11 @@ impl LayersManager {
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
         std::assert!(index > 0); // Can't turn off the base layer
         std::assert!(self.layers_states[index]);
+
+        if self.locks.len() > 0 {
+            warn!("Can't turn layer {} off. {:?} are in use", index, &self.locks);
+            return;
+        }
 
         let layer = &self.layers[index];
         for (code, _action) in layer {
