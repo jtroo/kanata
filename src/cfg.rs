@@ -49,15 +49,15 @@ pub fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyC
 }
 
 #[cfg(test)]
-pub fn make_default_action(code: EV_KEY) -> Action {
+pub fn make_key_action(code: EV_KEY) -> Action {
     let effect = Effect::Key(code.into());
     Action::Tap(effect)
 }
 
 #[cfg(test)]
-pub fn make_default_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
+pub fn make_key_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
-    let action = make_default_action(dst);
+    let action = make_key_action(dst);
     return (src_code, action)
 }
 
@@ -88,6 +88,7 @@ pub fn my_layers() -> CfgLayers {
         // 0: base layer
         vec![
             make_momentary_layer_entry(KEY_Q, 1),
+            make_keyseq_entry(KEY_F12, 1),
             make_toggle_layer_entry(KEY_F12, 1),
         ],
         vec![

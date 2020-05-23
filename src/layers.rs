@@ -242,17 +242,17 @@ fn test_mgr() {
         // 0: base layer
         vec![
             // Ex: switch CTRL <--> Capslock
-            make_default_layer_entry(KEY_LEFTCTRL, KEY_CAPSLOCK),
-            make_default_layer_entry(KEY_CAPSLOCK, KEY_LEFTCTRL),
+            make_key_layer_entry(KEY_LEFTCTRL, KEY_CAPSLOCK),
+            make_key_layer_entry(KEY_CAPSLOCK, KEY_LEFTCTRL),
         ],
 
         // 1: arrows layer
         vec![
             // Ex: switch CTRL <--> Capslock
-            make_default_layer_entry(KEY_H, KEY_LEFT),
-            make_default_layer_entry(KEY_J, KEY_DOWN),
-            make_default_layer_entry(KEY_K, KEY_UP),
-            make_default_layer_entry(KEY_L, KEY_RIGHT),
+            make_key_layer_entry(KEY_H, KEY_LEFT),
+            make_key_layer_entry(KEY_J, KEY_DOWN),
+            make_key_layer_entry(KEY_K, KEY_UP),
+            make_key_layer_entry(KEY_L, KEY_RIGHT),
         ],
 
         // 2: asdf modifiers
@@ -280,56 +280,56 @@ fn test_mgr() {
 
         assert_eq!(merged_key.code, i_evkey.into());
         assert_eq!(merged_key.layer_index, 0);
-        assert_eq!(merged_key.action, make_default_action(expected_code));
+        assert_eq!(merged_key.action, make_key_action(expected_code));
     }
 
     mgr.turn_layer_on(2);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_H));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_J));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_K));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_L));
+    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_H));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_J));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_K));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_L));
 
     assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
     assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
     assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
 
     mgr.turn_layer_on(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
 
     assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
     assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
     assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
 
     mgr.turn_layer_off(2);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
-
-    mgr.toggle_layer(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_H));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_J));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_K));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_L));
-
-    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
+    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
 
     mgr.toggle_layer(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_default_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_default_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_default_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_default_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_H));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_J));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_K));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_L));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_default_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_default_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_default_action(KEY_D));
+    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
+
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
+    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
+    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
+    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
+    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
+    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
 }
