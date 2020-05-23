@@ -246,6 +246,10 @@ impl TapHoldMgr {
 use crate::cfg::*;
 #[cfg(test)]
 use crate::keys::KeyCode::*;
+#[cfg(test)]
+use crate::effects::Effect::*;
+#[cfg(test)]
+use crate::actions::Action::*;
 
 #[test]
 fn test_skipped() {
@@ -263,8 +267,8 @@ fn test_tap() {
     let layers = CfgLayers::new(vec![
         // 0: base layer
         vec![
-            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
-            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
         ],
     ]);
 
@@ -321,8 +325,8 @@ fn test_hold() {
     let layers = CfgLayers::new(vec![
         // 0: base layer
         vec![
-            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
-            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
         ],
     ]);
 

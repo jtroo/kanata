@@ -232,7 +232,10 @@ lazy_static::lazy_static! {
 }
 
 #[cfg(test)]
-use crate::cfg::*;
+use crate::effects::Effect::*;
+
+#[cfg(test)]
+use crate::actions::Action::*;
 
 #[test]
 fn test_mgr() {
@@ -240,25 +243,25 @@ fn test_mgr() {
         // 0: base layer
         vec![
             // Ex: switch CTRL <--> Capslock
-            make_key_layer_entry(KEY_LEFTCTRL, KEY_CAPSLOCK),
-            make_key_layer_entry(KEY_CAPSLOCK, KEY_LEFTCTRL),
+            (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
+            (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
         ],
 
         // 1: arrows layer
         vec![
             // Ex: switch CTRL <--> Capslock
-            make_key_layer_entry(KEY_H, KEY_LEFT),
-            make_key_layer_entry(KEY_J, KEY_DOWN),
-            make_key_layer_entry(KEY_K, KEY_UP),
-            make_key_layer_entry(KEY_L, KEY_RIGHT),
+            (KEY_H, Tap(Key(KEY_LEFT))),
+            (KEY_J, Tap(Key(KEY_DOWN))),
+            (KEY_K, Tap(Key(KEY_UP))),
+            (KEY_L, Tap(Key(KEY_RIGHT))),
         ],
 
         // 2: asdf modifiers
         vec![
             // Ex: switch CTRL <--> Capslock
-            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTCTRL),
-            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTSHIFT),
-            make_taphold_layer_entry(KEY_D, KEY_D, KEY_LEFTALT),
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
+            (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
         ],
     ]);
 
@@ -268,52 +271,52 @@ fn test_mgr() {
     assert_eq!(mgr.layers_states[0], true);
 
     mgr.turn_layer_on(2);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_H));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_J));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_K));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_L));
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_H)));
+    assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_J)));
+    assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_K)));
+    assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_L)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
+    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL)));
+    assert_eq!(mgr.get(KEY_S.into()).action, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT)));
+    assert_eq!(mgr.get(KEY_D.into()).action, TapHold(Key(KEY_D), Key(KEY_LEFTALT)));
 
     mgr.turn_layer_on(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
+    assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_DOWN)));
+    assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
+    assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_taphold_action(KEY_A, KEY_LEFTCTRL));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_taphold_action(KEY_S, KEY_LEFTSHIFT));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_taphold_action(KEY_D, KEY_LEFTALT));
+    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL)));
+    assert_eq!(mgr.get(KEY_S.into()).action, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT)));
+    assert_eq!(mgr.get(KEY_D.into()).action, TapHold(Key(KEY_D), Key(KEY_LEFTALT)));
 
     mgr.turn_layer_off(2);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
+    assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_DOWN)));
+    assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
+    assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
-
-    mgr.toggle_layer(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_H));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_J));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_K));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_L));
-
-    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
+    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
+    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
+    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
 
     mgr.toggle_layer(1);
-    assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_LEFT));
-    assert_eq!(mgr.get(KEY_J.into()).action, make_key_action(KEY_DOWN));
-    assert_eq!(mgr.get(KEY_K.into()).action, make_key_action(KEY_UP));
-    assert_eq!(mgr.get(KEY_L.into()).action, make_key_action(KEY_RIGHT));
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_H)));
+    assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_J)));
+    assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_K)));
+    assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_L)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, make_key_action(KEY_A));
-    assert_eq!(mgr.get(KEY_S.into()).action, make_key_action(KEY_S));
-    assert_eq!(mgr.get(KEY_D.into()).action, make_key_action(KEY_D));
+    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
+    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
+    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
+
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
+    assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_DOWN)));
+    assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
+    assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
+
+    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
+    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
+    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
 }

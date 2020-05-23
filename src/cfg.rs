@@ -2,10 +2,10 @@ use crate::keys::KeyCode;
 use crate::keys::KeyCode::*;
 
 use crate::layers::Layer;
-use crate::layers::LayerIndex;
 use crate::layers::Layers;
 use crate::actions::Action;
-use crate::effects::Effect;
+use crate::actions::Action::*;
+use crate::effects::Effect::*;
 
 // ------------------- CfgLayers ---------------------
 
@@ -35,92 +35,20 @@ impl CfgLayers {
 
 // ------------------- Util Functions ---------------------
 
-pub fn make_taphold_action(tap: KeyCode, hold: KeyCode) -> Action {
-    let tap_fx = Effect::Key(tap.into());
-    let hold_fx = Effect::Key(hold.into());
-    Action::TapHold(tap_fx, hold_fx)
-}
-
-pub fn make_taphold_layer_entry(src: KeyCode, tap: KeyCode, hold: KeyCode) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_taphold_action(tap, hold);
-    return (src_code, action)
-}
-
-pub fn make_key_action(code: KeyCode) -> Action {
-    let effect = Effect::Key(code.into());
-    Action::Tap(effect)
-}
-
-pub fn make_key_layer_entry(src: KeyCode, dst: KeyCode) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_key_action(dst);
-    return (src_code, action)
-}
-
-pub fn make_meh_layer_entry(src: KeyCode) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = Action::Tap(Effect::Meh);
-    return (src_code, action)
-}
-
-pub fn make_hyper_layer_entry(src: KeyCode) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = Action::Tap(Effect::Hyper);
-    return (src_code, action)
-}
-
-pub fn make_keyseq_action(seq: Vec<KeyCode>) -> Action {
-    let kc_vec = seq.iter()
-        .map(|evkey| KeyCode::from(evkey.clone()))
-        .collect();
-
-    let effect = Effect::KeySeq(kc_vec);
-    Action::Tap(effect)
-}
-
-pub fn make_keyseq_layer_entry(src: KeyCode, seq: Vec<KeyCode>) -> (KeyCode, Action) {
-    let src_code: KeyCode = src.into();
-    let action = make_keyseq_action(seq);
-    return (src_code, action)
-}
-
-pub fn make_toggle_layer_action(idx: LayerIndex) -> Action {
-    let effect = Effect::ToggleLayer(idx);
-    Action::Tap(effect)
-}
-
-pub fn make_toggle_layer_entry(key: KeyCode, idx: LayerIndex) -> (KeyCode, Action) {
-    let code: KeyCode = key.into();
-    let action = make_toggle_layer_action(idx);
-    return (code, action)
-}
-
-pub fn make_momentary_layer_action(idx: LayerIndex) -> Action {
-    let effect = Effect::MomentaryLayer(idx);
-    Action::Tap(effect)
-}
-
-pub fn make_momentary_layer_entry(key: KeyCode, idx: LayerIndex) -> (KeyCode, Action) {
-    let code: KeyCode = key.into();
-    let action = make_momentary_layer_action(idx);
-    return (code, action)
-}
-
 pub fn my_layers() -> CfgLayers {
     CfgLayers::new(vec![
         // 0: base layer
         vec![
-            make_momentary_layer_entry(KEY_F7, 1),
-            make_key_layer_entry(KEY_F8, KEY_A),
-            make_meh_layer_entry(KEY_F9),
-            make_hyper_layer_entry(KEY_F10),
-            make_keyseq_layer_entry(KEY_F11, vec![KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT]),
-            make_toggle_layer_entry(KEY_F12, 1),
+            (KEY_F7, Tap(MomentaryLayer(1))),
+            (KEY_F8, Tap(Key(KEY_A))),
+            (KEY_F9, Tap(Meh)),
+            (KEY_F10, Tap(Hyper)),
+            (KEY_F11, Tap(KeySeq(vec![KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT]))),
+            (KEY_F12, Tap(ToggleLayer(1))),
         ],
         vec![
-            make_taphold_layer_entry(KEY_A, KEY_A, KEY_LEFTSHIFT),
-            make_taphold_layer_entry(KEY_S, KEY_S, KEY_LEFTALT),
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
         ],
     ])
 }
