@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use log::info;
 use simplelog::*;
 use clap::{App, Arg};
@@ -29,7 +29,7 @@ fn is_root() -> bool {
     Uid::effective().is_root()
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
     let matches =
         App::new("ktrl")
         .version("0.1")
@@ -90,7 +90,13 @@ fn main() -> Result<(), std::io::Error> {
         return Err(Error::new(NotFound, err));
     }
 
-    let kbd_in = KbdIn::new(kbd_path)?;
+    Ok((kbd_path.to_path_buf(),
+        config_path.to_path_buf()))
+}
+
+fn main() -> Result<(), std::io::Error> {
+    let (kbd_path, config_path) = cli_init()?;
+    let kbd_in = KbdIn::new(&kbd_path)?;
     let kbd_out = KbdOut::new()?;
 
     let cfg_str = read_to_string(config_path)?;
