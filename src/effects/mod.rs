@@ -11,7 +11,7 @@ use crate::layers::LayersManager;
 use crate::actions::Action;
 use inner::inner;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Key(KeyCode),
     // KeqSeq(Vec<KeyCode>),
@@ -35,7 +35,7 @@ pub fn event_to_fx_val(l_mgr: &LayersManager, event: &InputEvent) -> Option<Effe
         EventCode::EV_KEY(evkey) => {
             let kc = KeyCode::from(evkey.clone());
             let merged = l_mgr.get(kc);
-            let effect = inner!(merged.action, if Action::Tap);
+            let effect = inner!(&merged.action, if Action::Tap).clone();
 
             Some(EffectValue{
                 fx: effect,

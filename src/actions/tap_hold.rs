@@ -87,7 +87,7 @@ impl TapHoldMgr {
                 self.waiting_keys.clear();
                 let kc = get_keycode_from_event(event).unwrap();
                 self.holding_keys.remove(&kc);
-                OutEffects::new(STOP, *hold_fx, KeyValue::Release) // forward the release
+                OutEffects::new(STOP, hold_fx.clone(), KeyValue::Release) // forward the release
             },
 
             KeyValue::Repeat => {
@@ -119,8 +119,8 @@ impl TapHoldMgr {
                 self.waiting_keys.clear();
 
                 OutEffects::new_multiple(STOP, vec![
-                    EffectValue::new(*tap_fx, KeyValue::Press),
-                    EffectValue::new(*tap_fx, KeyValue::Release)
+                    EffectValue::new(tap_fx.clone(), KeyValue::Press),
+                    EffectValue::new(tap_fx.clone(), KeyValue::Release)
                 ])
             },
 
@@ -154,7 +154,7 @@ impl TapHoldMgr {
 
             KeyValue::Release => {
                 // Forward the release
-                OutEffects::new(STOP, *tap_fx, KeyValue::Release)
+                OutEffects::new(STOP, tap_fx.clone(), KeyValue::Release)
             },
 
             KeyValue::Repeat => {
@@ -200,6 +200,14 @@ impl TapHoldMgr {
         }
     }
 
+    fn get_th_effects_from_action(action: &Action) -> Option<(Effect, Effect)> {
+        match action {
+            Action::TapHold(tap_fx, hold_fx) => Some((tap_fx.clone(),
+                                                      hold_fx.clone())),
+            _ => None
+        }
+    }
+
     fn process_non_tap_hold_key(&mut self,
                                 l_mgr: &mut LayersManager,
                                 event: &InputEvent) -> OutEffects {
@@ -207,14 +215,11 @@ impl TapHoldMgr {
 
         for waiting in self.waiting_keys.drain(..) {
             let merged_key: &mut MergedKey = l_mgr.get_mut(waiting.clone());
+            let (tap_fx, hold_fx) = Self::get_th_effects_from_action(&merged_key.action).unwrap();
 
             if Self::is_waiting_over(merged_key, event) {
                 // Append the press hold_fx to the output
-                let hold_fx = match merged_key.action {
-                    Action::TapHold(_tap_fx, hold_fx) => hold_fx,
-                    _ => {assert!(false); Effect::Key(0.into())},
-                };
-                out.insert(hold_fx, KeyValue::Press);
+                out.insert(hold_fx.clone(), KeyValue::Press);
 
                 // Change to the holding state
                 merged_key.state = KeyState::KsTapHold(TapHoldState::ThHolding);
@@ -222,10 +227,6 @@ impl TapHoldMgr {
 
             } else {
                 // Flush the press and release tap_fx
-                let tap_fx = match merged_key.action {
-                    Action::TapHold(tap_fx, _hold_fx) => tap_fx,
-                    _ => {assert!(false); Effect::Key(0.into())},
-                };
                 out.insert(tap_fx, KeyValue::Press);
 
                 // Revert to the idle state
