@@ -1,11 +1,9 @@
-use evdev_rs::enums::EventCode;
-use evdev_rs::InputEvent;
-
 pub mod perform;
 pub use perform::perform_effect;
 
 use crate::keys::KeyValue;
 use crate::keys::KeyCode;
+use crate::keys::KeyEvent;
 use crate::layers::LayerIndex;
 use crate::layers::LayersManager;
 use crate::actions::Action;
@@ -29,19 +27,13 @@ pub enum Effect {
     // ToggleModifier(KeyCode)
 }
 
-pub fn event_to_fx_val(l_mgr: &LayersManager, event: &InputEvent) -> Option<EffectValue> {
-    match &event.event_code {
-        EventCode::EV_KEY(evkey) => {
-            let kc = KeyCode::from(evkey.clone());
-            let merged = l_mgr.get(kc);
-            let effect = inner!(&merged.action, if Action::Tap).clone();
+pub fn key_event_to_fx_val(l_mgr: &LayersManager, event: &KeyEvent) -> EffectValue {
+    let merged = l_mgr.get(event.code);
+    let effect = inner!(&merged.action, if Action::Tap).clone();
 
-            Some(EffectValue{
-                fx: effect,
-                val: event.value.into(),
-            })
-        }
-        _ => None
+    EffectValue{
+        fx: effect,
+        val: event.value.into(),
     }
 }
 

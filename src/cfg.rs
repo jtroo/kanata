@@ -1,7 +1,6 @@
-use evdev_rs::enums::EV_KEY;
-use evdev_rs::enums::EV_KEY::*;
-
 use crate::keys::KeyCode;
+use crate::keys::KeyCode::*;
+
 use crate::layers::Layer;
 use crate::layers::LayerIndex;
 use crate::layers::Layers;
@@ -36,42 +35,42 @@ impl CfgLayers {
 
 // ------------------- Util Functions ---------------------
 
-pub fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
+pub fn make_taphold_action(tap: KeyCode, hold: KeyCode) -> Action {
     let tap_fx = Effect::Key(tap.into());
     let hold_fx = Effect::Key(hold.into());
     Action::TapHold(tap_fx, hold_fx)
 }
 
-pub fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyCode, Action) {
+pub fn make_taphold_layer_entry(src: KeyCode, tap: KeyCode, hold: KeyCode) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = make_taphold_action(tap, hold);
     return (src_code, action)
 }
 
-pub fn make_key_action(code: EV_KEY) -> Action {
+pub fn make_key_action(code: KeyCode) -> Action {
     let effect = Effect::Key(code.into());
     Action::Tap(effect)
 }
 
-pub fn make_key_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
+pub fn make_key_layer_entry(src: KeyCode, dst: KeyCode) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = make_key_action(dst);
     return (src_code, action)
 }
 
-pub fn make_meh_layer_entry(src: EV_KEY) -> (KeyCode, Action) {
+pub fn make_meh_layer_entry(src: KeyCode) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = Action::Tap(Effect::Meh);
     return (src_code, action)
 }
 
-pub fn make_hyper_layer_entry(src: EV_KEY) -> (KeyCode, Action) {
+pub fn make_hyper_layer_entry(src: KeyCode) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = Action::Tap(Effect::Hyper);
     return (src_code, action)
 }
 
-pub fn make_keyseq_action(seq: Vec<EV_KEY>) -> Action {
+pub fn make_keyseq_action(seq: Vec<KeyCode>) -> Action {
     let kc_vec = seq.iter()
         .map(|evkey| KeyCode::from(evkey.clone()))
         .collect();
@@ -80,7 +79,7 @@ pub fn make_keyseq_action(seq: Vec<EV_KEY>) -> Action {
     Action::Tap(effect)
 }
 
-pub fn make_keyseq_layer_entry(src: EV_KEY, seq: Vec<EV_KEY>) -> (KeyCode, Action) {
+pub fn make_keyseq_layer_entry(src: KeyCode, seq: Vec<KeyCode>) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = make_keyseq_action(seq);
     return (src_code, action)
@@ -91,7 +90,7 @@ pub fn make_toggle_layer_action(idx: LayerIndex) -> Action {
     Action::Tap(effect)
 }
 
-pub fn make_toggle_layer_entry(key: EV_KEY, idx: LayerIndex) -> (KeyCode, Action) {
+pub fn make_toggle_layer_entry(key: KeyCode, idx: LayerIndex) -> (KeyCode, Action) {
     let code: KeyCode = key.into();
     let action = make_toggle_layer_action(idx);
     return (code, action)
@@ -102,7 +101,7 @@ pub fn make_momentary_layer_action(idx: LayerIndex) -> Action {
     Action::Tap(effect)
 }
 
-pub fn make_momentary_layer_entry(key: EV_KEY, idx: LayerIndex) -> (KeyCode, Action) {
+pub fn make_momentary_layer_entry(key: KeyCode, idx: LayerIndex) -> (KeyCode, Action) {
     let code: KeyCode = key.into();
     let action = make_momentary_layer_action(idx);
     return (code, action)

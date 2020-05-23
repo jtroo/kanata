@@ -2,9 +2,11 @@
 use uinput_sys;
 use uinput_sys::uinput_user_dev;
 
+use evdev_rs::TimeVal;
 use evdev_rs::InputEvent;
 use evdev_rs::enums::EventCode;
-use evdev_rs::enums::EV_KEY;
+use crate::keys::KeyCode;
+use crate::keys::KeyValue;
 use evdev_rs::enums::EV_SYN;
 use libc::input_event as raw_event;
 
@@ -57,7 +59,7 @@ impl KbdOut {
         Ok(KbdOut{device: uinput_out_file})
     }
 
-    pub fn write(&mut self, event: &InputEvent) -> Result<(), io::Error> {
+    pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         let ev = event.as_raw();
 
         unsafe {
@@ -70,25 +72,25 @@ impl KbdOut {
     }
 
 
-    pub fn write_key(&mut self, key: EV_KEY, value: i32) -> Result<(), io::Error> {
-        let key_ev = KeyEvent::new(&EventCode::EV_KEY(key), value);
-        self.write(&key_ev.event)?;
+    pub fn write_key(&mut self, key: KeyCode, value: KeyValue) -> Result<(), io::Error> {
+        let key_ev = KeyEvent::new(key, value);
+        self.write(key_ev.into())?;
 
-        let sync = KeyEvent::new(&EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
-        self.write(&sync.event)?;
+        let sync = InputEvent::new(&TimeVal{tv_sec: 0, tv_usec:0}, &EventCode::EV_SYN(EV_SYN::SYN_REPORT), 0);
+        self.write(sync.into())?;
 
         Ok(())
     }
 
-    // pub fn press_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    // pub fn press_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
     //     self.write_key(key, KeyValue::Press as i32)
     // }
 
-    // pub fn release_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    // pub fn release_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
     //     self.write_key(key, KeyValue::Release as i32)
     // }
 
-    // pub fn tap_key(&mut self, key: EV_KEY) -> Result<(), io::Error> {
+    // pub fn tap_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
     //     self.press_key(key.clone())?;
     //     self.release_key(key)?;
     //     Ok(())

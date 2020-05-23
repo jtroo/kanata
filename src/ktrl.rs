@@ -3,9 +3,11 @@ use log::info;
 
 use crate::KbdIn;
 use crate::KbdOut;
+use std::convert::TryFrom;
+use crate::keys::KeyEvent;
 use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
-use crate::effects::event_to_fx_val;
+use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
 
 pub struct Ktrl {
@@ -20,6 +22,24 @@ impl Ktrl {
         return Self{kbd_in, kbd_out, l_mgr, th_mgr}
     }
 
+    fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), std::io::Error> {
+        // Handle TapHold action keys
+        let th_out = self.th_mgr.process(&mut self.l_mgr, event);
+        if let Some(th_fx_vals) = th_out.effects {
+            for fx_val in th_fx_vals {
+                perform_effect(self, fx_val)?
+            }
+        }
+
+        // Handle leftover effect(s)
+        if !th_out.stop_processing {
+            let leftover_fx_val = key_event_to_fx_val(&self.l_mgr, event);
+            perform_effect(self, leftover_fx_val)?;
+        }
+
+        Ok(())
+    }
+
     pub fn event_loop(&mut self) -> Result<(), std::io::Error> {
         info!("Ktrl: Entering the event loop");
 
@@ -32,20 +52,16 @@ impl Ktrl {
                 continue;
             }
 
-            let th_out = self.th_mgr.process(&mut self.l_mgr, &in_event);
-            if let Some(th_fx_vals) = th_out.effects {
-                for fx_val in th_fx_vals {
-                    perform_effect(self, fx_val)?
+            // Pass-through non-key events
+            let key_event = match KeyEvent::try_from(in_event.clone()) {
+                Ok(ev) => ev,
+                _ =>  {
+                    self.kbd_out.write(in_event)?;
+                    continue;
                 }
-            }
+            };
 
-            if !th_out.stop_processing {
-                if let Some(leftover_fx_val) = event_to_fx_val(&self.l_mgr, &in_event) {
-                    perform_effect(self, leftover_fx_val)?;
-                } else {
-                    self.kbd_out.write(&in_event)?;
-                }
-            }
+            self.handle_key_event(&key_event)?;
         }
     }
 }

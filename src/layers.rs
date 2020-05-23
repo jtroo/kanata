@@ -1,6 +1,7 @@
-use evdev_rs::enums::EV_KEY::*;
+use crate::keys::KeyCode::*;
 use std::vec::Vec;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use log::info;
 
 use crate::keys::KeyCode;
@@ -42,7 +43,11 @@ pub struct MergedKey {
     pub layer_index: LayerIndex,
 }
 
-pub type Merged = Vec<MergedKey>;
+// MergedKey is wrapped in an Option because
+// not all integer in the KEY_MAX range
+// have a matching `KeyCode`
+pub type Merged = Vec<Option<MergedKey>>;
+
 pub type Layers = Vec<Layer>;
 type LayersStates = Vec<bool>;
 
@@ -62,46 +67,19 @@ pub struct LayersManager {
 
 // -------------- Implementation -------------
 
-fn is_overriding_key(merged: &Merged, candidate_code: KeyCode, candidate_layer_index: LayerIndex) -> bool {
-    let current = &merged[usize::from(candidate_code)];
-    return candidate_layer_index >= current.layer_index
-}
-
-fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code: KeyCode) -> MergedKey {
-    let current: &MergedKey = &merged[usize::from(removed_code)];
-    let lower_layer_idx = current.layer_index-1;
-
-    for i in lower_layer_idx..0 {
-        let lower_action = &layers[i][&removed_code];
-        let replacement = MergedKey{
-            code: removed_code,
-            action: lower_action.clone(),
-            state: KeyState::from_action(&lower_action),
-            layer_index: i
-        };
-
-        return replacement;
-    }
-
-    MergedKey{
-        code: removed_code,
-        action: Action::Tap(Effect::Key(removed_code)),
-        state: KeyState::KsTap,
-        layer_index: 0
-    }
-}
-
-
 fn init_merged() -> Merged {
     let mut merged: Merged = Vec::with_capacity(MAX_KEY);
 
     for i in 0..MAX_KEY {
-        let code: KeyCode = i.into();
-        let effect = Effect::Key(code);
-        let action = Action::Tap(effect);
-        let state = KeyState::KsTap;
-        let layer_index = 0;
-        merged.push(MergedKey{code, action, state, layer_index});
+        if let Ok(code) = KeyCode::try_from(i) {
+            let effect = Effect::Key(code);
+            let action = Action::Tap(effect);
+            let state = KeyState::KsTap;
+            let layer_index = 0;
+            merged.push(Some(MergedKey{code, action, state, layer_index}));
+        } else {
+            merged.push(None);
+        }
     }
 
     assert!(merged.len() == MAX_KEY);
@@ -124,12 +102,49 @@ impl LayersManager {
         self.turn_layer_on(0);
     }
 
+    fn is_overriding_key(&self, candidate_code: KeyCode, candidate_layer_index: LayerIndex) -> bool {
+        let current = self.get(candidate_code);
+        return candidate_layer_index >= current.layer_index
+    }
+
+    fn get_replacement_merged_key(&self, layers: &Layers, removed_code: KeyCode) -> MergedKey {
+        let current = self.get(removed_code);
+        let lower_layer_idx = current.layer_index-1;
+
+        for i in lower_layer_idx..0 {
+            let lower_action = &layers[i][&removed_code];
+            let replacement = MergedKey{
+                code: removed_code,
+                action: lower_action.clone(),
+                state: KeyState::from_action(&lower_action),
+                layer_index: i
+            };
+
+            return replacement;
+        }
+
+        MergedKey{
+            code: removed_code,
+            action: Action::Tap(Effect::Key(removed_code)),
+            state: KeyState::KsTap,
+            layer_index: 0
+        }
+    }
+
+
+
     pub fn get(&self, key: KeyCode) -> &MergedKey {
-        &self.merged[usize::from(key)]
+        match &self.merged[usize::from(key)] {
+            Some(merged_key) => merged_key,
+            _ => panic!("Invalid KeyCode")
+        }
     }
 
     pub fn get_mut(&mut self, key: KeyCode) -> &mut MergedKey {
-        &mut self.merged[usize::from(key)]
+        match &mut self.merged[usize::from(key)] {
+            Some(merged_key) => merged_key,
+            _ => panic!("Invalid KeyCode")
+        }
     }
 
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
@@ -137,7 +152,7 @@ impl LayersManager {
 
         let layer = &self.layers[index];
         for (code, action) in layer {
-            let is_overriding = is_overriding_key(&self.merged, *code, index);
+            let is_overriding = self.is_overriding_key(*code, index);
 
             if is_overriding {
                 let new_entry = MergedKey{
@@ -147,7 +162,7 @@ impl LayersManager {
                     layer_index: index
                 };
 
-                self.merged[usize::from(*code)] = new_entry;
+                self.merged[usize::from(*code)] = Some(new_entry);
             }
         }
 
@@ -161,8 +176,8 @@ impl LayersManager {
 
         let layer = &self.layers[index];
         for (code, _action) in layer {
-            let replacement_entry = get_replacement_merged_key(&mut self.merged, &self.layers, *code);
-            self.merged[usize::from(*code)] = replacement_entry;
+            let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
+            self.merged[usize::from(*code)] = Some(replacement_entry);
         }
 
         self.layers_states[index] = false;
@@ -186,9 +201,6 @@ impl LayersManager {
 
 #[cfg(test)]
 use std::collections::HashSet;
-
-#[cfg(test)]
-use evdev_rs::enums::EV_KEY;
 
 #[cfg(test)]
 lazy_static::lazy_static! {
@@ -220,22 +232,10 @@ lazy_static::lazy_static! {
 }
 
 #[cfg(test)]
-use std::convert::TryInto;
-
-#[cfg(test)]
 use crate::cfg::*;
-
-#[cfg(test)]
-fn idx_to_ev_key(i: usize) -> EV_KEY {
-    let narrow: u32 = i.try_into().expect(&format!("Invalid KeyCode: {}", i));
-    evdev_rs::enums::int_to_ev_key(narrow).expect(&format!("Invalid KeyCode: {}", narrow))
-}
 
 #[test]
 fn test_mgr() {
-
-    let swap: HashMap<EV_KEY, EV_KEY> = [(KEY_LEFTCTRL, KEY_CAPSLOCK),
-                                         (KEY_CAPSLOCK, KEY_LEFTCTRL)].iter().cloned().collect();
     let layers = CfgLayers::new(vec![
         // 0: base layer
         vec![
@@ -266,19 +266,6 @@ fn test_mgr() {
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
-
-    for (i, merged_key) in mgr.merged.iter().enumerate() {
-        if MISSING_KEYCODES.contains(&(i as u32)) { // missing keycode
-            continue;
-        }
-
-        let i_evkey: EV_KEY = idx_to_ev_key(i);
-        let expected_code = swap.get(&i_evkey).unwrap_or(&i_evkey).clone();
-
-        assert_eq!(merged_key.code, i_evkey.into());
-        assert_eq!(merged_key.layer_index, 0);
-        assert_eq!(merged_key.action, make_key_action(expected_code));
-    }
 
     mgr.turn_layer_on(2);
     assert_eq!(mgr.get(KEY_H.into()).action, make_key_action(KEY_H));
