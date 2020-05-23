@@ -77,7 +77,6 @@ impl OutEffects {
         }
     }
 
-    #[cfg(test)]
     pub fn new_multiple(stop_processing: bool, effects: Vec<EffectValue>) -> Self {
         OutEffects {
             stop_processing,

@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use crate::layers::LayersManager;
 use crate::keys::KeyCode;
 use crate::keys::KeyValue;
+use crate::effects::EffectValue;
 use crate::effects::OutEffects;
 
 // inner
@@ -116,9 +117,11 @@ impl TapHoldMgr {
                 // We didn't reach the hold state
                 *state = TapHoldState::ThIdle;
                 self.waiting_keys.clear();
-                let mut out = OutEffects::new(STOP, *tap_fx, KeyValue::Press);
-                out.insert(*tap_fx, KeyValue::Release);
-                out
+
+                OutEffects::new_multiple(STOP, vec![
+                    EffectValue::new(*tap_fx, KeyValue::Press),
+                    EffectValue::new(*tap_fx, KeyValue::Release)
+                ])
             },
 
             KeyValue::Repeat => {
@@ -261,8 +264,6 @@ impl TapHoldMgr {
 use crate::keys::KeyEvent;
 #[cfg(test)]
 use crate::cfg::*;
-#[cfg(test)]
-use crate::effects::EffectValue;
 #[cfg(test)]
 use evdev_rs::enums::EV_KEY::*;
 
