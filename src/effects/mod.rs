@@ -13,8 +13,8 @@ use inner::inner;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
-    // Used externally for Press+Release
-    Default(KeyCode),
+    Key(KeyCode),
+    // KeqSeq(Vec<KeyCode>),
 
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),

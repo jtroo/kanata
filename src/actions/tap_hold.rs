@@ -209,7 +209,7 @@ impl TapHoldMgr {
                 // Append the press hold_fx to the output
                 let hold_fx = match merged_key.action {
                     Action::TapHold(_tap_fx, hold_fx) => hold_fx,
-                    _ => {assert!(false); Effect::Default(0.into())},
+                    _ => {assert!(false); Effect::Key(0.into())},
                 };
                 out.insert(hold_fx, KeyValue::Press);
 
@@ -221,7 +221,7 @@ impl TapHoldMgr {
                 // Flush the press and release tap_fx
                 let tap_fx = match merged_key.action {
                     Action::TapHold(tap_fx, _hold_fx) => tap_fx,
-                    _ => {assert!(false); Effect::Default(0.into())},
+                    _ => {assert!(false); Effect::Key(0.into())},
                 };
                 out.insert(tap_fx, KeyValue::Press);
 
@@ -300,8 +300,8 @@ fn test_tap() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
 
@@ -309,8 +309,8 @@ fn test_tap() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
 
@@ -319,8 +319,8 @@ fn test_tap() {
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_W)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_W)).event;
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_A.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_A.into()), KeyValue::Release));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.is_idle(), true);
 
@@ -329,9 +329,9 @@ fn test_tap() {
     let ev_non_th_press = KeyEvent::new_press(&EventCode::EV_KEY(KEY_W)).event;
     let ev_non_th_release = KeyEvent::new_release(&EventCode::EV_KEY(KEY_W)).event;
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_A.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_A.into()), KeyValue::Press));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_A.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_A.into()), KeyValue::Release));
     assert_eq!(th_mgr.is_idle(), true);
 }
 
@@ -357,8 +357,8 @@ fn test_hold() {
     // No hold + other key chord
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Press),
-        EffectValue::new(Effect::Default(KEY_A.into()), KeyValue::Release),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
+        EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
 
@@ -373,10 +373,10 @@ fn test_hold() {
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
     assert_eq!(th_mgr.is_idle(), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Release));
 
     // -------------------------------
 
@@ -386,8 +386,8 @@ fn test_hold() {
     ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Press));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
     assert_eq!(th_mgr.is_idle(), false);
-    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Default(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Release));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
 }

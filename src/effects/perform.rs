@@ -39,7 +39,7 @@ fn perform_default(kbd_out: &mut KbdOut, code: KeyCode, value: KeyValue) -> Resu
 
 pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error> {
     match fx_val.fx {
-        Effect::Default(code) => perform_default(&mut ktrl.kbd_out, code, fx_val.val),
+        Effect::Key(code) => perform_default(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, fx_val.val, idx),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, fx_val.val, idx),
     }

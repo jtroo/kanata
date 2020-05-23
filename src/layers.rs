@@ -85,7 +85,7 @@ fn get_replacement_merged_key(merged: &mut Merged, layers: &Layers, removed_code
 
     MergedKey{
         code: removed_code,
-        action: Action::Tap(Effect::Default(removed_code)),
+        action: Action::Tap(Effect::Key(removed_code)),
         state: KeyState::KsTap,
         layer_index: 0
     }
@@ -97,7 +97,7 @@ fn init_merged() -> Merged {
 
     for i in 0..MAX_KEY {
         let code: KeyCode = i.into();
-        let effect = Effect::Default(code);
+        let effect = Effect::Key(code);
         let action = Action::Tap(effect);
         let state = KeyState::KsTap;
         let layer_index = 0;

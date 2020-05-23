@@ -37,8 +37,8 @@ impl CfgLayers {
 // ------------------- Util Functions ---------------------
 
 pub fn make_taphold_action(tap: EV_KEY, hold: EV_KEY) -> Action {
-    let tap_fx = Effect::Default(tap.into());
-    let hold_fx = Effect::Default(hold.into());
+    let tap_fx = Effect::Key(tap.into());
+    let hold_fx = Effect::Key(hold.into());
     Action::TapHold(tap_fx, hold_fx)
 }
 
@@ -50,7 +50,7 @@ pub fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyC
 
 #[cfg(test)]
 pub fn make_default_action(code: EV_KEY) -> Action {
-    let effect = Effect::Default(code.into());
+    let effect = Effect::Key(code.into());
     Action::Tap(effect)
 }
 
