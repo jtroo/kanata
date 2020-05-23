@@ -1,11 +1,11 @@
-use crate::keys::KeyCode;
-use crate::keys::KeyCode::*;
-
-use crate::layers::Layer;
 use crate::layers::Layers;
+
+#[cfg(test)]
+use crate::keys::KeyCode;
+#[cfg(test)]
+use crate::layers::Layer;
+#[cfg(test)]
 use crate::actions::Action;
-use crate::actions::Action::*;
-use crate::effects::Effect::*;
 
 use ron::de;
 use serde::Deserialize;
@@ -21,6 +21,7 @@ pub struct CfgLayers {
 }
 
 impl CfgLayers {
+    #[cfg(test)]
     pub fn new(layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
         let mut converted: Vec<Layer> = vec![];
         for layer_vec in layers {
@@ -36,28 +37,9 @@ impl CfgLayers {
     }
 }
 
-
 // ------------------- Util Functions ---------------------
 
-pub fn my_layers() -> CfgLayers {
-    let str_cfg = "(
-    layers: [
-        {
-            KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
-            KEY_F7:  Tap(MomentaryLayer(1)),
-            KEY_F8:  Tap(Key(KEY_A)),
-            KEY_F9:  Tap(Meh),
-            KEY_F10: Tap(Hyper),
-            KEY_F11: Tap(KeySeq([KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT])),
-            KEY_F12: Tap(ToggleLayer(1)),
-        },
-        {
-            KEY_A: TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
-            KEY_S: TapHold(Key(KEY_S), Key(KEY_LEFTALT)),
-        },
-    ],
-)
-";
-
-    dbg!(de::from_str(str_cfg).unwrap())
+pub fn parse(cfg: &String) -> CfgLayers {
+    de::from_str(cfg)
+        .expect("Failed to parse the config file")
 }

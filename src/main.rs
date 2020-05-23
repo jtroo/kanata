@@ -1,10 +1,10 @@
 use std::path::Path;
-use log::{info, error};
+use log::info;
 use simplelog::*;
 use clap::{App, Arg};
 use nix::unistd::Uid;
 use std::io::{Error, ErrorKind::*};
-use std::fs::File;
+use std::fs::{File, read_to_string};
 
 mod kbd_in;
 mod kbd_out;
@@ -93,7 +93,9 @@ fn main() -> Result<(), std::io::Error> {
     let kbd_in = KbdIn::new(kbd_path)?;
     let kbd_out = KbdOut::new()?;
 
-    let mut l_mgr = LayersManager::new(cfg::my_layers());
+    let cfg_str = read_to_string(config_path)?;
+    let cfg = cfg::parse(&cfg_str);
+    let mut l_mgr = LayersManager::new(cfg);
     l_mgr.init();
 
     let th_mgr = TapHoldMgr::new();
