@@ -14,7 +14,7 @@ use inner::inner;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Key(KeyCode),
-    // KeqSeq(Vec<KeyCode>),
+    KeySeq(Vec<KeyCode>),
 
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),

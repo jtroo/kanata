@@ -48,16 +48,29 @@ pub fn make_taphold_layer_entry(src: EV_KEY, tap: EV_KEY, hold: EV_KEY) -> (KeyC
     return (src_code, action)
 }
 
-#[cfg(test)]
 pub fn make_key_action(code: EV_KEY) -> Action {
     let effect = Effect::Key(code.into());
     Action::Tap(effect)
 }
 
-#[cfg(test)]
 pub fn make_key_layer_entry(src: EV_KEY, dst: EV_KEY) -> (KeyCode, Action) {
     let src_code: KeyCode = src.into();
     let action = make_key_action(dst);
+    return (src_code, action)
+}
+
+pub fn make_keyseq_action(seq: Vec<EV_KEY>) -> Action {
+    let kc_vec = seq.iter()
+        .map(|evkey| KeyCode::from(evkey.clone()))
+        .collect();
+
+    let effect = Effect::KeySeq(kc_vec);
+    Action::Tap(effect)
+}
+
+pub fn make_keyseq_layer_entry(src: EV_KEY, seq: Vec<EV_KEY>) -> (KeyCode, Action) {
+    let src_code: KeyCode = src.into();
+    let action = make_keyseq_action(seq);
     return (src_code, action)
 }
 
@@ -88,7 +101,8 @@ pub fn my_layers() -> CfgLayers {
         // 0: base layer
         vec![
             make_momentary_layer_entry(KEY_Q, 1),
-            make_keyseq_entry(KEY_F12, 1),
+            make_key_layer_entry(KEY_F10, KEY_A),
+            make_keyseq_layer_entry(KEY_F11, vec![KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT]),
             make_toggle_layer_entry(KEY_F12, 1),
         ],
         vec![
