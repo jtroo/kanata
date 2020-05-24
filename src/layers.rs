@@ -119,7 +119,12 @@ impl LayersManager {
         let current = self.get(removed_code);
         let lower_layer_idx = current.layer_index-1;
 
-        for i in lower_layer_idx..0 {
+        for i in lower_layer_idx..=0 {
+            let lower_layer = &layers[i];
+            if !lower_layer.contains_key(&removed_code) {
+                continue;
+            }
+
             let lower_action = &layers[i][&removed_code];
             let replacement = MergedKey{
                 code: removed_code,
@@ -343,4 +348,30 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
     assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
     assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
+}
+
+#[test]
+fn test_overlapping_keys() {
+    let layers = CfgLayers::new(vec![
+        // 0: base layer
+        vec![
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+        ],
+
+        // 1: arrows layer
+        vec![
+            // Ex: switch CTRL <--> Capslock
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+        ],
+    ]);
+
+    let mut mgr = LayersManager::new(layers);
+    mgr.init();
+
+    assert_eq!(mgr.layers_states.len(), 2);
+    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
+    mgr.turn_layer_on(1);
+    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
+    mgr.turn_layer_off(1);
+    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
 }
