@@ -137,8 +137,6 @@ impl LayersManager {
         }
     }
 
-
-
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         match &self.merged[usize::from(key)] {
             Some(merged_key) => merged_key,
@@ -153,15 +151,26 @@ impl LayersManager {
         }
     }
 
+    // Returns None if false. Some(KeyCode) with the locked key
+    fn will_layer_override_held_lock(&self, layer: &Layer) -> Option<KeyCode> {
+        for key in layer.keys() {
+            if self.locks.contains_key(key) {
+                return Some(*key);
+            }
+        }
+
+        None
+    }
+
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
         std::assert!(!self.layers_states[index]);
+        let layer = &self.layers[index];
 
-        if self.locks.len() > 0 {
-            warn!("Can't turn layer {} on. {:?} are in use", index, &self.locks);
+        if let Some(locked) = self.will_layer_override_held_lock(&layer) {
+            warn!("Can't turn layer {} on. {:?} is in use", index, locked);
             return;
         }
 
-        let layer = &self.layers[index];
         for (code, action) in layer {
             let is_overriding = self.is_overriding_key(*code, index);
 
@@ -184,12 +193,12 @@ impl LayersManager {
         std::assert!(index > 0); // Can't turn off the base layer
         std::assert!(self.layers_states[index]);
 
-        if self.locks.len() > 0 {
-            warn!("Can't turn layer {} off. {:?} are in use", index, &self.locks);
+        let layer = &self.layers[index];
+        if let Some(locked) = self.will_layer_override_held_lock(&layer) {
+            warn!("Can't turn layer {} off. {:?} is in use", index, locked);
             return;
         }
 
-        let layer = &self.layers[index];
         for (code, _action) in layer {
             let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
             self.merged[usize::from(*code)] = Some(replacement_entry);

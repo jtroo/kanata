@@ -7,7 +7,6 @@ use crate::kbd_out::KbdOut;
 use crate::layers::LayerIndex;
 use crate::ktrl::Ktrl;
 
-use log::warn;
 use std::io::Error;
 use std::vec::Vec;
 
@@ -31,14 +30,8 @@ lazy_static::lazy_static! {
     };
 }
 
-fn is_layer_change_safe(ktrl: &Ktrl) -> bool {
-    false
-}
-
 fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
-    if !is_layer_change_safe(ktrl) {
-        warn!("Can't make a layer change in the middle of a stateful effect");
-    } else if value == KeyValue::Press {
+    if value == KeyValue::Press {
         ktrl.l_mgr.turn_layer_on(idx)
     } else if value == KeyValue::Release {
         ktrl.l_mgr.turn_layer_off(idx)
@@ -48,9 +41,7 @@ fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) ->
 }
 
 fn perform_toggle_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
-    if !is_layer_change_safe(ktrl) {
-        warn!("Can't make a layer change in the middle of a stateful effect");
-    } else if value == KeyValue::Press {
+    if value == KeyValue::Press {
         ktrl.l_mgr.toggle_layer(idx)
     }
 
