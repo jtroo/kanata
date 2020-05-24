@@ -5,6 +5,7 @@
     layers: [
         // Layer 0: Base Layer
         {
+            KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
             KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
             KEY_F7:  Tap(MomentaryLayer(1)),
             KEY_F8:  Tap(Key(KEY_A)),

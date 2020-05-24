@@ -56,7 +56,12 @@ pub struct LayersManager {
     // Allows stateful modules (like TapHold)
     // to lock certain keys. This'll prevent them
     // from being changed by layer changes
-    pub locks: HashMap<KeyCode, LockOwner>
+    pub key_locks: HashMap<KeyCode, LockOwner>,
+
+    // Similar to key_locks,
+    // but locks prevents layer changes globally.
+    // I.E not key-specific like key_locks
+    pub global_lock: Option<LockOwner>,
 }
 
 // -------------- Implementation -------------
@@ -84,27 +89,51 @@ impl LayersManager {
         let merged = init_merged();
         let layers = cfg.layers;
         let layers_count = layers.len();
-        let locks = HashMap::new();
+        let key_locks = HashMap::new();
 
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
 
-        LayersManager{merged, layers, layers_states, locks}
+        LayersManager{
+            merged,
+            layers,
+            layers_states,
+            key_locks,
+            global_lock: None,
+        }
     }
 
+    // ---------------- Locks -------------------------
+
     pub fn lock_key(&mut self, key: KeyCode, owner: LockOwner) {
-        assert!(!self.locks.contains_key(&key));
-        self.locks.insert(key, owner);
+        assert!(!self.key_locks.contains_key(&key));
+        self.key_locks.insert(key, owner);
     }
 
     pub fn unlock_key(&mut self, key: KeyCode, owner: LockOwner) {
-        assert!(self.locks[&key] == owner);
-        self.locks.remove(&key);
+        assert!(self.key_locks[&key] == owner);
+        self.key_locks.remove(&key);
+    }
+
+    pub fn lock_all(&mut self, owner: LockOwner) {
+        assert!(self.global_lock.is_none());
+        self.global_lock = Some(owner);
+    }
+
+    pub fn unlock_all(&mut self, _owner: LockOwner) {
+        assert!(self.global_lock.is_some());
+        self.global_lock = None;
+    }
+
+    pub fn is_all_locked(&self) -> bool {
+        self.global_lock.is_some()
     }
 
     pub fn is_key_locked(&self, key: KeyCode) -> bool {
-        self.locks.contains_key(&key)
+        self.key_locks.contains_key(&key)
     }
+
+    // ---------------- Layers Changes -------------------------
 
     pub fn init(&mut self) {
         self.turn_layer_on(0);
@@ -159,7 +188,7 @@ impl LayersManager {
     // Returns None if false. Some(KeyCode) with the locked key
     fn will_layer_override_held_lock(&self, layer: &Layer) -> Option<KeyCode> {
         for key in layer.keys() {
-            if self.locks.contains_key(key) {
+            if self.key_locks.contains_key(key) {
                 return Some(*key);
             }
         }
@@ -167,12 +196,25 @@ impl LayersManager {
         None
     }
 
+    fn is_layer_change_safe(&self, index: LayerIndex, layer: &Layer) -> bool {
+        if self.is_all_locked() {
+            warn!("Can't turn layer {} on. You're currently using a blocking action/effect", index);
+            return false;
+        }
+
+        if let Some(locked) = self.will_layer_override_held_lock(&layer) {
+            warn!("Can't turn layer {} on. {:?} is in use", index, locked);
+            return false;
+        }
+
+        true
+    }
+
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
         std::assert!(!self.layers_states[index]);
         let layer = &self.layers[index];
 
-        if let Some(locked) = self.will_layer_override_held_lock(&layer) {
-            warn!("Can't turn layer {} on. {:?} is in use", index, locked);
+        if !self.is_layer_change_safe(index, layer){
             return;
         }
 
@@ -199,8 +241,7 @@ impl LayersManager {
         std::assert!(self.layers_states[index]);
 
         let layer = &self.layers[index];
-        if let Some(locked) = self.will_layer_override_held_lock(&layer) {
-            warn!("Can't turn layer {} off. {:?} is in use", index, locked);
+        if !self.is_layer_change_safe(index, layer){
             return;
         }
 
@@ -348,6 +389,13 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
     assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
     assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
+
+    mgr.lock_all(LockOwner::LkTapHold);
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
+    mgr.unlock_all(LockOwner::LkTapHold);
+    mgr.toggle_layer(1);
+    assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_H)));
 }
 
 #[test]

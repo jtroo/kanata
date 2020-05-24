@@ -54,10 +54,10 @@ fn perform_key_sticky(ktrl: &mut Ktrl, code: KeyCode, value: KeyValue) -> Result
     }
 
     if !ktrl.sticky.is_pressed(code) {
-        ktrl.sticky.update_pressed(code);
+        ktrl.sticky.update_pressed(&mut ktrl.l_mgr, code);
         ktrl.kbd_out.press_key(code)
     } else {
-        ktrl.sticky.update_released(code);
+        ktrl.sticky.update_released(&mut ktrl.l_mgr, code);
         ktrl.kbd_out.release_key(code)
     }
 }
