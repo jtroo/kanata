@@ -102,6 +102,10 @@ impl LayersManager {
         self.locks.remove(&key);
     }
 
+    pub fn is_key_locked(&self, key: KeyCode) -> bool {
+        self.locks.contains_key(&key)
+    }
+
     pub fn init(&mut self) {
         self.turn_layer_on(0);
     }

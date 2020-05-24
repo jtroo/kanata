@@ -318,20 +318,24 @@ fn test_tap() {
     // 1st
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
     // 2nd
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
     // interruptions: 1
     ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
@@ -352,6 +356,8 @@ fn test_tap() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_A.into()), KeyValue::Release));
     assert_eq!(th_mgr.is_idle(), true);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_W), false);
 }
 
 #[test]
@@ -375,11 +381,13 @@ fn test_hold() {
 
     // No hold + other key chord
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new_multiple(STOP, vec![
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Press),
         EffectValue::new(Effect::Key(KEY_A.into()), KeyValue::Release),
     ]));
     assert_eq!(th_mgr.is_idle(), true);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
 
     // -------------------------------
@@ -394,8 +402,11 @@ fn test_hold() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
     assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
     // -------------------------------
 
@@ -407,6 +418,9 @@ fn test_hold() {
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
     assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Release));
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_release), OutEffects::empty(CONTINUE));
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 }
