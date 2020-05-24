@@ -129,6 +129,7 @@ impl LayersManager {
         self.global_lock.is_some()
     }
 
+    #[cfg(test)]
     pub fn is_key_locked(&self, key: KeyCode) -> bool {
         self.key_locks.contains_key(&key)
     }

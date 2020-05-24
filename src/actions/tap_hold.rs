@@ -269,7 +269,8 @@ impl TapHoldMgr {
         }
     }
 
-    // Used by Ktrl to make sure toggling layers is okay
+
+    #[cfg(test)]
     pub fn is_idle(&self) -> bool {
         self.waiting_keys.len() == 0 &&
             self.holding_keys.len() == 0
