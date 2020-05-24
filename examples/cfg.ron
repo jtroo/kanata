@@ -1,0 +1,22 @@
+// blah blah 
+//
+
+(
+    layers: [
+        // Layer 0: Base Layer
+        {
+            KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
+            KEY_F7:  Tap(MomentaryLayer(1)),
+            KEY_F8:  Tap(Key(KEY_A)),
+            KEY_F9:  Tap(Meh),
+            KEY_F10: Tap(Hyper),
+            KEY_F11: Tap(KeySeq([KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT])),
+            KEY_F12: Tap(ToggleLayer(1)),
+        },
+        // Layer 1
+        {
+            KEY_A: TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
+            KEY_S: TapHold(Key(KEY_S), Key(KEY_LEFTALT)),
+        },
+    ],
+)
