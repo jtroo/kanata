@@ -17,12 +17,30 @@ use inner::inner;
 use crate::layers::{
     Effect,
     Action,
-    MergedKey,
+    Action::TapHold,
 };
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
 const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
+
+// This struct isn't used in Action::TapHold
+// due to overhead it'll create in the config file.
+// Lots of wrappers in the ron text
+struct TapHoldCfg {
+    tap_fx: Effect,
+    hold_fx: Effect,
+}
+
+impl TapHoldCfg {
+    fn from_action(action: &Action) -> Self {
+        match action {
+            TapHold(tap_fx, hold_fx) => Self{tap_fx: tap_fx.clone(),
+                                             hold_fx: hold_fx.clone()},
+            _ => unreachable!(),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TapHoldWaiting {
@@ -35,6 +53,7 @@ pub enum TapHoldState {
     ThWaiting(TapHoldWaiting),
     ThHolding,
 }
+
 pub struct TapHoldMgr {
     // KEY_MAX elements
     states: Vec<TapHoldState>,
@@ -90,8 +109,7 @@ impl TapHoldMgr {
     fn handle_th_holding(&mut self,
                          l_mgr: &mut LayersManager,
                          event: &KeyEvent,
-                         _tap_fx: &Effect,
-                         hold_fx: &Effect) -> OutEffects {
+                         th_cfg: &TapHoldCfg) -> OutEffects {
         let state = &mut self.states[event.code as usize];
         assert!(*state == TapHoldState::ThHolding);
         let value = KeyValue::from(event.value);
@@ -108,7 +126,7 @@ impl TapHoldMgr {
                 *state = TapHoldState::ThIdle;
                 self.clear_waiting(l_mgr);
                 self.remove_holding(l_mgr, event.code);
-                OutEffects::new(STOP, hold_fx.clone(), KeyValue::Release) // forward the release
+                OutEffects::new(STOP, th_cfg.hold_fx.clone(), KeyValue::Release) // forward the release
             },
 
             KeyValue::Repeat => {
@@ -121,8 +139,7 @@ impl TapHoldMgr {
     fn handle_th_waiting(&mut self,
                          l_mgr: &mut LayersManager,
                          event: &KeyEvent,
-                         tap_fx: &Effect,
-                         _hold_fx: &Effect) -> OutEffects {
+                         th_cfg: &TapHoldCfg) -> OutEffects {
         let state = &mut self.states[event.code as usize];
         let value = KeyValue::from(event.value);
 
@@ -140,8 +157,8 @@ impl TapHoldMgr {
                 self.clear_waiting(l_mgr);
 
                 OutEffects::new_multiple(STOP, vec![
-                    EffectValue::new(tap_fx.clone(), KeyValue::Press),
-                    EffectValue::new(tap_fx.clone(), KeyValue::Release)
+                    EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Press),
+                    EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Release)
                 ])
             },
 
@@ -155,8 +172,7 @@ impl TapHoldMgr {
     fn handle_th_idle(&mut self,
                       l_mgr: &mut LayersManager,
                       event: &KeyEvent,
-                      tap_fx: &Effect,
-                      _hold_fx: &Effect) -> OutEffects {
+                      th_cfg: &TapHoldCfg) -> OutEffects {
         let state = &mut self.states[event.code as usize];
         assert!(*state == TapHoldState::ThIdle);
 
@@ -177,7 +193,7 @@ impl TapHoldMgr {
 
             KeyValue::Release => {
                 // Forward the release
-                OutEffects::new(STOP, tap_fx.clone(), KeyValue::Release)
+                OutEffects::new(STOP, th_cfg.tap_fx.clone(), KeyValue::Release)
             },
 
             KeyValue::Repeat => {
@@ -191,12 +207,11 @@ impl TapHoldMgr {
     fn process_tap_hold_key(&mut self,
                             l_mgr: &mut LayersManager,
                             event: &KeyEvent,
-                            tap_fx: &Effect,
-                            hold_fx: &Effect) -> OutEffects {
+                            th_cfg: &TapHoldCfg) -> OutEffects {
         match self.states[event.code as usize] {
-            TapHoldState::ThIdle => self.handle_th_idle(l_mgr, event, tap_fx, hold_fx),
-            TapHoldState::ThWaiting(_) => self.handle_th_waiting(l_mgr, event, tap_fx, hold_fx),
-            TapHoldState::ThHolding => self.handle_th_holding(l_mgr, event, tap_fx, hold_fx),
+            TapHoldState::ThIdle => self.handle_th_idle(l_mgr, event, th_cfg),
+            TapHoldState::ThWaiting(_) => self.handle_th_waiting(l_mgr, event, th_cfg),
+            TapHoldState::ThHolding => self.handle_th_holding(l_mgr, event, th_cfg),
         }
     }
 
@@ -218,14 +233,6 @@ impl TapHoldMgr {
         }
     }
 
-    fn get_th_effects_from_action(action: &Action) -> Option<(Effect, Effect)> {
-        match action {
-            Action::TapHold(tap_fx, hold_fx) => Some((tap_fx.clone(),
-                                                      hold_fx.clone())),
-            _ => None
-        }
-    }
-
     fn process_non_tap_hold_key(&mut self,
                                 l_mgr: &mut LayersManager,
                                 event: &KeyEvent) -> OutEffects {
@@ -233,20 +240,21 @@ impl TapHoldMgr {
         let waiting_keys: Vec<KeyCode> = self.waiting_keys.drain(..).collect();
 
         for waiting in waiting_keys {
-            let merged_key = l_mgr.get_mut(waiting);
-            let state = &mut self.states[waiting as usize];
-            let (tap_fx, hold_fx) = Self::get_th_effects_from_action(&merged_key.action).unwrap();
+            let action = &l_mgr.get(waiting).action;
+            let th_cfg = TapHoldCfg::from_action(&action);
+
             Self::unlock_key(l_mgr, waiting);
 
+            let state = &mut self.states[waiting as usize];
             if Self::is_waiting_over(&state, event) {
                 // Append the press hold_fx to the output
-                out.insert(hold_fx.clone(), KeyValue::Press);
+                out.insert(th_cfg.hold_fx.clone(), KeyValue::Press);
                 *state = TapHoldState::ThHolding;
                 self.insert_holding(l_mgr, waiting);
 
             } else {
                 // Flush the press and release tap_fx
-                out.insert(tap_fx, KeyValue::Press);
+                out.insert(th_cfg.tap_fx, KeyValue::Press);
 
                 // Revert to the idle state
                 *state = TapHoldState::ThIdle;
@@ -261,9 +269,11 @@ impl TapHoldMgr {
     // Returns true if processed, false if skipped
     pub fn process(&mut self, l_mgr: &mut LayersManager, event: &KeyEvent) -> OutEffects {
         let code = event.code;
-        let merged_key: &mut MergedKey = l_mgr.get_mut(code);
-        if let Action::TapHold(tap_fx, hold_fx) = merged_key.action.clone() {
-            self.process_tap_hold_key(l_mgr, event, &tap_fx, &hold_fx)
+        let action = &l_mgr.get(code).action;
+
+        if let Action::TapHold(..) = action {
+            let th_cfg = TapHoldCfg::from_action(action);
+            self.process_tap_hold_key(l_mgr, event, &th_cfg)
         } else {
             self.process_non_tap_hold_key(l_mgr, event)
         }
@@ -283,8 +293,6 @@ use crate::cfg::*;
 use crate::keys::KeyCode::*;
 #[cfg(test)]
 use crate::effects::Effect::*;
-#[cfg(test)]
-use crate::actions::Action::*;
 
 #[test]
 fn test_skipped() {

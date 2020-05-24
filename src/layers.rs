@@ -37,6 +37,7 @@ type LayersStates = Vec<bool>;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LockOwner {
     LkTapHold,
+    LkTapDance,
     LkSticky,
 }
 
@@ -174,13 +175,6 @@ impl LayersManager {
 
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         match &self.merged[usize::from(key)] {
-            Some(merged_key) => merged_key,
-            _ => panic!("Invalid KeyCode")
-        }
-    }
-
-    pub fn get_mut(&mut self, key: KeyCode) -> &mut MergedKey {
-        match &mut self.merged[usize::from(key)] {
             Some(merged_key) => merged_key,
             _ => panic!("Invalid KeyCode")
         }

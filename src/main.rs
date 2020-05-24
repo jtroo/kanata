@@ -20,6 +20,7 @@ use kbd_out::KbdOut;
 use layers::LayersManager;
 use ktrl::Ktrl;
 use actions::TapHoldMgr;
+use actions::TapDanceMgr;
 use effects::StickyState;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
@@ -105,10 +106,11 @@ fn main() -> Result<(), std::io::Error> {
     l_mgr.init();
 
     let th_mgr = TapHoldMgr::new();
+    let td_mgr = TapDanceMgr::new();
     let sticky = StickyState::new();
     info!("ktrl: Setup Complete");
 
-    let mut ktrl = Ktrl{kbd_in, kbd_out, l_mgr, th_mgr, sticky};
+    let mut ktrl = Ktrl{kbd_in, kbd_out, l_mgr, th_mgr, td_mgr, sticky};
     ktrl.event_loop()?;
 
     Ok(())

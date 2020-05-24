@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 use crate::keys::KeyEvent;
 use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
+use crate::actions::TapDanceMgr;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
 use crate::effects::StickyState;
@@ -16,10 +17,17 @@ pub struct Ktrl {
     pub kbd_out: KbdOut,
     pub l_mgr: LayersManager,
     pub th_mgr: TapHoldMgr,
+    pub td_mgr: TapDanceMgr,
     pub sticky: StickyState,
 }
 
 impl Ktrl {
+    //
+    // TODO:
+    // ----
+    // Refactor this to unicast if special key,
+    // and broadcast if regular tap key.
+    //
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), std::io::Error> {
         // Handle TapHold action keys
         let th_out = self.th_mgr.process(&mut self.l_mgr, event);
@@ -30,7 +38,19 @@ impl Ktrl {
         }
 
         // Handle leftover effect(s)
-        if !th_out.stop_processing {
+        if th_out.stop_processing {
+            return Ok(());
+        }
+
+        let td_out = self.td_mgr.process(&mut self.l_mgr, event);
+        if let Some(td_fx_vals) = td_out.effects {
+            for fx_val in td_fx_vals {
+                perform_effect(self, fx_val)?
+            }
+        }
+
+        // Handle leftover effect(s)
+        if !td_out.stop_processing {
             let leftover_fx_val = key_event_to_fx_val(&self.l_mgr, event);
             perform_effect(self, leftover_fx_val)?;
         }
