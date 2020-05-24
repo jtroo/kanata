@@ -5,8 +5,11 @@
     layers: [
         // Layer 0: Base Layer
         {
-            KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
-            KEY_D: TapDance(3, Key(KEY_D), KeySticky(KEY_LEFTSHIFT)),
+            // This sticky TD is very useful for Spacemacs helm up-down navigation with J/K
+            KEY_F:   TapDance(2, Key(KEY_F), KeySticky(KEY_LEFTCTRL)),
+
+            // KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
+            // KEY_D:   TapDance(3, Key(KEY_D), KeySticky(KEY_LEFTSHIFT)),
             KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
             KEY_F7:  Tap(MomentaryLayer(1)),
             KEY_F8:  Tap(Key(KEY_A)),

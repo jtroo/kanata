@@ -1,7 +1,4 @@
 // std
-use std::vec::Vec;
-use std::collections::HashSet;
-
 // ktrl
 use crate::layers::LockOwner;
 use crate::layers::LayersManager;
@@ -53,26 +50,20 @@ pub struct TapDanceWaiting {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TapDanceState {
     TdIdle,
-    TdWaiting(TapDanceWaiting),
+    TdDancing(TapDanceWaiting),
 }
 
 pub struct TapDanceMgr {
-    // KEY_MAX elements
-    states: Vec<TapDanceState>,
-
-    // A list of keys that are currently in TdWaiting
-    waiting_keys: HashSet<KeyCode>,
+    dancing: Option<KeyCode>,
+    state: TapDanceState,
 }
 
 // --------------- TapDance-specific Functions ----------------------
 
 impl TapDanceMgr {
     pub fn new() -> Self {
-        let mut states = Vec::new();
-        states.resize_with(KeyCode::KEY_MAX as usize, || TapDanceState::TdIdle);
-
-        Self{states,
-             waiting_keys: HashSet::new()}
+        Self{state: TapDanceState::TdIdle,
+             dancing: None}
     }
 
     fn lock_key(l_mgr: &mut LayersManager, key: KeyCode) {
@@ -83,41 +74,49 @@ impl TapDanceMgr {
         l_mgr.unlock_key(key, LockOwner::LkTapDance);
     }
 
-    fn insert_waiting(&mut self, l_mgr: &mut LayersManager, key: KeyCode) {
-        self.waiting_keys.insert(key);
+    fn set_dancing(&mut self, l_mgr: &mut LayersManager, key: KeyCode) {
+        self.dancing = Some(key);
         Self::lock_key(l_mgr, key);
     }
 
-    fn remove_waiting(&mut self, l_mgr: &mut LayersManager, key: KeyCode) {
-        self.waiting_keys.remove(&key);
-        Self::unlock_key(l_mgr, key);
-    }
-
-    fn clear_waiting(&mut self, l_mgr: &mut LayersManager) {
-        for key in &self.waiting_keys {
-            Self::unlock_key(l_mgr, *key);
+    fn clear_dancing(&mut self, l_mgr: &mut LayersManager) {
+        if let Some(dancing) = self.dancing {
+            Self::unlock_key(l_mgr, dancing);
+        } else {
+            unreachable!();
         }
 
-        self.waiting_keys.clear();
+        self.dancing = None;
     }
 
-    fn handle_th_waiting(&mut self,
+    fn handle_th_dancing(&mut self,
                          l_mgr: &mut LayersManager,
                          event: &KeyEvent,
                          td_cfg: &TapDanceCfg) -> OutEffects {
-        let state = &mut self.states[event.code as usize];
-        let wait_state = inner!(state, if TapDanceState::TdWaiting);
-        let value = KeyValue::from(event.value);
+        let did_key_change = event.code != self.dancing.unwrap().clone();
+        if did_key_change {
+            let mut fx_vals = self.get_buffered_key_events(td_cfg).effects.unwrap();
+            self.state = TapDanceState::TdIdle;
+            self.clear_dancing(l_mgr);
+            let idle_out = self.handle_th_idle(l_mgr, event, td_cfg);
+            if let Some(mut new_fx_vals) = idle_out.effects {
+                 fx_vals.append(&mut new_fx_vals);
+            }
+            return OutEffects::new_multiple(STOP, fx_vals);
+        }
 
+        let value = KeyValue::from(event.value);
+        let wait_state = inner!(&self.state, if TapDanceState::TdDancing);
         match value {
             KeyValue::Press => {
                 let mut new_state = wait_state.clone();
                 new_state.presses_so_far += 1;
 
                 if new_state.presses_so_far >= td_cfg.len {
+                    self.state = TapDanceState::TdDancing(new_state);
                     OutEffects::new(STOP, td_cfg.dance_fx.clone(), KeyValue::Press)
                 } else {
-                    *state = TapDanceState::TdWaiting(new_state);
+                    self.state = TapDanceState::TdDancing(new_state);
                     OutEffects::empty(STOP)
                 }
             },
@@ -125,12 +124,12 @@ impl TapDanceMgr {
                 let mut new_state = wait_state.clone();
                 new_state.releases_so_far += 1;
 
-                if wait_state.releases_so_far >= td_cfg.len {
-                    *state = TapDanceState::TdIdle;
-                    self.remove_waiting(l_mgr, event.code);
+                if new_state.releases_so_far >= td_cfg.len {
+                    self.state = TapDanceState::TdIdle;
+                    self.clear_dancing(l_mgr);
                     OutEffects::new(STOP, td_cfg.dance_fx.clone(), KeyValue::Release)
                 } else {
-                    *state = TapDanceState::TdWaiting(new_state);
+                    self.state = TapDanceState::TdDancing(new_state);
                     OutEffects::empty(STOP)
                 }
             },
@@ -146,20 +145,19 @@ impl TapDanceMgr {
                       l_mgr: &mut LayersManager,
                       event: &KeyEvent,
                       td_cfg: &TapDanceCfg) -> OutEffects {
-        let state = &mut self.states[event.code as usize];
-        assert!(*state == TapDanceState::TdIdle);
+        assert!(self.state == TapDanceState::TdIdle);
 
         let keycode: KeyCode = event.code;
         let value = KeyValue::from(event.value);
 
         match value {
             KeyValue::Press => {
-                *state = TapDanceState::TdWaiting(
+                self.state = TapDanceState::TdDancing(
                     TapDanceWaiting{timestamp: event.time.clone(),
                                     presses_so_far: 1,
                                     releases_so_far: 0}
                 );
-                self.insert_waiting(l_mgr, keycode);
+                self.set_dancing(l_mgr, keycode);
                 OutEffects::empty(STOP)
             },
 
@@ -180,18 +178,18 @@ impl TapDanceMgr {
                             l_mgr: &mut LayersManager,
                             event: &KeyEvent,
                             td_cfg: &TapDanceCfg) -> OutEffects {
-        let state = &self.states[event.code as usize];
+        let state = &self.state;
         match state{
             TapDanceState::TdIdle => self.handle_th_idle(l_mgr, event, td_cfg),
-            TapDanceState::TdWaiting(_) => self.handle_th_waiting(l_mgr, event, td_cfg),
+            TapDanceState::TdDancing(_) => self.handle_th_dancing(l_mgr, event, td_cfg),
         }
     }
 
     // --------------- Non-TapDance Functions ----------------------
 
-    // fn is_waiting_over(key_state: &TapDanceState, event: &KeyEvent) -> bool {
+    // fn is_dancing_over(key_state: &TapDanceState, event: &KeyEvent) -> bool {
     //     let new_timestamp = event.time.clone();
-    //     let wait_start_timestamp = inner!(key_state, if TapDanceState::TdWaiting).timestamp.clone();
+    //     let wait_start_timestamp = inner!(key_state, if TapDanceState::TdDancing).timestamp.clone();
 
     //     let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
     //     let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
@@ -205,29 +203,41 @@ impl TapDanceMgr {
     //     }
     // }
 
+    fn get_buffered_key_events(&self, td_cfg: &TapDanceCfg) -> OutEffects {
+        let mut out = OutEffects::empty(STOP);
+        let wait_state = inner!(&self.state, if TapDanceState::TdDancing);
+
+        for _i in 0..wait_state.presses_so_far {
+            out.insert(td_cfg.tap_fx.clone(), KeyValue::Press);
+        }
+        for _i in 0..wait_state.releases_so_far {
+            out.insert(td_cfg.tap_fx.clone(), KeyValue::Release);
+        }
+
+        out
+    }
+
     fn process_non_tap_dance_key(&mut self,
                                 l_mgr: &mut LayersManager,
                                 _event: &KeyEvent) -> OutEffects {
-        let mut out = OutEffects::empty(CONTINUE);
+        match self.dancing {
+            None => {
+                OutEffects::empty(CONTINUE)
+            },
 
-        for waiting in &self.waiting_keys {
-            let action = &l_mgr.get(*waiting).action;
-            let td_cfg = TapDanceCfg::from_action(action);
-            let state = &mut self.states[*waiting as usize];
-            let wait_state = inner!(state, if TapDanceState::TdWaiting);
+            Some(dancing) => {
+                let action = &l_mgr.get(dancing).action;
+                let td_cfg = TapDanceCfg::from_action(action);
 
-            for _i in 0..wait_state.presses_so_far {
-                out.insert(td_cfg.tap_fx.clone(), KeyValue::Press);
+                let mut out = self.get_buffered_key_events(&td_cfg);
+                out.stop_processing = CONTINUE;
+
+                self.state = TapDanceState::TdIdle;
+                self.clear_dancing(l_mgr);
+
+                out
             }
-            for _i in 0..wait_state.releases_so_far {
-                out.insert(td_cfg.tap_fx.clone(), KeyValue::Release);
-            }
-
-            *state = TapDanceState::TdIdle;
         }
-
-        self.clear_waiting(l_mgr);
-        out
     }
 
     // --------------- High-Level Functions ----------------------
@@ -247,6 +257,56 @@ impl TapDanceMgr {
 
     #[cfg(test)]
     pub fn is_idle(&self) -> bool {
-        self.waiting_keys.len() == 0
+        self.dancing.is_none()
     }
 }
+
+#[cfg(test)]
+use crate::cfg::*;
+#[cfg(test)]
+use crate::keys::KeyCode::*;
+#[cfg(test)]
+use crate::effects::Effect::*;
+
+#[test]
+fn test_tap_dance() {
+    let layers = CfgLayers::new(vec![
+        // 0: base layer
+        vec![
+            (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
+        ],
+    ]);
+
+    let mut l_mgr = LayersManager::new(layers);
+    let mut th_mgr = TapDanceMgr::new();
+
+    l_mgr.init();
+
+    let ev_th_press = KeyEvent::new_press(KEY_A);
+    let ev_th_release = KeyEvent::new_release(KEY_A);
+
+    // 1st
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::empty(STOP));
+
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
+    assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::empty(STOP));
+
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::new(STOP, Key(KEY_LEFTCTRL), KeyValue::Press));
+    assert_eq!(th_mgr.is_idle(), false);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), true);
+    assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_release), OutEffects::new(STOP, Key(KEY_LEFTCTRL), KeyValue::Release));
+
+    assert_eq!(th_mgr.is_idle(), true);
+    assert_eq!(l_mgr.is_key_locked(KEY_A), false);
+}
+
+// TODO
+// 1. Test Action::Tap interruption
+// 2. Test Action::TapHold interruption
+// 3. Test other Action::TapDance interruption
+// 4. Test dance timeout
