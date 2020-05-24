@@ -1,7 +1,6 @@
 // std
 use std::vec::Vec;
 use std::collections::HashSet;
-use std::collections::HashMap;
 
 // ktrl
 use crate::layers::LockOwner;
@@ -37,7 +36,8 @@ pub enum TapHoldState {
     ThHolding,
 }
 pub struct TapHoldMgr {
-    states: HashMap<KeyCode, TapHoldState>,
+    // KEY_MAX elements
+    states: Vec<TapHoldState>,
 
     // A list of keys that are currently in ThWaiting
     waiting_keys: Vec<KeyCode>,
@@ -50,7 +50,10 @@ pub struct TapHoldMgr {
 
 impl TapHoldMgr {
     pub fn new() -> Self {
-        Self{states: HashMap::new(),
+        let mut states = Vec::new();
+        states.resize_with(KeyCode::KEY_MAX as usize, || TapHoldState::ThIdle);
+
+        Self{states,
              waiting_keys: Vec::new(),
              holding_keys: HashSet::new()}
     }
@@ -89,7 +92,7 @@ impl TapHoldMgr {
                          event: &KeyEvent,
                          _tap_fx: &Effect,
                          hold_fx: &Effect) -> OutEffects {
-        let state = self.states.get_mut(&event.code).unwrap();
+        let state = &mut self.states[event.code as usize];
         assert!(*state == TapHoldState::ThHolding);
         let value = KeyValue::from(event.value);
 
@@ -120,7 +123,7 @@ impl TapHoldMgr {
                          event: &KeyEvent,
                          tap_fx: &Effect,
                          _hold_fx: &Effect) -> OutEffects {
-        let state = self.states.get_mut(&event.code).unwrap();
+        let state = &mut self.states[event.code as usize];
         let value = KeyValue::from(event.value);
 
         match value {
@@ -154,7 +157,7 @@ impl TapHoldMgr {
                       event: &KeyEvent,
                       tap_fx: &Effect,
                       _hold_fx: &Effect) -> OutEffects {
-        let state = self.states.get_mut(&event.code).unwrap();
+        let state = &mut self.states[event.code as usize];
         assert!(*state == TapHoldState::ThIdle);
 
         let keycode: KeyCode = event.code;
@@ -190,16 +193,10 @@ impl TapHoldMgr {
                             event: &KeyEvent,
                             tap_fx: &Effect,
                             hold_fx: &Effect) -> OutEffects {
-        if !self.states.contains_key(&event.code) {
-            self.states.insert(event.code, TapHoldState::ThIdle);
-            self.handle_th_idle(l_mgr, event, tap_fx, hold_fx)
-        } else {
-            let state = &self.states[&event.code];
-            match &state {
-                TapHoldState::ThIdle => self.handle_th_idle(l_mgr, event, tap_fx, hold_fx),
-                TapHoldState::ThWaiting(_) => self.handle_th_waiting(l_mgr, event, tap_fx, hold_fx),
-                TapHoldState::ThHolding => self.handle_th_holding(l_mgr, event, tap_fx, hold_fx),
-            }
+        match self.states[event.code as usize] {
+            TapHoldState::ThIdle => self.handle_th_idle(l_mgr, event, tap_fx, hold_fx),
+            TapHoldState::ThWaiting(_) => self.handle_th_waiting(l_mgr, event, tap_fx, hold_fx),
+            TapHoldState::ThHolding => self.handle_th_holding(l_mgr, event, tap_fx, hold_fx),
         }
     }
 
@@ -237,7 +234,7 @@ impl TapHoldMgr {
 
         for waiting in waiting_keys {
             let merged_key = l_mgr.get_mut(waiting);
-            let state = self.states.get_mut(&waiting).unwrap();
+            let state = &mut self.states[waiting as usize];
             let (tap_fx, hold_fx) = Self::get_th_effects_from_action(&merged_key.action).unwrap();
             Self::unlock_key(l_mgr, waiting);
 
