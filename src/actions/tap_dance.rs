@@ -18,7 +18,7 @@ use crate::layers::{
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
-const TAP_DANCE_WAIT_PERIOD: i64 = 200000;
+const TAP_DANCE_WAIT_PERIOD: i64 = 600000;
 
 // This struct isn't used in Action::TapDance
 // due to overhead it'll create in the config file.
@@ -89,12 +89,29 @@ impl TapDanceMgr {
         self.dancing = None;
     }
 
+    fn did_dance_timeout(&self, event: &KeyEvent) -> bool {
+        let new_timestamp = event.time.clone();
+        let wait_start_timestamp = inner!(&self.state, if TapDanceState::TdDancing).timestamp.clone();
+        let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
+        let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
+
+        if secs_diff > 0 {
+            true
+        } else if usecs_diff > TAP_DANCE_WAIT_PERIOD {
+            true
+        } else {
+            false
+        }
+    }
+
     fn handle_th_dancing(&mut self,
                          l_mgr: &mut LayersManager,
                          event: &KeyEvent,
                          td_cfg: &TapDanceCfg) -> OutEffects {
+        let did_timeout = self.did_dance_timeout(event);
         let did_key_change = event.code != self.dancing.unwrap().clone();
-        if did_key_change {
+
+        if did_timeout || did_key_change {
             let mut fx_vals = self.get_buffered_key_events(td_cfg).effects.unwrap();
             self.state = TapDanceState::TdIdle;
             self.clear_dancing(l_mgr);
@@ -186,22 +203,6 @@ impl TapDanceMgr {
     }
 
     // --------------- Non-TapDance Functions ----------------------
-
-    // fn is_dancing_over(key_state: &TapDanceState, event: &KeyEvent) -> bool {
-    //     let new_timestamp = event.time.clone();
-    //     let wait_start_timestamp = inner!(key_state, if TapDanceState::TdDancing).timestamp.clone();
-
-    //     let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
-    //     let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
-
-    //     if secs_diff > 0 {
-    //         true
-    //     } else if usecs_diff > TAP_DANCE_WAIT_PERIOD {
-    //         true
-    //     } else {
-    //         false
-    //     }
-    // }
 
     fn get_buffered_key_events(&self, td_cfg: &TapDanceCfg) -> OutEffects {
         let mut out = OutEffects::empty(STOP);
