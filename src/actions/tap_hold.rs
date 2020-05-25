@@ -22,7 +22,7 @@ use crate::layers::{
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
-const TAP_HOLD_WAIT_PERIOD: i64 = 400000;
+const TAP_HOLD_WAIT_PERIOD: i64 = 550;
 
 // This struct isn't used in Action::TapHold
 // due to overhead it'll create in the config file.
@@ -228,14 +228,8 @@ impl TapHoldMgr {
 
         let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
         let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
-
-        if secs_diff > 0 {
-            true
-        } else if usecs_diff > TAP_HOLD_WAIT_PERIOD {
-            true
-        } else {
-            false
-        }
+        let diff = (secs_diff * 1_000_000) + usecs_diff;
+        dbg!(diff) >= TAP_HOLD_WAIT_PERIOD * 1000
     }
 
     fn process_non_tap_hold_key(&mut self,
