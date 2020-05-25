@@ -151,15 +151,20 @@ impl TapHoldMgr {
             },
 
             KeyValue::Release => {
-                // Forward the release.
-                // We didn't reach the hold state
+                let is_wait_over = Self::is_waiting_over(state, event);
                 *state = TapHoldState::ThIdle;
                 self.clear_waiting(l_mgr);
-
-                OutEffects::new_multiple(STOP, vec![
-                    EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Press),
-                    EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Release)
-                ])
+                if is_wait_over {
+                    OutEffects::new_multiple(STOP, vec![
+                        EffectValue::new(th_cfg.hold_fx.clone(), KeyValue::Press),
+                        EffectValue::new(th_cfg.hold_fx.clone(), KeyValue::Release)
+                    ])
+                } else {
+                    OutEffects::new_multiple(STOP, vec![
+                        EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Press),
+                        EffectValue::new(th_cfg.tap_fx.clone(), KeyValue::Release)
+                    ])
+                }
             },
 
             KeyValue::Repeat => {
