@@ -22,7 +22,7 @@ use crate::layers::{
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
-const TAP_HOLD_WAIT_PERIOD: i64 = 200000;
+const TAP_HOLD_WAIT_PERIOD: i64 = 400000;
 
 // This struct isn't used in Action::TapHold
 // due to overhead it'll create in the config file.
