@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum Effect {
-    None,
+    NoOp,
 
     Key(KeyCode),
     KeySticky(KeyCode),

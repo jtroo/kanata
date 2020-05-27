@@ -103,7 +103,7 @@ fn perform_key(kbd_out: &mut KbdOut, code: KeyCode, value: KeyValue) -> Result<(
 
 pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error> {
     match fx_val.fx {
-        Effect::None => Ok(()),
+        Effect::NoOp => Ok(()),
         Effect::Key(code) => perform_key(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::KeySeq(seq) => perform_keyseq(&mut ktrl.kbd_out, seq, fx_val.val),
         Effect::KeySticky(code) => perform_key_sticky(ktrl, code, fx_val.val),
