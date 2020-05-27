@@ -8,7 +8,6 @@ use crate::keys::KeyCode;
 pub use crate::actions::Action;
 pub use crate::actions::tap_hold::TapHoldState;
 pub use crate::effects::Effect;
-use crate::cfg::CfgLayers;
 
 // -------------- Constants -------------
 
@@ -86,9 +85,9 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(cfg: CfgLayers) -> Self {
+    pub fn new(layers: &Layers) -> Self {
         let merged = init_merged();
-        let layers = cfg.layers;
+        let layers = layers.clone();
         let layers_count = layers.len();
         let key_locks = HashMap::new();
 
@@ -302,9 +301,12 @@ use crate::effects::Effect::*;
 #[cfg(test)]
 use crate::actions::Action::*;
 
+#[cfg(test)]
+use crate::cfg::Cfg;
+
 #[test]
 fn test_mgr() {
-    let layers = CfgLayers::new(vec![
+    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             // Ex: switch CTRL <--> Capslock
@@ -330,7 +332,7 @@ fn test_mgr() {
         ],
     ]);
 
-    let mut mgr = LayersManager::new(layers);
+    let mut mgr = LayersManager::new(&cfg.layers);
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -395,7 +397,7 @@ fn test_mgr() {
 
 #[test]
 fn test_overlapping_keys() {
-    let layers = CfgLayers::new(vec![
+    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
@@ -408,7 +410,7 @@ fn test_overlapping_keys() {
         ],
     ]);
 
-    let mut mgr = LayersManager::new(layers);
+    let mut mgr = LayersManager::new(&cfg.layers);
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);

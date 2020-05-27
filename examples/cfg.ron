@@ -2,6 +2,8 @@
 //
 
 (
+    tap_hold_wait_time: 300,
+    tap_dance_wait_time: 300,
     layers: [
         // Layer 0: Base Layer
         {

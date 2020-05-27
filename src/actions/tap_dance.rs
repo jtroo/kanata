@@ -18,7 +18,6 @@ use crate::layers::{
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
-const TAP_DANCE_WAIT_PERIOD: i64 = 600000;
 
 // This struct isn't used in Action::TapDance
 // due to overhead it'll create in the config file.
@@ -56,14 +55,17 @@ pub enum TapDanceState {
 pub struct TapDanceMgr {
     dancing: Option<KeyCode>,
     state: TapDanceState,
+    wait_time: u64,
 }
 
 // --------------- TapDance-specific Functions ----------------------
 
 impl TapDanceMgr {
-    pub fn new() -> Self {
+    pub fn new(wait_time: u64) -> Self {
+        assert!(wait_time < (i64::MAX as u64));
         Self{state: TapDanceState::TdIdle,
-             dancing: None}
+             dancing: None,
+             wait_time}
     }
 
     fn lock_key(l_mgr: &mut LayersManager, key: KeyCode) {
@@ -94,14 +96,8 @@ impl TapDanceMgr {
         let wait_start_timestamp = inner!(&self.state, if TapDanceState::TdDancing).timestamp.clone();
         let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
         let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
-
-        if secs_diff > 0 {
-            true
-        } else if usecs_diff > TAP_DANCE_WAIT_PERIOD {
-            true
-        } else {
-            false
-        }
+        let diff = (secs_diff * 1_000_000) + usecs_diff;
+        diff >= (self.wait_time as i64) * 1000
     }
 
     fn handle_th_dancing(&mut self,
@@ -271,15 +267,15 @@ use crate::effects::Effect::*;
 
 #[test]
 fn test_tap_dance() {
-    let layers = CfgLayers::new(vec![
+    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
         ],
     ]);
 
-    let mut l_mgr = LayersManager::new(layers);
-    let mut th_mgr = TapDanceMgr::new();
+    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut th_mgr = TapDanceMgr::new(500);
 
     l_mgr.init();
 

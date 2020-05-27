@@ -22,7 +22,6 @@ use crate::layers::{
 
 const STOP: bool = true;
 const CONTINUE: bool = false;
-const TAP_HOLD_WAIT_PERIOD: i64 = 550;
 
 // This struct isn't used in Action::TapHold
 // due to overhead it'll create in the config file.
@@ -63,18 +62,23 @@ pub struct TapHoldMgr {
 
     // A list of keys that are currently in ThHolding
     holding_keys: HashSet<KeyCode>,
+
+    wait_time: u64,
 }
 
 // --------------- TapHold-specific Functions ----------------------
 
 impl TapHoldMgr {
-    pub fn new() -> Self {
+    pub fn new(wait_time: u64) -> Self {
+        assert!(wait_time < (i64::MAX as u64));
+
         let mut states = Vec::new();
         states.resize_with(KeyCode::KEY_MAX as usize, || TapHoldState::ThIdle);
 
         Self{states,
              waiting_keys: Vec::new(),
-             holding_keys: HashSet::new()}
+             holding_keys: HashSet::new(),
+             wait_time}
     }
 
     fn lock_key(l_mgr: &mut LayersManager, key: KeyCode) {
@@ -140,7 +144,6 @@ impl TapHoldMgr {
                          l_mgr: &mut LayersManager,
                          event: &KeyEvent,
                          th_cfg: &TapHoldCfg) -> OutEffects {
-        let state = &mut self.states[event.code as usize];
         let value = KeyValue::from(event.value);
 
         match value {
@@ -151,8 +154,12 @@ impl TapHoldMgr {
             },
 
             KeyValue::Release => {
-                let is_wait_over = Self::is_waiting_over(state, event);
+                let state = &self.states[event.code as usize];
+                let is_wait_over = self.is_waiting_over(state, event);
+
+                let state = &mut self.states[event.code as usize];
                 *state = TapHoldState::ThIdle;
+
                 self.clear_waiting(l_mgr);
                 if is_wait_over {
                     OutEffects::new_multiple(STOP, vec![
@@ -222,14 +229,14 @@ impl TapHoldMgr {
 
     // --------------- Non-TapHold Functions ----------------------
 
-    fn is_waiting_over(key_state: &TapHoldState, event: &KeyEvent) -> bool {
+    fn is_waiting_over(&self, key_state: &TapHoldState, event: &KeyEvent) -> bool {
         let new_timestamp = event.time.clone();
         let wait_start_timestamp = inner!(key_state, if TapHoldState::ThWaiting).timestamp.clone();
 
         let secs_diff = new_timestamp.tv_sec - wait_start_timestamp.tv_sec;
         let usecs_diff  = new_timestamp.tv_usec - wait_start_timestamp.tv_usec;
         let diff = (secs_diff * 1_000_000) + usecs_diff;
-        diff >= TAP_HOLD_WAIT_PERIOD * 1000
+        diff >= (self.wait_time as i64) * 1000
     }
 
     fn process_non_tap_hold_key(&mut self,
@@ -244,10 +251,13 @@ impl TapHoldMgr {
 
             Self::unlock_key(l_mgr, waiting);
 
-            let state = &mut self.states[waiting as usize];
-            if Self::is_waiting_over(&state, event) {
+            let state = &self.states[waiting as usize];
+            let is_wait_over = self.is_waiting_over(state, event);
+
+            if is_wait_over {
                 // Append the press hold_fx to the output
                 out.insert(th_cfg.hold_fx.clone(), KeyValue::Press);
+                let state = &mut self.states[waiting as usize];
                 *state = TapHoldState::ThHolding;
                 self.insert_holding(l_mgr, waiting);
 
@@ -256,6 +266,7 @@ impl TapHoldMgr {
                 out.insert(th_cfg.tap_fx, KeyValue::Press);
 
                 // Revert to the idle state
+                let state = &mut self.states[waiting as usize];
                 *state = TapHoldState::ThIdle;
             }
         }
@@ -293,10 +304,13 @@ use crate::keys::KeyCode::*;
 #[cfg(test)]
 use crate::effects::Effect::*;
 
+#[cfg(test)]
+const TEST_TAP_HOLD_WAIT_PERIOD: u64 = 550;
+
 #[test]
 fn test_skipped() {
-    let mut th_mgr = TapHoldMgr::new();
-    let mut l_mgr = LayersManager::new(Cfg::empty());
+    let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
+    let mut l_mgr = LayersManager::new(&vec![]);
     let ev_non_th_press = KeyEvent::new_press(KEY_A);
     let ev_non_th_release = KeyEvent::new_release(KEY_A);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::empty(CONTINUE));
@@ -306,7 +320,7 @@ fn test_skipped() {
 
 #[test]
 fn test_tap() {
-    let layers = Cfg::new(vec![
+    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
@@ -314,8 +328,8 @@ fn test_tap() {
         ],
     ]);
 
-    let mut l_mgr = LayersManager::new(layers);
-    let mut th_mgr = TapHoldMgr::new();
+    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();
 
@@ -346,7 +360,7 @@ fn test_tap() {
     assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
     // interruptions: 1
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
+    ev_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 1) as i64;
     let ev_non_th_press = KeyEvent::new_press(KEY_W);
     let ev_non_th_release = KeyEvent::new_release(KEY_W);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
@@ -356,7 +370,7 @@ fn test_tap() {
     assert_eq!(th_mgr.is_idle(), true);
 
     // interruptions: 2
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
+    ev_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 1) as i64;
     let ev_non_th_press = KeyEvent::new_press(KEY_W);
     let ev_non_th_release = KeyEvent::new_release(KEY_W);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
@@ -370,7 +384,7 @@ fn test_tap() {
 
 #[test]
 fn test_hold() {
-    let layers = Cfg::new(vec![
+    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
@@ -378,8 +392,8 @@ fn test_hold() {
         ],
     ]);
 
-    let mut l_mgr = LayersManager::new(layers);
-    let mut th_mgr = TapHoldMgr::new();
+    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();
 
@@ -403,9 +417,9 @@ fn test_hold() {
     // Hold with other key
     let mut ev_non_th_press = KeyEvent::new_press(KEY_W);
     let mut ev_non_th_release = KeyEvent::new_release(KEY_W);
-    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
-    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 2;
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 3;
+    ev_non_th_press.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 1) as i64;
+    ev_non_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 2) as i64;
+    ev_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 3) as i64;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
@@ -419,9 +433,9 @@ fn test_hold() {
     // -------------------------------
 
     // Hold with other key (different order)
-    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 2;
-    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 3;
+    ev_non_th_press.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 1) as i64;
+    ev_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 2) as i64;
+    ev_non_th_release.time.tv_usec = (TEST_TAP_HOLD_WAIT_PERIOD * 1000 + 3) as i64;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));

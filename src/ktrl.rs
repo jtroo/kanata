@@ -34,11 +34,11 @@ impl Ktrl {
 
         let cfg_str = read_to_string(config_path)?;
         let cfg = cfg::parse(&cfg_str);
-        let mut l_mgr = LayersManager::new(cfg);
+        let mut l_mgr = LayersManager::new(&cfg.layers);
         l_mgr.init();
 
-        let th_mgr = TapHoldMgr::new();
-        let td_mgr = TapDanceMgr::new();
+        let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
+        let td_mgr = TapDanceMgr::new(cfg.tap_dance_wait_time);
         let sticky = StickyState::new();
         let dj = Dj::new();
 

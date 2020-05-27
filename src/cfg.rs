@@ -10,17 +10,19 @@ use crate::actions::Action;
 use ron::de;
 use serde::Deserialize;
 
-// ------------------- CfgLayers ---------------------
+// ------------------- Cfg ---------------------
 
 /// This is a thin-wrapper around `layers::Layers`.
 /// It's used only for easy constructions of configuration layers.
 /// It encapsulates away the conversion of the input vectors to maps.
 #[derive(Debug, Deserialize)]
-pub struct CfgLayers {
+pub struct Cfg {
     pub layers: Layers,
+    pub tap_hold_wait_time: u64,
+    pub tap_dance_wait_time: u64,
 }
 
-impl CfgLayers {
+impl Cfg {
     #[cfg(test)]
     pub fn new(layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
         let mut converted: Vec<Layer> = vec![];
@@ -28,18 +30,16 @@ impl CfgLayers {
             converted.push(layer_vec.into_iter().collect::<Layer>());
         }
 
-        Self{layers: converted}
-    }
-
-    #[cfg(test)]
-    pub fn empty() -> Self {
-        Self{layers: Vec::new()}
+        Self{layers: converted,
+             tap_hold_wait_time: 0,
+             tap_dance_wait_time: 0,
+        }
     }
 }
 
 // ------------------- Util Functions ---------------------
 
-pub fn parse(cfg: &String) -> CfgLayers {
+pub fn parse(cfg: &String) -> Cfg {
     de::from_str(cfg)
         .expect("Failed to parse the config file")
 }
