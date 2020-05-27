@@ -4,7 +4,7 @@ use simplelog::*;
 use clap::{App, Arg};
 use nix::unistd::Uid;
 use std::io::{Error, ErrorKind::*};
-use std::fs::{File, read_to_string};
+use std::fs::File;
 
 mod kbd_in;
 mod kbd_out;
@@ -17,11 +17,7 @@ mod cfg;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
-use layers::LayersManager;
 use ktrl::Ktrl;
-use actions::TapHoldMgr;
-use actions::TapDanceMgr;
-use effects::StickyState;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
@@ -97,20 +93,10 @@ fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
 
 fn main() -> Result<(), std::io::Error> {
     let (kbd_path, config_path) = cli_init()?;
-    let kbd_in = KbdIn::new(&kbd_path)?;
-    let kbd_out = KbdOut::new()?;
 
-    let cfg_str = read_to_string(config_path)?;
-    let cfg = cfg::parse(&cfg_str);
-    let mut l_mgr = LayersManager::new(cfg);
-    l_mgr.init();
-
-    let th_mgr = TapHoldMgr::new();
-    let td_mgr = TapDanceMgr::new();
-    let sticky = StickyState::new();
+    let mut ktrl = Ktrl::new(kbd_path, config_path)?;
     info!("ktrl: Setup Complete");
 
-    let mut ktrl = Ktrl{kbd_in, kbd_out, l_mgr, th_mgr, td_mgr, sticky};
     ktrl.event_loop()?;
 
     Ok(())

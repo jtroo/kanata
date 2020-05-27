@@ -3,6 +3,7 @@ use crate::keys::KeyCode::*;
 use crate::keys::KeyValue;
 use crate::effects::Effect;
 use crate::effects::EffectValue;
+use crate::effects::KSnd;
 use crate::kbd_out::KbdOut;
 use crate::layers::LayerIndex;
 use crate::ktrl::Ktrl;
@@ -28,6 +29,14 @@ lazy_static::lazy_static! {
             .map(|evkey| KeyCode::from(evkey.clone()))
             .collect()
     };
+}
+
+fn perform_play_sound(ktrl: &mut Ktrl, snd: KSnd, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.dj.play(snd)
+    }
+
+    Ok(())
 }
 
 fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
@@ -76,6 +85,7 @@ fn perform_key(kbd_out: &mut KbdOut, code: KeyCode, value: KeyValue) -> Result<(
 
 pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error> {
     match fx_val.fx {
+        Effect::None => Ok(()),
         Effect::Key(code) => perform_key(&mut ktrl.kbd_out, code, fx_val.val),
         Effect::KeySeq(seq) => perform_keyseq(&mut ktrl.kbd_out, seq, fx_val.val),
         Effect::KeySticky(code) => perform_key_sticky(ktrl, code, fx_val.val),
@@ -83,5 +93,6 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
+        Effect::Sound(snd) => perform_play_sound(ktrl, snd, fx_val.val),
     }
 }

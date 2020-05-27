@@ -1,7 +1,11 @@
 mod sticky;
+mod dj;
+
 pub mod perform;
-pub use sticky::StickyState;
 pub use perform::perform_effect;
+pub use sticky::StickyState;
+pub use dj::KSnd;
+pub use dj::Dj;
 
 use crate::keys::KeyValue;
 use crate::keys::KeyCode;
@@ -14,6 +18,8 @@ use serde::Deserialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub enum Effect {
+    None,
+
     Key(KeyCode),
     KeySticky(KeyCode),
     KeySeq(Vec<KeyCode>),
@@ -23,6 +29,9 @@ pub enum Effect {
 
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
+
+    Sound(KSnd),
+    // SoundEx(String),
 
     // Not Implemented Yet
     // ---------------------

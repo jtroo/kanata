@@ -1,9 +1,13 @@
 use evdev_rs::enums::EventType;
 use log::info;
 
+use std::convert::TryFrom;
+use std::path::PathBuf;
+use std::fs::read_to_string;
+
+use crate::cfg;
 use crate::KbdIn;
 use crate::KbdOut;
-use std::convert::TryFrom;
 use crate::keys::KeyEvent;
 use crate::layers::LayersManager;
 use crate::actions::TapHoldMgr;
@@ -11,6 +15,7 @@ use crate::actions::TapDanceMgr;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
 use crate::effects::StickyState;
+use crate::effects::Dj;
 
 pub struct Ktrl {
     pub kbd_in: KbdIn,
@@ -19,9 +24,27 @@ pub struct Ktrl {
     pub th_mgr: TapHoldMgr,
     pub td_mgr: TapDanceMgr,
     pub sticky: StickyState,
+    pub dj: Dj,
 }
 
 impl Ktrl {
+    pub fn new(kbd_path: PathBuf, config_path: PathBuf) -> Result<Self, std::io::Error> {
+        let kbd_in = KbdIn::new(&kbd_path)?;
+        let kbd_out = KbdOut::new()?;
+
+        let cfg_str = read_to_string(config_path)?;
+        let cfg = cfg::parse(&cfg_str);
+        let mut l_mgr = LayersManager::new(cfg);
+        l_mgr.init();
+
+        let th_mgr = TapHoldMgr::new();
+        let td_mgr = TapDanceMgr::new();
+        let sticky = StickyState::new();
+        let dj = Dj::new();
+
+        Ok(Self{kbd_in, kbd_out, l_mgr, th_mgr, td_mgr, sticky, dj})
+    }
+
     //
     // TODO:
     // ----
