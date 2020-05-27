@@ -44,7 +44,6 @@ lazy_static::lazy_static! {
         [
             (KSnd::Click1, format!("{}/click1.wav", snds_dir)),
             (KSnd::Click2, format!("{}/click2.wav", snds_dir)),
-            (KSnd::Click3, format!("{}/click3.wav", snds_dir)),
             (KSnd::Sticky, format!("{}/sticky.wav", snds_dir)),
             (KSnd::Error, format!("{}/error.wav", snds_dir)),
         ].iter().cloned().collect()
@@ -55,7 +54,6 @@ lazy_static::lazy_static! {
 pub enum KSnd {
     Click1,
     Click2,
-    Click3,
     Sticky,
     Error,
 }
