@@ -61,6 +61,7 @@ pub enum KSnd {
 pub struct Dj {
     dev: rodio::Device,
     ksnds: HashMap<KSnd, SoundImpl>,
+    custom_snds: HashMap<String, SoundImpl>,
 }
 
 impl Dj {
@@ -77,11 +78,20 @@ impl Dj {
         let dev = rodio::default_output_device()
             .expect("Failed to open the default sound device");
         let ksnds = Self::make_ksnds();
-        Self{dev, ksnds}
+        Self{dev, ksnds, custom_snds: HashMap::new()}
     }
 
     pub fn play(&self, snd: KSnd) {
         let snd = &self.ksnds[&snd];
+        rodio::play_raw(&self.dev, snd.decoder().convert_samples());
+    }
+
+    pub fn play_custom(&mut self, path: &String) {
+        if !self.custom_snds.contains_key(path) {
+            self.custom_snds.insert(path.clone(), SoundImpl::load(path).unwrap());
+        }
+
+        let snd = &self.custom_snds[path];
         rodio::play_raw(&self.dev, snd.decoder().convert_samples());
     }
 }

@@ -31,7 +31,7 @@ pub enum Effect {
     MomentaryLayer(LayerIndex),
 
     Sound(KSnd),
-    // SoundEx(String),
+    SoundEx(String),
 
     // Not Implemented Yet
     // ---------------------
