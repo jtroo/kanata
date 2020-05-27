@@ -3,7 +3,7 @@
 
 (
     tap_hold_wait_time: 300,
-    tap_dance_wait_time: 300,
+    tap_dance_wait_time: 1000,
     layers: [
         // Layer 0: Base Layer
         {
@@ -11,8 +11,8 @@
             KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
             KEY_LEFTCTRL:  Tap(Multi([Key(KEY_LEFTCTRL), Sound(Error)])),
 
-            // KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
-            // KEY_D:   TapDance(3, Key(KEY_D), KeySticky(KEY_LEFTSHIFT)),
+            KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
+            KEY_D:   TapDance(3, Key(KEY_D), KeySticky(KEY_LEFTSHIFT)),
             // KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
             // KEY_F7:  Tap(MomentaryLayer(1)),
             // KEY_F8:  Tap(Key(KEY_A)),
