@@ -296,7 +296,7 @@ use crate::effects::Effect::*;
 #[test]
 fn test_skipped() {
     let mut th_mgr = TapHoldMgr::new();
-    let mut l_mgr = LayersManager::new(CfgLayers::empty());
+    let mut l_mgr = LayersManager::new(Cfg::empty());
     let ev_non_th_press = KeyEvent::new_press(KEY_A);
     let ev_non_th_release = KeyEvent::new_release(KEY_A);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::empty(CONTINUE));
@@ -306,7 +306,7 @@ fn test_skipped() {
 
 #[test]
 fn test_tap() {
-    let layers = CfgLayers::new(vec![
+    let layers = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
@@ -346,7 +346,7 @@ fn test_tap() {
     assert_eq!(l_mgr.is_key_locked(KEY_A), false);
 
     // interruptions: 1
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
+    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
     let ev_non_th_press = KeyEvent::new_press(KEY_W);
     let ev_non_th_release = KeyEvent::new_release(KEY_W);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
@@ -356,7 +356,7 @@ fn test_tap() {
     assert_eq!(th_mgr.is_idle(), true);
 
     // interruptions: 2
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
+    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
     let ev_non_th_press = KeyEvent::new_press(KEY_W);
     let ev_non_th_release = KeyEvent::new_release(KEY_W);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
@@ -370,7 +370,7 @@ fn test_tap() {
 
 #[test]
 fn test_hold() {
-    let layers = CfgLayers::new(vec![
+    let layers = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
@@ -385,7 +385,7 @@ fn test_hold() {
 
     let ev_th_press = KeyEvent::new_press(KEY_A);
     let mut ev_th_release = KeyEvent::new_release(KEY_A);
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
+    ev_th_release.time.tv_usec = 1;
 
     // No hold + other key chord
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
@@ -403,9 +403,9 @@ fn test_hold() {
     // Hold with other key
     let mut ev_non_th_press = KeyEvent::new_press(KEY_W);
     let mut ev_non_th_release = KeyEvent::new_release(KEY_W);
-    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
-    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 2;
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
+    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
+    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 2;
+    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 3;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
@@ -419,9 +419,9 @@ fn test_hold() {
     // -------------------------------
 
     // Hold with other key (different order)
-    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 1;
-    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 2;
-    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD + 3;
+    ev_non_th_press.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 1;
+    ev_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 2;
+    ev_non_th_release.time.tv_usec = TAP_HOLD_WAIT_PERIOD * 1000 + 3;
 
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_th_press), OutEffects::empty(STOP));
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::new(CONTINUE, Effect::Key(KEY_LEFTCTRL.into()), KeyValue::Press));
