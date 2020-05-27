@@ -33,6 +33,8 @@ pub enum Effect {
     Sound(KSnd),
     SoundEx(String),
 
+    Multi(Vec<Effect>),
+
     // Not Implemented Yet
     // ---------------------
     // OneShotLayer(LayerIndex),

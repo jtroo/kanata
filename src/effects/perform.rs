@@ -31,6 +31,16 @@ lazy_static::lazy_static! {
     };
 }
 
+fn perform_multiple_effects(ktrl: &mut Ktrl, effects: Vec<Effect>, value: KeyValue) -> Result<(), Error> {
+    for fx in effects {
+        let sub_fx_val = EffectValue::new(fx.clone(), value);
+        perform_effect(ktrl, sub_fx_val)?;
+    }
+
+    Ok(())
+}
+
+
 fn perform_play_custom_sound(ktrl: &mut Ktrl, snd_path: String , value: KeyValue) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.dj.play_custom(&snd_path)
@@ -103,5 +113,6 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
         Effect::Sound(snd) => perform_play_sound(ktrl, snd, fx_val.val),
         Effect::SoundEx(snd) => perform_play_custom_sound(ktrl, snd, fx_val.val),
+        Effect::Multi(fxs) => perform_multiple_effects(ktrl, fxs, fx_val.val),
     }
 }
