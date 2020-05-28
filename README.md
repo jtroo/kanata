@@ -20,6 +20,34 @@ You can think of ktrl as an attempt to re-implement QMK as a Linux daemon.
 This is an **alpha** state project.
 If you find any bugs or quirks please reach out to me.
 
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+**Table of Contents**
+
+- [ktrl](#ktrl)
+    - [Intro](#intro)
+    - [Features Overview](#features-overview)
+        - [Layers](#layers)
+        - [Tap-Hold (Dual Function Keys)](#tap-hold-dual-function-keys)
+        - [Tap-Dancing (Multi-Tap)](#tap-dancing-multi-tap)
+        - [`Meh` and `Hyper`](#meh-and-hyper)
+        - [Audible Feedback](#audible-feedback)
+    - [Installation](#installation)
+        - [Setting up ktrl's Assets and Config](#setting-up-ktrls-assets-and-config)
+        - [Locating your Keyboard's input device](#locating-your-keyboards-input-device)
+        - [Setting up ktrl as a Service (Optional)](#setting-up-ktrl-as-a-service-optional)
+    - [Configuration](#configuration)
+        - [Primitives](#primitives)
+            - [Input Event Codes](#input-event-codes)
+            - [Actions](#actions)
+            - [Effects](#effects)
+        - [Configuration File Format](#configuration-file-format)
+    - [Examples](#examples)
+        - [Remapping `Ctrl` to `Capslock`](#remapping-ctrl-to-capslock)
+        - [Home-row Modifiers](#home-row-modifiers)
+    - [Limitations](#limitations)
+
+<!-- markdown-toc end -->
+
 ## Intro
 
 ktrl sits right in the middle of the human-interface software stack.
@@ -53,7 +81,7 @@ For example, you can make your Spacebar act as normal when tapping, but serve as
 Tap-dancing is quite similar to Tap-Hold. The key will act in one way if tapped once,
 and will act differently if tapped multiple times.
 
-### Meh and Hyper
+### `Meh` and `Hyper`
 
 Again, both of these were shamelessly taken from QMK. `Meh` and `Hyper` are special modifiers
 for creating keybindings that'll probably never conflict with existing ones.
@@ -149,8 +177,8 @@ E.g A `TapHold` describes a **tap** and a **hold**.
 ##### Actions List
 
 - `Tap`: This is the default keyboard action. Use for simple key remappings.
-- `TapHold`: Attach different `Effect`s for a tap and and hold.
-- `TapDance`: Attach different `Effect`s for a tap and for multiple taps.
+- `TapHold`: Attach different `Effect`s for a tap and hold.
+- `TapDance`: Attach different `Effect`s for a tap and multiple taps.
 
 #### Effects
 
@@ -181,8 +209,8 @@ configuration much easier. The format should be pretty intuitive, though please 
 
 ### Remapping `Ctrl` to `Capslock`
 
-This is probably one of most effective and simple you can make right now.
-You're pinky finger will much appreciate this change in the long-run.
+This is probably one of the most effective yet simple changes you can make right now.
+You're left pinky will greatly appreciate this change in the long-run.
 
 Doing this with ktrl is easy. In one of your layers, add the following -
 
@@ -212,6 +240,22 @@ KEY_LEFTCTRL:  Tap(Sound(Error)),
 
 ### Home-row Modifiers
 
+Another change I've been experimenting with is mapping modifiers to home row keys
+Though, due note you'll have to calibrate the `tap_hold_wait_time` config value to
+avoid false-positives.
+
+Here's an example setup -
+
+```
+KEY_A:  TapHold(Key(KEY_A), Key(KEY_LEFTCTRL)),
+KEY_S:  TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT)),
+KEY_D:  TapHold(Key(KEY_D), Key(KEY_LEFTALT)),
+```
+
+This will make `A`, `S` and `D` act as usual on taps and as modifiers when held.
+
 ##  Limitations
 
-- ktrl requires root privileges
+- ktrl requires root privileges. Messing around with input devices requires root. This is unfortunate but unavoidable...
+- `TapHold` and `TapDance` require calibration and tinkering. as stated above, you'll have to tweak the wait times for both
+of these to minimize false-positives.
