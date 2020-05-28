@@ -1,30 +1,63 @@
-// blah blah 
+// ktrl Example Configuration File
+// -------------------------------
 //
-
+// ktrl config files use `ron` (Rust Object Notation) to serialize
+// the text into the internal `cfg::Cfg` struct.
+//
+// - The full KEY_... listing can be found inside the `keys::KeyCode` enum
+// - Layer entries are mapping between a source `KeyCode` into an `Action` (more on that below)
+//
 (
+    // ktrl will register a TapHold as an hold after 300ms
     tap_hold_wait_time: 300,
+
+    // ktrl will register a TapDance if all taps occur within a 1000ms period (1s)
     tap_dance_wait_time: 1000,
+
     layers: [
-        // Layer 0: Base Layer
+        // Layer 0 (Base Layer)
+        //
+        //   Layer 0 is a bit special.
+        //   When ktrl stats-up, it automatically enables this layer.
+        //   After that, it can never be turned off.
+        //   I.E it configures the default behavior (when all other layers are off).
+        //
+        //   All the layer entries repeat the same pattern.
+        //   They map a source `KeyCode` to an `Action`.
+        //
         {
-            // This sticky TD is very useful for Spacemacs helm up-down navigation with J/K
+            // These two lines swap Capslock and Left-Ctrl.
+            // As a bonus, an error sound will be played when you press Left-Ctrl
             KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
             KEY_LEFTCTRL:  Tap(Multi([Key(KEY_LEFTCTRL), Sound(Error)])),
 
-            KEY_A:   TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
-            KEY_D:   TapDance(3, Key(KEY_D), KeySticky(KEY_LEFTSHIFT)),
-            // KEY_F6:  Tap(KeySticky(KEY_LEFTSHIFT)),
-            // KEY_F7:  Tap(MomentaryLayer(1)),
-            // KEY_F8:  Tap(Key(KEY_A)),
-            // KEY_F9:  Tap(Meh),
-            // KEY_F10: Tap(Hyper),
-            // KEY_F11: Tap(KeySeq([KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT])),
-            // KEY_F12: Tap(ToggleLayer(1)),
+            // F1 on regular tap, layer toggle on hold.
+            // A toggled layer will stay active until toggled again.
+            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayer(1)),
         },
         // Layer 1
         {
-            // KEY_A: TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)),
-            // KEY_S: TapHold(Key(KEY_S), Key(KEY_LEFTALT)),
+            // These two entries are to illustrate layer "priorities".
+            // Higher layers take precedence over lower layers.
+            //
+            // E.g these two entries will override the two lower entries.
+            // Thereby, restoring the swap we did over there.
+            //
+            KEY_CAPSLOCK:  Tap(Key(KEY_CAPSLOCK)),
+            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
+
+            // Press once for Enter, press 2 time for Sticky Shift.
+            // Sticky keys will remain active until pressed again.
+            KEY_D:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+
+            // Press once for F, press 3 to toggle this layer
+            KEY_F:   TapDance(3, Key(KEY_F), ToggleLayer(1)),
+
+            // Map Alt to Ctrl-Alt-Shift
+            KEY_LEFTALT:  Tap(Meh),
+
+            // Map Shift to Ctrl-Alt-Shift-Win
+            KEY_LEFTSHIFT: Tap(Hyper),
         },
     ],
 )
