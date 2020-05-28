@@ -200,7 +200,7 @@ E.g Playing a sound, toggling a layer, sending a key sequence, etc...
 - `SoundEx`: Plays a custom sound provided by you.
 - `Multi`: Lets you combine all the above effects. E.g `Multi([Sound(Sticky), KeySticky(KEY_LEFTCTRL)])`
 
-### Configuration File Format
+### [Configuration File Format](https://github.com/ItayGarin/ktrl/blob/master/examples/cfg.ron)
 
 ktrl uses the wonderful [ron](https://github.com/ron-rs/ron) (Rust Object Notation) to make serializing
 configuration much easier. The format should be pretty intuitive, though please refer to the supplied [cfg.ron](https://github.com/ItayGarin/ktrl/blob/master/examples/cfg.ron) for a practical example.
