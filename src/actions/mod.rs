@@ -19,7 +19,6 @@ pub enum Action {
 
     // Not Implemented Yet
     // -------------------
-    // TapDance(DanceLength, Effect, Effect),
     // Sequence(Vec<KeyCode>, Effect),
     // Combo(Vec<KeyCode>, Effect),
 }

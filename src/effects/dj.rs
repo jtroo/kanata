@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 use std::io;
 use std::io::Read;
+use std::path::Path;
 use std::sync::Arc;
 use std::fs::File;
 use std::collections::HashMap;
@@ -22,9 +23,9 @@ impl AsRef<[u8]> for SoundImpl {
 }
 
 impl SoundImpl {
-    fn load(filename: &str) -> io::Result<SoundImpl> {
+    fn load(path: &Path) -> io::Result<SoundImpl> {
         let mut buf = Vec::new();
-        let mut file = File::open(filename)?;
+        let mut file = File::open(path)?;
         file.read_to_end(&mut buf)?;
         Ok(SoundImpl(Arc::new(buf)))
     }
@@ -39,13 +40,12 @@ impl SoundImpl {
 //---------------------------------------------------
 
 lazy_static::lazy_static! {
-    static ref KSOUND_PATHS: HashMap<KSnd, String> = {
-        let snds_dir = "/opt/ktrl/assets/sounds";
+    static ref KSOUND_FILENAMES: HashMap<KSnd, &'static str> = {
         [
-            (KSnd::Click1, format!("{}/click1.wav", snds_dir)),
-            (KSnd::Click2, format!("{}/click2.wav", snds_dir)),
-            (KSnd::Sticky, format!("{}/sticky.wav", snds_dir)),
-            (KSnd::Error, format!("{}/error.wav", snds_dir)),
+            (KSnd::Click1, "click1.wav"),
+            (KSnd::Click2, "click2.wav"),
+            (KSnd::Sticky, "sticky.wav"),
+            (KSnd::Error, "error.wav"),
         ].iter().cloned().collect()
     };
 }
@@ -65,19 +65,20 @@ pub struct Dj {
 }
 
 impl Dj {
-    fn make_ksnds() -> HashMap<KSnd, SoundImpl> {
+    fn make_ksnds(assets_path: &Path) -> HashMap<KSnd, SoundImpl> {
+        let snds_dir = Path::new(assets_path).join("sounds");
         let mut out: HashMap<KSnd, SoundImpl> = HashMap::new();
         for snd in KSnd::into_enum_iter() {
-            let path = &KSOUND_PATHS[&snd];
-            out.insert(snd, SoundImpl::load(path).unwrap());
+            let path = snds_dir.join(&KSOUND_FILENAMES[&snd]);
+            out.insert(snd, SoundImpl::load(&path).unwrap());
         }
         out
     }
 
-    pub fn new() -> Self {
+    pub fn new(assets_path: &Path) -> Self {
         let dev = rodio::default_output_device()
             .expect("Failed to open the default sound device");
-        let ksnds = Self::make_ksnds();
+        let ksnds = Self::make_ksnds(assets_path);
         Self{dev, ksnds, custom_snds: HashMap::new()}
     }
 
@@ -88,7 +89,8 @@ impl Dj {
 
     pub fn play_custom(&mut self, path: &String) {
         if !self.custom_snds.contains_key(path) {
-            self.custom_snds.insert(path.clone(), SoundImpl::load(path).unwrap());
+            let _path = Path::new(path);
+            self.custom_snds.insert(path.clone(), SoundImpl::load(&_path).unwrap());
         }
 
         let snd = &self.custom_snds[path];

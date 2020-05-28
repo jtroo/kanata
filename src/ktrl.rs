@@ -17,6 +17,12 @@ use crate::effects::perform_effect;
 use crate::effects::StickyState;
 use crate::effects::Dj;
 
+pub struct KtrlArgs {
+    pub kbd_path: PathBuf,
+    pub config_path: PathBuf,
+    pub assets_path: PathBuf,
+}
+
 pub struct Ktrl {
     pub kbd_in: KbdIn,
     pub kbd_out: KbdOut,
@@ -28,11 +34,11 @@ pub struct Ktrl {
 }
 
 impl Ktrl {
-    pub fn new(kbd_path: PathBuf, config_path: PathBuf) -> Result<Self, std::io::Error> {
-        let kbd_in = KbdIn::new(&kbd_path)?;
+    pub fn new(args: KtrlArgs) -> Result<Self, std::io::Error> {
+        let kbd_in = KbdIn::new(&args.kbd_path)?;
         let kbd_out = KbdOut::new()?;
 
-        let cfg_str = read_to_string(config_path)?;
+        let cfg_str = read_to_string(args.config_path)?;
         let cfg = cfg::parse(&cfg_str);
         let mut l_mgr = LayersManager::new(&cfg.layers);
         l_mgr.init();
@@ -40,7 +46,7 @@ impl Ktrl {
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
         let td_mgr = TapDanceMgr::new(cfg.tap_dance_wait_time);
         let sticky = StickyState::new();
-        let dj = Dj::new();
+        let dj = Dj::new(&args.assets_path);
 
         Ok(Self{kbd_in, kbd_out, l_mgr, th_mgr, td_mgr, sticky, dj})
     }

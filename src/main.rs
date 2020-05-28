@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use log::info;
 use simplelog::*;
 use clap::{App, Arg};
@@ -18,15 +18,19 @@ mod cfg;
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
 use ktrl::Ktrl;
+use ktrl::KtrlArgs;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
+const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
 
+#[doc(hidden)]
 fn is_root() -> bool {
     Uid::effective().is_root()
 }
 
-fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
+#[doc(hidden)]
+fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let matches =
         App::new("ktrl")
         .version("0.1")
@@ -44,6 +48,11 @@ fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
              .value_name("CONFIG")
              .help(&format!("Path to your ktrl config file. Default: {}", DEFAULT_CFG_PATH))
              .takes_value(true))
+        .arg(Arg::with_name("assets")
+             .long("assets")
+             .value_name("ASSETS")
+             .help(&format!("Path ktrl's assets directory. Default: {}", DEFAULT_ASSETS_PATH))
+             .takes_value(true))
         .arg(Arg::with_name("logfile")
              .long("log")
              .value_name("LOGFILE")
@@ -56,6 +65,7 @@ fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
 
     let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
+    let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
 
     if !is_root() {
@@ -87,14 +97,18 @@ fn cli_init() -> Result<(PathBuf, PathBuf), std::io::Error> {
         return Err(Error::new(NotFound, err));
     }
 
-    Ok((kbd_path.to_path_buf(),
-        config_path.to_path_buf()))
+    Ok(KtrlArgs{
+        kbd_path: kbd_path.to_path_buf(),
+        config_path: config_path.to_path_buf(),
+        assets_path: assets_path.to_path_buf(),
+    })
 }
 
+#[doc(hidden)]
 fn main() -> Result<(), std::io::Error> {
-    let (kbd_path, config_path) = cli_init()?;
+    let args = cli_init()?;
 
-    let mut ktrl = Ktrl::new(kbd_path, config_path)?;
+    let mut ktrl = Ktrl::new(args)?;
     info!("ktrl: Setup Complete");
 
     ktrl.event_loop()?;
