@@ -1,0 +1,8 @@
+[Unit]
+Description=ktrl
+
+[Service]
+ExecStart=/home/igarin/workspace/ktrl/target/release/ktrl -d /dev/input/by-path/platform-i8042-serio-0-event-kbd
+  
+[Install]
+WantedBy=multi-user.target
