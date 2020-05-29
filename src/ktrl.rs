@@ -1,5 +1,5 @@
 use evdev_rs::enums::EventType;
-use log::info;
+use log::{info, error};
 
 use std::convert::TryFrom;
 use std::path::PathBuf;
@@ -35,8 +35,21 @@ pub struct Ktrl {
 
 impl Ktrl {
     pub fn new(args: KtrlArgs) -> Result<Self, std::io::Error> {
-        let kbd_in = KbdIn::new(&args.kbd_path)?;
-        let kbd_out = KbdOut::new()?;
+        let kbd_in = match KbdIn::new(&args.kbd_path) {
+            Ok(kbd_in) => kbd_in,
+            Err(err) => {
+                error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group");
+                return Err(err);
+            }
+        };
+
+        let kbd_out = match KbdOut::new() {
+            Ok(kbd_out) => kbd_out,
+            Err(err) => {
+                error!("Failed to open the output uinput device. Make sure you've added ktrl to the `uinput` group");
+                return Err(err);
+            }
+        };
 
         let cfg_str = read_to_string(args.config_path)?;
         let cfg = cfg::parse(&cfg_str);

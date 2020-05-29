@@ -2,6 +2,8 @@
 Description=ktrl
 
 [Service]
+User=ktrl
+Environment=HOME=/opt/ktrl
 ExecStart=/home/<your-user>/.cargo/bin/ktrl -d <keyboard-dev-path>
   
 [Install]

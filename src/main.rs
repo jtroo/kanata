@@ -2,7 +2,6 @@ use std::path::Path;
 use log::info;
 use simplelog::*;
 use clap::{App, Arg};
-use nix::unistd::Uid;
 use std::io::{Error, ErrorKind::*};
 use std::fs::File;
 
@@ -23,11 +22,6 @@ use ktrl::KtrlArgs;
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
 const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
-
-#[doc(hidden)]
-fn is_root() -> bool {
-    Uid::effective().is_root()
-}
 
 #[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
@@ -67,10 +61,6 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
-
-    if !is_root() {
-        return Err(Error::new(PermissionDenied, "Please re-run ktrl as root"));
-    }
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,

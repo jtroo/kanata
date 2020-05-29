@@ -32,9 +32,6 @@ If you find any bugs or quirks please reach out to me.
         - [`Meh` and `Hyper`](#meh-and-hyper)
         - [Audible Feedback](#audible-feedback)
     - [Installation](#installation)
-        - [Setting up ktrl's Assets and Config](#setting-up-ktrls-assets-and-config)
-        - [Locating your Keyboard's input device](#locating-your-keyboards-input-device)
-        - [Setting up ktrl as a Service (Optional)](#setting-up-ktrl-as-a-service-optional)
     - [Configuration](#configuration)
         - [Primitives](#primitives)
             - [Input Event Codes](#input-event-codes)
@@ -111,6 +108,33 @@ Note: you may need to install `alsa` development bindings. For Debian/Ubuntu dis
 # apt install libalsa-ocaml-dev
 ```
 
+#### Setting up ktrl's User and Groups
+
+Although a bit cumbersome, this step makes sure we can run ktrl without root privileges.
+Instead of running it as root, we'll make a new user for ktrl. Then, we'll add the
+new user to the input and audio groups. Let's get started -
+
+```
+sudo useradd -r -s /bin/false ktrl
+sudo groupadd uinput
+sudo usermod -aG input ktrl
+sudo usermod -aG uinput ktrl
+
+# If you're using the sound effects
+sudo usermod -aG audio ktrl
+```
+
+Now, let's add a new udev rule that'll allow ktrl to write to `/dev/uinput`.
+`/dev/uinput` is ktrl's output device. Your keyboard being the input device.
+
+```
+git clone https://github.com/itaygarin/ktrl
+cd ktrl
+sudo cp ./etc/99-uinput.rules /etc/udev/rules.d/
+```
+
+Note that'll need to reboot your machine for the changes to take effect...
+
 #### Setting up ktrl's Assets and Config
 
 Now, it's time to decide where you'd like ktrl's assets and config to live.
@@ -122,11 +146,14 @@ Though, you can override these defaults with the `--cfg` and `--assets` cli argu
 To set-up the defaults, you can follow these steps -
 
 ```
-git clone https://github.com/itaygarin/ktrl
-cd ktrl
+# Asumming you've already cloned and cd`d into the ktrl project
+
 sudo mkdir /opt/ktrl
 sudo cp -r ./assets /opt/ktrl
 sudo cp examples/cfg.ron /opt/ktrl
+
+sudo chown -R ktrl:$USER /opt/ktrl
+sudo chmod -R 0770 /opt/ktrl
 ```
 
 #### Locating your Keyboard's input device
@@ -151,9 +178,10 @@ Creating a service will vary from distro to distro,
 though, here are some basic steps that'll get you started on `systemd` based systems -
 
 ```
-cd ktrl
-edit ktrl.service # change your username and device path
-sudo cp ktrl.service /etc/systemd/system
+# Again, asumming you've cloned and cd`d into the ktrl project
+
+edit ./etc/ktrl.service # change your username and device path
+sudo cp ./etc/ktrl.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl start ktrl.service
 ```
@@ -262,6 +290,5 @@ This will make `A`, `S` and `D` act as usual on taps and as modifiers when held.
 
 ##  Limitations
 
-- ktrl requires root privileges. Messing around with input devices requires root. This is unfortunate but unavoidable...
 - `TapHold` and `TapDance` require calibration and tinkering. as stated above, you'll have to tweak the wait times for both
 of these to minimize false-positives.
