@@ -258,7 +258,7 @@ checksum = "5e2c4b26352496eaaa8ca7cfa9bd99e93419d3f7983dc6e99c2a35fe9e33504a"
 
 [[package]]
 name = "ktrl"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "enum-iterator",
