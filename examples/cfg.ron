@@ -13,7 +13,10 @@
 
     // ktrl will register a TapDance if all taps occur within a 1000ms period (1s)
     tap_dance_wait_time: 1000,
-
+    layer_aliases: {
+        0: "base",
+        1: "second",
+    },
     layers: [
         // Layer 0 (Base Layer)
         //
@@ -33,7 +36,10 @@
 
             // F1 on regular tap, layer toggle on hold.
             // A toggled layer will stay active until toggled again.
-            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayer(1)),
+            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("second")),
+
+            // F2 on regular tap, layer toggle by index otherwise.
+            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(1)),
         },
         // Layer 1
         {

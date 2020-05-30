@@ -309,8 +309,9 @@ const TEST_TAP_HOLD_WAIT_PERIOD: u64 = 550;
 
 #[test]
 fn test_skipped() {
+    use std::collections::HashMap;
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
-    let mut l_mgr = LayersManager::new(&vec![]);
+    let mut l_mgr = LayersManager::new(&vec![], &HashMap::new());
     let ev_non_th_press = KeyEvent::new_press(KEY_A);
     let ev_non_th_release = KeyEvent::new_release(KEY_A);
     assert_eq!(th_mgr.process(&mut l_mgr, &ev_non_th_press), OutEffects::empty(CONTINUE));
@@ -320,15 +321,16 @@ fn test_skipped() {
 
 #[test]
 fn test_tap() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
+    use std::collections::HashMap;
+    let cfg = Cfg::new(
+        HashMap::new(),
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
             (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
         ],
     ]);
 
-    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();
@@ -384,8 +386,11 @@ fn test_tap() {
 
 #[test]
 fn test_hold() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
+    use std::collections::HashMap;
+    let mut h = HashMap::new();
+    h.insert(0, "base".to_string());
+    let cfg = Cfg::new(
+        h,
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
             (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),

@@ -267,14 +267,17 @@ use crate::effects::Effect::*;
 
 #[test]
 fn test_tap_dance() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
+    use std::collections::HashMap;
+    let mut h = HashMap::new();
+    h.insert(0, "base".to_string());
+    let cfg = Cfg::new(
+        h,
         vec![
             (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
         ],
     ]);
 
-    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     let mut th_mgr = TapDanceMgr::new(500);
 
     l_mgr.init();

@@ -17,6 +17,7 @@ const MAX_KEY: usize = KEY_MAX as usize;
 
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
+pub type LayerAliases = HashMap<LayerIndex, Option<String>>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -41,7 +42,6 @@ pub enum LockOwner {
 }
 
 pub struct LayersManager {
-
     // Serves as a cache of the result
     // of stacking all the layers on top of each other.
     pub merged: Merged,
@@ -49,6 +49,8 @@ pub struct LayersManager {
     // This is a read-only representation of the user's layer configuration.
     // The 0th layer is the base and will always be active
     pub layers: Layers,
+
+    pub layer_aliases: LayerAliases,
 
     // Holds the on/off state for each layer
     pub layers_states: LayersStates,
@@ -85,18 +87,20 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(layers: &Layers) -> Self {
+    pub fn new(layers: &Layers, layer_aliases: &LayerAliases) -> Self {
         let merged = init_merged();
         let layers = layers.clone();
+        let layer_aliases = layer_aliases.clone();
         let layers_count = layers.len();
         let key_locks = HashMap::new();
 
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
 
-        LayersManager{
+        LayersManager {
             merged,
             layers,
+            layer_aliases,
             layers_states,
             key_locks,
             global_lock: None,
@@ -257,6 +261,32 @@ impl LayersManager {
             self.turn_layer_on(index);
         }
     }
+
+    pub fn toggle_layer_alias(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            let is_layer_on = self.layers_states[index];
+
+            if is_layer_on {
+                self.turn_layer_off(index);
+            } else {
+                self.turn_layer_on(index);
+            }
+        }
+    }
+
+    fn get_idx_from_alias(&self, name: String) -> Option<usize> {
+        for (idx, op_name) in self.layer_aliases.iter() {
+            match op_name {
+                Some(layer_name) => {
+                    if layer_name == &name {
+                        return Some(idx.clone());
+                    }
+                }
+                None => {}
+            }
+        }
+        return None;
+    }
 }
 
 // ----------------------------------------------------------
@@ -306,8 +336,12 @@ use crate::cfg::Cfg;
 
 #[test]
 fn test_mgr() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
+    let mut h = HashMap::new();
+    h.insert(0, "base".to_string());
+    h.insert(1, "arrows".to_string());
+    h.insert(2, "asdf".to_string());
+    let cfg = Cfg::new(
+        h,
         vec![
             // Ex: switch CTRL <--> Capslock
             (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
@@ -332,7 +366,7 @@ fn test_mgr() {
         ],
     ]);
 
-    let mut mgr = LayersManager::new(&cfg.layers);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -397,20 +431,24 @@ fn test_mgr() {
 
 #[test]
 fn test_overlapping_keys() {
-    let cfg = Cfg::new(vec![
         // 0: base layer
         vec![
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
         ],
 
         // 1: arrows layer
+    let mut h = HashMap::new();
+    h.insert(0, "base".to_string());
+    h.insert(1, "arrows".to_string());
+    let cfg = Cfg::new(
+        h,
         vec![
             // Ex: switch CTRL <--> Capslock
             (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
         ],
     ]);
 
-    let mut mgr = LayersManager::new(&cfg.layers);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);
