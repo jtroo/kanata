@@ -1,11 +1,11 @@
 use crate::layers::Layers;
 
 #[cfg(test)]
+use crate::actions::Action;
+#[cfg(test)]
 use crate::keys::KeyCode;
 #[cfg(test)]
 use crate::layers::Layer;
-#[cfg(test)]
-use crate::actions::Action;
 
 use ron::de;
 use serde::Deserialize;
@@ -30,9 +30,10 @@ impl Cfg {
             converted.push(layer_vec.into_iter().collect::<Layer>());
         }
 
-        Self{layers: converted,
-             tap_hold_wait_time: 0,
-             tap_dance_wait_time: 0,
+        Self {
+            layers: converted,
+            tap_hold_wait_time: 0,
+            tap_dance_wait_time: 0,
         }
     }
 }
@@ -40,6 +41,5 @@ impl Cfg {
 // ------------------- Util Functions ---------------------
 
 pub fn parse(cfg: &String) -> Cfg {
-    de::from_str(cfg)
-        .expect("Failed to parse the config file")
+    de::from_str(cfg).expect("Failed to parse the config file")
 }
