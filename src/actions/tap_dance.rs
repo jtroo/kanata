@@ -273,8 +273,9 @@ fn test_tap_dance() {
     let cfg = Cfg::new(
         h,
         vec![
-            (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
-        ],
+            vec![
+                (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
+            ],
     ]);
 
     let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);

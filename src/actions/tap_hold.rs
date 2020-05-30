@@ -325,9 +325,10 @@ fn test_tap() {
     let cfg = Cfg::new(
         HashMap::new(),
         vec![
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
-        ],
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
+            ],
     ]);
 
     let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
@@ -392,12 +393,13 @@ fn test_hold() {
     let cfg = Cfg::new(
         h,
         vec![
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
-        ],
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
+            ],
     ]);
 
-    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();

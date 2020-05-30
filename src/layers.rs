@@ -343,27 +343,28 @@ fn test_mgr() {
     let cfg = Cfg::new(
         h,
         vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
-            (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
-        ],
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
+                (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
+            ],
 
-        // 1: arrows layer
-        vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_H, Tap(Key(KEY_LEFT))),
-            (KEY_J, Tap(Key(KEY_DOWN))),
-            (KEY_K, Tap(Key(KEY_UP))),
-            (KEY_L, Tap(Key(KEY_RIGHT))),
-        ],
+            // 1: arrows layer
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_H, Tap(Key(KEY_LEFT))),
+                (KEY_J, Tap(Key(KEY_DOWN))),
+                (KEY_K, Tap(Key(KEY_UP))),
+                (KEY_L, Tap(Key(KEY_RIGHT))),
+            ],
 
-        // 2: asdf modifiers
-        vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
-            (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
-        ],
+            // 2: asdf modifiers
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
+                (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
+            ],
     ]);
 
     let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
@@ -431,22 +432,25 @@ fn test_mgr() {
 
 #[test]
 fn test_overlapping_keys() {
-        // 0: base layer
-        vec![
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-        ],
 
-        // 1: arrows layer
     let mut h = HashMap::new();
     h.insert(0, "base".to_string());
     h.insert(1, "arrows".to_string());
     let cfg = Cfg::new(
         h,
         vec![
+            // 0: base layer
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            ],
+
+            // 1: arrows layer
             // Ex: switch CTRL <--> Capslock
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            ]
         ],
-    ]);
+    );
 
     let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     mgr.init();
