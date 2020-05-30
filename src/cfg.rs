@@ -19,14 +19,6 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize)]
 pub struct Cfg {
     pub layers: Layers,
-    pub layer_aliases: HashMap<usize, Option<String>>,
-    pub tap_hold_wait_time: u64,
-    pub tap_dance_wait_time: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PreCfg {
-    pub layers: Layers,
     pub layer_aliases: HashMap<usize, String>,
     pub tap_hold_wait_time: u64,
     pub tap_dance_wait_time: u64,
@@ -36,13 +28,11 @@ impl Cfg {
     #[cfg(test)]
     pub fn new(aliases: HashMap<usize, String>, layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
         let mut converted: Vec<Layer> = vec![];
-        let mut layer_aliases: HashMap<usize, Option<String>> =
+        let mut layer_aliases: HashMap<usize, String> =
             HashMap::with_capacity(layers.len());
         for i in 0..layers.len() {
             if let Some(alias) = aliases.get(&i) {
-                layer_aliases.insert(i, Some(alias.clone()));
-            } else {
-                layer_aliases.insert(i, None);
+                layer_aliases.insert(i, alias.clone());
             }
             converted.push(layers[i].clone().into_iter().collect::<Layer>());
         }
@@ -59,19 +49,5 @@ impl Cfg {
 // ------------------- Util Functions ---------------------
 
 pub fn parse(cfg: &String) -> Cfg {
-    let pre: PreCfg = de::from_str(cfg).expect("Failed to parse the config file");
-    let mut aliases = HashMap::new();
-    for i in 0..pre.layers.len() {
-        if let Some(alias) = pre.layer_aliases.get(&i) {
-            aliases.insert(i, Some(alias.clone()));
-        } else {
-            aliases.insert(i, None);
-        }
-    }
-    Cfg {
-        layers: pre.layers,
-        layer_aliases: aliases,
-        tap_hold_wait_time: pre.tap_hold_wait_time,
-        tap_dance_wait_time: pre.tap_dance_wait_time,
-    }
+    de::from_str(cfg).expect("Failed to parse the config file")
 }

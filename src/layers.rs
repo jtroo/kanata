@@ -17,7 +17,7 @@ const MAX_KEY: usize = KEY_MAX as usize;
 
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
-pub type LayerAliases = HashMap<LayerIndex, Option<String>>;
+pub type LayerAliases = HashMap<LayerIndex, String>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -264,25 +264,14 @@ impl LayersManager {
 
     pub fn toggle_layer_alias(&mut self, name: String) {
         if let Some(index) = self.get_idx_from_alias(name) {
-            let is_layer_on = self.layers_states[index];
-
-            if is_layer_on {
-                self.turn_layer_off(index);
-            } else {
-                self.turn_layer_on(index);
-            }
+            self.toggle_layer(index);
         }
     }
 
     fn get_idx_from_alias(&self, name: String) -> Option<usize> {
-        for (idx, op_name) in self.layer_aliases.iter() {
-            match op_name {
-                Some(layer_name) => {
-                    if layer_name == &name {
-                        return Some(idx.clone());
-                    }
-                }
-                None => {}
+        for (idx, layer_name) in self.layer_aliases.iter() {
+            if layer_name == &name {
+                return Some(idx.clone());
             }
         }
         return None;
