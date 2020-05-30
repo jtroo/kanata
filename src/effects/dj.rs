@@ -1,12 +1,12 @@
 use serde::Deserialize;
 
+use enum_iterator::IntoEnumIterator;
+use std::collections::HashMap;
+use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
-use std::fs::File;
-use std::collections::HashMap;
-use enum_iterator::IntoEnumIterator;
 
 use rodio;
 use rodio::Source;
@@ -14,7 +14,7 @@ use std::convert::AsRef;
 
 //---------------------------------------------------
 
-struct SoundImpl (Arc<Vec<u8>>);
+struct SoundImpl(Arc<Vec<u8>>);
 
 impl AsRef<[u8]> for SoundImpl {
     fn as_ref(&self) -> &[u8] {
@@ -76,10 +76,13 @@ impl Dj {
     }
 
     pub fn new(assets_path: &Path) -> Self {
-        let dev = rodio::default_output_device()
-            .expect("Failed to open the default sound device");
+        let dev = rodio::default_output_device().expect("Failed to open the default sound device");
         let ksnds = Self::make_ksnds(assets_path);
-        Self{dev, ksnds, custom_snds: HashMap::new()}
+        Self {
+            dev,
+            ksnds,
+            custom_snds: HashMap::new(),
+        }
     }
 
     pub fn play(&self, snd: KSnd) {
@@ -90,7 +93,8 @@ impl Dj {
     pub fn play_custom(&mut self, path: &String) {
         if !self.custom_snds.contains_key(path) {
             let _path = Path::new(path);
-            self.custom_snds.insert(path.clone(), SoundImpl::load(&_path).unwrap());
+            self.custom_snds
+                .insert(path.clone(), SoundImpl::load(&_path).unwrap());
         }
 
         let snd = &self.custom_snds[path];

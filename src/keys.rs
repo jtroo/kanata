@@ -1,8 +1,8 @@
 // use std::fmt;
-use evdev_rs::enums::{EV_KEY, EventType, EventCode};
+use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
-use std::convert::TryFrom;
 use serde::Deserialize;
+use std::convert::TryFrom;
 
 // ------------------ KeyCode --------------------
 
@@ -1111,7 +1111,7 @@ impl KeyCode {
             741 => Some(KeyCode::BTN_TRIGGER_HAPPY38),
             742 => Some(KeyCode::BTN_TRIGGER_HAPPY39),
             743 => Some(KeyCode::BTN_TRIGGER_HAPPY40),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -1128,11 +1128,9 @@ impl TryFrom<usize> for KeyCode {
 
 impl From<u32> for KeyCode {
     fn from(item: u32) -> Self {
-        Self::from_u32(item)
-            .expect(&format!("Invalid KeyCode: {}", item))
+        Self::from_u32(item).expect(&format!("Invalid KeyCode: {}", item))
     }
 }
-
 
 impl From<KeyCode> for usize {
     fn from(item: KeyCode) -> Self {
@@ -1184,9 +1182,7 @@ impl From<i32> for KeyValue {
             0 => Self::Release,
             1 => Self::Press,
             2 => Self::Repeat,
-            _ => {
-                unreachable!()
-            }
+            _ => unreachable!(),
         }
     }
 }
@@ -1202,7 +1198,7 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: KeyCode, value: KeyValue) -> Self {
         let time = TimeVal::new(0, 0);
-        Self{time, code, value}
+        Self { time, code, value }
     }
 
     #[cfg(test)]
@@ -1220,11 +1216,11 @@ impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
         match &item.event_type {
-            EventType::EV_KEY => Ok(
-                Self{time: item.time,
-                     code: item.event_code.into(),
-                     value: item.value.into()}
-            ),
+            EventType::EV_KEY => Ok(Self {
+                time: item.time,
+                code: item.event_code.into(),
+                value: item.value.into(),
+            }),
             _ => Err(()),
         }
     }
@@ -1232,9 +1228,11 @@ impl TryFrom<InputEvent> for KeyEvent {
 
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
-        Self{time: item.time,
-             event_type: EventType::EV_KEY,
-             event_code: item.code.into(),
-             value: item.value as i32}
+        Self {
+            time: item.time,
+            event_type: EventType::EV_KEY,
+            event_code: item.code.into(),
+            value: item.value as i32,
+        }
     }
 }

@@ -1,13 +1,13 @@
 use crate::keys::KeyCode::*;
-use std::vec::Vec;
+use log::{debug, warn};
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use log::{warn, debug};
+use std::vec::Vec;
 
-use crate::keys::KeyCode;
-pub use crate::actions::Action;
 pub use crate::actions::tap_hold::TapHoldState;
+pub use crate::actions::Action;
 pub use crate::effects::Effect;
+use crate::keys::KeyCode;
 
 // -------------- Constants -------------
 
@@ -41,7 +41,6 @@ pub enum LockOwner {
 }
 
 pub struct LayersManager {
-
     // Serves as a cache of the result
     // of stacking all the layers on top of each other.
     pub merged: Merged,
@@ -74,7 +73,11 @@ fn init_merged() -> Merged {
             let effect = Effect::Key(code);
             let action = Action::Tap(effect);
             let layer_index = 0;
-            merged.push(Some(MergedKey{code, action, layer_index}));
+            merged.push(Some(MergedKey {
+                code,
+                action,
+                layer_index,
+            }));
         } else {
             merged.push(None);
         }
@@ -94,7 +97,7 @@ impl LayersManager {
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
 
-        LayersManager{
+        LayersManager {
             merged,
             layers,
             layers_states,
@@ -140,14 +143,18 @@ impl LayersManager {
         self.turn_layer_on(0);
     }
 
-    fn is_overriding_key(&self, candidate_code: KeyCode, candidate_layer_index: LayerIndex) -> bool {
+    fn is_overriding_key(
+        &self,
+        candidate_code: KeyCode,
+        candidate_layer_index: LayerIndex,
+    ) -> bool {
         let current = self.get(candidate_code);
-        return candidate_layer_index >= current.layer_index
+        return candidate_layer_index >= current.layer_index;
     }
 
     fn get_replacement_merged_key(&self, layers: &Layers, removed_code: KeyCode) -> MergedKey {
         let current = self.get(removed_code);
-        let lower_layer_idx = current.layer_index-1;
+        let lower_layer_idx = current.layer_index - 1;
 
         for i in lower_layer_idx..=0 {
             let lower_layer = &layers[i];
@@ -156,26 +163,26 @@ impl LayersManager {
             }
 
             let lower_action = &layers[i][&removed_code];
-            let replacement = MergedKey{
+            let replacement = MergedKey {
                 code: removed_code,
                 action: lower_action.clone(),
-                layer_index: i
+                layer_index: i,
             };
 
             return replacement;
         }
 
-        MergedKey{
+        MergedKey {
             code: removed_code,
             action: Action::Tap(Effect::Key(removed_code)),
-            layer_index: 0
+            layer_index: 0,
         }
     }
 
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         match &self.merged[usize::from(key)] {
             Some(merged_key) => merged_key,
-            _ => panic!("Invalid KeyCode")
+            _ => panic!("Invalid KeyCode"),
         }
     }
 
@@ -192,7 +199,10 @@ impl LayersManager {
 
     fn is_layer_change_safe(&self, index: LayerIndex, layer: &Layer) -> bool {
         if self.is_all_locked() {
-            warn!("Can't turn layer {} on. You're currently using a blocking action/effect", index);
+            warn!(
+                "Can't turn layer {} on. You're currently using a blocking action/effect",
+                index
+            );
             return false;
         }
 
@@ -208,7 +218,7 @@ impl LayersManager {
         std::assert!(!self.layers_states[index]);
         let layer = &self.layers[index];
 
-        if !self.is_layer_change_safe(index, layer){
+        if !self.is_layer_change_safe(index, layer) {
             return;
         }
 
@@ -216,10 +226,10 @@ impl LayersManager {
             let is_overriding = self.is_overriding_key(*code, index);
 
             if is_overriding {
-                let new_entry = MergedKey{
+                let new_entry = MergedKey {
                     code: *code,
                     action: action.clone(),
-                    layer_index: index
+                    layer_index: index,
                 };
 
                 self.merged[usize::from(*code)] = Some(new_entry);
@@ -235,7 +245,7 @@ impl LayersManager {
         std::assert!(self.layers_states[index]);
 
         let layer = &self.layers[index];
-        if !self.is_layer_change_safe(index, layer){
+        if !self.is_layer_change_safe(index, layer) {
             return;
         }
 
@@ -313,7 +323,6 @@ fn test_mgr() {
             (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
             (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
         ],
-
         // 1: arrows layer
         vec![
             // Ex: switch CTRL <--> Capslock
@@ -322,7 +331,6 @@ fn test_mgr() {
             (KEY_K, Tap(Key(KEY_UP))),
             (KEY_L, Tap(Key(KEY_RIGHT))),
         ],
-
         // 2: asdf modifiers
         vec![
             // Ex: switch CTRL <--> Capslock
@@ -343,9 +351,18 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_K)));
     assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_L)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL)));
-    assert_eq!(mgr.get(KEY_S.into()).action, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT)));
-    assert_eq!(mgr.get(KEY_D.into()).action, TapHold(Key(KEY_D), Key(KEY_LEFTALT)));
+    assert_eq!(
+        mgr.get(KEY_A.into()).action,
+        TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))
+    );
+    assert_eq!(
+        mgr.get(KEY_S.into()).action,
+        TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))
+    );
+    assert_eq!(
+        mgr.get(KEY_D.into()).action,
+        TapHold(Key(KEY_D), Key(KEY_LEFTALT))
+    );
 
     mgr.turn_layer_on(1);
     assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
@@ -353,9 +370,18 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
     assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL)));
-    assert_eq!(mgr.get(KEY_S.into()).action, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT)));
-    assert_eq!(mgr.get(KEY_D.into()).action, TapHold(Key(KEY_D), Key(KEY_LEFTALT)));
+    assert_eq!(
+        mgr.get(KEY_A.into()).action,
+        TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))
+    );
+    assert_eq!(
+        mgr.get(KEY_S.into()).action,
+        TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))
+    );
+    assert_eq!(
+        mgr.get(KEY_D.into()).action,
+        TapHold(Key(KEY_D), Key(KEY_LEFTALT))
+    );
 
     mgr.turn_layer_off(2);
     assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
@@ -399,10 +425,7 @@ fn test_mgr() {
 fn test_overlapping_keys() {
     let cfg = Cfg::new(vec![
         // 0: base layer
-        vec![
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-        ],
-
+        vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
         // 1: arrows layer
         vec![
             // Ex: switch CTRL <--> Capslock
@@ -414,9 +437,18 @@ fn test_overlapping_keys() {
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);
-    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
+    assert_eq!(
+        mgr.get(KEY_A.into()).action,
+        TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))
+    );
     mgr.turn_layer_on(1);
-    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
+    assert_eq!(
+        mgr.get(KEY_A.into()).action,
+        TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))
+    );
     mgr.turn_layer_off(1);
-    assert_eq!(mgr.get(KEY_A.into()).action, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)));
+    assert_eq!(
+        mgr.get(KEY_A.into()).action,
+        TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))
+    );
 }
