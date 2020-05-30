@@ -16,6 +16,7 @@
     layer_aliases: {
         0: "base",
         1: "second",
+        3: "skipOne"
     },
     layers: [
         // Layer 0 (Base Layer)
@@ -39,7 +40,10 @@
             KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("second")),
 
             // F2 on regular tap, layer toggle by index otherwise.
-            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(1)),
+            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(2)),
+
+            // F4 on regular tap, layer toggle by index otherwise.
+            KEY_F4:  TapHold(Key(KEY_F4), ToggleLayerAlias("skipOne")),
         },
         // Layer 1
         {
@@ -65,5 +69,13 @@
             // Map Shift to Ctrl-Alt-Shift-Win
             KEY_LEFTSHIFT: Tap(Hyper),
         },
+        {
+            // Press once for enter, 2 times for sticky shift
+            KEY_H:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+        },
+        {
+            // Press once for enter, 2 times for sticky shift
+            KEY_G:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+        }
     ],
 )
