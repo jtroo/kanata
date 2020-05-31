@@ -275,12 +275,18 @@ use crate::keys::KeyCode::*;
 
 #[test]
 fn test_tap_dance() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
-        vec![(KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL)))],
+    use std::collections::HashMap;
+    let mut h = HashMap::new();
+    h.insert("base".to_string(), 0);
+    let cfg = Cfg::new(
+        h,
+        vec![
+            vec![
+                (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
+            ],
     ]);
 
-    let mut l_mgr = LayersManager::new(&cfg.layers);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     let mut th_mgr = TapDanceMgr::new(500);
 
     l_mgr.init();

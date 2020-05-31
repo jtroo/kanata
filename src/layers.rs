@@ -17,6 +17,7 @@ const MAX_KEY: usize = KEY_MAX as usize;
 
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
+pub type LayerAliases = HashMap<String, LayerIndex>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -48,6 +49,8 @@ pub struct LayersManager {
     // This is a read-only representation of the user's layer configuration.
     // The 0th layer is the base and will always be active
     pub layers: Layers,
+
+    pub layer_aliases: LayerAliases,
 
     // Holds the on/off state for each layer
     pub layers_states: LayersStates,
@@ -88,9 +91,10 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(layers: &Layers) -> Self {
+    pub fn new(layers: &Layers, layer_aliases: &LayerAliases) -> Self {
         let merged = init_merged();
         let layers = layers.clone();
+        let layer_aliases = layer_aliases.clone();
         let layers_count = layers.len();
         let key_locks = HashMap::new();
 
@@ -100,6 +104,7 @@ impl LayersManager {
         LayersManager {
             merged,
             layers,
+            layer_aliases,
             layers_states,
             key_locks,
             global_lock: None,
@@ -267,6 +272,19 @@ impl LayersManager {
             self.turn_layer_on(index);
         }
     }
+
+    pub fn toggle_layer_alias(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            // clone into idx to avoid mutable borrow reservation conflict
+            let idx = index.clone();
+            self.toggle_layer(idx);
+        }
+    }
+
+
+    fn get_idx_from_alias(&self, name: String) -> Option<&usize> {
+        self.layer_aliases.get(&name)
+    }
 }
 
 // ----------------------------------------------------------
@@ -316,31 +334,38 @@ use crate::cfg::Cfg;
 
 #[test]
 fn test_mgr() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
+    let mut h = HashMap::new();
+    h.insert("base".to_string(), 0);
+    h.insert("arrows".to_string(), 1);
+    h.insert("asdf".to_string(), 2);
+    let cfg = Cfg::new(
+        h,
         vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
-            (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
-        ],
-        // 1: arrows layer
-        vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_H, Tap(Key(KEY_LEFT))),
-            (KEY_J, Tap(Key(KEY_DOWN))),
-            (KEY_K, Tap(Key(KEY_UP))),
-            (KEY_L, Tap(Key(KEY_RIGHT))),
-        ],
-        // 2: asdf modifiers
-        vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
-            (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
-        ],
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
+                (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
+            ],
+
+            // 1: arrows layer
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_H, Tap(Key(KEY_LEFT))),
+                (KEY_J, Tap(Key(KEY_DOWN))),
+                (KEY_K, Tap(Key(KEY_UP))),
+                (KEY_L, Tap(Key(KEY_RIGHT))),
+            ],
+
+            // 2: asdf modifiers
+            vec![
+                // Ex: switch CTRL <--> Capslock
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
+                (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
+            ],
     ]);
 
-    let mut mgr = LayersManager::new(&cfg.layers);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -423,17 +448,26 @@ fn test_mgr() {
 
 #[test]
 fn test_overlapping_keys() {
-    let cfg = Cfg::new(vec![
-        // 0: base layer
-        vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
-        // 1: arrows layer
+    let mut h = HashMap::new();
+    h.insert("base".to_string(), 0);
+    h.insert("arrows".to_string(), 1);
+    let cfg = Cfg::new(
+        h,
         vec![
-            // Ex: switch CTRL <--> Capslock
-            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-        ],
-    ]);
+            // 0: base layer
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            ],
 
-    let mut mgr = LayersManager::new(&cfg.layers);
+            // 1: arrows layer
+            // Ex: switch CTRL <--> Capslock
+            vec![
+                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
+            ]
+        ],
+    );
+
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);

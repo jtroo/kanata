@@ -14,6 +14,15 @@
     // ktrl will register a TapDance if all taps occur within a 1000ms period (1s)
     tap_dance_wait_time: 1000,
 
+    // Gives names to layers
+    layer_aliases: {
+        "base": 0,
+        "f_is_enter": 1,
+        "g_is_enter": 2,
+        "h_is_enter": 3,
+        "i_is_enter": 4,
+    },
+
     layers: [
         // Layer 0 (Base Layer)
         //
@@ -29,11 +38,20 @@
             // These two lines swap Capslock and Left-Ctrl.
             // As a bonus, an error sound will be played when you press Left-Ctrl
             KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
-            KEY_LEFTCTRL:  Tap(Multi([Key(KEY_LEFTCTRL), Sound(Error)])),
+            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
 
             // F1 on regular tap, layer toggle on hold.
             // A toggled layer will stay active until toggled again.
-            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayer(1)),
+            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("f_is_enter")),
+
+            // F2 on regular tap, layer toggle by index otherwise.
+            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(2)),
+
+            // F2 on regular tap, layer toggle by index otherwise.
+            KEY_F3:  TapHold(Key(KEY_F3), ToggleLayerAlias("h_is_enter")),
+
+            // F4 on regular tap, layer toggle by index otherwise.
+            KEY_F4:  TapHold(Key(KEY_F4), ToggleLayerAlias("i_is_enter")),
         },
         // Layer 1
         {
@@ -48,10 +66,10 @@
 
             // Press once for Enter, press 2 time for Sticky Shift.
             // Sticky keys will remain active until pressed again.
-            KEY_D:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            KEY_F:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
 
-            // Press once for F, press 3 to toggle this layer
-            KEY_F:   TapDance(3, Key(KEY_F), ToggleLayer(1)),
+            // Press once for D, press 3 to toggle this layer
+            KEY_D:   TapDance(3, Key(KEY_D), ToggleLayer(1)),
 
             // Map Alt to Ctrl-Alt-Shift
             KEY_LEFTALT:  Tap(Meh),
@@ -59,5 +77,19 @@
             // Map Shift to Ctrl-Alt-Shift-Win
             KEY_LEFTSHIFT: Tap(Hyper),
         },
+        // Layer 2
+        {
+            // Press once for enter, 2 times for sticky shift
+            KEY_G:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+        },
+        // Layer 3
+        {
+            // Press once for enter, 2 times for sticky shift
+            KEY_H:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+        },
+        // Layer 4
+        {
+            KEY_I: TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+        }
     ],
 )

@@ -27,6 +27,7 @@ pub enum Effect {
     Meh,   // Ctrl+Alt+Shift
     Hyper, // Ctrl+Alt+Shift+Win
 
+    ToggleLayerAlias(String),
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
 

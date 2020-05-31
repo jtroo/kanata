@@ -82,6 +82,14 @@ fn perform_toggle_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Re
     Ok(())
 }
 
+fn perform_toggle_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.toggle_layer_alias(name)
+    }
+
+    Ok(())
+}
+
 fn perform_key_sticky(ktrl: &mut Ktrl, code: KeyCode, value: KeyValue) -> Result<(), Error> {
     if value == KeyValue::Release {
         return Ok(());
@@ -117,6 +125,7 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::Meh => perform_keyseq(&mut ktrl.kbd_out, MEH.to_vec(), fx_val.val),
         Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
+        Effect::ToggleLayerAlias(name) => perform_toggle_layer_alias(ktrl, name, fx_val.val),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
         Effect::Sound(snd) => perform_play_sound(ktrl, snd, fx_val.val),
         Effect::SoundEx(snd) => perform_play_custom_sound(ktrl, snd, fx_val.val),
