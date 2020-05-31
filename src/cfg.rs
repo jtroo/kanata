@@ -1,5 +1,7 @@
 use crate::layers::Layers;
 
+use crate::layers::Profile;
+
 #[cfg(test)]
 use crate::actions::Action;
 #[cfg(test)]
@@ -20,13 +22,14 @@ use std::collections::HashMap;
 pub struct Cfg {
     pub layers: Layers,
     pub layer_aliases: HashMap<String, usize>,
+    pub layer_profiles: HashMap<String, Profile>,
     pub tap_hold_wait_time: u64,
     pub tap_dance_wait_time: u64,
 }
 
 impl Cfg {
     #[cfg(test)]
-    pub fn new(layer_aliases: HashMap<String, usize>, layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
+    pub fn new(layer_aliases: HashMap<String, usize>, layers: Vec<Vec<(KeyCode, Action)>>, layer_profiles: HashMap<String, Profile>) -> Self {
         let mut converted: Vec<Layer> = vec![];
         for layer in layers.into_iter() {
             converted.push(layer.into_iter().collect::<Layer>());
@@ -35,6 +38,7 @@ impl Cfg {
         Self {
             layers: converted,
             layer_aliases,
+            layer_profiles,
             tap_hold_wait_time: 0,
             tap_dance_wait_time: 0,
         }

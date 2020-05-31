@@ -3,6 +3,7 @@ use log::{debug, warn};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::vec::Vec;
+use serde::Deserialize;
 
 pub use crate::actions::tap_hold::TapHoldState;
 pub use crate::actions::Action;
@@ -18,6 +19,15 @@ const MAX_KEY: usize = KEY_MAX as usize;
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
 pub type LayerAliases = HashMap<String, LayerIndex>;
+pub type LayerProfiles = HashMap<String, Profile>;
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct Profile {
+    pub on_indices: Vec<usize>,
+    pub off_indices: Vec<usize>,
+    pub on_aliases: Vec<String>,
+    pub off_aliases: Vec<String>,
+}
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -51,6 +61,8 @@ pub struct LayersManager {
     pub layers: Layers,
 
     pub layer_aliases: LayerAliases,
+
+    pub layer_profiles: LayerProfiles,
 
     // Holds the on/off state for each layer
     pub layers_states: LayersStates,
@@ -91,10 +103,11 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(layers: &Layers, layer_aliases: &LayerAliases) -> Self {
+    pub fn new(layers: &Layers, layer_aliases: &LayerAliases, layer_profiles: &LayerProfiles) -> Self {
         let merged = init_merged();
         let layers = layers.clone();
         let layer_aliases = layer_aliases.clone();
+        let layer_profiles = layer_profiles.clone();
         let layers_count = layers.len();
         let key_locks = HashMap::new();
 
@@ -105,6 +118,7 @@ impl LayersManager {
             merged,
             layers,
             layer_aliases,
+            layer_profiles,
             layers_states,
             key_locks,
             global_lock: None,
@@ -281,6 +295,64 @@ impl LayersManager {
         }
     }
 
+    pub fn turn_alias_on(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            let idx = index.clone();
+            self.turn_index_on(idx);
+        }
+    }
+    pub fn turn_alias_off(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            let idx = index.clone();
+            self.turn_index_off(idx);
+        }
+    }
+
+    // used as short hand to check state prior to turning off. Essentially toggle, but explicit
+    pub fn turn_index_off(&mut self, idx: usize) {
+        let is_layer_on = self.layers_states[idx];
+        if is_layer_on {
+            self.turn_layer_off(idx);
+        }
+    }
+
+    // used as short hand to check state prior to turning on. Essentially toggle, but explicit
+    pub fn turn_index_on(&mut self, idx: usize) {
+        let is_layer_on = self.layers_states[idx];
+        if !is_layer_on {
+            self.turn_layer_on(idx);
+        }
+    }
+
+    pub fn toggle_profile(&mut self, name: String, on: bool) {
+        match self.layer_profiles.get(&name) {
+            Some(profile) => {
+                let profile = profile.clone();
+                if on {
+                    for index in profile.on_indices.iter() {
+                        self.turn_index_on(*index);
+                    }
+                    for index in profile.off_indices.iter() {
+                        self.turn_index_off(*index);
+                    }
+                    for alias in profile.on_aliases.iter() {
+                        self.turn_alias_on(alias.clone())
+                    }
+                    for alias in profile.off_aliases.iter() {
+                        self.turn_alias_off(alias.clone())
+                    }
+                } else {
+                    for index in profile.on_indices.iter() {
+                        self.turn_index_off(*index)
+                    }
+                    for alias in profile.on_aliases.iter() {
+                        self.turn_alias_off(alias.clone())
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 
     fn get_idx_from_alias(&self, name: String) -> Option<&usize> {
         self.layer_aliases.get(&name)
@@ -363,9 +435,11 @@ fn test_mgr() {
                 (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
                 (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
             ],
-    ]);
+    ],
+    HashMap::new(),
+    );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -465,9 +539,10 @@ fn test_overlapping_keys() {
                 (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
             ]
         ],
+        HashMap::new()
     );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);

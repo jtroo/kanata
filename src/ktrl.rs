@@ -53,7 +53,7 @@ impl Ktrl {
 
         let cfg_str = read_to_string(args.config_path)?;
         let cfg = cfg::parse(&cfg_str);
-        let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+        let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
         l_mgr.init();
 
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);

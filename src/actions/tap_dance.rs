@@ -284,9 +284,9 @@ fn test_tap_dance() {
             vec![
                 (KEY_A, TapDance(3, Key(KEY_A), Key(KEY_LEFTCTRL))),
             ],
-    ]);
+    ], HashMap::new());
 
-    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     let mut th_mgr = TapDanceMgr::new(500);
 
     l_mgr.init();

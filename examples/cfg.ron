@@ -23,6 +23,21 @@
         "i_is_enter": 4,
     },
 
+    layer_profiles: {
+        "firefox": Profile(
+            on_indices: [],
+            off_indices: [],
+            on_aliases: ["h_is_enter", "i_is_enter"],
+            off_aliases: ["f_is_enter", "g_is_enter"],
+        ),
+        "not-firefox": Profile(
+            on_indices: [],
+            off_indices: [],
+            on_aliases: ["f_is_enter", "g_is_enter"],
+            off_aliases: ["h_is_enter", "i_is_enter"],
+        ),
+    },
+
     layers: [
         // Layer 0 (Base Layer)
         //
@@ -40,42 +55,13 @@
             KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
             KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
 
-            // F1 on regular tap, layer toggle on hold.
-            // A toggled layer will stay active until toggled again.
-            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("f_is_enter")),
-
-            // F2 on regular tap, layer toggle by index otherwise.
-            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(2)),
-
-            // F2 on regular tap, layer toggle by index otherwise.
-            KEY_F3:  TapHold(Key(KEY_F3), ToggleLayerAlias("h_is_enter")),
-
-            // F4 on regular tap, layer toggle by index otherwise.
-            KEY_F4:  TapHold(Key(KEY_F4), ToggleLayerAlias("i_is_enter")),
+            KEY_F1:  TapHold(Key(KEY_F1), Multi([DeactivateProfile("not-firefox"), ActivateProfile("firefox")])),
+            KEY_F2:  TapHold(Key(KEY_F2), Multi([DeactivateProfile("firefox"), ActivateProfile("not-firefox")])),
+            KEY_F3:  TapHold(Key(KEY_F3), DeactivateAllProfiles),
         },
         // Layer 1
         {
-            // These two entries are to illustrate layer "priorities".
-            // Higher layers take precedence over lower layers.
-            //
-            // E.g these two entries will override the two lower entries.
-            // Thereby, restoring the swap we did over there.
-            //
-            KEY_CAPSLOCK:  Tap(Key(KEY_CAPSLOCK)),
-            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
-
-            // Press once for Enter, press 2 time for Sticky Shift.
-            // Sticky keys will remain active until pressed again.
             KEY_F:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
-
-            // Press once for D, press 3 to toggle this layer
-            KEY_D:   TapDance(3, Key(KEY_D), ToggleLayer(1)),
-
-            // Map Alt to Ctrl-Alt-Shift
-            KEY_LEFTALT:  Tap(Meh),
-
-            // Map Shift to Ctrl-Alt-Shift-Win
-            KEY_LEFTSHIFT: Tap(Hyper),
         },
         // Layer 2
         {

@@ -242,6 +242,9 @@ E.g Playing a sound, toggling a layer, sending a key sequence, etc...
 - `KeySeq`: Outputs multiple keys at once. E.g `Meh` and `Hyper` are `KeySeq`s
 - `Meh`: A shorthand for `KeySeq(KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT)`
 - `Hyper`: A shorthand for `KeySeq(KEY_LEFTCTRL, KEY_LEFTALT, KEY_LEFTSHIFT, KEY_LEFTMETA)`
+- `ActivateProfile`: Activates a user-defined profile
+- `DeactivateProfile`: Deactivates a user-defined profile
+- `DeactivateAllProfiles`: Deactivates all user-defined profiles
 - `ToggleLayerAlias`: When pressed, either turns on or off a named layer.
 - `ToggleLayer`: When pressed, either turns on or off a layer.
 - `MomentaryLayer`: While pressed, the relevant layer will remain active

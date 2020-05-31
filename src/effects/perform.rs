@@ -90,6 +90,24 @@ fn perform_toggle_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) ->
     Ok(())
 }
 
+fn perform_toggle_profile(ktrl: &mut Ktrl, name: String, value: KeyValue, on: bool) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.toggle_profile(name, on)
+    }
+
+    Ok(())
+}
+
+fn perform_toggle_all_profiles(ktrl: &mut Ktrl, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        for name in ktrl.l_mgr.layer_profiles.clone().keys() {
+            ktrl.l_mgr.toggle_profile(name.clone(), false);
+        }
+    }
+
+    Ok(())
+}
+
 fn perform_key_sticky(ktrl: &mut Ktrl, code: KeyCode, value: KeyValue) -> Result<(), Error> {
     if value == KeyValue::Release {
         return Ok(());
@@ -124,6 +142,9 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::KeySticky(code) => perform_key_sticky(ktrl, code, fx_val.val),
         Effect::Meh => perform_keyseq(&mut ktrl.kbd_out, MEH.to_vec(), fx_val.val),
         Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
+        Effect::ActivateProfile(name) => perform_toggle_profile(ktrl, name, fx_val.val, true),
+        Effect::DeactivateProfile(name) => perform_toggle_profile(ktrl, name, fx_val.val, false),
+        Effect::DeactivateAllProfiles => perform_toggle_all_profiles(ktrl, fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
         Effect::ToggleLayerAlias(name) => perform_toggle_layer_alias(ktrl, name, fx_val.val),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
