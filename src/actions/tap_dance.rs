@@ -269,7 +269,7 @@ use crate::effects::Effect::*;
 fn test_tap_dance() {
     use std::collections::HashMap;
     let mut h = HashMap::new();
-    h.insert(0, "base".to_string());
+    h.insert("base".to_string(), 0);
     let cfg = Cfg::new(
         h,
         vec![

@@ -17,7 +17,7 @@ const MAX_KEY: usize = KEY_MAX as usize;
 
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
-pub type LayerAliases = HashMap<LayerIndex, String>;
+pub type LayerAliases = HashMap<String, LayerIndex>;
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -264,17 +264,15 @@ impl LayersManager {
 
     pub fn toggle_layer_alias(&mut self, name: String) {
         if let Some(index) = self.get_idx_from_alias(name) {
-            self.toggle_layer(index);
+            // clone into idx to avoid mutable borrow reservation conflict
+            let idx = index.clone();
+            self.toggle_layer(idx);
         }
     }
 
-    fn get_idx_from_alias(&self, name: String) -> Option<usize> {
-        for (idx, layer_name) in self.layer_aliases.iter() {
-            if layer_name == &name {
-                return Some(idx.clone());
-            }
-        }
-        return None;
+
+    fn get_idx_from_alias(&self, name: String) -> Option<&usize> {
+        self.layer_aliases.get(&name)
     }
 }
 
@@ -326,9 +324,9 @@ use crate::cfg::Cfg;
 #[test]
 fn test_mgr() {
     let mut h = HashMap::new();
-    h.insert(0, "base".to_string());
-    h.insert(1, "arrows".to_string());
-    h.insert(2, "asdf".to_string());
+    h.insert("base".to_string(), 0);
+    h.insert("arrows".to_string(), 1);
+    h.insert("asdf".to_string(), 2);
     let cfg = Cfg::new(
         h,
         vec![
@@ -423,8 +421,8 @@ fn test_mgr() {
 fn test_overlapping_keys() {
 
     let mut h = HashMap::new();
-    h.insert(0, "base".to_string());
-    h.insert(1, "arrows".to_string());
+    h.insert("base".to_string(), 0);
+    h.insert("arrows".to_string(), 1);
     let cfg = Cfg::new(
         h,
         vec![

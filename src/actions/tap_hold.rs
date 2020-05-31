@@ -389,7 +389,7 @@ fn test_tap() {
 fn test_hold() {
     use std::collections::HashMap;
     let mut h = HashMap::new();
-    h.insert(0, "base".to_string());
+    h.insert("base".to_string(), 0);
     let cfg = Cfg::new(
         h,
         vec![

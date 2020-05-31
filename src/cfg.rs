@@ -19,22 +19,17 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize)]
 pub struct Cfg {
     pub layers: Layers,
-    pub layer_aliases: HashMap<usize, String>,
+    pub layer_aliases: HashMap<String, usize>,
     pub tap_hold_wait_time: u64,
     pub tap_dance_wait_time: u64,
 }
 
 impl Cfg {
     #[cfg(test)]
-    pub fn new(aliases: HashMap<usize, String>, layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
+    pub fn new(layer_aliases: HashMap<String, usize>, layers: Vec<Vec<(KeyCode, Action)>>) -> Self {
         let mut converted: Vec<Layer> = vec![];
-        let mut layer_aliases: HashMap<usize, String> =
-            HashMap::with_capacity(layers.len());
-        for i in 0..layers.len() {
-            if let Some(alias) = aliases.get(&i) {
-                layer_aliases.insert(i, alias.clone());
-            }
-            converted.push(layers[i].clone().into_iter().collect::<Layer>());
+        for layer in layers.into_iter() {
+            converted.push(layer.into_iter().collect::<Layer>());
         }
 
         Self {
