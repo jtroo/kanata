@@ -1,18 +1,18 @@
-mod sticky;
 mod dj;
+mod sticky;
 
 pub mod perform;
+pub use dj::Dj;
+pub use dj::KSnd;
 pub use perform::perform_effect;
 pub use sticky::StickyState;
-pub use dj::KSnd;
-pub use dj::Dj;
 
-use crate::keys::KeyValue;
+use crate::actions::Action;
 use crate::keys::KeyCode;
 use crate::keys::KeyEvent;
+use crate::keys::KeyValue;
 use crate::layers::LayerIndex;
 use crate::layers::LayersManager;
-use crate::actions::Action;
 use inner::inner;
 use serde::Deserialize;
 
@@ -24,7 +24,7 @@ pub enum Effect {
     KeySticky(KeyCode),
     KeySeq(Vec<KeyCode>),
 
-    Meh, // Ctrl+Alt+Shift
+    Meh,   // Ctrl+Alt+Shift
     Hyper, // Ctrl+Alt+Shift+Win
 
     ToggleLayerAlias(String),
@@ -35,7 +35,6 @@ pub enum Effect {
     SoundEx(String),
 
     Multi(Vec<Effect>),
-
     // Not Implemented Yet
     // ---------------------
     // OneShotLayer(LayerIndex),
@@ -47,7 +46,7 @@ pub fn key_event_to_fx_val(l_mgr: &LayersManager, event: &KeyEvent) -> EffectVal
     let merged = l_mgr.get(event.code);
     let effect = inner!(&merged.action, if Action::Tap).clone();
 
-    EffectValue{
+    EffectValue {
         fx: effect,
         val: event.value.into(),
     }
@@ -66,7 +65,7 @@ pub struct EffectValue {
 
 impl EffectValue {
     pub fn new(fx: Effect, val: KeyValue) -> Self {
-        Self{fx, val}
+        Self { fx, val }
     }
 }
 
@@ -80,14 +79,14 @@ impl OutEffects {
     pub fn new(stop_processing: bool, effect: Effect, value: KeyValue) -> Self {
         OutEffects {
             stop_processing,
-            effects: Some(vec![EffectValue::new(effect, value)])
+            effects: Some(vec![EffectValue::new(effect, value)]),
         }
     }
 
     pub fn new_multiple(stop_processing: bool, effects: Vec<EffectValue>) -> Self {
         OutEffects {
             stop_processing,
-            effects: Some(effects)
+            effects: Some(effects),
         }
     }
 

@@ -1,11 +1,11 @@
 use crate::layers::Layers;
 
 #[cfg(test)]
+use crate::actions::Action;
+#[cfg(test)]
 use crate::keys::KeyCode;
 #[cfg(test)]
 use crate::layers::Layer;
-#[cfg(test)]
-use crate::actions::Action;
 
 use ron::de;
 use serde::Deserialize;

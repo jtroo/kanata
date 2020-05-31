@@ -1,16 +1,18 @@
-use std::collections::HashSet;
 use crate::keys::KeyCode;
-use crate::layers::LockOwner::LkSticky;
 use crate::layers::LayersManager;
+use crate::layers::LockOwner::LkSticky;
 use log::debug;
+use std::collections::HashSet;
 
 pub struct StickyState {
-    pressed: HashSet<KeyCode>
+    pressed: HashSet<KeyCode>,
 }
 
 impl StickyState {
     pub fn new() -> Self {
-        Self{pressed: HashSet::new()}
+        Self {
+            pressed: HashSet::new(),
+        }
     }
 
     pub fn update_pressed(&mut self, l_mgr: &mut LayersManager, key: KeyCode) {

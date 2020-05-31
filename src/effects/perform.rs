@@ -1,12 +1,12 @@
-use crate::keys::KeyCode;
-use crate::keys::KeyCode::*;
-use crate::keys::KeyValue;
 use crate::effects::Effect;
 use crate::effects::EffectValue;
 use crate::effects::KSnd;
 use crate::kbd_out::KbdOut;
-use crate::layers::LayerIndex;
+use crate::keys::KeyCode;
+use crate::keys::KeyCode::*;
+use crate::keys::KeyValue;
 use crate::ktrl::Ktrl;
+use crate::layers::LayerIndex;
 
 use std::io::Error;
 use std::vec::Vec;
@@ -31,7 +31,11 @@ lazy_static::lazy_static! {
     };
 }
 
-fn perform_multiple_effects(ktrl: &mut Ktrl, effects: Vec<Effect>, value: KeyValue) -> Result<(), Error> {
+fn perform_multiple_effects(
+    ktrl: &mut Ktrl,
+    effects: Vec<Effect>,
+    value: KeyValue,
+) -> Result<(), Error> {
     for fx in effects {
         let sub_fx_val = EffectValue::new(fx.clone(), value);
         perform_effect(ktrl, sub_fx_val)?;
@@ -40,8 +44,11 @@ fn perform_multiple_effects(ktrl: &mut Ktrl, effects: Vec<Effect>, value: KeyVal
     Ok(())
 }
 
-
-fn perform_play_custom_sound(ktrl: &mut Ktrl, snd_path: String , value: KeyValue) -> Result<(), Error> {
+fn perform_play_custom_sound(
+    ktrl: &mut Ktrl,
+    snd_path: String,
+    value: KeyValue,
+) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.dj.play_custom(&snd_path)
     }

@@ -2,7 +2,7 @@
 
 <p>
   <a href="https://crates.io/crates/ktrl">
-    <img alt="Crates.io" src="https://img.shields.io/badge/crates.io-0.1.1-orange">
+    <img alt="Crates.io" src="https://img.shields.io/badge/crates.io-0.1.2-orange">
   </a>
 </p>
 
@@ -166,6 +166,20 @@ These directories are `/dev/input/by-id` and `/dev/input/by-path`.
 
 Within these two directories keyboard devices usually have a `-kbd` suffix.
 For example, in my laptop, the path is `/dev/input/by-path/platform-i8042-serio-0-event-kbd`.
+
+##### Bluetooth keyboard location
+
+If you are using a bluetooth keyboard, you will need to locate the associated `/dev/input/event<#>` as `/dev/input/by-*` only lists usb connected inputs. The best way to do this is to run `cat /proc/bus/input/devices` and search for the associated bluetooth keyboard (the `Phys` output will have the MAC address). Here is an example:
+```
+I: Bus=0005 Vendor=05ac Product=0239 Version=0050
+N: Name="My Keyboard"
+P: Phys=SO:ME:MA:CA:DD:RS
+S: Sysfs=/devices/pci0000:00/0000:00:01.2/0000:02:00.0/0000:03:08.0/0000:07:00.3/usb3/3-5/3-5:1.0/bluetooth/hci0/hci0:256/0005:05AC:0239.0009/input/input40
+U: Uniq=SO:ME:MA:CA:DD:RS
+H: Handlers=sysrq kbd event25 leds
+<snip>
+```
+Notice in `Handlers`, it tells us the event # we need. So our path to our device is `/dev/input/event25`.
 
 
 #### Setting up ktrl as a Service (Optional)

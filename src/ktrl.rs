@@ -1,21 +1,21 @@
 use evdev_rs::enums::EventType;
-use log::{info, error};
+use log::{error, info};
 
 use std::convert::TryFrom;
-use std::path::PathBuf;
 use std::fs::read_to_string;
+use std::path::PathBuf;
 
-use crate::cfg;
-use crate::KbdIn;
-use crate::KbdOut;
-use crate::keys::KeyEvent;
-use crate::layers::LayersManager;
-use crate::actions::TapHoldMgr;
 use crate::actions::TapDanceMgr;
+use crate::actions::TapHoldMgr;
+use crate::cfg;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
-use crate::effects::StickyState;
 use crate::effects::Dj;
+use crate::effects::StickyState;
+use crate::keys::KeyEvent;
+use crate::layers::LayersManager;
+use crate::KbdIn;
+use crate::KbdOut;
 
 pub struct KtrlArgs {
     pub kbd_path: PathBuf,
@@ -61,7 +61,15 @@ impl Ktrl {
         let sticky = StickyState::new();
         let dj = Dj::new(&args.assets_path);
 
-        Ok(Self{kbd_in, kbd_out, l_mgr, th_mgr, td_mgr, sticky, dj})
+        Ok(Self {
+            kbd_in,
+            kbd_out,
+            l_mgr,
+            th_mgr,
+            td_mgr,
+            sticky,
+            dj,
+        })
     }
 
     //
@@ -107,15 +115,15 @@ impl Ktrl {
             let in_event = self.kbd_in.read()?;
 
             // Filter uninteresting events
-            if in_event.event_type == EventType::EV_SYN ||
-                in_event.event_type == EventType::EV_MSC {
+            if in_event.event_type == EventType::EV_SYN || in_event.event_type == EventType::EV_MSC
+            {
                 continue;
             }
 
             // Pass-through non-key events
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
-                _ =>  {
+                _ => {
                     self.kbd_out.write(in_event)?;
                     continue;
                 }
