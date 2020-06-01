@@ -13,15 +13,13 @@ mod kbd_out;
 mod keys;
 mod ktrl;
 mod layers;
+mod ipc;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
 use ktrl::Ktrl;
 use ktrl::KtrlArgs;
-
-use std::sync::Mutex;
-use std::sync::Arc;
-use std::thread;
+use ipc::KtrlIpc;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
@@ -126,15 +124,12 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
 fn main() -> Result<(), std::io::Error> {
     let args = cli_init()?;
 
-    let ktrl = Arc::new(Mutex::new(Ktrl::new(args)?));
+    let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
-    let ipc_ktrl = ktrl.clone();
-    thread::spawn(move|| {
-        Ktrl::ipc_loop(ipc_ktrl).unwrap();
-    });
+    let ipc = KtrlIpc::new(ktrl_arc.clone(), 7331)?;
+    ipc.spawn_ipc_thread();
 
-    Ktrl::event_loop(ktrl)?;
-
+    Ktrl::event_loop(ktrl_arc)?;
     Ok(())
 }

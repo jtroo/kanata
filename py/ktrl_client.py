@@ -11,7 +11,7 @@ socket.connect("tcp://127.0.0.1:7331")
 #  Do 10 requests, waiting each time for a response
 for request in range(10):
     print("Sending request %s …" % request)
-    socket.send(b"Hello")
+    socket.send(b"IpcDoEffect((fx: NoOp, val: Press))")
 
     #  Get the reply.
     message = socket.recv()

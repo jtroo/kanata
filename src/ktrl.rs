@@ -75,6 +75,10 @@ impl Ktrl {
         })
     }
 
+    pub fn new_arc(args: KtrlArgs) -> Result<Arc<Mutex<Self>>, std::io::Error> {
+        Ok(Arc::new(Mutex::new(Self::new(args)?)))
+    }
+
     //
     // TODO:
     // ----
@@ -151,19 +155,4 @@ impl Ktrl {
         }
     }
 
-    pub fn ipc_loop(ktrl: Arc<Mutex<Self>>) -> Result<(), std::io::Error> {
-        let ctx = zmq::Context::new();
-        let socket = ctx.socket(zmq::REP)?;
-        socket.bind("tcp://127.0.0.1:7331")?;
-        let mut msg = zmq::Message::new();
-
-        loop {
-            socket.recv(&mut msg, 0)?;
-            let mut _ktrl = ktrl.lock()
-                .expect("Failed to lock ktrl (poisoned)");
-            dbg!(&msg);
-            socket.send("OK", 0)
-                .expect("Failed to send a reply");
-        }
-    }
 }
