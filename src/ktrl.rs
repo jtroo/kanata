@@ -162,6 +162,8 @@ impl Ktrl {
             let mut _ktrl = ktrl.lock()
                 .expect("Failed to lock ktrl (poisoned)");
             dbg!(&msg);
+            socket.send("OK", 0)
+                .expect("Failed to send a reply");
         }
     }
 }
