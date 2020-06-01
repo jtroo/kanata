@@ -1,6 +1,6 @@
 [package]
 name = "ktrl"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Itay Garin <thifixp@gmail.com>"]
 description = "A Supercharged Keyboard Programming Daemon"
 keywords = ["cli", "linux", "daemon", "keyboard", "layout"]
