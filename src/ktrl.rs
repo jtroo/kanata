@@ -10,12 +10,14 @@ use crate::actions::TapHoldMgr;
 use crate::cfg;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
-use crate::effects::Dj;
 use crate::effects::StickyState;
 use crate::keys::KeyEvent;
 use crate::layers::LayersManager;
 use crate::KbdIn;
 use crate::KbdOut;
+
+#[cfg(feature = "sound")]
+use crate::effects::Dj;
 
 pub struct KtrlArgs {
     pub kbd_path: PathBuf,
@@ -30,6 +32,8 @@ pub struct Ktrl {
     pub th_mgr: TapHoldMgr,
     pub td_mgr: TapDanceMgr,
     pub sticky: StickyState,
+
+    #[cfg(feature = "sound")]
     pub dj: Dj,
 }
 
@@ -59,6 +63,8 @@ impl Ktrl {
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
         let td_mgr = TapDanceMgr::new(cfg.tap_dance_wait_time);
         let sticky = StickyState::new();
+
+        #[cfg(feature = "sound")]
         let dj = Dj::new(&args.assets_path);
 
         Ok(Self {
@@ -68,6 +74,7 @@ impl Ktrl {
             th_mgr,
             td_mgr,
             sticky,
+            #[cfg(feature = "sound")]
             dj,
         })
     }

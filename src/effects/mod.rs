@@ -1,11 +1,15 @@
-mod dj;
-mod sticky;
-
 pub mod perform;
-pub use dj::Dj;
-pub use dj::KSnd;
 pub use perform::perform_effect;
+
+mod sticky;
 pub use sticky::StickyState;
+
+#[cfg(feature = "sound")]
+mod dj;
+#[cfg(feature = "sound")]
+pub use dj::KSnd;
+#[cfg(feature = "sound")]
+pub use dj::Dj;
 
 use crate::actions::Action;
 use crate::keys::KeyCode;
@@ -31,7 +35,9 @@ pub enum Effect {
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
 
+    #[cfg(feature = "sound")]
     Sound(KSnd),
+    #[cfg(feature = "sound")]
     SoundEx(String),
 
     Multi(Vec<Effect>),

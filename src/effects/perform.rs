@@ -1,12 +1,14 @@
 use crate::effects::Effect;
 use crate::effects::EffectValue;
-use crate::effects::KSnd;
 use crate::kbd_out::KbdOut;
 use crate::keys::KeyCode;
 use crate::keys::KeyCode::*;
 use crate::keys::KeyValue;
 use crate::ktrl::Ktrl;
 use crate::layers::LayerIndex;
+
+#[cfg(feature = "sound")]
+use crate::effects::KSnd;
 
 use std::io::Error;
 use std::vec::Vec;
@@ -44,6 +46,7 @@ fn perform_multiple_effects(
     Ok(())
 }
 
+#[cfg(feature = "sound")]
 fn perform_play_custom_sound(
     ktrl: &mut Ktrl,
     snd_path: String,
@@ -56,6 +59,7 @@ fn perform_play_custom_sound(
     Ok(())
 }
 
+#[cfg(feature = "sound")]
 fn perform_play_sound(ktrl: &mut Ktrl, snd: KSnd, value: KeyValue) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.dj.play(snd)
@@ -127,8 +131,11 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
         Effect::ToggleLayerAlias(name) => perform_toggle_layer_alias(ktrl, name, fx_val.val),
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
-        Effect::Sound(snd) => perform_play_sound(ktrl, snd, fx_val.val),
-        Effect::SoundEx(snd) => perform_play_custom_sound(ktrl, snd, fx_val.val),
         Effect::Multi(fxs) => perform_multiple_effects(ktrl, fxs, fx_val.val),
+
+        #[cfg(feature = "sound")]
+        Effect::Sound(snd) => perform_play_sound(ktrl, snd, fx_val.val),
+        #[cfg(feature = "sound")]
+        Effect::SoundEx(snd) => perform_play_custom_sound(ktrl, snd, fx_val.val),
     }
 }
