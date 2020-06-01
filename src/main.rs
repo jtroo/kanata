@@ -19,6 +19,10 @@ use kbd_out::KbdOut;
 use ktrl::Ktrl;
 use ktrl::KtrlArgs;
 
+use std::sync::Mutex;
+use std::sync::Arc;
+use std::thread;
+
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
 const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
@@ -122,10 +126,15 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
 fn main() -> Result<(), std::io::Error> {
     let args = cli_init()?;
 
-    let mut ktrl = Ktrl::new(args)?;
+    let ktrl = Arc::new(Mutex::new(Ktrl::new(args)?));
     info!("ktrl: Setup Complete");
 
-    ktrl.event_loop()?;
+    let ipc_ktrl = ktrl.clone();
+    thread::spawn(move|| {
+        Ktrl::ipc_loop(ipc_ktrl).unwrap();
+    });
+
+    Ktrl::event_loop(ktrl)?;
 
     Ok(())
 }
