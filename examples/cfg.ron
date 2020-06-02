@@ -17,10 +17,24 @@
     // Gives names to layers
     layer_aliases: {
         "base": 0,
-        "f_is_enter": 1,
-        "g_is_enter": 2,
-        "h_is_enter": 3,
-        "i_is_enter": 4,
+        "function_keys": 1,
+        "meta-disabled": 2,
+        "meta-enabled": 3,
+    },
+
+    layer_profiles: {
+        "function": Profile(
+            indices: [],
+            aliases: ["function_keys"],
+        ),
+        "meta": Profile(
+            indices: [],
+            aliases: ["meta-enabled", "function_keys"]
+        ),
+        "no-meta": Profile(
+            indices: [],
+            aliases: ["meta-disabled"],
+        ),
     },
 
     layers: [
@@ -37,59 +51,37 @@
         {
             // These two lines swap Capslock and Left-Ctrl.
             // As a bonus, an error sound will be played when you press Left-Ctrl
-            KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
-            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTCTRL)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("meta")),
+            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("function_keys")),
+            KEY_F3:  TapHold(Key(KEY_F3), DeactivateAllProfiles),
 
-            // F1 on regular tap, layer toggle on hold.
-            // A toggled layer will stay active until toggled again.
-            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("f_is_enter")),
-
-            // F2 on regular tap, layer toggle by index otherwise.
-            KEY_F2:  TapHold(Key(KEY_F2), ToggleLayer(2)),
-
-            // F2 on regular tap, layer toggle by index otherwise.
-            KEY_F3:  TapHold(Key(KEY_F3), ToggleLayerAlias("h_is_enter")),
-
-            // F4 on regular tap, layer toggle by index otherwise.
-            KEY_F4:  TapHold(Key(KEY_F4), ToggleLayerAlias("i_is_enter")),
         },
-        // Layer 1
+        // function_keys
         {
-            // These two entries are to illustrate layer "priorities".
-            // Higher layers take precedence over lower layers.
-            //
-            // E.g these two entries will override the two lower entries.
-            // Thereby, restoring the swap we did over there.
-            //
-            KEY_CAPSLOCK:  Tap(Key(KEY_CAPSLOCK)),
-            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
-
-            // Press once for Enter, press 2 time for Sticky Shift.
-            // Sticky keys will remain active until pressed again.
-            KEY_F:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
-
-            // Press once for D, press 3 to toggle this layer
-            KEY_D:   TapDance(3, Key(KEY_D), ToggleLayer(1)),
-
-            // Map Alt to Ctrl-Alt-Shift
-            KEY_LEFTALT:  Tap(Meh),
-
-            // Map Shift to Ctrl-Alt-Shift-Win
-            KEY_LEFTSHIFT: Tap(Hyper),
+            // maps standard Mac keyboard to default to function keys.
+            KEY_BRIGHTNESSDOWN: Tap(Key(KEY_F1)), // 224
+            KEY_BRIGHTNESSUP: Tap(Key(KEY_F2)), // 225
+            KEY_SCALE: Tap(Key(KEY_F3)), // 120
+            KEY_DASHBOARD: Tap(Key(KEY_F4)), // 204
+            KEY_KBDILLUMDOWN: Tap(Key(KEY_F5)), //229
+            KEY_KBDILLUMUP: Tap(Key(KEY_F6)), // 230
+            KEY_PREVIOUSSONG: Tap(Key(KEY_F7)), // 165
+            KEY_PLAYPAUSE: Tap(Key(KEY_F8)), // 164
+            KEY_NEXTSONG: Tap(Key(KEY_F9)), // 163
+            KEY_MUTE: Tap(Key(KEY_F10)), // 113
+            KEY_VOLUMEDOWN: Tap(Key(KEY_F11)), // 114
+            KEY_VOLUMEUP: Tap(Key(KEY_F12)), // 115
         },
-        // Layer 2
+        // meta-disabled
         {
-            // Press once for enter, 2 times for sticky shift
-            KEY_G:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTCTRL)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("meta")),
         },
-        // Layer 3
+        // meta-enabled
         {
-            // Press once for enter, 2 times for sticky shift
-            KEY_H:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTMETA)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("no-meta")),
         },
-        // Layer 4
-        {
-            KEY_I: TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
-        }
     ],
 )

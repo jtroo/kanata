@@ -1,5 +1,6 @@
 use crate::keys::KeyCode::*;
 use log::{debug, warn};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::vec::Vec;
@@ -18,6 +19,13 @@ const MAX_KEY: usize = KEY_MAX as usize;
 pub type LayerIndex = usize;
 pub type Layer = HashMap<KeyCode, Action>;
 pub type LayerAliases = HashMap<String, LayerIndex>;
+pub type LayerProfiles = HashMap<String, Profile>;
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct Profile {
+    pub indices: Vec<usize>,
+    pub aliases: Vec<String>,
+}
 
 #[derive(Clone, Debug)]
 pub struct MergedKey {
@@ -51,6 +59,8 @@ pub struct LayersManager {
     pub layers: Layers,
 
     pub layer_aliases: LayerAliases,
+
+    pub layer_profiles: LayerProfiles,
 
     // Holds the on/off state for each layer
     pub layers_states: LayersStates,
@@ -91,10 +101,15 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(layers: &Layers, layer_aliases: &LayerAliases) -> Self {
+    pub fn new(
+        layers: &Layers,
+        layer_aliases: &LayerAliases,
+        layer_profiles: &LayerProfiles,
+    ) -> Self {
         let merged = init_merged();
         let layers = layers.clone();
         let layer_aliases = layer_aliases.clone();
+        let layer_profiles = layer_profiles.clone();
         let layers_count = layers.len();
         let key_locks = HashMap::new();
 
@@ -105,6 +120,7 @@ impl LayersManager {
             merged,
             layers,
             layer_aliases,
+            layer_profiles,
             layers_states,
             key_locks,
             global_lock: None,
@@ -220,47 +236,49 @@ impl LayersManager {
     }
 
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
-        std::assert!(!self.layers_states[index]);
-        let layer = &self.layers[index];
+        if !self.layers_states[index] {
+            let layer = &self.layers[index];
 
-        if !self.is_layer_change_safe(index, layer) {
-            return;
-        }
-
-        for (code, action) in layer {
-            let is_overriding = self.is_overriding_key(*code, index);
-
-            if is_overriding {
-                let new_entry = MergedKey {
-                    code: *code,
-                    action: action.clone(),
-                    layer_index: index,
-                };
-
-                self.merged[usize::from(*code)] = Some(new_entry);
+            if !self.is_layer_change_safe(index, layer) {
+                return;
             }
-        }
 
-        self.layers_states[index] = true;
-        debug!("Turned layer {} on", index);
+            for (code, action) in layer {
+                let is_overriding = self.is_overriding_key(*code, index);
+
+                if is_overriding {
+                    let new_entry = MergedKey {
+                        code: *code,
+                        action: action.clone(),
+                        layer_index: index,
+                    };
+
+                    self.merged[usize::from(*code)] = Some(new_entry);
+                }
+            }
+
+            self.layers_states[index] = true;
+            debug!("Turned layer {} on", index);
+        }
     }
 
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
-        std::assert!(index > 0); // Can't turn off the base layer
-        std::assert!(self.layers_states[index]);
+        if index > 0 {
+            if self.layers_states[index] {
+                let layer = &self.layers[index];
+                if !self.is_layer_change_safe(index, layer) {
+                    return;
+                }
 
-        let layer = &self.layers[index];
-        if !self.is_layer_change_safe(index, layer) {
-            return;
+                for (code, _action) in layer {
+                    let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
+                    self.merged[usize::from(*code)] = Some(replacement_entry);
+                }
+
+                self.layers_states[index] = false;
+                debug!("Turned layer {} off", index);
+            }
         }
-
-        for (code, _action) in layer {
-            let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
-            self.merged[usize::from(*code)] = Some(replacement_entry);
-        }
-
-        self.layers_states[index] = false;
-        debug!("Turned layer {} off", index);
     }
 
     pub fn toggle_layer(&mut self, index: LayerIndex) {
@@ -281,6 +299,42 @@ impl LayersManager {
         }
     }
 
+    pub fn turn_alias_on(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            let idx = index.clone();
+            self.turn_layer_on(idx);
+        }
+    }
+    pub fn turn_alias_off(&mut self, name: String) {
+        if let Some(index) = self.get_idx_from_alias(name) {
+            let idx = index.clone();
+            self.turn_layer_off(idx);
+        }
+    }
+
+    pub fn toggle_profile(&mut self, name: String, on: bool) {
+        match self.layer_profiles.get(&name) {
+            Some(profile) => {
+                let profile = profile.clone();
+                if on {
+                    for index in profile.indices.iter() {
+                        self.turn_layer_on(*index);
+                    }
+                    for alias in profile.aliases.iter() {
+                        self.turn_alias_on(alias.clone())
+                    }
+                } else {
+                    for index in profile.indices.iter() {
+                        self.turn_layer_off(*index)
+                    }
+                    for alias in profile.aliases.iter() {
+                        self.turn_alias_off(alias.clone())
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 
     fn get_idx_from_alias(&self, name: String) -> Option<&usize> {
         self.layer_aliases.get(&name)
@@ -346,7 +400,6 @@ fn test_mgr() {
                 (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
                 (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
             ],
-
             // 1: arrows layer
             vec![
                 // Ex: switch CTRL <--> Capslock
@@ -355,7 +408,6 @@ fn test_mgr() {
                 (KEY_K, Tap(Key(KEY_UP))),
                 (KEY_L, Tap(Key(KEY_RIGHT))),
             ],
-
             // 2: asdf modifiers
             vec![
                 // Ex: switch CTRL <--> Capslock
@@ -363,9 +415,11 @@ fn test_mgr() {
                 (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
                 (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
             ],
-    ]);
+        ],
+        HashMap::new(),
+    );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -455,19 +509,15 @@ fn test_overlapping_keys() {
         h,
         vec![
             // 0: base layer
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-            ],
-
+            vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
             // 1: arrows layer
             // Ex: switch CTRL <--> Capslock
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-            ]
+            vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
         ],
+        HashMap::new(),
     );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);

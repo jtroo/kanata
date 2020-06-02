@@ -31,7 +31,12 @@ pub enum Effect {
     Meh,   // Ctrl+Alt+Shift
     Hyper, // Ctrl+Alt+Shift+Win
 
+    ActivateProfile(String),
+    DeactivateProfile(String),
+    DeactivateAllProfiles,
+
     ToggleLayerAlias(String),
+
     ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
 
