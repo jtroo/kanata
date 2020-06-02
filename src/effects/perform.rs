@@ -90,12 +90,17 @@ fn perform_toggle_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) ->
     Ok(())
 }
 
-fn perform_toggle_profile(ktrl: &mut Ktrl, name: String, value: KeyValue, on: bool) -> Result<(), Error> {
+fn perform_toggle_profile(
+    ktrl: &mut Ktrl,
+    name: String,
+    value: KeyValue,
+    on: bool,
+) -> Result<(), Error> {
     if value == KeyValue::Press {
         // deactivate all profiles, if successful, activate new profile
         match perform_deactivate_all_profiles(ktrl, value) {
             Ok(()) => ktrl.l_mgr.toggle_profile(name, on),
-            Err(e) => return Err(e)
+            Err(e) => return Err(e),
         }
     }
 

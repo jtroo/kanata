@@ -1,9 +1,9 @@
 use crate::keys::KeyCode::*;
 use log::{debug, warn};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::vec::Vec;
-use serde::Deserialize;
 
 pub use crate::actions::tap_hold::TapHoldState;
 pub use crate::actions::Action;
@@ -101,7 +101,11 @@ fn init_merged() -> Merged {
 }
 
 impl LayersManager {
-    pub fn new(layers: &Layers, layer_aliases: &LayerAliases, layer_profiles: &LayerProfiles) -> Self {
+    pub fn new(
+        layers: &Layers,
+        layer_aliases: &LayerAliases,
+        layer_profiles: &LayerProfiles,
+    ) -> Self {
         let merged = init_merged();
         let layers = layers.clone();
         let layer_aliases = layer_aliases.clone();
@@ -396,7 +400,6 @@ fn test_mgr() {
                 (KEY_LEFTCTRL, Tap(Key(KEY_CAPSLOCK))),
                 (KEY_CAPSLOCK, Tap(Key(KEY_LEFTCTRL))),
             ],
-
             // 1: arrows layer
             vec![
                 // Ex: switch CTRL <--> Capslock
@@ -405,7 +408,6 @@ fn test_mgr() {
                 (KEY_K, Tap(Key(KEY_UP))),
                 (KEY_L, Tap(Key(KEY_RIGHT))),
             ],
-
             // 2: asdf modifiers
             vec![
                 // Ex: switch CTRL <--> Capslock
@@ -413,8 +415,8 @@ fn test_mgr() {
                 (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTSHIFT))),
                 (KEY_D, TapHold(Key(KEY_D), Key(KEY_LEFTALT))),
             ],
-    ],
-    HashMap::new(),
+        ],
+        HashMap::new(),
     );
 
     let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
@@ -507,17 +509,12 @@ fn test_overlapping_keys() {
         h,
         vec![
             // 0: base layer
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-            ],
-
+            vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
             // 1: arrows layer
             // Ex: switch CTRL <--> Capslock
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT))),
-            ]
+            vec![(KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTSHIFT)))],
         ],
-        HashMap::new()
+        HashMap::new(),
     );
 
     let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);

@@ -29,7 +29,11 @@ pub struct Cfg {
 
 impl Cfg {
     #[cfg(test)]
-    pub fn new(layer_aliases: HashMap<String, usize>, layers: Vec<Vec<(KeyCode, Action)>>, layer_profiles: HashMap<String, Profile>) -> Self {
+    pub fn new(
+        layer_aliases: HashMap<String, usize>,
+        layers: Vec<Vec<(KeyCode, Action)>>,
+        layer_profiles: HashMap<String, Profile>,
+    ) -> Self {
         let mut converted: Vec<Layer> = vec![];
         for layer in layers.into_iter() {
             converted.push(layer.into_iter().collect::<Layer>());

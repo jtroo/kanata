@@ -346,12 +346,12 @@ fn test_tap() {
     use std::collections::HashMap;
     let cfg = Cfg::new(
         HashMap::new(),
-        vec![
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
-            ],
-    ], HashMap::new());
+        vec![vec![
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
+        ]],
+        HashMap::new(),
+    );
 
     let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
@@ -456,12 +456,12 @@ fn test_hold() {
     h.insert("base".to_string(), 0);
     let cfg = Cfg::new(
         h,
-        vec![
-            vec![
-                (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
-                (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
-            ],
-    ], HashMap::new());
+        vec![vec![
+            (KEY_A, TapHold(Key(KEY_A), Key(KEY_LEFTCTRL))),
+            (KEY_S, TapHold(Key(KEY_S), Key(KEY_LEFTALT))),
+        ]],
+        HashMap::new(),
+    );
 
     let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
