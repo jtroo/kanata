@@ -17,24 +17,23 @@
     // Gives names to layers
     layer_aliases: {
         "base": 0,
-        "f_is_enter": 1,
-        "g_is_enter": 2,
-        "h_is_enter": 3,
-        "i_is_enter": 4,
+        "function_keys": 1,
+        "meta-disabled": 2,
+        "meta-enabled": 3,
     },
 
     layer_profiles: {
-        "firefox": Profile(
-            on_indices: [],
-            off_indices: [],
-            on_aliases: ["h_is_enter", "i_is_enter"],
-            off_aliases: ["f_is_enter", "g_is_enter"],
+        "function": Profile(
+            indices: [],
+            aliases: ["function_keys"],
         ),
-        "not-firefox": Profile(
-            on_indices: [],
-            off_indices: [],
-            on_aliases: ["f_is_enter", "g_is_enter"],
-            off_aliases: ["h_is_enter", "i_is_enter"],
+        "meta": Profile(
+            indices: [],
+            aliases: ["meta-enabled", "function_keys"]
+        ),
+        "no-meta": Profile(
+            indices: [],
+            aliases: ["meta-disabled"],
         ),
     },
 
@@ -52,30 +51,37 @@
         {
             // These two lines swap Capslock and Left-Ctrl.
             // As a bonus, an error sound will be played when you press Left-Ctrl
-            KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
-            KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL)),
-
-            KEY_F1:  TapHold(Key(KEY_F1), Multi([DeactivateProfile("not-firefox"), ActivateProfile("firefox")])),
-            KEY_F2:  TapHold(Key(KEY_F2), Multi([DeactivateProfile("firefox"), ActivateProfile("not-firefox")])),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTCTRL)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("meta")),
+            KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("function_keys")),
             KEY_F3:  TapHold(Key(KEY_F3), DeactivateAllProfiles),
+
         },
-        // Layer 1
+        // function_keys
         {
-            KEY_F:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            // maps standard Mac keyboard to default to function keys.
+            KEY_BRIGHTNESSDOWN: Tap(Key(KEY_F1)), // 224
+            KEY_BRIGHTNESSUP: Tap(Key(KEY_F2)), // 225
+            KEY_SCALE: Tap(Key(KEY_F3)), // 120
+            KEY_DASHBOARD: Tap(Key(KEY_F4)), // 204
+            KEY_KBDILLUMDOWN: Tap(Key(KEY_F5)), //229
+            KEY_KBDILLUMUP: Tap(Key(KEY_F6)), // 230
+            KEY_PREVIOUSSONG: Tap(Key(KEY_F7)), // 165
+            KEY_PLAYPAUSE: Tap(Key(KEY_F8)), // 164
+            KEY_NEXTSONG: Tap(Key(KEY_F9)), // 163
+            KEY_MUTE: Tap(Key(KEY_F10)), // 113
+            KEY_VOLUMEDOWN: Tap(Key(KEY_F11)), // 114
+            KEY_VOLUMEUP: Tap(Key(KEY_F12)), // 115
         },
-        // Layer 2
+        // meta-disabled
         {
-            // Press once for enter, 2 times for sticky shift
-            KEY_G:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTCTRL)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("meta")),
         },
-        // Layer 3
+        // meta-enabled
         {
-            // Press once for enter, 2 times for sticky shift
-            KEY_H:   TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
+            KEY_LEFTMETA:  Tap(Key(KEY_LEFTMETA)),
+            KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("no-meta")),
         },
-        // Layer 4
-        {
-            KEY_I: TapDance(2, Key(KEY_ENTER), KeySticky(KEY_LEFTSHIFT)),
-        }
     ],
 )

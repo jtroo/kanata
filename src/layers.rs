@@ -23,10 +23,8 @@ pub type LayerProfiles = HashMap<String, Profile>;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Profile {
-    pub on_indices: Vec<usize>,
-    pub off_indices: Vec<usize>,
-    pub on_aliases: Vec<String>,
-    pub off_aliases: Vec<String>,
+    pub indices: Vec<usize>,
+    pub aliases: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -234,47 +232,49 @@ impl LayersManager {
     }
 
     pub fn turn_layer_on(&mut self, index: LayerIndex) {
-        std::assert!(!self.layers_states[index]);
-        let layer = &self.layers[index];
+        if !self.layers_states[index] {
+            let layer = &self.layers[index];
 
-        if !self.is_layer_change_safe(index, layer) {
-            return;
-        }
-
-        for (code, action) in layer {
-            let is_overriding = self.is_overriding_key(*code, index);
-
-            if is_overriding {
-                let new_entry = MergedKey {
-                    code: *code,
-                    action: action.clone(),
-                    layer_index: index,
-                };
-
-                self.merged[usize::from(*code)] = Some(new_entry);
+            if !self.is_layer_change_safe(index, layer) {
+                return;
             }
-        }
 
-        self.layers_states[index] = true;
-        debug!("Turned layer {} on", index);
+            for (code, action) in layer {
+                let is_overriding = self.is_overriding_key(*code, index);
+
+                if is_overriding {
+                    let new_entry = MergedKey {
+                        code: *code,
+                        action: action.clone(),
+                        layer_index: index,
+                    };
+
+                    self.merged[usize::from(*code)] = Some(new_entry);
+                }
+            }
+
+            self.layers_states[index] = true;
+            debug!("Turned layer {} on", index);
+        }
     }
 
     pub fn turn_layer_off(&mut self, index: LayerIndex) {
-        std::assert!(index > 0); // Can't turn off the base layer
-        std::assert!(self.layers_states[index]);
+        if index > 0 {
+            if self.layers_states[index] {
+                let layer = &self.layers[index];
+                if !self.is_layer_change_safe(index, layer) {
+                    return;
+                }
 
-        let layer = &self.layers[index];
-        if !self.is_layer_change_safe(index, layer) {
-            return;
+                for (code, _action) in layer {
+                    let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
+                    self.merged[usize::from(*code)] = Some(replacement_entry);
+                }
+
+                self.layers_states[index] = false;
+                debug!("Turned layer {} off", index);
+            }
         }
-
-        for (code, _action) in layer {
-            let replacement_entry = self.get_replacement_merged_key(&self.layers, *code);
-            self.merged[usize::from(*code)] = Some(replacement_entry);
-        }
-
-        self.layers_states[index] = false;
-        debug!("Turned layer {} off", index);
     }
 
     pub fn toggle_layer(&mut self, index: LayerIndex) {
@@ -298,29 +298,13 @@ impl LayersManager {
     pub fn turn_alias_on(&mut self, name: String) {
         if let Some(index) = self.get_idx_from_alias(name) {
             let idx = index.clone();
-            self.turn_index_on(idx);
+            self.turn_layer_on(idx);
         }
     }
     pub fn turn_alias_off(&mut self, name: String) {
         if let Some(index) = self.get_idx_from_alias(name) {
             let idx = index.clone();
-            self.turn_index_off(idx);
-        }
-    }
-
-    // used as short hand to check state prior to turning off. Essentially toggle, but explicit
-    pub fn turn_index_off(&mut self, idx: usize) {
-        let is_layer_on = self.layers_states[idx];
-        if is_layer_on {
             self.turn_layer_off(idx);
-        }
-    }
-
-    // used as short hand to check state prior to turning on. Essentially toggle, but explicit
-    pub fn turn_index_on(&mut self, idx: usize) {
-        let is_layer_on = self.layers_states[idx];
-        if !is_layer_on {
-            self.turn_layer_on(idx);
         }
     }
 
@@ -329,23 +313,17 @@ impl LayersManager {
             Some(profile) => {
                 let profile = profile.clone();
                 if on {
-                    for index in profile.on_indices.iter() {
-                        self.turn_index_on(*index);
+                    for index in profile.indices.iter() {
+                        self.turn_layer_on(*index);
                     }
-                    for index in profile.off_indices.iter() {
-                        self.turn_index_off(*index);
-                    }
-                    for alias in profile.on_aliases.iter() {
+                    for alias in profile.aliases.iter() {
                         self.turn_alias_on(alias.clone())
                     }
-                    for alias in profile.off_aliases.iter() {
-                        self.turn_alias_off(alias.clone())
-                    }
                 } else {
-                    for index in profile.on_indices.iter() {
-                        self.turn_index_off(*index)
+                    for index in profile.indices.iter() {
+                        self.turn_layer_off(*index)
                     }
-                    for alias in profile.on_aliases.iter() {
+                    for alias in profile.aliases.iter() {
                         self.turn_alias_off(alias.clone())
                     }
                 }
