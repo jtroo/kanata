@@ -3,17 +3,15 @@ use std::sync::Arc;
 use std::thread;
 
 use ron::de;
-use ron::ser;
 use serde::Deserialize;
-use serde::Serialize;
 
-use log::debug;
+use log::{debug, info};
 
 use crate::ktrl::Ktrl;
 use crate::effects::EffectValue;
 use crate::effects::perform_effect;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum KtrlIpcReq {
     IpcDoEffect(EffectValue),
 }
@@ -43,7 +41,9 @@ impl KtrlIpc {
     pub fn new(ktrl: Arc<Mutex<Ktrl>>, port: usize) -> Result<Self, std::io::Error> {
         let ctx = zmq::Context::new();
         let socket = ctx.socket(zmq::REP)?;
-        socket.bind(&format!("tcp://127.0.0.1:{}", port))?;
+        let endpoint = format!("tcp://127.0.0.1:{}", port);
+        socket.bind(&endpoint)?;
+        info!("Listening for IPC requests on {}", endpoint);
         Ok(Self{_ctx: ctx, socket, ktrl})
     }
 
@@ -88,16 +88,4 @@ impl KtrlIpc {
         });
 
     }
-}
-
-#[test]
-fn test_ser() {
-    let req = KtrlIpcReq::IpcDoEffect(
-        EffectValue{
-            fx: crate::effects::Effect::NoOp,
-            val: crate::keys::KeyValue::Press,
-        }
-    );
-
-    println!("{}", ser::to_string(&req).unwrap());
 }

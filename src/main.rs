@@ -24,6 +24,7 @@ use ipc::KtrlIpc;
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
 const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
+const DEFAULT_IPC_PORT: &str = "7331";
 
 #[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
@@ -71,6 +72,16 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("port")
+                .long("port")
+                .value_name("PORT")
+                .help(&format!(
+                    "TCP Port to listen on for ipc requests. Default: {}",
+                    DEFAULT_IPC_PORT
+                ))
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("debug")
                 .long("debug")
                 .help("Enables debug level logging"),
@@ -81,6 +92,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
+    let ipc_port = matches.value_of("port").unwrap_or(DEFAULT_IPC_PORT).parse::<usize>().expect("Bad port value");
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -117,17 +129,19 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         kbd_path: kbd_path.to_path_buf(),
         config_path: config_path.to_path_buf(),
         assets_path: assets_path.to_path_buf(),
+        ipc_port,
     })
 }
 
 #[doc(hidden)]
 fn main() -> Result<(), std::io::Error> {
     let args = cli_init()?;
+    let ipc_port = args.ipc_port;
 
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
-    let ipc = KtrlIpc::new(ktrl_arc.clone(), 7331)?;
+    let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
     ipc.spawn_ipc_thread();
 
     Ktrl::event_loop(ktrl_arc)?;
