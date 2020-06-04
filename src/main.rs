@@ -13,12 +13,15 @@ mod kbd_out;
 mod keys;
 mod ktrl;
 mod layers;
-mod ipc;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
 use ktrl::Ktrl;
 use ktrl::KtrlArgs;
+
+#[cfg(feature = "ipc")]
+mod ipc;
+#[cfg(feature = "ipc")]
 use ipc::KtrlIpc;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
@@ -133,17 +136,32 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     })
 }
 
-#[doc(hidden)]
-fn main() -> Result<(), std::io::Error> {
-    let args = cli_init()?;
+#[cfg(feature = "ipc")]
+fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ipc_port = args.ipc_port;
 
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
-    let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
-    ipc.spawn_ipc_thread();
+    if cfg!(feature = "ipc") {
+        let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
+        ipc.spawn_ipc_thread();
+    }
 
     Ktrl::event_loop(ktrl_arc)?;
     Ok(())
+}
+
+#[cfg(not(feature = "ipc"))]
+fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
+    let ktrl_arc = Ktrl::new_arc(args)?;
+    info!("ktrl: Setup Complete");
+    Ktrl::event_loop(ktrl_arc)?;
+    Ok(())
+}
+
+#[doc(hidden)]
+fn main() -> Result<(), std::io::Error> {
+    let args = cli_init()?;
+    main_impl(args)
 }
