@@ -68,7 +68,7 @@ pub fn key_event_to_fx_val(l_mgr: &LayersManager, event: &KeyEvent) -> EffectVal
 // These are returned by action handlers.
 // E.g TapHoldMgr::process
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct EffectValue {
     pub fx: Effect,
     pub val: KeyValue,

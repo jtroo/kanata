@@ -1169,7 +1169,7 @@ impl From<KeyCode> for EV_KEY {
 
 // ------------------ KeyValue --------------------
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum KeyValue {
     Release = 0,
     Press = 1,

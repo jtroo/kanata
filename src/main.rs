@@ -19,9 +19,15 @@ use kbd_out::KbdOut;
 use ktrl::Ktrl;
 use ktrl::KtrlArgs;
 
+#[cfg(feature = "ipc")]
+mod ipc;
+#[cfg(feature = "ipc")]
+use ipc::KtrlIpc;
+
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
 const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
+const DEFAULT_IPC_PORT: &str = "7331";
 
 #[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
@@ -69,6 +75,23 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("port")
+                .long("port")
+                .value_name("PORT")
+                .help(&format!(
+                    "TCP Port to listen on for ipc requests. Default: {}",
+                    DEFAULT_IPC_PORT
+                ))
+                .takes_value(true),
+            )
+        .arg(
+            Arg::with_name("msg")
+                .long("msg")
+                .value_name("IPC-MSG")
+                .help("IPC Message to the running ktrl daemon. Won't start a new ktrl instance")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("debug")
                 .long("debug")
                 .help("Enables debug level logging"),
@@ -79,6 +102,8 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
+    let ipc_port = matches.value_of("port").unwrap_or(DEFAULT_IPC_PORT).parse::<usize>().expect("Bad port value");
+    let ipc_msg = matches.value_of("msg").map(|x: &str| x.to_string());
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -115,17 +140,43 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         kbd_path: kbd_path.to_path_buf(),
         config_path: config_path.to_path_buf(),
         assets_path: assets_path.to_path_buf(),
+        ipc_port,
+        ipc_msg,
     })
+}
+
+#[cfg(feature = "ipc")]
+fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
+    let ipc_port = args.ipc_port;
+
+    // Operate as a client, then quit
+    if let Some(ipc_msg) = args.ipc_msg {
+        return KtrlIpc::send_ipc_req(ipc_port, ipc_msg);
+    }
+
+    // Otherwise, startup the server
+    let ktrl_arc = Ktrl::new_arc(args)?;
+    info!("ktrl: Setup Complete");
+
+    if cfg!(feature = "ipc") {
+        let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
+        ipc.spawn_ipc_thread();
+    }
+
+    Ktrl::event_loop(ktrl_arc)?;
+    Ok(())
+}
+
+#[cfg(not(feature = "ipc"))]
+fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
+    let ktrl_arc = Ktrl::new_arc(args)?;
+    info!("ktrl: Setup Complete");
+    Ktrl::event_loop(ktrl_arc)?;
+    Ok(())
 }
 
 #[doc(hidden)]
 fn main() -> Result<(), std::io::Error> {
     let args = cli_init()?;
-
-    let mut ktrl = Ktrl::new(args)?;
-    info!("ktrl: Setup Complete");
-
-    ktrl.event_loop()?;
-
-    Ok(())
+    main_impl(args)
 }

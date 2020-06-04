@@ -5,6 +5,9 @@ use std::convert::TryFrom;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
+use std::sync::Mutex;
+use std::sync::Arc;
+
 use crate::actions::TapDanceMgr;
 use crate::actions::TapHoldMgr;
 use crate::cfg;
@@ -23,10 +26,12 @@ pub struct KtrlArgs {
     pub kbd_path: PathBuf,
     pub config_path: PathBuf,
     pub assets_path: PathBuf,
+    pub ipc_port: usize,
+    pub ipc_msg: Option<String>,
 }
 
 pub struct Ktrl {
-    pub kbd_in: KbdIn,
+    pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
     pub l_mgr: LayersManager,
     pub th_mgr: TapHoldMgr,
@@ -39,13 +44,6 @@ pub struct Ktrl {
 
 impl Ktrl {
     pub fn new(args: KtrlArgs) -> Result<Self, std::io::Error> {
-        let kbd_in = match KbdIn::new(&args.kbd_path) {
-            Ok(kbd_in) => kbd_in,
-            Err(err) => {
-                error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group");
-                return Err(err);
-            }
-        };
 
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
@@ -68,7 +66,7 @@ impl Ktrl {
         let dj = Dj::new(&args.assets_path);
 
         Ok(Self {
-            kbd_in,
+            kbd_in_path: args.kbd_path,
             kbd_out,
             l_mgr,
             th_mgr,
@@ -77,6 +75,10 @@ impl Ktrl {
             #[cfg(feature = "sound")]
             dj,
         })
+    }
+
+    pub fn new_arc(args: KtrlArgs) -> Result<Arc<Mutex<Self>>, std::io::Error> {
+        Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
     //
@@ -115,11 +117,26 @@ impl Ktrl {
         Ok(())
     }
 
-    pub fn event_loop(&mut self) -> Result<(), std::io::Error> {
+    pub fn event_loop(ktrl: Arc<Mutex<Self>>) -> Result<(), std::io::Error> {
         info!("Ktrl: Entering the event loop");
 
+        let kbd_in_path: PathBuf;
+        {
+            let ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
+            kbd_in_path = ktrl.kbd_in_path.clone();
+        }
+
+        let kbd_in = match KbdIn::new(&kbd_in_path) {
+            Ok(kbd_in) => kbd_in,
+            Err(err) => {
+                error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group");
+                return Err(err);
+            }
+        };
+
         loop {
-            let in_event = self.kbd_in.read()?;
+            let in_event = kbd_in.read()?;
+            let mut ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
 
             // Filter uninteresting events
             if in_event.event_type == EventType::EV_SYN || in_event.event_type == EventType::EV_MSC
@@ -131,12 +148,13 @@ impl Ktrl {
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
                 _ => {
-                    self.kbd_out.write(in_event)?;
+                    ktrl.kbd_out.write(in_event)?;
                     continue;
                 }
             };
 
-            self.handle_key_event(&key_event)?;
+            ktrl.handle_key_event(&key_event)?;
         }
     }
+
 }
