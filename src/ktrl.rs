@@ -27,6 +27,7 @@ pub struct KtrlArgs {
     pub config_path: PathBuf,
     pub assets_path: PathBuf,
     pub ipc_port: usize,
+    pub ipc_msg: Option<String>,
 }
 
 pub struct Ktrl {

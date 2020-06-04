@@ -83,6 +83,13 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                     DEFAULT_IPC_PORT
                 ))
                 .takes_value(true),
+            )
+        .arg(
+            Arg::with_name("msg")
+                .long("msg")
+                .value_name("IPC-MSG")
+                .help("IPC Message to the running ktrl daemon. Won't start a new ktrl instance")
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("debug")
@@ -96,6 +103,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
     let ipc_port = matches.value_of("port").unwrap_or(DEFAULT_IPC_PORT).parse::<usize>().expect("Bad port value");
+    let ipc_msg = matches.value_of("msg").map(|x: &str| x.to_string());
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -133,6 +141,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         config_path: config_path.to_path_buf(),
         assets_path: assets_path.to_path_buf(),
         ipc_port,
+        ipc_msg,
     })
 }
 
@@ -140,6 +149,12 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
 fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ipc_port = args.ipc_port;
 
+    // Operate as a client, then quit
+    if let Some(ipc_msg) = args.ipc_msg {
+        return KtrlIpc::send_ipc_req(ipc_port, ipc_msg);
+    }
+
+    // Otherwise, startup the server
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 

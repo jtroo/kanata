@@ -48,7 +48,6 @@ impl KtrlIpc {
     }
 
     fn handle_ipc_req(&self, req: &zmq::Message) -> KtrlIpcResp {
-        debug!("Recived an IPC req: {:?}", req);
         let mut ktrl = self.ktrl.lock()
             .expect("Failed to lock ktrl (poisoned)");
 
@@ -56,6 +55,8 @@ impl KtrlIpc {
             Some(req_str) => req_str,
             _ => return KtrlIpcResp::Error("Request has an invalid string".to_string()),
         };
+
+        debug!("Recived an IPC req: '{}'", req_str);
 
         let req: KtrlIpcReq = match de::from_str(req_str) {
             Ok(req) => req,
@@ -87,5 +88,22 @@ impl KtrlIpc {
             self.ipc_loop().unwrap();
         });
 
+    }
+
+    pub fn send_ipc_req(port: usize, req: String) -> Result<(), std::io::Error> {
+        let ctx = zmq::Context::new();
+        let socket = ctx.socket(zmq::REQ)?;
+        let endpoint = format!("tcp://127.0.0.1:{}", port);
+
+        info!("Sending an ipc msg to ktrl: {}", endpoint);
+        socket.connect(&endpoint)?;
+        socket.send(&req, 0)?;
+
+        let mut msg = zmq::Message::new();
+        socket.recv(&mut msg, 0)?;
+        info!("Received: {}", msg.as_str()
+              .expect("Couldn't parse the ipc reply as a string"));
+
+        Ok(())
     }
 }
