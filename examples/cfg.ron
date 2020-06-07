@@ -49,8 +49,6 @@
         //   They map a source `KeyCode` to an `Action`.
         //
         {
-            // These two lines swap Capslock and Left-Ctrl.
-            // As a bonus, an error sound will be played when you press Left-Ctrl
             KEY_LEFTMETA:  Tap(Key(KEY_LEFTCTRL)),
             KEY_RIGHTALT: TapHold(Key(KEY_RIGHTALT), ActivateProfile("meta")),
             KEY_F1:  TapHold(Key(KEY_F1), ToggleLayerAlias("function_keys")),
