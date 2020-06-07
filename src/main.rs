@@ -158,10 +158,8 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
-    if cfg!(feature = "ipc") {
-        let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
-        ipc.spawn_ipc_thread();
-    }
+    let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
+    ipc.spawn_ipc_thread();
 
     Ktrl::event_loop(ktrl_arc)?;
     Ok(())
