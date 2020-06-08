@@ -102,10 +102,10 @@ Start off by grabbing the main `ktrl` executable. Here's how you do that -
 cargo install ktrl
 ```
 
-Note: you may need to install `alsa` development bindings. For Debian/Ubuntu distributions this can be done with
+Note: you may need to install `alsa` development bindings, `autoconf` and `libtool`. For Debian/Ubuntu distributions this can be done with
 
 ```
-# apt install libalsa-ocaml-dev
+# apt install libalsa-ocaml-dev autoconf libtool libtool-bin
 ```
 
 #### Setting up ktrl's User and Groups
