@@ -35,9 +35,14 @@ pub enum Effect {
     DeactivateProfile(String),
     DeactivateAllProfiles,
 
+    TurnOnLayer(LayerIndex),
+    TurnOffLayer(LayerIndex),
+    ToggleLayer(LayerIndex),
+
+    TurnOnLayerAlias(String),
+    TurnOffLayerAlias(String),
     ToggleLayerAlias(String),
 
-    ToggleLayer(LayerIndex),
     MomentaryLayer(LayerIndex),
 
     #[cfg(feature = "sound")]

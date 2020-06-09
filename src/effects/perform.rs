@@ -78,9 +78,41 @@ fn perform_momentary_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) ->
     Ok(())
 }
 
+fn perform_turn_on_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.turn_layer_on(idx)
+    }
+
+    Ok(())
+}
+
+fn perform_turn_off_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.turn_layer_off(idx)
+    }
+
+    Ok(())
+}
+
 fn perform_toggle_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.l_mgr.toggle_layer(idx)
+    }
+
+    Ok(())
+}
+
+fn perform_turn_on_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.turn_alias_on(name)
+    }
+
+    Ok(())
+}
+
+fn perform_turn_off_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -> Result<(), Error> {
+    if value == KeyValue::Press {
+        ktrl.l_mgr.turn_alias_off(name)
     }
 
     Ok(())
@@ -155,11 +187,19 @@ pub fn perform_effect(ktrl: &mut Ktrl, fx_val: EffectValue) -> Result<(), Error>
         Effect::KeySticky(code) => perform_key_sticky(ktrl, code, fx_val.val),
         Effect::Meh => perform_keyseq(&mut ktrl.kbd_out, MEH.to_vec(), fx_val.val),
         Effect::Hyper => perform_keyseq(&mut ktrl.kbd_out, HYPER.to_vec(), fx_val.val),
+
         Effect::ActivateProfile(name) => perform_toggle_profile(ktrl, name, fx_val.val, true),
         Effect::DeactivateProfile(name) => perform_toggle_profile(ktrl, name, fx_val.val, false),
         Effect::DeactivateAllProfiles => perform_deactivate_all_profiles(ktrl, fx_val.val),
+
+        Effect::TurnOnLayer(idx) => perform_turn_on_layer(ktrl, idx, fx_val.val),
+        Effect::TurnOffLayer(idx) => perform_turn_off_layer(ktrl, idx, fx_val.val),
         Effect::ToggleLayer(idx) => perform_toggle_layer(ktrl, idx, fx_val.val),
+
+        Effect::TurnOnLayerAlias(name) => perform_turn_on_layer_alias(ktrl, name, fx_val.val),
+        Effect::TurnOffLayerAlias(name) => perform_turn_off_layer_alias(ktrl, name, fx_val.val),
         Effect::ToggleLayerAlias(name) => perform_toggle_layer_alias(ktrl, name, fx_val.val),
+
         Effect::MomentaryLayer(idx) => perform_momentary_layer(ktrl, idx, fx_val.val),
         Effect::Multi(fxs) => perform_multiple_effects(ktrl, fxs, fx_val.val),
 
