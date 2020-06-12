@@ -174,10 +174,8 @@ impl LayersManager {
     }
 
     fn get_replacement_merged_key(&self, layers: &Layers, removed_code: KeyCode) -> MergedKey {
-        let current = self.get(removed_code);
-        let lower_layer_idx = current.layer_index - 1;
-
-        for i in lower_layer_idx..=0 {
+        let current = self.get(removed_code).layer_index;
+        for i in (0..current).rev() {
             let lower_layer = &layers[i];
             if !lower_layer.contains_key(&removed_code) {
                 continue;
