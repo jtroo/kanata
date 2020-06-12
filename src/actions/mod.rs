@@ -1,10 +1,12 @@
 pub mod tap_dance;
 pub mod tap_hold;
+pub mod tilde_esc;
 
 use crate::effects::Effect;
 use serde::Deserialize;
 pub use tap_dance::TapDanceMgr;
 pub use tap_hold::TapHoldMgr;
+pub use tilde_esc::TildeEscMgr;
 
 type TapEffect = Effect;
 type HoldEffect = Effect;
@@ -15,8 +17,6 @@ type DanceLength = usize;
 pub enum Action {
     Tap(Effect),
     TapHold(TapEffect, HoldEffect),
-    TapDance(DanceLength, TapEffect, DanceEffect), // Not Implemented Yet
-                                                   // -------------------
-                                                   // Sequence(Vec<KeyCode>, Effect),
-                                                   // Combo(Vec<KeyCode>, Effect)
+    TapDance(DanceLength, TapEffect, DanceEffect),
+    TildeEsc,
 }

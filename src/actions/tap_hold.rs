@@ -5,6 +5,7 @@ use std::vec::Vec;
 // ktrl
 use crate::effects::EffectValue;
 use crate::effects::OutEffects;
+use crate::effects::{CONTINUE, STOP};
 use crate::keys::KeyCode;
 use crate::keys::KeyEvent;
 use crate::keys::KeyValue;
@@ -15,9 +16,6 @@ use crate::layers::LockOwner;
 use inner::inner;
 
 use crate::layers::{Action, Action::TapHold, Effect};
-
-const STOP: bool = true;
-const CONTINUE: bool = false;
 
 // This struct isn't used in Action::TapHold
 // due to overhead it'll create in the config file.

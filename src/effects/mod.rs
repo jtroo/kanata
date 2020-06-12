@@ -85,6 +85,9 @@ impl EffectValue {
     }
 }
 
+pub const STOP: bool = true;
+pub const CONTINUE: bool = false;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OutEffects {
     pub stop_processing: bool,
