@@ -312,6 +312,7 @@ This will make `A`, `S` and `D` act as usual on taps and as modifiers when held.
 of these to minimize false-positives.
 
 ## Similar Projects
+- [alt](https://github.com/ItayGarin/alt): An Event Aggregator that connects to ktrl
 - [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware (ktrl's inspiration)
 - [kmonad](https://github.com/david-janssen/kmonad): Very similar to ktrl (written in Haskell)
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
