@@ -32,7 +32,7 @@ const DEFAULT_IPC_PORT: &str = "7331";
 #[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let matches = App::new("ktrl")
-        .version("0.1")
+        .version("0.1.7")
         .author("Itay G. <thifixp@gmail.com>")
         .about("Unleashes your keyboard's full potential")
         .arg(
