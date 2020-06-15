@@ -5,6 +5,9 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::vec::Vec;
 
+#[cfg(feature = "notify")]
+use log::info;
+
 pub use crate::actions::tap_hold::TapHoldState;
 pub use crate::actions::Action;
 pub use crate::effects::Effect;
@@ -74,6 +77,10 @@ pub struct LayersManager {
     // but locks prevents layer changes globally.
     // I.E not key-specific like key_locks
     pub global_lock: Option<LockOwner>,
+
+    // For sending notifications about layer changes
+    #[cfg(feature = "notify")]
+    notify_socket: zmq::Socket,
 }
 
 // -------------- Implementation -------------
@@ -105,7 +112,9 @@ impl LayersManager {
         layers: &Layers,
         layer_aliases: &LayerAliases,
         layer_profiles: &LayerProfiles,
-    ) -> Self {
+        #[cfg(feature = "notify")]
+        notify_port: usize
+    ) -> Result<Self, std::io::Error> {
         let merged = init_merged();
         let layers = layers.clone();
         let layer_aliases = layer_aliases.clone();
@@ -116,15 +125,29 @@ impl LayersManager {
         let mut layers_states = Vec::new();
         layers_states.resize_with(layers_count, Default::default);
 
-        LayersManager {
-            merged,
-            layers,
-            layer_aliases,
-            layer_profiles,
-            layers_states,
-            key_locks,
-            global_lock: None,
-        }
+        #[cfg(feature = "notify")]
+        let notify_socket = {
+            let ctx = zmq::Context::new();
+            let socket = ctx.socket(zmq::PUB)?;
+            let endpoint = format!("tcp://127.0.0.1:{}", notify_port);
+            socket.bind(&endpoint)?;
+            info!("Sending notifications on {}", endpoint);
+            socket
+        };
+
+        Ok(
+            LayersManager {
+                merged,
+                layers,
+                layer_aliases,
+                layer_profiles,
+                layers_states,
+                key_locks,
+                global_lock: None,
+                #[cfg(feature = "notify")]
+                notify_socket
+            }
+        )
     }
 
     // ---------------- Locks -------------------------
@@ -198,6 +221,21 @@ impl LayersManager {
         }
     }
 
+    #[cfg(feature = "notify")]
+    fn send_notification(&mut self, index: LayerIndex, state: bool) {
+        let str_state = match state {
+            true => "on",
+            false => "off",
+        };
+
+        let msg = format!("layer {}:{}", index, str_state);
+        if let Err(err) = self.notify_socket.send(&msg, 0) {
+            warn!("Failed to send a notification. {}", err);
+        } else {
+            debug!("Sent a notification: '{}'", &msg);
+        }
+    }
+
     pub fn get(&self, key: KeyCode) -> &MergedKey {
         match &self.merged[usize::from(key)] {
             Some(merged_key) => merged_key,
@@ -257,6 +295,9 @@ impl LayersManager {
 
             self.layers_states[index] = true;
             debug!("Turned layer {} on", index);
+
+            #[cfg(feature = "notify")]
+            self.send_notification(index, true);
         }
     }
 
@@ -275,6 +316,9 @@ impl LayersManager {
 
                 self.layers_states[index] = false;
                 debug!("Turned layer {} off", index);
+
+                #[cfg(feature = "notify")]
+                self.send_notification(index, false);
             }
         }
     }

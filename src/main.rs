@@ -28,6 +28,7 @@ const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
 const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
 const DEFAULT_IPC_PORT: &str = "7331";
+const DEFAULT_NOTIFY_PORT: &str = "7333";
 
 #[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
@@ -75,15 +76,25 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("port")
-                .long("port")
-                .value_name("PORT")
+            Arg::with_name("ipc_port")
+                .long("ipc-port")
+                .value_name("IPC-PORT")
                 .help(&format!(
                     "TCP Port to listen on for ipc requests. Default: {}",
                     DEFAULT_IPC_PORT
                 ))
                 .takes_value(true),
-            )
+        )
+        .arg(
+            Arg::with_name("notify_port")
+                .long("notify-port")
+                .value_name("NOTIFY-PORT")
+                .help(&format!(
+                    "TCP Port where notifications will be sent. Default: {}",
+                    DEFAULT_NOTIFY_PORT
+                ))
+                .takes_value(true),
+        )
         .arg(
             Arg::with_name("msg")
                 .long("msg")
@@ -102,8 +113,17 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
-    let ipc_port = matches.value_of("port").unwrap_or(DEFAULT_IPC_PORT).parse::<usize>().expect("Bad port value");
+    let ipc_port = matches
+        .value_of("ipc_port")
+        .unwrap_or(DEFAULT_IPC_PORT)
+        .parse::<usize>()
+        .expect("Bad ipc port value");
     let ipc_msg = matches.value_of("msg").map(|x: &str| x.to_string());
+    let notify_port = matches
+        .value_of("notify_port")
+        .unwrap_or(DEFAULT_NOTIFY_PORT)
+        .parse::<usize>()
+        .expect("Bad notify port value");
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -142,6 +162,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         assets_path: assets_path.to_path_buf(),
         ipc_port,
         ipc_msg,
+        notify_port,
     })
 }
 

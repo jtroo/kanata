@@ -29,6 +29,7 @@ pub struct KtrlArgs {
     pub assets_path: PathBuf,
     pub ipc_port: usize,
     pub ipc_msg: Option<String>,
+    pub notify_port: usize,
 }
 
 pub struct Ktrl {
@@ -46,7 +47,6 @@ pub struct Ktrl {
 
 impl Ktrl {
     pub fn new(args: KtrlArgs) -> Result<Self, std::io::Error> {
-
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -57,7 +57,13 @@ impl Ktrl {
 
         let cfg_str = read_to_string(args.config_path)?;
         let cfg = cfg::parse(&cfg_str);
-        let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
+        let mut l_mgr = LayersManager::new(
+            &cfg.layers,
+            &cfg.layer_aliases,
+            &cfg.layer_profiles,
+            #[cfg(feature = "notify")]
+            args.notify_port,
+        )?;
         l_mgr.init();
 
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
@@ -169,5 +175,4 @@ impl Ktrl {
             ktrl.handle_key_event(&key_event)?;
         }
     }
-
 }
