@@ -112,8 +112,7 @@ impl LayersManager {
         layers: &Layers,
         layer_aliases: &LayerAliases,
         layer_profiles: &LayerProfiles,
-        #[cfg(feature = "notify")]
-        notify_port: usize
+        #[cfg(feature = "notify")] notify_port: usize,
     ) -> Result<Self, std::io::Error> {
         let merged = init_merged();
         let layers = layers.clone();
@@ -135,19 +134,17 @@ impl LayersManager {
             socket
         };
 
-        Ok(
-            LayersManager {
-                merged,
-                layers,
-                layer_aliases,
-                layer_profiles,
-                layers_states,
-                key_locks,
-                global_lock: None,
-                #[cfg(feature = "notify")]
-                notify_socket
-            }
-        )
+        Ok(LayersManager {
+            merged,
+            layers,
+            layer_aliases,
+            layer_profiles,
+            layers_states,
+            key_locks,
+            global_lock: None,
+            #[cfg(feature = "notify")]
+            notify_socket,
+        })
     }
 
     // ---------------- Locks -------------------------

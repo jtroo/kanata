@@ -7,9 +7,9 @@ pub use sticky::StickyState;
 #[cfg(feature = "sound")]
 mod dj;
 #[cfg(feature = "sound")]
-pub use dj::KSnd;
-#[cfg(feature = "sound")]
 pub use dj::Dj;
+#[cfg(feature = "sound")]
+pub use dj::KSnd;
 
 use crate::actions::Action;
 use crate::keys::KeyCode;

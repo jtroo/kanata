@@ -102,7 +102,11 @@ fn perform_toggle_layer(ktrl: &mut Ktrl, idx: LayerIndex, value: KeyValue) -> Re
     Ok(())
 }
 
-fn perform_turn_on_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -> Result<(), Error> {
+fn perform_turn_on_layer_alias(
+    ktrl: &mut Ktrl,
+    name: String,
+    value: KeyValue,
+) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.l_mgr.turn_alias_on(name)
     }
@@ -110,7 +114,11 @@ fn perform_turn_on_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -
     Ok(())
 }
 
-fn perform_turn_off_layer_alias(ktrl: &mut Ktrl, name: String, value: KeyValue) -> Result<(), Error> {
+fn perform_turn_off_layer_alias(
+    ktrl: &mut Ktrl,
+    name: String,
+    value: KeyValue,
+) -> Result<(), Error> {
     if value == KeyValue::Press {
         ktrl.l_mgr.turn_alias_off(name)
     }

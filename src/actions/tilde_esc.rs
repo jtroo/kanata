@@ -1,24 +1,23 @@
+use crate::actions::Action;
 use crate::effects::Effect;
 use crate::effects::OutEffects;
 use crate::effects::{CONTINUE, STOP};
-use crate::actions::Action;
 use crate::keys::KeyCode;
 use crate::keys::KeyEvent;
 use crate::keys::KeyValue;
 use crate::layers::LayersManager;
 
 pub struct TildeEscMgr {
-    is_shift_on: bool
+    is_shift_on: bool,
 }
 
 fn is_shift(kc: KeyCode) -> bool {
-    kc == KeyCode::KEY_LEFTSHIFT ||
-        kc == KeyCode::KEY_RIGHTSHIFT
+    kc == KeyCode::KEY_LEFTSHIFT || kc == KeyCode::KEY_RIGHTSHIFT
 }
 
 impl TildeEscMgr {
     pub fn new() -> Self {
-        Self{is_shift_on: false}
+        Self { is_shift_on: false }
     }
 
     fn process_tilde_esc(&self, event: &KeyEvent) -> OutEffects {
@@ -56,4 +55,3 @@ impl TildeEscMgr {
         }
     }
 }
-

@@ -1,5 +1,5 @@
-use std::sync::Mutex;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 
 use ron::de;
@@ -7,9 +7,9 @@ use serde::Deserialize;
 
 use log::{debug, info};
 
-use crate::ktrl::Ktrl;
-use crate::effects::EffectValue;
 use crate::effects::perform_effect;
+use crate::effects::EffectValue;
+use crate::ktrl::Ktrl;
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum KtrlIpcReq {
@@ -44,12 +44,15 @@ impl KtrlIpc {
         let endpoint = format!("tcp://127.0.0.1:{}", port);
         socket.bind(&endpoint)?;
         info!("Listening for IPC requests on {}", endpoint);
-        Ok(Self{_ctx: ctx, socket, ktrl})
+        Ok(Self {
+            _ctx: ctx,
+            socket,
+            ktrl,
+        })
     }
 
     fn handle_ipc_req(&self, req: &zmq::Message) -> KtrlIpcResp {
-        let mut ktrl = self.ktrl.lock()
-            .expect("Failed to lock ktrl (poisoned)");
+        let mut ktrl = self.ktrl.lock().expect("Failed to lock ktrl (poisoned)");
 
         let req_str = match req.as_str() {
             Some(req_str) => req_str,
@@ -78,16 +81,16 @@ impl KtrlIpc {
 
             let resp = self.handle_ipc_req(&msg);
 
-            self.socket.send(&resp.to_str(), 0)
+            self.socket
+                .send(&resp.to_str(), 0)
                 .expect("Failed to send a reply");
         }
     }
 
     pub fn spawn_ipc_thread(self) {
-        thread::spawn(move|| {
+        thread::spawn(move || {
             self.ipc_loop().unwrap();
         });
-
     }
 
     pub fn send_ipc_req(port: usize, req: String) -> Result<(), std::io::Error> {
@@ -101,8 +104,11 @@ impl KtrlIpc {
 
         let mut msg = zmq::Message::new();
         socket.recv(&mut msg, 0)?;
-        info!("Received: {}", msg.as_str()
-              .expect("Couldn't parse the ipc reply as a string"));
+        info!(
+            "Received: {}",
+            msg.as_str()
+                .expect("Couldn't parse the ipc reply as a string")
+        );
 
         Ok(())
     }

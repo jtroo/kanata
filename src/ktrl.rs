@@ -5,8 +5,8 @@ use std::convert::TryFrom;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-use std::sync::Mutex;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use crate::actions::TapDanceMgr;
 use crate::actions::TapHoldMgr;
