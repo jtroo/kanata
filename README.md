@@ -268,7 +268,7 @@ Doing this with ktrl is easy. In one of your layers, add the following -
 
 ```
 KEY_CAPSLOCK:  Tap(Key(KEY_LEFTCTRL)),
-KEY_LEFTCTRL:  Key(KEY_LEFTCTRL)),
+KEY_LEFTCTRL:  Tap(Key(KEY_LEFTCTRL))),
 ```
 
 Though, let's make this more interesting, shall we?
