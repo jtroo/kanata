@@ -1,17 +1,18 @@
 pub mod tap_dance;
 pub mod tap_hold;
-pub mod tap_modo;
+pub mod tap_mod;
 
-use crate::effects::KeyCode;
+use crate::keys::KeyCode;
 use crate::effects::Effect;
 use serde::Deserialize;
 pub use tap_dance::TapDanceMgr;
 pub use tap_hold::TapHoldMgr;
-pub use tap_modo::TapModoMgr;
+pub use tap_mod::TapModMgr;
 
 type TapEffect = Effect;
 type HoldEffect = Effect;
 type DanceEffect = Effect;
+type ModiEffect = Effect;
 type ModoEffect = Effect;
 type Modifier = KeyCode;
 type DanceLength = usize;
@@ -30,14 +31,14 @@ pub enum Action {
     TapDance(DanceLength, TapEffect, DanceEffect),
 
     /// Do one `Effect` on a tap, and a different one while a modifier is held.
-    /// E.g Left/Right arrow keys on a tap, and Home/End while WinKey is held.
-    TapModo(TapEffect, Modifier, ModoEffect),
+    /// E.g Left/Right arrow keys on a tap, and Ctrl+N/P while Ctrl is held.
+    TapModi(Modifier, TapEffect, ModiEffect),
 
-    /// Makes an arbitrary key into a modifier (Ex: for use with TapModo)
-    /// In practice, this only drops repeat events.
-    Modifier(Modifier)
+    /// Same as `TapModi` but also momentarily clears the modifier while performing the effect.
+    /// E.g Left/Right arrow keys on a tap, and Home/End while WinKey is held.
+    TapModo(Modifier, TapEffect, ModoEffect),
 
     /// Escape on regular tap. Tilde when shift is held.
-    /// I.E TapModo(Key(KEY_ESC), KEY_LEFTSHIFT, Key(KEY_TILDE))
+    /// I.E TapMod(KEY_LEFTSHIFT, Key(KEY_ESC), Key(KEY_GRAVE))
     TildeEsc,
 }

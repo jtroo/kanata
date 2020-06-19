@@ -10,7 +10,7 @@ use std::sync::Mutex;
 
 use crate::actions::TapDanceMgr;
 use crate::actions::TapHoldMgr;
-use crate::actions::TapModoMgr;
+use crate::actions::TapModMgr;
 use crate::cfg;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
@@ -38,7 +38,7 @@ pub struct Ktrl {
     pub l_mgr: LayersManager,
     pub th_mgr: TapHoldMgr,
     pub td_mgr: TapDanceMgr,
-    pub tm_mgr: TapModoMgr,
+    pub tm_mgr: TapModMgr,
     pub sticky: StickyState,
 
     #[cfg(feature = "sound")]
@@ -68,7 +68,7 @@ impl Ktrl {
 
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
         let td_mgr = TapDanceMgr::new(cfg.tap_dance_wait_time);
-        let tm_mgr = TapModoMgr::new();
+        let tm_mgr = TapModMgr::new();
         let sticky = StickyState::new();
 
         #[cfg(feature = "sound")]
