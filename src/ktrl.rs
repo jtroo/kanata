@@ -10,7 +10,7 @@ use std::sync::Mutex;
 
 use crate::actions::TapDanceMgr;
 use crate::actions::TapHoldMgr;
-use crate::actions::TildeEscMgr;
+use crate::actions::TapModoMgr;
 use crate::cfg;
 use crate::effects::key_event_to_fx_val;
 use crate::effects::perform_effect;
@@ -38,7 +38,7 @@ pub struct Ktrl {
     pub l_mgr: LayersManager,
     pub th_mgr: TapHoldMgr,
     pub td_mgr: TapDanceMgr,
-    pub te_mgr: TildeEscMgr,
+    pub tm_mgr: TapModoMgr,
     pub sticky: StickyState,
 
     #[cfg(feature = "sound")]
@@ -68,7 +68,7 @@ impl Ktrl {
 
         let th_mgr = TapHoldMgr::new(cfg.tap_hold_wait_time);
         let td_mgr = TapDanceMgr::new(cfg.tap_dance_wait_time);
-        let te_mgr = TildeEscMgr::new();
+        let tm_mgr = TapModoMgr::new();
         let sticky = StickyState::new();
 
         #[cfg(feature = "sound")]
@@ -80,7 +80,7 @@ impl Ktrl {
             l_mgr,
             th_mgr,
             td_mgr,
-            te_mgr,
+            tm_mgr,
             sticky,
             #[cfg(feature = "sound")]
             dj,
@@ -121,7 +121,7 @@ impl Ktrl {
             return Ok(());
         }
 
-        let te_out = self.te_mgr.process(&self.l_mgr, event);
+        let te_out = self.tm_mgr.process(&self.l_mgr, event);
         if let Some(te_fx_vals) = te_out.effects {
             for fx_val in te_fx_vals {
                 perform_effect(self, fx_val)?
