@@ -194,7 +194,9 @@ though, here are some basic steps that'll get you started on `systemd` based sys
 ```
 # Again, asumming you've cloned and cd`d into the ktrl project
 
-edit ./etc/ktrl.service # change your username and device path
+sudo cp ~/.cargo/bin/ktrl /usr/local/bin/ktrl
+sudo chmod a+rx /usr/local/bin/ktrl
+edit ./etc/ktrl.service # change your device path
 sudo cp ./etc/ktrl.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl start ktrl.service

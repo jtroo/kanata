@@ -4,7 +4,7 @@ Description=ktrl
 [Service]
 User=ktrl
 Environment=HOME=/opt/ktrl
-ExecStart=/home/<your-user>/.cargo/bin/ktrl -d <keyboard-dev-path>
+ExecStart=/usr/local/bin/ktrl -d <keyboard-dev-path>
   
 [Install]
 WantedBy=multi-user.target
