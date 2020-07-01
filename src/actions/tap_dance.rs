@@ -280,7 +280,7 @@ fn test_tap_dance() {
         HashMap::new(),
     );
 
-    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
+    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
     let mut th_mgr = TapDanceMgr::new(500);
 
     l_mgr.init();

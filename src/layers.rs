@@ -458,7 +458,7 @@ fn test_mgr() {
         HashMap::new(),
     );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
     mgr.init();
     assert_eq!(mgr.layers_states.len(), 3);
     assert_eq!(mgr.layers_states[0], true);
@@ -556,7 +556,7 @@ fn test_overlapping_keys() {
         HashMap::new(),
     );
 
-    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles);
+    let mut mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
     mgr.init();
 
     assert_eq!(mgr.layers_states.len(), 2);
