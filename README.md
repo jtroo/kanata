@@ -99,7 +99,7 @@ See the Capslock <-> Ctrl example below for more on that.
 Start off by grabbing the main `ktrl` executable. Here's how you do that -
 
 ```
-cargo install ktrl
+sudo cargo install --root /usr/local ktrl
 ```
 
 Note: you may need to install `alsa` development bindings, `autoconf` and `libtool`. For Debian/Ubuntu distributions this can be done with
@@ -194,7 +194,7 @@ though, here are some basic steps that'll get you started on `systemd` based sys
 ```
 # Again, asumming you've cloned and cd`d into the ktrl project
 
-edit ./etc/ktrl.service # change your username and device path
+edit ./etc/ktrl.service # change your device path
 sudo cp ./etc/ktrl.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl start ktrl.service
