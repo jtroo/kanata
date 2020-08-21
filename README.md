@@ -2,7 +2,7 @@
 
 <p>
   <a href="https://crates.io/crates/ktrl">
-    <img alt="Crates.io" src="https://img.shields.io/badge/crates.io-0.1.7-orange">
+    <img alt="Crates.io" src="https://img.shields.io/badge/crates.io-0.1.8-orange">
   </a>
 </p>
 
