@@ -196,6 +196,10 @@ impl LayersManager {
     fn get_replacement_merged_key(&self, layers: &Layers, removed_code: KeyCode) -> MergedKey {
         let current = self.get(removed_code).layer_index;
         for i in (0..current).rev() {
+            if !self.layers_states[i] {
+                continue;
+            }
+
             let lower_layer = &layers[i];
             if !lower_layer.contains_key(&removed_code) {
                 continue;
@@ -446,6 +450,9 @@ fn test_mgr() {
                 (KEY_J, Tap(Key(KEY_DOWN))),
                 (KEY_K, Tap(Key(KEY_UP))),
                 (KEY_L, Tap(Key(KEY_RIGHT))),
+                (KEY_A, Tap(Key(KEY_Q))),
+                (KEY_S, Tap(Key(KEY_W))),
+                (KEY_D, Tap(Key(KEY_E))),
             ],
             // 2: asdf modifiers
             vec![
@@ -482,6 +489,12 @@ fn test_mgr() {
         TapHold(Key(KEY_D), Key(KEY_LEFTALT))
     );
 
+    mgr.turn_layer_off(2);
+    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
+    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
+    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
+
+    mgr.turn_layer_on(2);
     mgr.turn_layer_on(1);
     assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_LEFT)));
     assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_DOWN)));
@@ -507,10 +520,6 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
     assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
-    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
-    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
-
     mgr.toggle_layer(1);
     assert_eq!(mgr.get(KEY_H.into()).action, Tap(Key(KEY_H)));
     assert_eq!(mgr.get(KEY_J.into()).action, Tap(Key(KEY_J)));
@@ -527,9 +536,9 @@ fn test_mgr() {
     assert_eq!(mgr.get(KEY_K.into()).action, Tap(Key(KEY_UP)));
     assert_eq!(mgr.get(KEY_L.into()).action, Tap(Key(KEY_RIGHT)));
 
-    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_A)));
-    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_S)));
-    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_D)));
+    assert_eq!(mgr.get(KEY_A.into()).action, Tap(Key(KEY_Q)));
+    assert_eq!(mgr.get(KEY_S.into()).action, Tap(Key(KEY_W)));
+    assert_eq!(mgr.get(KEY_D.into()).action, Tap(Key(KEY_E)));
 
     mgr.lock_all(LockOwner::LkTapHold);
     mgr.toggle_layer(1);
