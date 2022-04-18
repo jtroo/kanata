@@ -19,14 +19,10 @@ use ktrl::KtrlArgs;
 
 const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
 const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
-const DEFAULT_ASSETS_PATH: &str = "/opt/ktrl/assets";
-const DEFAULT_NOTIFY_PORT: &str = "7333";
 
-#[doc(hidden)]
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let matches = App::new("ktrl")
-        .version("0.1.7")
-        .author("Itay G. <thifixp@gmail.com>")
+        .version("0.0.1")
         .about("Unleashes your keyboard's full potential")
         .arg(
             Arg::with_name("device")
@@ -48,32 +44,12 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("assets")
-                .long("assets")
-                .value_name("ASSETS")
-                .help(&format!(
-                    "Path ktrl's assets directory. Default: {}",
-                    DEFAULT_ASSETS_PATH
-                ))
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("logfile")
                 .long("log")
                 .value_name("LOGFILE")
                 .help(&format!(
                     "Path to the log file. Default: {}",
                     DEFAULT_LOG_PATH
-                ))
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("notify_port")
-                .long("notify-port")
-                .value_name("NOTIFY-PORT")
-                .help(&format!(
-                    "TCP Port where notifications will be sent. Default: {}",
-                    DEFAULT_NOTIFY_PORT
                 ))
                 .takes_value(true),
         )
@@ -86,13 +62,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
 
     let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
     let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
-    let assets_path = Path::new(matches.value_of("assets").unwrap_or(DEFAULT_ASSETS_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
-    let notify_port = matches
-        .value_of("notify_port")
-        .unwrap_or(DEFAULT_NOTIFY_PORT)
-        .parse::<usize>()
-        .expect("Bad notify port value");
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -128,8 +98,6 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     Ok(KtrlArgs {
         kbd_path: kbd_path.to_path_buf(),
         config_path: config_path.to_path_buf(),
-        assets_path: assets_path.to_path_buf(),
-        notify_port,
     })
 }
 
@@ -149,7 +117,6 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-#[doc(hidden)]
 fn main() -> Result<(), std::io::Error> {
     let args = cli_init()?;
     main_impl(args)

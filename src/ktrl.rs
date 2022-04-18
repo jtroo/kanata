@@ -19,8 +19,6 @@ use crate::effects::Dj;
 pub struct KtrlArgs {
     pub kbd_path: PathBuf,
     pub config_path: PathBuf,
-    pub assets_path: PathBuf,
-    pub notify_port: usize,
 }
 
 pub struct Ktrl {
