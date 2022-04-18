@@ -4,11 +4,15 @@
 
 #![allow(dead_code)]
 
-pub struct Cfg {}
+use std::collections::HashSet;
+
+pub struct Cfg {
+    pub mapped_keys: HashSet<u32>
+}
 
 impl Cfg {
     #[cfg(test)]
     pub fn new() -> Self {
-        Self {}
+        Self { mapped_keys: HashSet::new() }
     }
 }

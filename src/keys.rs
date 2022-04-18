@@ -2,9 +2,6 @@
 use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
 use std::convert::TryFrom;
-use std::time::Instant;
-
-// ------------------ KeyCode --------------------
 
 /// This is a shameless copy of evdev_rs::enums::EV_KEY.
 /// I've added the Copy trait and I'll be able
@@ -1175,7 +1172,6 @@ impl From<KeyCode> for EV_KEY {
 pub enum KeyValue {
     Release = 0,
     Press = 1,
-    Repeat = 2,
 }
 
 impl From<i32> for KeyValue {
@@ -1183,7 +1179,6 @@ impl From<i32> for KeyValue {
         match item {
             0 => Self::Release,
             1 => Self::Press,
-            2 => Self::Repeat,
             _ => unreachable!(),
         }
     }
@@ -1193,9 +1188,6 @@ impl From<i32> for KeyValue {
 
 pub struct KeyEvent {
     pub time: TimeVal,
-    // TODO: replace time usage with time_mt. Since there is a processing event loop that handles
-    // events occurring due to time elapsing (e.g. tap-hold expiring), can't rely on TimeVal.
-    pub time_mt: Instant,
     pub code: KeyCode,
     pub value: KeyValue,
 }
@@ -1203,10 +1195,8 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: KeyCode, value: KeyValue) -> Self {
         let time = TimeVal::new(0, 0);
-        let time_mt = Instant::now();
         Self {
             time,
-            time_mt,
             code,
             value,
         }
@@ -1229,7 +1219,6 @@ impl TryFrom<InputEvent> for KeyEvent {
         match &item.event_type {
             EventType::EV_KEY => Ok(Self {
                 time: item.time,
-                time_mt: Instant::now(),
                 code: item.event_code.into(),
                 value: item.value.into(),
             }),
