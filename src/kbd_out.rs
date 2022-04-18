@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use uinput_sys::uinput_user_dev;
 
-use crate::keys::KeyCode;
+use crate::keys::OsCode;
 use crate::keys::KeyValue;
 use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EV_SYN;
@@ -77,7 +77,7 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_key(&mut self, key: KeyCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         self.write(key_ev.into())?;
 
@@ -94,11 +94,11 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn press_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
+    pub fn press_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Press)
     }
 
-    pub fn release_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
+    pub fn release_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
     }
 }

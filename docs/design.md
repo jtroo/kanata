@@ -16,7 +16,9 @@
 - check for events on mpsc
 - if event: send event to layout
 - tick() the keyberon layout, send any events needed
-- if no event: sleep for 7ms (~144 Hz)
+- if no event: sleep for 1ms
+- separate monotonic time checks, because can't rely on sleep to be
+  fine-grained enough
 
 ## layout
 

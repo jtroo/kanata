@@ -15,7 +15,7 @@ use crate::keys::*;
 use crate::KbdIn;
 use crate::KbdOut;
 
-use keyberon::key_code;
+use keyberon::key_code::*;
 use keyberon::layout::*;
 
 pub struct KtrlArgs {
@@ -29,6 +29,7 @@ pub struct Ktrl {
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
     pub layout: Layout,
+    pub prev_keys: HashSet<KeyCode>,
     last_tick: time::Instant,
 }
 
@@ -50,6 +51,7 @@ impl Ktrl {
             kbd_out,
             mapped_keys,
             key_outputs,
+            prev_keys: HashSet::new(),
             layout: cfg::create_layout(),
             last_tick: time::Instant::now(),
         })
@@ -65,7 +67,7 @@ impl Ktrl {
             KeyValue::Release => Event::Release(0, event.code as u8),
             KeyValue::Repeat => return self.handle_repeat(event),
         };
-        // ignore event iter - handle it when calling tick()
+        // ignore events - handle it when calling tick()
         let _ = self.layout.event(kbrn_ev);
         Ok(())
     }
@@ -76,22 +78,32 @@ impl Ktrl {
         self.last_tick = now;
 
         for _ in 0..ms_elapsed {
-            // TODO: output 1s or 0s:
-            //   1 if exists in current but not previous
-            //   0 if exist in previous but not in current
+            let cur_keys: HashSet<KeyCode> = self.layout.tick().collect();
+            let key_ups = self.prev_keys.difference(&cur_keys);
+            let key_downs = cur_keys.difference(&self.prev_keys);
+            for kc in key_ups {
+                if let Err(e) = self.kbd_out.release_key(kc.into()) {
+                    error!("failed to release key: {:?}", e);
+                }
+            }
+            for kc in key_downs {
+                if let Err(e) = self.kbd_out.press_key(kc.into()) {
+                    error!("failed to press key: {:?}", e);
+                }
+            }
         }
     }
 
     // For a repeat event in the OS input, write key back out to OS if it makes sense to.
     //
-    // An example of when it doesn't make sense to write anything to the OS is if a HoldTap key
-    // is being held to toggle a layer.
+    // An example of when it doesn't make sense to write anything to the OS is if it's a HoldTap
+    // key being held to toggle a layer.
     //
     // This compares the active keys in the keyberon layout against the potential key outputs for
     // in the configuration. If any of keyberon active keys match any potential configured mapping,
     // write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<(), String> {
-        let active_keycodes: HashSet<key_code::KeyCode> = self.layout.keycodes().collect();
+        let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
         let outputs_for_key = match &self.key_outputs[event.code as usize] {
             None => return Ok(()),
             Some(v) => v,
