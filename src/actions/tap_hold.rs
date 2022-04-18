@@ -351,7 +351,8 @@ fn test_tap() {
         HashMap::new(),
     );
 
-    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
+    let mut l_mgr =
+        LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();
@@ -461,7 +462,8 @@ fn test_hold() {
         HashMap::new(),
     );
 
-    let mut l_mgr = LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
+    let mut l_mgr =
+        LayersManager::new(&cfg.layers, &cfg.layer_aliases, &cfg.layer_profiles).unwrap();
     let mut th_mgr = TapHoldMgr::new(TEST_TAP_HOLD_WAIT_PERIOD);
 
     l_mgr.init();

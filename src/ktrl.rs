@@ -4,6 +4,8 @@ use log::{error, info};
 use std::convert::TryFrom;
 use std::fs::read_to_string;
 use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, Sender};
+use std::time;
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -136,7 +138,7 @@ impl Ktrl {
         Ok(())
     }
 
-    pub fn event_loop(ktrl: Arc<Mutex<Self>>) -> Result<(), std::io::Error> {
+    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
         info!("Ktrl: Entering the event loop");
 
         let kbd_in_path: PathBuf;
@@ -172,7 +174,27 @@ impl Ktrl {
                 }
             };
 
-            ktrl.handle_key_event(&key_event)?;
+            if let Err(e) = tx.send(key_event) {
+                error!("Could not send on ch: {:?}", e);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to send on mpsc",
+                ));
+            }
         }
+    }
+
+    pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
+        std::thread::spawn(move || {
+            info!("Starting processing loop");
+            if let Ok(kev) = rx.try_recv() {
+                if let Err(e) = ktrl.lock().unwrap().handle_key_event(&kev) {
+                    error!("Failed to process key event {:?}", e);
+                }
+            } else {
+                // TODO: run a time check
+            }
+            std::thread::sleep(time::Duration::from_millis(1));
+        });
     }
 }

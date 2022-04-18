@@ -4,6 +4,7 @@ use simplelog::*;
 use std::fs::File;
 use std::io::{Error, ErrorKind::*};
 use std::path::Path;
+use std::sync::mpsc;
 
 mod actions;
 mod cfg;
@@ -182,7 +183,15 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ipc = KtrlIpc::new(ktrl_arc.clone(), ipc_port)?;
     ipc.spawn_ipc_thread();
 
+    // Start a processing loop in another thread and run the event loop in this thread.
+    //
+    // The reason for two different event loops is that the "event_loop" only listens for keyboard
+    // events, which it sends to the "processing loop". The processing loop handles keyboard events
+    // as well as time-based events such as a tap-hold hold duration expiring.
+    let (tx, rx) = mpsc::channel();
+    Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
     Ktrl::event_loop(ktrl_arc)?;
+
     Ok(())
 }
 
@@ -190,7 +199,12 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
 fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
-    Ktrl::event_loop(ktrl_arc)?;
+
+    // See above for explanation of the two loops.
+    let (tx, rx) = mpsc::channel();
+    Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
+    Ktrl::event_loop(ktrl_arc, tx)?;
+
     Ok(())
 }
 

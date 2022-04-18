@@ -3,6 +3,7 @@ use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
 use serde::Deserialize;
 use std::convert::TryFrom;
+use std::time::Instant;
 
 // ------------------ KeyCode --------------------
 
@@ -1191,6 +1192,9 @@ impl From<i32> for KeyValue {
 
 pub struct KeyEvent {
     pub time: TimeVal,
+    // TODO: replace time usage with time_mt. Since there is a processing event loop that handles
+    // events occurring due to time elapsing (e.g. tap-hold expiring), can't rely on TimeVal.
+    pub time_mt: Instant,
     pub code: KeyCode,
     pub value: KeyValue,
 }
@@ -1198,7 +1202,13 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: KeyCode, value: KeyValue) -> Self {
         let time = TimeVal::new(0, 0);
-        Self { time, code, value }
+        let time_mt = Instant::now();
+        Self {
+            time,
+            time_mt,
+            code,
+            value,
+        }
     }
 
     #[cfg(test)]
@@ -1218,6 +1228,7 @@ impl TryFrom<InputEvent> for KeyEvent {
         match &item.event_type {
             EventType::EV_KEY => Ok(Self {
                 time: item.time,
+                time_mt: Instant::now(),
                 code: item.event_code.into(),
                 value: item.value.into(),
             }),

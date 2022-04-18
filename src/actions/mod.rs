@@ -2,8 +2,8 @@ pub mod tap_dance;
 pub mod tap_hold;
 pub mod tap_mod;
 
-use crate::keys::KeyCode;
 use crate::effects::Effect;
+use crate::keys::KeyCode;
 use serde::Deserialize;
 pub use tap_dance::TapDanceMgr;
 pub use tap_hold::TapHoldMgr;
