@@ -137,7 +137,6 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
-
     // Start a processing loop in another thread and run the event loop in this thread.
     //
     // The reason for two different event loops is that the "event_loop" only listens for keyboard

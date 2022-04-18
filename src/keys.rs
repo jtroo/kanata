@@ -1130,7 +1130,7 @@ impl TryFrom<usize> for KeyCode {
 
 impl From<u32> for KeyCode {
     fn from(item: u32) -> Self {
-        Self::from_u32(item).expect(&format!("Invalid KeyCode: {}", item))
+        Self::from_u32(item).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
     }
 }
 
@@ -1165,7 +1165,7 @@ impl From<EV_KEY> for KeyCode {
 impl From<KeyCode> for EV_KEY {
     fn from(item: KeyCode) -> Self {
         evdev_rs::enums::int_to_ev_key(item as u32)
-            .expect(&format!("Invalid KeyCode: {}", item as u32))
+            .unwrap_or_else(|| panic!("Invalid KeyCode: {}", item as u32))
     }
 }
 

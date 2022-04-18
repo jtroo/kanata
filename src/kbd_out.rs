@@ -1,5 +1,4 @@
-// uinput-rs
-use uinput_sys;
+#![allow(dead_code)]
 use uinput_sys::uinput_user_dev;
 
 use crate::keys::KeyCode;
@@ -55,7 +54,7 @@ impl KbdOut {
 
             let uidev_bytes =
                 slice::from_raw_parts(mem::transmute(&uidev), mem::size_of::<uinput_user_dev>());
-            uinput_out_file.write(uidev_bytes)?;
+            uinput_out_file.write_all(uidev_bytes)?;
             uinput_sys::ui_dev_create(uinput_out_file.as_raw_fd());
         }
 
@@ -72,7 +71,7 @@ impl KbdOut {
                 mem::transmute(&ev as *const raw_event),
                 mem::size_of::<raw_event>(),
             );
-            self.device.write(ev_bytes)?;
+            self.device.write_all(ev_bytes)?;
         };
 
         Ok(())
@@ -90,7 +89,7 @@ impl KbdOut {
             &EventCode::EV_SYN(EV_SYN::SYN_REPORT),
             0,
         );
-        self.write(sync.into())?;
+        self.write(sync)?;
 
         Ok(())
     }

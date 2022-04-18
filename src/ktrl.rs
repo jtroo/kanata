@@ -55,7 +55,7 @@ impl Ktrl {
     // Refactor this to unicast if special key,
     // and broadcast if regular tap key.
     //
-    fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), String> {
+    fn handle_key_event(&mut self, _event: &KeyEvent) -> Result<(), String> {
         todo!()
     }
 
