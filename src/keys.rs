@@ -560,6 +560,7 @@ pub enum KeyCode {
     BTN_TRIGGER_HAPPY38 = 741,
     BTN_TRIGGER_HAPPY39 = 742,
     BTN_TRIGGER_HAPPY40 = 743,
+    BTN_MAX = 744,
 }
 
 impl KeyCode {
@@ -1112,6 +1113,7 @@ impl KeyCode {
             741 => Some(KeyCode::BTN_TRIGGER_HAPPY38),
             742 => Some(KeyCode::BTN_TRIGGER_HAPPY39),
             743 => Some(KeyCode::BTN_TRIGGER_HAPPY40),
+            744 => Some(KeyCode::BTN_MAX),
             _ => None,
         }
     }

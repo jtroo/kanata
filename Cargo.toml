@@ -28,6 +28,9 @@ zmq = {version = "0.9.2", optional = true}
 rodio = {version = "0.11.0", optional = true}
 enum-iterator = {version = "0.6.0", optional = true}
 
+# Using my personal fork for increasing the rollover capacity
+keyberon = { git = "https://github.com/jtroo/keyberon", rev = "a201c7bbbcfc8b9" }
+
 [features]
 sound = ["rodio", "enum-iterator"]
 ipc = ["zmq"]
