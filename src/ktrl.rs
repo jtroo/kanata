@@ -48,27 +48,40 @@ impl Ktrl {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    // TODO:
-    // ----
-    // Refactor this to unicast if special key,
-    // and broadcast if regular tap key.
-    //
     fn handle_key_event(&mut self, _event: &KeyEvent) -> Result<(), String> {
         todo!()
     }
 
-    fn check_time(&mut self) {
+    fn handle_time_tick(&mut self) {
         todo!()
     }
 
-    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
-        info!("Ktrl: Entering the event loop");
+    pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
+        info!("Ktrl: entering the processing loop");
+        std::thread::spawn(move || {
+            info!("Starting processing loop");
+            if let Ok(kev) = rx.try_recv() {
+                if let Err(e) = ktrl.lock().unwrap().handle_key_event(&kev) {
+                    error!("Failed to process key event {:?}", e);
+                }
+            } else {
+                ktrl.lock().unwrap().handle_time_tick();
+                // Sleep every 7 ms; process at 144 Hz.
+                //
+                // Since this is not a keyboard FW, no need to check any faster - the OS sends the
+                // events to the event loop and they get buffered in the mpsc channel.
+                std::thread::sleep(time::Duration::from_millis(7));
+            }
+        });
+    }
 
-        let kbd_in_path: PathBuf;
-        {
+    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
+        info!("Ktrl: entering the event loop");
+
+        let kbd_in_path = {
             let ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
-            kbd_in_path = ktrl.kbd_in_path.clone();
-        }
+            ktrl.kbd_in_path.clone()
+        };
 
         let kbd_in = match KbdIn::new(&kbd_in_path) {
             Ok(kbd_in) => kbd_in,
@@ -80,7 +93,6 @@ impl Ktrl {
 
         loop {
             let in_event = kbd_in.read()?;
-            let mut ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
 
             // Filter uninteresting events
             if in_event.event_type == EventType::EV_SYN || in_event.event_type == EventType::EV_MSC
@@ -92,11 +104,13 @@ impl Ktrl {
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
                 _ => {
+                    let mut ktrl = ktrl.lock().unwrap();
                     ktrl.kbd_out.write(in_event)?;
                     continue;
                 }
             };
 
+            // Send key events to the processing loop
             if let Err(e) = tx.send(key_event) {
                 error!("Could not send on ch: {:?}", e);
                 return Err(std::io::Error::new(
@@ -105,20 +119,5 @@ impl Ktrl {
                 ));
             }
         }
-    }
-
-    pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
-        std::thread::spawn(move || {
-            info!("Starting processing loop");
-            if let Ok(kev) = rx.try_recv() {
-                if let Err(e) = ktrl.lock().unwrap().handle_key_event(&kev) {
-                    error!("Failed to process key event {:?}", e);
-                }
-            } else {
-                ktrl.lock().unwrap().check_time();
-            }
-            // Sleep every 7 ms; process every ~144 Hz
-            std::thread::sleep(time::Duration::from_millis(7));
-        });
     }
 }
