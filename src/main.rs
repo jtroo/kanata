@@ -17,8 +17,8 @@ use kbd_out::KbdOut;
 use ktrl::Ktrl;
 use ktrl::KtrlArgs;
 
-const DEFAULT_CFG_PATH: &str = "/opt/ktrl/cfg.ron";
-const DEFAULT_LOG_PATH: &str = "/opt/ktrl/log.txt";
+const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
+const DEFAULT_LOG_PATH: &str = "/tmp/ktrl-log.txt";
 
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let matches = App::new("ktrl")

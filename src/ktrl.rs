@@ -1,4 +1,3 @@
-use evdev_rs::enums::EventType;
 use log::{error, info};
 
 use std::collections::HashSet;
@@ -62,6 +61,7 @@ impl Ktrl {
     }
 
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), String> {
+        info!("handling: {:?}", event);
         let kbrn_ev = match event.value {
             KeyValue::Press => Event::Press(0, event.code as u8),
             KeyValue::Release => Event::Release(0, event.code as u8),
@@ -91,6 +91,7 @@ impl Ktrl {
                     error!("failed to press key: {:?}", e);
                 }
             }
+            self.prev_keys = cur_keys;
         }
     }
 
@@ -127,16 +128,18 @@ impl Ktrl {
         info!("Ktrl: entering the processing loop");
         std::thread::spawn(move || {
             info!("Starting processing loop");
-            if let Ok(kev) = rx.try_recv() {
-                let mut k = ktrl.lock().unwrap();
-                if let Err(e) = k.handle_key_event(&kev) {
-                    error!("Failed to process key event {:?}", e);
+            loop {
+                if let Ok(kev) = rx.try_recv() {
+                    let mut k = ktrl.lock().unwrap();
+                    if let Err(e) = k.handle_key_event(&kev) {
+                        error!("Failed to process key event {:?}", e);
+                    }
+                    k.handle_time_ticks();
+                } else {
+                    ktrl.lock().unwrap().handle_time_ticks();
+                    // Sleep for 1 ms.
+                    std::thread::sleep(time::Duration::from_millis(1));
                 }
-                k.handle_time_ticks();
-            } else {
-                ktrl.lock().unwrap().handle_time_ticks();
-                // Sleep for 1 ms.
-                std::thread::sleep(time::Duration::from_millis(1));
             }
         });
     }
@@ -159,12 +162,6 @@ impl Ktrl {
         loop {
             let in_event = kbd_in.read()?;
 
-            // Filter uninteresting events
-            if in_event.event_type == EventType::EV_SYN || in_event.event_type == EventType::EV_MSC
-            {
-                continue;
-            }
-
             // Pass-through non-key events
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
@@ -181,13 +178,13 @@ impl Ktrl {
                 || !mapped_keys[key_event.code as usize]
             {
                 let mut ktrl = ktrl.lock().unwrap();
-                ktrl.kbd_out.write(in_event)?;
+                ktrl.kbd_out.write_key(key_event.code, key_event.value)?;
                 continue;
             }
 
             // Send key events to the processing loop
             if let Err(e) = tx.send(key_event) {
-                error!("Could not send on ch: {:?}", e);
+                error!("Could not send on ch: {}", e.to_string());
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "failed to send on mpsc",
