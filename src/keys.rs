@@ -1,6 +1,7 @@
 // use std::fmt;
 use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
+use keyberon::key_code;
 use std::convert::TryFrom;
 
 /// This is a shameless copy of evdev_rs::enums::EV_KEY.
@@ -1134,6 +1135,30 @@ impl From<u32> for KeyCode {
 impl From<KeyCode> for usize {
     fn from(item: KeyCode) -> Self {
         item as usize
+    }
+}
+
+impl From<key_code::KeyCode> for KeyCode {
+    fn from(item: key_code::KeyCode) -> Self {
+        (item as u32).into() // TODO: incorrect!
+    }
+}
+
+impl From<&key_code::KeyCode> for KeyCode {
+    fn from(item: &key_code::KeyCode) -> Self {
+        (*item).into()
+    }
+}
+
+impl From<KeyCode> for key_code::KeyCode {
+    fn from(_item: KeyCode) -> key_code::KeyCode {
+        key_code::KeyCode::No // TODO: incorrect!
+    }
+}
+
+impl From<&KeyCode> for key_code::KeyCode {
+    fn from(item: &KeyCode) -> key_code::KeyCode {
+        (*item).into()
     }
 }
 

@@ -202,7 +202,7 @@ checksum = "5e2c4b26352496eaaa8ca7cfa9bd99e93419d3f7983dc6e99c2a35fe9e33504a"
 [[package]]
 name = "keyberon"
 version = "0.1.1"
-source = "git+https://github.com/jtroo/keyberon?rev=a201c7bbbcfc8b9#a201c7bbbcfc8b972cf8cffb529510443333096a"
+source = "git+https://github.com/jtroo/keyberon?rev=b7702b5e8ffc#b7702b5e8ffce211d29a0efbd5a814c251c427f1"
 dependencies = [
  "arraydeque",
  "either",
