@@ -9,12 +9,10 @@ use std::time;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::keys::KeyEvent;
+use crate::cfg::Cfg;
+use crate::keys::*;
 use crate::KbdIn;
 use crate::KbdOut;
-
-#[cfg(feature = "sound")]
-use crate::effects::Dj;
 
 pub struct KtrlArgs {
     pub kbd_path: PathBuf,
@@ -24,6 +22,7 @@ pub struct KtrlArgs {
 pub struct Ktrl {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
+    pub cfg: Cfg,
 }
 
 impl Ktrl {
@@ -39,8 +38,7 @@ impl Ktrl {
         Ok(Self {
             kbd_in_path: args.kbd_path,
             kbd_out,
-            #[cfg(feature = "sound")]
-            dj,
+            cfg: Cfg::new(),
         })
     }
 
@@ -78,9 +76,9 @@ impl Ktrl {
     pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
         info!("Ktrl: entering the event loop");
 
-        let kbd_in_path = {
+        let (kbd_in_path, mapped_keys) = {
             let ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
-            ktrl.kbd_in_path.clone()
+            (ktrl.kbd_in_path.clone(), ktrl.cfg.mapped_keys.clone())
         };
 
         let kbd_in = match KbdIn::new(&kbd_in_path) {
@@ -109,6 +107,19 @@ impl Ktrl {
                     continue;
                 }
             };
+
+            // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
+            // it immediately.
+            if !mapped_keys.contains(&key_event.code) {
+                    let mut ktrl = ktrl.lock().unwrap();
+                    ktrl.kbd_out.write(in_event)?;
+                    continue;
+            }
+
+            // Check if the key event is of value "Repeat". Ignore it if so.
+            if key_event.value == KeyValue::Repeat {
+                continue
+            }
 
             // Send key events to the processing loop
             if let Err(e) = tx.send(key_event) {

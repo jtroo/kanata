@@ -101,10 +101,4 @@ impl KbdOut {
     pub fn release_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
     }
-
-    // pub fn tap_key(&mut self, key: KeyCode) -> Result<(), io::Error> {
-    //     self.press_key(key.clone())?;
-    //     self.release_key(key)?;
-    //     Ok(())
-    // }
 }

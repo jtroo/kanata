@@ -1172,6 +1172,7 @@ impl From<KeyCode> for EV_KEY {
 pub enum KeyValue {
     Release = 0,
     Press = 1,
+    Repeat = 2,
 }
 
 impl From<i32> for KeyValue {
@@ -1179,6 +1180,7 @@ impl From<i32> for KeyValue {
         match item {
             0 => Self::Release,
             1 => Self::Press,
+            2 => Self::Repeat,
             _ => unreachable!(),
         }
     }
@@ -1195,11 +1197,7 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: KeyCode, value: KeyValue) -> Self {
         let time = TimeVal::new(0, 0);
-        Self {
-            time,
-            code,
-            value,
-        }
+        Self { time, code, value }
     }
 
     #[cfg(test)]

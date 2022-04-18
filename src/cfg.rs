@@ -5,14 +5,16 @@
 #![allow(dead_code)]
 
 use std::collections::HashSet;
+use crate::keys;
 
 pub struct Cfg {
-    pub mapped_keys: HashSet<u32>
+    pub mapped_keys: HashSet<keys::KeyCode>,
 }
 
 impl Cfg {
-    #[cfg(test)]
     pub fn new() -> Self {
-        Self { mapped_keys: HashSet::new() }
+        Self {
+            mapped_keys: HashSet::new(),
+        }
     }
 }
