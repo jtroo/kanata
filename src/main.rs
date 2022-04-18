@@ -6,14 +6,11 @@ use std::io::{Error, ErrorKind::*};
 use std::path::Path;
 use std::sync::mpsc;
 
-mod actions;
 mod cfg;
-mod effects;
 mod kbd_in;
 mod kbd_out;
 mod keys;
 mod ktrl;
-mod layers;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;

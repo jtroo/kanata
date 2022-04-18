@@ -1,7 +1,6 @@
 // use std::fmt;
 use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
-use serde::Deserialize;
 use std::convert::TryFrom;
 use std::time::Instant;
 
@@ -11,7 +10,7 @@ use std::time::Instant;
 /// I've added the Copy trait and I'll be able
 /// to added my own Impl(s) to it
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     KEY_RESERVED = 0,
     KEY_ESC = 1,
@@ -1172,7 +1171,7 @@ impl From<KeyCode> for EV_KEY {
 
 // ------------------ KeyValue --------------------
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum KeyValue {
     Release = 0,
     Press = 1,
