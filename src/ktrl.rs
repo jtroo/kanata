@@ -101,7 +101,7 @@ impl Ktrl {
     //
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), std::io::Error> {
         // Handle TapHold action keys
-        let th_out = self.th_mgr.process(&mut self.l_mgr, event);
+        let th_out = self.th_mgr.process(&mut self.l_mgr, Some(event));
         if let Some(th_fx_vals) = th_out.effects {
             for fx_val in th_fx_vals {
                 perform_effect(self, fx_val)?
@@ -136,6 +136,18 @@ impl Ktrl {
         }
 
         Ok(())
+    }
+
+    fn check_time(&mut self) {
+        // Handle TapHold action keys
+        let th_out = self.th_mgr.process(&mut self.l_mgr, None);
+        if let Some(th_fx_vals) = th_out.effects {
+            for fx_val in th_fx_vals {
+                if let Err(e) = perform_effect(self, fx_val) {
+                    error!("Failed to perform effect: {:?}", e);
+                }
+            }
+        }
     }
 
     pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
@@ -192,9 +204,10 @@ impl Ktrl {
                     error!("Failed to process key event {:?}", e);
                 }
             } else {
-                // TODO: run a time check
+                ktrl.lock().unwrap().check_time();
             }
-            std::thread::sleep(time::Duration::from_millis(1));
+            // Sleep every 7 ms; process every ~144 Hz
+            std::thread::sleep(time::Duration::from_millis(7));
         });
     }
 }
