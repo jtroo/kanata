@@ -2,7 +2,13 @@
 
 Readme TODO!
 
-Rewrite to use [keyberon](https://github.com/TeXitoi/keyberon) in progress.
+Rewrite of ktrl to use [keyberon](https://github.com/TeXitoi/keyberon) in progress.
+
+## Goals
+
+- Add Windows support
+  - MacOS support will never be implemented by me (jtroo) because I don't own any Apple devices, but PRs are welcome.
+- Add kmonad-style configuration
 
 ## Similar Projects
 - [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware (ktrl's inspiration)
