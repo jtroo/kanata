@@ -68,7 +68,6 @@ impl Ktrl {
             KeyValue::Release => Event::Release(0, event.code as u8),
             KeyValue::Repeat => return self.handle_repeat(event),
         };
-        // ignore events - handle it when calling tick()
         self.layout.event(kbrn_ev);
         Ok(())
     }
