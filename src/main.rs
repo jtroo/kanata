@@ -62,7 +62,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     ])
     .expect("Couldn't initialize the logger");
 
-    // TODO: not used right now
+    // FIXME: not used right now
     // if !config_path.exists() {
     //     let err = format!(
     //         "Could not find your config file ({})",
