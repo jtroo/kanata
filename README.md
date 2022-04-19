@@ -4,6 +4,55 @@ Rename is pending because this doesn't really look much like the original ktrl
 project anymore. If you have suggestions for a new name, feel free to open an
 issue or start a discussion!
 
+## Current state
+
+This is a rewrite of the old ktrl project to use
+[keyberon](https://github.com/TeXitoi/keyberon). Almost all of the original
+ktrl code has been removed, with the exception of the Linux OS interaction.
+None of the original running-as-daemon code has been maintained/tested, and it
+may have been ripped out at some point - I don't recall.
+
+This project is working with Linux (very much untested). There are no external
+configuration options available at the moment. However, this project **can** be
+used in its current state if you're willing to modify the source code to add
+your own keyberon configurations.
+
+You would need to modify `create_mapped_keys` and `DEFAULT_LAYERS` to change
+how the binary operates.
+
+To run:
+
+    sudo ktrl --device /dev/input/<keyboard-input>
+
+    # e.g. this is my VMWare keyboard input
+    sudo ktrl --device /dev/input/by-path/platform-i8042-serio-0-event-kbd
+
+**WARNING:** I am not a keyboard expert, neither for the USB protocol or the OS
+interface. There may be some incorrect mappings for the more obscure keys
+between keyberon `KeyCode` and ktrl's `OsCode` in:
+
+    impl From<KeyCode> for OsCode
+    impl From<OsCode> for KeyCode
+
+## Goals
+
+- Clean up error handling
+- Add kmonad-style [configuration](https://github.com/jtroo/ktrl/issues/1)
+- Implement [tap hold interval](https://github.com/TeXitoi/keyberon/issues/37)
+  in keyberon to achieve my desired feature parity with QMK
+- Add [Windows support](https://github.com/jtroo/ktrl/issues/2)
+  - MacOS support will never be implemented by me (jtroo) because I don't own
+    any Apple devices, but PRs are welcome.
+
+## Contributing
+
+While I plan to implement all of the goals at some point, contributions are
+welcome!
+
+The keyberon project contains all of the heavy logic, so if you want new
+keyboard mapping functionality, it will need to be implemented in keyberon
+first.
+
 ## Motivation
 
 I have a few keyboards that run [QMK](https://docs.qmk.fm/#/). QMK allows the
@@ -33,17 +82,21 @@ One could add as many customizations as one likes to improve comfort, speed,
 etc. Personally these customizations are not the only ones I use.
 
 However, QMK doesn't run everywhere. In fact, it doesn't run on **most**
-hardware you can get. You can't get it to run on a laptop keyboard, or any
-mainstream office keyboard out there.
+hardware you can get. You can't get it to run on a laptop keyboard or any
+mainstream office keyboard out there. I believe that the comfort and
+empowerment QMK provides should be available to anyone with a computer on
+their existing hardware, instead of having to purchase an enthusiast mechanical
+keyboard. (which are admittedly very nice (I own a few) — but can be costly)
 
 The current best solution that I've found for keyboards that don't run QMK is
 [kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
 and I strongly recommend it if you want to use something similar right now.
 
 The reason for this project's existence is that kmonad is written in Haskell
-and I have no idea how to begin contributing to a Haskell project. I think
-Haskell is a great language, but I really can't wrap my head around it. One
-feature missing from kmonad that affects my personal workflow is QMK's default
+and I have no idea how to begin contributing to a Haskell project. From an
+outsider's perspective I think Haskell is a great language, but I really can't
+wrap my head around it. One feature missing from kmonad that affects my
+personal workflow is QMK's default
 [tap-hold](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold) behaviour.
 
 This project is written in Rust because Rust is my favourite programming
@@ -55,38 +108,6 @@ I've tried compiling kmonad myself and it was quite the slog, though I was able
 to get it working eventually. Comparing the process to `cargo build` though, it
 was a huge contrast. I believe using Rust will lower the barrier to entry for
 contributions to a project like this.
-
-## Current state
-
-This is a rewrite of the old ktrl project to use
-[keyberon](https://github.com/TeXitoi/keyberon). Almost all of the original
-ktrl code has been removed, with the exception of the Linux OS interaction.
-None of the original running-as-daemon code has been maintained/tested, and it
-may have been ripped out at some point - I don't recall.
-
-This project is working with Linux using keyberon already. There are no
-external configuration options available at the moment. However, this project
-**can** be used in its current state if you're willing to modify the source
-code to add your own keyberon configurations.
-
-You would need to modify `create_mapped_keys` and `DEFAULT_LAYERS` to change
-how the binary operates.
-
-To run:
-
-    sudo ktrl --device /dev/input/<keyboard-input>
-
-    # e.g. this is my VMWare keyboard input
-    sudo ktrl --device /dev/input/by-path/platform-i8042-serio-0-event-kbd
-
-## Goals
-
-- Add kmonad-style configuration
-- Implement [tap hold interval](https://github.com/TeXitoi/keyberon/issues/37)
-  in keyberon to achieve my desired feature parity with QMK
-- Add Windows support
-  - MacOS support will never be implemented by me (jtroo) because I don't own
-    any Apple devices, but PRs are welcome.
 
 ## Similar Projects
 - [kmonad](https://github.com/david-janssen/kmonad): The inspiration behind this iteration of ktrl
