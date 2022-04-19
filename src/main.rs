@@ -1,7 +1,6 @@
 use clap::{App, Arg};
 use log::info;
 use simplelog::*;
-use std::fs::File;
 use std::io::{Error, ErrorKind::*};
 use std::path::Path;
 use std::sync::mpsc;
@@ -18,7 +17,6 @@ use ktrl::Ktrl;
 use ktrl::KtrlArgs;
 
 const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
-const DEFAULT_LOG_PATH: &str = "/tmp/ktrl-log.txt";
 
 fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     let matches = App::new("ktrl")
@@ -44,16 +42,6 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("logfile")
-                .long("log")
-                .value_name("LOGFILE")
-                .help(&format!(
-                    "Path to the log file. Default: {}",
-                    DEFAULT_LOG_PATH
-                ))
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("debug")
                 .long("debug")
                 .help("Enables debug level logging"),
@@ -61,7 +49,6 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         .get_matches();
 
     let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
-    let log_path = Path::new(matches.value_of("logfile").unwrap_or(DEFAULT_LOG_PATH));
     let kbd_path = Path::new(matches.value_of("device").unwrap());
 
     let log_lvl = match matches.is_present("debug") {
@@ -71,21 +58,17 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
 
     CombinedLogger::init(vec![
         TermLogger::new(log_lvl, Config::default(), TerminalMode::Mixed),
-        WriteLogger::new(
-            log_lvl,
-            Config::default(),
-            File::create(log_path).expect("Couldn't initialize the file logger"),
-        ),
     ])
     .expect("Couldn't initialize the logger");
 
-    if !config_path.exists() {
-        let err = format!(
-            "Could not find your config file ({})",
-            config_path.to_str().unwrap_or("?")
-        );
-        return Err(Error::new(NotFound, err));
-    }
+    // TODO: not used right now
+    // if !config_path.exists() {
+    //     let err = format!(
+    //         "Could not find your config file ({})",
+    //         config_path.to_str().unwrap_or("?")
+    //     );
+    //     return Err(Error::new(NotFound, err));
+    // }
 
     if !kbd_path.exists() {
         let err = format!(
