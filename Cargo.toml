@@ -22,4 +22,4 @@ simplelog = "0.8.0"
 nix = "0.17.0"
 
 # Using my personal fork for increasing the rollover capacity
-keyberon = { git = "https://github.com/jtroo/keyberon", rev = "b7702b5e8ffc" }
+keyberon = { git = "https://github.com/jtroo/keyberon", rev = "48750b6a792d56aa2159564" }

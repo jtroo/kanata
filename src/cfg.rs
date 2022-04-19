@@ -58,17 +58,23 @@ use keyberon::action::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 
-static LAYERS: Layers = &[
-    &[&[
+static LAYERS: Layers<6, 1, 2> = [
+    [[
         // layout 0
         Action::NoOp,
         k(KeyCode::Escape),
-        k(KeyCode::A),
+        Action::HoldTap {
+            timeout: 200,
+            hold: &l(1),
+            tap: &k(KeyCode::A),
+            tap_hold_interval: 0,
+            config: HoldTapConfig::Default,
+        },
         k(KeyCode::S),
         k(KeyCode::D),
         k(KeyCode::F),
     ]],
-    &[&[
+    [[
         // layout 1
         Action::NoOp,
         k(KeyCode::Escape),
@@ -79,8 +85,8 @@ static LAYERS: Layers = &[
     ]],
 ];
 
-pub fn create_layout() -> Layout {
-    Layout::new(LAYERS)
+pub fn create_layout() -> Layout<6, 1, 2> {
+    Layout::new(&LAYERS)
 }
 
 pub const MAPPED_KEYS_LEN: usize = 256;
@@ -98,6 +104,7 @@ pub fn create_mapped_keys() -> [bool; MAPPED_KEYS_LEN] {
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 
 fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
+    log::info!("Adding {:?} to idx {}", kc, i);
     match outs[i].as_mut() {
         None => {
             outs[i] = Some(vec![kc]);
@@ -140,6 +147,8 @@ pub fn create_key_outputs() -> KeyOutputs {
                     tap,
                     hold,
                     timeout: _,
+                    config: _,
+                    tap_hold_interval: _,
                 } => {
                     if let Action::KeyCode(kc) = tap {
                         add_kc_output(i, kc.into(), &mut outs);

@@ -27,7 +27,7 @@ pub struct Ktrl {
     pub kbd_out: KbdOut,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
-    pub layout: Layout,
+    pub layout: Layout<6, 1, 2>,
     pub prev_keys: HashSet<KeyCode>,
     last_tick: time::Instant,
 }
@@ -68,7 +68,7 @@ impl Ktrl {
             KeyValue::Repeat => return self.handle_repeat(event),
         };
         // ignore events - handle it when calling tick()
-        let _ = self.layout.event(kbrn_ev);
+        self.layout.event(kbrn_ev);
         Ok(())
     }
 
@@ -78,7 +78,8 @@ impl Ktrl {
         self.last_tick = now;
 
         for _ in 0..ms_elapsed {
-            let cur_keys: HashSet<KeyCode> = self.layout.tick().collect();
+            self.layout.tick();
+            let cur_keys: HashSet<KeyCode> = self.layout.keycodes().collect();
             let key_ups = self.prev_keys.difference(&cur_keys);
             let key_downs = cur_keys.difference(&self.prev_keys);
             for kc in key_ups {
