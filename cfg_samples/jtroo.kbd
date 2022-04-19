@@ -1,0 +1,91 @@
+;; This sample is NOT parseable yet. It exists to serve as motivation for what
+;; can eventually be parsed.
+
+(defcfg
+  win-input (low-level-hook)
+  win-output (send-event-sink)
+  linux-dev (device-file /dev/input/by-path/platform-i8042-serio-0-event-kbd)
+
+  ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
+)
+
+(defalias
+  ;; toggle layer aliases
+  num (layer-toggle numbers)
+  chr (layer-toggle chords)
+  arr (layer-toggle arrows)
+  msc (layer-toggle misc)
+
+  ;; move between qwerty and dvorak
+  dvk (layer-move dvorak)
+  qwr (layer-move qwerty)
+
+  ;; tap for key, hold for toggle layers
+  anm (tap-hold 200 a @num)
+  och (tap-hold 200 o @arr)
+  ear (tap-hold 200 e @chr)
+  umc (tap-hold 200 u @msc)
+
+  ;; tap for capslk, hold for lctl
+  cap (tap-hold 200 caps lctl)
+
+  ;; chords
+  ccv C-S-v
+  ccc C-S-c
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet cmp rctl
+)
+
+(deflayer qwerty
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet cmp @dvk
+)
+
+(deflayer dvorak
+  grv  1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
+  @cap @anm @och @ear @umc i    d    h    t    n    s    -    ret
+  lsft ;    q    j    k    x    b    m    w    v    z    rsft
+  lctl lmet lalt           spc            ralt rmet cmp @qwr
+)
+
+(deflayer numbers
+  _    _    _    _    _    _    _    7    8    9    _    _    _    _
+  _    _    _    _    _    XX   _    4    5    6    -    _    _    _
+  _    _    C-z  _    _    XX   _    1    2    3    +    _    _
+  _    C-z  C-x  C-c  C-v  XX   _    0    0    .    /    _
+  _    _    _              _              _    _    _    _
+)
+
+(deflayer misc
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    {    }    [    ]    _    _    _
+  _    _    _    _    C-u  _    _    bspc esc  ret  _    _    _
+  _    C-z  C-x  C-c  C-v  _    _    _    _    _    _    _
+  _    _    _              _              _    _    _    _
+)
+
+(deflayer chords
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    @ccc _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    @ccv _    _
+  _    _    _              _              _    _    _    _
+)
+
+(deflayer arrows
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    up   _    _    _    _    _
+  _    _    _    _    _    _    home left down rght end  _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _    _
+)
