@@ -4,6 +4,13 @@ Readme TODO!
 
 Rewrite of ktrl to use [keyberon](https://github.com/TeXitoi/keyberon) in progress.
 
+To run:
+
+    sudo ktrl --device /dev/input/<keyboard-input>
+
+    # e.g. this is my VMWare keyboard input
+    sudo ktrl --device /dev/input/by-path/platform-i8042-serio-0-event-kbd
+
 ## Goals
 
 - Add Windows support
