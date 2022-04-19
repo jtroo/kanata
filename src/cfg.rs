@@ -27,24 +27,27 @@
 //!
 //!  Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
 //!  are at the beginning of the array. The column index for layers is the numerical value of
-//!  the key from `keys::OsCode`. So if you want to change how the physical key `A` works, when on
-//!  a layer, you would change index `30` (see `keys::OsCode::KEY_A`) of the desired layer to the
-//!  desired `keyberon::action::Action`. `DEFAULT_LAYERS` has some examples.
+//!  the key from `keys::OsCode`.
+//!
+//!  If you want to change how the physical key `A` works on a given layer, you would change index
+//!  30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
+//!  `DEFAULT_LAYERS` is currently set up similarly to the examples above, so you can look there
+//!  for an example.
 
 #![allow(dead_code)]
 
 use crate::default_layers::*;
 use crate::keys::*;
 
-use std::collections::HashSet;
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
+use std::collections::{HashMap, HashSet};
 
 use keyberon::action::*;
 use keyberon::layout::*;
 
 pub struct Cfg {
     /// Mapped keys are the result of the kmonad `defsrc` declaration. Events for keys that are not
-    /// mapped by by ktrl will send directly to the OS and won't be processed internally.
+    /// mapped by ktrl will be sent directly to the OS without being processed internally.
     ///
     /// TODO: currently not used, `create_mapped_keys` is used instead (hardcoded).
     pub mapped_keys: HashSet<OsCode>,
@@ -147,9 +150,25 @@ fn read_and_parse() {
 
     let s_exprs = get_root_exprs(&cfg).unwrap();
 
-    for expr in s_exprs.iter() {
-        eprintln!("{:?}\n\n", parse_expr(expr).unwrap());
-    }
+    let root_exprs: Vec<_> = s_exprs
+        .iter()
+        .map(|expr| {
+            let expr = dbg!(expr);
+            parse_expr(expr).unwrap()
+        })
+        .collect();
+    let cfg_expr = root_exprs
+        .iter()
+        .find(|expr| {
+            if let SExpr::Atom(atom) = &expr[0] {
+                atom == "defcfg"
+            } else {
+                false
+            }
+        })
+        .unwrap();
+    let cfg = parse_cfg(cfg_expr).unwrap();
+    dbg!(cfg);
 }
 
 #[derive(Debug)]
@@ -165,6 +184,8 @@ fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
     let mut s_exprs = Vec::new();
     let mut cur_expr = String::new();
     for line in cfg.lines() {
+        // remove comments
+        let line = line.split(";;").next().unwrap();
         for c in line.chars() {
             if c == '(' {
                 open_paren_count += 1;
@@ -173,10 +194,8 @@ fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
             }
         }
         if open_paren_count == 0 {
-            continue
+            continue;
         }
-        // remove comments
-        let line = line.split(";;").next().unwrap();
         cur_expr.push_str(line);
         cur_expr.push('\n');
         if open_paren_count == close_paren_count {
@@ -186,13 +205,13 @@ fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
             cur_expr.clear();
         }
     }
-    if cur_expr.is_empty() {
+    if !cur_expr.is_empty() {
         bail!("Unclosed root expression:\n{}", cur_expr)
     }
     Ok(s_exprs)
 }
 
-// Parse an expression string into an S-expression
+// Parse an expression string into an SExpr
 fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
     if !expr.starts_with('(') {
         bail!("Expression in cfg does not start with '(':\n{}", expr)
@@ -211,13 +230,18 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
             Some(t) => t,
         };
         if token.contains('(') {
+            // seek to matching close paren and recurse
             let mut paren_stack_size = token.chars().filter(|c| *c == '(').count();
             paren_stack_size -= token.chars().filter(|c| *c == ')').count();
             let mut subexpr = String::new();
             subexpr.push_str(token);
             while paren_stack_size > 0 {
                 let token = match tokens.next() {
-                    None => bail!("Sub expression does not close:\n{}\nwhole expr:\n{}", subexpr, expr),
+                    None => bail!(
+                        "Sub expression does not close:\n{}\nwhole expr:\n{}",
+                        subexpr,
+                        expr
+                    ),
                     Some(t) => t,
                 };
                 paren_stack_size += token.chars().filter(|c| *c == '(').count();
@@ -227,10 +251,58 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
             }
             ret.push(SExpr::List(parse_expr(&subexpr)?))
         } else if token.contains(')') {
-            bail!("Unexpected closing paren in token {} in expr:\n{}", token, expr)
+            bail!(
+                "Unexpected closing paren in token {} in expr:\n{}",
+                token,
+                expr
+            )
         } else {
             ret.push(SExpr::Atom(token.to_owned()));
         }
     }
     Ok(ret)
+}
+
+// Parse a configuration from a defcfg expr
+fn parse_cfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
+    let mut cfg = HashMap::new();
+    let mut exprs = expr.iter();
+    if let Some(first) = exprs.next() {
+        match first {
+            SExpr::Atom(a) => {
+                if a != "defcfg" {
+                    bail!("Passed non-defcfg expression to parse_cfg: {}", a);
+                }
+            }
+            SExpr::List(_) => {
+                bail!("First entry should not be a list for parse_cfg");
+            }
+        };
+    } else {
+        bail!("Passed empty list to parse_cfg")
+    };
+    loop {
+        let key = match exprs.next() {
+            Some(k) => k,
+            None => return Ok(cfg),
+        };
+        let val = match exprs.next() {
+            Some(v) => v,
+            None => bail!("Incorrect number of elements found in defcfg; they should be pairs of keys and values."),
+        };
+        match (&key, &val) {
+            (SExpr::Atom(k), SExpr::Atom(v)) => {
+                if let Some(_) = cfg.insert(k.clone(), v.clone()) {
+                    bail!("duplicate cfg entries for key {}", k);
+                }
+            }
+            (_, _) => {
+                bail!(
+                    "defcfg should only be composed of atoms. Incorrect (k,v) found: {:?},{:?}",
+                    key,
+                    val
+                );
+            }
+        }
+    }
 }

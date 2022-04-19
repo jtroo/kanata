@@ -1,10 +1,11 @@
 ;; This sample is NOT parseable yet. It exists to serve as motivation for what
 ;; can eventually be parsed.
 
+;; Only the first defcfg will be parsed. Others will be ignored.
 (defcfg
-  win-input (low-level-hook)
-  win-output (send-event-sink)
-  linux-dev (device-file /dev/input/by-path/platform-i8042-serio-0-event-kbd)
+  win-input low-level-hook
+  win-output send-event-sink
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
 )
