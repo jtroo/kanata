@@ -21,7 +21,6 @@ log = "0.4.8"
 simplelog = "0.8.0"
 nix = "0.17.0"
 anyhow = "1"
-lexpr = "0.2"
 
 # Using my personal fork to derive hash on a type
 keyberon = { git = "https://github.com/jtroo/keyberon", rev = "fb5072ebccd9" }

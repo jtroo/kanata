@@ -37,6 +37,7 @@ use crate::default_layers::*;
 use crate::keys::*;
 
 use std::collections::HashSet;
+use anyhow::{Result, bail};
 
 use keyberon::action::*;
 use keyberon::layout::*;
@@ -137,4 +138,99 @@ pub fn create_key_outputs() -> KeyOutputs {
         }
     }
     outs
+}
+
+// This test is my experimentation for parsing lisp
+#[test]
+fn read_and_parse() {
+    let cfg = std::fs::read_to_string("./cfg_samples/jtroo.kbd").unwrap();
+
+    let s_exprs = get_root_exprs(&cfg).unwrap();
+
+    for expr in s_exprs.iter() {
+        eprintln!("{:?}\n\n", parse_expr(expr).unwrap());
+    }
+}
+
+#[derive(Debug)]
+enum SExpr {
+    List(Vec<SExpr>),
+    Atom(String),
+}
+
+// Get the root expressions and strip comments.
+fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
+    let mut open_paren_count = 0;
+    let mut close_paren_count = 0;
+    let mut s_exprs = Vec::new();
+    let mut cur_expr = String::new();
+    for line in cfg.lines() {
+        for c in line.chars() {
+            if c == '(' {
+                open_paren_count += 1;
+            } else if c == ')' {
+                close_paren_count += 1;
+            }
+        }
+        if open_paren_count == 0 {
+            continue
+        }
+        // remove comments
+        let line = line.split(";;").next().unwrap();
+        cur_expr.push_str(line);
+        cur_expr.push('\n');
+        if open_paren_count == close_paren_count {
+            open_paren_count = 0;
+            close_paren_count = 0;
+            s_exprs.push(cur_expr.trim().to_owned());
+            cur_expr.clear();
+        }
+    }
+    if cur_expr.len() > 0 {
+        bail!("Unclosed root expression:\n{}", cur_expr)
+    }
+    Ok(s_exprs)
+}
+
+// Parse an expression string into an S-expression
+fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
+    if !expr.starts_with('(') {
+        bail!("Expression in cfg does not start with '(':\n{}", expr)
+    }
+    if !expr.ends_with(')') {
+        bail!("Expression in cfg does not end with ')':\n{}", expr)
+    }
+    let expr = expr.strip_prefix('(').unwrap_or(expr);
+    let expr = expr.strip_suffix(')').unwrap_or(expr);
+
+    let mut ret = Vec::new();
+    let mut tokens = expr.split_whitespace();
+    loop {
+        let token = match tokens.next() {
+            None => break,
+            Some(t) => t,
+        };
+        if token.contains('(') {
+            let mut paren_stack_size = token.chars().filter(|c| *c == '(').count();
+            paren_stack_size -= token.chars().filter(|c| *c == ')').count();
+            let mut subexpr = String::new();
+            subexpr.push_str(token);
+            while paren_stack_size > 0 {
+                let token = match tokens.next() {
+                    None => bail!("Sub expression does not close:\n{}\nwhole expr:\n{}", subexpr, expr),
+                    Some(t) => t,
+                };
+                paren_stack_size += token.chars().filter(|c| *c == '(').count();
+                paren_stack_size -= token.chars().filter(|c| *c == ')').count();
+                subexpr.push(' ');
+                subexpr.push_str(token);
+            }
+            ret.push(SExpr::List(parse_expr(&subexpr)?))
+        } else if token.contains(')') {
+            bail!("Unexpected closing paren in token {} in expr:\n{}", token, expr)
+        } else {
+            ret.push(SExpr::Atom(token.to_owned()));
+        }
+    }
+    Ok(ret)
 }
