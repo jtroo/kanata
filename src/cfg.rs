@@ -186,7 +186,7 @@ fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
             cur_expr.clear();
         }
     }
-    if cur_expr.len() > 0 {
+    if cur_expr.is_empty() {
         bail!("Unclosed root expression:\n{}", cur_expr)
     }
     Ok(s_exprs)

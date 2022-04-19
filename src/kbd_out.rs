@@ -23,10 +23,12 @@ use std::slice;
 // ktrl
 use crate::keys::KeyEvent;
 
+#[cfg(target_os = "linux")]
 pub struct KbdOut {
     device: File,
 }
 
+#[cfg(target_os = "linux")]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         let mut uinput_out_file = OpenOptions::new()

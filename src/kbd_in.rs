@@ -8,10 +8,12 @@ use evdev_rs::ReadStatus;
 use std::fs::File;
 use std::path::Path;
 
+#[cfg(target_os = "linux")]
 pub struct KbdIn {
     device: Device,
 }
 
+#[cfg(target_os = "linux")]
 impl KbdIn {
     pub fn new(dev_path: &Path) -> Result<Self, std::io::Error> {
         match KbdIn::new_linux(dev_path) {
