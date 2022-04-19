@@ -1,8 +1,16 @@
 # ktrl
 
-Readme TODO!
+Rewrite of ktrl to use [keyberon](https://github.com/TeXitoi/keyberon).
+This code is currently working with Linux using keyberon already. None of the
+original running-as-daemon stuff has been maintained or tested, and it may have
+been ripped out, not sure.
 
-Rewrite of ktrl to use [keyberon](https://github.com/TeXitoi/keyberon) in progress.
+There are no external configuration options available at the moment. However,
+this project **can** be used in its current state if you're willing to modify
+the source code directly to add your own keyberon configurations.
+
+You would need to modify `create_mapped_keys` and `DEFAULT_LAYERS` to change
+how the binary operates.
 
 To run:
 
@@ -13,13 +21,15 @@ To run:
 
 ## Goals
 
+- Add kmonad-style configuration
+- Implement [tap hold interval](https://github.com/TeXitoi/keyberon/issues/37)
+  in keyberon to achieve my desired feature parity with QMK
 - Add Windows support
   - MacOS support will never be implemented by me (jtroo) because I don't own any Apple devices, but PRs are welcome.
-- Add kmonad-style configuration
 
 ## Similar Projects
-- [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware (ktrl's inspiration)
-- [kmonad](https://github.com/david-janssen/kmonad): Very similar to ktrl (written in Haskell)
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration behind this iteration of ktrl
+- [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
 - [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
 - [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like ktrl
