@@ -20,6 +20,7 @@ clap = "2.33.1"
 log = "0.4.8"
 simplelog = "0.8.0"
 nix = "0.17.0"
+anyhow = "1"
 
 # Using my personal fork to derive hash on a type
 keyberon = { git = "https://github.com/jtroo/keyberon", rev = "48750b6a792d56aa2159564" }

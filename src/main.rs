@@ -1,7 +1,7 @@
+use anyhow::{bail, Result};
 use clap::{App, Arg};
 use log::info;
 use simplelog::*;
-use std::io::{Error, ErrorKind::*};
 use std::path::Path;
 use std::sync::mpsc;
 
@@ -19,7 +19,7 @@ use ktrl::KtrlArgs;
 
 const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
 
-fn cli_init() -> Result<KtrlArgs, std::io::Error> {
+fn cli_init() -> Result<KtrlArgs> {
     let matches = App::new("ktrl")
         .version("0.0.1")
         .about("Unleashes your keyboard's full potential")
@@ -74,11 +74,10 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     // }
 
     if !kbd_path.exists() {
-        let err = format!(
+        bail!(
             "Could not find the keyboard device ({})",
             kbd_path.to_str().unwrap_or("?")
-        );
-        return Err(Error::new(NotFound, err));
+        )
     }
 
     Ok(KtrlArgs {
@@ -87,7 +86,7 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
     })
 }
 
-fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
+fn main_impl(args: KtrlArgs) -> Result<()> {
     let ktrl_arc = Ktrl::new_arc(args)?;
     info!("ktrl: Setup Complete");
 
@@ -103,7 +102,7 @@ fn main_impl(args: KtrlArgs) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<()> {
     let args = cli_init()?;
     main_impl(args)
 }

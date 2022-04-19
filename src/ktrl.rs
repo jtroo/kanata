@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use log::{error, info};
 
 use std::collections::HashSet;
@@ -33,12 +34,12 @@ pub struct Ktrl {
 }
 
 impl Ktrl {
-    pub fn new(args: KtrlArgs) -> Result<Self, std::io::Error> {
+    pub fn new(args: KtrlArgs) -> Result<Self> {
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
                 error!("Failed to open the output uinput device. Make sure you've added ktrl to the `uinput` group");
-                return Err(err);
+                bail!(err)
             }
         };
 
@@ -56,11 +57,11 @@ impl Ktrl {
         })
     }
 
-    pub fn new_arc(args: KtrlArgs) -> Result<Arc<Mutex<Self>>, std::io::Error> {
+    pub fn new_arc(args: KtrlArgs) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    fn handle_key_event(&mut self, event: &KeyEvent) -> Result<(), String> {
+    fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         info!("handling: {:?}", event);
         let kbrn_ev = match event.value {
             KeyValue::Press => Event::Press(0, event.code as u8),
@@ -72,7 +73,7 @@ impl Ktrl {
         Ok(())
     }
 
-    fn handle_time_ticks(&mut self) {
+    fn handle_time_ticks(&mut self) -> Result<()> {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
         self.last_tick = now;
@@ -84,16 +85,17 @@ impl Ktrl {
             let key_downs = cur_keys.difference(&self.prev_keys);
             for kc in key_ups {
                 if let Err(e) = self.kbd_out.release_key(kc.into()) {
-                    error!("failed to release key: {:?}", e);
+                    bail!("failed to release key: {:?}", e);
                 }
             }
             for kc in key_downs {
                 if let Err(e) = self.kbd_out.press_key(kc.into()) {
-                    error!("failed to press key: {:?}", e);
+                    bail!("failed to press key: {:?}", e);
                 }
             }
             self.prev_keys = cur_keys;
         }
+        Ok(())
     }
 
     // For a repeat event in the OS input, write key back out to OS if it makes sense to.
@@ -104,7 +106,7 @@ impl Ktrl {
     // This compares the active keys in the keyberon layout against the potential key outputs for
     // in the configuration. If any of keyberon active keys match any potential configured mapping,
     // write the repeat event to the OS.
-    fn handle_repeat(&mut self, event: &KeyEvent) -> Result<(), String> {
+    fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
         let outputs_for_key = match &self.key_outputs[event.code as usize] {
             None => return Ok(()),
@@ -119,7 +121,7 @@ impl Ktrl {
         }
         if let Some(kc) = output {
             if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
-                return Err(format!("{:?}", e));
+                bail!("could not write key {:?}", e)
             }
         }
         Ok(())
@@ -129,32 +131,36 @@ impl Ktrl {
         info!("Ktrl: entering the processing loop");
         std::thread::spawn(move || {
             info!("Starting processing loop");
-            loop {
+            let err = loop {
                 if let Ok(kev) = rx.try_recv() {
                     let mut k = ktrl.lock().unwrap();
                     if let Err(e) = k.handle_key_event(&kev) {
-                        error!("Failed to process key event {:?}", e);
+                        break e;
                     }
-                    k.handle_time_ticks();
+                    if let Err(e) = k.handle_time_ticks() {
+                        break e;
+                    }
                 } else {
-                    ktrl.lock().unwrap().handle_time_ticks();
+                    if let Err(e) = ktrl.lock().unwrap().handle_time_ticks() {
+                        break e;
+                    }
                     // Sleep for 1 ms.
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
-            }
+            };
+            panic!("processing loop encountered error {:?}", err)
         });
     }
 
-    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<(), std::io::Error> {
+    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("Ktrl: entering the event loop");
 
         let (kbd_in, mapped_keys) = {
             let ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
             let kbd_in = match KbdIn::new(&ktrl.kbd_in_path) {
                 Ok(kbd_in) => kbd_in,
-                Err(err) => {
-                    error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group");
-                    return Err(err);
+                Err(e) => {
+                    bail!("failed to open keyboard device: {}", e)
                 }
             };
             (kbd_in, ktrl.mapped_keys)
@@ -185,11 +191,7 @@ impl Ktrl {
 
             // Send key events to the processing loop
             if let Err(e) = tx.send(key_event) {
-                error!("Could not send on ch: {}", e.to_string());
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "failed to send on mpsc",
-                ));
+                bail!("failed to send on mpsc: {}", e)
             }
         }
     }
