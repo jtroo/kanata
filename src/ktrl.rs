@@ -27,7 +27,7 @@ pub struct Ktrl {
     pub kbd_out: KbdOut,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
-    pub layout: Layout<6, 1, 2>,
+    pub layout: Layout<256, 1, 25>,
     pub prev_keys: HashSet<KeyCode>,
     last_tick: time::Instant,
 }

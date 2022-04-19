@@ -10,6 +10,7 @@ mod kbd_in;
 mod kbd_out;
 mod keys;
 mod ktrl;
+mod default_layers;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;

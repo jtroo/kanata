@@ -57,36 +57,10 @@ impl Cfg {
 use keyberon::action::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
+use crate::default_layers::*;
 
-static LAYERS: Layers<6, 1, 2> = [
-    [[
-        // layout 0
-        Action::NoOp,
-        k(KeyCode::Escape),
-        Action::HoldTap {
-            timeout: 200,
-            hold: &l(1),
-            tap: &k(KeyCode::A),
-            tap_hold_interval: 0,
-            config: HoldTapConfig::Default,
-        },
-        k(KeyCode::S),
-        k(KeyCode::D),
-        k(KeyCode::F),
-    ]],
-    [[
-        // layout 1
-        Action::NoOp,
-        k(KeyCode::Escape),
-        k(KeyCode::A),
-        k(KeyCode::O),
-        k(KeyCode::E),
-        k(KeyCode::U),
-    ]],
-];
-
-pub fn create_layout() -> Layout<6, 1, 2> {
-    Layout::new(&LAYERS)
+pub fn create_layout() -> Layout<256, 1, 25> {
+    Layout::new(&DEFAULT_LAYERS)
 }
 
 pub const MAPPED_KEYS_LEN: usize = 256;
@@ -137,7 +111,7 @@ pub fn create_key_outputs() -> KeyOutputs {
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
         None,
     ];
-    for layer in LAYERS.iter() {
+    for layer in DEFAULT_LAYERS.iter() {
         for (i, action) in layer[0].iter().enumerate() {
             match action {
                 Action::KeyCode(kc) => {
