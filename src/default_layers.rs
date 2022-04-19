@@ -1,6 +1,6 @@
-use keyberon::layout::*;
 use keyberon::action::*;
 use keyberon::key_code::*;
+use keyberon::layout::*;
 
 pub static DEFAULT_LAYERS: Layers<256, 1, 25> = [
     [[

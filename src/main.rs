@@ -6,11 +6,11 @@ use std::path::Path;
 use std::sync::mpsc;
 
 mod cfg;
+mod default_layers;
 mod kbd_in;
 mod kbd_out;
 mod keys;
 mod ktrl;
-mod default_layers;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
@@ -57,9 +57,11 @@ fn cli_init() -> Result<KtrlArgs, std::io::Error> {
         _ => LevelFilter::Info,
     };
 
-    CombinedLogger::init(vec![
-        TermLogger::new(log_lvl, Config::default(), TerminalMode::Mixed),
-    ])
+    CombinedLogger::init(vec![TermLogger::new(
+        log_lvl,
+        Config::default(),
+        TerminalMode::Mixed,
+    )])
     .expect("Couldn't initialize the logger");
 
     // FIXME: not used right now

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use uinput_sys::uinput_user_dev;
 
-use crate::keys::OsCode;
 use crate::keys::KeyValue;
+use crate::keys::OsCode;
 use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EV_SYN;
 use evdev_rs::InputEvent;

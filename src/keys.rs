@@ -1290,7 +1290,7 @@ impl From<KeyCode> for OsCode {
             KeyCode::AltErase => OsCode::KEY_ALTERASE,
             KeyCode::Cancel => OsCode::KEY_CANCEL,
             KeyCode::MediaMute => OsCode::KEY_MICMUTE,
-            _ => OsCode::KEY_UNKNOWN
+            _ => OsCode::KEY_UNKNOWN,
         }
     }
 }

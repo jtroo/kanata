@@ -31,11 +31,10 @@
 //!  a layer, you would change index `30` (see `keys::OsCode::KEY_A`) of the desired layer to the
 //!  desired `keyberon::action::Action`. `DEFAULT_LAYERS` has some examples.
 
-
 #![allow(dead_code)]
 
-use crate::keys::*;
 use crate::default_layers::*;
+use crate::keys::*;
 
 use std::collections::HashSet;
 
@@ -54,9 +53,7 @@ impl Cfg {
     pub fn new() -> Self {
         let mut mapped_keys = HashSet::new();
         mapped_keys.insert(OsCode::KEY_A); // FIXME: parse from cfg
-        Self {
-            mapped_keys,
-        }
+        Self { mapped_keys }
     }
 }
 
