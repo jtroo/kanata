@@ -39,7 +39,7 @@
 use crate::default_layers::*;
 use crate::keys::*;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use std::collections::{HashMap, HashSet};
 
 use keyberon::action::*;
@@ -67,9 +67,10 @@ pub fn create_layout() -> Layout<256, 1, 25> {
 }
 
 pub const MAPPED_KEYS_LEN: usize = 256;
+pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 
 /// TODO: replace this with cfg fns
-pub fn create_mapped_keys() -> [bool; MAPPED_KEYS_LEN] {
+pub fn create_mapped_keys() -> MappedKeys {
     let mut map = [false; MAPPED_KEYS_LEN];
     map[OsCode::KEY_ESC as usize] = true;
     map[OsCode::KEY_1 as usize] = true;
@@ -146,29 +147,60 @@ pub fn create_key_outputs() -> KeyOutputs {
 // This test is my experimentation for parsing lisp
 #[test]
 fn read_and_parse() {
-    let cfg = std::fs::read_to_string("./cfg_samples/jtroo.kbd").unwrap();
+    parse_cfg().unwrap();
+}
 
-    let s_exprs = get_root_exprs(&cfg).unwrap();
+fn parse_cfg() -> Result<()> {
+    let cfg = std::fs::read_to_string("./cfg_samples/jtroo.kbd")?;
+
+    let s_exprs = get_root_exprs(&cfg)?;
 
     let root_exprs: Vec<_> = s_exprs
         .iter()
-        .map(|expr| {
-            let expr = dbg!(expr);
-            parse_expr(expr).unwrap()
-        })
+        .map(|expr| parse_expr(expr).unwrap_or_else(|e| panic!("Parsing error: {}", e)))
         .collect();
+
+    let cfg_filter = |expr: &&Vec<SExpr>| {
+        if expr.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &expr[0] {
+            atom == "defcfg"
+        } else {
+            false
+        }
+    };
     let cfg_expr = root_exprs
         .iter()
-        .find(|expr| {
-            if let SExpr::Atom(atom) = &expr[0] {
-                atom == "defcfg"
-            } else {
-                false
-            }
-        })
-        .unwrap();
-    let cfg = parse_cfg(cfg_expr).unwrap();
+        .find(cfg_filter)
+        .ok_or_else(|| anyhow!("defcfg is missing from the configuration"))?;
+    if root_exprs.iter().filter(cfg_filter).count() > 1 {
+        bail!("Only one defcfg is allowed in the configuration")
+    }
+    let cfg = parse_defcfg(cfg_expr).unwrap();
     dbg!(cfg);
+
+    let src_filter = |expr: &&Vec<SExpr>| {
+        if expr.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &expr[0] {
+            atom == "defsrc"
+        } else {
+            false
+        }
+    };
+    let src_expr = root_exprs
+        .iter()
+        .find(src_filter)
+        .ok_or_else(|| anyhow!("defsrc is missing from the configuration"))?;
+    if root_exprs.iter().filter(src_filter).count() > 1 {
+        bail!("Only one defcfg is allowed in the configuration")
+    }
+    let src = parse_defsrc(src_expr).unwrap();
+    dbg!(src);
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -264,23 +296,14 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
 }
 
 // Parse a configuration from a defcfg expr
-fn parse_cfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
+fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     let mut cfg = HashMap::new();
-    let mut exprs = expr.iter();
-    if let Some(first) = exprs.next() {
-        match first {
-            SExpr::Atom(a) => {
-                if a != "defcfg" {
-                    bail!("Passed non-defcfg expression to parse_cfg: {}", a);
-                }
-            }
-            SExpr::List(_) => {
-                bail!("First entry should not be a list for parse_cfg");
-            }
-        };
-    } else {
-        bail!("Passed empty list to parse_cfg")
+    let mut exprs = match check_first_expr(expr.iter(), "defcfg") {
+        Ok(s) => s,
+        Err(e) => bail!(e),
     };
+
+    // Read k-v pairs from the configuration
     loop {
         let key = match exprs.next() {
             Some(k) => k,
@@ -292,7 +315,7 @@ fn parse_cfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if let Some(_) = cfg.insert(k.clone(), v.clone()) {
+                if cfg.insert(k.clone(), v.clone()).is_some() {
                     bail!("duplicate cfg entries for key {}", k);
                 }
             }
@@ -305,4 +328,122 @@ fn parse_cfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
             }
         }
     }
+}
+
+// Consumes the first element and returns the rest of the iterator
+fn check_first_expr<'a>(
+    mut exprs: impl Iterator<Item = &'a SExpr>,
+    expected_first: &str,
+) -> Result<impl Iterator<Item = &'a SExpr>> {
+    if let Some(first) = exprs.next() {
+        match first {
+            SExpr::Atom(a) => {
+                if a != expected_first {
+                    bail!("Passed non-defcfg expression to parse_defcfg: {}", a);
+                }
+            }
+            SExpr::List(_) => {
+                bail!("First entry should not be a list for parse_defcfg");
+            }
+        };
+    } else {
+        bail!("Passed empty list to parse_defcfg")
+    };
+    Ok(exprs)
+}
+
+/// Parse a defsrc and return the mapped keys.
+fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
+    // Validate first expression, which should be defsrc
+    let exprs = match check_first_expr(expr.iter(), "defsrc") {
+        Ok(s) => s,
+        Err(e) => bail!(e),
+    };
+
+    let mut mkeys = [false; 256];
+    for expr in exprs {
+        let s = match expr {
+            SExpr::Atom(a) => a,
+            _ => bail!("No lists allowed in defsrc"),
+        };
+        let oscode: usize = match str_to_oscode(s) {
+            Some(c) => c.into(),
+            None => bail!("Unknown key in defsrc: \"{}\"", s),
+        };
+        if oscode >= MAPPED_KEYS_LEN {
+            bail!("Cannot use key \"{}\"", s)
+        }
+        mkeys[oscode] = true;
+    }
+    Ok(mkeys)
+}
+
+/// Convert a str to an oscode.
+///
+/// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
+/// parsing tho configuration. OsCode is in a different file.
+fn str_to_oscode(s: &str) -> Option<OsCode> {
+    Some(match s {
+        "grv" => OsCode::KEY_GRAVE,
+        "1" => OsCode::KEY_1,
+        "2" => OsCode::KEY_2,
+        "3" => OsCode::KEY_3,
+        "4" => OsCode::KEY_4,
+        "5" => OsCode::KEY_5,
+        "6" => OsCode::KEY_6,
+        "7" => OsCode::KEY_7,
+        "8" => OsCode::KEY_8,
+        "9" => OsCode::KEY_9,
+        "0" => OsCode::KEY_0,
+        "-" => OsCode::KEY_MINUS,
+        "=" => OsCode::KEY_EQUAL,
+        "bspc" => OsCode::KEY_BACKSPACE,
+        "tab" => OsCode::KEY_TAB,
+        "q" => OsCode::KEY_Q,
+        "w" => OsCode::KEY_W,
+        "e" => OsCode::KEY_E,
+        "r" => OsCode::KEY_R,
+        "t" => OsCode::KEY_T,
+        "y" => OsCode::KEY_Y,
+        "u" => OsCode::KEY_U,
+        "i" => OsCode::KEY_I,
+        "o" => OsCode::KEY_O,
+        "p" => OsCode::KEY_P,
+        "[" => OsCode::KEY_LEFTBRACE,
+        "]" => OsCode::KEY_RIGHTBRACE,
+        "\\" => OsCode::KEY_BACKSLASH,
+        "caps" => OsCode::KEY_CAPSLOCK,
+        "a" => OsCode::KEY_A,
+        "s" => OsCode::KEY_S,
+        "d" => OsCode::KEY_D,
+        "f" => OsCode::KEY_F,
+        "g" => OsCode::KEY_G,
+        "h" => OsCode::KEY_H,
+        "j" => OsCode::KEY_J,
+        "k" => OsCode::KEY_K,
+        "l" => OsCode::KEY_L,
+        ";" => OsCode::KEY_SEMICOLON,
+        "'" => OsCode::KEY_APOSTROPHE,
+        "ret" => OsCode::KEY_ENTER,
+        "lsft" => OsCode::KEY_LEFTSHIFT,
+        "z" => OsCode::KEY_Z,
+        "x" => OsCode::KEY_X,
+        "c" => OsCode::KEY_C,
+        "v" => OsCode::KEY_V,
+        "b" => OsCode::KEY_B,
+        "n" => OsCode::KEY_N,
+        "m" => OsCode::KEY_M,
+        "," => OsCode::KEY_COMMA,
+        "." => OsCode::KEY_DOT,
+        "/" => OsCode::KEY_SLASH,
+        "rsft" => OsCode::KEY_RIGHTSHIFT,
+        "lctl" => OsCode::KEY_LEFTCTRL,
+        "lmet" => OsCode::KEY_LEFTMETA,
+        "lalt" => OsCode::KEY_LEFTALT,
+        "spc" => OsCode::KEY_SPACE,
+        "ralt" => OsCode::KEY_RIGHTALT,
+        "rmet" => OsCode::KEY_RIGHTMETA,
+        "rctl" => OsCode::KEY_RIGHTCTRL,
+        _ => return None,
+    })
 }
