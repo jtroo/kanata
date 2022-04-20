@@ -177,6 +177,12 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
     }
     let src = parse_defsrc(src_expr).unwrap();
 
+    let _alias_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defalias"))
+        .collect::<Vec<_>>();
+    let _alias_actions = parse_aliases(&_alias_exprs);
+
     Ok((cfg, src))
 }
 
@@ -300,15 +306,15 @@ fn check_first_expr<'a>(
         match first {
             SExpr::Atom(a) => {
                 if a != expected_first {
-                    bail!("Passed non-defcfg expression to parse_defcfg: {}", a);
+                    bail!("Passed non-{} expression to parse_defcfg: {}", expected_first, a);
                 }
             }
             SExpr::List(_) => {
-                bail!("First entry should not be a list for parse_defcfg");
+                bail!("First entry should not be a list for {}", expected_first);
             }
         };
     } else {
-        bail!("Passed empty list to parse_defcfg")
+        bail!("Passed empty list to check_first_expr")
     };
     Ok(exprs)
 }
@@ -372,6 +378,41 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
         mkeys[oscode] = true;
     }
     Ok(mkeys)
+}
+
+/// Parse alias->action mappings from multiple exprs starting with defalias
+fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Action>> {
+    let mut aliases = HashMap::new();
+    for expr in exprs {
+        let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
+            Ok(s) => s,
+            Err(e) => bail!(e),
+        };
+
+        // Read k-v pairs from the configuration
+        loop {
+            let alias = match subexprs.next() {
+                Some(k) => k,
+                None => return Ok(aliases),
+            };
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
+            };
+            match (&alias, &action) {
+                (SExpr::Atom(al), SExpr::Atom(ac)) => {
+                    todo!()
+                }
+                (SExpr::Atom(al), SExpr::List(ac)) => {
+                    todo!()
+                }
+                _ => {
+                    bail!("Invalid alias declaration. Must key atom, atom or atom, list: {:?}, {:?}", alias, action)
+                }
+            }
+        }
+    }
+    todo!()
 }
 
 /// Convert a str to an oscode.
