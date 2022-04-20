@@ -422,10 +422,45 @@ enum MaybeAction {
 /// Returns all layers parsed with either an associated action or an alias, and a mapping of layer
 /// names to their layer index.
 fn parse_layers_pending_alias(
-    _exprs: &[&Vec<SExpr>],
-    _expected_len: usize,
+    exprs: &[&Vec<SExpr>],
+    expected_len: usize,
 ) -> Result<(Vec<Vec<MaybeAction>>, HashMap<String, usize>)> {
-    todo!()
+    let layers = Vec::new();
+    let mut layer_indexes = HashMap::new();
+    let mut idx = 0;
+    for expr in exprs {
+        let mut subexprs = match check_first_expr(expr.iter(), "deflayer") {
+            Ok(s) => s,
+            Err(e) => bail!(e),
+        };
+        let layer_name = get_atom(
+            subexprs
+                .next()
+                .ok_or_else(|| anyhow!("deflayer requires a name and keys"))?,
+        )
+        .ok_or_else(|| anyhow!("layer name after deflayer must be an atom"))?;
+        let num_actions = subexprs.count();
+        if num_actions != expected_len {
+            bail!(
+                "layer {} has {} items, but requires {} to match defsrc",
+                layer_name,
+                num_actions,
+                expected_len
+            )
+        }
+        layer_indexes.insert(layer_name, idx);
+        idx += 1;
+        // FIXME: incomplete; layer parsing is not done, only layer indexes
+    }
+    Ok((layers, layer_indexes))
+}
+
+/// Returns the content of the SExpr if the SExpr is an atom, or returns None otherwise.
+fn get_atom(a: &SExpr) -> Option<String> {
+    match a {
+        SExpr::Atom(a) => Some(a.clone()),
+        _ => None,
+    }
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias. Note that checking for
