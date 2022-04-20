@@ -40,7 +40,7 @@ use crate::default_layers::*;
 use crate::keys::*;
 
 use anyhow::{anyhow, bail, Result};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use keyberon::action::*;
 use keyberon::layout::*;
@@ -50,14 +50,14 @@ pub struct Cfg {
     /// mapped by ktrl will be sent directly to the OS without being processed internally.
     ///
     /// TODO: currently not used, `create_mapped_keys` is used instead (hardcoded).
-    pub mapped_keys: HashSet<OsCode>,
+    pub mapped_keys: MappedKeys,
+    pub cfg: HashMap<String, String>,
 }
 
 impl Cfg {
-    pub fn new() -> Self {
-        let mut mapped_keys = HashSet::new();
-        mapped_keys.insert(OsCode::KEY_A); // FIXME: parse from cfg
-        Self { mapped_keys }
+    pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
+        let (cfg, mapped_keys) = parse_cfg(p)?;
+        Ok(Self { cfg, mapped_keys })
     }
 }
 
@@ -147,14 +147,13 @@ pub fn create_key_outputs() -> KeyOutputs {
 // This test is my experimentation for parsing lisp
 #[test]
 fn read_and_parse() {
-    parse_cfg().unwrap();
+    parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
 }
 
-fn parse_cfg() -> Result<()> {
-    let cfg = std::fs::read_to_string("./cfg_samples/jtroo.kbd")?;
+fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys)> {
+    let cfg = std::fs::read_to_string(p)?;
 
     let s_exprs = get_root_exprs(&cfg)?;
-
     let root_exprs: Vec<_> = s_exprs
         .iter()
         .map(|expr| parse_expr(expr).unwrap_or_else(|e| panic!("Parsing error: {}", e)))
@@ -178,7 +177,6 @@ fn parse_cfg() -> Result<()> {
         bail!("Only one defcfg is allowed in the configuration")
     }
     let cfg = parse_defcfg(cfg_expr).unwrap();
-    dbg!(cfg);
 
     let src_filter = |expr: &&Vec<SExpr>| {
         if expr.is_empty() {
@@ -198,9 +196,8 @@ fn parse_cfg() -> Result<()> {
         bail!("Only one defcfg is allowed in the configuration")
     }
     let src = parse_defsrc(src_expr).unwrap();
-    dbg!(src);
 
-    Ok(())
+    Ok((cfg, src))
 }
 
 #[derive(Debug)]
@@ -382,6 +379,11 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
 ///
 /// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
 /// parsing tho configuration. OsCode is in a different file.
+///
+/// kmonad str to key mapping found here:
+/// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
+///
+/// At the time of writing this only contains aliases I use in my configuration.
 fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
         "grv" => OsCode::KEY_GRAVE,
