@@ -11,7 +11,7 @@ pub static DEFAULT_LAYERS: Layers<256, 1, 25> = [
             timeout: 200,
             hold: &l(1),
             tap: &k(KeyCode::A),
-            tap_hold_interval: 0,
+            tap_hold_interval: 200,
             config: HoldTapConfig::Default,
         },
         k(KeyCode::S),

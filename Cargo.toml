@@ -23,4 +23,4 @@ nix = "0.17.0"
 anyhow = "1"
 
 # Using my personal fork to derive hash on a type
-keyberon = { git = "https://github.com/jtroo/keyberon", rev = "48750b6a792d56aa2159564" }
+keyberon = { git = "https://github.com/jtroo/keyberon", rev = "fb5072ebccd9" }
