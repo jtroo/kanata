@@ -163,7 +163,12 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
         .iter()
         .find(gen_first_atom_filter("defcfg"))
         .ok_or_else(|| anyhow!("defcfg is missing from the configuration"))?;
-    if root_exprs.iter().filter(gen_first_atom_filter("defcfg")).count() > 1 {
+    if root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defcfg"))
+        .count()
+        > 1
+    {
         bail!("Only one defcfg is allowed in the configuration")
     }
     let cfg = parse_defcfg(cfg_expr).unwrap();
@@ -172,7 +177,12 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
         .iter()
         .find(gen_first_atom_filter("defsrc"))
         .ok_or_else(|| anyhow!("defsrc is missing from the configuration"))?;
-    if root_exprs.iter().filter(gen_first_atom_filter("defsrc")).count() > 1 {
+    if root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defsrc"))
+        .count()
+        > 1
+    {
         bail!("Only one defsrc is allowed in the configuration")
     }
     let src = parse_defsrc(src_expr).unwrap();
@@ -306,7 +316,11 @@ fn check_first_expr<'a>(
         match first {
             SExpr::Atom(a) => {
                 if a != expected_first {
-                    bail!("Passed non-{} expression to parse_defcfg: {}", expected_first, a);
+                    bail!(
+                        "Passed non-{} expression to parse_defcfg: {}",
+                        expected_first,
+                        a
+                    );
                 }
             }
             SExpr::List(_) => {
@@ -380,7 +394,8 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
     Ok(mkeys)
 }
 
-/// Parse alias->action mappings from multiple exprs starting with defalias
+/// Parse alias->action mappings from multiple exprs starting with defalias. Note that checking for
+/// layer names in aliases with `layer-toggle` and `layer-move` is not done in this function.
 fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Action>> {
     let mut aliases = HashMap::new();
     for expr in exprs {
@@ -399,19 +414,38 @@ fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Actio
                 Some(v) => v,
                 None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
             };
-            match (&alias, &action) {
-                (SExpr::Atom(al), SExpr::Atom(ac)) => {
-                    todo!()
-                }
-                (SExpr::Atom(al), SExpr::List(ac)) => {
-                    todo!()
-                }
+            let (alias, action) = match (&alias, &action) {
+                (SExpr::Atom(al), SExpr::Atom(ac)) => match parse_action_atom(ac, &aliases) {
+                    Ok(ac) => (al, ac),
+                    Err(e) => bail!(e),
+                },
+                (SExpr::Atom(al), SExpr::List(ac)) => match parse_action_list(ac, &aliases) {
+                    Ok(ac) => (al, ac),
+                    Err(e) => bail!(e),
+                },
                 _ => {
-                    bail!("Invalid alias declaration. Must key atom, atom or atom, list: {:?}, {:?}", alias, action)
+                    bail!("Alias keys must be atoms. Invalid alias: {:?}", alias)
                 }
+            };
+            if aliases.insert(alias.into(), action).is_some() {
+                bail!("Duplicate alias: {}", alias);
             }
         }
     }
+    Ok(aliases)
+}
+
+fn parse_action_atom(
+    _ac: &str,
+    _aliases: &HashMap<String, &'static Action>,
+) -> Result<&'static Action> {
+    todo!()
+}
+
+fn parse_action_list(
+    _ac: &[SExpr],
+    _aliases: &HashMap<String, &'static Action>,
+) -> Result<&'static Action> {
     todo!()
 }
 
