@@ -159,45 +159,42 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
         .map(|expr| parse_expr(expr).unwrap_or_else(|e| panic!("Parsing error: {}", e)))
         .collect();
 
-    let cfg_filter = |expr: &&Vec<SExpr>| {
-        if expr.is_empty() {
-            return false;
-        }
-        if let SExpr::Atom(atom) = &expr[0] {
-            atom == "defcfg"
-        } else {
-            false
-        }
-    };
     let cfg_expr = root_exprs
         .iter()
-        .find(cfg_filter)
+        .find(gen_first_atom_filter("defcfg"))
         .ok_or_else(|| anyhow!("defcfg is missing from the configuration"))?;
-    if root_exprs.iter().filter(cfg_filter).count() > 1 {
+    if root_exprs.iter().filter(gen_first_atom_filter("defcfg")).count() > 1 {
         bail!("Only one defcfg is allowed in the configuration")
     }
     let cfg = parse_defcfg(cfg_expr).unwrap();
 
-    let src_filter = |expr: &&Vec<SExpr>| {
-        if expr.is_empty() {
-            return false;
-        }
-        if let SExpr::Atom(atom) = &expr[0] {
-            atom == "defsrc"
-        } else {
-            false
-        }
-    };
     let src_expr = root_exprs
         .iter()
-        .find(src_filter)
+        .find(gen_first_atom_filter("defsrc"))
         .ok_or_else(|| anyhow!("defsrc is missing from the configuration"))?;
-    if root_exprs.iter().filter(src_filter).count() > 1 {
-        bail!("Only one defcfg is allowed in the configuration")
+    if root_exprs.iter().filter(gen_first_atom_filter("defsrc")).count() > 1 {
+        bail!("Only one defsrc is allowed in the configuration")
     }
     let src = parse_defsrc(src_expr).unwrap();
 
     Ok((cfg, src))
+}
+
+/// Return a closure that filters a root expression by the content of the first element. The
+/// closure returns true if the first element is an atom that matches the input `a` and false
+/// otherwise.
+fn gen_first_atom_filter(a: &str) -> impl FnMut(&&Vec<SExpr>) -> bool {
+    let a = a.to_owned();
+    move |expr: &&Vec<SExpr>| {
+        if expr.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &expr[0] {
+            atom == &a
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug)]
