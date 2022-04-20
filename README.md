@@ -36,7 +36,6 @@ between keyberon `KeyCode` and ktrl's `OsCode` in:
 
 ## Goals
 
-- Clean up error handling
 - Add kmonad-style [configuration](https://github.com/jtroo/ktrl/issues/1)
 - Implement [tap hold interval](https://github.com/TeXitoi/keyberon/issues/37)
   in keyberon to achieve my desired feature parity with QMK
