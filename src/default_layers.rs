@@ -2,7 +2,9 @@ use keyberon::action::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 
-pub static DEFAULT_LAYERS: Layers<256, 1, 25> = [
+pub const MAX_LAYERS: usize = 25;
+
+pub static DEFAULT_LAYERS: Layers<256, 1, MAX_LAYERS> = [
     [[
         // layer 0
         Action::NoOp,

@@ -171,7 +171,7 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
     {
         bail!("Only one defcfg is allowed in the configuration")
     }
-    let cfg = parse_defcfg(cfg_expr).unwrap();
+    let cfg = parse_defcfg(cfg_expr)?;
 
     let src_expr = root_exprs
         .iter()
@@ -185,13 +185,25 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
     {
         bail!("Only one defsrc is allowed in the configuration")
     }
-    let src = parse_defsrc(src_expr).unwrap();
+    let (src, mapping_order) = parse_defsrc(src_expr)?;
 
-    let _alias_exprs = root_exprs
+    let layer_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("deflayer"))
+        .collect::<Vec<_>>();
+    if layer_exprs.is_empty() {
+        bail!("No deflayer expressions exist. At least one layer must be defined.")
+    }
+    if layer_exprs.len() > MAX_LAYERS {
+        bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
+    }
+    let (_layers, layer_names) = parse_layers_pending_alias(&layer_exprs, mapping_order.len())?;
+
+    let alias_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
-    let _alias_actions = parse_aliases(&_alias_exprs);
+    let _alias_actions = parse_aliases(&alias_exprs, &layer_names)?;
 
     Ok((cfg, src))
 }
@@ -368,8 +380,10 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     }
 }
 
-/// Parse mapped keys from an expression starting with defsrc
-fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
+/// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
+/// a vec of the indexes in order. The length of the returned vec should be matched by the length
+/// of all layer declarations.
+fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
     // Validate first expression, which should be defsrc
     let exprs = match check_first_expr(expr.iter(), "defsrc") {
         Ok(s) => s,
@@ -377,6 +391,7 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
     };
 
     let mut mkeys = [false; 256];
+    let mut ordered_codes = Vec::new();
     for expr in exprs {
         let s = match expr {
             SExpr::Atom(a) => a,
@@ -389,14 +404,36 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
         if oscode >= MAPPED_KEYS_LEN {
             bail!("Cannot use key \"{}\"", s)
         }
+        if mkeys[oscode] == true {
+            bail!("Repeat declaration of key in defsrc: \"{}\"", s)
+        }
         mkeys[oscode] = true;
+        ordered_codes.push(oscode);
     }
-    Ok(mkeys)
+    Ok((mkeys, ordered_codes))
+}
+
+/// Represents an action or an alias that may or may not exist (hasn't been verified).
+enum MaybeAction {
+    Action(Action),
+    Alias(String),
+}
+
+/// Returns all layers parsed with either an associated action or an alias, and a mapping of layer
+/// names to their layer index.
+fn parse_layers_pending_alias(
+    _exprs: &[&Vec<SExpr>],
+    _expected_len: usize,
+) -> Result<(Vec<Vec<MaybeAction>>, HashMap<String, usize>)> {
+    todo!()
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias. Note that checking for
 /// layer names in aliases with `layer-toggle` and `layer-move` is not done in this function.
-fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Action>> {
+fn parse_aliases(
+    exprs: &[&Vec<SExpr>],
+    layers: &HashMap<String, usize>,
+) -> Result<HashMap<String, &'static Action>> {
     let mut aliases = HashMap::new();
     for expr in exprs {
         let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
@@ -415,14 +452,18 @@ fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Actio
                 None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
             };
             let (alias, action) = match (&alias, &action) {
-                (SExpr::Atom(al), SExpr::Atom(ac)) => match parse_action_atom(ac, &aliases) {
-                    Ok(ac) => (al, ac),
-                    Err(e) => bail!(e),
-                },
-                (SExpr::Atom(al), SExpr::List(ac)) => match parse_action_list(ac, &aliases) {
-                    Ok(ac) => (al, ac),
-                    Err(e) => bail!(e),
-                },
+                (SExpr::Atom(al), SExpr::Atom(ac)) => {
+                    match parse_action_atom(ac, &aliases, &layers) {
+                        Ok(ac) => (al, ac),
+                        Err(e) => bail!(e),
+                    }
+                }
+                (SExpr::Atom(al), SExpr::List(ac)) => {
+                    match parse_action_list(ac, &aliases, &layers) {
+                        Ok(ac) => (al, ac),
+                        Err(e) => bail!(e),
+                    }
+                }
                 _ => {
                     bail!("Alias keys must be atoms. Invalid alias: {:?}", alias)
                 }
@@ -438,6 +479,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>]) -> Result<HashMap<String, &'static Actio
 fn parse_action_atom(
     _ac: &str,
     _aliases: &HashMap<String, &'static Action>,
+    _layers: &HashMap<String, usize>,
 ) -> Result<&'static Action> {
     todo!()
 }
@@ -445,6 +487,7 @@ fn parse_action_atom(
 fn parse_action_list(
     _ac: &[SExpr],
     _aliases: &HashMap<String, &'static Action>,
+    _layers: &HashMap<String, usize>,
 ) -> Result<&'static Action> {
     todo!()
 }
