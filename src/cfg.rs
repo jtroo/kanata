@@ -201,9 +201,11 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
 }
 
 #[derive(Debug)]
+/// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
+/// this is more convenient to work with (I find).
 enum SExpr {
-    List(Vec<SExpr>),
     Atom(String),
+    List(Vec<SExpr>),
 }
 
 // Get the root expressions and strip comments.
@@ -292,7 +294,29 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
     Ok(ret)
 }
 
-// Parse a configuration from a defcfg expr
+/// Consumes the first element and returns the rest of the iterator,
+fn check_first_expr<'a>(
+    mut exprs: impl Iterator<Item = &'a SExpr>,
+    expected_first: &str,
+) -> Result<impl Iterator<Item = &'a SExpr>> {
+    if let Some(first) = exprs.next() {
+        match first {
+            SExpr::Atom(a) => {
+                if a != expected_first {
+                    bail!("Passed non-defcfg expression to parse_defcfg: {}", a);
+                }
+            }
+            SExpr::List(_) => {
+                bail!("First entry should not be a list for parse_defcfg");
+            }
+        };
+    } else {
+        bail!("Passed empty list to parse_defcfg")
+    };
+    Ok(exprs)
+}
+
+/// Parse configuration entries from an expression starting with defcfg
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     let mut cfg = HashMap::new();
     let mut exprs = match check_first_expr(expr.iter(), "defcfg") {
@@ -327,29 +351,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     }
 }
 
-// Consumes the first element and returns the rest of the iterator
-fn check_first_expr<'a>(
-    mut exprs: impl Iterator<Item = &'a SExpr>,
-    expected_first: &str,
-) -> Result<impl Iterator<Item = &'a SExpr>> {
-    if let Some(first) = exprs.next() {
-        match first {
-            SExpr::Atom(a) => {
-                if a != expected_first {
-                    bail!("Passed non-defcfg expression to parse_defcfg: {}", a);
-                }
-            }
-            SExpr::List(_) => {
-                bail!("First entry should not be a list for parse_defcfg");
-            }
-        };
-    } else {
-        bail!("Passed empty list to parse_defcfg")
-    };
-    Ok(exprs)
-}
-
-/// Parse a defsrc and return the mapped keys.
+/// Parse mapped keys from an expression starting with defsrc
 fn parse_defsrc(expr: &[SExpr]) -> Result<MappedKeys> {
     // Validate first expression, which should be defsrc
     let exprs = match check_first_expr(expr.iter(), "defsrc") {
