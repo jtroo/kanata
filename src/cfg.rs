@@ -508,6 +508,11 @@ fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Resul
 }
 
 fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
+    match ac {
+        "_" => return Ok(sref(Action::Trans)),
+        "XX" => return Ok(sref(Action::NoOp)),
+        _ => {},
+    };
     if let Some(oscode) = str_to_oscode(ac) {
         return Ok(sref(k(oscode.into())));
     }
@@ -609,7 +614,7 @@ fn parse_tap_hold(
     layers: &LayerIndexes,
 ) -> Result<&'static Action> {
     if ac_params.len() != 4 {
-        bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>")
+        bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
     }
     let tap_timeout =
         parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
@@ -689,6 +694,7 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "8" => OsCode::KEY_8,
         "9" => OsCode::KEY_9,
         "0" => OsCode::KEY_0,
+        "+" => OsCode::KEY_KPPLUS,
         "-" => OsCode::KEY_MINUS,
         "=" => OsCode::KEY_EQUAL,
         "bspc" => OsCode::KEY_BACKSPACE,
@@ -703,6 +709,8 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "i" => OsCode::KEY_I,
         "o" => OsCode::KEY_O,
         "p" => OsCode::KEY_P,
+        "{" => OsCode::KEY_LEFTBRACE,
+        "}" => OsCode::KEY_RIGHTBRACE,
         "[" => OsCode::KEY_LEFTBRACE,
         "]" => OsCode::KEY_RIGHTBRACE,
         "\\" => OsCode::KEY_BACKSLASH,
@@ -730,6 +738,7 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "," => OsCode::KEY_COMMA,
         "." => OsCode::KEY_DOT,
         "/" => OsCode::KEY_SLASH,
+        "esc" => OsCode::KEY_ESC,
         "rsft" => OsCode::KEY_RIGHTSHIFT,
         "lctl" => OsCode::KEY_LEFTCTRL,
         "lmet" => OsCode::KEY_LEFTMETA,
@@ -741,6 +750,12 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "del" => OsCode::KEY_DELETE,
         "pgup" => OsCode::KEY_PAGEUP,
         "pgdn" => OsCode::KEY_PAGEDOWN,
+        "up" => OsCode::KEY_UP,
+        "down" => OsCode::KEY_DOWN,
+        "left" => OsCode::KEY_LEFT,
+        "rght" => OsCode::KEY_RIGHT,
+        "home" => OsCode::KEY_HOME,
+        "end" => OsCode::KEY_END,
         _ => return None,
     })
 }

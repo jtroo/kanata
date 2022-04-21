@@ -53,11 +53,15 @@
   umc (tap-hold 200 200 u @msc)
 
   ;; tap for capslk, hold for lctl
-  cap (tap-hold 200 caps lctl)
+  cap (tap-hold 200 200 caps lctl)
 
   ;; chords
   ccv C-S-v
   ccc C-S-c
+
+  ;; shifted keys
+  { S-[
+  } S-]
 )
 
 (deflayer qwerty
@@ -86,7 +90,7 @@
 
 (deflayer misc
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    {    }    [    ]    _    _    _
+  _    _    _    _    _    _    _    @{   @}    [    ]    _    _    _
   _    _    _    _    C-u  _    _    bspc esc  ret  _    _    _
   _    C-z  C-x  C-c  C-v  _    _    _    _    _    _    _
   _    _    _              _              _    _    _
