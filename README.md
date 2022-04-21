@@ -21,8 +21,10 @@ To run:
 
     cargo build   # release optional, not really perf sensitive
 
-    # sudo is required because it opens /dev/input/ files
-    # could look into etc/99-uinput.rules if you want to avoid sudo
+    # sudo is used because ktrl opens /dev/input/ files
+    #
+    # See below if you want to avoid needing sudo:
+    # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
     sudo target/debug/ktrl --cfg <conf_file>
 
 A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
