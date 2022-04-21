@@ -477,7 +477,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Resu
         loop {
             let alias = match subexprs.next() {
                 Some(k) => k,
-                None => return Ok(aliases),
+                None => break,
             };
             let action = match subexprs.next() {
                 Some(v) => v,

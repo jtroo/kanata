@@ -3,8 +3,8 @@
 
 ;; Only one defcfg is allowed
 (defcfg
-  win-input low-level-hook
-  win-output send-event-sink
+  win-input low-level-hook   ;; windows not supported yet
+  win-output send-event-sink ;; windows not supported yet
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
@@ -58,7 +58,9 @@
   ;; chords
   ccv C-S-v
   ccc C-S-c
+)
 
+(defalias
   ;; shifted keys
   { S-[
   } S-]
