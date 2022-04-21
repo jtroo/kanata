@@ -24,7 +24,7 @@ pub struct Ktrl {
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
     pub layout: Layout<256, 1, 25>,
-    pub prev_keys: HashSet<KeyCode>,
+    pub prev_keys: Vec<KeyCode>,
     last_tick: time::Instant,
 }
 
@@ -53,7 +53,7 @@ impl Ktrl {
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
-            prev_keys: HashSet::new(),
+            prev_keys: Vec::new(),
             last_tick: time::Instant::now(),
         })
     }
@@ -80,16 +80,20 @@ impl Ktrl {
 
         for _ in 0..ms_elapsed {
             self.layout.tick();
-            let cur_keys: HashSet<KeyCode> = self.layout.keycodes().collect();
-            let key_ups = self.prev_keys.difference(&cur_keys);
-            let key_downs = cur_keys.difference(&self.prev_keys);
-            for kc in key_ups {
-                if let Err(e) = self.kbd_out.release_key(kc.into()) {
+            let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+            for k in &self.prev_keys {
+                if cur_keys.contains(k) {
+                    continue
+                }
+                if let Err(e) = self.kbd_out.release_key(k.into()) {
                     bail!("failed to release key: {:?}", e);
                 }
             }
-            for kc in key_downs {
-                if let Err(e) = self.kbd_out.press_key(kc.into()) {
+            for k in &cur_keys {
+                if self.prev_keys.contains(k) {
+                    continue
+                }
+                if let Err(e) = self.kbd_out.press_key(k.into()) {
                     bail!("failed to press key: {:?}", e);
                 }
             }
