@@ -243,7 +243,7 @@ checksum = "5e2c4b26352496eaaa8ca7cfa9bd99e93419d3f7983dc6e99c2a35fe9e33504a"
 [[package]]
 name = "keyberon"
 version = "0.2.0"
-source = "git+https://github.com/jtroo/keyberon?rev=fb5072ebccd9#fb5072ebccd96fd3ba809ef4e13cd775ada4b861"
+source = "git+https://github.com/jtroo/keyberon?rev=49978414bf#49978414bf758b7a09be13718994fd1d7445e195"
 dependencies = [
  "arraydeque",
  "either",
@@ -256,7 +256,7 @@ dependencies = [
 [[package]]
 name = "keyberon-macros"
 version = "0.1.0"
-source = "git+https://github.com/jtroo/keyberon?rev=fb5072ebccd9#fb5072ebccd96fd3ba809ef4e13cd775ada4b861"
+source = "git+https://github.com/jtroo/keyberon?rev=49978414bf#49978414bf758b7a09be13718994fd1d7445e195"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

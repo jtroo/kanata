@@ -95,11 +95,11 @@ fn parse_cfg(
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
-    let s_exprs = get_root_exprs(&cfg)?;
-    let root_exprs: Vec<_> = s_exprs
-        .iter()
-        .map(|expr| parse_expr(expr).unwrap_or_else(|e| panic!("Parsing error: {}", e)))
-        .collect();
+    let root_expr_strs = get_root_exprs(&cfg)?;
+    let mut root_exprs = Vec::new();
+    for expr in root_expr_strs {
+        root_exprs.push(parse_expr(&expr)?);
+    }
 
     let cfg_expr = root_exprs
         .iter()
@@ -674,7 +674,8 @@ fn create_layout() -> Layout<256, 1, 25> {
 /// kmonad str to key mapping found here:
 /// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
 ///
-/// At the time of writing this only contains aliases I use in my configuration.
+/// Do your best to keep the str side a maximum character length of 4 so that configuration file
+/// can stay clean.
 fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
         "grv" => OsCode::KEY_GRAVE,

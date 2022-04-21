@@ -24,4 +24,4 @@ anyhow = "1"
 once_cell = "1"
 
 # Using my personal fork to derive hash on a type
-keyberon = { git = "https://github.com/jtroo/keyberon", rev = "fb5072ebccd9" }
+keyberon = { git = "https://github.com/jtroo/keyberon", rev = "49978414bf" }

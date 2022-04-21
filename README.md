@@ -1,18 +1,19 @@
 # ktrl (rename pending)
 
-Rename is pending because this doesn't really look much like the originalktrl
+Rename is pending because this doesn't really look much like the original ktrl
 project anymore. If you have suggestions for a new name, feel free to open an
 issue or start a discussion!
 
-## Current state
+## What does this do?
 
-This is a rewrite of the old project to use
-[keyberon](https://github.com/TeXitoi/keyberon) as the backing library for key
-pressing logic. Almost all of the original code has been removed with the
-exception of the Linux OS interaction. The running-as-daemon functionality from
-the original has not been maintained/tested.
+This is a software keyboard remapper. Some notable features are multiple layers
+of key functionality and differing key behaviour depending on if you quickly
+tap the key or hold it down.
 
-This currently works on Linux! (absence of bugs not guaranteed)
+## Usage
+
+This currently works on Linux only, though Windows is planned in the near
+future (absence of bugs not guaranteed)
 
 To run:
 
@@ -20,9 +21,18 @@ To run:
 
 A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
 
-**WARNING:** I am not a keyboard expert, neither for the USB protocol or the OS
-interface. There may be some incorrect mappings for the more obscure keys
-between keyberon `KeyCode` and ktrl's `OsCode` in:
+## How you can help
+
+- Try it out and let me know what you think
+- File issues and contribute PRs
+- Suggest a name
+- Implement Windows support 😉
+- Improve `get_root_exprs` and `parse_expr` (I'm no expert in parsing)
+- Add to `str_to_oscode`. This function is only contains enough cases for my
+  own personal configuration.
+- I am not a keyboard expert, neither for the USB protocol nor the OS interface.
+  There may be some incorrect mappings for the more obscure keys between keyberon
+  `KeyCode` and ktrl's `OsCode` in:
 
     impl From<KeyCode> for OsCode
     impl From<OsCode> for KeyCode
@@ -30,17 +40,19 @@ between keyberon `KeyCode` and ktrl's `OsCode` in:
 ## Goals
 
 - Add [Windows support](https://github.com/jtroo/ktrl/issues/2)
-  - MacOS support will never be implemented by me (jtroo) because I don't own
-    any Apple devices, but PRs are welcome.
+- MacOS support will never be implemented by me (jtroo) because I don't own
+  any Apple devices, but PRs are welcome.
 
 ## Contributing
 
-While I plan to implement all of the goals at some point, contributions are
-welcome!
+Contributions are welcome!
 
-The keyberon project contains all of the heavy logic, so if you want new
-keyboard mapping functionality, it will need to be implemented in keyberon
-first.
+Unless explicitly stated otherwise, your contributions will be made under the
+LGPLv3 license.
+
+The keyberon project contains all of the heavy keyboard state logic, so if you
+want new keyboard mapping functionality, it's strongly recommended to
+contribute to keyberon first.
 
 ## Motivation
 
@@ -90,12 +102,13 @@ personal workflow is QMK's default
 
 This project is written in Rust because Rust is my favourite programming
 language and the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
-exists. Keyberon is also currently missing the tap-hold functionality, but I
-actually have some hope of being able to add it myself at some point.
+exists. I was able to add my
+[desired tap-hold behaviour](https://github.com/TeXitoi/keyberon/pull/85) with
+not too much trouble.
 
 I've tried compiling kmonad myself and it was quite the slog, though I was able
 to get it working eventually. Comparing the process to `cargo build` though, it
-was a huge contrast. I believe using Rust will lower the barrier to entry for
+was a huge contrast. I think using Rust will lower the barrier to entry for
 contributions to a project like this.
 
 ## Similar Projects

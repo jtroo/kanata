@@ -31,6 +31,8 @@ pub struct Ktrl {
 impl Ktrl {
     /// Create a new configuration from a file.
     pub fn new(cfg: PathBuf) -> Result<Self> {
+        let cfg = cfg::Cfg::new_from_file(&cfg)?;
+
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -38,8 +40,6 @@ impl Ktrl {
                 bail!(err)
             }
         };
-
-        let cfg = cfg::Cfg::new_from_file(&cfg)?;
 
         #[cfg(target_os = "linux")]
         let kbd_in_path = cfg
