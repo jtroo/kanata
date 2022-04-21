@@ -43,6 +43,7 @@ use anyhow::{anyhow, bail, Result};
 use std::collections::HashMap;
 
 use keyberon::action::*;
+use keyberon::key_code::*;
 use keyberon::layout::*;
 
 pub struct Cfg {
@@ -336,7 +337,10 @@ fn check_first_expr<'a>(
                 }
             }
             SExpr::List(_) => {
-                bail!("First entry should not be a list for {}", expected_first);
+                bail!(
+                    "First entry is expected to be an atom for {}",
+                    expected_first
+                );
             }
         };
     } else {
@@ -404,7 +408,7 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
         if oscode >= MAPPED_KEYS_LEN {
             bail!("Cannot use key \"{}\"", s)
         }
-        if mkeys[oscode] == true {
+        if mkeys[oscode] {
             bail!("Repeat declaration of key in defsrc: \"{}\"", s)
         }
         mkeys[oscode] = true;
@@ -419,16 +423,18 @@ enum MaybeAction {
     Alias(String),
 }
 
+type LayersPendingAliases = Vec<Vec<MaybeAction>>;
+type LayerIndexes = HashMap<String, usize>;
+
 /// Returns all layers parsed with either an associated action or an alias, and a mapping of layer
 /// names to their layer index.
 fn parse_layers_pending_alias(
     exprs: &[&Vec<SExpr>],
     expected_len: usize,
-) -> Result<(Vec<Vec<MaybeAction>>, HashMap<String, usize>)> {
+) -> Result<(LayersPendingAliases, LayerIndexes)> {
     let layers = Vec::new();
     let mut layer_indexes = HashMap::new();
-    let mut idx = 0;
-    for expr in exprs {
+    for (i, expr) in exprs.iter().enumerate() {
         let mut subexprs = match check_first_expr(expr.iter(), "deflayer") {
             Ok(s) => s,
             Err(e) => bail!(e),
@@ -448,9 +454,7 @@ fn parse_layers_pending_alias(
                 expected_len
             )
         }
-        layer_indexes.insert(layer_name, idx);
-        idx += 1;
-        // FIXME: incomplete; layer parsing is not done, only layer indexes
+        layer_indexes.insert(layer_name, i);
     }
     Ok((layers, layer_indexes))
 }
@@ -487,14 +491,12 @@ fn parse_aliases(
                 None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
             };
             let (alias, action) = match (&alias, &action) {
-                (SExpr::Atom(al), SExpr::Atom(ac)) => {
-                    match parse_action_atom(ac, &aliases, &layers) {
-                        Ok(ac) => (al, ac),
-                        Err(e) => bail!(e),
-                    }
-                }
+                (SExpr::Atom(al), SExpr::Atom(ac)) => match parse_action_atom(ac, &aliases) {
+                    Ok(ac) => (al, ac),
+                    Err(e) => bail!(e),
+                },
                 (SExpr::Atom(al), SExpr::List(ac)) => {
-                    match parse_action_list(ac, &aliases, &layers) {
+                    match parse_action_list(ac, &aliases, layers) {
                         Ok(ac) => (al, ac),
                         Err(e) => bail!(e),
                     }
@@ -512,11 +514,52 @@ fn parse_aliases(
 }
 
 fn parse_action_atom(
-    _ac: &str,
-    _aliases: &HashMap<String, &'static Action>,
-    _layers: &HashMap<String, usize>,
+    ac: &str,
+    aliases: &HashMap<String, &'static Action>,
 ) -> Result<&'static Action> {
-    todo!()
+    if let Some(oscode) = str_to_oscode(ac) {
+        return Ok(static_ref(k(oscode.into())));
+    }
+    if let Some(alias) = ac.strip_prefix('@') {
+        return match aliases.get(alias) {
+            Some(ac) => Ok(*ac),
+            None => bail!(
+                "Referenced unknown alias {}. Note that order of declarations matter.",
+                alias
+            ),
+        };
+    }
+    // Parse a sequence like `C-S-v` or `C-A-del`
+    let mut rem = ac;
+    let mut key_stack = Vec::new();
+    loop {
+        if let Some(rest) = rem.strip_prefix("C-") {
+            if key_stack.contains(&KeyCode::LCtrl) {
+                bail!("Redundant \"C-\" in {}", ac)
+            }
+            key_stack.push(KeyCode::LCtrl);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("S-") {
+            if key_stack.contains(&KeyCode::LShift) {
+                bail!("Redundant \"S-\" in {}", ac)
+            }
+            key_stack.push(KeyCode::LShift);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("A-") {
+            if key_stack.contains(&KeyCode::LShift) {
+                bail!("Redundant \"A-\" in {}", ac)
+            }
+            key_stack.push(KeyCode::LAlt);
+            rem = rest;
+        } else if let Some(oscode) = str_to_oscode(rem) {
+            key_stack.push(oscode.into());
+            return Ok(static_ref(Action::MultipleKeyCodes(
+                static_ref(key_stack).as_ref(),
+            )));
+        } else {
+            bail!("Could not parse value: {}", ac)
+        }
+    }
 }
 
 fn parse_action_list(
@@ -524,7 +567,20 @@ fn parse_action_list(
     _aliases: &HashMap<String, &'static Action>,
     _layers: &HashMap<String, usize>,
 ) -> Result<&'static Action> {
+    // if let Some(ac) = match ac {
+    //     "layer-toggle" => {},
+    //     "layer-move" => {},
+    //     "tap-hold" => {
+    //     },
+    //     _ => None,
+    // } {
+    //     return Ok(static_ref(ac));
+    // }
     todo!()
+}
+
+fn static_ref<T>(v: T) -> &'static T {
+    Box::leak(Box::new(v))
 }
 
 /// Convert a str to an oscode.
@@ -598,6 +654,9 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "ralt" => OsCode::KEY_RIGHTALT,
         "rmet" => OsCode::KEY_RIGHTMETA,
         "rctl" => OsCode::KEY_RIGHTCTRL,
+        "del" => OsCode::KEY_DELETE,
+        "pgup" => OsCode::KEY_PAGEUP,
+        "pgdn" => OsCode::KEY_PAGEDOWN,
         _ => return None,
     })
 }
