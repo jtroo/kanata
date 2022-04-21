@@ -18,11 +18,6 @@ use crate::KbdOut;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 
-pub struct KtrlArgs {
-    pub kbd_path: PathBuf,
-    pub config_path: PathBuf,
-}
-
 pub struct Ktrl {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
@@ -34,7 +29,7 @@ pub struct Ktrl {
 }
 
 impl Ktrl {
-    pub fn new(args: KtrlArgs) -> Result<Self> {
+    pub fn new(cfg: PathBuf) -> Result<Self> {
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -43,22 +38,28 @@ impl Ktrl {
             }
         };
 
-        let mapped_keys = cfg::create_mapped_keys();
-        let key_outputs = cfg::create_key_outputs();
+        let cfg = cfg::Cfg::new_from_file(&cfg)?;
+
+        #[cfg(target_os = "linux")]
+        let kbd_in_path = cfg
+            .items
+            .get("linux-dev")
+            .expect("linux-dev required in defcfg")
+            .into();
 
         Ok(Self {
-            kbd_in_path: args.kbd_path,
+            kbd_in_path,
             kbd_out,
-            mapped_keys,
-            key_outputs,
+            mapped_keys: cfg.mapped_keys,
+            key_outputs: cfg.key_outputs,
+            layout: cfg.layout,
             prev_keys: HashSet::new(),
-            layout: cfg::create_layout(),
             last_tick: time::Instant::now(),
         })
     }
 
-    pub fn new_arc(args: KtrlArgs) -> Result<Arc<Mutex<Self>>> {
-        Ok(Arc::new(Mutex::new(Self::new(args)?)))
+    pub fn new_arc(cfg: PathBuf) -> Result<Arc<Mutex<Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(cfg)?)))
     }
 
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {

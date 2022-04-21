@@ -274,6 +274,7 @@ dependencies = [
  "libc",
  "log",
  "nix",
+ "once_cell",
  "simplelog",
  "uinput-sys",
 ]
@@ -360,6 +361,12 @@ checksum = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "once_cell"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "pkg-config"

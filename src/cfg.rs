@@ -31,8 +31,6 @@
 //!
 //!  If you want to change how the physical key `A` works on a given layer, you would change index
 //!  30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
-//!  `DEFAULT_LAYERS` is currently set up similarly to the examples above, so you can look there
-//!  for an example.
 
 #![allow(dead_code)]
 
@@ -52,35 +50,31 @@ pub struct Cfg {
     ///
     /// TODO: currently not used, `create_mapped_keys` is used instead (hardcoded).
     pub mapped_keys: MappedKeys,
-    pub cfg: HashMap<String, String>,
+    pub key_outputs: KeyOutputs,
+    pub items: HashMap<String, String>,
+    pub layout: Layout<256, 1, MAX_LAYERS>,
 }
 
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (cfg, mapped_keys) = parse_cfg(p)?;
-        Ok(Self { cfg, mapped_keys })
+        let (items, mapped_keys, key_outputs, layout) = parse_cfg(p)?;
+        Ok(Self {
+            items,
+            mapped_keys,
+            key_outputs,
+            layout,
+        })
     }
 }
 
 /// TODO: replace this with cfg fns
 pub fn create_layout() -> Layout<256, 1, 25> {
-    Layout::new(&DEFAULT_LAYERS)
+    // DEFAULT_LAYERS is permanently locked after this.
+    Layout::new(sref(*DEFAULT_LAYERS.lock().expect("layers lk poisoned")))
 }
 
 pub const MAPPED_KEYS_LEN: usize = 256;
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
-
-/// TODO: replace this with cfg fns
-pub fn create_mapped_keys() -> MappedKeys {
-    let mut map = [false; MAPPED_KEYS_LEN];
-    map[OsCode::KEY_ESC as usize] = true;
-    map[OsCode::KEY_1 as usize] = true;
-    map[OsCode::KEY_2 as usize] = true;
-    map[OsCode::KEY_3 as usize] = true;
-    map[OsCode::KEY_4 as usize] = true;
-    map
-}
-
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 
 fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
@@ -96,7 +90,7 @@ fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
 }
 
 /// TODO: replace this with cfg fns
-pub fn create_key_outputs() -> KeyOutputs {
+fn create_key_outputs() -> KeyOutputs {
     // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
     let mut outs = [
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
@@ -118,7 +112,7 @@ pub fn create_key_outputs() -> KeyOutputs {
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
         None,
     ];
-    for layer in DEFAULT_LAYERS.iter() {
+    for layer in DEFAULT_LAYERS.lock().expect("layer lk poisoned").iter() {
         for (i, action) in layer[0].iter().enumerate() {
             match action {
                 Action::KeyCode(kc) => {
@@ -151,7 +145,14 @@ fn read_and_parse() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
 }
 
-fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys)> {
+fn parse_cfg(
+    p: &std::path::Path,
+) -> Result<(
+    HashMap<String, String>,
+    MappedKeys,
+    KeyOutputs,
+    Layout<256, 1, MAX_LAYERS>,
+)> {
     let cfg = std::fs::read_to_string(p)?;
 
     let s_exprs = get_root_exprs(&cfg)?;
@@ -198,15 +199,16 @@ fn parse_cfg(p: &std::path::Path) -> Result<(HashMap<String, String>, MappedKeys
     if layer_exprs.len() > MAX_LAYERS {
         bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
     }
-    let (_layers, layer_names) = parse_layers_pending_alias(&layer_exprs, mapping_order.len())?;
+    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
 
     let alias_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
-    let _alias_actions = parse_aliases(&alias_exprs, &layer_names)?;
+    let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
+    parse_layers(&layer_exprs, &aliases, &layer_idxs);
 
-    Ok((cfg, src))
+    Ok((cfg, src, create_key_outputs(), create_layout()))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
@@ -423,17 +425,12 @@ enum MaybeAction {
     Alias(String),
 }
 
-type LayersPendingAliases = Vec<Vec<MaybeAction>>;
 type LayerIndexes = HashMap<String, usize>;
 type Aliases = HashMap<String, &'static Action>;
 
-/// Returns all layers parsed with either an associated action or an alias, and a mapping of layer
-/// names to their layer index.
-fn parse_layers_pending_alias(
-    exprs: &[&Vec<SExpr>],
-    expected_len: usize,
-) -> Result<(LayersPendingAliases, LayerIndexes)> {
-    let layers = Vec::new();
+/// Returns layer names and their indexes into the keyberon layout. This also checks that all
+/// layers have the same number of items as the defsrc.
+fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::new();
     for (i, expr) in exprs.iter().enumerate() {
         let mut subexprs = match check_first_expr(expr.iter(), "deflayer") {
@@ -457,7 +454,7 @@ fn parse_layers_pending_alias(
         }
         layer_indexes.insert(layer_name, i);
     }
-    Ok((layers, layer_indexes))
+    Ok(layer_indexes)
 }
 
 /// Returns the content of the SExpr if the SExpr is an atom, or returns None otherwise.
@@ -498,6 +495,10 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Resu
         }
     }
     Ok(aliases)
+}
+
+fn sref<T>(v: T) -> &'static T {
+    Box::leak(Box::new(v))
 }
 
 fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Result<&'static Action> {
@@ -544,9 +545,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
             rem = rest;
         } else if let Some(oscode) = str_to_oscode(rem) {
             key_stack.push(oscode.into());
-            return Ok(sref(Action::MultipleKeyCodes(
-                sref(key_stack).as_ref(),
-            )));
+            return Ok(sref(Action::MultipleKeyCodes(sref(key_stack).as_ref())));
         } else {
             bail!("Could not parse value: {}", ac)
         }
@@ -570,7 +569,10 @@ fn parse_action_list(
         "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
         "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
         "multi" => parse_multi(&ac[1..], aliases, layers),
-        _ => bail!("Unknown action type: {}. Valid types: layer-base, layer-toggle, tap-hold, multi", ac_type),
+        _ => bail!(
+            "Unknown action type: {}. Valid types: layer-base, layer-toggle, tap-hold, multi",
+            ac_type
+        ),
     }
 }
 
@@ -610,11 +612,13 @@ fn parse_tap_hold(
     if ac_params.len() != 4 {
         bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>")
     }
-    let tap_timeout = parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
-    let hold_timeout = parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let tap_timeout =
+        parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let hold_timeout =
+        parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
     let tap_action = parse_action(&ac_params[2], aliases, layers)?;
     let hold_action = parse_action(&ac_params[3], aliases, layers)?;
-    Ok(sref(Action::HoldTap{
+    Ok(sref(Action::HoldTap {
         config: HoldTapConfig::Default,
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
@@ -646,9 +650,7 @@ fn parse_multi(
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
-fn sref<T>(v: T) -> &'static T {
-    Box::leak(Box::new(v))
-}
+fn parse_layers(layers: &[&Vec<SExpr>], aliases: &Aliases, layer_idxs: &LayerIndexes) {}
 
 /// Convert a str to an oscode.
 ///

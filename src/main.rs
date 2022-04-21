@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use clap::{App, Arg};
 use log::info;
 use simplelog::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 mod cfg;
@@ -15,23 +15,14 @@ mod ktrl;
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;
 use ktrl::Ktrl;
-use ktrl::KtrlArgs;
 
 const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
+type CfgPath = PathBuf;
 
-fn cli_init() -> Result<KtrlArgs> {
+fn cli_init() -> Result<CfgPath> {
     let matches = App::new("ktrl")
         .version("0.0.1")
         .about("Unleashes your keyboard's full potential")
-        .arg(
-            Arg::with_name("device")
-                .short("d")
-                .long("device")
-                .value_name("DEVICE")
-                .help("Path to your keyboard's input device. Usually in /dev/input/")
-                .takes_value(true)
-                .required(true),
-        )
         .arg(
             Arg::with_name("cfg")
                 .long("cfg")
@@ -50,7 +41,6 @@ fn cli_init() -> Result<KtrlArgs> {
         .get_matches();
 
     let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
-    let kbd_path = Path::new(matches.value_of("device").unwrap());
 
     let log_lvl = match matches.is_present("debug") {
         true => LevelFilter::Debug,
@@ -64,30 +54,18 @@ fn cli_init() -> Result<KtrlArgs> {
     )])
     .expect("Couldn't initialize the logger");
 
-    // FIXME: not used right now
-    // if !config_path.exists() {
-    //     let err = format!(
-    //         "Could not find your config file ({})",
-    //         config_path.to_str().unwrap_or("?")
-    //     );
-    //     return Err(Error::new(NotFound, err));
-    // }
-
-    if !kbd_path.exists() {
+    if !config_path.exists() {
         bail!(
-            "Could not find the keyboard device ({})",
-            kbd_path.to_str().unwrap_or("?")
+            "Could not find your config file ({})",
+            config_path.to_str().unwrap_or("?")
         )
     }
 
-    Ok(KtrlArgs {
-        kbd_path: kbd_path.to_path_buf(),
-        config_path: config_path.to_path_buf(),
-    })
+    Ok(config_path.into())
 }
 
-fn main_impl(args: KtrlArgs) -> Result<()> {
-    let ktrl_arc = Ktrl::new_arc(args)?;
+fn main_impl(cfg: CfgPath) -> Result<()> {
+    let ktrl_arc = Ktrl::new_arc(cfg)?;
     info!("ktrl: Setup Complete");
 
     // Start a processing loop in another thread and run the event loop in this thread.
