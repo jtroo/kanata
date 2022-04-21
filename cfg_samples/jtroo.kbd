@@ -27,14 +27,30 @@
   msc (layer-toggle misc)
 
   ;; move between qwerty and dvorak
-  dvk (layer-move dvorak)
-  qwr (layer-move qwerty)
+  dvk (layer-base dvorak)
+  qwr (layer-base qwerty)
 
   ;; tap for key, hold for toggle layers
-  anm (tap-hold 200 a @num)
-  och (tap-hold 200 o @arr)
-  ear (tap-hold 200 e @chr)
-  umc (tap-hold 200 u @msc)
+  ;; Parameter order:
+  ;; 1. tap timeout
+  ;; 2. hold timeout
+  ;; 3. tap action
+  ;; 4. hold action
+  ;;
+  ;; The hold timeout is the number of milliseconds after which the hold action
+  ;; will activate.
+  ;;
+  ;; The tap timeout is best explained in a roundabout way. When you press and
+  ;; hold a stardard key on your keyboard (e.g. 'a'), your operating system will
+  ;; read that and keep sending 'a' to the active application. To be able to
+  ;; replicate this behaviour with a tap-hold key, you must double-tap the key
+  ;; within the tap timeout window (number is milliseconds). Simply holding
+  ;; the key results in the hold action activating, which is why you you need to
+  ;; double-tap to make it so the tap key is held down.
+  anm (tap-hold 200 200 a @num)
+  och (tap-hold 200 200 o @arr)
+  ear (tap-hold 200 200 e @chr)
+  umc (tap-hold 200 200 u @msc)
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 caps lctl)

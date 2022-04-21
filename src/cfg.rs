@@ -425,6 +425,7 @@ enum MaybeAction {
 
 type LayersPendingAliases = Vec<Vec<MaybeAction>>;
 type LayerIndexes = HashMap<String, usize>;
+type Aliases = HashMap<String, &'static Action>;
 
 /// Returns all layers parsed with either an associated action or an alias, and a mapping of layer
 /// names to their layer index.
@@ -467,12 +468,8 @@ fn get_atom(a: &SExpr) -> Option<String> {
     }
 }
 
-/// Parse alias->action mappings from multiple exprs starting with defalias. Note that checking for
-/// layer names in aliases with `layer-toggle` and `layer-move` is not done in this function.
-fn parse_aliases(
-    exprs: &[&Vec<SExpr>],
-    layers: &HashMap<String, usize>,
-) -> Result<HashMap<String, &'static Action>> {
+/// Parse alias->action mappings from multiple exprs starting with defalias.
+fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Result<Aliases> {
     let mut aliases = HashMap::new();
     for expr in exprs {
         let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
@@ -490,21 +487,11 @@ fn parse_aliases(
                 Some(v) => v,
                 None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
             };
-            let (alias, action) = match (&alias, &action) {
-                (SExpr::Atom(al), SExpr::Atom(ac)) => match parse_action_atom(ac, &aliases) {
-                    Ok(ac) => (al, ac),
-                    Err(e) => bail!(e),
-                },
-                (SExpr::Atom(al), SExpr::List(ac)) => {
-                    match parse_action_list(ac, &aliases, layers) {
-                        Ok(ac) => (al, ac),
-                        Err(e) => bail!(e),
-                    }
-                }
-                _ => {
-                    bail!("Alias keys must be atoms. Invalid alias: {:?}", alias)
-                }
+            let alias = match alias {
+                SExpr::Atom(a) => a,
+                _ => bail!("Alias keys must be atoms. Invalid alias: {:?}", alias),
             };
+            let action = parse_action(action, &aliases, layers)?;
             if aliases.insert(alias.into(), action).is_some() {
                 bail!("Duplicate alias: {}", alias);
             }
@@ -513,12 +500,16 @@ fn parse_aliases(
     Ok(aliases)
 }
 
-fn parse_action_atom(
-    ac: &str,
-    aliases: &HashMap<String, &'static Action>,
-) -> Result<&'static Action> {
+fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Result<&'static Action> {
+    match expr {
+        SExpr::Atom(a) => parse_action_atom(a, aliases),
+        SExpr::List(l) => parse_action_list(l, aliases, layers),
+    }
+}
+
+fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
     if let Some(oscode) = str_to_oscode(ac) {
-        return Ok(static_ref(k(oscode.into())));
+        return Ok(sref(k(oscode.into())));
     }
     if let Some(alias) = ac.strip_prefix('@') {
         return match aliases.get(alias) {
@@ -553,8 +544,8 @@ fn parse_action_atom(
             rem = rest;
         } else if let Some(oscode) = str_to_oscode(rem) {
             key_stack.push(oscode.into());
-            return Ok(static_ref(Action::MultipleKeyCodes(
-                static_ref(key_stack).as_ref(),
+            return Ok(sref(Action::MultipleKeyCodes(
+                sref(key_stack).as_ref(),
             )));
         } else {
             bail!("Could not parse value: {}", ac)
@@ -563,23 +554,99 @@ fn parse_action_atom(
 }
 
 fn parse_action_list(
-    _ac: &[SExpr],
-    _aliases: &HashMap<String, &'static Action>,
-    _layers: &HashMap<String, usize>,
+    ac: &[SExpr],
+    aliases: &Aliases,
+    layers: &LayerIndexes,
 ) -> Result<&'static Action> {
-    // if let Some(ac) = match ac {
-    //     "layer-toggle" => {},
-    //     "layer-move" => {},
-    //     "tap-hold" => {
-    //     },
-    //     _ => None,
-    // } {
-    //     return Ok(static_ref(ac));
-    // }
-    todo!()
+    if ac.is_empty() {
+        return Ok(sref(Action::NoOp));
+    }
+    let ac_type = match &ac[0] {
+        SExpr::Atom(a) => a,
+        _ => bail!("Action list must start with an atom"),
+    };
+    match ac_type.as_str() {
+        "layer-base" => parse_layer_base(&ac[1..], layers),
+        "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
+        "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
+        "multi" => parse_multi(&ac[1..], aliases, layers),
+        _ => bail!("Unknown action type: {}. Valid types: layer-base, layer-toggle, tap-hold, multi", ac_type),
+    }
 }
 
-fn static_ref<T>(v: T) -> &'static T {
+fn parse_layer_base(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static Action> {
+    Ok(sref(Action::DefaultLayer(layer_idx(ac_params, layers)?)))
+}
+
+fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static Action> {
+    Ok(sref(Action::Layer(layer_idx(ac_params, layers)?)))
+}
+
+fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
+    if ac_params.len() != 1 {
+        bail!(
+            "layer-base expects one atom: the layer name. Incorrect value: {:?}",
+            ac_params
+        )
+    }
+    let layer_name = match &ac_params[0] {
+        SExpr::Atom(ln) => ln,
+        _ => bail!(
+            "layer-base name should be an atom, not a list: {:?}",
+            ac_params[0]
+        ),
+    };
+    match layers.get(layer_name) {
+        Some(i) => Ok(*i),
+        None => bail!("layer name {} is not declared in any deflayer", layer_name),
+    }
+}
+
+fn parse_tap_hold(
+    ac_params: &[SExpr],
+    aliases: &Aliases,
+    layers: &LayerIndexes,
+) -> Result<&'static Action> {
+    if ac_params.len() != 4 {
+        bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>")
+    }
+    let tap_timeout = parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let hold_timeout = parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let tap_action = parse_action(&ac_params[2], aliases, layers)?;
+    let hold_action = parse_action(&ac_params[3], aliases, layers)?;
+    Ok(sref(Action::HoldTap{
+        config: HoldTapConfig::Default,
+        tap_hold_interval: tap_timeout,
+        timeout: hold_timeout,
+        tap: tap_action,
+        hold: hold_action,
+    }))
+}
+
+fn parse_timeout(a: &SExpr) -> Result<u16> {
+    match a {
+        SExpr::Atom(a) => a.parse().map_err(|e| anyhow!("expected integer: {}", e)),
+        _ => bail!("expected atom, not list for integer"),
+    }
+}
+
+fn parse_multi(
+    ac_params: &[SExpr],
+    aliases: &Aliases,
+    layers: &LayerIndexes,
+) -> Result<&'static Action> {
+    if ac_params.is_empty() {
+        bail!("multi expects at least one atom after it")
+    }
+    let mut actions = Vec::new();
+    for expr in ac_params {
+        let ac = parse_action(expr, aliases, layers)?;
+        actions.push(*ac);
+    }
+    Ok(sref(Action::MultipleActions(sref(actions))))
+}
+
+fn sref<T>(v: T) -> &'static T {
     Box::leak(Box::new(v))
 }
 
