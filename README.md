@@ -6,20 +6,35 @@ issue or start a discussion!
 
 ## What does this do?
 
-This is a software keyboard remapper. Some notable features are multiple layers
-of key functionality and differing key behaviour depending on if you quickly
-tap the key or hold it down.
+This is a software keyboard remapper. The features are:
+- multiple layers of key functionality on your single keyboard
+- differing key behaviour depending on if you quickly tap the key or hold it down.
+
+The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
 
 ## Usage
 
-This currently works on Linux only, though Windows is planned in the near
+This currently works on Linux only, though Windows support is planned in the near
 future.
 
 To run:
 
-    sudo ktrl --cfg <conf_file>
+    cargo build   # release optional, not really perf sensitive
+
+    # sudo is required because it opens /dev/input/ files
+    # could look into etc/99-uinput.rules if you want to avoid sudo
+    sudo target/debug/ktrl --cfg <conf_file>
 
 A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
+
+## Current state
+
+Though young, I think this project is already very usable. Since the underlying
+library has already had a lot of work put into it to make it work well, there
+wasn't that much work necessary to get something useful built.
+
+It already works better than kmonad for my personal use cases because of a few
+key sequences that aren't handled the way I expect in kmonad
 
 ## How you can help
 
@@ -64,7 +79,7 @@ One great use case of QMK is its ability map keys so that they overlap with the
 home row keys but are accessible on another layer. I won't comment on
 productivity, but I find this greatly helps with my keyboard comfort.
 
-For example, these keys are on my right hand:
+For example, these keys are on the right side of the keyboard:
 
     7 8 9
     u i o
@@ -81,7 +96,7 @@ have a numpad.
     - - -         0 * .
 
 One could add as many customizations as one likes to improve comfort, speed,
-etc. Personally these customizations are not the only ones I use.
+etc.
 
 However, QMK doesn't run everywhere. In fact, it doesn't run on **most**
 hardware you can get. You can't get it to run on a laptop keyboard or any
@@ -90,7 +105,7 @@ empowerment QMK provides should be available to anyone with a computer on
 their existing hardware, instead of having to purchase an enthusiast mechanical
 keyboard. (which are admittedly very nice (I own a few) — but can be costly)
 
-The current best solution that I've found for keyboards that don't run QMK is
+The best alternative solution that I've found for keyboards that don't run QMK is
 [kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
 and I recommend it if you want to try something similar.
 
