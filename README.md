@@ -13,7 +13,7 @@ tap the key or hold it down.
 ## Usage
 
 This currently works on Linux only, though Windows is planned in the near
-future (absence of bugs not guaranteed)
+future.
 
 To run:
 
@@ -33,9 +33,10 @@ A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
 - I am not a keyboard expert, neither for the USB protocol nor the OS interface.
   There may be some incorrect mappings for the more obscure keys between keyberon
   `KeyCode` and ktrl's `OsCode` in:
-
-    impl From<KeyCode> for OsCode
-    impl From<OsCode> for KeyCode
+  ```rust
+  impl From<KeyCode> for OsCode
+  impl From<OsCode> for KeyCode
+  ```
 
 ## Goals
 
@@ -91,7 +92,7 @@ keyboard. (which are admittedly very nice (I own a few) — but can be costly)
 
 The current best solution that I've found for keyboards that don't run QMK is
 [kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
-and I strongly recommend it if you want to use something similar right now.
+and I recommend it if you want to try something similar.
 
 The reason for this project's existence is that kmonad is written in Haskell
 and I have no idea how to begin contributing to a Haskell project. From an
@@ -102,7 +103,7 @@ personal workflow is QMK's default
 
 This project is written in Rust because Rust is my favourite programming
 language and the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
-exists. I was able to add my
+exists. This project would not exist without keyberon. I was able to add my
 [desired tap-hold behaviour](https://github.com/TeXitoi/keyberon/pull/85) with
 not too much trouble.
 
