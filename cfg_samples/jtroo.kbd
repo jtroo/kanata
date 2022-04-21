@@ -53,7 +53,7 @@
   ;; read that and keep sending 'a' to the active application. To be able to
   ;; replicate this behaviour with a tap-hold key, you must press-release-press
   ;; the key within the tap timeout window (number is milliseconds). Simply
-  ;;  holding the key results in the hold action activating, which is why you
+  ;; holding the key results in the hold action activating, which is why you
   ;; need to double-press for the tap action to stay pressed.
   anm (tap-hold 200 200 a @num)
   och (tap-hold 200 200 o @arr)
