@@ -1,11 +1,19 @@
-;; This sample is NOT parseable yet. It exists to serve as motivation for what
-;; can eventually be parsed.
+;; This configuration is inspired by kmonad's configuration language.
+;;
+;; See: https://github.com/kmonad/kmonad/blob/master/keymap/tutorial.kbd
+;;
+;; However, any items you see in the kmonad configuration that don't exist in
+;; this sample are likely not implemented.
 
 ;; Only one defcfg is allowed
 (defcfg
-  win-input low-level-hook   ;; windows not supported yet
-  win-output send-event-sink ;; windows not supported yet
+  ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
+  ;; is preferable; I recall reading that it's less likely to change names on you,
+  ;; but I didn't find any keyboard device in there in my VM.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+
+  win-input low-level-hook   ;; windows not supported yet, copied from kmonad
+  win-output send-event-sink ;; windows not supported yet, copied from kmonad
 
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
 )
@@ -26,9 +34,9 @@
   arr (layer-toggle arrows)
   msc (layer-toggle misc)
 
-  ;; move between qwerty and dvorak
-  dvk (layer-base dvorak)
-  qwr (layer-base qwerty)
+  ;; change the base layer between qwerty and dvorak
+  dvk (layer-switch dvorak)
+  qwr (layer-switch qwerty)
 
   ;; tap for key, hold for toggle layers
   ;; Parameter order:
@@ -56,14 +64,18 @@
   cap (tap-hold 200 200 caps lctl)
 
   ;; chords
-  ccv C-S-v
-  ccc C-S-c
+  csv C-S-v
+  csc C-S-c
 )
 
 (defalias
   ;; shifted keys
   { S-[
   } S-]
+)
+
+(defalias
+  alph (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
 )
 
 (deflayer qwerty
@@ -101,9 +113,9 @@
 
 (deflayer chords
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    @ccc _    _    _    _    _
+  _    _    _    _    _    _    _    _    @csc _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    @ccv _    _
+  _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _
 )
 

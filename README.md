@@ -1,31 +1,24 @@
 # ktrl (rename pending)
 
-Rename is pending because this doesn't really look much like the original ktrl
+Rename is pending because this doesn't really look much like the originalktrl
 project anymore. If you have suggestions for a new name, feel free to open an
 issue or start a discussion!
 
 ## Current state
 
-This is a rewrite of the old ktrl project to use
-[keyberon](https://github.com/TeXitoi/keyberon). Almost all of the original
-ktrl code has been removed, with the exception of the Linux OS interaction.
-None of the original running-as-daemon code has been maintained/tested, and it
-may have been ripped out at some point - I don't recall.
+This is a rewrite of the old project to use
+[keyberon](https://github.com/TeXitoi/keyberon) as the backing library for key
+pressing logic. Almost all of the original code has been removed with the
+exception of the Linux OS interaction. The running-as-daemon functionality from
+the original has not been maintained/tested.
 
-This project is working with Linux (very much untested). There are no external
-configuration options available at the moment. However, this project **can** be
-used in its current state if you're willing to modify the source code to add
-your own keyberon configurations.
-
-You would need to modify `create_mapped_keys` and `DEFAULT_LAYERS` to change
-how the binary operates.
+This currently works on Linux! (absence of bugs not guaranteed)
 
 To run:
 
-    sudo ktrl --device /dev/input/<keyboard-input>
+    sudo ktrl --cfg <conf_file>
 
-    # e.g. this is my VMWare keyboard input
-    sudo ktrl --device /dev/input/by-path/platform-i8042-serio-0-event-kbd
+A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
 
 **WARNING:** I am not a keyboard expert, neither for the USB protocol or the OS
 interface. There may be some incorrect mappings for the more obscure keys
@@ -36,7 +29,6 @@ between keyberon `KeyCode` and ktrl's `OsCode` in:
 
 ## Goals
 
-- Add kmonad-style [configuration](https://github.com/jtroo/ktrl/issues/1)
 - Add [Windows support](https://github.com/jtroo/ktrl/issues/2)
   - MacOS support will never be implemented by me (jtroo) because I don't own
     any Apple devices, but PRs are welcome.

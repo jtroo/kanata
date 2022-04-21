@@ -1,4 +1,4 @@
-//! TBD: Configuration parser.
+//! Configuration parser.
 //!
 //! How the configuration maps to keyberon:
 //!
@@ -21,9 +21,10 @@
 //! Then the keyberon layers will be as follows:
 //!
 //!     xx means unimportant. See `keys.rs` for reference
+//!     the numbers in `{ ... }` represent Action::Ke
 //!
-//!     layers[0] = { xx, 1, 30, 31, 32, 33, xx... }
-//!     layers[1] = { xx, 1, 30, 24, 18, 22, xx... }
+//!     layers[0] = { xx, esc, a, s, d, f, xx... }
+//!     layers[1] = { xx, esc, a, o, e, u, xx... }
 //!
 //!  Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
 //!  are at the beginning of the array. The column index for layers is the numerical value of
@@ -34,7 +35,7 @@
 
 #![allow(dead_code)]
 
-use crate::default_layers::*;
+use crate::layers::*;
 use crate::keys::*;
 
 use anyhow::{anyhow, bail, Result};
@@ -45,10 +46,6 @@ use keyberon::key_code::*;
 use keyberon::layout::*;
 
 pub struct Cfg {
-    /// Mapped keys are the result of the kmonad `defsrc` declaration. Events for keys that are not
-    /// mapped by ktrl will be sent directly to the OS without being processed internally.
-    ///
-    /// TODO: currently not used, `create_mapped_keys` is used instead (hardcoded).
     pub mapped_keys: MappedKeys,
     pub key_outputs: KeyOutputs,
     pub items: HashMap<String, String>,
@@ -67,12 +64,6 @@ impl Cfg {
     }
 }
 
-/// TODO: replace this with cfg fns
-pub fn create_layout() -> Layout<256, 1, 25> {
-    // DEFAULT_LAYERS is permanently locked after this.
-    Layout::new(sref(*DEFAULT_LAYERS.lock().expect("layers lk poisoned")))
-}
-
 pub const MAPPED_KEYS_LEN: usize = 256;
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
@@ -89,57 +80,6 @@ fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
     }
 }
 
-/// TODO: replace this with cfg fns
-fn create_key_outputs() -> KeyOutputs {
-    // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
-    let mut outs = [
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None,
-    ];
-    for layer in DEFAULT_LAYERS.lock().expect("layer lk poisoned").iter() {
-        for (i, action) in layer[0].iter().enumerate() {
-            match action {
-                Action::KeyCode(kc) => {
-                    add_kc_output(i, kc.into(), &mut outs);
-                }
-                Action::HoldTap {
-                    tap,
-                    hold,
-                    timeout: _,
-                    config: _,
-                    tap_hold_interval: _,
-                } => {
-                    if let Action::KeyCode(kc) = tap {
-                        add_kc_output(i, kc.into(), &mut outs);
-                    }
-                    if let Action::KeyCode(kc) = hold {
-                        add_kc_output(i, kc.into(), &mut outs);
-                    }
-                }
-                _ => {} // do nothing for other types
-            };
-        }
-    }
-    outs
-}
-
-// This test is my experimentation for parsing lisp
 #[test]
 fn read_and_parse() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
@@ -269,7 +209,7 @@ fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
     Ok(s_exprs)
 }
 
-// Parse an expression string into an SExpr
+/// Parse an expression string into an SExpr
 fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
     if !expr.starts_with('(') {
         bail!("Expression in cfg does not start with '(':\n{}", expr)
@@ -569,12 +509,12 @@ fn parse_action_list(
         _ => bail!("Action list must start with an atom"),
     };
     match ac_type.as_str() {
-        "layer-base" => parse_layer_base(&ac[1..], layers),
+        "layer-switch" => parse_layer_base(&ac[1..], layers),
         "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
         "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
         "multi" => parse_multi(&ac[1..], aliases, layers),
         _ => bail!(
-            "Unknown action type: {}. Valid types: layer-base, layer-toggle, tap-hold, multi",
+            "Unknown action type: {}. Valid types: layer-switch, layer-toggle, tap-hold, multi",
             ac_type
         ),
     }
@@ -591,14 +531,14 @@ fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'st
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
     if ac_params.len() != 1 {
         bail!(
-            "layer-base expects one atom: the layer name. Incorrect value: {:?}",
+            "layer-switch expects one atom: the layer name. Incorrect value: {:?}",
             ac_params
         )
     }
     let layer_name = match &ac_params[0] {
         SExpr::Atom(ln) => ln,
         _ => bail!(
-            "layer-base name should be an atom, not a list: {:?}",
+            "layer-switch name should be an atom, not a list: {:?}",
             ac_params[0]
         ),
     };
@@ -654,14 +594,14 @@ fn parse_multi(
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
-/// Mutates DEFAULT_LAYERS using the inputs.
+/// Mutates LAYERS using the inputs.
 fn parse_layers(
     layers: &[&Vec<SExpr>],
     aliases: &Aliases,
     layer_idxs: &LayerIndexes,
     mapping_order: &[usize],
 ) -> Result<()> {
-    let mut layers_cfg = DEFAULT_LAYERS.lock().expect("layer lk poisoned");
+    let mut layers_cfg = LAYERS.lock().expect("layer lk poisoned");
     for (layer_level, layer) in layers.iter().enumerate() {
         // skip deflayer and name
         for (i, ac) in layer.iter().skip(2).enumerate() {
@@ -672,10 +612,64 @@ fn parse_layers(
     Ok(())
 }
 
+fn create_key_outputs() -> KeyOutputs {
+    // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
+    let mut outs = [
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None,
+    ];
+    for layer in LAYERS.lock().expect("layer lk poisoned").iter() {
+        for (i, action) in layer[0].iter().enumerate() {
+            match action {
+                Action::KeyCode(kc) => {
+                    add_kc_output(i, kc.into(), &mut outs);
+                }
+                Action::HoldTap {
+                    tap,
+                    hold,
+                    timeout: _,
+                    config: _,
+                    tap_hold_interval: _,
+                } => {
+                    if let Action::KeyCode(kc) = tap {
+                        add_kc_output(i, kc.into(), &mut outs);
+                    }
+                    if let Action::KeyCode(kc) = hold {
+                        add_kc_output(i, kc.into(), &mut outs);
+                    }
+                }
+                _ => {} // do nothing for other types
+            };
+        }
+    }
+    outs
+}
+
+fn create_layout() -> Layout<256, 1, 25> {
+    // LAYERS is permanently locked after this.
+    Layout::new(sref(*LAYERS.lock().expect("layers lk poisoned")))
+}
+
 /// Convert a str to an oscode.
 ///
 /// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
-/// parsing tho configuration. OsCode is in a different file.
+/// parsing the configuration. OsCode is in a different file.
 ///
 /// kmonad str to key mapping found here:
 /// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs

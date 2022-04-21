@@ -29,6 +29,7 @@ pub struct Ktrl {
 }
 
 impl Ktrl {
+    /// Create a new configuration from a file.
     pub fn new(cfg: PathBuf) -> Result<Self> {
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
@@ -58,12 +59,13 @@ impl Ktrl {
         })
     }
 
+    /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
     pub fn new_arc(cfg: PathBuf) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(cfg)?)))
     }
 
+    /// Update keyberon layout state for press/release, handle repeat separately
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
-        info!("handling: {:?}", event);
         let kbrn_ev = match event.value {
             KeyValue::Press => Event::Press(0, event.code as u8),
             KeyValue::Release => Event::Release(0, event.code as u8),
@@ -73,14 +75,22 @@ impl Ktrl {
         Ok(())
     }
 
+    /// Advance keyberon layout state and send events based on changes to its state.
     fn handle_time_ticks(&mut self) -> Result<()> {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
-        self.last_tick = now;
+
+        if ms_elapsed > 0 {
+            self.last_tick = now;
+        }
 
         for _ in 0..ms_elapsed {
             self.layout.tick();
             let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+            // Release keys that are missing from the current state but exist in the previous
+            // state. It's important to iterate using a Vec because the order matters. This used to
+            // use HashSet force computing `difference` but that iteration order is random which is
+            // not what we want.
             for k in &self.prev_keys {
                 if cur_keys.contains(k) {
                     continue
@@ -89,6 +99,8 @@ impl Ktrl {
                     bail!("failed to release key: {:?}", e);
                 }
             }
+            // Press keys that exist in the current state but are missing from the previous state.
+            // Comment above regarding Vec/HashSet also applies here.
             for k in &cur_keys {
                 if self.prev_keys.contains(k) {
                     continue
@@ -102,14 +114,9 @@ impl Ktrl {
         Ok(())
     }
 
-    // For a repeat event in the OS input, write key back out to OS if it makes sense to.
-    //
-    // An example of when it doesn't make sense to write anything to the OS is if it's a HoldTap
-    // key being held to toggle a layer.
-    //
-    // This compares the active keys in the keyberon layout against the potential key outputs for
-    // in the configuration. If any of keyberon active keys match any potential configured mapping,
-    // write the repeat event to the OS.
+    /// This compares the active keys in the keyberon layout against the potential key outputs for
+    /// corresponding physical key in the configuration. If any of keyberon active keys match any
+    /// potential physical key output, write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
         let outputs_for_key = match &self.key_outputs[event.code as usize] {
@@ -131,9 +138,20 @@ impl Ktrl {
         Ok(())
     }
 
+    /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
     pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
         info!("Ktrl: entering the processing loop");
         std::thread::spawn(move || {
+            info!("Starting processing loop");
+            // This is done to try and work around a weird issue where upon starting ktrl, it seems
+            // that enter is being held constantly until any new keycode is sent.
+            info!("Sending press+release for space repeatedly");
+            for _ in 0..1000 {
+                let mut ktrl = ktrl.lock().unwrap();
+                ktrl.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
+                ktrl.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
+                std::thread::sleep(time::Duration::from_millis(1));
+            }
             info!("Starting processing loop");
             let err = loop {
                 if let Ok(kev) = rx.try_recv() {
@@ -148,7 +166,6 @@ impl Ktrl {
                     if let Err(e) = ktrl.lock().unwrap().handle_time_ticks() {
                         break e;
                     }
-                    // Sleep for 1 ms.
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
             };
@@ -156,6 +173,8 @@ impl Ktrl {
         });
     }
 
+    /// Enter an infinite loop that listens for OS key events and sends them to the processing
+    /// thread.
     pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("Ktrl: entering the event loop");
 

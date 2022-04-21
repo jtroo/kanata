@@ -1513,8 +1513,6 @@ impl From<i32> for KeyValue {
     }
 }
 
-// ------------------ KeyEvent --------------------
-
 #[derive(Debug)]
 pub struct KeyEvent {
     pub time: TimeVal,

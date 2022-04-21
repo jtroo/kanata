@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 mod cfg;
-mod default_layers;
+mod layers;
 mod kbd_in;
 mod kbd_out;
 mod keys;
@@ -70,9 +70,9 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
-    // The reason for two different event loops is that the "event_loop" only listens for keyboard
+    // The reason for two different event loops is that the "event loop" only listens for keyboard
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
-    // as well as time-based events such as a tap-hold hold duration expiring.
+    // while also maintaining `tick()` calls to keyberon.
     let (tx, rx) = mpsc::channel();
     Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
     Ktrl::event_loop(ktrl_arc, tx)?;

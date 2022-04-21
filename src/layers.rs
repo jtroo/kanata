@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 pub const MAX_LAYERS: usize = 25;
 
-pub static DEFAULT_LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS>>> = Lazy::new(|| {
+pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS>>> = Lazy::new(|| {
     Mutex::new([
         [[
             // layer 0
