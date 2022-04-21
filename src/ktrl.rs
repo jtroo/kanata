@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time;
 
+use parking_lot::Mutex;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use crate::cfg;
 use crate::keys::*;
@@ -93,7 +93,7 @@ impl Ktrl {
             // not what we want.
             for k in &self.prev_keys {
                 if cur_keys.contains(k) {
-                    continue
+                    continue;
                 }
                 if let Err(e) = self.kbd_out.release_key(k.into()) {
                     bail!("failed to release key: {:?}", e);
@@ -103,7 +103,7 @@ impl Ktrl {
             // Comment above regarding Vec/HashSet also applies here.
             for k in &cur_keys {
                 if self.prev_keys.contains(k) {
-                    continue
+                    continue;
                 }
                 if let Err(e) = self.kbd_out.press_key(k.into()) {
                     bail!("failed to press key: {:?}", e);
@@ -147,7 +147,7 @@ impl Ktrl {
             // that enter is being held constantly until any new keycode is sent.
             info!("Sending press+release for space repeatedly");
             for _ in 0..1000 {
-                let mut ktrl = ktrl.lock().unwrap();
+                let mut ktrl = ktrl.lock();
                 ktrl.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
                 ktrl.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
                 std::thread::sleep(time::Duration::from_millis(1));
@@ -155,7 +155,7 @@ impl Ktrl {
             info!("Starting processing loop");
             let err = loop {
                 if let Ok(kev) = rx.try_recv() {
-                    let mut k = ktrl.lock().unwrap();
+                    let mut k = ktrl.lock();
                     if let Err(e) = k.handle_key_event(&kev) {
                         break e;
                     }
@@ -163,7 +163,7 @@ impl Ktrl {
                         break e;
                     }
                 } else {
-                    if let Err(e) = ktrl.lock().unwrap().handle_time_ticks() {
+                    if let Err(e) = ktrl.lock().handle_time_ticks() {
                         break e;
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
@@ -179,7 +179,7 @@ impl Ktrl {
         info!("Ktrl: entering the event loop");
 
         let (kbd_in, mapped_keys) = {
-            let ktrl = ktrl.lock().expect("Failed to lock ktrl (poisoned)");
+            let ktrl = ktrl.lock();
             let kbd_in = match KbdIn::new(&ktrl.kbd_in_path) {
                 Ok(kbd_in) => kbd_in,
                 Err(e) => {
@@ -196,7 +196,7 @@ impl Ktrl {
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
                 _ => {
-                    let mut ktrl = ktrl.lock().unwrap();
+                    let mut ktrl = ktrl.lock();
                     ktrl.kbd_out.write(in_event)?;
                     continue;
                 }
@@ -207,7 +207,7 @@ impl Ktrl {
             if key_event.code as usize >= cfg::MAPPED_KEYS_LEN
                 || !mapped_keys[key_event.code as usize]
             {
-                let mut ktrl = ktrl.lock().unwrap();
+                let mut ktrl = ktrl.lock();
                 ktrl.kbd_out.write_key(key_event.code, key_event.value)?;
                 continue;
             }

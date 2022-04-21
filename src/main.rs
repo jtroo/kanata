@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 mod cfg;
-mod layers;
 mod kbd_in;
 mod kbd_out;
 mod keys;
 mod ktrl;
+mod layers;
 
 use kbd_in::KbdIn;
 use kbd_out::KbdOut;

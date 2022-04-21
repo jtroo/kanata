@@ -2,7 +2,7 @@ use keyberon::action::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 pub const MAX_LAYERS: usize = 25;
 

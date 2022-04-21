@@ -35,8 +35,8 @@
 
 #![allow(dead_code)]
 
-use crate::layers::*;
 use crate::keys::*;
+use crate::layers::*;
 
 use anyhow::{anyhow, bail, Result};
 use std::collections::HashMap;
@@ -414,11 +414,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Resu
         };
 
         // Read k-v pairs from the configuration
-        loop {
-            let alias = match subexprs.next() {
-                Some(k) => k,
-                None => break,
-            };
+        while let Some(alias) = subexprs.next() {
             let action = match subexprs.next() {
                 Some(v) => v,
                 None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
@@ -451,7 +447,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
-        _ => {},
+        _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
         return Ok(sref(k(oscode.into())));
@@ -601,7 +597,7 @@ fn parse_layers(
     layer_idxs: &LayerIndexes,
     mapping_order: &[usize],
 ) -> Result<()> {
-    let mut layers_cfg = LAYERS.lock().expect("layer lk poisoned");
+    let mut layers_cfg = LAYERS.lock();
     for (layer_level, layer) in layers.iter().enumerate() {
         // skip deflayer and name
         for (i, ac) in layer.iter().skip(2).enumerate() {
@@ -634,7 +630,7 @@ fn create_key_outputs() -> KeyOutputs {
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
         None,
     ];
-    for layer in LAYERS.lock().expect("layer lk poisoned").iter() {
+    for layer in LAYERS.lock().iter() {
         for (i, action) in layer[0].iter().enumerate() {
             match action {
                 Action::KeyCode(kc) => {
@@ -663,7 +659,7 @@ fn create_key_outputs() -> KeyOutputs {
 
 fn create_layout() -> Layout<256, 1, 25> {
     // LAYERS is permanently locked after this.
-    Layout::new(sref(*LAYERS.lock().expect("layers lk poisoned")))
+    Layout::new(sref(*LAYERS.lock()))
 }
 
 /// Convert a str to an oscode.
