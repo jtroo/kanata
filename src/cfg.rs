@@ -751,6 +751,7 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "rght" => OsCode::KEY_RIGHT,
         "home" => OsCode::KEY_HOME,
         "end" => OsCode::KEY_END,
+        "nlk" => OsCode::KEY_NUMLOCK,
         _ => return None,
     })
 }
