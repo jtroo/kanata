@@ -206,8 +206,7 @@ fn parse_cfg(
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
     let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
-    parse_layers(&layer_exprs, &aliases, &layer_idxs);
-
+    parse_layers(&layer_exprs, &aliases, &layer_idxs, &mapping_order)?;
     Ok((cfg, src, create_key_outputs(), create_layout()))
 }
 
@@ -650,7 +649,23 @@ fn parse_multi(
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
-fn parse_layers(layers: &[&Vec<SExpr>], aliases: &Aliases, layer_idxs: &LayerIndexes) {}
+/// Mutates DEFAULT_LAYERS using the inputs.
+fn parse_layers(
+    layers: &[&Vec<SExpr>],
+    aliases: &Aliases,
+    layer_idxs: &LayerIndexes,
+    mapping_order: &[usize],
+) -> Result<()> {
+    let mut layers_cfg = DEFAULT_LAYERS.lock().expect("layer lk poisoned");
+    for (layer_level, layer) in layers.iter().enumerate() {
+        // skip deflayer and name
+        for (i, ac) in layer.iter().skip(2).enumerate() {
+            let ac = parse_action(ac, aliases, layer_idxs)?;
+            layers_cfg[layer_level][0][mapping_order[i]] = *ac;
+        }
+    }
+    Ok(())
+}
 
 /// Convert a str to an oscode.
 ///
