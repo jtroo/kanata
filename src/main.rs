@@ -84,12 +84,9 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     // Need to use a thread with a larger stack size because Windows appears to have a lower
     // default stack size than Linux, which causes a stack overflow from generating the keyberon
     // Layout struct.
-    //
-    // I haven't played around with what the actual minimum should be, but 32MB seems reasonably
-    // small anyway.
     let builder = std::thread::Builder::new()
         .name("kanata".into())
-        .stack_size(32 * 1024 * 1024); // 32MB of stack space
+        .stack_size(8 * 1024 * 1024); // 8MB of stack space, same as Linux default max
     let handler = builder
         .spawn(|| {
             let kanata_arc = Kanata::new_arc(cfg).expect("Could not parse cfg");
