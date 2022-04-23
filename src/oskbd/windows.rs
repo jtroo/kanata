@@ -150,7 +150,6 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
 }
 
 pub fn send_key(key: InputEvent) {
-    log::info!("sending: {:?}", key);
     unsafe {
         let mut inputs: [INPUT; 2] = mem::zeroed();
 

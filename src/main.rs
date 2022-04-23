@@ -65,7 +65,7 @@ fn cli_init() -> Result<CfgPath> {
 #[cfg(target_os = "linux")]
 fn main_impl(cfg: CfgPath) -> Result<()> {
     let kanata_arc = Kanata::new_arc(cfg)?;
-    info!("kanata: Setup Complete");
+    info!("Kanata: config parsed");
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
@@ -90,7 +90,7 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     let handler = builder
         .spawn(|| {
             let kanata_arc = Kanata::new_arc(cfg).expect("Could not parse cfg");
-            info!("kanata: Setup Complete");
+            info!("Kanata: config parsed");
 
             let (tx, rx) = mpsc::channel();
             Kanata::start_processing_loop(kanata_arc.clone(), rx);

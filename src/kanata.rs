@@ -105,6 +105,7 @@ impl Kanata {
                 if cur_keys.contains(k) {
                     continue;
                 }
+                log::debug!("release   {:?}", k);
                 if let Err(e) = self.kbd_out.release_key(k.into()) {
                     bail!("failed to release key: {:?}", e);
                 }
@@ -115,6 +116,7 @@ impl Kanata {
                 if self.prev_keys.contains(k) {
                     continue;
                 }
+                log::debug!("press     {:?}", k);
                 if let Err(e) = self.kbd_out.press_key(k.into()) {
                     bail!("failed to press key: {:?}", e);
                 }
@@ -142,6 +144,7 @@ impl Kanata {
             }
         }
         if let Some(kc) = output {
+            log::debug!("repeat    {:?}", KeyCode::from(*kc));
             if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
                 bail!("could not write key {:?}", e)
             }
