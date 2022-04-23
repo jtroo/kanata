@@ -14,10 +14,9 @@ The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
 
 ## Usage
 
-This currently works on Linux only, though Windows support is planned in the near
-future.
+This works on Windows and Linux.
 
-To run:
+To run (Linux)
 
     cargo build   # release optional, not really perf sensitive
 
@@ -26,6 +25,11 @@ To run:
     # See below if you want to avoid needing sudo:
     # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
     sudo target/debug/ktrl --cfg <conf_file>
+
+To run (Windows)
+
+    cargo build   # release optional, not really perf sensitive
+    target\debug\ktrl --cfg <conf_file>
 
 A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
 
@@ -36,30 +40,7 @@ library has already had a lot of work put into it to make it work well, there
 wasn't that much work necessary to get something useful built.
 
 It already works better than kmonad for my personal use cases because of a few
-key sequences that aren't handled the way I expect in kmonad
-
-## How you can help
-
-- Try it out and let me know what you think
-- File issues and contribute PRs
-- Suggest a name
-- Implement Windows support 😉
-- Improve `get_root_exprs` and `parse_expr` (I'm no expert in parsing)
-- Add to `str_to_oscode`. This function is only contains enough cases for my
-  own personal configuration.
-- I am not a keyboard expert, neither for the USB protocol nor the OS interface.
-  There may be some incorrect mappings for the more obscure keys between keyberon
-  `KeyCode` and ktrl's `OsCode` in:
-  ```rust
-  impl From<KeyCode> for OsCode
-  impl From<OsCode> for KeyCode
-  ```
-
-## Goals
-
-- Add [Windows support](https://github.com/jtroo/ktrl/issues/2)
-- MacOS support will never be implemented by me (jtroo) because I don't own
-  any Apple devices, but PRs are welcome.
+key sequences that aren't handled the way I expect in kmonad.
 
 ## Contributing
 
@@ -71,6 +52,22 @@ LGPLv3 license.
 The keyberon project contains all of the heavy keyboard state logic, so if you
 want new keyboard mapping functionality, it's strongly recommended to
 contribute to keyberon first.
+
+## How you can help
+
+- Try it out and let me know what you think
+- File issues and contribute PRs
+- Suggest a name
+- Improve `get_root_exprs` and `parse_expr` (I'm no expert in parsing)
+- Add to `str_to_oscode`. This function is only contains enough cases for my
+  own personal configuration.
+- I am not a keyboard expert, neither for the USB protocol nor the OS interface.
+  There may be some incorrect mappings for the more obscure keys between keyberon
+  `KeyCode` and ktrl's `OsCode` in:
+  ```
+  impl From<KeyCode> for OsCode
+  impl From<OsCode> for KeyCode
+  ```
 
 ## Motivation
 
