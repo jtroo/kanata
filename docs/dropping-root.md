@@ -5,9 +5,6 @@ sudo useradd -r -s /bin/false ktrl
 sudo groupadd uinput
 sudo usermod -aG input ktrl
 sudo usermod -aG uinput ktrl
-
-# If you're using the sound feature
-sudo usermod -aG audio ktrl
 ```
 
 Add a new udev rule
@@ -22,7 +19,7 @@ Add the following line to it
 KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
 ```
 
-If you are using the default `/opt/ktrl` directory - 
+If you are using the default `/opt/ktrl` directory -
 
 ```
 sudo chown -R ktrl:$USER /opt/ktrl

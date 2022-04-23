@@ -231,6 +231,8 @@ impl Ktrl {
         }
     }
 
+    /// Initialize the callback that is passed to the Windows low level hook to receive key events
+    /// and run the native_windows_gui event loop.
     #[cfg(target_os = "windows")]
     pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         // Display debug and panic output when launched from a terminal.

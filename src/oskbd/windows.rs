@@ -1,5 +1,8 @@
 //! Safe abstraction over the low-level windows keyboard hook API.
 
+// This file is taken from kbremap with minor modifications.
+// https://github.com/timokroeger/kbremap
+
 use std::cell::RefCell;
 use std::io;
 use std::marker::PhantomData;

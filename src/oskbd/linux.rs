@@ -1,11 +1,34 @@
+// This file contains the original ktrl project's `kbd_in.rs` and `kbd_out.rs` files.
+
+use evdev_rs::enums::EventCode;
+use evdev_rs::enums::EV_SYN;
 use evdev_rs::Device;
 use evdev_rs::GrabMode;
 use evdev_rs::InputEvent;
 use evdev_rs::ReadFlag;
 use evdev_rs::ReadStatus;
+use evdev_rs::TimeVal;
 
+use uinput_sys::uinput_user_dev;
+
+use crate::keys::KeyValue;
+use crate::keys::OsCode;
+use libc::input_event as raw_event;
+
+// file i/o
+use io::Write;
 use std::fs::File;
+use std::fs::OpenOptions;
+use std::io;
+use std::os::unix::io::AsRawFd;
 use std::path::Path;
+
+// unsafe
+use std::mem;
+use std::slice;
+
+// ktrl
+use crate::keys::KeyEvent;
 
 pub struct KbdIn {
     device: Device,
@@ -44,28 +67,6 @@ impl KbdIn {
         Ok(event)
     }
 }
-
-use uinput_sys::uinput_user_dev;
-
-use crate::keys::KeyValue;
-use crate::keys::OsCode;
-use evdev_rs::enums::EventCode;
-use evdev_rs::enums::EV_SYN;
-use evdev_rs::TimeVal;
-use libc::input_event as raw_event;
-
-// file i/o
-use io::Write;
-use std::fs::OpenOptions;
-use std::io;
-use std::os::unix::io::AsRawFd;
-
-// unsafe
-use std::mem;
-use std::slice;
-
-// ktrl
-use crate::keys::KeyEvent;
 
 pub struct KbdOut {
     device: File,

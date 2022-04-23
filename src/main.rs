@@ -16,6 +16,7 @@ use ktrl::Ktrl;
 const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
 type CfgPath = PathBuf;
 
+/// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<CfgPath> {
     let matches = App::new("ktrl")
         .version("0.0.1")
@@ -80,10 +81,15 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
 
 #[cfg(target_os = "windows")]
 fn main_impl(cfg: CfgPath) -> Result<()> {
+    // Need to use a thread with a larger stack size because Windows appears to have a lower
+    // default stack size than Linux, which causes a stack overflow from generating the keyberon
+    // Layout struct.
+    //
+    // I haven't played around with what the actual minimum should be, but 32MB seems reasonably
+    // small anyway.
     let builder = std::thread::Builder::new()
-        .name("reductor".into())
+        .name("ktrl".into())
         .stack_size(32 * 1024 * 1024); // 32MB of stack space
-
     let handler = builder
         .spawn(|| {
             let ktrl_arc = Ktrl::new_arc(cfg).expect("Could not parse cfg");

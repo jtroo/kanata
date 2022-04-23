@@ -1,3 +1,5 @@
+//! Platform specific code for OS key code mappings.
+
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]

@@ -1,3 +1,5 @@
+//! Platform specific code for low level keyboard read/write.
+
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]

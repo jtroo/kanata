@@ -62,8 +62,14 @@ impl Cfg {
     }
 }
 
+/// Length of the MappedKeys array.
 pub const MAPPED_KEYS_LEN: usize = 256;
+/// Boolean array used as a silly `HashSet<OsCode>` to know which `OsCode`s are used in defsrc. The
+/// HashSet key is the the index. I should probably just use a HashSet for this.
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
+
+/// An used as a silly `HashMap<Oscode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
+/// for a given physical key location. I should probably just use a HashMap for this.
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 
 fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
@@ -84,6 +90,7 @@ fn read_and_parse() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
 }
 
+/// Parse a configuration file.
 fn parse_cfg(
     p: &std::path::Path,
 ) -> Result<(
@@ -174,7 +181,7 @@ enum SExpr {
     List(Vec<SExpr>),
 }
 
-// Get the root expressions and strip comments.
+/// Get the root expressions and strip comments.
 fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
     let mut open_paren_count = 0;
     let mut close_paren_count = 0;
@@ -260,7 +267,8 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
     Ok(ret)
 }
 
-/// Consumes the first element and returns the rest of the iterator,
+/// Consumes the first element and returns the rest of the iterator. Returns `Ok` if the first
+/// element is an atom and equals `expected_first`.
 fn check_first_expr<'a>(
     mut exprs: impl Iterator<Item = &'a SExpr>,
     expected_first: &str,
@@ -289,7 +297,7 @@ fn check_first_expr<'a>(
     Ok(exprs)
 }
 
-/// Parse configuration entries from an expression starting with defcfg
+/// Parse configuration entries from an expression starting with defcfg.
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     let mut cfg = HashMap::new();
     let mut exprs = match check_first_expr(expr.iter(), "defcfg") {
@@ -389,7 +397,7 @@ fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<Lay
     Ok(layer_indexes)
 }
 
-/// Returns the content of the SExpr if the SExpr is an atom, or returns None otherwise.
+/// Returns the content of an `SExpr::Atom` or returns `None` for `SExpr::List`.
 fn get_atom(a: &SExpr) -> Option<String> {
     match a {
         SExpr::Atom(a) => Some(a.clone()),
@@ -425,10 +433,12 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Resu
     Ok(aliases)
 }
 
+/// Returns a `&'static T` by leaking a box.
 fn sref<T>(v: T) -> &'static T {
     Box::leak(Box::new(v))
 }
 
+/// Parse a `keyberon::action::Action` from a `SExpr`.
 fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Result<&'static Action> {
     match expr {
         SExpr::Atom(a) => parse_action_atom(a, aliases),
@@ -436,6 +446,7 @@ fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Resul
     }
 }
 
+/// Parse a `keyberon::action::Action` from a string.
 fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
     match ac {
         "_" => return Ok(sref(Action::Trans)),
@@ -485,6 +496,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
     }
 }
 
+/// Parse a `keyberon::action::Action` from a `SExpr::List`.
 fn parse_action_list(
     ac: &[SExpr],
     aliases: &Aliases,
@@ -520,14 +532,14 @@ fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'st
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
     if ac_params.len() != 1 {
         bail!(
-            "layer-switch expects one atom: the layer name. Incorrect value: {:?}",
+            "layer actions expect one atom: the layer name. Incorrect value: {:?}",
             ac_params
         )
     }
     let layer_name = match &ac_params[0] {
         SExpr::Atom(ln) => ln,
         _ => bail!(
-            "layer-switch name should be an atom, not a list: {:?}",
+            "layer name should be an atom, not a list: {:?}",
             ac_params[0]
         ),
     };
@@ -583,7 +595,7 @@ fn parse_multi(
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
-/// Mutates LAYERS using the inputs.
+/// Mutates `layers::LAYERS` using the inputs.
 fn parse_layers(
     layers: &[&Vec<SExpr>],
     aliases: &Aliases,
@@ -601,6 +613,7 @@ fn parse_layers(
     Ok(())
 }
 
+/// Creates a `KeyOutputs` from `layers::LAYERS`.
 fn create_key_outputs() -> KeyOutputs {
     // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
     let mut outs = [
@@ -650,6 +663,7 @@ fn create_key_outputs() -> KeyOutputs {
     outs
 }
 
+/// Create a layout from `layers::LAYERS`.
 fn create_layout() -> Layout<256, 1, 25> {
     // LAYERS is permanently locked after this.
     Layout::new(sref(*LAYERS.lock()))
@@ -658,9 +672,9 @@ fn create_layout() -> Layout<256, 1, 25> {
 /// Convert a str to an oscode.
 ///
 /// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
-/// parsing the configuration. OsCode is in a different file.
+/// parsing the configuration; `OsCode` is in a different file.
 ///
-/// kmonad str to key mapping found here:
+/// kmonad's str to key mapping is found here as a reference:
 /// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
 ///
 /// Do your best to keep the str side a maximum character length of 4 so that configuration file

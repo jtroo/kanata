@@ -1,3 +1,5 @@
+// This file is adapted from the orginal ktrl's `keys.rs` file for Windows.
+
 use crate::oskbd::*;
 use keyberon::key_code::*;
 use std::convert::TryFrom;
