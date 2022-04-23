@@ -1,4 +1,5 @@
-//! Configuration parser.
+//! This parses the configuration language to create a `keyberon::layout::Layout` as well as
+//! associated metadata to help with processing.
 //!
 //! How the configuration maps to keyberon:
 //!
@@ -26,12 +27,14 @@
 //!     layers[0] = { xx, esc, a, s, d, f, xx... }
 //!     layers[1] = { xx, esc, a, o, e, u, xx... }
 //!
-//!  Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
-//!  are at the beginning of the array. The column index for layers is the numerical value of
-//!  the key from `keys::OsCode`.
+//! Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
+//! are at the beginning of the array. The column index for layers is the numerical value of
+//! the key from `keys::OsCode`.
 //!
-//!  If you want to change how the physical key `A` works on a given layer, you would change index
-//!  30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
+//! If you want to change how the physical key `A` works on a given layer, you would change index
+//! 30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
+//!
+//! The specific values in example above applies to Linux, but the same logic applies to Windows.
 
 use crate::keys::*;
 use crate::layers::*;
@@ -64,11 +67,12 @@ impl Cfg {
 
 /// Length of the MappedKeys array.
 pub const MAPPED_KEYS_LEN: usize = 256;
-/// Boolean array used as a silly `HashSet<OsCode>` to know which `OsCode`s are used in defsrc. The
-/// HashSet key is the the index. I should probably just use a HashSet for this.
+
+/// Used as a silly `HashSet<OsCode>` to know which `OsCode`s are used in defsrc. I should probably
+/// just use a HashSet for this.
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 
-/// An used as a silly `HashMap<Oscode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
+/// Used as a silly `HashMap<Oscode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
 /// for a given physical key location. I should probably just use a HashMap for this.
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 
@@ -669,7 +673,7 @@ fn create_layout() -> Layout<256, 1, 25> {
     Layout::new(sref(*LAYERS.lock()))
 }
 
-/// Convert a str to an oscode.
+/// Convert a `&str` to an `OsCode`.
 ///
 /// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
 /// parsing the configuration; `OsCode` is in a different file.

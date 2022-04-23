@@ -1,3 +1,5 @@
+//! Implements the glue between OS input/output and keyberon state management.
+
 use anyhow::{bail, Result};
 use log::{error, info};
 
@@ -249,6 +251,10 @@ impl Ktrl {
             ktrl.mapped_keys
         };
 
+        // This callback should return `false` if the input event is **not** handled by the
+        // callback and `true` if the input event **is** handled by the callback. Returning false
+        // informs the callback caller that the input event should be handed back to the OS for
+        // normal processing.
         let _kbhook = KeyboardHook::set_input_cb(move |input_event| {
             if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
                 return false;
@@ -262,6 +268,8 @@ impl Ktrl {
                 _ => return false,
             };
 
+            // Unlike Linux, Windows does not use a separate value for repeat. However, our code
+            // needs to differentiate between initial press and repeat press.
             match key_event.value {
                 KeyValue::Release => {
                     PRESSED_KEYS.lock().remove(&key_event.code);
