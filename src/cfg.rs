@@ -759,6 +759,18 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "home" => OsCode::KEY_HOME,
         "end" => OsCode::KEY_END,
         "nlk" => OsCode::KEY_NUMLOCK,
+        "f1" => OsCode::KEY_F1,
+        "f2" => OsCode::KEY_F2,
+        "f3" => OsCode::KEY_F3,
+        "f4" => OsCode::KEY_F4,
+        "f5" => OsCode::KEY_F5,
+        "f6" => OsCode::KEY_F6,
+        "f7" => OsCode::KEY_F7,
+        "f8" => OsCode::KEY_F8,
+        "f9" => OsCode::KEY_F9,
+        "f10" => OsCode::KEY_F10,
+        "f11" => OsCode::KEY_F11,
+        "f12" => OsCode::KEY_F12,
         _ => return None,
     })
 }
