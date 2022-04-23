@@ -1,16 +1,61 @@
+use evdev_rs::Device;
+use evdev_rs::GrabMode;
+use evdev_rs::InputEvent;
+use evdev_rs::ReadFlag;
+use evdev_rs::ReadStatus;
+
+use std::fs::File;
+use std::path::Path;
+
+pub struct KbdIn {
+    device: Device,
+}
+
+impl KbdIn {
+    pub fn new(dev_path: &Path) -> Result<Self, std::io::Error> {
+        match KbdIn::new_linux(dev_path) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                log::error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group. E: {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    fn new_linux(dev_path: &Path) -> Result<Self, std::io::Error> {
+        let kbd_in_file = File::open(dev_path)?;
+        let mut kbd_in_dev = Device::new_from_fd(kbd_in_file)?;
+
+        // NOTE: This grab-ungrab-grab sequence magically
+        // fix an issue I had with my Lenovo Yoga trackpad not working.
+        // I honestly have no idea why this works haha.
+        kbd_in_dev.grab(GrabMode::Grab)?;
+        kbd_in_dev.grab(GrabMode::Ungrab)?;
+        kbd_in_dev.grab(GrabMode::Grab)?;
+
+        Ok(KbdIn { device: kbd_in_dev })
+    }
+
+    pub fn read(&self) -> Result<InputEvent, std::io::Error> {
+        let (status, event) = self
+            .device
+            .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
+        std::assert!(status == ReadStatus::Success);
+        Ok(event)
+    }
+}
+
 use uinput_sys::uinput_user_dev;
 
 use crate::keys::KeyValue;
 use crate::keys::OsCode;
 use evdev_rs::enums::EventCode;
 use evdev_rs::enums::EV_SYN;
-use evdev_rs::InputEvent;
 use evdev_rs::TimeVal;
 use libc::input_event as raw_event;
 
 // file i/o
 use io::Write;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
 use std::os::unix::io::AsRawFd;
@@ -22,12 +67,10 @@ use std::slice;
 // ktrl
 use crate::keys::KeyEvent;
 
-#[cfg(target_os = "linux")]
 pub struct KbdOut {
     device: File,
 }
 
-#[cfg(target_os = "linux")]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         let mut uinput_out_file = OpenOptions::new()

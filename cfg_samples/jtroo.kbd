@@ -12,9 +12,6 @@
   ;; but I didn't find any keyboard device in there in my VM.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
-  win-input low-level-hook   ;; windows not supported yet, copied from kmonad
-  win-output send-event-sink ;; windows not supported yet, copied from kmonad
-
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
 )
 

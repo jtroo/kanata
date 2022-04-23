@@ -33,8 +33,6 @@
 //!  If you want to change how the physical key `A` works on a given layer, you would change index
 //!  30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
 
-#![allow(dead_code)]
-
 use crate::keys::*;
 use crate::layers::*;
 
@@ -69,13 +67,14 @@ pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 
 fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
-    log::info!("Adding {:?} to idx {}", kc, i);
     match outs[i].as_mut() {
         None => {
             outs[i] = Some(vec![kc]);
         }
         Some(v) => {
-            v.push(kc);
+            if !v.contains(&kc) {
+                v.push(kc);
+            }
         }
     }
 }
@@ -356,12 +355,6 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
         ordered_codes.push(oscode);
     }
     Ok((mkeys, ordered_codes))
-}
-
-/// Represents an action or an alias that may or may not exist (hasn't been verified).
-enum MaybeAction {
-    Action(Action),
-    Alias(String),
 }
 
 type LayerIndexes = HashMap<String, usize>;

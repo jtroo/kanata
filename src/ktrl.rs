@@ -12,8 +12,7 @@ use std::sync::Arc;
 
 use crate::cfg;
 use crate::keys::*;
-use crate::KbdIn;
-use crate::KbdOut;
+use crate::oskbd::*;
 
 use keyberon::key_code::*;
 use keyberon::layout::*;
@@ -23,10 +22,15 @@ pub struct Ktrl {
     pub kbd_out: KbdOut,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
-    pub layout: Layout<256, 1, 25>,
+    pub layout: Layout<256, 1, { crate::layers::MAX_LAYERS }>,
     pub prev_keys: Vec<KeyCode>,
     last_tick: time::Instant,
 }
+
+#[cfg(target_os = "windows")]
+use once_cell::sync::Lazy;
+#[cfg(target_os = "windows")]
+static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 impl Ktrl {
     /// Create a new configuration from a file.
@@ -47,6 +51,8 @@ impl Ktrl {
             .get("linux-dev")
             .expect("linux-dev required in defcfg")
             .into();
+        #[cfg(target_os = "windows")]
+        let kbd_in_path = "unused".into();
 
         Ok(Self {
             kbd_in_path,
@@ -66,9 +72,10 @@ impl Ktrl {
 
     /// Update keyberon layout state for press/release, handle repeat separately
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
+        let evc: u32 = event.code.into();
         let kbrn_ev = match event.value {
-            KeyValue::Press => Event::Press(0, event.code as u8),
-            KeyValue::Release => Event::Release(0, event.code as u8),
+            KeyValue::Press => Event::Press(0, evc as u8),
+            KeyValue::Release => Event::Release(0, evc as u8),
             KeyValue::Repeat => return self.handle_repeat(event),
         };
         self.layout.event(kbrn_ev);
@@ -87,6 +94,7 @@ impl Ktrl {
         for _ in 0..ms_elapsed {
             self.layout.tick();
             let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+
             // Release keys that are missing from the current state but exist in the previous
             // state. It's important to iterate using a Vec because the order matters. This used to
             // use HashSet force computing `difference` but that iteration order is random which is
@@ -119,12 +127,13 @@ impl Ktrl {
     /// potential physical key output, write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
-        let outputs_for_key = match &self.key_outputs[event.code as usize] {
+        let idx: usize = event.code.into();
+        let outputs_for_key: &Vec<OsCode> = match &self.key_outputs[idx] {
             None => return Ok(()),
             Some(v) => v,
         };
         let mut output = None;
-        for valid_output in outputs_for_key {
+        for valid_output in outputs_for_key.iter() {
             if active_keycodes.contains(&valid_output.into()) {
                 output = Some(valid_output);
                 break;
@@ -142,16 +151,19 @@ impl Ktrl {
     pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
         info!("Ktrl: entering the processing loop");
         std::thread::spawn(move || {
-            info!("Starting processing loop");
             // This is done to try and work around a weird issue where upon starting ktrl, it seems
             // that enter is being held constantly until any new keycode is sent.
-            info!("Sending press+release for space repeatedly");
-            for _ in 0..1000 {
-                let mut ktrl = ktrl.lock();
-                ktrl.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
-                ktrl.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
-                std::thread::sleep(time::Duration::from_millis(1));
+            #[cfg(target_os = "linux")]
+            {
+                info!("Sending press+release for space repeatedly");
+                for _ in 0..1000 {
+                    let mut ktrl = ktrl.lock();
+                    ktrl.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
+                    ktrl.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
+                    std::thread::sleep(time::Duration::from_millis(1));
+                }
             }
+
             info!("Starting processing loop");
             let err = loop {
                 if let Ok(kev) = rx.try_recv() {
@@ -175,6 +187,7 @@ impl Ktrl {
 
     /// Enter an infinite loop that listens for OS key events and sends them to the processing
     /// thread.
+    #[cfg(target_os = "linux")]
     pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("Ktrl: entering the event loop");
 
@@ -204,9 +217,8 @@ impl Ktrl {
 
             // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
             // it immediately.
-            if key_event.code as usize >= cfg::MAPPED_KEYS_LEN
-                || !mapped_keys[key_event.code as usize]
-            {
+            let kc: usize = key_event.code.into();
+            if kc >= cfg::MAPPED_KEYS_LEN || !mapped_keys[kc] {
                 let mut ktrl = ktrl.lock();
                 ktrl.kbd_out.write_key(key_event.code, key_event.value)?;
                 continue;
@@ -217,5 +229,60 @@ impl Ktrl {
                 bail!("failed to send on mpsc: {}", e)
             }
         }
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+        // Display debug and panic output when launched from a terminal.
+        unsafe {
+            use winapi::um::wincon::*;
+            if AttachConsole(ATTACH_PARENT_PROCESS) != 0 {
+                panic!("Could not attach to console");
+            }
+        };
+        native_windows_gui::init()?;
+
+        let mapped_keys = {
+            let ktrl = ktrl.lock();
+            ktrl.mapped_keys
+        };
+
+        let _kbhook = KeyboardHook::set_input_cb(move |input_event| {
+            if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
+                return false;
+            }
+            if !mapped_keys[input_event.code as usize] {
+                return false;
+            }
+
+            let mut key_event = match KeyEvent::try_from(input_event) {
+                Ok(ev) => ev,
+                _ => return false,
+            };
+
+            match key_event.value {
+                KeyValue::Release => {
+                    PRESSED_KEYS.lock().remove(&key_event.code);
+                }
+                KeyValue::Press => {
+                    if PRESSED_KEYS.lock().contains(&key_event.code) {
+                        key_event.value = KeyValue::Repeat;
+                    } else {
+                        PRESSED_KEYS.lock().insert(key_event.code);
+                    }
+                }
+                _ => {}
+            }
+
+            // Send input_events to the processing loop
+            if let Err(e) = tx.send(key_event) {
+                panic!("failed to send on mpsc: {}", e)
+            }
+            true
+        });
+
+        // The event loop is also required for the low-level keyboard hook to work.
+        native_windows_gui::dispatch_thread_events();
+        Ok(())
     }
 }

@@ -6,14 +6,11 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 mod cfg;
-mod kbd_in;
-mod kbd_out;
 mod keys;
 mod ktrl;
 mod layers;
+mod oskbd;
 
-use kbd_in::KbdIn;
-use kbd_out::KbdOut;
 use ktrl::Ktrl;
 
 const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
@@ -64,6 +61,7 @@ fn cli_init() -> Result<CfgPath> {
     Ok(config_path.into())
 }
 
+#[cfg(target_os = "linux")]
 fn main_impl(cfg: CfgPath) -> Result<()> {
     let ktrl_arc = Ktrl::new_arc(cfg)?;
     info!("ktrl: Setup Complete");
@@ -77,6 +75,27 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
     Ktrl::event_loop(ktrl_arc, tx)?;
 
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn main_impl(cfg: CfgPath) -> Result<()> {
+    let builder = std::thread::Builder::new()
+        .name("reductor".into())
+        .stack_size(32 * 1024 * 1024); // 32MB of stack space
+
+    let handler = builder
+        .spawn(|| {
+            let ktrl_arc = Ktrl::new_arc(cfg).expect("Could not parse cfg");
+            info!("ktrl: Setup Complete");
+
+            let (tx, rx) = mpsc::channel();
+            Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
+            Ktrl::event_loop(ktrl_arc, tx).expect("Could not parse cfg");
+        })
+        .unwrap();
+
+    handler.join().unwrap();
     Ok(())
 }
 

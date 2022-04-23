@@ -1138,6 +1138,12 @@ impl From<OsCode> for usize {
     }
 }
 
+impl From<OsCode> for u32 {
+    fn from(item: OsCode) -> Self {
+        item as u32
+    }
+}
+
 impl From<KeyCode> for OsCode {
     fn from(item: KeyCode) -> Self {
         match item {
@@ -1524,16 +1530,6 @@ impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         let time = TimeVal::new(0, 0);
         Self { time, code, value }
-    }
-
-    #[cfg(test)]
-    pub fn new_press(code: OsCode) -> Self {
-        Self::new(code, KeyValue::Press)
-    }
-
-    #[cfg(test)]
-    pub fn new_release(code: OsCode) -> Self {
-        Self::new(code, KeyValue::Release)
     }
 }
 

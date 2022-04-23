@@ -1,5 +1,4 @@
 use keyberon::action::*;
-use keyberon::key_code::*;
 use keyberon::layout::*;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -269,12 +268,12 @@ pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS>>> = Lazy::new(|| {
         ]],
         [[
             // layer 1
-            Action::NoOp,
-            k(KeyCode::Escape),
-            k(KeyCode::A),
-            k(KeyCode::O),
-            k(KeyCode::E),
-            k(KeyCode::U),
+            Action::Trans,
+            Action::Trans,
+            Action::Trans,
+            Action::Trans,
+            Action::Trans,
+            Action::Trans,
             Action::Trans,
             Action::Trans,
             Action::Trans,
