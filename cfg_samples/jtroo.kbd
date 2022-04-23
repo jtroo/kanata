@@ -30,6 +30,7 @@
   chr (layer-toggle chords)
   arr (layer-toggle arrows)
   msc (layer-toggle misc)
+  lay (layer-toggle layers)
 
   ;; change the base layer between qwerty and dvorak
   dvk (layer-switch dvorak)
@@ -56,6 +57,7 @@
   och (tap-hold 200 200 o @arr)
   ear (tap-hold 200 200 e @chr)
   umc (tap-hold 200 200 u @msc)
+  grl (tap-hold 200 200 grv @lay)
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
@@ -69,26 +71,35 @@
   ;; shifted keys
   { S-[
   } S-]
+  : S-;
 )
 
 (defalias
-  alph (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
-)
-
-(deflayer qwerty
-  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-  caps a    s    d    f    g    h    j    k    l    ;    '    ret
-  lsft z    x    c    v    b    n    m    ,    .    /    rsft
-  lctl lmet lalt           spc            ralt rmet @dvk
+  alp (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
 )
 
 (deflayer dvorak
-  grv  1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  @grl 1    2    3    4    5    6    7    8    9    0    [    ]    bspc
   tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
   @cap @anm @och @ear @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
-  lctl lmet lalt           spc            ralt rmet @qwr
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer qwerty
+  @grl 1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer layers
+  _    @qwr @dvk _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
 )
 
 (deflayer numbers
@@ -111,7 +122,7 @@
 (deflayer chords
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    @csc _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    @alp _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _
 )

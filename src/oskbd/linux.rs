@@ -27,7 +27,7 @@ use std::path::Path;
 use std::mem;
 use std::slice;
 
-// ktrl
+// kanata
 use crate::keys::KeyEvent;
 
 pub struct KbdIn {
@@ -39,7 +39,7 @@ impl KbdIn {
         match KbdIn::new_linux(dev_path) {
             Ok(s) => Ok(s),
             Err(e) => {
-                log::error!("Failed to open the input keyboard device. Make sure you've added ktrl to the `input` group. E: {}", e);
+                log::error!("Failed to open the input keyboard device. Make sure you've added kanata to the `input` group. E: {}", e);
                 Err(e)
             }
         }

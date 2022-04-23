@@ -1,14 +1,13 @@
-# ktrl (rename pending)
+# kanata
 
-Rename is pending because this doesn't really look much like the original ktrl
-project anymore. If you have suggestions for a new name, feel free to open an
-issue or start a discussion!
+Cross-platform advanced keyboard customization.
 
 ## What does this do?
 
 This is a software keyboard remapper. The features are:
 - multiple layers of key functionality on your single keyboard
 - differing key behaviour depending on if you quickly tap the key or hold it down.
+- send key chords e.g. Ctrl+Shift+V
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
 
@@ -20,16 +19,16 @@ To run (Linux)
 
     cargo build   # release optional, not really perf sensitive
 
-    # sudo is used because ktrl opens /dev/input/ files
+    # sudo is used because kanata opens /dev/input/ files
     #
     # See below if you want to avoid needing sudo:
     # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
-    sudo target/debug/ktrl --cfg <conf_file>
+    sudo target/debug/kanata --cfg <conf_file>
 
 To run (Windows)
 
     cargo build   # release optional, not really perf sensitive
-    target\debug\ktrl --cfg <conf_file>
+    target\debug\kanata --cfg <conf_file>
 
 A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
 
@@ -56,18 +55,22 @@ contribute to keyberon first.
 ## How you can help
 
 - Try it out and let me know what you think
-- File issues and contribute PRs
-- Suggest a name
-- Improve `get_root_exprs` and `parse_expr` (I'm no expert in parsing)
+- Add a port for MacOS
 - Add to `str_to_oscode`. This function is only contains enough cases for my
   own personal configuration.
 - I am not a keyboard expert, neither for the USB protocol nor the OS interface.
   There may be some incorrect mappings for the more obscure keys between keyberon
-  `KeyCode` and ktrl's `OsCode` in:
+  `KeyCode` and kanata's `OsCode` in:
   ```
   impl From<KeyCode> for OsCode
   impl From<OsCode> for KeyCode
   ```
+
+## What does the name mean?
+
+I wanted a "k" word since this relates to keyboards. According to Wikipedia,
+kanata is an indigenous Iroquoian word meaning "village" or "settlement" and is
+the origin of Canada's name.
 
 ## Motivation
 
@@ -127,9 +130,9 @@ was a huge contrast. I think using Rust will lower the barrier to entry for
 contributions to a project like this.
 
 ## Similar Projects
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration behind this iteration of ktrl
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration behind this kanata
 - [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
 - [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
-- [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like ktrl
+- [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like kanata
 - [karabiner-elements](https://karabiner-elements.pqrs.org/): A mature keyboard customizer for Mac

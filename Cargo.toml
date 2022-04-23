@@ -1,13 +1,13 @@
 [package]
-name = "ktrl"
-version = "0.0.1"
+name = "kanata"
+version = "0.1.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Keyboard multi-layout customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
 categories = ["command-line-utilities"]
-homepage = "https://github.com/jtroo/ktrl"
-repository = "https://github.com/jtroo/ktrl"
-documentation = "https://github.com/jtroo/ktrl"
+homepage = "https://github.com/jtroo/kanata"
+repository = "https://github.com/jtroo/kanata"
+documentation = "https://github.com/jtroo/kanata"
 readme = "README.md"
 license = "LGPL-3.0"
 edition = "2021"

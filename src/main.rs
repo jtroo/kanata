@@ -7,18 +7,18 @@ use std::sync::mpsc;
 
 mod cfg;
 mod keys;
-mod ktrl;
+mod kanata;
 mod layers;
 mod oskbd;
 
-use ktrl::Ktrl;
+use kanata::Kanata;
 
-const DEFAULT_CFG_PATH: &str = "./ktrl.kbd";
+const DEFAULT_CFG_PATH: &str = "./kanata.kbd";
 type CfgPath = PathBuf;
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<CfgPath> {
-    let matches = App::new("ktrl")
+    let matches = App::new("kanata")
         .version("0.0.1")
         .about("Unleashes your keyboard's full potential")
         .arg(
@@ -26,7 +26,7 @@ fn cli_init() -> Result<CfgPath> {
                 .long("cfg")
                 .value_name("CONFIG")
                 .help(&format!(
-                    "Path to your ktrl config file. Default: {}",
+                    "Path to your kanata config file. Default: {}",
                     DEFAULT_CFG_PATH
                 ))
                 .takes_value(true),
@@ -64,8 +64,8 @@ fn cli_init() -> Result<CfgPath> {
 
 #[cfg(target_os = "linux")]
 fn main_impl(cfg: CfgPath) -> Result<()> {
-    let ktrl_arc = Ktrl::new_arc(cfg)?;
-    info!("ktrl: Setup Complete");
+    let kanata_arc = Kanata::new_arc(cfg)?;
+    info!("kanata: Setup Complete");
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
@@ -73,8 +73,8 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
     let (tx, rx) = mpsc::channel();
-    Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
-    Ktrl::event_loop(ktrl_arc, tx)?;
+    Kanata::start_processing_loop(kanata_arc.clone(), rx);
+    Kanata::event_loop(kanata_arc, tx)?;
 
     Ok(())
 }
@@ -88,16 +88,16 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     // I haven't played around with what the actual minimum should be, but 32MB seems reasonably
     // small anyway.
     let builder = std::thread::Builder::new()
-        .name("ktrl".into())
+        .name("kanata".into())
         .stack_size(32 * 1024 * 1024); // 32MB of stack space
     let handler = builder
         .spawn(|| {
-            let ktrl_arc = Ktrl::new_arc(cfg).expect("Could not parse cfg");
-            info!("ktrl: Setup Complete");
+            let kanata_arc = Kanata::new_arc(cfg).expect("Could not parse cfg");
+            info!("kanata: Setup Complete");
 
             let (tx, rx) = mpsc::channel();
-            Ktrl::start_processing_loop(ktrl_arc.clone(), rx);
-            Ktrl::event_loop(ktrl_arc, tx).expect("Could not parse cfg");
+            Kanata::start_processing_loop(kanata_arc.clone(), rx);
+            Kanata::event_loop(kanata_arc, tx).expect("Could not parse cfg");
         })
         .unwrap();
 

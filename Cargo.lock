@@ -256,6 +256,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanata"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "evdev-rs",
+ "keyberon",
+ "libc",
+ "log",
+ "native-windows-gui",
+ "once_cell",
+ "parking_lot",
+ "simplelog",
+ "uinput-sys",
+ "winapi",
+]
+
+[[package]]
 name = "keyberon"
 version = "0.2.0"
 source = "git+https://github.com/jtroo/keyberon?rev=49978414bf#49978414bf758b7a09be13718994fd1d7445e195"
@@ -276,24 +294,6 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
-]
-
-[[package]]
-name = "ktrl"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "clap",
- "evdev-rs",
- "keyberon",
- "libc",
- "log",
- "native-windows-gui",
- "once_cell",
- "parking_lot",
- "simplelog",
- "uinput-sys",
- "winapi",
 ]
 
 [[package]]

@@ -19,7 +19,7 @@ use crate::oskbd::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 
-pub struct Ktrl {
+pub struct Kanata {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
@@ -34,7 +34,7 @@ use once_cell::sync::Lazy;
 #[cfg(target_os = "windows")]
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
-impl Ktrl {
+impl Kanata {
     /// Create a new configuration from a file.
     pub fn new(cfg: PathBuf) -> Result<Self> {
         let cfg = cfg::Cfg::new_from_file(&cfg)?;
@@ -42,7 +42,7 @@ impl Ktrl {
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!("Failed to open the output uinput device. Make sure you've added ktrl to the `uinput` group");
+                error!("Failed to open the output uinput device. Make sure you've added kanata to the `uinput` group");
                 bail!(err)
             }
         };
@@ -150,18 +150,18 @@ impl Ktrl {
     }
 
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
-    pub fn start_processing_loop(ktrl: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
-        info!("Ktrl: entering the processing loop");
+    pub fn start_processing_loop(kanata: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
+        info!("Kanata: entering the processing loop");
         std::thread::spawn(move || {
-            // This is done to try and work around a weird issue where upon starting ktrl, it seems
+            // This is done to try and work around a weird issue where upon starting kanata, it seems
             // that enter is being held constantly until any new keycode is sent.
             #[cfg(target_os = "linux")]
             {
                 info!("Sending press+release for space repeatedly");
                 for _ in 0..1000 {
-                    let mut ktrl = ktrl.lock();
-                    ktrl.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
-                    ktrl.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
+                    let mut kanata = kanata.lock();
+                    kanata.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
+                    kanata.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
             }
@@ -169,7 +169,7 @@ impl Ktrl {
             info!("Starting processing loop");
             let err = loop {
                 if let Ok(kev) = rx.try_recv() {
-                    let mut k = ktrl.lock();
+                    let mut k = kanata.lock();
                     if let Err(e) = k.handle_key_event(&kev) {
                         break e;
                     }
@@ -177,7 +177,7 @@ impl Ktrl {
                         break e;
                     }
                 } else {
-                    if let Err(e) = ktrl.lock().handle_time_ticks() {
+                    if let Err(e) = kanata.lock().handle_time_ticks() {
                         break e;
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
@@ -190,18 +190,18 @@ impl Ktrl {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing
     /// thread.
     #[cfg(target_os = "linux")]
-    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
-        info!("Ktrl: entering the event loop");
+    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+        info!("Kanata: entering the event loop");
 
         let (kbd_in, mapped_keys) = {
-            let ktrl = ktrl.lock();
-            let kbd_in = match KbdIn::new(&ktrl.kbd_in_path) {
+            let kanata = kanata.lock();
+            let kbd_in = match KbdIn::new(&kanata.kbd_in_path) {
                 Ok(kbd_in) => kbd_in,
                 Err(e) => {
                     bail!("failed to open keyboard device: {}", e)
                 }
             };
-            (kbd_in, ktrl.mapped_keys)
+            (kbd_in, kanata.mapped_keys)
         };
 
         loop {
@@ -211,8 +211,8 @@ impl Ktrl {
             let key_event = match KeyEvent::try_from(in_event.clone()) {
                 Ok(ev) => ev,
                 _ => {
-                    let mut ktrl = ktrl.lock();
-                    ktrl.kbd_out.write(in_event)?;
+                    let mut kanata = kanata.lock();
+                    kanata.kbd_out.write(in_event)?;
                     continue;
                 }
             };
@@ -221,8 +221,8 @@ impl Ktrl {
             // it immediately.
             let kc: usize = key_event.code.into();
             if kc >= cfg::MAPPED_KEYS_LEN || !mapped_keys[kc] {
-                let mut ktrl = ktrl.lock();
-                ktrl.kbd_out.write_key(key_event.code, key_event.value)?;
+                let mut kanata = kanata.lock();
+                kanata.kbd_out.write_key(key_event.code, key_event.value)?;
                 continue;
             }
 
@@ -236,7 +236,7 @@ impl Ktrl {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
     /// and run the native_windows_gui event loop.
     #[cfg(target_os = "windows")]
-    pub fn event_loop(ktrl: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         // Display debug and panic output when launched from a terminal.
         unsafe {
             use winapi::um::wincon::*;
@@ -247,8 +247,8 @@ impl Ktrl {
         native_windows_gui::init()?;
 
         let mapped_keys = {
-            let ktrl = ktrl.lock();
-            ktrl.mapped_keys
+            let kanata = kanata.lock();
+            kanata.mapped_keys
         };
 
         // This callback should return `false` if the input event is **not** handled by the
