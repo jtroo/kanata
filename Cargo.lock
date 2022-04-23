@@ -188,12 +188,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encode_unicode"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
-
-[[package]]
 name = "evdev-rs"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -290,18 +284,15 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
- "encode_unicode",
  "evdev-rs",
  "keyberon",
  "libc",
  "log",
  "native-windows-gui",
- "nix",
  "once_cell",
  "parking_lot",
  "simplelog",
  "uinput-sys",
- "widestring",
  "winapi",
 ]
 
@@ -376,19 +367,6 @@ name = "nb"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
-
-[[package]]
-name = "nix"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50e4785f2c3b7589a0d0c1dd60285e1188adac4006e8abd6dd578e1567027363"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if 0.1.10",
- "libc",
- "void",
-]
 
 [[package]]
 name = "num-integer"
@@ -792,12 +770,6 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "widestring"
-version = "1.0.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f1efe828a707edf85994a4501734ac1c1b9d244cfcf4de235f11c4125ace8f"
 
 [[package]]
 name = "winapi"
