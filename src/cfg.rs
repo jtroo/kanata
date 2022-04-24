@@ -750,6 +750,7 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "rmet" => OsCode::KEY_RIGHTMETA,
         "rctl" => OsCode::KEY_RIGHTCTRL,
         "del" => OsCode::KEY_DELETE,
+        "ins" => OsCode::KEY_INSERT,
         "pgup" => OsCode::KEY_PAGEUP,
         "pgdn" => OsCode::KEY_PAGEDOWN,
         "up" => OsCode::KEY_UP,

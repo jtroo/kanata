@@ -79,7 +79,7 @@
 (defalias
   ;; Note - keys are pressed for the whole sequence which is likely
   ;; undesirable, particularly for modifiers like shift. This could be
-  ;; implemented in the future by using the code in:
+  ;; improved in the future by using the code in:
   ;; https://github.com/TeXitoi/keyberon/pull/30
   alp (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
 )
@@ -118,8 +118,8 @@
 
 (deflayer misc
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    @{   @}    [    ]    _    _    _
-  _    _    _    _    C-u  _    _    bspc esc  ret  _    _    _
+  _    _    _    _    _    _    ins  @{   @}    [    ]    _    _    _
+  _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
   _    C-z  C-x  C-c  C-v  _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
@@ -135,7 +135,7 @@
 
 (deflayer arrows
   _    f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12  _
-  _    _    _    _    _    _    _    _    up   _    _    _    _    _
+  _    _    _    _    _    _    _    pgup up   pgdn _    _    _    _
   _    _    _    _    _    _    home left down rght end  _    _
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
