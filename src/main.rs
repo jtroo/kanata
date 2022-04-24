@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 mod cfg;
-mod keys;
 mod kanata;
+mod keys;
 mod layers;
 mod oskbd;
 
