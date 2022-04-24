@@ -771,6 +771,16 @@ fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f10" => OsCode::KEY_F10,
         "f11" => OsCode::KEY_F11,
         "f12" => OsCode::KEY_F12,
+        "kp0" => OsCode::KEY_KP0,
+        "kp1" => OsCode::KEY_KP1,
+        "kp2" => OsCode::KEY_KP2,
+        "kp3" => OsCode::KEY_KP3,
+        "kp4" => OsCode::KEY_KP4,
+        "kp5" => OsCode::KEY_KP5,
+        "kp6" => OsCode::KEY_KP6,
+        "kp7" => OsCode::KEY_KP7,
+        "kp8" => OsCode::KEY_KP8,
+        "kp9" => OsCode::KEY_KP9,
         _ => return None,
     })
 }
