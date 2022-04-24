@@ -10,6 +10,7 @@ This is a software keyboard remapper. The features are:
 - send key chords e.g. Ctrl+Shift+V
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
+[Here's a comparison document](./docs/kmonad_comparison.md).
 
 ## Usage
 

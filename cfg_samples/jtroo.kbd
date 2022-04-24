@@ -12,6 +12,8 @@
   ;; but I didn't find any keyboard device in there in my VM.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
+  ;; Windows doesn't need any input/output configuration entries
+
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
 )
 
@@ -75,6 +77,10 @@
 )
 
 (defalias
+  ;; Note - keys are pressed for the whole sequence which is likely
+  ;; undesirable, particularly for modifiers like shift. This could be
+  ;; implemented in the future by using the code in:
+  ;; https://github.com/TeXitoi/keyberon/pull/30
   alp (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
 )
 
