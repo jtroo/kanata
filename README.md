@@ -14,9 +14,10 @@ The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
 
 ## Usage
 
-This works on Windows and Linux.
+This works on Windows and Linux. See the
+[releases page](https://github.com/jtroo/kanata/releases) for executables.
 
-To run (Linux)
+Build and run yourself in Linux:
 
     cargo build   # release optional, not really perf sensitive
 
@@ -26,7 +27,7 @@ To run (Linux)
     # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
     sudo target/debug/kanata --cfg <conf_file>
 
-To run (Windows)
+Build and run yourself in Windows:
 
     cargo build   # release optional, not really perf sensitive
     target\debug\kanata --cfg <conf_file>
