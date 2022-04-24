@@ -57,8 +57,8 @@ contribute to keyberon first.
 ## How you can help
 
 - Try it out and let me know what you think
-- Add a port for MacOS
-- Add to `str_to_oscode`. This function is only contains enough cases for my
+- Add support for MacOS
+- Add to `str_to_oscode`. This function only contains enough cases for my
   own personal configuration.
 - I am not a keyboard expert, neither for the USB protocol nor the OS interface.
   There may be some incorrect mappings for the more obscure keys between keyberon
@@ -132,8 +132,10 @@ was a huge contrast. I think using Rust will lower the barrier to entry for
 contributions to a project like this.
 
 ## Similar Projects
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration behind this kanata
-- [QMK](https://docs.qmk.fm/#/): An open source keyboard firmware
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata
+- [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware.
+- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support
+- [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with support for layers and unicode
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
 - [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
 - [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like kanata
