@@ -486,7 +486,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
             key_stack.push(KeyCode::LShift);
             rem = rest;
         } else if let Some(rest) = rem.strip_prefix("A-") {
-            if key_stack.contains(&KeyCode::LShift) {
+            if key_stack.contains(&KeyCode::LAlt) {
                 bail!("Redundant \"A-\" in {}", ac)
             }
             key_stack.push(KeyCode::LAlt);
