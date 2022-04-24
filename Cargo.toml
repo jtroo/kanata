@@ -22,7 +22,7 @@ once_cell = "1"
 parking_lot = "0.12"
 
 # Using my personal fork to derive hash on a type and for tap_hold_interval
-keyberon = { git = "https://github.com/jtroo/keyberon", rev = "49978414bf" }
+keyberon = { git = "https://github.com/jtroo/keyberon", rev = "6e110b7935" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev-rs = "0.4.0"
