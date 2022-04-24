@@ -77,11 +77,13 @@
 )
 
 (defalias
-  ;; Note - keys are pressed for the whole sequence which is likely
-  ;; undesirable, particularly for modifiers like shift. This could be
-  ;; improved in the future by using the code in:
-  ;; https://github.com/TeXitoi/keyberon/pull/30
+  ;; Note - for multi, keys are pressed for the whole sequence which is likely
+  ;; undesirable, particularly for modifiers like shift. You probably want to
+  ;; use macro instead.
   alp (multi a b c d e f g h i j k l m n o p q r s t u v w x y z)
+
+  ;; macro accepts keys, chords, and numbers (a delay in ms).
+  lch (macro h t t p @: / / 100 l o c a l h o s t)
 )
 
 (deflayer dvorak
@@ -127,7 +129,7 @@
 
 (deflayer chords
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    @csc _    _    _    _    _
+  _    _    _    _    _    _    _    _    @csc _    @lch _    _    _
   _    @alp _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _

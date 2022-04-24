@@ -518,6 +518,7 @@ fn parse_action_list(
         "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
         "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
         "multi" => parse_multi(&ac[1..], aliases, layers),
+        "macro" => parse_macro(&ac[1..], aliases, layers),
         _ => bail!(
             "Unknown action type: {}. Valid types: layer-switch, layer-toggle, tap-hold, multi",
             ac_type
@@ -597,6 +598,47 @@ fn parse_multi(
         actions.push(*ac);
     }
     Ok(sref(Action::MultipleActions(sref(actions))))
+}
+
+fn parse_macro(
+    ac_params: &[SExpr],
+    aliases: &Aliases,
+    layers: &LayerIndexes,
+) -> Result<&'static Action> {
+    if ac_params.is_empty() {
+        bail!("macro expects at least one atom after it")
+    }
+    let mut events = Vec::new();
+    for expr in ac_params {
+        if let Ok(delay) = parse_timeout(expr) {
+            events.push(SequenceEvent::Delay { duration: delay.into() });
+            continue;
+        }
+        match parse_action(expr, aliases, layers)? {
+            Action::KeyCode(kc) => {
+                // Should note that I tried `SequenceEvent::Tap` initially but it seems to be buggy
+                // so I changed the code to use individual press and release. The SequenceEvent
+                // code is from a PR that (at the time of this writing) hasn't yet been merged into
+                // keyberon master and doesn't have tests written for it yet. This seems to work as
+                // expected right now though.
+                events.push(SequenceEvent::Press(*kc));
+                events.push(SequenceEvent::Release(*kc));
+            }
+            Action::MultipleKeyCodes(kcs) => {
+                // chord - press in order then release in the reverse order
+                for kc in kcs.iter() {
+                    events.push(SequenceEvent::Press(*kc));
+                }
+                for kc in kcs.iter().rev() {
+                    events.push(SequenceEvent::Release(*kc));
+                }
+            },
+            _ => {
+                bail!("Action \"macro\" only accepts delays, keys, and chords. Invalid value {:?}", expr)
+            }
+        }
+    }
+    Ok(sref(Action::Sequence{ events: sref(events)} ))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
