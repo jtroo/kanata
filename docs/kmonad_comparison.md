@@ -24,13 +24,17 @@ mature and has had many more contributions than kanata.
   - `(press lsft) (press a) (release lsft) (release a)` (a is a tap hold key)
   - The above outputs `a` in kmonad, but I want it to output `A`
 
-These issues are all fixable in kmonad and I hope they are one day! For me
+The issues above are all fixable in kmonad and I hope they are one day! For me
 though, I don't know Haskell well enough to poke around the kmonad codebase and
 attempt fixing these. That's why I instead built kanata in about a week, based
-off of the excellent work that had already gone into
+off of the excellent work that had already gone into the
 [keyberon](https://github.com/TeXitoi/keyberon),
 [ktrl](https://github.com/ItayGarin/ktrl), and
 [kbremap](https://github.com/timokroeger/kbremap) projects.
+
+If you want to see which features are supported, the keyberon link and the
+[sample configuration](../cfg_samples/jtroo.kbd) should hopefully provide
+insight.
 
 I already dogfood kanata when using my laptop keyboard and it works great for
 my use cases. If you don't use any of the missing features from kmonad or are
