@@ -43,6 +43,8 @@ wasn't that much work necessary to get something useful built.
 It already works better than kmonad for my personal use cases because of a few
 key sequences that aren't handled the way I expect in kmonad.
 
+[Here's a basic low-effort design doc](docs/design.md)
+
 ## Contributing
 
 Contributions are welcome!
@@ -73,6 +75,8 @@ contribute to keyberon first.
 I wanted a "k" word since this relates to keyboards. According to Wikipedia,
 kanata is an indigenous Iroquoian word meaning "village" or "settlement" and is
 the origin of Canada's name.
+
+There's also PPT✧.
 
 ## Motivation
 
