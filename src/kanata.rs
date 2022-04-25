@@ -3,10 +3,10 @@
 use anyhow::{bail, Result};
 use log::{error, info};
 
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, Sender};
 use std::time;
 
 use parking_lot::Mutex;
@@ -171,19 +171,25 @@ impl Kanata {
 
             info!("Starting processing loop");
             let err = loop {
-                if let Ok(kev) = rx.try_recv() {
-                    let mut k = kanata.lock();
-                    if let Err(e) = k.handle_key_event(&kev) {
-                        break e;
+                match rx.try_recv() {
+                    Ok(kev) => {
+                        let mut k = kanata.lock();
+                        if let Err(e) = k.handle_key_event(&kev) {
+                            break e;
+                        }
+                        if let Err(e) = k.handle_time_ticks() {
+                            break e;
+                        }
                     }
-                    if let Err(e) = k.handle_time_ticks() {
-                        break e;
+                    Err(TryRecvError::Empty) => {
+                        if let Err(e) = kanata.lock().handle_time_ticks() {
+                            break e;
+                        }
+                        std::thread::sleep(time::Duration::from_millis(1));
                     }
-                } else {
-                    if let Err(e) = kanata.lock().handle_time_ticks() {
-                        break e;
+                    Err(TryRecvError::Disconnected) => {
+                        panic!("channel disconnected")
                     }
-                    std::thread::sleep(time::Duration::from_millis(1));
                 }
             };
             panic!("processing loop encountered error {:?}", err)
@@ -231,7 +237,7 @@ impl Kanata {
 
             // Send key events to the processing loop
             if let Err(e) = tx.send(key_event) {
-                bail!("failed to send on mpsc: {}", e)
+                bail!("failed to send on channel: {}", e)
             }
         }
     }
@@ -287,9 +293,10 @@ impl Kanata {
                 _ => {}
             }
 
-            // Send input_events to the processing loop
-            if let Err(e) = tx.send(key_event) {
-                panic!("failed to send on mpsc: {}", e)
+            // Send input_events to the processing loop. Panic if channel somehow gets full or if
+            // channel disconnects.
+            if let Err(e) = tx.try_send(key_event) {
+                panic!("failed to send on channel: {:?}", e)
             }
             true
         });

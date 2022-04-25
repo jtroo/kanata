@@ -611,7 +611,9 @@ fn parse_macro(
     let mut events = Vec::new();
     for expr in ac_params {
         if let Ok(delay) = parse_timeout(expr) {
-            events.push(SequenceEvent::Delay { duration: delay.into() });
+            events.push(SequenceEvent::Delay {
+                duration: delay.into(),
+            });
             continue;
         }
         match parse_action(expr, aliases, layers)? {
@@ -632,13 +634,18 @@ fn parse_macro(
                 for kc in kcs.iter().rev() {
                     events.push(SequenceEvent::Release(*kc));
                 }
-            },
+            }
             _ => {
-                bail!("Action \"macro\" only accepts delays, keys, and chords. Invalid value {:?}", expr)
+                bail!(
+                    "Action \"macro\" only accepts delays, keys, and chords. Invalid value {:?}",
+                    expr
+                )
             }
         }
     }
-    Ok(sref(Action::Sequence{ events: sref(events)} ))
+    Ok(sref(Action::Sequence {
+        events: sref(events),
+    }))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.

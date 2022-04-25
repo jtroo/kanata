@@ -20,8 +20,9 @@ simplelog = "0.8.0"
 anyhow = "1"
 once_cell = "1"
 parking_lot = "0.12"
+crossbeam-channel = "0.5"
 
-# Using my personal fork to derive hash on a type and for tap_hold_interval
+# Using my personal fork for tap_hold_interval and Sequence
 keyberon = { git = "https://github.com/jtroo/keyberon", rev = "6e110b7935" }
 
 [target.'cfg(target_os = "linux")'.dependencies]

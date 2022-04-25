@@ -3,7 +3,6 @@ use clap::{App, Arg};
 use log::info;
 use simplelog::*;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
 
 mod cfg;
 mod kanata;
@@ -72,7 +71,7 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
     // The reason for two different event loops is that the "event loop" only listens for keyboard
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = crossbeam_channel::bounded(10);
     Kanata::start_processing_loop(kanata_arc.clone(), rx);
     Kanata::event_loop(kanata_arc, tx)?;
 
@@ -92,7 +91,7 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
             let kanata_arc = Kanata::new_arc(cfg).expect("Could not parse cfg");
             info!("Kanata: config parsed");
 
-            let (tx, rx) = mpsc::channel();
+            let (tx, rx) = crossbeam_channel::bounded(10);
             Kanata::start_processing_loop(kanata_arc.clone(), rx);
             Kanata::event_loop(kanata_arc, tx).expect("Could not parse cfg");
         })
