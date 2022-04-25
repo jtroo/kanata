@@ -16,8 +16,6 @@ mature and has had many more contributions than kanata.
   (barring mouse functionality, which is also missing in kmonad for now)
 - Key repeating in kmonad [doesn't work in Windows](https://github.com/kmonad/kmonad/issues/82)
   in the master branch
-  - In the keycode-refactor branch, key repeat happens too slowly and is
-    different from the speed that the OS would natively repeat the key
 - [Double-tapping a tap-hold key](https://github.com/kmonad/kmonad/issues/163) does not behave
   [how I want it to](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold)
 - Some key sequences with tap-hold keys [don't behave how I want](https://github.com/kmonad/kmonad/issues/466):
