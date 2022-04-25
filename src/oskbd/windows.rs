@@ -13,6 +13,8 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
+use encode_unicode::CharExt;
+
 use crate::keys::*;
 
 type HookFn<'a> = dyn FnMut(InputEvent) -> bool + 'a;
@@ -163,6 +165,33 @@ pub fn send_key(key: InputEvent) {
     }
 }
 
+fn send_uc(c: char, up: bool) {
+    let mut inputs: [INPUT; 2] = unsafe { mem::zeroed() };
+
+    let n_inputs = inputs
+        .iter_mut()
+        .zip(c.to_utf16())
+        .map(|(input, c)| {
+            let mut kb_input: KEYBDINPUT = unsafe { mem::zeroed() };
+            kb_input.wScan = c;
+            kb_input.dwFlags |= KEYEVENTF_UNICODE;
+            if up {
+                kb_input.dwFlags |= KEYEVENTF_KEYUP;
+            }
+            input.type_ = INPUT_KEYBOARD;
+            unsafe { *input.u.ki_mut() = kb_input };
+        })
+        .count();
+
+    unsafe {
+        SendInput(
+            n_inputs as _,
+            inputs.as_mut_ptr(),
+            mem::size_of::<INPUT>() as _,
+        );
+    }
+}
+
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
@@ -187,6 +216,13 @@ impl KbdOut {
 
     pub fn release_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
+    }
+
+    /// Send using VK_PACKET
+    pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
+        send_uc(c, false);
+        send_uc(c, true);
+        Ok(())
     }
 }
 

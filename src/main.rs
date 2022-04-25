@@ -5,6 +5,7 @@ use simplelog::*;
 use std::path::{Path, PathBuf};
 
 mod cfg;
+mod custom_action;
 mod kanata;
 mod keys;
 mod layers;

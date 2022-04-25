@@ -13,6 +13,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 use crate::cfg;
+use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
 
@@ -24,7 +25,7 @@ pub struct Kanata {
     pub kbd_out: KbdOut,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
-    pub layout: Layout<256, 1, { crate::layers::MAX_LAYERS }>,
+    pub layout: cfg::KanataLayout,
     pub prev_keys: Vec<KeyCode>,
     last_tick: time::Instant,
 }
@@ -94,7 +95,13 @@ impl Kanata {
         }
 
         for _ in 0..ms_elapsed {
-            self.layout.tick();
+            // Only send on the press. No repeat action is supported for this for the time being.
+            if let CustomEvent::Press(custact) = self.layout.tick() {
+                match custact {
+                    CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                }
+            }
+
             let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
 
             // Release keys that are missing from the current state but exist in the previous

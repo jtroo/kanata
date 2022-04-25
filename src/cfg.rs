@@ -22,7 +22,7 @@
 //! Then the keyberon layers will be as follows:
 //!
 //!     xx means unimportant. See `keys.rs` for reference
-//!     the numbers in `{ ... }` represent Action::Ke
+//!     the numbers in `{ ... }` represent Action::KeyCode
 //!
 //!     layers[0] = { xx, esc, a, s, d, f, xx... }
 //!     layers[1] = { xx, esc, a, o, e, u, xx... }
@@ -36,6 +36,7 @@
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 
+use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
 
@@ -46,11 +47,14 @@ use keyberon::action::*;
 use keyberon::key_code::*;
 use keyberon::layout::*;
 
+pub type KanataAction = Action<CustomAction>;
+pub type KanataLayout = Layout<256, 1, MAX_LAYERS, CustomAction>;
+
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
     pub key_outputs: KeyOutputs,
     pub items: HashMap<String, String>,
-    pub layout: Layout<256, 1, MAX_LAYERS>,
+    pub layout: KanataLayout,
 }
 
 impl Cfg {
@@ -101,7 +105,7 @@ fn parse_cfg(
     HashMap<String, String>,
     MappedKeys,
     KeyOutputs,
-    Layout<256, 1, MAX_LAYERS>,
+    KanataLayout,
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
@@ -370,7 +374,7 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
 }
 
 type LayerIndexes = HashMap<String, usize>;
-type Aliases = HashMap<String, &'static Action>;
+type Aliases = HashMap<String, &'static KanataAction>;
 
 /// Returns layer names and their indexes into the keyberon layout. This also checks that all
 /// layers have the same number of items as the defsrc.
@@ -443,7 +447,11 @@ fn sref<T>(v: T) -> &'static T {
 }
 
 /// Parse a `keyberon::action::Action` from a `SExpr`.
-fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Result<&'static Action> {
+fn parse_action(
+    expr: &SExpr,
+    aliases: &Aliases,
+    layers: &LayerIndexes,
+) -> Result<&'static KanataAction> {
     match expr {
         SExpr::Atom(a) => parse_action_atom(a, aliases),
         SExpr::List(l) => parse_action_list(l, aliases, layers),
@@ -451,7 +459,7 @@ fn parse_action(expr: &SExpr, aliases: &Aliases, layers: &LayerIndexes) -> Resul
 }
 
 /// Parse a `keyberon::action::Action` from a string.
-fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static Action> {
+fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataAction> {
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
@@ -505,7 +513,7 @@ fn parse_action_list(
     ac: &[SExpr],
     aliases: &Aliases,
     layers: &LayerIndexes,
-) -> Result<&'static Action> {
+) -> Result<&'static KanataAction> {
     if ac.is_empty() {
         return Ok(sref(Action::NoOp));
     }
@@ -519,18 +527,19 @@ fn parse_action_list(
         "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
         "multi" => parse_multi(&ac[1..], aliases, layers),
         "macro" => parse_macro(&ac[1..], aliases, layers),
+        "unicode" => parse_unicode(&ac[1..]),
         _ => bail!(
-            "Unknown action type: {}. Valid types: layer-switch, layer-toggle, tap-hold, multi",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode",
             ac_type
         ),
     }
 }
 
-fn parse_layer_base(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static Action> {
+fn parse_layer_base(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static KanataAction> {
     Ok(sref(Action::DefaultLayer(layer_idx(ac_params, layers)?)))
 }
 
-fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static Action> {
+fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static KanataAction> {
     Ok(sref(Action::Layer(layer_idx(ac_params, layers)?)))
 }
 
@@ -558,7 +567,7 @@ fn parse_tap_hold(
     ac_params: &[SExpr],
     aliases: &Aliases,
     layers: &LayerIndexes,
-) -> Result<&'static Action> {
+) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
     }
@@ -588,7 +597,7 @@ fn parse_multi(
     ac_params: &[SExpr],
     aliases: &Aliases,
     layers: &LayerIndexes,
-) -> Result<&'static Action> {
+) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("multi expects at least one atom after it")
     }
@@ -604,7 +613,7 @@ fn parse_macro(
     ac_params: &[SExpr],
     aliases: &Aliases,
     layers: &LayerIndexes,
-) -> Result<&'static Action> {
+) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("macro expects at least one atom after it")
     }
@@ -646,6 +655,24 @@ fn parse_macro(
     Ok(sref(Action::Sequence {
         events: sref(events),
     }))
+}
+
+fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
+    const ERR_STR: &str = "unicode expects exactly one unicode character as an argument";
+    if ac_params.len() != 1 {
+        bail!(ERR_STR)
+    }
+    match &ac_params[0] {
+        SExpr::Atom(s) => {
+            if s.chars().count() != 1 {
+                bail!(ERR_STR)
+            }
+            Ok(sref(Action::Custom(CustomAction::Unicode(
+                s.chars().next().unwrap(),
+            ))))
+        }
+        _ => bail!(ERR_STR),
+    }
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
@@ -717,120 +744,7 @@ fn create_key_outputs() -> KeyOutputs {
 }
 
 /// Create a layout from `layers::LAYERS`.
-fn create_layout() -> Layout<256, 1, 25> {
+fn create_layout() -> Layout<256, 1, 25, CustomAction> {
     // LAYERS is permanently locked after this.
     Layout::new(sref(*LAYERS.lock()))
-}
-
-/// Convert a `&str` to an `OsCode`.
-///
-/// Could be implemented as `TryFrom` but I like it better in this file since this only applies to
-/// parsing the configuration; `OsCode` is in a different file.
-///
-/// kmonad's str to key mapping is found here as a reference:
-/// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
-///
-/// Do your best to keep the str side a maximum character length of 4 so that configuration file
-/// can stay clean.
-fn str_to_oscode(s: &str) -> Option<OsCode> {
-    Some(match s {
-        "grv" => OsCode::KEY_GRAVE,
-        "1" => OsCode::KEY_1,
-        "2" => OsCode::KEY_2,
-        "3" => OsCode::KEY_3,
-        "4" => OsCode::KEY_4,
-        "5" => OsCode::KEY_5,
-        "6" => OsCode::KEY_6,
-        "7" => OsCode::KEY_7,
-        "8" => OsCode::KEY_8,
-        "9" => OsCode::KEY_9,
-        "0" => OsCode::KEY_0,
-        "+" => OsCode::KEY_KPPLUS,
-        "-" => OsCode::KEY_MINUS,
-        "=" => OsCode::KEY_EQUAL,
-        "bspc" => OsCode::KEY_BACKSPACE,
-        "tab" => OsCode::KEY_TAB,
-        "q" => OsCode::KEY_Q,
-        "w" => OsCode::KEY_W,
-        "e" => OsCode::KEY_E,
-        "r" => OsCode::KEY_R,
-        "t" => OsCode::KEY_T,
-        "y" => OsCode::KEY_Y,
-        "u" => OsCode::KEY_U,
-        "i" => OsCode::KEY_I,
-        "o" => OsCode::KEY_O,
-        "p" => OsCode::KEY_P,
-        "{" => OsCode::KEY_LEFTBRACE,
-        "}" => OsCode::KEY_RIGHTBRACE,
-        "[" => OsCode::KEY_LEFTBRACE,
-        "]" => OsCode::KEY_RIGHTBRACE,
-        "\\" => OsCode::KEY_BACKSLASH,
-        "caps" => OsCode::KEY_CAPSLOCK,
-        "a" => OsCode::KEY_A,
-        "s" => OsCode::KEY_S,
-        "d" => OsCode::KEY_D,
-        "f" => OsCode::KEY_F,
-        "g" => OsCode::KEY_G,
-        "h" => OsCode::KEY_H,
-        "j" => OsCode::KEY_J,
-        "k" => OsCode::KEY_K,
-        "l" => OsCode::KEY_L,
-        ";" => OsCode::KEY_SEMICOLON,
-        "'" => OsCode::KEY_APOSTROPHE,
-        "ret" => OsCode::KEY_ENTER,
-        "lsft" => OsCode::KEY_LEFTSHIFT,
-        "z" => OsCode::KEY_Z,
-        "x" => OsCode::KEY_X,
-        "c" => OsCode::KEY_C,
-        "v" => OsCode::KEY_V,
-        "b" => OsCode::KEY_B,
-        "n" => OsCode::KEY_N,
-        "m" => OsCode::KEY_M,
-        "," => OsCode::KEY_COMMA,
-        "." => OsCode::KEY_DOT,
-        "/" => OsCode::KEY_SLASH,
-        "esc" => OsCode::KEY_ESC,
-        "rsft" => OsCode::KEY_RIGHTSHIFT,
-        "lctl" => OsCode::KEY_LEFTCTRL,
-        "lmet" => OsCode::KEY_LEFTMETA,
-        "lalt" => OsCode::KEY_LEFTALT,
-        "spc" => OsCode::KEY_SPACE,
-        "ralt" => OsCode::KEY_RIGHTALT,
-        "rmet" => OsCode::KEY_RIGHTMETA,
-        "rctl" => OsCode::KEY_RIGHTCTRL,
-        "del" => OsCode::KEY_DELETE,
-        "ins" => OsCode::KEY_INSERT,
-        "pgup" => OsCode::KEY_PAGEUP,
-        "pgdn" => OsCode::KEY_PAGEDOWN,
-        "up" => OsCode::KEY_UP,
-        "down" => OsCode::KEY_DOWN,
-        "left" => OsCode::KEY_LEFT,
-        "rght" => OsCode::KEY_RIGHT,
-        "home" => OsCode::KEY_HOME,
-        "end" => OsCode::KEY_END,
-        "nlk" => OsCode::KEY_NUMLOCK,
-        "f1" => OsCode::KEY_F1,
-        "f2" => OsCode::KEY_F2,
-        "f3" => OsCode::KEY_F3,
-        "f4" => OsCode::KEY_F4,
-        "f5" => OsCode::KEY_F5,
-        "f6" => OsCode::KEY_F6,
-        "f7" => OsCode::KEY_F7,
-        "f8" => OsCode::KEY_F8,
-        "f9" => OsCode::KEY_F9,
-        "f10" => OsCode::KEY_F10,
-        "f11" => OsCode::KEY_F11,
-        "f12" => OsCode::KEY_F12,
-        "kp0" => OsCode::KEY_KP0,
-        "kp1" => OsCode::KEY_KP1,
-        "kp2" => OsCode::KEY_KP2,
-        "kp3" => OsCode::KEY_KP3,
-        "kp4" => OsCode::KEY_KP4,
-        "kp5" => OsCode::KEY_KP5,
-        "kp6" => OsCode::KEY_KP6,
-        "kp7" => OsCode::KEY_KP7,
-        "kp8" => OsCode::KEY_KP8,
-        "kp9" => OsCode::KEY_KP9,
-        _ => return None,
-    })
 }

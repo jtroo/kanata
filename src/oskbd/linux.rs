@@ -11,8 +11,7 @@ use evdev_rs::TimeVal;
 
 use uinput_sys::uinput_user_dev;
 
-use crate::keys::KeyValue;
-use crate::keys::OsCode;
+use crate::keys::*;
 use libc::input_event as raw_event;
 
 // file i/o
@@ -145,5 +144,27 @@ impl KbdOut {
 
     pub fn release_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
+    }
+
+    /// Send using C-S-u + <unicode hex number> + ret
+    pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
+        let hex = format!("{:x}", c as u32);
+        self.press_key(OsCode::KEY_LEFTCTRL)?;
+        self.press_key(OsCode::KEY_LEFTSHIFT)?;
+        self.press_key(OsCode::KEY_U)?;
+        self.release_key(OsCode::KEY_U)?;
+        self.release_key(OsCode::KEY_LEFTSHIFT)?;
+        self.release_key(OsCode::KEY_LEFTCTRL)?;
+        let mut s = String::new();
+        for c in hex.chars() {
+            s.push(c);
+            let osc = str_to_oscode(&s).expect("invalid char in unicode output");
+            s.clear();
+            self.press_key(osc)?;
+            self.release_key(osc)?;
+        }
+        self.press_key(OsCode::KEY_ENTER)?;
+        self.release_key(OsCode::KEY_ENTER)?;
+        Ok(())
     }
 }

@@ -84,6 +84,11 @@
 
   ;; macro accepts keys, chords, and numbers (a delay in ms).
   lch (macro h t t p @: / / 100 l o c a l h o s t)
+
+  ;; unicode accepts a single unicode character. The unicode character will
+  ;; not be automatically repeated by holding the key down. The alias name
+  ;; is the unicode character itself and is referenced by @🙁 in deflayer.
+  🙁 (unicode 🙁)
 )
 
 (deflayer dvorak
@@ -127,10 +132,10 @@
 )
 
 
-(deflayer chords
-  _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    @csc _    @lch _    _    _
-  _    @alp _    _    _    _    _    _    _    _    _    _    _
+(deflayer chords      ;; you can put list actions directly in deflayer but it's ugly, so prefer aliases.
+  _    _    _    _    _    _    _    _    _    _    @🙁  (unicode 😀) _    _
+  _    _    _    _    _    _    _    _    @csc _    @lch _            _    _
+  _    @alp _    _    _    _    _    _    _    _    _    _            _
   _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _
 )

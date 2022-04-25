@@ -3,9 +3,11 @@ use keyberon::layout::*;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
+use crate::custom_action::*;
+
 pub const MAX_LAYERS: usize = 25;
 
-pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS>>> = Lazy::new(|| {
+pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS, CustomAction>>> = Lazy::new(|| {
     Mutex::new([
         [[
             // layer 0
