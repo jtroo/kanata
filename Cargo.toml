@@ -2,7 +2,7 @@
 name = "kanata"
 version = "0.1.3"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
-description = "Keyboard multi-layout customization"
+description = "Multi-layout keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
 categories = ["command-line-utilities"]
 homepage = "https://github.com/jtroo/kanata"
@@ -14,7 +14,7 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2.70"
-clap = "2.33.1"
+clap = { version = "3", features = [ "derive" ] }
 log = "0.4.8"
 simplelog = "0.8.0"
 anyhow = "1"

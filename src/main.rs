@@ -1,5 +1,4 @@
 use anyhow::{bail, Result};
-use clap::{App, Arg};
 use log::info;
 use simplelog::*;
 use std::path::{Path, PathBuf};
@@ -11,36 +10,30 @@ mod keys;
 mod layers;
 mod oskbd;
 
+use clap::Parser;
 use kanata::Kanata;
 
-const DEFAULT_CFG_PATH: &str = "./kanata.kbd";
 type CfgPath = PathBuf;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Configuration file to use with kanata
+    #[clap(short, long, default_value = "kanata.kbd")]
+    cfg: String,
+
+    /// Server address
+    #[clap(short, long)]
+    debug: bool,
+}
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<CfgPath> {
-    let matches = App::new("kanata")
-        .version("0.0.1")
-        .about("Unleashes your keyboard's full potential")
-        .arg(
-            Arg::with_name("cfg")
-                .long("cfg")
-                .value_name("CONFIG")
-                .help(&format!(
-                    "Path to your kanata config file. Default: {}",
-                    DEFAULT_CFG_PATH
-                ))
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("debug")
-                .long("debug")
-                .help("Enables debug level logging"),
-        )
-        .get_matches();
+    let args = Args::parse();
 
-    let config_path = Path::new(matches.value_of("cfg").unwrap_or(DEFAULT_CFG_PATH));
+    let cfg_path = Path::new(&args.cfg);
 
-    let log_lvl = match matches.is_present("debug") {
+    let log_lvl = match args.debug {
         true => LevelFilter::Debug,
         _ => LevelFilter::Info,
     };
@@ -52,14 +45,14 @@ fn cli_init() -> Result<CfgPath> {
     )])
     .expect("Couldn't initialize the logger");
 
-    if !config_path.exists() {
+    if !cfg_path.exists() {
         bail!(
             "Could not find your config file ({})",
-            config_path.to_str().unwrap_or("?")
+            cfg_path.to_str().unwrap_or("?")
         )
     }
 
-    Ok(config_path.into())
+    Ok(cfg_path.into())
 }
 
 #[cfg(target_os = "linux")]

@@ -301,7 +301,10 @@ impl Kanata {
             }
 
             // Send input_events to the processing loop. Panic if channel somehow gets full or if
-            // channel disconnects.
+            // channel disconnects. Typing input should never trigger a panic based on the channel
+            // getting full, assuming regular operation of the program and some other bug isn't the
+            // problem. I've tried to crash the program by pressing as many keys on my keyboard at
+            // the same time as I could, but was unable to.
             if let Err(e) = tx.try_send(key_event) {
                 panic!("failed to send on channel: {:?}", e)
             }
