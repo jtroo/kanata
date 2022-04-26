@@ -32,7 +32,9 @@ Build and run yourself in Windows:
     cargo build   # release optional, not really perf sensitive
     target\debug\kanata --cfg <conf_file>
 
-A sample configuration file is found in [cfg_samples](./cfg_samples/jtroo.kbd).
+A sample configuration file is found in [cfg_samples](./cfg_samples/kanata.kbd).
+The latest release also has a `kanata.kbd` configuration file that is tested to
+work with that release.
 
 ## Current state
 
