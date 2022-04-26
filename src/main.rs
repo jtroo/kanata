@@ -22,7 +22,7 @@ struct Args {
     #[clap(short, long, default_value = "kanata.kbd")]
     cfg: String,
 
-    /// Server address
+    /// Enable debug logging
     #[clap(short, long)]
     debug: bool,
 }
