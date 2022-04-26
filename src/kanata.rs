@@ -186,20 +186,20 @@ impl Kanata {
     pub fn start_processing_loop(kanata: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
         info!("Kanata: entering the processing loop");
         std::thread::spawn(move || {
-            // This is done to try and work around a weird issue where upon starting kanata, it seems
-            // that enter is being held constantly until any new keycode is sent.
-            #[cfg(target_os = "linux")]
-            {
-                info!("Sending press+release for space repeatedly");
-                for _ in 0..1000 {
-                    let mut kanata = kanata.lock();
-                    kanata.kbd_out.press_key(OsCode::KEY_SPACE).unwrap();
-                    kanata.kbd_out.release_key(OsCode::KEY_SPACE).unwrap();
-                    std::thread::sleep(time::Duration::from_millis(1));
+            info!("Init: catching only releases and sending immediately");
+            for _ in 0..500 {
+                if let Ok(kev) = rx.try_recv() {
+                    if kev.value == KeyValue::Release {
+                        let mut k = kanata.lock();
+                        k.kbd_out
+                            .release_key(kev.code)
+                            .expect("could not release key");
+                    }
                 }
+                std::thread::sleep(time::Duration::from_millis(1));
             }
 
-            info!("Starting processing loop");
+            info!("Starting kanata proper");
             let err = loop {
                 match rx.try_recv() {
                     Ok(kev) => {
