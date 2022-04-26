@@ -11,6 +11,7 @@ use evdev_rs::TimeVal;
 
 use uinput_sys::uinput_user_dev;
 
+use crate::custom_action::*;
 use crate::keys::*;
 use libc::input_event as raw_event;
 
@@ -123,7 +124,9 @@ impl KbdOut {
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
-        self.write(key_ev.into())?;
+        let input_ev = key_ev.into();
+        log::debug!("input ev: {:?}", input_ev);
+        self.write(input_ev)?;
 
         let sync = InputEvent::new(
             &TimeVal {
@@ -166,5 +169,23 @@ impl KbdOut {
         self.press_key(OsCode::KEY_ENTER)?;
         self.release_key(OsCode::KEY_ENTER)?;
         Ok(())
+    }
+
+    pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        self.press_key(btn.into())
+    }
+
+    pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        self.release_key(btn.into())
+    }
+}
+
+impl From<Btn> for OsCode {
+    fn from(btn: Btn) -> Self {
+        match btn {
+            Btn::Left => OsCode::BTN_LEFT,
+            Btn::Right => OsCode::BTN_RIGHT,
+            Btn::Mid => OsCode::BTN_MIDDLE,
+        }
     }
 }

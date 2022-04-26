@@ -474,6 +474,9 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
         "lrld" => return Ok(sref(Action::Custom(CustomAction::LiveReload))),
+        "mlft" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Left)))),
+        "mrgt" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Right)))),
+        "mmid" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Mid)))),
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {

@@ -86,6 +86,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "rctl" => OsCode::KEY_RIGHTCTRL,
         "del" => OsCode::KEY_DELETE,
         "ins" => OsCode::KEY_INSERT,
+        "bck" => OsCode::KEY_BACK,
+        "fwd" => OsCode::KEY_FORWARD,
         "pgup" => OsCode::KEY_PAGEUP,
         "pgdn" => OsCode::KEY_PAGEDOWN,
         "up" => OsCode::KEY_UP,

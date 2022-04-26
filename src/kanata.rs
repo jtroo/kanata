@@ -99,14 +99,23 @@ impl Kanata {
 
         for _ in 0..ms_elapsed {
             // Only send on the press. No repeat action is supported for this for the time being.
-            if let CustomEvent::Press(custact) = self.layout.tick() {
-                match custact {
+            match self.layout.tick() {
+                CustomEvent::Press(custact) => match custact {
                     CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
                     CustomAction::LiveReload => {
                         live_reload_requested = true;
                         log::info!("Requested live reload")
                     }
+                    CustomAction::Mouse(btn) => {
+                        log::debug!("press     {:?}", btn);
+                        self.kbd_out.click_btn(*btn)?;
+                    }
+                },
+                CustomEvent::Release(CustomAction::Mouse(btn)) => {
+                    log::debug!("release   {:?}", btn);
+                    self.kbd_out.release_btn(*btn)?;
                 }
+                _ => {}
             }
 
             let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
@@ -191,6 +200,7 @@ impl Kanata {
                 if let Ok(kev) = rx.try_recv() {
                     if kev.value == KeyValue::Release {
                         let mut k = kanata.lock();
+                        info!("Init: releasing {:?}", kev.code);
                         k.kbd_out
                             .release_key(kev.code)
                             .expect("could not release key");
@@ -309,6 +319,7 @@ impl Kanata {
 
             // Unlike Linux, Windows does not use a separate value for repeat. However, our code
             // needs to differentiate between initial press and repeat press.
+            log::debug!("event loop: {:?}", key_event);
             match key_event.value {
                 KeyValue::Release => {
                     PRESSED_KEYS.lock().remove(&key_event.code);

@@ -15,6 +15,7 @@ use winapi::um::winuser::*;
 
 use encode_unicode::CharExt;
 
+use crate::custom_action::*;
 use crate::keys::*;
 
 type HookFn<'a> = dyn FnMut(InputEvent) -> bool + 'a;
@@ -143,7 +144,7 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
 
 pub fn send_key(key: InputEvent) {
     unsafe {
-        let mut inputs: [INPUT; 2] = mem::zeroed();
+        let mut inputs: [INPUT; 1] = mem::zeroed();
 
         let mut kb_input = key_input_from_event(key);
         kb_input.wVk = key.code as u16;
@@ -213,6 +214,40 @@ impl KbdOut {
         send_uc(c, false);
         send_uc(c, true);
         Ok(())
+    }
+
+    pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        log::debug!("click btn: {:?}", btn);
+        match btn {
+            Btn::Left => send_btn(MOUSEEVENTF_LEFTDOWN),
+            Btn::Right => send_btn(MOUSEEVENTF_RIGHTDOWN),
+            Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEDOWN),
+        };
+        Ok(())
+    }
+
+    pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        log::debug!("reles btn: {:?}", btn);
+        match btn {
+            Btn::Left => send_btn(MOUSEEVENTF_LEFTUP),
+            Btn::Right => send_btn(MOUSEEVENTF_RIGHTUP),
+            Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEUP),
+        };
+        Ok(())
+    }
+}
+
+fn send_btn(flag: u32) {
+    unsafe {
+        let mut inputs: [INPUT; 1] = mem::zeroed();
+        inputs[0].type_ = INPUT_MOUSE;
+
+        // set button
+        let mut m_input: MOUSEINPUT = mem::zeroed();
+        m_input.dwFlags |= flag;
+
+        *inputs[0].u.mi_mut() = m_input;
+        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
     }
 }
 

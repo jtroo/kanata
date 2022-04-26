@@ -17,6 +17,7 @@
   arr (layer-toggle arrows)
   msc (layer-toggle misc)
   lay (layer-toggle layers)
+  mse (layer-toggle mouse)
 
   ;; change the base layer between qwerty and dvorak
   dvk (layer-switch dvorak)
@@ -28,6 +29,7 @@
   ech (tap-hold 200 200 e @chr)
   umc (tap-hold 200 200 u @msc)
   grl (tap-hold 200 200 grv @lay)
+  .ms (tap-hold 200 200 . @mse)
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
@@ -51,7 +53,7 @@
 
 (deflayer dvorak
   @grl 1    2    3    4    5    6    7    8    9    0    [    ]    bspc
-  tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
+  tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
   lctl lmet lalt           spc            rsft rmet rctl
@@ -104,3 +106,12 @@
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
+
+(deflayer mouse
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
+

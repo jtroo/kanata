@@ -51,7 +51,7 @@
 ;; tap-hold aliases configured on the left side.
 (deflayer dvorak
   @grl 1    2    3    4    5    6    7    8    9    0    [    ]    bspc
-  tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
+  tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
   lctl lmet lalt           spc            ralt rmet rctl
@@ -70,6 +70,7 @@
   arr (layer-toggle arrows)
   msc (layer-toggle misc)
   lay (layer-toggle layers)
+  mse (layer-toggle mouse)
 
   ;; aliases to change the base layer to qwerty or dvorak
   dvk (layer-switch dvorak)
@@ -92,11 +93,12 @@
   ;; the key within the tap timeout window (number is milliseconds). Simply
   ;; holding the key results in the hold action activating, which is why you
   ;; need to double-press for the tap action to stay pressed.
-  anm (tap-hold 200 200 a @num)   ;; tap: a, hold: numbers layer
-  oar (tap-hold 200 200 o @arr)   ;; tap: o, hold: arrows layer
-  ech (tap-hold 200 200 e @chr)   ;; tap: e, hold: chords layer
-  umc (tap-hold 200 200 u @msc)   ;; tap: u, hold: misc layer
-  grl (tap-hold 200 200 grv @lay) ;; tap: grave, hold: layers layer
+  anm (tap-hold 200 200 a @num)   ;; tap: a      hold: numbers layer
+  oar (tap-hold 200 200 o @arr)   ;; tap: o      hold: arrows layer
+  ech (tap-hold 200 200 e @chr)   ;; tap: e      hold: chords layer
+  umc (tap-hold 200 200 u @msc)   ;; tap: u      hold: misc layer
+  grl (tap-hold 200 200 grv @lay) ;; tap: grave  hold: layers layer
+  .ms (tap-hold 200 200 . @mse)   ;; tap: .      hold: mouse layer
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
@@ -189,3 +191,14 @@
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
+
+;; Using mouse buttons on the kanata window seems to cause it to hang and
+;; eventually crash. Using the mouse on other windows seems to be fine though.
+(deflayer mouse
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
+
