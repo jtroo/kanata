@@ -165,8 +165,13 @@ fn parse_cfg(
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
     let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
-    parse_layers(&layer_exprs, &aliases, &layer_idxs, &mapping_order)?;
-    Ok((cfg, src, create_key_outputs(), create_layout()))
+    let klayers = parse_layers(&layer_exprs, &aliases, &layer_idxs, &mapping_order)?;
+    Ok((
+        cfg,
+        src,
+        create_key_outputs(&klayers),
+        create_layout(klayers),
+    ))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
@@ -468,6 +473,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
+        "lrld" => return Ok(sref(Action::Custom(CustomAction::LiveReload))),
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
@@ -686,8 +692,8 @@ fn parse_layers(
     aliases: &Aliases,
     layer_idxs: &LayerIndexes,
     mapping_order: &[usize],
-) -> Result<()> {
-    let mut layers_cfg = LAYERS.lock();
+) -> Result<KanataLayers> {
+    let mut layers_cfg = new_layers();
     for (layer_level, layer) in layers.iter().enumerate() {
         // skip deflayer and name
         for (i, ac) in layer.iter().skip(2).enumerate() {
@@ -695,11 +701,11 @@ fn parse_layers(
             layers_cfg[layer_level][0][mapping_order[i]] = *ac;
         }
     }
-    Ok(())
+    Ok(layers_cfg)
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
-fn create_key_outputs() -> KeyOutputs {
+fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
     // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
     let mut outs = [
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
@@ -721,7 +727,7 @@ fn create_key_outputs() -> KeyOutputs {
         None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
         None,
     ];
-    for layer in LAYERS.lock().iter() {
+    for layer in layers.iter() {
         for (i, action) in layer[0].iter().enumerate() {
             match action {
                 Action::KeyCode(kc) => {
@@ -749,7 +755,7 @@ fn create_key_outputs() -> KeyOutputs {
 }
 
 /// Create a layout from `layers::LAYERS`.
-fn create_layout() -> Layout<256, 1, 25, CustomAction> {
+fn create_layout(layers: KanataLayers) -> KanataLayout {
     // LAYERS is permanently locked after this.
-    Layout::new(sref(*LAYERS.lock()))
+    Layout::new(sref(layers))
 }

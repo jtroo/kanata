@@ -37,6 +37,8 @@
 ;; The first layer defined is the layer that will be active by default when
 ;; kanata starts up. This layer is the standard QWERTY layout except for the
 ;; backtick/grave key (@grl) which is an alias for a tap-hold key.
+;;
+;; There are currently a maximum of 25 layers allowed.
 (deflayer qwerty
   @grl 1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
@@ -133,20 +135,33 @@
 )
 
 ;; _ means transparent. The key on the base layer will be used instead.
-(deflayer layers
-  _    @qwr @dvk _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _              _              _    _    _
-)
-
 ;; XX means no-op. The key will do nothing.
 (deflayer numbers
   _    _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
   _    _    _    _    _    XX   _    kp4  kp5  kp6  -    _    _    _
   _    _    C-z  _    _    XX   _    kp1  kp2  kp3  +    _    _
   _    C-z  C-x  C-c  C-v  XX   _    kp0  kp0  .    /    _
+  _    _    _              _              _    _    _
+)
+
+;; The `lrld` action stands for "live reload". This will re-parse everything
+;; except for defcfg. I.e. in Linux, you cannot live reload and switch keyboard
+;; devices for the time being.
+;;
+;; Upon a successful reload, the kanata state will begin on the default base layer
+;; in the configuration. E.g. in this example configuration, you would start on
+;; the qwerty layer.
+;;
+;; WARNING: live reload leaks memory. This should not be a major problem though.
+;; Here are the measurements of memory consumption on Windows:
+;; - 20 reloads: 15.4 MB memory consumed
+;; - 50 reloads: 20.4 MB memory consumed
+;; So about 170 KB used per live reload. You'll probably be fine.
+(deflayer layers
+  _    @qwr @dvk lrld _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
 

@@ -23,6 +23,7 @@ use keyberon::layout::*;
 pub struct Kanata {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
+    pub cfg_path: PathBuf,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
@@ -37,8 +38,8 @@ static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(Hash
 
 impl Kanata {
     /// Create a new configuration from a file.
-    pub fn new(cfg: PathBuf) -> Result<Self> {
-        let cfg = cfg::Cfg::new_from_file(&cfg)?;
+    pub fn new(cfg_path: PathBuf) -> Result<Self> {
+        let cfg = cfg::Cfg::new_from_file(&cfg_path)?;
 
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
@@ -60,6 +61,7 @@ impl Kanata {
         Ok(Self {
             kbd_in_path,
             kbd_out,
+            cfg_path,
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
@@ -93,12 +95,17 @@ impl Kanata {
         if ms_elapsed > 0 {
             self.last_tick = now;
         }
+        let mut live_reload_requested = false;
 
         for _ in 0..ms_elapsed {
             // Only send on the press. No repeat action is supported for this for the time being.
             if let CustomEvent::Press(custact) = self.layout.tick() {
                 match custact {
                     CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                    CustomAction::LiveReload => {
+                        live_reload_requested = true;
+                        log::info!("Requested live reload")
+                    }
                 }
             }
 
@@ -128,6 +135,22 @@ impl Kanata {
                     bail!("failed to press key: {:?}", e);
                 }
             }
+
+            if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
+                live_reload_requested = false;
+                match cfg::Cfg::new_from_file(&self.cfg_path) {
+                    Err(e) => {
+                        log::error!("Could not reload configuration:\n{}", e);
+                    }
+                    Ok(cfg) => {
+                        self.layout = cfg.layout;
+                        self.mapped_keys = cfg.mapped_keys;
+                        self.key_outputs = cfg.key_outputs;
+                        log::info!("Live reload successful")
+                    }
+                };
+            }
+
             self.prev_keys = cur_keys;
         }
         Ok(())

@@ -39,16 +39,6 @@ pub struct KeyboardHook<'a> {
 impl<'a> KeyboardHook<'a> {
     /// Sets the low-level keyboard hook for this thread.
     ///
-    /// The closure receives key press and key release events. When the closure
-    /// returns `None` they key event is not modified and forwarded to processes
-    /// is if nothing happened. To ignore a key event or to remap it to another
-    /// key return a [`KeyAction`].
-    ///
-    /// Character actions are sent with a single virtual key event if the character
-    /// is available on the current system keyboard layout.
-    /// Uses `VK_PACKET` to remap a key to Unicode codepoint if no dedicated key
-    /// for that character exists.
-    ///
     /// Panics when a hook is already registered from the same thread.
     #[must_use = "The hook will immediatelly be unregistered and not work."]
     pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + 'a) -> KeyboardHook<'a> {

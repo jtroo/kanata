@@ -1,14 +1,14 @@
 use keyberon::action::*;
 use keyberon::layout::*;
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 
 use crate::custom_action::*;
 
 pub const MAX_LAYERS: usize = 25;
 
-pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS, CustomAction>>> = Lazy::new(|| {
-    Mutex::new([
+pub type KanataLayers = Layers<256, 1, MAX_LAYERS, CustomAction>;
+
+pub fn new_layers() -> KanataLayers {
+    [
         [[
             // layer 0
             Action::NoOp,
@@ -6484,5 +6484,5 @@ pub static LAYERS: Lazy<Mutex<Layers<256, 1, MAX_LAYERS, CustomAction>>> = Lazy:
             Action::Trans,
             Action::Trans,
         ]],
-    ])
-});
+    ]
+}
