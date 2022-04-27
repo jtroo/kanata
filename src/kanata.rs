@@ -31,8 +31,10 @@ pub struct Kanata {
     last_tick: time::Instant,
 }
 
-#[cfg(target_os = "windows")]
 use once_cell::sync::Lazy;
+
+static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new([false; 256]));
+
 #[cfg(target_os = "windows")]
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
@@ -153,7 +155,8 @@ impl Kanata {
                     }
                     Ok(cfg) => {
                         self.layout = cfg.layout;
-                        self.mapped_keys = cfg.mapped_keys;
+                        let mut mapped_keys = MAPPED_KEYS.lock();
+                        *mapped_keys = cfg.mapped_keys;
                         self.key_outputs = cfg.key_outputs;
                         log::info!("Live reload successful")
                     }
@@ -241,6 +244,10 @@ impl Kanata {
     #[cfg(target_os = "linux")]
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("Kanata: entering the event loop");
+        {
+            let mut mapped_keys = MAPPED_KEYS.lock();
+            *mapped_keys = kanata.lock().mapped_keys;
+        }
 
         let kbd_in = match KbdIn::new(&kanata.lock().kbd_in_path) {
             Ok(kbd_in) => kbd_in,
@@ -265,12 +272,10 @@ impl Kanata {
             // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
             // it immediately.
             let kc: usize = key_event.code.into();
-            {
+            if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
                 let mut kanata = kanata.lock();
-                if kc >= cfg::MAPPED_KEYS_LEN || !kanata.mapped_keys[kc] {
-                    kanata.kbd_out.write_key(key_event.code, key_event.value)?;
-                    continue;
-                }
+                kanata.kbd_out.write_key(key_event.code, key_event.value)?;
+                continue;
             }
 
             // Send key events to the processing loop
@@ -292,6 +297,10 @@ impl Kanata {
             }
         };
         native_windows_gui::init()?;
+        {
+            let mut mapped_keys = MAPPED_KEYS.lock();
+            *mapped_keys = kanata.lock().mapped_keys;
+        }
 
         // This callback should return `false` if the input event is **not** handled by the
         // callback and `true` if the input event **is** handled by the callback. Returning false
@@ -301,7 +310,7 @@ impl Kanata {
             if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
                 return false;
             }
-            if !kanata.lock().mapped_keys[input_event.code as usize] {
+            if !MAPPED_KEYS.lock()[input_event.code as usize] {
                 return false;
             }
 
