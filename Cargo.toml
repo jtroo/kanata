@@ -1,6 +1,6 @@
 [package]
 name = "kanata"
-version = "0.1.4"
+version = "1.0.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
