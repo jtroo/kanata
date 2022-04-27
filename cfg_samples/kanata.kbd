@@ -5,7 +5,7 @@
 ;; However, any items you see in the kmonad configuration that don't exist in
 ;; this sample are likely not implemented.
 ;;
-;; Comments are double-semicolon because the a single semicolon is parsed as a
+;; Comments are double-semicolon because a single semicolon is parsed as the
 ;; keyboard key.
 
 ;; Only one defcfg is allowed. This is used to define a few configurations.
@@ -64,6 +64,10 @@
 ;; Aliases are referred to by `@<alias_name>`. Aliases can refer to each other,
 ;; e.g. in the `anm` alias.
 (defalias
+  ;; aliases to change the base layer to qwerty or dvorak
+  dvk (layer-switch dvorak)
+  qwr (layer-switch qwerty)
+
   ;; aliases for layer toggling
   num (layer-toggle numbers)
   chr (layer-toggle chords)
@@ -71,10 +75,6 @@
   msc (layer-toggle misc)
   lay (layer-toggle layers)
   mse (layer-toggle mouse)
-
-  ;; aliases to change the base layer to qwerty or dvorak
-  dvk (layer-switch dvorak)
-  qwr (layer-switch qwerty)
 
   ;; tap for key, hold for toggle layers
   ;; Parameter order:
@@ -113,6 +113,10 @@
   { S-[
   } S-]
   : S-;
+
+  ;; alias numbers as themselves for use in macro
+  8 8
+  0 0
 )
 
 (defalias
@@ -127,8 +131,9 @@
   ;; One use case for multi could be typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
-  ;; macro accepts keys, chords, and numbers (a delay in ms).
-  lch (macro h t t p @: / / 100 l o c a l h o s t)
+  ;; macro accepts keys, chords, and numbers (a delay in ms). Note that numbers
+  ;; will be parsed as delays, so they will need to be aliased to be used.
+  lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
 
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name

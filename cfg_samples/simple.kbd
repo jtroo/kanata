@@ -1,0 +1,84 @@
+(defcfg
+  ;; Comments (not read as part of config) are prefixed by a double-semicolon: ;;
+  ;;
+  ;; If you are using windows, you do not need the linux-dev line below, but
+  ;; you still need a defcfg entry (it can be empty).
+  ;;
+  ;; Your keyboard device may differ from this. I believe /dev/input/by-id/
+  ;; is preferable; I recall reading that it's less likely to change names on you,
+  ;; but I didn't find any keyboard device in there in my VM.
+  ;; Windows, you do not need this.
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+)
+
+;; Only one defsrc is allowed.
+;;
+;; defsrc defines the keys that will be intercepted by kanata. The order of the
+;; keys matches with deflayer declarations and all deflayer declarations must
+;; have the same number of keys as defsrc. Any keys not listed in defsrc will
+;; be passed straight to the operating system.
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+;; The first layer defined is the layer that will be active by default when
+;; kanata starts up. This layer is the standard QWERTY layout except for the
+;; backtick/grave key (@grl) which is an alias for a tap-hold key.
+;;
+;; There are currently a maximum of 25 layers allowed.
+(deflayer qwerty
+  @grl 1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+;; The dvorak layer remaps the keys to the dvorak layout. In addition there is
+;; another tap-hold key: @cap. This key retains caps lock functionality when
+;; quickly tapped but is read as left-control when held.
+(deflayer dvorak
+  @grl 1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
+  @cap a    o    e    u    i    d    h    t    n    s    -    ret
+  lsft ;    q    j    k    x    b    m    w    v    z    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+;; defalias is used to declare a shortcut for a more complicated action to keep
+;; the deflayer declarations clean and aligned. The alignment in deflayers is not
+;; necessary, but is strongly recommended for ease of understanding visually.
+;;
+;; Aliases are referred to by `@<alias_name>`.
+(defalias
+  ;; tap: backtick (grave), hold: toggle layer-switching layer while held
+  grl (tap-hold 200 200 grv (layer-toggle layers))
+
+  ;; layer-switch changes the base layer.
+  dvk (layer-switch dvorak)
+  qwr (layer-switch qwerty)
+
+  ;; tap for capslk, hold for lctl
+  cap (tap-hold 200 200 caps lctl)
+)
+
+;; The `lrld` action stands for "live reload". This will re-parse everything
+;; except for defcfg. I.e. in Linux, you cannot live reload and switch keyboard
+;; devices for the time being.
+;;
+;; The keys 1 and 2 switch the base layer to qwerty and dvorak respectively.
+;;
+;; Apart from the layer switching and live reload, all other keys are the
+;; underscore _ which means "transparent". Transparent means the base layer
+;; behaviour is used when pressing that key.
+(deflayer layers
+  _    @qwr @dvk lrld _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)

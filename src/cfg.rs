@@ -94,13 +94,18 @@ fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
 }
 
 #[test]
-fn parse_jtroo() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
+fn parse_simple() {
+    parse_cfg(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
 }
 
 #[test]
-fn parse_kanata_default() {
+fn parse_default() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
+}
+
+#[test]
+fn parse_jtroo() {
+    parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
 }
 
 /// Parse a configuration file.

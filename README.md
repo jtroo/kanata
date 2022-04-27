@@ -4,24 +4,28 @@ Cross-platform advanced keyboard customization.
 
 ## What does this do?
 
-This is a software keyboard remapper. The features are:
-- multiple layers of key functionality on your single keyboard
-- differing key behaviour depending on if you quickly tap the key or hold it down.
-- send key chords e.g. Ctrl+Shift+V
+This is a software keyboard remapper for Linux and Windows. A short summary of
+the features:
 
-The most similar project is [kmonad](https://github.com/david-janssen/kmonad).
-[Here's a comparison document](./docs/kmonad_comparison.md).
+- cross-platform human readable configuration file
+- multiple layers of key functionality
+- advanced key behaviour customization (e.g. tap-hold, key sequences, unicode)
+
+To see all of the features, see the [features](#features) section.
+
+The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
+which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
 
 ## Usage
 
-This works on Windows and Linux. See the
+This is tested on Windows 10 and Linux (debian). See the
 [releases page](https://github.com/jtroo/kanata/releases) for executables.
 
 Build and run yourself in Linux:
 
     cargo build   # release optional, not really perf sensitive
 
-    # sudo is used because kanata opens /dev/input/ files
+    # sudo is used because kanata opens /dev/ files
     #
     # See below if you want to avoid needing sudo:
     # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
@@ -32,20 +36,28 @@ Build and run yourself in Windows:
     cargo build   # release optional, not really perf sensitive
     target\debug\kanata --cfg <conf_file>
 
-A sample configuration file is found in [cfg_samples](./cfg_samples/kanata.kbd).
-The latest release also has a `kanata.kbd` configuration file that is tested to
-work with that release.
+Sample configuration files are found in [cfg_samples](./cfg_samples). The
+[simple.kbd](./cfg_samples/simple.kbd) file contains a basic configuration file
+that is hopefully easy to understand but does not contain all features. The
+`kanata.kbd` contains an example of all features with documentation. The latest
+release assets also has a `kanata.kbd` file that is tested to work with that
+release.
 
-## Current state
+## Features
 
-Though young, I think this project is already very usable. Since the underlying
-library has already had a lot of work put into it to make it work well, there
-wasn't that much work necessary to get something useful built.
-
-It already works better than kmonad for my personal use cases because of a few
-key sequences that aren't handled the way I expect in kmonad.
-
-[Here's a basic low-effort design doc](docs/design.md)
+- Human readable configuration file. [Simple example](./cfg_samples/simple.kbd).
+  [All features showcase](./cfg_samples/kanata.kbd).
+- Layer switching. Change base layers between e.g. qwerty layer, dvorak layer, experimental layout layer
+- Layer toggle. Toggle a layer temporarily, e.g. for a numpad layer, arrow keys layer, or symbols layer
+- Tap-hold keys. Different behaviour when you tap a key vs. hold the key
+  - example 1: remap caps lock to act as caps lock on tap but ctrl on hold
+  - example 2: remap 'A' lock to act as 'A' on tap but toggle the numpad layer on hold
+- Key chords. Send something like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
+- Macros. Send a sequence of keys with optional configurable delays, e.g. `http://localhost:8080`.
+- Unicode. Type any unicode character ([not guaranteed to be accepted](https://github.com/microsoft/terminal/issues/12977)
+  by the target application).
+- Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
+- Live reloading of the configuration for easy testing of your changes.
 
 ## Contributing
 
@@ -55,22 +67,18 @@ Unless explicitly stated otherwise, your contributions will be made under the
 LGPLv3 license.
 
 The keyberon project contains all of the heavy keyboard state logic, so if you
-want new keyboard mapping functionality, it's strongly recommended to
-contribute to keyberon first.
+want new keyboard mapping functionality (e.g. tap-dance), it's recommended to
+add it to keyberon.
+
+[Here's a basic low-effort design doc of kanata](./docs/design.md)
 
 ## How you can help
 
 - Try it out and let me know what you think
 - Add support for MacOS
-- Add to `str_to_oscode`. This function only contains enough cases for my
-  own personal configuration.
-- I am not a keyboard expert, neither for the USB protocol nor the OS interface.
-  There may be some incorrect mappings for the more obscure keys between keyberon
-  `KeyCode` and kanata's `OsCode` in:
-  ```
-  impl From<KeyCode> for OsCode
-  impl From<OsCode> for KeyCode
-  ```
+- Dead keys: I only use the US layout and have no idea if kanata handles dead
+  keys correctly. If it's doing something wrong, please file a bug or feel free
+  to contribute a fix.
 
 ## What does the name mean?
 
@@ -138,11 +146,14 @@ was a huge contrast. I think using Rust will lower the barrier to entry for
 contributions to a project like this.
 
 ## Similar Projects
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata.
 - [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware.
-- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support
+- [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware.
+- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support.
 - [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with support for layers and unicode
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
 - [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
 - [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like kanata
 - [karabiner-elements](https://karabiner-elements.pqrs.org/): A mature keyboard customizer for Mac
+- [capsicain](https://github.com/cajhin/capsicain): A Windows-only key remapper with driver-level key interception
+- [keyd](https://github.com/rvaiya/keyd): A Linux-only key remapper very similar to kanata and kmonad
