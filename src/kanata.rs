@@ -242,15 +242,11 @@ impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("Kanata: entering the event loop");
 
-        let (kbd_in, mapped_keys) = {
-            let kanata = kanata.lock();
-            let kbd_in = match KbdIn::new(&kanata.kbd_in_path) {
-                Ok(kbd_in) => kbd_in,
-                Err(e) => {
-                    bail!("failed to open keyboard device: {}", e)
-                }
-            };
-            (kbd_in, kanata.mapped_keys)
+        let kbd_in = match KbdIn::new(&kanata.lock().kbd_in_path) {
+            Ok(kbd_in) => kbd_in,
+            Err(e) => {
+                bail!("failed to open keyboard device: {}", e)
+            }
         };
 
         loop {
@@ -269,10 +265,12 @@ impl Kanata {
             // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
             // it immediately.
             let kc: usize = key_event.code.into();
-            if kc >= cfg::MAPPED_KEYS_LEN || !mapped_keys[kc] {
+            {
                 let mut kanata = kanata.lock();
-                kanata.kbd_out.write_key(key_event.code, key_event.value)?;
-                continue;
+                if kc >= cfg::MAPPED_KEYS_LEN || !kanata.mapped_keys[kc] {
+                    kanata.kbd_out.write_key(key_event.code, key_event.value)?;
+                    continue;
+                }
             }
 
             // Send key events to the processing loop
@@ -295,11 +293,6 @@ impl Kanata {
         };
         native_windows_gui::init()?;
 
-        let mapped_keys = {
-            let kanata = kanata.lock();
-            kanata.mapped_keys
-        };
-
         // This callback should return `false` if the input event is **not** handled by the
         // callback and `true` if the input event **is** handled by the callback. Returning false
         // informs the callback caller that the input event should be handed back to the OS for
@@ -308,7 +301,7 @@ impl Kanata {
             if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
                 return false;
             }
-            if !mapped_keys[input_event.code as usize] {
+            if !kanata.lock().mapped_keys[input_event.code as usize] {
                 return false;
             }
 
