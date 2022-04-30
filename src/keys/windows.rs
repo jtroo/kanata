@@ -1,7 +1,7 @@
 // This file is adapted from the orginal ktrl's `keys.rs` file for Windows.
 
 use crate::oskbd::*;
-use keyberon::key_code::*;
+use kanata_keyberon::key_code::*;
 use std::convert::TryFrom;
 
 // Taken from:

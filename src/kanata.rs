@@ -17,8 +17,8 @@ use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
 
-use keyberon::key_code::*;
-use keyberon::layout::*;
+use kanata_keyberon::key_code::*;
+use kanata_keyberon::layout::*;
 
 pub struct Kanata {
     pub kbd_in_path: PathBuf,

@@ -2,7 +2,7 @@
 
 use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
-use keyberon::key_code::*;
+use kanata_keyberon::key_code::*;
 use std::convert::TryFrom;
 
 /// This is a shameless copy of evdev_rs::enums::EV_KEY.

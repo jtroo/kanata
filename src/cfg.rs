@@ -1,4 +1,4 @@
-//! This parses the configuration language to create a `keyberon::layout::Layout` as well as
+//! This parses the configuration language to create a `kanata_keyberon::layout::Layout` as well as
 //! associated metadata to help with processing.
 //!
 //! How the configuration maps to keyberon:
@@ -32,7 +32,7 @@
 //! the key from `keys::OsCode`.
 //!
 //! If you want to change how the physical key `A` works on a given layer, you would change index
-//! 30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `keyberon::action::Action`.
+//! 30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `kanata_keyberon::action::Action`.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 
@@ -43,9 +43,9 @@ use crate::layers::*;
 use anyhow::{anyhow, bail, Result};
 use std::collections::HashMap;
 
-use keyberon::action::*;
-use keyberon::key_code::*;
-use keyberon::layout::*;
+use kanata_keyberon::action::*;
+use kanata_keyberon::key_code::*;
+use kanata_keyberon::layout::*;
 
 pub type KanataAction = Action<CustomAction>;
 pub type KanataLayout = Layout<256, 1, MAX_LAYERS, CustomAction>;
@@ -461,7 +461,7 @@ fn sref<T>(v: T) -> &'static T {
     Box::leak(Box::new(v))
 }
 
-/// Parse a `keyberon::action::Action` from a `SExpr`.
+/// Parse a `kanata_keyberon::action::Action` from a `SExpr`.
 fn parse_action(
     expr: &SExpr,
     aliases: &Aliases,
@@ -473,7 +473,7 @@ fn parse_action(
     }
 }
 
-/// Parse a `keyberon::action::Action` from a string.
+/// Parse a `kanata_keyberon::action::Action` from a string.
 fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataAction> {
     match ac {
         "_" => return Ok(sref(Action::Trans)),
@@ -527,7 +527,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
     }
 }
 
-/// Parse a `keyberon::action::Action` from a `SExpr::List`.
+/// Parse a `kanata_keyberon::action::Action` from a `SExpr::List`.
 fn parse_action_list(
     ac: &[SExpr],
     aliases: &Aliases,

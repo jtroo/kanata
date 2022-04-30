@@ -320,14 +320,14 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "0.1.4"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
  "crossbeam-channel",
  "encode_unicode",
  "evdev-rs",
- "keyberon",
+ "kanata-keyberon",
  "libc",
  "log",
  "native-windows-gui",
@@ -339,22 +339,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "keyberon"
+name = "kanata-keyberon"
 version = "0.2.0"
-source = "git+https://github.com/jtroo/keyberon?rev=6e110b7935#6e110b7935a297edb0ceccf5dd98a45ce5c29445"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5b844fdf952085371733ccd9c3a18c61478c1c7a2f1e6e1d32ec9156ace49a1"
 dependencies = [
  "arraydeque",
  "either",
  "embedded-hal",
  "heapless",
- "keyberon-macros",
+ "kanata-keyberon-macros",
  "usb-device",
 ]
 
 [[package]]
-name = "keyberon-macros"
+name = "kanata-keyberon-macros"
 version = "0.1.0"
-source = "git+https://github.com/jtroo/keyberon?rev=6e110b7935#6e110b7935a297edb0ceccf5dd98a45ce5c29445"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbb66d2ac35edb3fb2dc0cc48b95b53a0fb4dccc0d7d8e86c91f789170d5429c"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

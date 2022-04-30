@@ -1,5 +1,5 @@
-use keyberon::action::*;
-use keyberon::layout::*;
+use kanata_keyberon::action::*;
+use kanata_keyberon::layout::*;
 
 use crate::custom_action::*;
 

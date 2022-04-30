@@ -27,7 +27,7 @@
 ## layout
 
 - uses keyberon
-- indices of `keyberon::layout::Event::{Press, Release}(x,y)`:
+- indices of `kanata_keyberon::layout::Event::{Press, Release}(x,y)`:
 
       x = 0   # keyberon doesn't handle values larger than 255 anyway
       y = keycode % 256
