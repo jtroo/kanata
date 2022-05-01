@@ -21,6 +21,11 @@ which served as the inspiration for kanata. [Here's a comparison document](./doc
 This is tested on Windows 10 and Linux (debian). See the
 [releases page](https://github.com/jtroo/kanata/releases) for executables.
 
+Using `cargo install`:
+
+    cargo install kanata
+    kanata --cfg <conf_file> # may not have permissions on Linux, see below
+
 Build and run yourself in Linux:
 
     cargo build   # release optional, not really perf sensitive
