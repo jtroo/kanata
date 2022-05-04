@@ -56,8 +56,8 @@ release.
 - Layer toggle. Toggle a layer temporarily, e.g. for a numpad layer, arrow keys layer, or symbols layer
 - Tap-hold keys. Different behaviour when you tap a key vs. hold the key
   - example 1: remap caps lock to act as caps lock on tap but ctrl on hold
-  - example 2: remap 'A' lock to act as 'A' on tap but toggle the numpad layer on hold
-- Key chords. Send something like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
+  - example 2: remap 'A' to act as 'A' on tap but toggle the numpad layer on hold
+- Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
 - Macros. Send a sequence of keys with optional configurable delays, e.g. `http://localhost:8080`.
 - Unicode. Type any unicode character ([not guaranteed to be accepted](https://github.com/microsoft/terminal/issues/12977)
   by the target application).
