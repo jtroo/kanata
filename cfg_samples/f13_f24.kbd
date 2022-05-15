@@ -1,0 +1,12 @@
+(defcfg
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+)
+
+(defsrc
+       f13  f14  f15  f16  f17  f18  f19  f20  f21  f22  f23  f24
+)
+
+(deflayer test
+       f13  f14  f15  f16  f17  f18  f19  f20  f21  f22  f23  f24
+)
+

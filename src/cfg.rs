@@ -108,6 +108,11 @@ fn parse_jtroo() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
 }
 
+#[test]
+fn parse_f13_f24() {
+    parse_cfg(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
+}
+
 /// Parse a configuration file.
 fn parse_cfg(
     p: &std::path::Path,
