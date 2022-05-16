@@ -36,7 +36,7 @@ excellent work that had already gone into the
 [kbremap](https://github.com/timokroeger/kbremap) projects.
 
 If you want to see which features are supported in kanata, the
-[sample configuration](../cfg_samples/jtroo.kbd) and features list in the
+[sample configuration](../cfg_samples/kanata.kbd) and features list in the
 [README](../README.md#features) should hopefully provide insight.
 
 I dogfood kanata myself and it works great for my use cases. If you don't use
