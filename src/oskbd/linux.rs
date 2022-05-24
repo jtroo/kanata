@@ -13,6 +13,7 @@ use uinput_sys::uinput_user_dev;
 
 use crate::custom_action::*;
 use crate::keys::*;
+use libc::c_char;
 use libc::input_event as raw_event;
 
 // file i/o
@@ -88,10 +89,14 @@ impl KbdOut {
             }
 
             let mut uidev: uinput_user_dev = mem::zeroed();
-            uidev.name[0] = 'k' as i8;
-            uidev.name[1] = 't' as i8;
-            uidev.name[2] = 'r' as i8;
-            uidev.name[3] = 'l' as i8;
+
+            const PROG_NAME: &[u8] = "kanata".as_bytes();
+            let copy_len = std::cmp::min(PROG_NAME.len(), uidev.name.len());
+            assert!(uidev.name.len() >= copy_len);
+            for (i, c) in PROG_NAME.iter().copied().enumerate().take(copy_len) {
+                uidev.name[i] = c as c_char;
+            }
+
             uidev.id.bustype = 0x3; // BUS_USB
             uidev.id.vendor = 0x1;
             uidev.id.product = 0x1;
