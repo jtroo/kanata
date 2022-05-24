@@ -92,7 +92,7 @@ impl KbdOut {
 
             const PROG_NAME: &[u8] = "kanata".as_bytes();
             let copy_len = std::cmp::min(PROG_NAME.len(), uidev.name.len());
-            assert!(uidev.name.len() >= copy_len);
+            assert!(copy_len <= uidev.name.len());
             for (i, c) in PROG_NAME.iter().copied().enumerate().take(copy_len) {
                 uidev.name[i] = c as c_char;
             }
