@@ -131,6 +131,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "kp7" => OsCode::KEY_KP7,
         "kp8" => OsCode::KEY_KP8,
         "kp9" => OsCode::KEY_KP9,
+        "hangeul" => OsCode::KEY_HANGEUL,
+        "hanja" => OsCode::KEY_HANJA,
         _ => return None,
     })
 }
