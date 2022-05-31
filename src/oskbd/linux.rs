@@ -75,17 +75,32 @@ pub struct KbdOut {
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        let mut uinput_out_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open("/dev/uinput")?;
+        let mut uinput_out_file = OpenOptions::new().write(true).open("/dev/uinput")?;
 
         unsafe {
-            uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_SYN);
-            uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_KEY);
+            let rc = uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_SYN);
+            if rc != 0 {
+                log::error!("ui_set_evbit for EV_SYN returned {}", rc);
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "ui_set_evbit failed for EV_SYN",
+                ));
+            }
+            let rc = uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_KEY);
+            if rc != 0 {
+                log::error!("ui_set_evbit for EV_KEY returned {}", rc);
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "ui_set_evbit failed for EV_KEY",
+                ));
+            }
 
-            for key in 0..uinput_sys::KEY_MAX {
-                uinput_sys::ui_set_keybit(uinput_out_file.as_raw_fd(), key);
+            for key in 0..256 {
+                let rc = uinput_sys::ui_set_keybit(uinput_out_file.as_raw_fd(), key);
+                if rc != 0 {
+                    log::error!("ui_set_keybit for {} returned {}", key, rc);
+                    return Err(io::Error::new(io::ErrorKind::Other, "ui_set_keybit failed"));
+                }
             }
 
             let mut uidev: uinput_user_dev = mem::zeroed();
@@ -105,7 +120,11 @@ impl KbdOut {
             let uidev_bytes =
                 slice::from_raw_parts(mem::transmute(&uidev), mem::size_of::<uinput_user_dev>());
             uinput_out_file.write_all(uidev_bytes)?;
-            uinput_sys::ui_dev_create(uinput_out_file.as_raw_fd());
+            let rc = uinput_sys::ui_dev_create(uinput_out_file.as_raw_fd());
+            if rc != 0 {
+                log::error!("ui_dev_create for returned {}", rc);
+                return Err(io::Error::new(io::ErrorKind::Other, "ui_dev_create failed"));
+            }
         }
 
         Ok(KbdOut {
