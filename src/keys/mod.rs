@@ -20,7 +20,7 @@ pub use windows::*;
 /// can stay clean.
 pub fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
-        "grv" |  "`" => OsCode::KEY_GRAVE,
+        "grv" | "`" => OsCode::KEY_GRAVE,
         "1" => OsCode::KEY_1,
         "2" => OsCode::KEY_2,
         "3" => OsCode::KEY_3,
