@@ -53,16 +53,18 @@ pub type KanataLayout = Layout<256, 1, MAX_LAYERS, CustomAction>;
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
     pub key_outputs: KeyOutputs,
+    pub layer_strings: Vec<String>,
     pub items: HashMap<String, String>,
     pub layout: KanataLayout,
 }
 
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (items, mapped_keys, key_outputs, layout) = parse_cfg(p)?;
+        let (items, mapped_keys, layer_strings, key_outputs, layout) = parse_cfg(p)?;
         Ok(Self {
             items,
             mapped_keys,
+            layer_strings,
             key_outputs,
             layout,
         })
@@ -119,6 +121,7 @@ fn parse_cfg(
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
+    Vec<String>,
     KeyOutputs,
     KanataLayout,
 )> {
@@ -126,8 +129,8 @@ fn parse_cfg(
 
     let root_expr_strs = get_root_exprs(&cfg)?;
     let mut root_exprs = Vec::new();
-    for expr in root_expr_strs {
-        root_exprs.push(parse_expr(&expr)?);
+    for expr in root_expr_strs.iter() {
+        root_exprs.push(parse_expr(expr)?);
     }
 
     let cfg_expr = root_exprs
@@ -158,9 +161,10 @@ fn parse_cfg(
     }
     let (src, mapping_order) = parse_defsrc(src_expr)?;
 
+    let deflayer_filter = gen_first_atom_filter("deflayer");
     let layer_exprs = root_exprs
         .iter()
-        .filter(gen_first_atom_filter("deflayer"))
+        .filter(&deflayer_filter)
         .collect::<Vec<_>>();
     if layer_exprs.is_empty() {
         bail!("No deflayer expressions exist. At least one layer must be defined.")
@@ -170,15 +174,24 @@ fn parse_cfg(
     }
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
 
+    let layer_strings = root_expr_strs
+        .into_iter()
+        .zip(root_exprs.iter())
+        .filter(|(_, expr)| deflayer_filter(expr))
+        .map(|(s, _)| s)
+        .collect::<Vec<_>>();
+
     let alias_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
     let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
     let klayers = parse_layers(&layer_exprs, &aliases, &layer_idxs, &mapping_order)?;
+
     Ok((
         cfg,
         src,
+        layer_strings,
         create_key_outputs(&klayers),
         create_layout(klayers),
     ))
@@ -187,7 +200,7 @@ fn parse_cfg(
 /// Return a closure that filters a root expression by the content of the first element. The
 /// closure returns true if the first element is an atom that matches the input `a` and false
 /// otherwise.
-fn gen_first_atom_filter(a: &str) -> impl FnMut(&&Vec<SExpr>) -> bool {
+fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
     let a = a.to_owned();
     move |expr: &&Vec<SExpr>| {
         if expr.is_empty() {

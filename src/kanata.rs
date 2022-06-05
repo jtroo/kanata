@@ -28,6 +28,8 @@ pub struct Kanata {
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
     pub prev_keys: Vec<KeyCode>,
+    pub layer_strings: Vec<String>,
+    pub prev_layer: usize,
     last_tick: time::Instant,
 }
 
@@ -67,7 +69,9 @@ impl Kanata {
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
+            layer_strings: cfg.layer_strings,
             prev_keys: Vec::new(),
+            prev_layer: 0,
             last_tick: time::Instant::now(),
         })
     }
@@ -94,34 +98,62 @@ impl Kanata {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
-        if ms_elapsed > 0 {
-            self.last_tick = now;
-        }
         let mut live_reload_requested = false;
 
         for _ in 0..ms_elapsed {
-            // Only send on the press. No repeat action is supported for this for the time being.
-            match self.layout.tick() {
-                CustomEvent::Press(custact) => match custact {
-                    CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
-                    CustomAction::LiveReload => {
-                        live_reload_requested = true;
-                        log::info!("Requested live reload")
-                    }
-                    CustomAction::Mouse(btn) => {
-                        log::debug!("press     {:?}", btn);
-                        self.kbd_out.click_btn(*btn)?;
-                    }
-                },
-                CustomEvent::Release(CustomAction::Mouse(btn)) => {
-                    log::debug!("release   {:?}", btn);
-                    self.kbd_out.release_btn(*btn)?;
-                }
-                _ => {}
+            live_reload_requested |= self.tick_get_custom_event()?;
+
+            let cur_keys = self.handle_keystate_changes()?;
+
+            if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
+                live_reload_requested = false;
+                self.do_reload();
             }
 
-            let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+            self.prev_keys = cur_keys;
+        }
 
+        if ms_elapsed > 0 {
+            self.last_tick = now;
+
+            // Handle layer change outside the loop. I don't see any practical scenario where it
+            // would make a difference, so may as well reduce the amount of processing.
+            self.check_handle_layer_change();
+        }
+
+        Ok(())
+    }
+
+    /// Returns true if live reload is requested and false otherwise.
+    fn tick_get_custom_event(&mut self) -> Result<bool> {
+        let mut live_reload_requested = false;
+        match self.layout.tick() {
+            CustomEvent::Press(custact) => match custact {
+                // For unicode, only send on the press. No repeat action is supported for this for
+                // now.
+                CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                CustomAction::LiveReload => {
+                    live_reload_requested = true;
+                    log::info!("Requested live reload")
+                }
+                CustomAction::Mouse(btn) => {
+                    log::debug!("press     {:?}", btn);
+                    self.kbd_out.click_btn(*btn)?;
+                }
+            },
+            CustomEvent::Release(CustomAction::Mouse(btn)) => {
+                log::debug!("release   {:?}", btn);
+                self.kbd_out.release_btn(*btn)?;
+            }
+            _ => {}
+        };
+        Ok(live_reload_requested)
+    }
+
+    /// Sends OS key events according to the change in key state between the current and the
+    /// previous keyberon keystate. Returns the current keys.
+    fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
+            let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
             // Release keys that are missing from the current state but exist in the previous
             // state. It's important to iterate using a Vec because the order matters. This used to
             // use HashSet force computing `difference` but that iteration order is random which is
@@ -146,26 +178,23 @@ impl Kanata {
                     bail!("failed to press key: {:?}", e);
                 }
             }
+            Ok(cur_keys)
+    }
 
-            if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
-                live_reload_requested = false;
-                match cfg::Cfg::new_from_file(&self.cfg_path) {
-                    Err(e) => {
-                        log::error!("Could not reload configuration:\n{}", e);
-                    }
-                    Ok(cfg) => {
-                        self.layout = cfg.layout;
-                        let mut mapped_keys = MAPPED_KEYS.lock();
-                        *mapped_keys = cfg.mapped_keys;
-                        self.key_outputs = cfg.key_outputs;
-                        log::info!("Live reload successful")
-                    }
-                };
+    fn do_reload(&mut self) {
+        match cfg::Cfg::new_from_file(&self.cfg_path) {
+            Err(e) => {
+                log::error!("Could not reload configuration:\n{}", e);
             }
-
-            self.prev_keys = cur_keys;
-        }
-        Ok(())
+            Ok(cfg) => {
+                self.layout = cfg.layout;
+                let mut mapped_keys = MAPPED_KEYS.lock();
+                *mapped_keys = cfg.mapped_keys;
+                self.key_outputs = cfg.key_outputs;
+                self.layer_strings = cfg.layer_strings;
+                log::info!("Live reload successful")
+            }
+        };
     }
 
     /// This compares the active keys in the keyberon layout against the potential key outputs for
@@ -192,6 +221,18 @@ impl Kanata {
             }
         }
         Ok(())
+    }
+
+    fn check_handle_layer_change(&mut self) {
+        let cur_layer = self.layout.current_layer();
+        if cur_layer != self.prev_layer {
+            self.prev_layer = cur_layer;
+            self.print_layer(cur_layer);
+        }
+    }
+
+    fn print_layer(&self, layer: usize) {
+        log::info!("Entered layer:\n{}", self.layer_strings[layer]);
     }
 
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
