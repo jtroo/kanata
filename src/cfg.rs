@@ -6,33 +6,35 @@
 //! If the mapped keys are defined as:
 //!
 //!     (defsrc
-//!         esc 1 2 3 4
+//!         esc  1    2    3    4
 //!     )
 //!
 //! and the layers are:
 //!
 //!     (deflayer one
-//!         esc a s d f
+//!         _   a    s    d    _
 //!     )
 //!
 //!     (deflayer two
-//!         esc a o e u
+//!         _   a    o    e    _
 //!     )
 //!
 //! Then the keyberon layers will be as follows:
 //!
-//!     xx means unimportant. See `keys.rs` for reference
-//!     the numbers in `{ ... }` represent Action::KeyCode
+//!     xx means unimportant and _ means transparent.
 //!
-//!     layers[0] = { xx, esc, a, s, d, f, xx... }
-//!     layers[1] = { xx, esc, a, o, e, u, xx... }
+//!     layers[0] = { xx, esc, a, s, d, 4, xx... }
+//!     layers[1] = { xx, _  , a, s, d, _, xx... }
+//!     layers[2] = { xx, esc, a, o, e, 4, xx... }
+//!     layers[3] = { xx, _  , a, s, d, _, xx... }
 //!
 //! Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
 //! are at the beginning of the array. The column index for layers is the numerical value of
 //! the key from `keys::OsCode`.
 //!
-//! If you want to change how the physical key `A` works on a given layer, you would change index
-//! 30 (see `keys::OsCode::KEY_A`) of the desired layer to the desired `kanata_keyberon::action::Action`.
+//! In addition, there are two versions of each layer. One version delegates transparent entries to
+//! the key defined in defsrc, while the other keeps them as actually transparent. This is to match
+//! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 
@@ -48,7 +50,7 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 pub type KanataAction = Action<CustomAction>;
-pub type KanataLayout = Layout<256, 1, MAX_LAYERS, CustomAction>;
+pub type KanataLayout = Layout<256, 1, ACTUAL_NUM_LAYERS, CustomAction>;
 
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
@@ -115,7 +117,23 @@ fn parse_f13_f24() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
 }
 
-/// Parse a configuration file.
+#[test]
+fn parse_transparent_default() {
+    let (_, _, _, layers) = parse_cfg_raw(&std::path::PathBuf::from("./cfg_samples/transparent_default.kbd")).unwrap();
+    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F13)], Action::KeyCode(KeyCode::F13));
+    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F14)], Action::DefaultLayer(2));
+    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
+    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F13)], Action::Trans);
+    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F14)], Action::DefaultLayer(2));
+    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
+    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F13)], Action::DefaultLayer(0));
+    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
+    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F15)], Action::KeyCode(KeyCode::F15));
+    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F13)], Action::DefaultLayer(0));
+    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
+    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F15)], Action::Trans);
+}
+
 fn parse_cfg(
     p: &std::path::Path,
 ) -> Result<(
@@ -124,6 +142,25 @@ fn parse_cfg(
     Vec<String>,
     KeyOutputs,
     KanataLayout,
+)> {
+    let (cfg, src, layer_strings, klayers) = parse_cfg_raw(p)?;
+
+    Ok((
+        cfg,
+        src,
+        layer_strings,
+        create_key_outputs(&klayers),
+        create_layout(klayers),
+    ))
+}
+
+fn parse_cfg_raw(
+    p: &std::path::Path,
+) -> Result<(
+    HashMap<String, String>,
+    MappedKeys,
+    Vec<String>,
+    KanataLayers,
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
@@ -186,14 +223,21 @@ fn parse_cfg(
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
     let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
-    let klayers = parse_layers(&layer_exprs, &aliases, &layer_idxs, &mapping_order)?;
+
+    let defsrc_layer = parse_defsrc_layer(&src_expr, &mapping_order);
+    let klayers = parse_layers(
+        &layer_exprs,
+        &aliases,
+        &layer_idxs,
+        &mapping_order,
+        &defsrc_layer,
+    )?;
 
     Ok((
         cfg,
         src,
         layer_strings,
-        create_key_outputs(&klayers),
-        create_layout(klayers),
+        klayers,
     ))
 }
 
@@ -214,7 +258,7 @@ fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
 /// this is more convenient to work with (I find).
 enum SExpr {
@@ -573,11 +617,13 @@ fn parse_action_list(
 }
 
 fn parse_layer_base(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static KanataAction> {
-    Ok(sref(Action::DefaultLayer(layer_idx(ac_params, layers)?)))
+    Ok(sref(Action::DefaultLayer(
+        layer_idx(ac_params, layers)? * 2,
+    )))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<&'static KanataAction> {
-    Ok(sref(Action::Layer(layer_idx(ac_params, layers)?)))
+    Ok(sref(Action::Layer(layer_idx(ac_params, layers)? * 2 + 1)))
 }
 
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
@@ -712,19 +758,42 @@ fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
     }
 }
 
+fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; 256] {
+    let mut layer = empty_layer!();
+
+    // These can be default (empty) since the defsrc layer definitely won't use it.
+    let aliases = Default::default();
+    let layer_idxs = Default::default();
+
+    for (i, ac) in defsrc.iter().skip(1).enumerate() {
+        let ac = parse_action(ac, &aliases, &layer_idxs).unwrap();
+        layer[mapping_order[i]] = *ac;
+    }
+    layer
+}
+
 /// Mutates `layers::LAYERS` using the inputs.
 fn parse_layers(
     layers: &[&Vec<SExpr>],
     aliases: &Aliases,
     layer_idxs: &LayerIndexes,
     mapping_order: &[usize],
+    defsrc_layer: &[KanataAction],
 ) -> Result<KanataLayers> {
     let mut layers_cfg = new_layers();
     for (layer_level, layer) in layers.iter().enumerate() {
         // skip deflayer and name
         for (i, ac) in layer.iter().skip(2).enumerate() {
             let ac = parse_action(ac, aliases, layer_idxs)?;
-            layers_cfg[layer_level][0][mapping_order[i]] = *ac;
+            layers_cfg[layer_level * 2][0][mapping_order[i]] = *ac;
+            layers_cfg[layer_level * 2 + 1][0][mapping_order[i]] = *ac;
+        }
+        for (layer_action, defsrc_action) in
+            layers_cfg[layer_level * 2][0].iter_mut().zip(defsrc_layer)
+        {
+            if *layer_action == Action::Trans {
+                *layer_action = *defsrc_action;
+            }
         }
     }
     Ok(layers_cfg)
@@ -782,6 +851,5 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
 
 /// Create a layout from `layers::LAYERS`.
 fn create_layout(layers: KanataLayers) -> KanataLayout {
-    // LAYERS is permanently locked after this.
     Layout::new(sref(layers))
 }
