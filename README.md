@@ -77,15 +77,6 @@ add it to keyberon.
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
-### Running tests
-
-To run the tests, tell cargo to use one thread. Otherwise you may get a stack
-overflow.
-
-```
-cargo test -- --test-threads 1
-```
-
 ## How you can help
 
 - Try it out and let me know what you think

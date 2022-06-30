@@ -273,57 +273,14 @@ pub const ACTUAL_NUM_LAYERS: usize = MAX_LAYERS * 2;
 
 pub type KanataLayers = Layers<256, 1, ACTUAL_NUM_LAYERS, CustomAction>;
 
-pub fn new_layers() -> KanataLayers {
-    [
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-        [empty_layer!()],
-    ]
+pub fn new_layers() -> Box<KanataLayers> {
+    let boxed_slice: Box<[[kanata_keyberon::action::Action<CustomAction>; 256]]> = {
+        let mut layers = Vec::with_capacity(ACTUAL_NUM_LAYERS);
+        for _ in 0..ACTUAL_NUM_LAYERS {
+            layers.push(empty_layer!());
+        }
+        layers
+    }.into_boxed_slice();
+    let ptr = Box::into_raw(boxed_slice) as *mut KanataLayers;
+    unsafe { Box::from_raw(ptr) }
 }

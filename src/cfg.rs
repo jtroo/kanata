@@ -188,7 +188,7 @@ fn parse_cfg_raw(
     HashMap<String, String>,
     MappedKeys,
     Vec<String>,
-    KanataLayers,
+    Box<KanataLayers>,
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
@@ -806,7 +806,7 @@ fn parse_layers(
     layer_idxs: &LayerIndexes,
     mapping_order: &[usize],
     defsrc_layer: &[KanataAction],
-) -> Result<KanataLayers> {
+) -> Result<Box<KanataLayers>> {
     let mut layers_cfg = new_layers();
     for (layer_level, layer) in layers.iter().enumerate() {
         // skip deflayer and name
@@ -877,6 +877,6 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
 }
 
 /// Create a layout from `layers::LAYERS`.
-fn create_layout(layers: KanataLayers) -> KanataLayout {
-    Layout::new(sref(layers))
+fn create_layout(layers: Box<KanataLayers>) -> KanataLayout {
+    Layout::new(Box::leak(layers))
 }
