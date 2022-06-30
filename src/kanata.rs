@@ -153,32 +153,32 @@ impl Kanata {
     /// Sends OS key events according to the change in key state between the current and the
     /// previous keyberon keystate. Returns the current keys.
     fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
-            let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
-            // Release keys that are missing from the current state but exist in the previous
-            // state. It's important to iterate using a Vec because the order matters. This used to
-            // use HashSet force computing `difference` but that iteration order is random which is
-            // not what we want.
-            for k in &self.prev_keys {
-                if cur_keys.contains(k) {
-                    continue;
-                }
-                log::debug!("release   {:?}", k);
-                if let Err(e) = self.kbd_out.release_key(k.into()) {
-                    bail!("failed to release key: {:?}", e);
-                }
+        let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+        // Release keys that are missing from the current state but exist in the previous
+        // state. It's important to iterate using a Vec because the order matters. This used to
+        // use HashSet force computing `difference` but that iteration order is random which is
+        // not what we want.
+        for k in &self.prev_keys {
+            if cur_keys.contains(k) {
+                continue;
             }
-            // Press keys that exist in the current state but are missing from the previous state.
-            // Comment above regarding Vec/HashSet also applies here.
-            for k in &cur_keys {
-                if self.prev_keys.contains(k) {
-                    continue;
-                }
-                log::debug!("press     {:?}", k);
-                if let Err(e) = self.kbd_out.press_key(k.into()) {
-                    bail!("failed to press key: {:?}", e);
-                }
+            log::debug!("release   {:?}", k);
+            if let Err(e) = self.kbd_out.release_key(k.into()) {
+                bail!("failed to release key: {:?}", e);
             }
-            Ok(cur_keys)
+        }
+        // Press keys that exist in the current state but are missing from the previous state.
+        // Comment above regarding Vec/HashSet also applies here.
+        for k in &cur_keys {
+            if self.prev_keys.contains(k) {
+                continue;
+            }
+            log::debug!("press     {:?}", k);
+            if let Err(e) = self.kbd_out.press_key(k.into()) {
+                bail!("failed to press key: {:?}", e);
+            }
+        }
+        Ok(cur_keys)
     }
 
     fn do_reload(&mut self) {

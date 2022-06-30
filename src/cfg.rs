@@ -119,21 +119,43 @@ fn parse_f13_f24() {
 
 #[test]
 fn parse_transparent_default() {
-    let (_, _, _, layers) = parse_cfg_raw(&std::path::PathBuf::from("./cfg_samples/transparent_default.kbd")).unwrap();
-    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F13)], Action::KeyCode(KeyCode::F13));
-    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F14)], Action::DefaultLayer(2));
+    let (_, _, _, layers) = parse_cfg_raw(&std::path::PathBuf::from(
+        "./cfg_samples/transparent_default.kbd",
+    ))
+    .unwrap();
+    assert_eq!(
+        layers[0][0][usize::from(OsCode::KEY_F13)],
+        Action::KeyCode(KeyCode::F13)
+    );
+    assert_eq!(
+        layers[0][0][usize::from(OsCode::KEY_F14)],
+        Action::DefaultLayer(2)
+    );
     assert_eq!(layers[0][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
     assert_eq!(layers[1][0][usize::from(OsCode::KEY_F13)], Action::Trans);
-    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F14)], Action::DefaultLayer(2));
+    assert_eq!(
+        layers[1][0][usize::from(OsCode::KEY_F14)],
+        Action::DefaultLayer(2)
+    );
     assert_eq!(layers[1][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
-    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F13)], Action::DefaultLayer(0));
+    assert_eq!(
+        layers[2][0][usize::from(OsCode::KEY_F13)],
+        Action::DefaultLayer(0)
+    );
     assert_eq!(layers[2][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
-    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F15)], Action::KeyCode(KeyCode::F15));
-    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F13)], Action::DefaultLayer(0));
+    assert_eq!(
+        layers[2][0][usize::from(OsCode::KEY_F15)],
+        Action::KeyCode(KeyCode::F15)
+    );
+    assert_eq!(
+        layers[3][0][usize::from(OsCode::KEY_F13)],
+        Action::DefaultLayer(0)
+    );
     assert_eq!(layers[3][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
     assert_eq!(layers[3][0][usize::from(OsCode::KEY_F15)], Action::Trans);
 }
 
+#[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(
     p: &std::path::Path,
 ) -> Result<(
@@ -154,6 +176,7 @@ fn parse_cfg(
     ))
 }
 
+#[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw(
     p: &std::path::Path,
 ) -> Result<(
@@ -228,7 +251,7 @@ fn parse_cfg_raw(
         .collect::<Vec<_>>();
     let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
 
-    let defsrc_layer = parse_defsrc_layer(&src_expr, &mapping_order);
+    let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order);
     let klayers = parse_layers(
         &layer_exprs,
         &aliases,
@@ -237,12 +260,7 @@ fn parse_cfg_raw(
         &defsrc_layer,
     )?;
 
-    Ok((
-        cfg,
-        src,
-        layer_strings,
-        klayers,
-    ))
+    Ok((cfg, src, layer_strings, klayers))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
