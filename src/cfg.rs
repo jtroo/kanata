@@ -215,7 +215,11 @@ fn parse_cfg_raw(
         .into_iter()
         .zip(root_exprs.iter())
         .filter(|(_, expr)| deflayer_filter(expr))
-        .map(|(s, _)| s)
+        .flat_map(|(s, _)| {
+            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
+            // two versions of each layer.
+            std::iter::repeat(s).take(2)
+        })
         .collect::<Vec<_>>();
 
     let alias_exprs = root_exprs
