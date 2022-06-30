@@ -109,7 +109,9 @@ fn parse_default() {
 
 #[test]
 fn parse_jtroo() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
+    let (_, _, layer_strings, _, _) =
+        parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
+    assert_eq!(layer_strings.len(), 16);
 }
 
 #[test]
@@ -119,10 +121,13 @@ fn parse_f13_f24() {
 
 #[test]
 fn parse_transparent_default() {
-    let (_, _, _, layers) = parse_cfg_raw(&std::path::PathBuf::from(
+    let (_, _, layer_strings, layers) = parse_cfg_raw(&std::path::PathBuf::from(
         "./cfg_samples/transparent_default.kbd",
     ))
     .unwrap();
+
+    assert_eq!(layer_strings.len(), 4);
+
     assert_eq!(
         layers[0][0][usize::from(OsCode::KEY_F13)],
         Action::KeyCode(KeyCode::F13)
