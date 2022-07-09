@@ -145,6 +145,14 @@
   ;; not be automatically repeated by holding the key down. The alias name
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
   🙁 (unicode 🙁)
+
+  ;; Having a cmd action in your configuration without explicitly enabling
+  ;; `danger-enable-cmd` will make kanata refuse to load your configuration.
+  ;; So these are commented out since commands aren't allowed by this
+  ;; configuration file.
+  ;;
+  ;; cm1 (cmd bash -c "echo hello world")
+  ;; cm2 (cmd rm -fr /tmp/testing)
 )
 
 ;; _ means transparent. The key on the base layer will be used instead.
