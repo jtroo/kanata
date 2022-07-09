@@ -41,3 +41,6 @@ native-windows-gui = { version = "1.0.12", features = [
     "message-window",
     "no-styling",
 ] }
+
+[features]
+cmd = []

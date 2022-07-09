@@ -262,7 +262,7 @@ fn parse_cfg_raw(
         mapping_order,
         defsrc_layer,
         is_cmd_enabled: {
-            #[cfg(feature = "enable_cmd")]
+            #[cfg(feature = "cmd")]
             {
                 cfg.get("danger-enable-cmd")
                     .map(|s| {
@@ -275,7 +275,7 @@ fn parse_cfg_raw(
                     })
                     .unwrap_or(false)
             }
-            #[cfg(not(feature = "enable_cmd"))]
+            #[cfg(not(feature = "cmd"))]
             {
                 log::info!("NOTE: kanata was compiled to never allow cmd");
                 false
@@ -715,7 +715,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "unicode" => parse_unicode(&ac[1..]),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode\n\tcmd",
             ac_type
         ),
     }

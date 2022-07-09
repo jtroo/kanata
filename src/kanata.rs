@@ -141,7 +141,7 @@ impl Kanata {
                     self.kbd_out.click_btn(*btn)?;
                 }
                 CustomAction::Cmd(cmd) => {
-                    todo!("{:?}", cmd)
+                    run_cmd(cmd);
                 }
             },
             CustomEvent::Release(CustomAction::Mouse(btn)) => {
@@ -396,3 +396,40 @@ impl Kanata {
         Ok(())
     }
 }
+
+#[cfg(feature = "cmd")]
+fn run_cmd(cmd_and_args: &[String]) {
+    let mut args = cmd_and_args.iter().cloned();
+    let mut cmd = std::process::Command::new(
+        args.next()
+            .expect("Parsing should have forbidden empty cmd"),
+    );
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    std::thread::spawn(move || {
+        match cmd.output() {
+            Ok(output) => {
+                log::info!(
+                    "Successfully ran cmd {}\nstdout:\n{}\nstderr:\n{}",
+                    {
+                        let mut printable_cmd = Vec::new();
+                        printable_cmd.push(format!("{:?}", cmd.get_program()));
+                        let printable_cmd = cmd.get_args().fold(printable_cmd, |mut cmd, arg| {
+                            cmd.push(format!("{:?}", arg));
+                            cmd
+                        });
+                        printable_cmd.join(" ")
+                    },
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            Err(e) => log::error!("Failed to execute cmd: {}", e),
+        };
+    });
+}
+
+#[cfg(not(feature = "cmd"))]
+fn run_cmd(_cmd_and_args: &[String]) {}
