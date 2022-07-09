@@ -95,7 +95,7 @@ impl KbdOut {
                 ));
             }
 
-            for key in 0..256 {
+            for key in 0..300 {
                 let rc = uinput_sys::ui_set_keybit(uinput_out_file.as_raw_fd(), key);
                 if rc != 0 {
                     log::error!("ui_set_keybit for {} returned {}", key, rc);
