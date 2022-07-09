@@ -372,6 +372,46 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
                 token,
                 expr
             )
+        } else if token.starts_with('"') {
+            let mut token = token
+                .strip_prefix('"')
+                .expect("Dquote prefix was checked. Cosmic ray?");
+            let mut quoted_tokens = vec![];
+            loop {
+                let num_dquotes = token.matches('"').count();
+                // seek to end of quoted string
+                match num_dquotes {
+                    0 => {
+                        quoted_tokens.push(token);
+                        token = match tokens.next() {
+                            Some(t) => t,
+                            None => {
+                                bail!("Unterminated quoted string: {}", quoted_tokens.join(" "))
+                            }
+                        };
+                    }
+                    1 => {
+                        if !token.ends_with('"') {
+                            bail!("Invalid end of quoted string {}", token);
+                        }
+                        quoted_tokens.push(
+                            token
+                                .strip_suffix('"')
+                                .expect("Dquote suffix was checked. Cosmic ray?"),
+                        );
+                        break;
+                    }
+                    _ => bail!(
+                        "Invalid quoted string \"{} {}",
+                        quoted_tokens.join(" "),
+                        token
+                    ),
+                }
+            }
+            ret.push(SExpr::Atom(quoted_tokens.join(" ")));
+        } else if token.contains('"') {
+            // token contains " but does not start with "; not valid
+            bail!("Invalid start of quoted string: {}", token);
         } else {
             ret.push(SExpr::Atom(token.to_owned()));
         }

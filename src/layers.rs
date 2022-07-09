@@ -280,7 +280,8 @@ pub fn new_layers() -> Box<KanataLayers> {
             layers.push(empty_layer!());
         }
         layers
-    }.into_boxed_slice();
+    }
+    .into_boxed_slice();
     let ptr = Box::into_raw(boxed_slice) as *mut KanataLayers;
     unsafe { Box::from_raw(ptr) }
 }
