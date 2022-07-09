@@ -63,6 +63,7 @@ release.
   by the target application).
 - Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
 - Live reloading of the configuration for easy testing of your changes.
+- Run binaries from kanata (disabled by default)
 
 ## Contributing
 
@@ -81,9 +82,6 @@ add it to keyberon.
 
 - Try it out and let me know what you think
 - Add support for MacOS
-- Dead keys: I only use the US layout and have no idea if kanata handles dead
-  keys correctly. If it's doing something wrong, please file a bug or feel free
-  to contribute a fix.
 
 ## What does the name mean?
 
@@ -151,6 +149,7 @@ was a huge contrast. I think using Rust will lower the barrier to entry for
 contributions to a project like this.
 
 ## Similar Projects
+
 - [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata.
 - [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware.
 - [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware.
