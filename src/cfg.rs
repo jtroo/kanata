@@ -264,16 +264,17 @@ fn parse_cfg_raw(
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
-                cfg.get("danger-enable-cmd")
-                    .map(|s| {
+                cfg.get("danger-enable-cmd").map_or(
+                    false,
+                    |s| {
                         if s == "yes" {
                             log::warn!("DANGER! cmd action is enabled.");
                             true
                         } else {
                             false
                         }
-                    })
-                    .unwrap_or(false)
+                    },
+                )
             }
             #[cfg(not(feature = "cmd"))]
             {
