@@ -101,7 +101,7 @@ impl Kanata {
         let mut live_reload_requested = false;
 
         for _ in 0..ms_elapsed {
-            live_reload_requested |= self.tick_get_custom_event()?;
+            live_reload_requested |= self.tick_handle_custom_event()?;
 
             let cur_keys = self.handle_keystate_changes()?;
 
@@ -125,7 +125,7 @@ impl Kanata {
     }
 
     /// Returns true if live reload is requested and false otherwise.
-    fn tick_get_custom_event(&mut self) -> Result<bool> {
+    fn tick_handle_custom_event(&mut self) -> Result<bool> {
         let mut live_reload_requested = false;
         match self.layout.tick() {
             CustomEvent::Press(custact) => match custact {
@@ -139,6 +139,9 @@ impl Kanata {
                 CustomAction::Mouse(btn) => {
                     log::debug!("press     {:?}", btn);
                     self.kbd_out.click_btn(*btn)?;
+                }
+                CustomAction::Cmd(cmd) => {
+                    todo!("{:?}", cmd)
                 }
             },
             CustomEvent::Release(CustomAction::Mouse(btn)) => {

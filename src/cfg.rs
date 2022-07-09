@@ -254,16 +254,37 @@ fn parse_cfg_raw(
         .iter()
         .filter(gen_first_atom_filter("defalias"))
         .collect::<Vec<_>>();
-    let aliases = parse_aliases(&alias_exprs, &layer_idxs)?;
-
     let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order);
-    let klayers = parse_layers(
-        &layer_exprs,
-        &aliases,
-        &layer_idxs,
-        &mapping_order,
-        &defsrc_layer,
-    )?;
+    let mut parsed_state = ParsedState {
+        layer_exprs,
+        aliases: Default::default(),
+        layer_idxs,
+        mapping_order,
+        defsrc_layer,
+        is_cmd_enabled: {
+            #[cfg(feature = "enable_cmd")]
+            {
+                cfg.get("danger-enable-cmd")
+                    .map(|s| {
+                        if s == "yes" {
+                            log::warn!("DANGER! cmd action is enabled.");
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .unwrap_or(false)
+            }
+            #[cfg(not(feature = "enable_cmd"))]
+            {
+                log::info!("NOTE: kanata was compiled to never allow cmd");
+                false
+            }
+        },
+    };
+    parse_aliases(&alias_exprs, &mut parsed_state)?;
+
+    let klayers = parse_layers(&parsed_state)?;
 
     Ok((cfg, src, layer_strings, klayers))
 }
@@ -557,9 +578,32 @@ fn get_atom(a: &SExpr) -> Option<String> {
     }
 }
 
+#[derive(Debug)]
+struct ParsedState<'a> {
+    layer_exprs: Vec<&'a Vec<SExpr>>,
+    aliases: Aliases,
+    layer_idxs: LayerIndexes,
+    mapping_order: Vec<usize>,
+    defsrc_layer: [KanataAction; 256],
+    is_cmd_enabled: bool,
+}
+
+impl<'a> Default for ParsedState<'a> {
+    fn default() -> Self {
+        Self {
+            layer_exprs: Default::default(),
+            aliases: Default::default(),
+            layer_idxs: Default::default(),
+            mapping_order: Default::default(),
+            defsrc_layer: empty_layer!(),
+            is_cmd_enabled: false,
+        }
+    }
+}
+
 /// Parse alias->action mappings from multiple exprs starting with defalias.
-fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Result<Aliases> {
-    let mut aliases = HashMap::new();
+/// Mutates the input `parsed_state` by storing aliases inside.
+fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Result<()> {
     for expr in exprs {
         let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
             Ok(s) => s,
@@ -576,13 +620,13 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], layers: &HashMap<String, usize>) -> Resu
                 SExpr::Atom(a) => a,
                 _ => bail!("Alias keys must be atoms. Invalid alias: {:?}", alias),
             };
-            let action = parse_action(action, &aliases, layers)?;
-            if aliases.insert(alias.into(), action).is_some() {
+            let action = parse_action(action, parsed_state)?;
+            if parsed_state.aliases.insert(alias.into(), action).is_some() {
                 bail!("Duplicate alias: {}", alias);
             }
         }
     }
-    Ok(aliases)
+    Ok(())
 }
 
 /// Returns a `&'static T` by leaking a box.
@@ -591,14 +635,10 @@ fn sref<T>(v: T) -> &'static T {
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr`.
-fn parse_action(
-    expr: &SExpr,
-    aliases: &Aliases,
-    layers: &LayerIndexes,
-) -> Result<&'static KanataAction> {
+fn parse_action(expr: &SExpr, parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     match expr {
-        SExpr::Atom(a) => parse_action_atom(a, aliases),
-        SExpr::List(l) => parse_action_list(l, aliases, layers),
+        SExpr::Atom(a) => parse_action_atom(a, &parsed_state.aliases),
+        SExpr::List(l) => parse_action_list(l, parsed_state),
     }
 }
 
@@ -657,11 +697,7 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr::List`.
-fn parse_action_list(
-    ac: &[SExpr],
-    aliases: &Aliases,
-    layers: &LayerIndexes,
-) -> Result<&'static KanataAction> {
+fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac.is_empty() {
         return Ok(sref(Action::NoOp));
     }
@@ -669,13 +705,15 @@ fn parse_action_list(
         SExpr::Atom(a) => a,
         _ => bail!("Action list must start with an atom"),
     };
+    let layers = &parsed_state.layer_idxs;
     match ac_type.as_str() {
         "layer-switch" => parse_layer_base(&ac[1..], layers),
         "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
-        "tap-hold" => parse_tap_hold(&ac[1..], aliases, layers),
-        "multi" => parse_multi(&ac[1..], aliases, layers),
-        "macro" => parse_macro(&ac[1..], aliases, layers),
+        "tap-hold" => parse_tap_hold(&ac[1..], parsed_state),
+        "multi" => parse_multi(&ac[1..], parsed_state),
+        "macro" => parse_macro(&ac[1..], parsed_state),
         "unicode" => parse_unicode(&ac[1..]),
+        "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode",
             ac_type
@@ -715,8 +753,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
 
 fn parse_tap_hold(
     ac_params: &[SExpr],
-    aliases: &Aliases,
-    layers: &LayerIndexes,
+    parsed_state: &ParsedState,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
@@ -725,8 +762,8 @@ fn parse_tap_hold(
         parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
     let hold_timeout =
         parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
-    let tap_action = parse_action(&ac_params[2], aliases, layers)?;
-    let hold_action = parse_action(&ac_params[3], aliases, layers)?;
+    let tap_action = parse_action(&ac_params[2], parsed_state)?;
+    let hold_action = parse_action(&ac_params[3], parsed_state)?;
     Ok(sref(Action::HoldTap {
         config: HoldTapConfig::Default,
         tap_hold_interval: tap_timeout,
@@ -743,27 +780,19 @@ fn parse_timeout(a: &SExpr) -> Result<u16> {
     }
 }
 
-fn parse_multi(
-    ac_params: &[SExpr],
-    aliases: &Aliases,
-    layers: &LayerIndexes,
-) -> Result<&'static KanataAction> {
+fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("multi expects at least one atom after it")
     }
     let mut actions = Vec::new();
     for expr in ac_params {
-        let ac = parse_action(expr, aliases, layers)?;
+        let ac = parse_action(expr, parsed_state)?;
         actions.push(*ac);
     }
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
-fn parse_macro(
-    ac_params: &[SExpr],
-    aliases: &Aliases,
-    layers: &LayerIndexes,
-) -> Result<&'static KanataAction> {
+fn parse_macro(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("macro expects at least one atom after it")
     }
@@ -775,7 +804,7 @@ fn parse_macro(
             });
             continue;
         }
-        match parse_action(expr, aliases, layers)? {
+        match parse_action(expr, parsed_state)? {
             Action::KeyCode(kc) => {
                 // Should note that I tried `SequenceEvent::Tap` initially but it seems to be buggy
                 // so I changed the code to use individual press and release. The SequenceEvent
@@ -825,41 +854,56 @@ fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
     }
 }
 
+fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static KanataAction> {
+    const ERR_STR: &str = "cmd expects one or more strings";
+    if !is_cmd_enabled {
+        bail!("cmd is not enabled but cmd action is specified somewhere");
+    }
+    if ac_params.is_empty() {
+        bail!(ERR_STR);
+    }
+    Ok(sref(Action::Custom(CustomAction::Cmd(Box::leak(
+        ac_params
+            .iter()
+            .try_fold(Vec::new(), |mut v, p| {
+                if let SExpr::Atom(s) = p {
+                    v.push(s.clone());
+                    Ok(v)
+                } else {
+                    bail!("{}, found a list", ERR_STR);
+                }
+            })?
+            .into_boxed_slice(),
+    )))))
+}
+
 fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; 256] {
     let mut layer = empty_layer!();
 
     // These can be default (empty) since the defsrc layer definitely won't use it.
-    let aliases = Default::default();
-    let layer_idxs = Default::default();
-
     for (i, ac) in defsrc.iter().skip(1).enumerate() {
-        let ac = parse_action(ac, &aliases, &layer_idxs).unwrap();
+        let ac = parse_action(ac, &Default::default()).unwrap();
         layer[mapping_order[i]] = *ac;
     }
     layer
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
-fn parse_layers(
-    layers: &[&Vec<SExpr>],
-    aliases: &Aliases,
-    layer_idxs: &LayerIndexes,
-    mapping_order: &[usize],
-    defsrc_layer: &[KanataAction],
-) -> Result<Box<KanataLayers>> {
+fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
     let mut layers_cfg = new_layers();
-    for (layer_level, layer) in layers.iter().enumerate() {
+    for (layer_level, layer) in parsed_state.layer_exprs.iter().enumerate() {
         // skip deflayer and name
         for (i, ac) in layer.iter().skip(2).enumerate() {
-            let ac = parse_action(ac, aliases, layer_idxs)?;
-            layers_cfg[layer_level * 2][0][mapping_order[i]] = *ac;
-            layers_cfg[layer_level * 2 + 1][0][mapping_order[i]] = *ac;
+            let ac = parse_action(ac, parsed_state)?;
+            layers_cfg[layer_level * 2][0][parsed_state.mapping_order[i]] = *ac;
+            layers_cfg[layer_level * 2 + 1][0][parsed_state.mapping_order[i]] = *ac;
         }
-        for (layer_action, defsrc_action) in
-            layers_cfg[layer_level * 2][0].iter_mut().zip(defsrc_layer)
+        for (layer_action, defsrc_action) in layers_cfg[layer_level * 2][0]
+            .iter_mut()
+            .zip(parsed_state.defsrc_layer)
         {
             if *layer_action == Action::Trans {
-                *layer_action = *defsrc_action;
+                *layer_action = defsrc_action;
             }
         }
     }

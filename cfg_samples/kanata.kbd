@@ -19,6 +19,12 @@
   ;; Windows doesn't need any input/output configuration entries
 
   ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
+
+  ;; Optional confguration: enable kanata to execute commands.
+  ;; It is also not enabled in this sample configuration.
+  ;; This is dangerous because it allows kanata to execute arbitrary commands.
+  ;; Uncomment below to enable command execution:
+  ;; danger-enable-cmd yes
 )
 
 ;; Only one defsrc is allowed.
