@@ -44,3 +44,7 @@ native-windows-gui = { version = "1.0.12", features = [
 
 [features]
 cmd = []
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
