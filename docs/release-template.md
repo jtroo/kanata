@@ -29,6 +29,12 @@ sudo ./kanata --cfg <cfg_file>`
 
 To avoid requiring `sudo`, [follow the instructions here](https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux).
 
+# cmd_allowed variants
+
+The binaries `kanata_cmd_allowed` and `kanata_cmd_allowed.exe` are conditionally compiled with the `cmd` action enabled.
+
+Using the regular binaries, there is no way to get the `cmd` action to work. This action is restricted behind conditional compilation because I consider the action to be a security risk that should be explicitly opted into and completely forbidden by default.
+
 # sha256 checksums
 
 ```
