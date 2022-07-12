@@ -108,10 +108,6 @@
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
-
-  ;; Chords. These ones are used for copying/pasting from some Linux terminals.
-  csv C-S-v
-  csc C-S-c
 )
 
 (defalias
@@ -131,11 +127,20 @@
   ;; for modifiers like shift. You probably want to use macro instead.
   ;;
   ;; Chording can be more succinctly described by the modifier prefixes
-  ;; `C-`, `A-`, and `S-` for lctrl, lalt, lshift, but are possible by using
-  ;; multi as well.
+  ;; `C-`, `A-`, `S-`, and `M-` for lctrl, lalt, lshift, lmeta, but are possible
+  ;; by using the `multi` as well. The lmeta key is also known by some other
+  ;; names: "Windows", "GUI", "Command", "Super".
   ;;
   ;; One use case for multi could be typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
+
+  ;; Chords using the shortuct. These ones are used for copying/pasting
+  ;; from some Linux terminals.
+  csv C-S-v
+  csc C-S-c
+
+  ;; Windows shortcut for displaying all windows
+  win M-tab
 
   ;; macro accepts keys, chords, and numbers (a delay in ms). Note that numbers
   ;; will be parsed as delays, so they will need to be aliased to be used.

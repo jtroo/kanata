@@ -688,6 +688,12 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
             }
             key_stack.push(KeyCode::LAlt);
             rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("M-") {
+            if key_stack.contains(&KeyCode::LGui) {
+                bail!("Redundant \"M-\" in {}", ac)
+            }
+            key_stack.push(KeyCode::LGui);
+            rem = rest;
         } else if let Some(oscode) = str_to_oscode(rem) {
             key_stack.push(oscode.into());
             return Ok(sref(Action::MultipleKeyCodes(sref(key_stack).as_ref())));
