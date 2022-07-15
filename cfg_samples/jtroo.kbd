@@ -45,6 +45,7 @@
   { S-[
   } S-]
   : S-;
+  ssp (tap-hold 200 200 spc lsft)
 )
 
 (defalias
@@ -57,7 +58,7 @@
   tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
-  lctl lmet lalt           spc            rsft rmet rctl
+  lctl lmet lalt           @ssp           rsft rmet rctl
 )
 
 (deflayer qwerty
@@ -76,12 +77,10 @@
   _    _    _              _              _    _    _
 )
 
-(defalias win M-tab)
-
 (deflayer numbers
   _    _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
-  _    _    _    _    _    XX   _    kp4  kp5  kp6  -    _    _    _
-  _    _    C-z  C-y  @win XX   _    kp1  kp2  kp3  +    _    _
+  _    _    C-S-tab C-tab _ XX  _    kp4  kp5  kp6  -    _    _    _
+  _    _    C-z  C-y  M-tab XX  _    kp1  kp2  kp3  +    _    _
   _    C-z  C-x  C-c  C-v  XX   _    kp0  kp0  .    /    _
   _    _    _              _              _    _    _
 )
@@ -89,8 +88,8 @@
 (deflayer misc
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    ins  @{   @}    [   ]    _    _    _
-  _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
-  _    C-z  C-x  C-c  C-v  _    _    _    _    _    _    _
+  _    _    _    _    C-u  _    C-bspc bspc esc ret _    _    _
+  _    C-z  C-x  C-c  C-v  _    _    del  _    _    _    _
   _    _    _              _              _    _    _
 )
 
@@ -104,9 +103,9 @@
 
 (deflayer arrows
   _    f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12  _
-  _    _    _    _    _    _    _    pgup up   pgdn _    _    _    _
+  _    _    _    _    _    _    C-S-tab pgup up pgdn C-tab _  _    _
   _    _    _    _    _    _    home left down rght end  _    _
-  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    C-w  _    _    _
   _    _    _              _              _    _    _
 )
 
