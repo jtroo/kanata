@@ -160,6 +160,18 @@ fn parse_transparent_default() {
     assert_eq!(layers[3][0][usize::from(OsCode::KEY_F15)], Action::Trans);
 }
 
+#[test]
+fn disallow_nested_tap_hold() {
+    // Note: unwrap_err won't compile due to const generic trait problem, so had to use match
+    // instead.
+    match parse_cfg(&std::path::PathBuf::from(
+        "./test_cfgs/nested_tap_hold.kbd"
+    )).map_err(|e| e.to_string()) {
+        Ok(_) => panic!("tap-hold"),
+        Err(e) => assert!(e.to_string().contains("tap-hold")),
+    }
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(
     p: &std::path::Path,
@@ -264,17 +276,14 @@ fn parse_cfg_raw(
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
-                cfg.get("danger-enable-cmd").map_or(
-                    false,
-                    |s| {
-                        if s == "yes" {
-                            log::warn!("DANGER! cmd action is enabled.");
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                )
+                cfg.get("danger-enable-cmd").map_or(false, |s| {
+                    if s == "yes" {
+                        log::warn!("DANGER! cmd action is enabled.");
+                        true
+                    } else {
+                        false
+                    }
+                })
             }
             #[cfg(not(feature = "cmd"))]
             {
@@ -771,6 +780,10 @@ fn parse_tap_hold(
         parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
     let tap_action = parse_action(&ac_params[2], parsed_state)?;
     let hold_action = parse_action(&ac_params[3], parsed_state)?;
+    if matches!(tap_action, Action::HoldTap { .. }) || matches!(hold_action, Action::HoldTap { .. })
+    {
+        bail!("tap-hold is not allowed inside of tap-hold")
+    }
     Ok(sref(Action::HoldTap {
         config: HoldTapConfig::Default,
         tap_hold_interval: tap_timeout,
