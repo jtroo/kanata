@@ -202,11 +202,39 @@
   _    _    _              _              _    _    _
 )
 
+(defalias
+  ;; Alias for one-shot which will activate an action until either the timeout
+  ;; expires or a different key is pressed. The timeout is the first parameter
+  ;; and the action is the second parameter.
+  ;;
+  ;; The intended use cases are pressing a modifier for exactly one key or
+  ;; switching to another layer for exactly one key.
+  ;;
+  ;; If a one-shot key is held then it will act as a regular key. E.g. for os1
+  ;; below, holding an @os1 key will keep lsft held and holding an @os2 key
+  ;; will keep the layer set to misc.
+  os1 (one-shot 500 lsft)
+  os2 (one-shot 500 C-S-lalt)
+  os3 (one-shot 500 (layer-toggle misc))
+
+  ;; Alias for tap-dance which will activate one of the actions in the action
+  ;; list, depending on how many taps were done. Tapping once will output the
+  ;; first action and tapping N times will output the N'th action.
+  ;;
+  ;; The first parameter is a timeout. Tapping the same tap-dance key again
+  ;; within the timeout will reset the timeout and advance the tap-dance to the
+  ;; next key.
+  ;;
+  ;; The action activates either when the timeout expires or when a key that is
+  ;; different from the tap-dance key is pressed.
+  td (tap-dance 200 (a b c d spc))
+)
+
 (deflayer misc
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    ins  @{   @}    [    ]    _    _    _
   _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
-  _    C-z  C-x  C-c  C-v  _    _    _    _    _    _    _
+  _    C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
   _    _    _              _              _    _    _
 )
 
