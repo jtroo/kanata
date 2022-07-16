@@ -371,10 +371,11 @@ impl Kanata {
                     PRESSED_KEYS.lock().remove(&key_event.code);
                 }
                 KeyValue::Press => {
-                    if PRESSED_KEYS.lock().contains(&key_event.code) {
+                    let mut pressed_keys = PRESSED_KEYS.lock();
+                    if  pressed_keys.contains(&key_event.code) {
                         key_event.value = KeyValue::Repeat;
                     } else {
-                        PRESSED_KEYS.lock().insert(key_event.code);
+                        pressed_keys.insert(key_event.code);
                     }
                 }
                 _ => {}
