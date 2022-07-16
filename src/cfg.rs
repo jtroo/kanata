@@ -164,9 +164,9 @@ fn parse_transparent_default() {
 fn disallow_nested_tap_hold() {
     // Note: unwrap_err won't compile due to const generic trait problem, so had to use match
     // instead.
-    match parse_cfg(&std::path::PathBuf::from(
-        "./test_cfgs/nested_tap_hold.kbd"
-    )).map_err(|e| e.to_string()) {
+    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
+        .map_err(|e| e.to_string())
+    {
         Ok(_) => panic!("tap-hold"),
         Err(e) => assert!(e.to_string().contains("tap-hold")),
     }
@@ -729,6 +729,8 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "multi" => parse_multi(&ac[1..], parsed_state),
         "macro" => parse_macro(&ac[1..], parsed_state),
         "unicode" => parse_unicode(&ac[1..]),
+        "one-shot" => parse_one_shot(&ac[1..], parsed_state),
+        "tap-dance" => parse_tap_dance(&ac[1..], parsed_state),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode\n\tcmd",
@@ -895,6 +897,80 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
             })?
             .into_boxed_slice(),
     )))))
+}
+
+fn parse_one_shot(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "one-shot expects a timeout (number) followed by an action";
+    if ac_params.len() != 2 {
+        bail!(ERR_MSG);
+    }
+
+    use std::str::FromStr;
+    let mut params = ac_params.iter();
+    let timeout = match params.next().expect("iter had len 0 len==2 was checked") {
+        SExpr::Atom(s) => match u16::from_str(s) {
+            Ok(t) => t,
+            Err(e) => {
+                log::error!("{}", e);
+                bail!(ERR_MSG);
+            }
+        },
+        _ => bail!(ERR_MSG),
+    };
+
+    let action = parse_action(
+        params.next().expect("iter had len 1 len==2 was checked"),
+        parsed_state,
+    )?;
+    if !matches!(
+        action,
+        Action::Layer(..) | Action::KeyCode(..) | Action::MultipleKeyCodes(..)
+    ) {
+        dbg!(action);
+        bail!("one-shot is only allowed to contain layer-toggle, a keycode, or a chord");
+    }
+
+    Ok(sref(Action::OneShot { timeout, action }))
+}
+
+fn parse_tap_dance(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "tap-dance expects a timeout (number) followed by a list of actions";
+    if ac_params.len() != 2 {
+        bail!(ERR_MSG);
+    }
+
+    use std::str::FromStr;
+    let mut params = ac_params.iter();
+    let timeout = match params.next().expect("iter had len 0 len==2 was checked") {
+        SExpr::Atom(s) => match u16::from_str(s) {
+            Ok(t) => t,
+            Err(e) => {
+                log::error!("{}", e);
+                bail!(ERR_MSG);
+            }
+        },
+        _ => bail!(ERR_MSG),
+    };
+
+    let actions = match params.next().expect("iter had len 1 len==2 was checked") {
+        SExpr::List(tap_dance_actions) => {
+            let mut actions = Vec::new();
+            for expr in tap_dance_actions {
+                let ac = parse_action(expr, parsed_state)?;
+                actions.push(ac);
+            }
+            sref(actions.into_boxed_slice())
+        }
+        _ => bail!(ERR_MSG),
+    };
+
+    Ok(sref(Action::TapDance { timeout, actions }))
 }
 
 fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; 256] {
