@@ -52,16 +52,18 @@ release.
 
 - Human readable configuration file. [Simple example](./cfg_samples/simple.kbd).
   [All features showcase](./cfg_samples/kanata.kbd).
+- Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
+- Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
+- One-shot keys. Activate a modifier like `LShift` for exactly one subsequent keypress.
 - Layer switching. Change base layers between e.g. qwerty layer, dvorak layer, experimental layout layer
 - Layer toggle. Toggle a layer temporarily, e.g. for a numpad layer, arrow keys layer, or symbols layer
 - Tap-hold keys. Different behaviour when you tap a key vs. hold the key
   - example 1: remap caps lock to act as caps lock on tap but ctrl on hold
   - example 2: remap 'A' to act as 'A' on tap but toggle the numpad layer on hold
-- Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
+- Tap-dance. Perform different actions with the same key depending on how many rapid taps were done.
 - Macros. Send a sequence of keys with optional configurable delays, e.g. `http://localhost:8080`.
 - Unicode. Type any unicode character ([not guaranteed to be accepted](https://github.com/microsoft/terminal/issues/12977)
   by the target application).
-- Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
 - Live reloading of the configuration for easy testing of your changes.
 - Run binaries from kanata (disabled by default)
 
@@ -73,8 +75,8 @@ Unless explicitly stated otherwise, your contributions will be made under the
 LGPLv3 license.
 
 The keyberon project contains all of the heavy keyboard state logic, so if you
-want new keyboard mapping functionality (e.g. tap-dance), it's recommended to
-add it to keyberon.
+want new keyboard mapping functionality, it's recommended to add it to keyberon
+first.
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
@@ -117,14 +119,15 @@ have a numpad.
     - - -         0 * .
 
 One could add as many customizations as one likes to improve comfort, speed,
-etc.
+etc. Personally my main motivator is comfort due to a repetitive strain injury
+in the past.
 
 However, QMK doesn't run everywhere. In fact, it doesn't run on **most**
 hardware you can get. You can't get it to run on a laptop keyboard or any
 mainstream office keyboard out there. I believe that the comfort and
 empowerment QMK provides should be available to anyone with a computer on
 their existing hardware, instead of having to purchase an enthusiast mechanical
-keyboard. (which are admittedly very nice (I own a few) — but can be costly)
+keyboard. (which are admittedly very nice — I own a few — but can be costly)
 
 The best alternative solution that I've found for keyboards that don't run QMK is
 [kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
@@ -132,21 +135,18 @@ and I recommend it if you want to try something similar.
 
 The reason for this project's existence is that kmonad is written in Haskell
 and I have no idea how to begin contributing to a Haskell project. From an
-outsider's perspective I think Haskell is a great language, but I really can't
-wrap my head around it. One feature missing from kmonad that affects my
-personal workflow is QMK's default
-[tap-hold](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold) behaviour.
+outsider's perspective I think Haskell is a great language but I really can't
+wrap my head around it. And there are a few [outstanding issues]((./docs/kmonad_comparison.md))
+at the time of writing that make kmonad suboptimal for my personal workflows.
 
 This project is written in Rust because Rust is my favourite programming
 language and the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
-exists. This project would not exist without keyberon. I was able to add my
-[desired tap-hold behaviour](https://github.com/TeXitoi/keyberon/pull/85) with
-not too much trouble.
+exists.
 
 I've tried compiling kmonad myself and it was quite the slog, though I was able
 to get it working eventually. Comparing the process to `cargo build` though, it
-was a huge contrast. I think using Rust will lower the barrier to entry for
-contributions to a project like this.
+was a huge contrast. My hope is that using Rust will lower the barrier to entry
+for contributions to a project like this.
 
 ## Similar Projects
 
