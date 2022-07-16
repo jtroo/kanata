@@ -1,6 +1,6 @@
 [package]
 name = "kanata"
-version = "1.0.4"
+version = "1.0.5"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
@@ -20,12 +20,7 @@ anyhow = "1"
 parking_lot = "0.12"
 crossbeam-channel = "0.5"
 once_cell = "1"
-
-# Using my personal fork for:
-# - tap_hold_interval
-# - pub current_layer
-# - Sequence
-kanata-keyberon = "0.2.1"
+kanata-keyberon = "0.2.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev-rs = "0.4.0"
