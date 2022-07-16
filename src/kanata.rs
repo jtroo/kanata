@@ -132,6 +132,11 @@ impl Kanata {
                 // For unicode, only send on the press. No repeat action is supported for this for
                 // now.
                 CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                CustomAction::MultiUnicode(chars) => {
+                    for c in chars.iter() {
+                        self.kbd_out.send_unicode(*c)?;
+                    }
+                }
                 CustomAction::LiveReload => {
                     live_reload_requested = true;
                     log::info!("Requested live reload")
@@ -140,13 +145,35 @@ impl Kanata {
                     log::debug!("press     {:?}", btn);
                     self.kbd_out.click_btn(*btn)?;
                 }
+                CustomAction::MultiMouse(btns) => {
+                    assert!(!btns.is_empty());
+                    for i in 0..btns.len() - 1 {
+                        let btn = btns[i];
+                        log::debug!("press     {:?}", btn);
+                        self.kbd_out.click_btn(btn)?;
+                        log::debug!("release   {:?}", btn);
+                        self.kbd_out.release_btn(btn)?;
+                    }
+                    let btn = btns[btns.len() - 1];
+                    log::debug!("press     {:?}", btn);
+                    self.kbd_out.click_btn(btn)?;
+                }
                 CustomAction::Cmd(cmd) => {
                     run_cmd(cmd);
+                }
+                CustomAction::MultiCmd(cmds) => {
+                    run_multi_cmd(cmds);
                 }
             },
             CustomEvent::Release(CustomAction::Mouse(btn)) => {
                 log::debug!("release   {:?}", btn);
                 self.kbd_out.release_btn(*btn)?;
+            }
+            CustomEvent::Release(CustomAction::MultiMouse(btns)) => {
+                assert!(!btns.is_empty());
+                let btn = btns[btns.len() - 1];
+                log::debug!("release   {:?}", btn);
+                self.kbd_out.release_btn(btn)?;
             }
             _ => {}
         };
@@ -372,7 +399,7 @@ impl Kanata {
                 }
                 KeyValue::Press => {
                     let mut pressed_keys = PRESSED_KEYS.lock();
-                    if  pressed_keys.contains(&key_event.code) {
+                    if pressed_keys.contains(&key_event.code) {
                         key_event.value = KeyValue::Repeat;
                     } else {
                         pressed_keys.insert(key_event.code);
@@ -399,17 +426,16 @@ impl Kanata {
 }
 
 #[cfg(feature = "cmd")]
-fn run_cmd(cmd_and_args: &[String]) {
-    let mut args = cmd_and_args.iter().cloned();
-    let mut cmd = std::process::Command::new(
-        args.next()
-            .expect("Parsing should have forbidden empty cmd"),
-    );
-    for arg in args {
-        cmd.arg(arg);
-    }
-
+fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
+        let mut args = cmd_and_args.iter().cloned();
+        let mut cmd = std::process::Command::new(
+            args.next()
+                .expect("Parsing should have forbidden empty cmd"),
+        );
+        for arg in args {
+            cmd.arg(arg);
+        }
         match cmd.output() {
             Ok(output) => {
                 log::info!(
@@ -429,8 +455,23 @@ fn run_cmd(cmd_and_args: &[String]) {
             }
             Err(e) => log::error!("Failed to execute cmd: {}", e),
         };
+    })
+}
+
+#[cfg(feature = "cmd")]
+fn run_multi_cmd(cmds: &'static [&'static [String]]) {
+    let cmds = cmds.clone();
+    std::thread::spawn(move || {
+        for cmd in cmds {
+            if let Err(e) = run_cmd(cmd).join() {
+                log::error!("problem joining thread {:?}", e);
+            }
+        }
     });
 }
 
 #[cfg(not(feature = "cmd"))]
 fn run_cmd(_cmd_and_args: &[String]) {}
+
+#[cfg(not(feature = "cmd"))]
+fn run_multi_cmd(_cmds: &'static [&'static [String]]) {}
