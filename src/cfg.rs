@@ -164,9 +164,9 @@ fn parse_transparent_default() {
 fn disallow_nested_tap_hold() {
     // Note: unwrap_err won't compile due to const generic trait problem, so had to use match
     // instead.
-    match parse_cfg(&std::path::PathBuf::from(
-        "./test_cfgs/nested_tap_hold.kbd"
-    )).map_err(|e| e.to_string()) {
+    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
+        .map_err(|e| e.to_string())
+    {
         Ok(_) => panic!("tap-hold"),
         Err(e) => assert!(e.to_string().contains("tap-hold")),
     }
@@ -800,15 +800,55 @@ fn parse_timeout(a: &SExpr) -> Result<u16> {
     }
 }
 
+#[derive(Debug)]
+enum MultiCustom {
+    Unset,
+    Cmd(Vec<&'static [String]>),
+    Unicode(Vec<char>),
+    Mouse(Vec<Btn>),
+}
+
 fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("multi expects at least one atom after it")
     }
     let mut actions = Vec::new();
+    let mut multi_custom = MultiCustom::Unset;
     for expr in ac_params {
         let ac = parse_action(expr, parsed_state)?;
-        actions.push(*ac);
+        match ac {
+            Action::Custom(ac) => {
+                match (ac, &mut multi_custom) {
+                    (CustomAction::LiveReload, _) => bail!("Live reload not supported in multi action"),
+                    (_, MultiCustom::Unset) => match ac {
+                        CustomAction::Cmd(ac) => multi_custom = MultiCustom::Cmd(vec![ac]),
+                        CustomAction::Unicode(ac) => multi_custom = MultiCustom::Unicode(vec![*ac]),
+                        CustomAction::Mouse(ac) => multi_custom = MultiCustom::Mouse(vec![*ac]),
+                        _ => bail!("Unsupported action in multi: {:?}", ac),
+                    }
+                    (CustomAction::Cmd(ac), MultiCustom::Cmd(acs)) => acs.push(ac),
+                    (CustomAction::Unicode(ac), MultiCustom::Unicode(acs)) => acs.push(*ac),
+                    (CustomAction::Mouse(ac), MultiCustom::Mouse(acs)) => acs.push(*ac),
+                    _ => bail!("For multi, only one type of the following actions is allowed: (mouse clicks),(unicode),(cmd)\nYou can have multiple mouse clicks, multiple unicode, or multiple cmd, but not e.g. one mouse click and one cmd."),
+                }
+            }
+            _ => actions.push(*ac),
+        }
     }
+
+    match multi_custom {
+        MultiCustom::Cmd(v) => actions.push(Action::Custom(CustomAction::MultiCmd(Box::leak(
+            v.into_boxed_slice(),
+        )))),
+        MultiCustom::Unicode(v) => actions.push(Action::Custom(CustomAction::MultiUnicode(
+            Box::leak(v.into_boxed_slice()),
+        ))),
+        MultiCustom::Mouse(v) => actions.push(Action::Custom(CustomAction::MultiMouse(Box::leak(
+            v.into_boxed_slice(),
+        )))),
+        MultiCustom::Unset => {}
+    }
+
     Ok(sref(Action::MultipleActions(sref(actions))))
 }
 
