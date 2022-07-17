@@ -58,6 +58,7 @@ fn cli_init() -> Result<CfgPath> {
 fn main_impl(cfg: CfgPath) -> Result<()> {
     let kanata_arc = Kanata::new_arc(cfg)?;
     info!("Kanata: config parsed");
+    info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
@@ -73,7 +74,12 @@ fn main_impl(cfg: CfgPath) -> Result<()> {
 
 fn main() -> Result<()> {
     let args = cli_init()?;
-    info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
     std::thread::sleep(std::time::Duration::from_secs(2));
-    main_impl(args)
+    let ret = main_impl(args);
+    if let Err(ref e) = ret {
+        log::error!("{}", e);
+    }
+    eprintln!("\nPress any key to exit");
+    let _ = std::io::stdin().read_line(&mut String::new());
+    ret
 }
