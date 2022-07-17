@@ -11,6 +11,15 @@ the features:
 - multiple layers of key functionality
 - advanced key behaviour customization (e.g. tap-hold, key sequences, unicode)
 
+[Here's a demo video showcasing multi-layer functionality](https://user-images.githubusercontent.com/6634136/179384077-261554cb-3cc3-43aa-aaf2-ad06c5e678af.mp4).
+The demo video has a lot going on in a short period of time. To help understand
+what's going on, here's a description of what's happening:
+
+- the foreground terminal is the active window which receives the keyboard inputs
+- the background terminal is showing the kanata logs which outputs the currently active layer
+- the far right shows the key being pressed followed by the actual key being
+  received by the application.
+
 To see all of the features, see the [features](#features) section.
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
