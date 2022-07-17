@@ -156,7 +156,7 @@
   ;; The aliases below are commented out since commands aren't allowed by this
   ;; configuration file.
   ;;
-  ;; Note that the parameters to `cmd` executed directly as opposed to
+  ;; Note that the parameters to `cmd` are executed directly as opposed to
   ;; passed to a shell. So for example, `~` and `$HOME` would not refer
   ;; to your home directory on Linux.
   ;;
@@ -211,7 +211,7 @@
   ;; switching to another layer for exactly one key.
   ;;
   ;; If a one-shot key is held then it will act as a regular key. E.g. for os1
-  ;; below, holding an @os1 key will keep lsft held and holding an @os2 key
+  ;; below, holding an @os1 key will keep lsft held and holding an @os3 key
   ;; will keep the layer set to misc.
   os1 (one-shot 500 lsft)
   os2 (one-shot 500 C-S-lalt)
@@ -225,8 +225,10 @@
   ;; within the timeout will reset the timeout and advance the tap-dance to the
   ;; next key.
   ;;
-  ;; The action activates either when the timeout expires or when a key that is
-  ;; different from the tap-dance key is pressed.
+  ;; The action activates either when any of the following happens:
+  ;; - the timeout expires
+  ;; - the tap sequence reaches the end
+  ;; - a different key is pressed
   td (tap-dance 200 (a b c d spc))
 )
 
