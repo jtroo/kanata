@@ -78,7 +78,9 @@ fn main_impl(args: ValidatedArgs) -> Result<()> {
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
     let (tx, rx) = crossbeam_channel::bounded(10);
-    Kanata::start_processing_loop(kanata_arc.clone(), rx);
+    let (ntx, nrx) = crossbeam_channel::bounded(10);
+    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx);
+    Kanata::start_notification_loop(kanata_arc.clone(), nrx);
     Kanata::event_loop(kanata_arc, tx)?;
 
     Ok(())
