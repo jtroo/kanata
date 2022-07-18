@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 use log::{error, info};
 
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
@@ -14,17 +14,17 @@ use std::time;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use crate::{cfg, ValidatedArgs};
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
+use crate::{cfg, ValidatedArgs};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 #[derive(Debug, Serialize)]
 pub enum EventNotification {
-    LayerChange { old: String, new: String }
+    LayerChange { old: String, new: String },
 }
 
 impl EventNotification {
@@ -35,29 +35,36 @@ impl EventNotification {
 
 pub struct NotificationServer {
     pub port: i32,
-    pub connections: Arc<Mutex<Vec<TcpStream>>>
+    pub connections: Arc<Mutex<HashMap<String, TcpStream>>>,
 }
 
 impl NotificationServer {
     pub fn new(port: i32) -> Self {
         let server = Self {
             port,
-            connections: Arc::new(Mutex::new(Vec::new()))
+            connections: Arc::new(Mutex::new(HashMap::new())),
         };
 
         server
     }
 
     pub fn start(&mut self) {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("Could not start the server");
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port))
+            .expect("Could not start the server");
+
         let cl = self.connections.clone();
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 match stream {
                     Ok(stream) => {
-                        cl.lock().push(stream)
+                        let addr = stream
+                            .peer_addr()
+                            .expect("could not find peer address")
+                            .to_string();
+
+                        cl.lock().insert(addr, stream);
                     }
-                    Err(_) => log::error!("not able to accept client connection")
+                    Err(_) => log::error!("not able to accept client connection"),
                 }
             }
         });
@@ -318,9 +325,7 @@ impl Kanata {
             };
 
             let notification = match raw_notification.as_bytes() {
-                Ok(serialized_notification) => {
-                    serialized_notification
-                }
+                Ok(serialized_notification) => serialized_notification,
                 Err(error) => {
                     log::warn!("failed to serialize layer change notification: {}", error);
                     return;
@@ -328,15 +333,22 @@ impl Kanata {
             };
 
             let mut clients = self.server.connections.lock();
-            for client in &mut *clients {
+            let mut stale_clients = vec![];
+            for (id, client) in &mut *clients {
                 match client.write(&notification) {
                     Ok(_) => {
                         log::debug!("layer change notification sent");
                     }
                     Err(_) => {
-                        log::warn!("failed to send layer change notification");
+                        // the client is no longer connected, let's remove them
+                        stale_clients.push(id.clone());
+                        log::debug!("removing disconnected notification client");
                     }
                 }
+            }
+
+            for id in &stale_clients {
+                clients.remove(id);
             }
         }
     }
