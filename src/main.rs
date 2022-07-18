@@ -17,7 +17,7 @@ type CfgPath = PathBuf;
 
 pub struct ValidatedArgs {
     path: CfgPath,
-    listeners: Vec<String>,
+    port: i32,
 }
 
 #[derive(Parser, Debug)]
@@ -27,9 +27,9 @@ struct Args {
     #[clap(short, long, default_value = "kanata.kbd")]
     cfg: String,
 
-    /// Listeners to send kanata event notifications to
-    #[clap(short, long)]
-    listener: Vec<String>,
+    /// Port to run the notification server on
+    #[clap(short, long, default_value = "35948")]
+    port: i32,
 
     /// Enable debug logging
     #[clap(short, long)]
@@ -63,7 +63,7 @@ fn cli_init() -> Result<ValidatedArgs> {
 
     Ok(ValidatedArgs {
         path: cfg_path.into(),
-        listeners: args.listener,
+        port: args.port,
     })
 }
 

@@ -6,6 +6,8 @@ use log::{error, info};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::io::Write;
+use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::time;
 
@@ -20,6 +22,48 @@ use crate::oskbd::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
+#[derive(Debug, Serialize)]
+pub enum EventNotification {
+    LayerChange { old: String, new: String }
+}
+
+impl EventNotification {
+    pub fn as_bytes(&self) -> Result<Vec<u8>> {
+        Ok(serde_json::to_string(self)?.as_bytes().to_vec())
+    }
+}
+
+pub struct NotificationServer {
+    pub port: i32,
+    pub connections: Arc<Mutex<Vec<TcpStream>>>
+}
+
+impl NotificationServer {
+    pub fn new(port: i32) -> Self {
+        let server = Self {
+            port,
+            connections: Arc::new(Mutex::new(Vec::new()))
+        };
+
+        server
+    }
+
+    pub fn start(&mut self) {
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("Could not start the server");
+        let cl = self.connections.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                match stream {
+                    Ok(stream) => {
+                        cl.lock().push(stream)
+                    }
+                    Err(_) => log::error!("not able to accept client connection")
+                }
+            }
+        });
+    }
+}
+
 pub struct Kanata {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
@@ -29,12 +73,14 @@ pub struct Kanata {
     pub layout: cfg::KanataLayout,
     pub prev_keys: Vec<KeyCode>,
     pub layer_strings: Vec<String>,
+    pub layer_names: Vec<String>,
     pub prev_layer: usize,
-    pub listeners: Vec<String>,
+    pub server: NotificationServer,
     last_tick: time::Instant,
 }
 
 use once_cell::sync::Lazy;
+use serde::Serialize;
 
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new([false; 256]));
 
@@ -63,17 +109,20 @@ impl Kanata {
         #[cfg(target_os = "windows")]
         let kbd_in_path = "unused".into();
 
+        let mut server = NotificationServer::new(args.port);
+        server.start();
         Ok(Self {
             kbd_in_path,
             kbd_out,
             cfg_path: args.path,
-            listeners: args.listeners,
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_strings: cfg.layer_strings,
+            layer_names: cfg.layer_names,
             prev_keys: Vec::new(),
             prev_layer: 0,
+            server,
             last_tick: time::Instant::now(),
         })
     }
@@ -258,8 +307,37 @@ impl Kanata {
     fn check_handle_layer_change(&mut self) {
         let cur_layer = self.layout.current_layer();
         if cur_layer != self.prev_layer {
+            let old = &self.layer_names[self.prev_layer];
+            let new = &self.layer_names[cur_layer];
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
+
+            let raw_notification = EventNotification::LayerChange {
+                old: old.clone(),
+                new: new.clone(),
+            };
+
+            let notification = match raw_notification.as_bytes() {
+                Ok(serialized_notification) => {
+                    serialized_notification
+                }
+                Err(error) => {
+                    log::warn!("failed to serialize layer change notification: {}", error);
+                    return;
+                }
+            };
+
+            let mut clients = self.server.connections.lock();
+            for client in &mut *clients {
+                match client.write(&notification) {
+                    Ok(_) => {
+                        log::debug!("layer change notification sent");
+                    }
+                    Err(_) => {
+                        log::warn!("failed to send layer change notification");
+                    }
+                }
+            }
         }
     }
 

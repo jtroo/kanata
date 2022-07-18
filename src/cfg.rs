@@ -56,17 +56,19 @@ pub struct Cfg {
     pub mapped_keys: MappedKeys,
     pub key_outputs: KeyOutputs,
     pub layer_strings: Vec<String>,
+    pub layer_names: Vec<String>,
     pub items: HashMap<String, String>,
     pub layout: KanataLayout,
 }
 
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (items, mapped_keys, layer_strings, key_outputs, layout) = parse_cfg(p)?;
+        let (items, mapped_keys, layer_strings, layer_names, key_outputs, layout) = parse_cfg(p)?;
         Ok(Self {
             items,
             mapped_keys,
             layer_strings,
+            layer_names,
             key_outputs,
             layout,
         })
@@ -178,16 +180,18 @@ fn parse_cfg(
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
-    Vec<String>,
+    Vec<String>, // layer strings
+    Vec<String>, // layer names
     KeyOutputs,
     KanataLayout,
 )> {
-    let (cfg, src, layer_strings, klayers) = parse_cfg_raw(p)?;
+    let (cfg, src, layer_strings, layer_names, klayers) = parse_cfg_raw(p)?;
 
     Ok((
         cfg,
         src,
         layer_strings,
+        layer_names,
         create_key_outputs(&klayers),
         create_layout(klayers),
     ))
@@ -199,7 +203,8 @@ fn parse_cfg_raw(
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
-    Vec<String>,
+    Vec<String>, // layer strings
+    Vec<String>, // layer names
     Box<KanataLayers>,
 )> {
     let cfg = std::fs::read_to_string(p)?;
@@ -250,6 +255,7 @@ fn parse_cfg_raw(
         bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
     }
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let layer_names = layer_idxs.keys().map(|s| s.clone()).collect::<Vec<String>>();
 
     let layer_strings = root_expr_strs
         .into_iter()
@@ -296,7 +302,7 @@ fn parse_cfg_raw(
 
     let klayers = parse_layers(&parsed_state)?;
 
-    Ok((cfg, src, layer_strings, klayers))
+    Ok((cfg, src, layer_strings, layer_names, klayers))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
