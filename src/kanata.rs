@@ -12,7 +12,7 @@ use std::time;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use crate::cfg;
+use crate::{cfg, ValidatedArgs};
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
@@ -30,6 +30,7 @@ pub struct Kanata {
     pub prev_keys: Vec<KeyCode>,
     pub layer_strings: Vec<String>,
     pub prev_layer: usize,
+    pub listeners: Vec<String>,
     last_tick: time::Instant,
 }
 
@@ -42,8 +43,8 @@ static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(Hash
 
 impl Kanata {
     /// Create a new configuration from a file.
-    pub fn new(cfg_path: PathBuf) -> Result<Self> {
-        let cfg = cfg::Cfg::new_from_file(&cfg_path)?;
+    pub fn new(args: ValidatedArgs) -> Result<Self> {
+        let cfg = cfg::Cfg::new_from_file(&args.path)?;
 
         let kbd_out = match KbdOut::new() {
             Ok(kbd_out) => kbd_out,
@@ -65,7 +66,8 @@ impl Kanata {
         Ok(Self {
             kbd_in_path,
             kbd_out,
-            cfg_path,
+            cfg_path: args.path,
+            listeners: args.listeners,
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
@@ -77,8 +79,8 @@ impl Kanata {
     }
 
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
-    pub fn new_arc(cfg: PathBuf) -> Result<Arc<Mutex<Self>>> {
-        Ok(Arc::new(Mutex::new(Self::new(cfg)?)))
+    pub fn new_arc(args: ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
