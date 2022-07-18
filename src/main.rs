@@ -15,6 +15,11 @@ use kanata::Kanata;
 
 type CfgPath = PathBuf;
 
+pub struct ValidatedArgs {
+    path: CfgPath,
+    listeners: Vec<String>,
+}
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -22,13 +27,17 @@ struct Args {
     #[clap(short, long, default_value = "kanata.kbd")]
     cfg: String,
 
+    /// Listeners to send kanata event notifications to
+    #[clap(short, long)]
+    listener: Vec<String>,
+
     /// Enable debug logging
     #[clap(short, long)]
     debug: bool,
 }
 
 /// Parse CLI arguments and initialize logging.
-fn cli_init() -> Result<CfgPath> {
+fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
 
     let cfg_path = Path::new(&args.cfg);
@@ -52,11 +61,14 @@ fn cli_init() -> Result<CfgPath> {
         )
     }
 
-    Ok(cfg_path.into())
+    Ok(ValidatedArgs {
+        path: cfg_path.into(),
+        listeners: args.listener,
+    })
 }
 
-fn main_impl(cfg: CfgPath) -> Result<()> {
-    let kanata_arc = Kanata::new_arc(cfg)?;
+fn main_impl(args: ValidatedArgs) -> Result<()> {
+    let kanata_arc = Kanata::new_arc(args)?;
     info!("Kanata: config parsed");
     info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
 
