@@ -145,7 +145,7 @@ and I recommend it if you want to try something similar.
 The reason for this project's existence is that kmonad is written in Haskell
 and I have no idea how to begin contributing to a Haskell project. From an
 outsider's perspective I think Haskell is a great language but I really can't
-wrap my head around it. And there are a few [outstanding issues]((./docs/kmonad_comparison.md))
+wrap my head around it. And there are a few [outstanding issues](./docs/kmonad_comparison.md)
 at the time of writing that make kmonad suboptimal for my personal workflows.
 
 This project is written in Rust because Rust is my favourite programming

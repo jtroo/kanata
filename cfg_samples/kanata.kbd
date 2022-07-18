@@ -8,8 +8,7 @@
 ;; Comments are double-semicolon because a single semicolon is parsed as the
 ;; keyboard key.
 
-;; Only one defcfg is allowed. This is used to define a few configurations.
-;; Currently the only one is the linux device used for keyboard inputs.
+;; Only one defcfg is allowed. This is used for configuration key-pairs.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
@@ -32,6 +31,10 @@
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the
 ;; keys matches with deflayer declarations and all deflayer declarations must
 ;; have the same number of keys as defsrc.
+;;
+;; The visual/spatial positioning is **not** mandatory; it is done by convention
+;; for visual ease. These items are parsed as a long list with newlines being
+;; ignored.
 (defsrc
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
@@ -68,7 +71,8 @@
 ;; necessary, but is strongly recommended for ease of understanding visually.
 ;;
 ;; Aliases are referred to by `@<alias_name>`. Aliases can refer to each other,
-;; e.g. in the `anm` alias.
+;; e.g. in the `anm` alias. However, an alias can only refer to another alias
+;; that has been defined before it in the file.
 (defalias
   ;; aliases to change the base layer to qwerty or dvorak
   dvk (layer-switch dvorak)
@@ -82,8 +86,9 @@
   lay (layer-toggle layers)
   mse (layer-toggle mouse)
 
-  ;; tap for key, hold for toggle layers
-  ;; Parameter order:
+  ;; tap-hold aliases with tap for dvorak key, and hold for toggle layers
+  ;;
+  ;; tap-hold parameter order:
   ;; 1. tap timeout
   ;; 2. hold timeout
   ;; 3. tap action
@@ -93,7 +98,7 @@
   ;; will activate.
   ;;
   ;; The tap timeout is best explained in a roundabout way. When you press and
-  ;; hold a stardard key on your keyboard (e.g. 'a'), your operating system will
+  ;; hold a standard key on your keyboard (e.g. 'a'), your operating system will
   ;; read that and keep sending 'a' to the active application. To be able to
   ;; replicate this behaviour with a tap-hold key, you must press-release-press
   ;; the key within the tap timeout window (number is milliseconds). Simply
@@ -122,19 +127,21 @@
 )
 
 (defalias
+  ;; alias for action `multi`
+  ;;
   ;; For the multi action, all keys are pressed for the whole sequence
-  ;; but still in the listed order, which is may be undesirable, particularly
+  ;; but still in the listed order, which may be undesirable, particularly
   ;; for modifiers like shift. You probably want to use macro instead.
   ;;
   ;; Chording can be more succinctly described by the modifier prefixes
   ;; `C-`, `A-`, `S-`, and `M-` for lctrl, lalt, lshift, lmeta, but are possible
-  ;; by using the `multi` as well. The lmeta key is also known by some other
+  ;; by using `multi` as well. The lmeta key is also known by some other
   ;; names: "Windows", "GUI", "Command", "Super".
   ;;
   ;; One use case for multi could be typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
-  ;; Chords using the shortuct. These ones are used for copying/pasting
+  ;; Chords using the shortuct syntax. These ones are used for copying/pasting
   ;; from some Linux terminals.
   csv C-S-v
   csc C-S-c
@@ -152,9 +159,9 @@
   🙁 (unicode 🙁)
 
   ;; Having a cmd action in your configuration without explicitly enabling
-  ;; `danger-enable-cmd` will make kanata refuse to load your configuration.
-  ;; The aliases below are commented out since commands aren't allowed by this
-  ;; configuration file.
+  ;; `danger-enable-cmd` **and** using the cmd-enabled executable will make
+  ;; kanata refuse to load your configuration. The aliases below are commented
+  ;; out since commands aren't allowed by this configuration file.
   ;;
   ;; Note that the parameters to `cmd` are executed directly as opposed to
   ;; passed to a shell. So for example, `~` and `$HOME` would not refer
@@ -167,8 +174,8 @@
   ;; cm2 (cmd rm -fr /tmp/testing)
 )
 
-;; _ means transparent. The key on the base layer will be used instead.
-;; XX means no-op. The key will do nothing.
+;; The underscore _ means transparent. The key on the base layer will be used
+;; instead. XX means no-op. The key will do nothing.
 (deflayer numbers
   _    _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
   _    _    _    _    _    XX   _    kp4  kp5  kp6  -    _    _    _
@@ -178,8 +185,8 @@
 )
 
 ;; The `lrld` action stands for "live reload". This will re-parse everything
-;; except for defcfg. I.e. in Linux, you cannot live reload and switch keyboard
-;; devices for the time being.
+;; except for linux-dev. So in Linux, you cannot live reload and switch keyboard
+;; devices at the time of writing
 ;;
 ;; Upon a successful reload, the kanata state will begin on the default base layer
 ;; in the configuration. E.g. in this example configuration, you would start on
@@ -218,7 +225,7 @@
   os3 (one-shot 500 (layer-toggle misc))
 
   ;; Alias for tap-dance which will activate one of the actions in the action
-  ;; list, depending on how many taps were done. Tapping once will output the
+  ;; list depending on how many taps were done. Tapping once will output the
   ;; first action and tapping N times will output the N'th action.
   ;;
   ;; The first parameter is a timeout. Tapping the same tap-dance key again
@@ -257,8 +264,8 @@
   _    _    _              _              _    _    _
 )
 
-;; Using mouse buttons on the kanata window seems to cause it to hang and
-;; eventually crash. Using the mouse on other windows seems to be fine though.
+;; In Windows, using mouse buttons on the kanata window seems to cause it to hang.
+;; Using the mouse on other windows seems to be fine though.
 (deflayer mouse
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
