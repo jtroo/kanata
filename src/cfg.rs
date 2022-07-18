@@ -255,7 +255,10 @@ fn parse_cfg_raw(
         bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
     }
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
-    let layer_names = layer_idxs.keys().map(|s| s.clone()).collect::<Vec<String>>();
+    let layer_names = layer_idxs
+        .keys()
+        .map(|s| s.clone())
+        .collect::<Vec<String>>();
 
     let layer_strings = root_expr_strs
         .into_iter()
