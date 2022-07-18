@@ -24,7 +24,7 @@ use kanata_keyberon::layout::*;
 
 #[derive(Debug, Serialize)]
 pub enum EventNotification {
-    LayerChange { old: String, new: String },
+    LayerChange { new: String },
 }
 
 impl EventNotification {
@@ -79,13 +79,13 @@ pub struct Kanata {
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
     pub prev_keys: Vec<KeyCode>,
-    pub layer_strings: Vec<String>,
-    pub layer_names: Vec<String>,
+    pub layer_info: Vec<LayerInfo>,
     pub prev_layer: usize,
     pub server: NotificationServer,
     last_tick: time::Instant,
 }
 
+use crate::cfg::LayerInfo;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
@@ -125,8 +125,7 @@ impl Kanata {
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
-            layer_strings: cfg.layer_strings,
-            layer_names: cfg.layer_names,
+            layer_info: cfg.layer_info,
             prev_keys: Vec::new(),
             prev_layer: 0,
             server,
@@ -152,7 +151,7 @@ impl Kanata {
     }
 
     /// Advance keyberon layout state and send events based on changes to its state.
-    fn handle_time_ticks(&mut self) -> Result<()> {
+    fn handle_time_ticks(&mut self, tx: &Sender<EventNotification>) -> Result<()> {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
@@ -176,7 +175,7 @@ impl Kanata {
 
             // Handle layer change outside the loop. I don't see any practical scenario where it
             // would make a difference, so may as well reduce the amount of processing.
-            self.check_handle_layer_change();
+            self.check_handle_layer_change(tx);
         }
 
         Ok(())
@@ -279,7 +278,7 @@ impl Kanata {
                 let mut mapped_keys = MAPPED_KEYS.lock();
                 *mapped_keys = cfg.mapped_keys;
                 self.key_outputs = cfg.key_outputs;
-                self.layer_strings = cfg.layer_strings;
+                self.layer_info = cfg.layer_info;
                 log::info!("Live reload successful")
             }
         };
@@ -311,54 +310,78 @@ impl Kanata {
         Ok(())
     }
 
-    fn check_handle_layer_change(&mut self) {
+    fn check_handle_layer_change(&mut self, tx: &Sender<EventNotification>) {
         let cur_layer = self.layout.current_layer();
         if cur_layer != self.prev_layer {
-            let old = &self.layer_names[self.prev_layer];
-            let new = &self.layer_names[cur_layer];
+            let new = self.layer_info[cur_layer].name.clone();
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
 
-            let raw_notification = EventNotification::LayerChange {
-                old: old.clone(),
-                new: new.clone(),
-            };
-
-            let notification = match raw_notification.as_bytes() {
-                Ok(serialized_notification) => serialized_notification,
+            match tx.try_send(EventNotification::LayerChange { new }) {
+                Ok(_) => {}
                 Err(error) => {
-                    log::warn!("failed to serialize layer change notification: {}", error);
-                    return;
+                    log::error!("could not sent event notification: {}", error);
                 }
-            };
-
-            let mut clients = self.server.connections.lock();
-            let mut stale_clients = vec![];
-            for (id, client) in &mut *clients {
-                match client.write(&notification) {
-                    Ok(_) => {
-                        log::debug!("layer change notification sent");
-                    }
-                    Err(_) => {
-                        // the client is no longer connected, let's remove them
-                        stale_clients.push(id.clone());
-                        log::debug!("removing disconnected notification client");
-                    }
-                }
-            }
-
-            for id in &stale_clients {
-                clients.remove(id);
             }
         }
     }
 
     fn print_layer(&self, layer: usize) {
-        log::info!("Entered layer:\n{}", self.layer_strings[layer]);
+        log::info!("Entered layer:\n{}", self.layer_info[layer].cfg_text);
+    }
+
+    pub fn start_notification_loop(kanata: Arc<Mutex<Self>>, rx: Receiver<EventNotification>) {
+        info!("Kanata: entering the event notification loop");
+        std::thread::spawn(move || {
+            loop {
+                match rx.recv() {
+                    Err(_) => {
+                        panic!("channel disconnected")
+                    }
+                    Ok(event) => {
+                        let k = kanata.lock();
+
+                        let notification = match event.as_bytes() {
+                            Ok(serialized_notification) => serialized_notification,
+                            Err(error) => {
+                                log::warn!(
+                                    "failed to serialize layer change notification: {}",
+                                    error
+                                );
+                                return;
+                            }
+                        };
+
+                        let mut clients = k.server.connections.lock();
+                        let mut stale_clients = vec![];
+                        for (id, client) in &mut *clients {
+                            match client.write(&notification) {
+                                Ok(_) => {
+                                    log::debug!("layer change notification sent");
+                                }
+                                Err(_) => {
+                                    // the client is no longer connected, let's remove them
+                                    stale_clients.push(id.clone());
+                                    log::debug!("removing disconnected notification client");
+                                }
+                            }
+                        }
+
+                        for id in &stale_clients {
+                            clients.remove(id);
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
-    pub fn start_processing_loop(kanata: Arc<Mutex<Self>>, rx: Receiver<KeyEvent>) {
+    pub fn start_processing_loop(
+        kanata: Arc<Mutex<Self>>,
+        rx: Receiver<KeyEvent>,
+        tx: Sender<EventNotification>,
+    ) {
         info!("Kanata: entering the processing loop");
         std::thread::spawn(move || {
             info!("Init: catching only releases and sending immediately");
@@ -383,12 +406,12 @@ impl Kanata {
                         if let Err(e) = k.handle_key_event(&kev) {
                             break e;
                         }
-                        if let Err(e) = k.handle_time_ticks() {
+                        if let Err(e) = k.handle_time_ticks(&tx) {
                             break e;
                         }
                     }
                     Err(TryRecvError::Empty) => {
-                        if let Err(e) = kanata.lock().handle_time_ticks() {
+                        if let Err(e) = kanata.lock().handle_time_ticks(&tx) {
                             break e;
                         }
                         std::thread::sleep(time::Duration::from_millis(1));

@@ -55,20 +55,18 @@ pub type KanataLayout = Layout<256, 1, ACTUAL_NUM_LAYERS, CustomAction>;
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
     pub key_outputs: KeyOutputs,
-    pub layer_strings: Vec<String>,
-    pub layer_names: Vec<String>,
+    pub layer_info: Vec<LayerInfo>,
     pub items: HashMap<String, String>,
     pub layout: KanataLayout,
 }
 
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (items, mapped_keys, layer_strings, layer_names, key_outputs, layout) = parse_cfg(p)?;
+        let (items, mapped_keys, layer_info, key_outputs, layout) = parse_cfg(p)?;
         Ok(Self {
             items,
             mapped_keys,
-            layer_strings,
-            layer_names,
+            layer_info,
             key_outputs,
             layout,
         })
@@ -174,24 +172,28 @@ fn disallow_nested_tap_hold() {
     }
 }
 
+#[derive(Debug)]
+pub struct LayerInfo {
+    pub name: String,
+    pub cfg_text: String,
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(
     p: &std::path::Path,
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
-    Vec<String>, // layer strings
-    Vec<String>, // layer names
+    Vec<LayerInfo>,
     KeyOutputs,
     KanataLayout,
 )> {
-    let (cfg, src, layer_strings, layer_names, klayers) = parse_cfg_raw(p)?;
+    let (cfg, src, layer_info, klayers) = parse_cfg_raw(p)?;
 
     Ok((
         cfg,
         src,
-        layer_strings,
-        layer_names,
+        layer_info,
         create_key_outputs(&klayers),
         create_layout(klayers),
     ))
@@ -203,8 +205,7 @@ fn parse_cfg_raw(
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
-    Vec<String>, // layer strings
-    Vec<String>, // layer names
+    Vec<LayerInfo>,
     Box<KanataLayers>,
 )> {
     let cfg = std::fs::read_to_string(p)?;
@@ -254,11 +255,23 @@ fn parse_cfg_raw(
     if layer_exprs.len() > MAX_LAYERS {
         bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
     }
+
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
-    let layer_names = layer_idxs
-        .keys()
-        .map(|s| s.clone())
-        .collect::<Vec<String>>();
+    let mut sorted_idxs: Vec<(String, usize)> = layer_idxs
+        .iter()
+        .map(|tuple| (tuple.0.clone(), tuple.1.clone()))
+        .collect();
+    sorted_idxs.sort_by(|&(_, a), &(_, b)| a.cmp(&b));
+
+    let layer_names: Vec<String> = sorted_idxs
+        .iter()
+        .map(|(name, _)| name.clone())
+        .flat_map(|s| {
+            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
+            // two versions of each layer.
+            std::iter::repeat(s).take(2)
+        })
+        .collect();
 
     let layer_strings = root_expr_strs
         .into_iter()
@@ -270,6 +283,15 @@ fn parse_cfg_raw(
             std::iter::repeat(s).take(2)
         })
         .collect::<Vec<_>>();
+
+    let mut layer_info = vec![];
+
+    for (name, cfg_text) in layer_names.iter().zip(layer_strings) {
+        layer_info.push(LayerInfo {
+            name: name.clone(),
+            cfg_text,
+        })
+    }
 
     let alias_exprs = root_exprs
         .iter()
@@ -305,7 +327,7 @@ fn parse_cfg_raw(
 
     let klayers = parse_layers(&parsed_state)?;
 
-    Ok((cfg, src, layer_strings, layer_names, klayers))
+    Ok((cfg, src, layer_info, klayers))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
@@ -586,6 +608,7 @@ fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<Lay
         }
         layer_indexes.insert(layer_name, i);
     }
+
     Ok(layer_indexes)
 }
 
