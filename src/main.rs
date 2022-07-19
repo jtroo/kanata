@@ -20,6 +20,8 @@ type CfgPath = PathBuf;
 pub struct ValidatedArgs {
     path: CfgPath,
     port: Option<i32>,
+    #[cfg(target_os = "linux")]
+    symlink_path: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -36,6 +38,11 @@ struct Args {
     /// Enable debug logging
     #[clap(short, long)]
     debug: bool,
+
+    /// Path of the symlink pointing to the newly-created device
+    #[cfg(target_os = "linux")]
+    #[clap(short, long)]
+    symlink_path: Option<String>,
 
     /// Enable trace logging
     #[clap(short, long)]
@@ -71,6 +78,8 @@ fn cli_init() -> Result<ValidatedArgs> {
     Ok(ValidatedArgs {
         path: cfg_path.into(),
         port: args.port,
+        #[cfg(target_os = "linux")]
+        symlink_path: args.symlink_path,
     })
 }
 
