@@ -394,7 +394,7 @@ impl Kanata {
             *mapped_keys = kanata.lock().mapped_keys;
         }
 
-        let kbd_in = match KbdIn::new(&kanata.lock().kbd_in_path) {
+        let mut kbd_in = match KbdIn::new(&kanata.lock().kbd_in_path) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {
                 bail!("failed to open keyboard device: {}", e)
@@ -405,7 +405,7 @@ impl Kanata {
             let in_event = kbd_in.read()?;
 
             // Pass-through non-key events
-            let key_event = match KeyEvent::try_from(in_event.clone()) {
+            let key_event = match KeyEvent::try_from(in_event) {
                 Ok(ev) => ev,
                 _ => {
                     let mut kanata = kanata.lock();

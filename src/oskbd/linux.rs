@@ -1,38 +1,21 @@
 // This file contains the original ktrl project's `kbd_in.rs` and `kbd_out.rs` files.
 
-use evdev_rs::enums::EventCode;
-use evdev_rs::enums::EV_SYN;
-use evdev_rs::Device;
-use evdev_rs::GrabMode;
-use evdev_rs::InputEvent;
-use evdev_rs::ReadFlag;
-use evdev_rs::ReadStatus;
-use evdev_rs::TimeVal;
-
-use uinput_sys::uinput_user_dev;
+use evdev::uinput;
+use evdev::Device;
+use evdev::InputEvent;
 
 use crate::custom_action::*;
 use crate::keys::*;
-use libc::c_char;
-use libc::input_event as raw_event;
 
-// file i/o
-use io::Write;
-use std::fs::File;
-use std::fs::OpenOptions;
 use std::io;
-use std::os::unix::io::AsRawFd;
 use std::path::Path;
-
-// unsafe
-use std::mem;
-use std::slice;
 
 // kanata
 use crate::keys::KeyEvent;
 
 pub struct KbdIn {
     device: Device,
+    events: std::collections::VecDeque<InputEvent>,
 }
 
 impl KbdIn {
@@ -47,102 +30,53 @@ impl KbdIn {
     }
 
     fn new_linux(dev_path: &Path) -> Result<Self, std::io::Error> {
-        let kbd_in_file = File::open(dev_path)?;
-        let mut kbd_in_dev = Device::new_from_fd(kbd_in_file)?;
+        let mut kbd_in_dev = Device::open(dev_path)?;
 
         // NOTE: This grab-ungrab-grab sequence magically
-        // fix an issue I had with my Lenovo Yoga trackpad not working.
-        // I honestly have no idea why this works haha.
-        kbd_in_dev.grab(GrabMode::Grab)?;
-        kbd_in_dev.grab(GrabMode::Ungrab)?;
-        kbd_in_dev.grab(GrabMode::Grab)?;
+        // fix an issue with a Lenovo Yoga trackpad not working.
+        // No idea why this works.
+        kbd_in_dev.grab()?;
+        kbd_in_dev.ungrab()?;
+        kbd_in_dev.grab()?;
 
-        Ok(KbdIn { device: kbd_in_dev })
+        Ok(KbdIn {
+            device: kbd_in_dev,
+            events: Default::default(),
+        })
     }
 
-    pub fn read(&self) -> Result<InputEvent, std::io::Error> {
-        let (status, event) = self
-            .device
-            .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
-        std::assert!(status == ReadStatus::Success);
-        Ok(event)
+    pub fn read(&mut self) -> Result<InputEvent, std::io::Error> {
+        while self.events.is_empty() {
+            self.device
+                .fetch_events()?
+                .into_iter()
+                .for_each(|ev| self.events.push_back(ev));
+        }
+        Ok(self.events.pop_front().expect("not empty"))
     }
 }
 
 pub struct KbdOut {
-    device: File,
+    device: uinput::VirtualDevice,
 }
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        let mut uinput_out_file = OpenOptions::new().write(true).open("/dev/uinput")?;
-
-        unsafe {
-            let rc = uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_SYN);
-            if rc != 0 {
-                log::error!("ui_set_evbit for EV_SYN returned {}", rc);
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "ui_set_evbit failed for EV_SYN",
-                ));
-            }
-            let rc = uinput_sys::ui_set_evbit(uinput_out_file.as_raw_fd(), uinput_sys::EV_KEY);
-            if rc != 0 {
-                log::error!("ui_set_evbit for EV_KEY returned {}", rc);
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "ui_set_evbit failed for EV_KEY",
-                ));
-            }
-
-            for key in 0..300 {
-                let rc = uinput_sys::ui_set_keybit(uinput_out_file.as_raw_fd(), key);
-                if rc != 0 {
-                    log::error!("ui_set_keybit for {} returned {}", key, rc);
-                    return Err(io::Error::new(io::ErrorKind::Other, "ui_set_keybit failed"));
-                }
-            }
-
-            let mut uidev: uinput_user_dev = mem::zeroed();
-
-            const PROG_NAME: &[u8] = "kanata".as_bytes();
-            let copy_len = std::cmp::min(PROG_NAME.len(), uidev.name.len());
-            assert!(copy_len <= uidev.name.len());
-            for (i, c) in PROG_NAME.iter().copied().enumerate().take(copy_len) {
-                uidev.name[i] = c as c_char;
-            }
-
-            uidev.id.bustype = 0x3; // BUS_USB
-            uidev.id.vendor = 0x1;
-            uidev.id.product = 0x1;
-            uidev.id.version = 1;
-
-            let uidev_bytes =
-                slice::from_raw_parts(mem::transmute(&uidev), mem::size_of::<uinput_user_dev>());
-            uinput_out_file.write_all(uidev_bytes)?;
-            let rc = uinput_sys::ui_dev_create(uinput_out_file.as_raw_fd());
-            if rc != 0 {
-                log::error!("ui_dev_create for returned {}", rc);
-                return Err(io::Error::new(io::ErrorKind::Other, "ui_dev_create failed"));
-            }
+        let mut keys = evdev::AttributeSet::new();
+        for k in 0..300u16 {
+            keys.insert(evdev::Key(k));
         }
-
         Ok(KbdOut {
-            device: uinput_out_file,
+            device: uinput::VirtualDeviceBuilder::new()?
+                .name("kanata")
+                .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
+                .with_keys(&keys)?
+                .build()?,
         })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        let ev = event.as_raw();
-
-        unsafe {
-            let ev_bytes = slice::from_raw_parts(
-                mem::transmute(&ev as *const raw_event),
-                mem::size_of::<raw_event>(),
-            );
-            self.device.write_all(ev_bytes)?;
-        };
-
+        self.device.emit(&[event])?;
         Ok(())
     }
 
@@ -150,18 +84,7 @@ impl KbdOut {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
         log::debug!("input ev: {:?}", input_ev);
-        self.write(input_ev)?;
-
-        let sync = InputEvent::new(
-            &TimeVal {
-                tv_sec: 0,
-                tv_usec: 0,
-            },
-            &EventCode::EV_SYN(EV_SYN::SYN_REPORT),
-            0,
-        );
-        self.write(sync)?;
-
+        self.device.emit(&[input_ev])?;
         Ok(())
     }
 
