@@ -61,7 +61,10 @@ impl Kanata {
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = cfg::Cfg::new_from_file(&args.path)?;
 
-        let kbd_out = match KbdOut::new() {
+        let kbd_out = match KbdOut::new(
+            #[cfg(target_os = "linux")]
+            &args.symlink_path,
+        ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
                 error!("Failed to open the output uinput device. Make sure you've added kanata to the `uinput` group");

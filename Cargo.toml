@@ -28,6 +28,7 @@ net2 = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev-rs = "0.6.0"
+signal-hook = "0.3.14"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 encode_unicode = "0.3.6"

@@ -14,14 +14,20 @@ use evdev_rs::ReadStatus;
 use evdev_rs::TimeVal;
 use evdev_rs::UInputDevice;
 use evdev_rs::UninitDevice;
+use signal_hook::consts::SIGINT;
+use signal_hook::consts::SIGTERM;
+use signal_hook::iterator::Signals;
 
 use crate::custom_action::*;
 use crate::keys::*;
 
 // file i/o
+use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::Path;
+use std::path::PathBuf;
+use std::thread;
 
 // kanata
 use crate::keys::KeyEvent;
@@ -66,10 +72,11 @@ impl KbdIn {
 
 pub struct KbdOut {
     device: UInputDevice,
+    _symlink: Option<Symlink>,
 }
 
 impl KbdOut {
-    pub fn new() -> Result<Self, io::Error> {
+    pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {
         let device = UninitDevice::new()
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "UninitDevice::new() failed"))?;
 
@@ -86,7 +93,24 @@ impl KbdOut {
         }
 
         let device = UInputDevice::create_from_device(&device)?;
-        Ok(KbdOut { device })
+
+        let devnode = device
+            .devnode()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))?;
+        log::info!("Created device {:#?}", devnode);
+        let symlink = if let Some(symlink_path) = symlink_path {
+            let dest = PathBuf::from(symlink_path);
+            let symlink = Symlink::new(PathBuf::from(devnode), dest)?;
+            Symlink::clean_when_killed(symlink.clone());
+            Some(symlink)
+        } else {
+            None
+        };
+
+        Ok(KbdOut {
+            device,
+            _symlink: symlink,
+        })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
@@ -159,5 +183,54 @@ impl From<Btn> for OsCode {
             Btn::Right => OsCode::BTN_RIGHT,
             Btn::Mid => OsCode::BTN_MIDDLE,
         }
+    }
+}
+
+#[derive(Clone)]
+struct Symlink {
+    dest: PathBuf,
+}
+
+impl Symlink {
+    fn new(source: PathBuf, dest: PathBuf) -> Result<Self, io::Error> {
+        if let Ok(metadata) = fs::symlink_metadata(&dest) {
+            if metadata.file_type().is_symlink() {
+                fs::remove_file(&dest)?;
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    format!(
+                        "Cannot create a symlink at \"{}\": path already exists.",
+                        dest.to_string_lossy()
+                    ),
+                ));
+            }
+        }
+        std::os::unix::fs::symlink(&source, &dest)?;
+        log::info!("Created symlink {:#?} -> {:#?}", dest, source);
+        Ok(Self { dest })
+    }
+
+    fn clean_when_killed(symlink: Self) {
+        thread::spawn(|| {
+            let mut signals = Signals::new(&[SIGINT, SIGTERM]).unwrap();
+            for signal in &mut signals {
+                match signal {
+                    SIGINT | SIGTERM => {
+                        drop(symlink);
+                        signal_hook::low_level::emulate_default_handler(signal).unwrap();
+                        unreachable!();
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        });
+    }
+}
+
+impl Drop for Symlink {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.dest);
+        log::info!("Deleted symlink {:#?}", self.dest);
     }
 }
