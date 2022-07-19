@@ -7,69 +7,22 @@ use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::io::Write;
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 use std::path::PathBuf;
 use std::time;
 
 use parking_lot::Mutex;
 use std::sync::Arc;
 
+use crate::cfg::LayerInfo;
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
+use crate::tcp_server::EventNotification;
 use crate::{cfg, ValidatedArgs};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
-
-#[derive(Debug, Serialize)]
-pub enum EventNotification {
-    LayerChange { new: String },
-}
-
-impl EventNotification {
-    pub fn as_bytes(&self) -> Result<Vec<u8>> {
-        Ok(serde_json::to_string(self)?.as_bytes().to_vec())
-    }
-}
-
-pub struct NotificationServer {
-    pub port: i32,
-    pub connections: Arc<Mutex<HashMap<String, TcpStream>>>,
-}
-
-impl NotificationServer {
-    pub fn new(port: i32) -> Self {
-        let server = Self {
-            port,
-            connections: Arc::new(Mutex::new(HashMap::new())),
-        };
-
-        server
-    }
-
-    pub fn start(&mut self) {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port))
-            .expect("Could not start the server");
-
-        let cl = self.connections.clone();
-        std::thread::spawn(move || {
-            for stream in listener.incoming() {
-                match stream {
-                    Ok(stream) => {
-                        let addr = stream
-                            .peer_addr()
-                            .expect("could not find peer address")
-                            .to_string();
-
-                        cl.lock().insert(addr, stream);
-                    }
-                    Err(_) => log::error!("not able to accept client connection"),
-                }
-            }
-        });
-    }
-}
 
 pub struct Kanata {
     pub kbd_in_path: PathBuf,
@@ -81,13 +34,10 @@ pub struct Kanata {
     pub prev_keys: Vec<KeyCode>,
     pub layer_info: Vec<LayerInfo>,
     pub prev_layer: usize,
-    pub server: NotificationServer,
     last_tick: time::Instant,
 }
 
-use crate::cfg::LayerInfo;
 use once_cell::sync::Lazy;
-use serde::Serialize;
 
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new([false; 256]));
 
@@ -96,7 +46,7 @@ static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(Hash
 
 impl Kanata {
     /// Create a new configuration from a file.
-    pub fn new(args: ValidatedArgs) -> Result<Self> {
+    pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = cfg::Cfg::new_from_file(&args.path)?;
 
         let kbd_out = match KbdOut::new() {
@@ -116,25 +66,22 @@ impl Kanata {
         #[cfg(target_os = "windows")]
         let kbd_in_path = "unused".into();
 
-        let mut server = NotificationServer::new(args.port);
-        server.start();
         Ok(Self {
             kbd_in_path,
             kbd_out,
-            cfg_path: args.path,
+            cfg_path: args.path.clone(),
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
             prev_keys: Vec::new(),
             prev_layer: 0,
-            server,
             last_tick: time::Instant::now(),
         })
     }
 
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
-    pub fn new_arc(args: ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
+    pub fn new_arc(args: &ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
@@ -151,7 +98,7 @@ impl Kanata {
     }
 
     /// Advance keyberon layout state and send events based on changes to its state.
-    fn handle_time_ticks(&mut self, tx: &Sender<EventNotification>) -> Result<()> {
+    fn handle_time_ticks(&mut self, tx: &Option<Sender<EventNotification>>) -> Result<()> {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
@@ -310,17 +257,19 @@ impl Kanata {
         Ok(())
     }
 
-    fn check_handle_layer_change(&mut self, tx: &Sender<EventNotification>) {
+    fn check_handle_layer_change(&mut self, tx: &Option<Sender<EventNotification>>) {
         let cur_layer = self.layout.current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
 
-            match tx.try_send(EventNotification::LayerChange { new }) {
-                Ok(_) => {}
-                Err(error) => {
-                    log::error!("could not sent event notification: {}", error);
+            if let Some(tx) = tx {
+                match tx.try_send(EventNotification::LayerChange { new }) {
+                    Ok(_) => {}
+                    Err(error) => {
+                        log::error!("could not sent event notification: {}", error);
+                    }
                 }
             }
         }
@@ -330,8 +279,11 @@ impl Kanata {
         log::info!("Entered layer:\n{}", self.layer_info[layer].cfg_text);
     }
 
-    pub fn start_notification_loop(kanata: Arc<Mutex<Self>>, rx: Receiver<EventNotification>) {
-        info!("Kanata: entering the event notification loop");
+    pub fn start_notification_loop(
+        rx: Receiver<EventNotification>,
+        clients: Arc<Mutex<HashMap<String, TcpStream>>>,
+    ) {
+        info!("Kanata: listening for event notifications to relay to connected clients");
         std::thread::spawn(move || {
             loop {
                 match rx.recv() {
@@ -339,8 +291,6 @@ impl Kanata {
                         panic!("channel disconnected")
                     }
                     Ok(event) => {
-                        let k = kanata.lock();
-
                         let notification = match event.as_bytes() {
                             Ok(serialized_notification) => serialized_notification,
                             Err(error) => {
@@ -352,7 +302,7 @@ impl Kanata {
                             }
                         };
 
-                        let mut clients = k.server.connections.lock();
+                        let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
                             match client.write(&notification) {
@@ -380,7 +330,7 @@ impl Kanata {
     pub fn start_processing_loop(
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
-        tx: Sender<EventNotification>,
+        tx: Option<Sender<EventNotification>>,
     ) {
         info!("Kanata: entering the processing loop");
         std::thread::spawn(move || {

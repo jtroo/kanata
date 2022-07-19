@@ -249,6 +249,7 @@ fn parse_cfg_raw(
         .iter()
         .filter(&deflayer_filter)
         .collect::<Vec<_>>();
+
     if layer_exprs.is_empty() {
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
@@ -257,21 +258,23 @@ fn parse_cfg_raw(
     }
 
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
-    let mut sorted_idxs: Vec<(String, usize)> = layer_idxs
-        .iter()
-        .map(|tuple| (tuple.0.clone(), tuple.1.clone()))
-        .collect();
-    sorted_idxs.sort_by(|&(_, a), &(_, b)| a.cmp(&b));
+    let mut sorted_idxs: Vec<(&String, &usize)> =
+        layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
-    let layer_names: Vec<String> = sorted_idxs
-        .iter()
-        .map(|(name, _)| name.clone())
+    sorted_idxs.sort_by_key(|f| f.1);
+
+    #[allow(clippy::needless_collect)]
+    // Clippy suggests using the sorted_idxs iter directly and manipulating it
+    // to produce the layer_names vec when creating Vec<LayerInfo> below
+    let layer_names = sorted_idxs
+        .into_iter()
+        .map(|(name, _)| (*name).clone())
         .flat_map(|s| {
             // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
             // two versions of each layer.
             std::iter::repeat(s).take(2)
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let layer_strings = root_expr_strs
         .into_iter()
@@ -284,14 +287,11 @@ fn parse_cfg_raw(
         })
         .collect::<Vec<_>>();
 
-    let mut layer_info = vec![];
-
-    for (name, cfg_text) in layer_names.iter().zip(layer_strings) {
-        layer_info.push(LayerInfo {
-            name: name.clone(),
-            cfg_text,
-        })
-    }
+    let layer_info: Vec<LayerInfo> = layer_names
+        .into_iter()
+        .zip(layer_strings)
+        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
+        .collect();
 
     let alias_exprs = root_exprs
         .iter()

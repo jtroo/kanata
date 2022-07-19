@@ -9,15 +9,17 @@ mod kanata;
 mod keys;
 mod layers;
 mod oskbd;
+mod tcp_server;
 
 use clap::Parser;
 use kanata::Kanata;
+use tcp_server::NotificationServer;
 
 type CfgPath = PathBuf;
 
 pub struct ValidatedArgs {
     path: CfgPath,
-    port: i32,
+    port: Option<i32>,
 }
 
 #[derive(Parser, Debug)]
@@ -28,8 +30,8 @@ struct Args {
     cfg: String,
 
     /// Port to run the notification server on
-    #[clap(short, long, default_value = "35948")]
-    port: i32,
+    #[clap(short, long)]
+    port: Option<i32>,
 
     /// Enable debug logging
     #[clap(short, long)]
@@ -68,7 +70,7 @@ fn cli_init() -> Result<ValidatedArgs> {
 }
 
 fn main_impl(args: ValidatedArgs) -> Result<()> {
-    let kanata_arc = Kanata::new_arc(args)?;
+    let kanata_arc = Kanata::new_arc(&args)?;
     info!("Kanata: config parsed");
     info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
 
@@ -77,10 +79,23 @@ fn main_impl(args: ValidatedArgs) -> Result<()> {
     // The reason for two different event loops is that the "event loop" only listens for keyboard
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
+
+    let (server, ntx, nrx) = if let Some(port) = args.port {
+        let mut server = NotificationServer::new(port);
+        server.start();
+        let (ntx, nrx) = crossbeam_channel::bounded(10);
+        (Some(server), Some(ntx), Some(nrx))
+    } else {
+        (None, None, None)
+    };
+
     let (tx, rx) = crossbeam_channel::bounded(10);
-    let (ntx, nrx) = crossbeam_channel::bounded(10);
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx);
-    Kanata::start_notification_loop(kanata_arc.clone(), nrx);
+
+    if let (Some(server), Some(nrx)) = (server, nrx) {
+        Kanata::start_notification_loop(nrx, server.connections);
+    }
+
     Kanata::event_loop(kanata_arc, tx)?;
 
     Ok(())
