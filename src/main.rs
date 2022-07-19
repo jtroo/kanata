@@ -13,7 +13,7 @@ mod tcp_server;
 
 use clap::Parser;
 use kanata::Kanata;
-use tcp_server::NotificationServer;
+use tcp_server::TcpServer;
 
 type CfgPath = PathBuf;
 
@@ -81,8 +81,8 @@ fn main_impl(args: ValidatedArgs) -> Result<()> {
     // while also maintaining `tick()` calls to keyberon.
 
     let (server, ntx, nrx) = if let Some(port) = args.port {
-        let mut server = NotificationServer::new(port);
-        server.start();
+        let mut server = TcpServer::new(port);
+        server.start(kanata_arc.clone());
         let (ntx, nrx) = crossbeam_channel::bounded(10);
         (Some(server), Some(ntx), Some(nrx))
     } else {

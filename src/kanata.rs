@@ -257,6 +257,15 @@ impl Kanata {
         Ok(())
     }
 
+    pub fn change_layer(&mut self, layer_name: String) {
+        for (i, l) in self.layer_info.iter().enumerate() {
+            if l.name == layer_name {
+                self.layout.set_default_layer(i);
+                return;
+            }
+        }
+    }
+
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<EventNotification>>) {
         let cur_layer = self.layout.current_layer();
         if cur_layer != self.prev_layer {
