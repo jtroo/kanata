@@ -525,7 +525,7 @@ fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
 
 #[cfg(feature = "cmd")]
 fn run_multi_cmd(cmds: &'static [&'static [String]]) {
-    let cmds = cmds.clone();
+    let cmds = <&[&[String]]>::clone(&cmds);
     std::thread::spawn(move || {
         for cmd in cmds {
             if let Err(e) = run_cmd(cmd).join() {

@@ -168,7 +168,7 @@ fn disallow_nested_tap_hold() {
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("tap-hold"),
-        Err(e) => assert!(e.to_string().contains("tap-hold")),
+        Err(e) => assert!(e.contains("tap-hold")),
     }
 }
 

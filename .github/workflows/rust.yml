@@ -11,17 +11,6 @@ env:
 
 jobs:
 
-  build-test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Check fmt
-      run: cargo fmt --all --check
-    - name: Run tests
-      run: cargo test --verbose
-
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -29,11 +18,45 @@ jobs:
     - name: Check fmt
       run: cargo fmt --all --check
 
-  clippy-check:
+  build-test-clippy-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     steps:
     - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Build: cmd
+      run: cargo build --features cmd --verbose
+    - name: Run tests: cmd
+      run: cargo test --features cmd --verbose
     - run: rustup component add clippy
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features -- -D warnings
+
+  build-test-clippy-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Build: cmd
+      run: cargo build --features cmd --verbose
+    - name: Run tests: cmd
+      run: cargo test --features cmd --verbose
+    - run: rustup component add clippy
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features -- -D warnings
