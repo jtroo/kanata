@@ -18,8 +18,7 @@ use tcp_server::NotificationServer;
 type CfgPath = PathBuf;
 
 pub struct ValidatedArgs {
-    path: CfgPath,
-    port: Option<i32>,
+    path: CfgPath, port: Option<i32>,
 }
 
 #[derive(Parser, Debug)]
@@ -64,8 +63,7 @@ fn cli_init() -> Result<ValidatedArgs> {
     }
 
     Ok(ValidatedArgs {
-        path: cfg_path.into(),
-        port: args.port,
+        path: cfg_path.into(), port: args.port,
     })
 }
 
