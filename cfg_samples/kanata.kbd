@@ -117,10 +117,10 @@
   ;; Below is an alias for the `multi` action which executes multiple actions
   ;; in order but at the same time.
   ;;
-  ;; It may result in some incorrect/unexpected if combining complex actions,
-  ;; so be reasonable with it. One reasonable use case is this alias: press
-  ;; right-alt while also toggling to the `ralted` layer. The utility of this
-  ;; is better revealed if you go see the `ralted` and its aliases.
+  ;; It may result in some incorrect/unexpected behaviour if combining complex
+  ;; actions, so be reasonable with it. One reasonable use case is this alias:
+  ;; press right-alt while also toggling to the `ralted` layer. The utility of
+  ;; this is better revealed if you go see `ralted` and its aliases.
   ralt (multi ralt (layer-toggle ralted))
 )
 
