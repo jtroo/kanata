@@ -56,7 +56,7 @@ impl TcpServer {
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 match stream {
-                    Ok(stream) => {
+                    Ok(mut stream) => {
                         stream
                             .set_keepalive(Some(Duration::from_secs(30)))
                             .expect("could not set tcp connection keepalive");
@@ -67,33 +67,34 @@ impl TcpServer {
                             .to_string();
 
                         {
-                            connections.lock().insert(addr.clone(), stream);
+                            connections.lock().insert(
+                                addr.clone(),
+                                stream.try_clone().expect("could not clone stream"),
+                            );
                         }
 
-                        if let Some(stream) = connections.lock().get(&addr) {
-                            let mut stream = stream
-                                .try_clone()
-                                .expect("could not clone tcpstream to read incoming messages");
-
-                            let k_cl = kanata.clone();
-                            std::thread::spawn(move || {
-                                log::info!("listening for incoming messages {}", &addr);
-                                loop {
-                                    let mut buf = vec![0; 1024];
-                                    if let Ok(size) = stream.read(&mut buf) {
-                                        if let Ok(event) = ClientMessage::from_str(
-                                            &String::from_utf8_lossy(&buf[..size]),
-                                        ) {
-                                            match event {
-                                                ClientMessage::ChangeLayer { new } => {
-                                                    k_cl.lock().change_layer(new);
-                                                }
+                        log::info!("listening for incoming messages {}", &addr);
+                        loop {
+                            let mut buf = vec![0; 1024];
+                            match stream.read(&mut buf) {
+                                Ok(size) => {
+                                    if let Ok(event) = ClientMessage::from_str(
+                                        &String::from_utf8_lossy(&buf[..size]),
+                                    ) {
+                                        match event {
+                                            ClientMessage::ChangeLayer { new } => {
+                                                kanata.lock().change_layer(new);
                                             }
                                         }
                                     }
                                 }
-                            });
-                        };
+                                Err(_) => {
+                                    log::warn!("removing disconnected tcp client: {addr}");
+                                    connections.lock().remove(&addr);
+                                    break;
+                                }
+                            }
+                        }
                     }
                     Err(_) => log::error!("not able to accept client connection"),
                 }
