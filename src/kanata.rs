@@ -277,7 +277,7 @@ impl Kanata {
                 match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
-                        log::error!("could not sent event notification: {}", error);
+                        log::error!("could not send event notification: {}", error);
                     }
                 }
             }
