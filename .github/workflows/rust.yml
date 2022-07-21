@@ -20,8 +20,7 @@ jobs:
 
   build-test-clippy-linux:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
     - name: Build
@@ -41,10 +40,10 @@ jobs:
   build-test-clippy-windows:
     runs-on: windows-latest
     strategy:
-      fail-fast: false
       matrix:
         target:
           - x86_64-pc-windows-msvc
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
     - name: Build
