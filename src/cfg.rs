@@ -763,9 +763,11 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "unicode" => parse_unicode(&ac[1..]),
         "one-shot" => parse_one_shot(&ac[1..], parsed_state),
         "tap-dance" => parse_tap_dance(&ac[1..], parsed_state),
+        "release-key" => parse_release_key(&ac[1..], parsed_state),
+        "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key\n\trelease-layer\n\tcmd",
             ac_type
         ),
     }
@@ -981,8 +983,7 @@ fn parse_one_shot(
     }
 
     use std::str::FromStr;
-    let mut params = ac_params.iter();
-    let timeout = match params.next().expect("iter had len 0 len==2 was checked") {
+    let timeout = match &ac_params[0] {
         SExpr::Atom(s) => match u16::from_str(s) {
             Ok(t) => t,
             Err(e) => {
@@ -993,10 +994,7 @@ fn parse_one_shot(
         _ => bail!(ERR_MSG),
     };
 
-    let action = parse_action(
-        params.next().expect("iter had len 1 len==2 was checked"),
-        parsed_state,
-    )?;
+    let action = parse_action(&ac_params[1], parsed_state)?;
     if !matches!(
         action,
         Action::Layer(..) | Action::KeyCode(..) | Action::MultipleKeyCodes(..)
@@ -1018,8 +1016,7 @@ fn parse_tap_dance(
     }
 
     use std::str::FromStr;
-    let mut params = ac_params.iter();
-    let timeout = match params.next().expect("iter had len 0 len==2 was checked") {
+    let timeout = match &ac_params[0] {
         SExpr::Atom(s) => match u16::from_str(s) {
             Ok(t) => t,
             Err(e) => {
@@ -1029,8 +1026,7 @@ fn parse_tap_dance(
         },
         _ => bail!(ERR_MSG),
     };
-
-    let actions = match params.next().expect("iter had len 1 len==2 was checked") {
+    let actions = match &ac_params[1] {
         SExpr::List(tap_dance_actions) => {
             let mut actions = Vec::new();
             for expr in tap_dance_actions {
@@ -1043,6 +1039,34 @@ fn parse_tap_dance(
     };
 
     Ok(sref(Action::TapDance { timeout, actions }))
+}
+
+fn parse_release_key(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "release-key expects exactly one keycode (e.g. lalt)";
+    if ac_params.len() != 1 {
+        bail!(ERR_MSG);
+    }
+    let ac = parse_action(&ac_params[0], parsed_state)?;
+    match ac {
+        Action::KeyCode(kc) => Ok(sref(Action::ReleaseState(ReleasableState::KeyCode(*kc)))),
+        _ => bail!("{}, got {:?}", ERR_MSG, ac),
+    }
+}
+
+fn parse_release_layer(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "release-key expects exactly one layer name (e.g. arrows)";
+    if ac_params.len() != 1 {
+        bail!(ERR_MSG);
+    }
+    Ok(sref(Action::ReleaseState(ReleasableState::Layer(
+        layer_idx(ac_params, &parsed_state.layer_idxs)? * 2 + 1,
+    ))))
 }
 
 fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; 256] {
