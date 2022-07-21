@@ -18,7 +18,7 @@ use crate::cfg::LayerInfo;
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
-use crate::tcp_server::EventNotification;
+use crate::tcp_server::ServerMessage;
 use crate::{cfg, ValidatedArgs};
 
 use kanata_keyberon::key_code::*;
@@ -98,7 +98,7 @@ impl Kanata {
     }
 
     /// Advance keyberon layout state and send events based on changes to its state.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<EventNotification>>) -> Result<()> {
+    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
@@ -266,7 +266,7 @@ impl Kanata {
         }
     }
 
-    fn check_handle_layer_change(&mut self, tx: &Option<Sender<EventNotification>>) {
+    fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
         let cur_layer = self.layout.current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
@@ -274,7 +274,7 @@ impl Kanata {
             self.print_layer(cur_layer);
 
             if let Some(tx) = tx {
-                match tx.try_send(EventNotification::LayerChange { new }) {
+                match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not sent event notification: {}", error);
@@ -289,7 +289,7 @@ impl Kanata {
     }
 
     pub fn start_notification_loop(
-        rx: Receiver<EventNotification>,
+        rx: Receiver<ServerMessage>,
         clients: Arc<Mutex<HashMap<String, TcpStream>>>,
     ) {
         info!("Kanata: listening for event notifications to relay to connected clients");
@@ -321,12 +321,12 @@ impl Kanata {
                                 Err(_) => {
                                     // the client is no longer connected, let's remove them
                                     stale_clients.push(id.clone());
-                                    log::debug!("removing disconnected notification client");
                                 }
                             }
                         }
 
                         for id in &stale_clients {
+                            log::warn!("removing disconnected tcp client: {id}");
                             clients.remove(id);
                         }
                     }
@@ -339,7 +339,7 @@ impl Kanata {
     pub fn start_processing_loop(
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
-        tx: Option<Sender<EventNotification>>,
+        tx: Option<Sender<ServerMessage>>,
     ) {
         info!("Kanata: entering the processing loop");
         std::thread::spawn(move || {
