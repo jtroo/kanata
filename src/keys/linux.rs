@@ -1,6 +1,6 @@
 // This file is taken from the original ktrl project's keys.rs file with modifications.
 
-use evdev_rs::enums::{EventCode, EV_KEY};
+use evdev_rs::enums::{EventCode, EventType, EV_KEY};
 use evdev_rs::{InputEvent, TimeVal};
 use kanata_keyberon::key_code::*;
 use std::convert::TryFrom;
@@ -1543,8 +1543,8 @@ impl KeyEvent {
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        match &item.event_code {
-            EventCode::EV_KEY(_) => Ok(Self {
+        match &item.event_type {
+            EventType::EV_KEY => Ok(Self {
                 time: item.time,
                 code: item.event_code.into(),
                 value: item.value.into(),
@@ -1558,6 +1558,7 @@ impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         Self {
             time: item.time,
+            event_type: EventType::EV_KEY,
             event_code: item.code.into(),
             value: item.value as i32,
         }
