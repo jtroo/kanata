@@ -197,8 +197,9 @@ impl Kanata {
                 continue;
             }
             log::debug!("release   {:?}", k);
-            if let Err(e) = self.kbd_out.release_key(k.into()) {
-                bail!("failed to release key: {:?}", e);
+            match self.kbd_out.release_key(k.into()) {
+                Err(e) => bail!("failed to release key: {:?}", e),
+                _ => {},
             }
         }
         // Press keys that exist in the current state but are missing from the previous state.
