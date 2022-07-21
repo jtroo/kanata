@@ -63,7 +63,7 @@
   tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
-  lctl lmet lalt           spc            ralt rmet rctl
+  lctl lmet lalt           spc           @ralt rmet rctl
 )
 
 ;; defalias is used to declare a shortcut for a more complicated action to keep
@@ -113,6 +113,15 @@
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
+
+  ;; Below is an alias for the `multi` action which executes multiple actions
+  ;; in order but at the same time.
+  ;;
+  ;; It may result in some incorrect/unexpected if combining complex actions,
+  ;; so be reasonable with it. One reasonable use case is this alias: press
+  ;; right-alt while also toggling to the `ralted` layer. The utility of this
+  ;; is better revealed if you go see the `ralted` and its aliases.
+  ralt (multi ralt (layer-toggle ralted))
 )
 
 (defalias
@@ -127,10 +136,8 @@
 )
 
 (defalias
-  ;; alias for action `multi`
-  ;;
   ;; For the multi action, all keys are pressed for the whole sequence
-  ;; but still in the listed order, which may be undesirable, particularly
+  ;; but still in the listed order which may be undesirable, particularly
   ;; for modifiers like shift. You probably want to use macro instead.
   ;;
   ;; Chording can be more succinctly described by the modifier prefixes
@@ -138,7 +145,7 @@
   ;; by using `multi` as well. The lmeta key is also known by some other
   ;; names: "Windows", "GUI", "Command", "Super".
   ;;
-  ;; One use case for multi could be typing an all-caps string.
+  ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
   ;; Chords using the shortuct syntax. These ones are used for copying/pasting
@@ -274,3 +281,25 @@
   _    _    _              _              _    _    _
 )
 
+(defalias
+  lft (multi (release-key ralt) left) ;; release ralt if held and also press left
+  rgt (multi (release-key ralt) rght) ;; release ralt if held and also press rght
+  rlr (release-layer ralted)          ;; release layer-toggle of ralted
+)
+
+;; It's not clear what the practical use case is for the @rlr alias, but the
+;; combination of @ralt on the dvorak layer and this layer with @lft and @rgt
+;; results in the physical ralt key behaving mostly as ralt, **except** for
+;; holding it **then** pressing specific keys. These specific keys release the
+;; ralt because it would cause them to have undesired behaviour without the
+;; release.
+;;
+;; E.g. ralt+@lft will result in only left being pressed instead of ralt+left,
+;; while ralt(hold)+tab+tab+tab still works as intended.
+(deflayer ralted
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    @lft @rlr @rgt _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
