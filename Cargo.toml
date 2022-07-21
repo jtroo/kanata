@@ -25,6 +25,7 @@ kanata-keyberon = "0.2.4"
 heapless = "0.7.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+net2 = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev-rs = "0.4.0"
