@@ -66,15 +66,16 @@ impl TcpServer {
                             .expect("could not find peer address")
                             .to_string();
 
-                        {
-                            connections.lock().insert(
-                                addr.clone(),
-                                stream.try_clone().expect("could not clone stream"),
-                            );
-                        }
+                        connections.lock().insert(
+                            addr.clone(),
+                            stream.try_clone().expect("could not clone stream"),
+                        );
 
                         log::info!("listening for incoming messages {}", &addr);
-                        loop {
+
+                        let connections = connections.clone();
+                        let kanata = kanata.clone();
+                        std::thread::spawn(move || loop {
                             let mut buf = vec![0; 1024];
                             match stream.read(&mut buf) {
                                 Ok(size) => {
@@ -94,7 +95,7 @@ impl TcpServer {
                                     break;
                                 }
                             }
-                        }
+                        });
                     }
                     Err(_) => log::error!("not able to accept client connection"),
                 }
