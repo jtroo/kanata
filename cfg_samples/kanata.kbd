@@ -1,35 +1,41 @@
-;; This configuration is inspired by kmonad's configuration language.
+;; This is a sample configuration file that showcases every feature in kanata.
+;; If anything is confusing or hard to discover, please file an issue or
+;; contribute a pull request to help improve the document.
 ;;
-;; See: https://github.com/kmonad/kmonad/blob/master/keymap/tutorial.kbd
+;; Comments are prefixed by double-semicolon. A single semicolon is parsed as the
+;; keyboard key. Comments are ignored for the configuration file.
 ;;
-;; However, any items you see in the kmonad configuration that don't exist in
-;; this sample are likely not implemented.
+;; This configuration language is Lisp-like and uses S-Expression syntax.
+;; If you're unfamiliar with Lisp, don't be alarmed. The maintainer jtroo is
+;; also unfamiliar with Lisp. You don't need to know Lisp in-depth to
+;; be able to configure kanata.
 ;;
-;; Comments are double-semicolon because a single semicolon is parsed as the
-;; keyboard key.
+;; If you follow along with the examples, you should be good to go. Kanata should
+;; also hopefully have helpful error messages in case something goes wrong. If it
+;; does not, please file an issue or contribute an improvement.
 
-;; Only one defcfg is allowed. This is used for configuration key-pairs.
+;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
   ;; but I didn't find any keyboard device in there in my VM.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
-  ;; Windows doesn't need any input/output configuration entries
-
-  ;; Unlike kmonad, fallthrough configuration does not exist. Fallthrough is always true.
+  ;; Windows doesn't need any input/output configuration entries; however, there
+  ;; must still be a defcfg entry.
 
   ;; Optional confguration: enable kanata to execute commands.
   ;; It is also not enabled in this sample configuration.
   ;; This is dangerous because it allows kanata to execute arbitrary commands.
-  ;; Uncomment below to enable command execution:
+  ;; Using a binary compiled with the cmd feature enabled, uncomment below to
+  ;; enable command execution:
   ;; danger-enable-cmd yes
 )
 
 ;; Only one defsrc is allowed.
 ;;
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the
-;; keys matches with deflayer declarations and all deflayer declarations must
+;; keys matches the deflayer declarations and all deflayer declarations must
 ;; have the same number of keys as defsrc.
 ;;
 ;; The visual/spatial positioning is **not** mandatory; it is done by convention
@@ -193,7 +199,7 @@
 
 ;; The `lrld` action stands for "live reload". This will re-parse everything
 ;; except for linux-dev. So in Linux, you cannot live reload and switch keyboard
-;; devices at the time of writing
+;; devices at the time of writing.
 ;;
 ;; Upon a successful reload, the kanata state will begin on the default base layer
 ;; in the configuration. E.g. in this example configuration, you would start on
