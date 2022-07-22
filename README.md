@@ -81,13 +81,15 @@ release.
 Contributions are welcome!
 
 Unless explicitly stated otherwise, your contributions will be made under the
-LGPLv3 license.
+LGPL-3.0-only[*] license.
 
 The keyberon project contains all of the heavy keyboard state logic, so if you
 want new keyboard mapping functionality, it's recommended to add it to keyberon
 first.
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
+
+[*]: https://www.gnu.org/licenses/identify-licenses-clearly.html
 
 ## How you can help
 
