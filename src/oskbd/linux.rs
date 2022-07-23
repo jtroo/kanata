@@ -52,7 +52,7 @@ impl KbdIn {
                 .into_iter()
                 .for_each(|ev| self.events.push_back(ev));
         }
-        Ok(self.events.pop_front().expect("not empty"))
+        Ok(self.events.pop_front().expect("empty events"))
     }
 }
 
