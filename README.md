@@ -73,6 +73,8 @@ release.
 - Macros. Send a sequence of keys with optional configurable delays, e.g. `http://localhost:8080`.
 - Unicode. Type any unicode character ([not guaranteed to be accepted](https://github.com/microsoft/terminal/issues/12977)
   by the target application).
+- Optionally run a TCP server to interact with other programs
+  - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
 - Live reloading of the configuration for easy testing of your changes.
 - Run binaries from kanata (disabled by default)
 
