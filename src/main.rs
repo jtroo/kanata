@@ -36,6 +36,10 @@ struct Args {
     /// Enable debug logging
     #[clap(short, long)]
     debug: bool,
+
+    /// Enable trace logging
+    #[clap(short, long)]
+    trace: bool,
 }
 
 /// Parse CLI arguments and initialize logging.
@@ -44,9 +48,10 @@ fn cli_init() -> Result<ValidatedArgs> {
 
     let cfg_path = Path::new(&args.cfg);
 
-    let log_lvl = match args.debug {
-        true => LevelFilter::Debug,
-        _ => LevelFilter::Info,
+    let log_lvl = match (args.debug, args.trace) {
+        (_, true) => LevelFilter::Trace,
+        (true, false) => LevelFilter::Debug,
+        (false, false) => LevelFilter::Info,
     };
 
     CombinedLogger::init(vec![TermLogger::new(

@@ -105,18 +105,19 @@ impl InputEvent {
 
 /// The actual WinAPI compatible callback.
 unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
+    let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
+    log::trace!("{code}, {wparam:?}, {is_injected}");
     if code != HC_ACTION {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
 
-    let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let key_event = InputEvent::from_hook_lparam(hook_lparam);
-    let injected = hook_lparam.flags & LLKHF_INJECTED != 0;
 
     // `SendInput()` internally calls the hook function. Filter out injected events
     // to prevent recursion and potential stack overflows if our remapping logic
     // sent the injected event.
-    if injected {
+    if is_injected {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
 
@@ -131,7 +132,7 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     });
 
     if handled {
-        -1
+        1
     } else {
         CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
     }

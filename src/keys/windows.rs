@@ -1430,7 +1430,7 @@ impl From<KeyValue> for bool {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct KeyEvent {
     pub code: OsCode,
     pub value: KeyValue,
