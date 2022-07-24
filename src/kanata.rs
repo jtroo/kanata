@@ -66,6 +66,14 @@ impl Kanata {
         #[cfg(target_os = "windows")]
         let kbd_in_path = "unused".into();
 
+        #[cfg(target_os = "windows")]
+        unsafe {
+            log::info!("Asking Windows to improve timer precision");
+            if winapi::um::timeapi::timeBeginPeriod(1) == winapi::um::mmsystem::TIMERR_NOCANDO {
+                bail!("failed to improve timer precision");
+            }
+        }
+
         Ok(Self {
             kbd_in_path,
             kbd_out,
