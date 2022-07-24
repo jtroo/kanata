@@ -1,6 +1,6 @@
 # kanata
 
-Cross-platform advanced keyboard customization.
+Improve keyboard comfort and usability with advanced customization.
 
 ## What does this do?
 
