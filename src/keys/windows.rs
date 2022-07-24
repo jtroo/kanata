@@ -1456,7 +1456,6 @@ impl From<KeyEvent> for InputEvent {
         Self {
             code: item.code.into(),
             up: item.value.into(),
-            time: 0,
         }
     }
 }

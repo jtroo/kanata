@@ -85,9 +85,6 @@ pub struct InputEvent {
 
     /// Key was released
     pub up: bool,
-
-    /// Time in milliseconds since boot.
-    pub time: u32,
 }
 
 impl InputEvent {
@@ -95,7 +92,6 @@ impl InputEvent {
         Self {
             code: lparam.vkCode,
             up: lparam.flags & LLKHF_UP != 0,
-            time: lparam.time,
         }
     }
 
@@ -103,7 +99,6 @@ impl InputEvent {
         Self {
             code: code.into(),
             up: val.into(),
-            time: 0,
         }
     }
 }
@@ -145,13 +140,9 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
 pub fn send_key(key: InputEvent) {
     unsafe {
         let mut inputs: [INPUT; 1] = mem::zeroed();
-
-        let mut kb_input = key_input_from_event(key);
-        kb_input.wVk = key.code as u16;
-
+        let kb_input = key_input_from_event(key);
         inputs[0].type_ = INPUT_KEYBOARD;
         *inputs[0].u.ki_mut() = kb_input;
-
         SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
     }
 }
@@ -256,6 +247,6 @@ fn key_input_from_event(key: InputEvent) -> KEYBDINPUT {
     if key.up {
         kb_input.dwFlags |= KEYEVENTF_KEYUP;
     }
-    kb_input.time = key.time;
+    kb_input.wVk = key.code as u16;
     kb_input
 }
