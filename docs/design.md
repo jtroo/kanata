@@ -22,7 +22,14 @@
 - tick() the keyberon layout, send any events needed
 - if no event: sleep for 1ms
 - separate monotonic time checks, because can't rely on sleep to be
-  fine-grained enough
+  fine-grained or accurate
+- send `ServerMessage`s to the TCP server
+
+## TCP server
+
+- listen for `ClientMessage`s and act on them
+- recv `ServerMessage`s from processing loop and forward to all connected
+  clients
 
 ## layout
 
