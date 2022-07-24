@@ -69,11 +69,13 @@ fn cli_init() -> Result<ValidatedArgs> {
     })
 }
 
-fn main_impl(args: ValidatedArgs) -> Result<()> {
-    info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
-    std::thread::sleep(std::time::Duration::from_secs(2));
+fn main_impl() -> Result<()> {
+    let args = cli_init()?;
     let kanata_arc = Kanata::new_arc(&args)?;
     info!("Kanata: config parsed");
+
+    info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
@@ -103,8 +105,7 @@ fn main_impl(args: ValidatedArgs) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args = cli_init()?;
-    let ret = main_impl(args);
+    let ret = main_impl();
     if let Err(ref e) = ret {
         log::error!("{}", e);
     }
