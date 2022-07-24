@@ -23,6 +23,19 @@
 
   ;; Windows doesn't need any input/output configuration entries; however, there
   ;; must still be a defcfg entry.
+  ;;
+  ;; There is an optional configuration entry for Windows to help mitigate strange
+  ;; behaviour of AltGr if your layout uses that. Uncomment one of the items below
+  ;; to change what kanata does with the key.
+  ;;
+  ;; For more context, see: https://github.com/jtroo/kanata/issues/55.
+  ;;
+  ;; windows-altgr cancel-lctl-press ;; remove the lctl press that comes as a combo with ralt
+  ;; windows-altgr add-lctl-release  ;; add an lctl release when ralt is released
+  ;;
+  ;; NOTE: even with these workarounds, putting lctl+ralt in your defsrc may
+  ;; not work too well with other applications that use WH_KEYBOARD_LL.
+  ;; Known applications with issues: GWSL/VcXsrv
 
   ;; Optional confguration: enable kanata to execute commands.
   ;; It is also not enabled in this sample configuration.

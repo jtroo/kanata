@@ -24,6 +24,14 @@ use crate::{cfg, ValidatedArgs};
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
+#[cfg(target_os = "windows")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AltGrBehaviour {
+    DoNothing,
+    CancelLctlPress,
+    AddLctlRelease,
+}
+
 pub struct Kanata {
     pub kbd_in_path: PathBuf,
     pub kbd_out: KbdOut,
@@ -43,6 +51,10 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new([fals
 
 #[cfg(target_os = "windows")]
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+#[cfg(target_os = "windows")]
+static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
+    Lazy::new(|| Mutex::new(AltGrBehaviour::DoNothing));
 
 impl Kanata {
     /// Create a new configuration from a file.
@@ -73,6 +85,8 @@ impl Kanata {
                 bail!("failed to improve timer precision");
             }
         }
+
+        set_altgr_behaviour(&cfg)?;
 
         Ok(Self {
             kbd_in_path,
@@ -229,6 +243,10 @@ impl Kanata {
                 log::error!("Could not reload configuration:\n{}", e);
             }
             Ok(cfg) => {
+                if let Err(e) = set_altgr_behaviour(&cfg) {
+                    log::error!("{}", e);
+                    return;
+                }
                 self.layout = cfg.layout;
                 let mut mapped_keys = MAPPED_KEYS.lock();
                 *mapped_keys = cfg.mapped_keys;
@@ -411,6 +429,7 @@ impl Kanata {
 
         loop {
             let in_event = kbd_in.read()?;
+            log::trace!("{in_event:?}");
 
             // Pass-through non-key events
             let key_event = match KeyEvent::try_from(in_event) {
@@ -455,6 +474,9 @@ impl Kanata {
             *mapped_keys = kanata.lock().mapped_keys;
         }
 
+        let (preprocess_tx, preprocess_rx) = crossbeam_channel::bounded(10);
+        start_event_preprocessor(preprocess_rx, tx);
+
         // This callback should return `false` if the input event is **not** handled by the
         // callback and `true` if the input event **is** handled by the callback. Returning false
         // informs the callback caller that the input event should be handed back to the OS for
@@ -495,9 +517,7 @@ impl Kanata {
             // getting full, assuming regular operation of the program and some other bug isn't the
             // problem. I've tried to crash the program by pressing as many keys on my keyboard at
             // the same time as I could, but was unable to.
-            if let Err(e) = tx.try_send(key_event) {
-                panic!("failed to send on channel: {:?}", e)
-            }
+            try_send_panic(&preprocess_tx, key_event);
             true
         });
 
@@ -505,6 +525,134 @@ impl Kanata {
         native_windows_gui::dispatch_thread_events();
         Ok(())
     }
+}
+
+#[cfg(target_os = "windows")]
+fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
+    if let Err(e) = tx.try_send(kev) {
+        panic!("failed to send on channel: {:?}", e)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    enum LctlState {
+        Pressed,
+        Released,
+        Pending,
+        PendingReleased,
+        None,
+    }
+
+    std::thread::spawn(move || {
+        let mut lctl_state = LctlState::None;
+        loop {
+            match preprocess_rx.try_recv() {
+                Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
+                    (AltGrBehaviour::DoNothing, _) => try_send_panic(&process_tx, kev),
+                    (
+                        AltGrBehaviour::AddLctlRelease,
+                        KeyEvent {
+                            value: KeyValue::Release,
+                            code: OsCode::KEY_RIGHTALT,
+                            ..
+                        },
+                    ) => {
+                        log::debug!("altgr add: adding lctl release");
+                        try_send_panic(&process_tx, kev);
+                        try_send_panic(
+                            &process_tx,
+                            KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
+                        );
+                        PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);
+                    }
+                    (
+                        AltGrBehaviour::CancelLctlPress,
+                        KeyEvent {
+                            value: KeyValue::Press,
+                            code: OsCode::KEY_LEFTCTRL,
+                            ..
+                        },
+                    ) => {
+                        log::debug!("altgr cancel: lctl state->pressed");
+                        lctl_state = LctlState::Pressed;
+                    }
+                    (
+                        AltGrBehaviour::CancelLctlPress,
+                        KeyEvent {
+                            value: KeyValue::Release,
+                            code: OsCode::KEY_LEFTCTRL,
+                            ..
+                        },
+                    ) => match lctl_state {
+                        LctlState::Pressed => {
+                            log::debug!("altgr cancel: lctl state->released");
+                            lctl_state = LctlState::Released;
+                        }
+                        LctlState::Pending => {
+                            log::debug!("altgr cancel: lctl state->pending-released");
+                            lctl_state = LctlState::PendingReleased;
+                        }
+                        LctlState::None => try_send_panic(&process_tx, kev),
+                        _ => {}
+                    },
+                    (
+                        AltGrBehaviour::CancelLctlPress,
+                        KeyEvent {
+                            value: KeyValue::Press,
+                            code: OsCode::KEY_RIGHTALT,
+                            ..
+                        },
+                    ) => {
+                        log::debug!("altgr cancel: lctl state->none");
+                        lctl_state = LctlState::None;
+                        try_send_panic(&process_tx, kev);
+                    }
+                    (_, _) => try_send_panic(&process_tx, kev),
+                },
+                Err(TryRecvError::Empty) => {
+                    if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
+                        match lctl_state {
+                            LctlState::Pressed => {
+                                log::debug!("altgr cancel: lctl state->pending");
+                                lctl_state = LctlState::Pending;
+                            }
+                            LctlState::Released => {
+                                log::debug!("altgr cancel: lctl state->pending-released");
+                                lctl_state = LctlState::PendingReleased;
+                            }
+                            LctlState::Pending => {
+                                log::debug!("altgr cancel: lctl state->send");
+                                try_send_panic(
+                                    &process_tx,
+                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),
+                                );
+                                lctl_state = LctlState::None;
+                            }
+                            LctlState::PendingReleased => {
+                                log::debug!("altgr cancel: lctl state->send+release");
+                                try_send_panic(
+                                    &process_tx,
+                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),
+                                );
+                                try_send_panic(
+                                    &process_tx,
+                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
+                                );
+                                lctl_state = LctlState::None;
+                            }
+                            _ => {}
+                        }
+                    }
+                    std::thread::sleep(time::Duration::from_millis(1));
+                }
+                Err(TryRecvError::Disconnected) => {
+                    panic!("channel disconnected")
+                }
+            }
+        }
+    });
 }
 
 #[cfg(feature = "cmd")]
@@ -538,6 +686,30 @@ fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
             Err(e) => log::error!("Failed to execute cmd: {}", e),
         };
     })
+}
+
+fn set_altgr_behaviour(_cfg: &cfg::Cfg) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        *ALTGR_BEHAVIOUR.lock() = {
+            const CANCEL: &str = "cancel-lctl-press";
+            const ADD: &str = "add-lctl-release";
+            match _cfg.items.get("windows-altgr") {
+                None => AltGrBehaviour::DoNothing,
+                Some(cfg_val) => match cfg_val.as_str() {
+                    CANCEL => AltGrBehaviour::CancelLctlPress,
+                    ADD => AltGrBehaviour::AddLctlRelease,
+                    _ => bail!(
+                        "Invalid value for windows-altgr: {}. Valid values are {},{}",
+                        cfg_val,
+                        CANCEL,
+                        ADD
+                    ),
+                },
+            }
+        };
+    }
+    Ok(())
 }
 
 #[cfg(feature = "cmd")]
