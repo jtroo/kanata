@@ -1530,24 +1530,21 @@ impl From<i32> for KeyValue {
 
 #[derive(Debug)]
 pub struct KeyEvent {
-    pub time: TimeVal,
     pub code: OsCode,
     pub value: KeyValue,
 }
 
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
-        let time = TimeVal::new(0, 0);
-        Self { time, code, value }
+        Self { code, value }
     }
 }
 
-impl TryFrom<InputEvent> for KeyEvent {
+impl TryFrom<&InputEvent> for KeyEvent {
     type Error = ();
-    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+    fn try_from(item: &InputEvent) -> Result<Self, Self::Error> {
         match &item.event_code {
             EventCode::EV_KEY(_) => Ok(Self {
-                time: item.time,
                 code: item.event_code.into(),
                 value: item.value.into(),
             }),
@@ -1559,7 +1556,7 @@ impl TryFrom<InputEvent> for KeyEvent {
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         Self {
-            time: item.time,
+            time: TimeVal::new(0, 0),
             event_code: item.code.into(),
             value: item.value as i32,
         }
