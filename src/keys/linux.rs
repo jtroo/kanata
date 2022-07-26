@@ -1,6 +1,7 @@
 // This file is taken from the original ktrl project's keys.rs file with modifications.
 
-use evdev::{EventType, InputEvent};
+use evdev_rs::enums::{EventCode, EventType, EV_KEY};
+use evdev_rs::{InputEvent, TimeVal};
 use kanata_keyberon::key_code::*;
 use std::convert::TryFrom;
 
@@ -1478,6 +1479,35 @@ impl From<&OsCode> for KeyCode {
     }
 }
 
+impl From<EventCode> for OsCode {
+    fn from(item: EventCode) -> Self {
+        match item {
+            EventCode::EV_KEY(evkey) => Self::from(evkey),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl From<OsCode> for EventCode {
+    fn from(item: OsCode) -> Self {
+        let evkey = item.into();
+        EventCode::EV_KEY(evkey)
+    }
+}
+
+impl From<EV_KEY> for OsCode {
+    fn from(item: EV_KEY) -> Self {
+        (item as u32).into()
+    }
+}
+
+impl From<OsCode> for EV_KEY {
+    fn from(item: OsCode) -> Self {
+        evdev_rs::enums::int_to_ev_key(item as u32)
+            .unwrap_or_else(|| panic!("Invalid KeyCode: {}", item as u32))
+    }
+}
+
 // ------------------ KeyValue --------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1500,23 +1530,26 @@ impl From<i32> for KeyValue {
 
 #[derive(Debug)]
 pub struct KeyEvent {
+    pub time: TimeVal,
     pub code: OsCode,
     pub value: KeyValue,
 }
 
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
-        Self { code, value }
+        let time = TimeVal::new(0, 0);
+        Self { time, code, value }
     }
 }
 
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        match item.kind() {
-            evdev::InputEventKind::Key(k) => Ok(Self {
-                code: OsCode::from_u32(k.0.into()).ok_or(())?,
-                value: KeyValue::from(item.value()),
+        match &item.event_type {
+            EventType::EV_KEY => Ok(Self {
+                time: item.time,
+                code: item.event_code.into(),
+                value: item.value.into(),
             }),
             _ => Err(()),
         }
@@ -1525,6 +1558,11 @@ impl TryFrom<InputEvent> for KeyEvent {
 
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
-        InputEvent::new_now(EventType::KEY, item.code as u16, item.value as i32)
+        Self {
+            time: item.time,
+            event_type: EventType::EV_KEY,
+            event_code: item.code.into(),
+            value: item.value as i32,
+        }
     }
 }
