@@ -889,6 +889,7 @@ impl OsCode {
             VK_PRINT => Some(OsCode::KEY_PRINT),
             VK_BROWSER_SEARCH => Some(OsCode::KEY_SEARCH),
             VK_BROWSER_FAVORITES => Some(OsCode::KEY_FAVORITES),
+            0xC1 => Some(OsCode::KEY_RO),
             _ => None,
         }
     }
@@ -1026,6 +1027,7 @@ impl OsCode {
             OsCode::KEY_PRINT => VK_PRINT,
             OsCode::KEY_SEARCH => VK_BROWSER_SEARCH,
             OsCode::KEY_FAVORITES => VK_BROWSER_FAVORITES,
+            OsCode::KEY_RO => 0xC1,
             _ => 0,
         }
     }
@@ -1214,6 +1216,7 @@ impl From<KeyCode> for OsCode {
             KeyCode::AltErase => OsCode::KEY_ALTERASE,
             KeyCode::Cancel => OsCode::KEY_CANCEL,
             KeyCode::MediaMute => OsCode::KEY_MICMUTE,
+            KeyCode::Intl1 => OsCode::KEY_RO,
             _ => OsCode::KEY_UNKNOWN,
         }
     }
@@ -1380,6 +1383,7 @@ impl From<OsCode> for KeyCode {
             OsCode::KEY_ALTERASE => KeyCode::AltErase,
             OsCode::KEY_CANCEL => KeyCode::Cancel,
             OsCode::KEY_MICMUTE => KeyCode::MediaMute,
+            OsCode::KEY_RO => KeyCode::Intl1,
             _ => KeyCode::No,
         }
     }
