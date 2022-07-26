@@ -37,6 +37,11 @@ Using `cargo install`:
 
 Build and run yourself in Linux:
 
+    # evdev-sys is one of dependencies. To build it, you need to either let it
+    # find and use your system's libevdev or build libevdev from scratch.
+    # Here is how to let it use your system's libevdev:
+    sudo apt install libevdev-dev pkg-config
+
     cargo build   # release optional, not really perf sensitive
 
     # sudo is used because kanata opens /dev/ files
