@@ -435,7 +435,7 @@ impl Kanata {
             log::trace!("{in_event:?}");
 
             // Pass-through non-key events
-            let key_event = match KeyEvent::try_from(in_event.clone()) {
+            let key_event = match KeyEvent::try_from(&in_event) {
                 Ok(ev) => ev,
                 _ => {
                     let mut kanata = kanata.lock();
