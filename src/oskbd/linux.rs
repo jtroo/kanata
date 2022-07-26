@@ -79,10 +79,10 @@ impl KbdOut {
         device.set_product_id(0x1);
         device.set_version(1);
 
-        device.enable(&EventType::EV_SYN)?;
-        device.enable(&EventType::EV_KEY)?;
+        device.enable(EventType::EV_SYN)?;
+        device.enable(EventType::EV_KEY)?;
         for key in (0..300).into_iter().filter_map(enums::int_to_ev_key) {
-            device.enable(&EventCode::EV_KEY(key))?;
+            device.enable(EventCode::EV_KEY(key))?;
         }
 
         let device = UInputDevice::create_from_device(&device)?;
