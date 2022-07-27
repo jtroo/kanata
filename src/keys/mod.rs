@@ -156,6 +156,10 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "hangeul" => OsCode::KEY_HANGEUL,
         "hanja" => OsCode::KEY_HANJA,
         "ro" => OsCode::KEY_RO,
+        #[cfg(target_os = "linux")]
+        "prtsc" => OsCode::KEY_SYSRQ,
+        #[cfg(target_os = "windows")]
+        "prtsc" => OsCode::KEY_PRINT,
         _ => return None,
     })
 }
