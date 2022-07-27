@@ -111,6 +111,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "home" => OsCode::KEY_HOME,
         "end" => OsCode::KEY_END,
         "nlck" | "nlk" => OsCode::KEY_NUMLOCK,
+        "mute" => OsCode::KEY_MUTE,
         "volu" => OsCode::KEY_VOLUMEUP,
         "voldwn" | "vold" => OsCode::KEY_VOLUMEDOWN,
         "brup" | "bru" => OsCode::KEY_BRIGHTNESSUP,
