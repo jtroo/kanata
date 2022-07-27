@@ -86,7 +86,6 @@ fn cli_init() -> Result<ValidatedArgs> {
 fn main_impl() -> Result<()> {
     let args = cli_init()?;
     let kanata_arc = Kanata::new_arc(&args)?;
-    info!("Kanata: config parsed");
 
     info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
     std::thread::sleep(std::time::Duration::from_secs(2));

@@ -63,6 +63,7 @@ pub struct Cfg {
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
         let (items, mapped_keys, layer_info, key_outputs, layout) = parse_cfg(p)?;
+        log::info!("Kanata: config parsed");
         Ok(Self {
             items,
             mapped_keys,
