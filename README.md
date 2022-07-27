@@ -27,19 +27,22 @@ which served as the inspiration for kanata. [Here's a comparison document](./doc
 
 ## Usage
 
-This is tested on Windows 10 and Linux (debian). See the
+This is tested on Windows 10 and Debian 10. See the
 [releases page](https://github.com/jtroo/kanata/releases) for executables.
 
 Using `cargo install`:
 
+    # Note: on Linux you may need to install libevdev manually; see below.
     cargo install kanata
     kanata --cfg <conf_file> # may not have permissions on Linux, see below
 
 Build and run yourself in Linux:
 
-    # evdev-sys is one of dependencies. To build it, you need to either let it
-    # find and use your system's libevdev or build libevdev from scratch.
-    # Here is how to let it use your system's libevdev:
+    # evdev-sys is dependency that uses a C library: libevdev. evdev-sys can
+    # find and use your system's libevdev; otherwise you need to have the
+    # dependencies required to build libevdev from scratch.
+    #
+    # Here is an example Debian for how to install your system's libevdev:
     sudo apt install libevdev-dev pkg-config
 
     cargo build   # release optional, not really perf sensitive
