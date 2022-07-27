@@ -76,6 +76,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "comm" | "," => OsCode::KEY_COMMA,
         "." => OsCode::KEY_DOT,
         "/" => OsCode::KEY_SLASH,
+        "kp=" | "clr" => OsCode::KEY_CLEAR,
         "kprt" => OsCode::KEY_KPENTER,
         "kp/" => OsCode::KEY_KPSLASH,
         "kp+" => OsCode::KEY_KPPLUS,
