@@ -809,7 +809,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
 fn parse_tap_hold(
     ac_params: &[SExpr],
     parsed_state: &ParsedState,
-    config: HoldTapConfig
+    config: HoldTapConfig,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
@@ -825,7 +825,7 @@ fn parse_tap_hold(
         bail!("tap-hold is not allowed inside of tap-hold")
     }
     Ok(sref(Action::HoldTap {
-        config: config,
+        config,
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
         tap: tap_action,
