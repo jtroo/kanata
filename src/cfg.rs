@@ -758,7 +758,9 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
     match ac_type.as_str() {
         "layer-switch" => parse_layer_base(&ac[1..], layers),
         "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
-        "tap-hold" => parse_tap_hold(&ac[1..], parsed_state),
+        "tap-hold" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::Default),
+        "tap-hold-press" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::HoldOnOtherKeyPress),
+        "tap-hold-release" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::PermissiveHold),
         "multi" => parse_multi(&ac[1..], parsed_state),
         "macro" => parse_macro(&ac[1..], parsed_state),
         "unicode" => parse_unicode(&ac[1..]),
@@ -768,7 +770,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key\n\trelease-layer\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\ttap-hold-press\n\ttap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key\n\trelease-layer\n\tcmd",
             ac_type
         ),
     }
@@ -807,6 +809,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
 fn parse_tap_hold(
     ac_params: &[SExpr],
     parsed_state: &ParsedState,
+    config: HoldTapConfig,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
@@ -822,7 +825,7 @@ fn parse_tap_hold(
         bail!("tap-hold is not allowed inside of tap-hold")
     }
     Ok(sref(Action::HoldTap {
-        config: HoldTapConfig::Default,
+        config,
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
         tap: tap_action,

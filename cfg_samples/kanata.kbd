@@ -123,6 +123,21 @@
   ;; the key within the tap timeout window (number is milliseconds). Simply
   ;; holding the key results in the hold action activating, which is why you
   ;; need to double-press for the tap action to stay pressed.
+  ;;
+  ;; There are two additional versions of tap-hold available:
+  ;; 1. tap-hold-press: if there is a key press, the hold action is activated
+  ;; 2. tap-hold-release: if there is a press and release of another key, the
+  ;; hold action is activated
+  ;;
+  ;; These versions are useful if you don't want to wait for the whole hold
+  ;; timeout to activate, but want to activate the hold action immediately
+  ;; based on the next key press or press and release of another key. These
+  ;; versions might be great to implement home row mods.
+  ;;
+  ;; If you come from kmonad, tap-hold-press and tap-hold-release are similar
+  ;; to tap-hold-next and tap-hold-next-release, respectively. If you know
+  ;; the underlying keyberon crate, tap-hold-press is the HoldOnOtherKeyPress
+  ;; and tap-hold-release is the PermissiveHold configuration.
   anm (tap-hold 200 200 a @num)   ;; tap: a      hold: numbers layer
   oar (tap-hold 200 200 o @arr)   ;; tap: o      hold: arrows layer
   ech (tap-hold 200 200 e @chr)   ;; tap: e      hold: chords layer
