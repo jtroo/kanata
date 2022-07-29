@@ -24,7 +24,7 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 pub struct Kanata {
-    pub kbd_in_path: PathBuf,
+    pub kbd_in_paths: String,
     pub kbd_out: KbdOut,
     pub cfg_path: PathBuf,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
@@ -67,13 +67,13 @@ impl Kanata {
         };
 
         #[cfg(target_os = "linux")]
-        let kbd_in_path = cfg
+        let kbd_in_paths = cfg
             .items
             .get("linux-dev")
-            .expect("linux-dev required in defcfg")
-            .into();
+            .cloned()
+            .expect("linux-dev required in defcfg");
         #[cfg(target_os = "windows")]
-        let kbd_in_path = "unused".into();
+        let kbd_in_paths = "unused".into();
 
         #[cfg(target_os = "windows")]
         unsafe {
@@ -86,7 +86,7 @@ impl Kanata {
         set_altgr_behaviour(&cfg)?;
 
         Ok(Self {
-            kbd_in_path,
+            kbd_in_paths,
             kbd_out,
             cfg_path: args.path.clone(),
             mapped_keys: cfg.mapped_keys,
