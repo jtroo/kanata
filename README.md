@@ -63,7 +63,7 @@ Sample configuration files are found in [cfg_samples](./cfg_samples). The
 that is hopefully easy to understand but does not contain all features. The
 `kanata.kbd` contains an example of all features with documentation. The latest
 release assets also has a `kanata.kbd` file that is tested to work with that
-release.
+release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
 ## Features
 
