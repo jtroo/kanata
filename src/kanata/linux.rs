@@ -20,7 +20,7 @@ impl Kanata {
             *mapped_keys = kanata.lock().mapped_keys;
         }
 
-        let kbd_in = match KbdIn::new(&kanata.lock().kbd_in_path) {
+        let mut kbd_in = match KbdIn::new(&kanata.lock().kbd_in_paths) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {
                 bail!("failed to open keyboard device: {}", e)
@@ -28,31 +28,33 @@ impl Kanata {
         };
 
         loop {
-            let in_event = kbd_in.read()?;
-            log::trace!("{in_event:?}");
+            let events = kbd_in.read()?;
+            log::trace!("{events:?}");
 
             // Pass-through non-key events
-            let key_event = match KeyEvent::try_from(&in_event) {
-                Ok(ev) => ev,
-                _ => {
+            for in_event in events.into_iter() {
+                let key_event = match KeyEvent::try_from(&in_event) {
+                    Ok(ev) => ev,
+                    _ => {
+                        let mut kanata = kanata.lock();
+                        kanata.kbd_out.write(in_event)?;
+                        continue;
+                    }
+                };
+
+                // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
+                // it immediately.
+                let kc: usize = key_event.code.into();
+                if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
                     let mut kanata = kanata.lock();
-                    kanata.kbd_out.write(in_event)?;
+                    kanata.kbd_out.write_key(key_event.code, key_event.value)?;
                     continue;
                 }
-            };
 
-            // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
-            // it immediately.
-            let kc: usize = key_event.code.into();
-            if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
-                let mut kanata = kanata.lock();
-                kanata.kbd_out.write_key(key_event.code, key_event.value)?;
-                continue;
-            }
-
-            // Send key events to the processing loop
-            if let Err(e) = tx.send(key_event) {
-                bail!("failed to send on channel: {}", e)
+                // Send key events to the processing loop
+                if let Err(e) = tx.send(key_event) {
+                    bail!("failed to send on channel: {}", e)
+                }
             }
         }
     }

@@ -14,6 +14,7 @@ use evdev_rs::ReadStatus;
 use evdev_rs::TimeVal;
 use evdev_rs::UInputDevice;
 use evdev_rs::UninitDevice;
+use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use signal_hook::consts::SIGINT;
 use signal_hook::consts::SIGTERM;
 use signal_hook::iterator::Signals;
@@ -21,22 +22,25 @@ use signal_hook::iterator::Signals;
 use crate::custom_action::*;
 use crate::keys::*;
 
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io;
-use std::path::Path;
+use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
 use crate::keys::KeyEvent;
 
 pub struct KbdIn {
-    device: Device,
+    devices: HashMap<Token, Device>,
+    poll: Poll,
+    events: Events,
 }
 
 impl KbdIn {
-    pub fn new(dev_path: &Path) -> Result<Self, std::io::Error> {
-        match KbdIn::new_linux(dev_path) {
+    pub fn new(dev_paths: &str) -> Result<Self, std::io::Error> {
+        match KbdIn::new_linux(dev_paths) {
             Ok(s) => Ok(s),
             Err(e) => {
                 log::error!("Failed to open the input keyboard device. Make sure you've added kanata to the `input` group. E: {}", e);
@@ -45,26 +49,62 @@ impl KbdIn {
         }
     }
 
-    fn new_linux(dev_path: &Path) -> Result<Self, std::io::Error> {
-        let kbd_in_file = File::open(dev_path)?;
-        let mut kbd_in_dev = Device::new_from_file(kbd_in_file)?;
+    fn new_linux(dev_paths: &str) -> Result<Self, std::io::Error> {
+        let mut devices = HashMap::new();
+        let poll = Poll::new()?;
+        for (i, dev_path) in dev_paths.split(':').enumerate() {
+            let kbd_in_file = File::open(dev_path)?;
+            let fd = kbd_in_file.as_raw_fd();
+            let mut kbd_in_dev = Device::new_from_file(kbd_in_file)?;
 
-        // NOTE: This grab-ungrab-grab sequence magically
-        // fix an issue I had with my Lenovo Yoga trackpad not working.
-        // I honestly have no idea why this works haha.
-        kbd_in_dev.grab(GrabMode::Grab)?;
-        kbd_in_dev.grab(GrabMode::Ungrab)?;
-        kbd_in_dev.grab(GrabMode::Grab)?;
+            // NOTE: This grab-ungrab-grab sequence magically
+            // fix an issue I had with my Lenovo Yoga trackpad not working.
+            // I honestly have no idea why this works haha.
+            kbd_in_dev.grab(GrabMode::Grab)?;
+            kbd_in_dev.grab(GrabMode::Ungrab)?;
+            kbd_in_dev.grab(GrabMode::Grab)?;
 
-        Ok(KbdIn { device: kbd_in_dev })
+            let tok = Token(i);
+            poll.registry()
+                .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
+            devices.insert(tok, kbd_in_dev);
+        }
+        if devices.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No valid keyboard devices provided",
+            ));
+        }
+
+        let events = Events::with_capacity(32);
+        Ok(KbdIn {
+            devices,
+            poll,
+            events,
+        })
     }
 
-    pub fn read(&self) -> Result<InputEvent, std::io::Error> {
-        let (status, event) = self
-            .device
-            .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
-        std::assert!(status == ReadStatus::Success);
-        Ok(event)
+    pub fn read(&mut self) -> Result<Vec<InputEvent>, std::io::Error> {
+        let mut input_events = vec![];
+        loop {
+            log::debug!("polling");
+            self.poll.poll(&mut self.events, None)?;
+            for event in &self.events {
+                if let Some(device) = self.devices.get_mut(&event.token()) {
+                    while device.has_event_pending() {
+                        let (status, event) =
+                            device.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
+                        std::assert!(status == ReadStatus::Success);
+                        input_events.push(event);
+                    }
+                } else {
+                    panic!("encountered unexpected epoll event {event:?}");
+                }
+            }
+            if !input_events.is_empty() {
+                return Ok(input_events);
+            }
+        }
     }
 }
 
