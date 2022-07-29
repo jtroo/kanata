@@ -1,4 +1,4 @@
-// This file contains the original ktrl project's `kbd_in.rs` and `kbd_out.rs` files.
+//! Contains the input/output code for keyboards on Linux.
 
 use evdev_rs::enums;
 use evdev_rs::enums::BusType;
@@ -21,7 +21,6 @@ use signal_hook::iterator::Signals;
 use crate::custom_action::*;
 use crate::keys::*;
 
-// file i/o
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -29,7 +28,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::thread;
 
-// kanata
 use crate::keys::KeyEvent;
 
 pub struct KbdIn {
