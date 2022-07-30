@@ -65,6 +65,20 @@ that is hopefully easy to understand but does not contain all features. The
 release assets also has a `kanata.kbd` file that is tested to work with that
 release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
+## Other installation methods
+
+### Arch user repository (AUR)
+
+You can install it from [AUR](https://aur.archlinux.org/packages/kanata-bin):
+
+    git clone https://aur.archlinux.org/kanata-bin.git
+    cd kanata-bin
+    makepkg -si
+
+Or simply use your preferred AUR helper (e.g. [paru](https://aur.archlinux.org/packages/paru)):
+
+    paru -S kanata-bin
+
 ## Features
 
 - Human readable configuration file. [Simple example](./cfg_samples/simple.kbd).
