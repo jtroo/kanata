@@ -67,17 +67,7 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
 ## Other installation methods
 
-### Arch user repository (AUR)
-
-You can install it from [AUR](https://aur.archlinux.org/packages/kanata-bin):
-
-    git clone https://aur.archlinux.org/kanata-bin.git
-    cd kanata-bin
-    makepkg -si
-
-Or simply use your preferred AUR helper (e.g. [paru](https://aur.archlinux.org/packages/paru)):
-
-    paru -S kanata-bin
+[![Packaging status](https://repology.org/badge/vertical-allrepos/kanata.svg)](https://repology.org/project/kanata/versions)
 
 ## Features
 
