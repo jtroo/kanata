@@ -81,7 +81,7 @@ pub const MAPPED_KEYS_LEN: usize = 256;
 /// just use a HashSet for this.
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 
-/// Used as a silly `HashMap<Oscode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
+/// Used as a silly `HashMap<OsCode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
 /// for a given physical key location. I should probably just use a HashMap for this.
 pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
 

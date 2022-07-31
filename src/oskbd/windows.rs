@@ -41,7 +41,7 @@ impl<'a> KeyboardHook<'a> {
     /// Sets the low-level keyboard hook for this thread.
     ///
     /// Panics when a hook is already registered from the same thread.
-    #[must_use = "The hook will immediatelly be unregistered and not work."]
+    #[must_use = "The hook will immediately be unregistered and not work."]
     pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + 'a) -> KeyboardHook<'a> {
         HOOK_STATE.with(|state| {
             let mut state = state.borrow_mut();
@@ -56,7 +56,7 @@ impl<'a> KeyboardHook<'a> {
 
             // Safety: Transmuting to 'static lifetime is required to put the closure in thread
             // local storage. It is safe to do so because we properly unregister the hook on drop
-            // after which the global (thread local) variable `HOOK` will not be acccesed anymore.
+            // after which the global (thread local) variable `HOOK` will not be accessed anymore.
             state.hook = Some(unsafe { mem::transmute(boxed_cb) });
 
             KeyboardHook {
@@ -219,7 +219,7 @@ impl KbdOut {
     }
 
     pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
-        log::debug!("reles btn: {:?}", btn);
+        log::debug!("release btn: {:?}", btn);
         match btn {
             Btn::Left => send_btn(MOUSEEVENTF_LEFTUP),
             Btn::Right => send_btn(MOUSEEVENTF_RIGHTUP),

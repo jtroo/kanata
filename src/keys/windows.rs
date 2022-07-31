@@ -1,4 +1,4 @@
-// This file is adapted from the orginal ktrl's `keys.rs` file for Windows.
+// This file is adapted from the original ktrl's `keys.rs` file for Windows.
 
 use crate::oskbd::*;
 use kanata_keyberon::key_code::*;

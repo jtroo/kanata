@@ -39,7 +39,7 @@
   ;; not work too well with other applications that use WH_KEYBOARD_LL.
   ;; Known applications with issues: GWSL/VcXsrv
 
-  ;; Optional confguration: enable kanata to execute commands.
+  ;; Optional configuration: enable kanata to execute commands.
   ;; It is also not enabled in this sample configuration.
   ;; This is dangerous because it allows kanata to execute arbitrary commands.
   ;; Using a binary compiled with the cmd feature enabled, uncomment below to
@@ -187,7 +187,7 @@
   ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
-  ;; Chords using the shortuct syntax. These ones are used for copying/pasting
+  ;; Chords using the shortcut syntax. These ones are used for copying/pasting
   ;; from some Linux terminals.
   csv C-S-v
   csc C-S-c
