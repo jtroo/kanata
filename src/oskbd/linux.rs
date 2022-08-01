@@ -1,36 +1,21 @@
 //! Contains the input/output code for keyboards on Linux.
 
-use evdev_rs::enums;
-use evdev_rs::enums::BusType;
-use evdev_rs::enums::EventCode;
-use evdev_rs::enums::EventType;
-use evdev_rs::enums::EV_SYN;
-use evdev_rs::Device;
-use evdev_rs::DeviceWrapper;
-use evdev_rs::GrabMode;
-use evdev_rs::InputEvent;
-use evdev_rs::ReadFlag;
-use evdev_rs::ReadStatus;
-use evdev_rs::TimeVal;
-use evdev_rs::UInputDevice;
-use evdev_rs::UninitDevice;
+use evdev::uinput;
+use evdev::Device;
+use evdev::InputEvent;
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
-use signal_hook::consts::SIGINT;
-use signal_hook::consts::SIGTERM;
-use signal_hook::iterator::Signals;
-
-use crate::custom_action::*;
-use crate::keys::*;
+use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
 
 use std::collections::HashMap;
 use std::fs;
-use std::fs::File;
 use std::io;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
 use crate::keys::KeyEvent;
+use crate::custom_action::*;
+use crate::keys::*;
 
 pub struct KbdIn {
     devices: HashMap<Token, Device>,
@@ -53,18 +38,17 @@ impl KbdIn {
         let mut devices = HashMap::new();
         let poll = Poll::new()?;
         for (i, dev_path) in dev_paths.split(':').enumerate() {
-            let kbd_in_file = File::open(dev_path)?;
-            let fd = kbd_in_file.as_raw_fd();
-            let mut kbd_in_dev = Device::new_from_file(kbd_in_file)?;
+            let mut kbd_in_dev = Device::open(dev_path)?;
 
             // NOTE: This grab-ungrab-grab sequence magically
-            // fix an issue I had with my Lenovo Yoga trackpad not working.
-            // I honestly have no idea why this works haha.
-            kbd_in_dev.grab(GrabMode::Grab)?;
-            kbd_in_dev.grab(GrabMode::Ungrab)?;
-            kbd_in_dev.grab(GrabMode::Grab)?;
+            // fix an issue with a Lenovo Yoga trackpad not working.
+            // No idea why this works.
+            kbd_in_dev.grab()?;
+            kbd_in_dev.ungrab()?;
+            kbd_in_dev.grab()?;
 
             let tok = Token(i);
+            let fd = kbd_in_dev.as_raw_fd();
             poll.registry()
                 .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
             devices.insert(tok, kbd_in_dev);
@@ -91,12 +75,10 @@ impl KbdIn {
             self.poll.poll(&mut self.events, None)?;
             for event in &self.events {
                 if let Some(device) = self.devices.get_mut(&event.token()) {
-                    while device.has_event_pending() {
-                        let (status, event) =
-                            device.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
-                        std::assert!(status == ReadStatus::Success);
-                        input_events.push(event);
-                    }
+                    device
+                        .fetch_events()?
+                        .into_iter()
+                        .for_each(|ev| input_events.push(ev));
                 } else {
                     panic!("encountered unexpected epoll event {event:?}");
                 }
@@ -109,50 +91,41 @@ impl KbdIn {
 }
 
 pub struct KbdOut {
-    device: UInputDevice,
-    _symlink: Option<Symlink>,
+    device: uinput::VirtualDevice,
+    // _symlink: Option<Symlink>,
 }
 
 impl KbdOut {
-    pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {
-        let device = UninitDevice::new()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "UninitDevice::new() failed"))?;
-
-        device.set_name("kanata");
-        device.set_bustype(BusType::BUS_USB as u16);
-        device.set_vendor_id(0x1);
-        device.set_product_id(0x1);
-        device.set_version(1);
-
-        device.enable(EventType::EV_SYN)?;
-        device.enable(EventType::EV_KEY)?;
-        for key in (0..300).into_iter().filter_map(enums::int_to_ev_key) {
-            device.enable(EventCode::EV_KEY(key))?;
+    pub fn new(_symlink_path: &Option<String>) -> Result<Self, io::Error> {
+        let mut keys = evdev::AttributeSet::new();
+        for k in 0..300u16 {
+            keys.insert(evdev::Key(k));
         }
 
-        let device = UInputDevice::create_from_device(&device)?;
-
-        let devnode = device
-            .devnode()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))?;
-        log::info!("Created device {:#?}", devnode);
-        let symlink = if let Some(symlink_path) = symlink_path {
-            let dest = PathBuf::from(symlink_path);
-            let symlink = Symlink::new(PathBuf::from(devnode), dest)?;
-            Symlink::clean_when_killed(symlink.clone());
-            Some(symlink)
-        } else {
-            None
-        };
+        // let devnode = device
+        //     .devnode()
+        //     .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))?;
+        // log::info!("Created device {:#?}", devnode);
+        // let symlink = if let Some(symlink_path) = symlink_path {
+        //     let dest = PathBuf::from(symlink_path);
+        //     let symlink = Symlink::new(PathBuf::from(devnode), dest)?;
+        //     Symlink::clean_when_killed(symlink.clone());
+        //     Some(symlink)
+        // } else {
+        //     None
+        // };
 
         Ok(KbdOut {
-            device,
-            _symlink: symlink,
+            device: uinput::VirtualDeviceBuilder::new()?
+                .name("kanata")
+                .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
+                .with_keys(&keys)?
+                .build()?,
         })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        self.device.write_event(&event)?;
+        self.device.emit(&[event])?;
         Ok(())
     }
 
@@ -160,18 +133,7 @@ impl KbdOut {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
         log::debug!("input ev: {:?}", input_ev);
-        self.write(input_ev)?;
-
-        let sync = InputEvent::new(
-            &TimeVal {
-                tv_sec: 0,
-                tv_usec: 0,
-            },
-            &EventCode::EV_SYN(EV_SYN::SYN_REPORT),
-            0,
-        );
-        self.write(sync)?;
-
+        self.device.emit(&[input_ev])?;
         Ok(())
     }
 
@@ -229,6 +191,8 @@ struct Symlink {
     dest: PathBuf,
 }
 
+// TODO: add back in when evdev merges and releases devnode info
+#[allow(unused)]
 impl Symlink {
     fn new(source: PathBuf, dest: PathBuf) -> Result<Self, io::Error> {
         if let Ok(metadata) = fs::symlink_metadata(&dest) {
