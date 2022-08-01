@@ -271,10 +271,12 @@ pub(crate) use empty_layer;
 pub const MAX_LAYERS: usize = 25;
 pub const ACTUAL_NUM_LAYERS: usize = MAX_LAYERS * 2;
 
-pub type KanataLayers = Layers<256, 1, ACTUAL_NUM_LAYERS, CustomAction>;
+pub type KanataLayers = Layers<256, 1, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
 
 pub fn new_layers() -> Box<KanataLayers> {
-    let boxed_slice: Box<[[kanata_keyberon::action::Action<CustomAction>; 256]]> = {
+    let boxed_slice: Box<
+        [[kanata_keyberon::action::Action<&'static [&'static CustomAction]>; 256]],
+    > = {
         let mut layers = Vec::with_capacity(ACTUAL_NUM_LAYERS);
         for _ in 0..ACTUAL_NUM_LAYERS {
             layers.push(empty_layer!());

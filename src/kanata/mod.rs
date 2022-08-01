@@ -151,52 +151,42 @@ impl Kanata {
     fn tick_handle_custom_event(&mut self) -> Result<bool> {
         let mut live_reload_requested = false;
         match self.layout.tick() {
-            CustomEvent::Press(custact) => match custact {
-                // For unicode, only send on the press. No repeat action is supported for this for
-                // now.
-                CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
-                CustomAction::MultiUnicode(chars) => {
-                    for c in chars.iter() {
-                        self.kbd_out.send_unicode(*c)?;
+            CustomEvent::Press(custacts) => {
+                let mut cmds = vec![];
+                let mut prev_mouse_btn = None;
+                for custact in custacts.iter() {
+                    match custact {
+                        // For unicode, only send on the press. No repeat action is supported for this for
+                        // now.
+                        CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                        CustomAction::LiveReload => {
+                            live_reload_requested = true;
+                            log::info!("Requested live reload")
+                        }
+                        CustomAction::Mouse(btn) => {
+                            log::debug!("press     {:?}", btn);
+                            if let Some(pbtn) = prev_mouse_btn {
+                                self.kbd_out.release_btn(pbtn)?;
+                            }
+                            self.kbd_out.click_btn(*btn)?;
+                            prev_mouse_btn = Some(*btn);
+                        }
+                        CustomAction::Cmd(cmd) => {
+                            cmds.push(*cmd);
+                        }
                     }
                 }
-                CustomAction::LiveReload => {
-                    live_reload_requested = true;
-                    log::info!("Requested live reload")
-                }
-                CustomAction::Mouse(btn) => {
-                    log::debug!("press     {:?}", btn);
-                    self.kbd_out.click_btn(*btn)?;
-                }
-                CustomAction::MultiMouse(btns) => {
-                    assert!(!btns.is_empty());
-                    for i in 0..btns.len() - 1 {
-                        let btn = btns[i];
-                        log::debug!("press     {:?}", btn);
-                        self.kbd_out.click_btn(btn)?;
-                        log::debug!("release   {:?}", btn);
-                        self.kbd_out.release_btn(btn)?;
-                    }
-                    let btn = btns[btns.len() - 1];
-                    log::debug!("press     {:?}", btn);
-                    self.kbd_out.click_btn(btn)?;
-                }
-                CustomAction::Cmd(cmd) => {
-                    run_cmd(cmd);
-                }
-                CustomAction::MultiCmd(cmds) => {
-                    run_multi_cmd(cmds);
-                }
-            },
-            CustomEvent::Release(CustomAction::Mouse(btn)) => {
-                log::debug!("release   {:?}", btn);
-                self.kbd_out.release_btn(*btn)?;
+                run_multi_cmd(cmds);
             }
-            CustomEvent::Release(CustomAction::MultiMouse(btns)) => {
-                assert!(!btns.is_empty());
-                let btn = btns[btns.len() - 1];
-                log::debug!("release   {:?}", btn);
-                self.kbd_out.release_btn(btn)?;
+            CustomEvent::Release(custacts) => {
+                if let Some(Err(e)) = custacts.iter().fold(None, |pbtn, ac| {
+                    match ac {
+                        CustomAction::Mouse(btn) => Some(btn),
+                        _ => pbtn,
+                    }
+                }).map(|btn| self.kbd_out.release_btn(*btn)) {
+                    bail!(e);
+                }
             }
             _ => {}
         };
@@ -448,8 +438,7 @@ fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
 }
 
 #[cfg(feature = "cmd")]
-fn run_multi_cmd(cmds: &'static [&'static [String]]) {
-    let cmds = <&[&[String]]>::clone(&cmds);
+fn run_multi_cmd(cmds: Vec<&'static [String]>) {
     std::thread::spawn(move || {
         for cmd in cmds {
             if let Err(e) = run_cmd(cmd).join() {
@@ -460,7 +449,4 @@ fn run_multi_cmd(cmds: &'static [&'static [String]]) {
 }
 
 #[cfg(not(feature = "cmd"))]
-fn run_cmd(_cmd_and_args: &[String]) {}
-
-#[cfg(not(feature = "cmd"))]
-fn run_multi_cmd(_cmds: &'static [&'static [String]]) {}
+fn run_multi_cmd(_cmds: Vec<&'static [String]>) {}

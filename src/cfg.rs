@@ -49,8 +49,8 @@ use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
-pub type KanataAction = Action<CustomAction>;
-pub type KanataLayout = Layout<256, 1, ACTUAL_NUM_LAYERS, CustomAction>;
+pub type KanataAction = Action<&'static [&'static CustomAction]>;
+pub type KanataLayout = Layout<256, 1, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
 
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
@@ -677,6 +677,11 @@ fn sref<T>(v: T) -> &'static T {
     Box::leak(Box::new(v))
 }
 
+/// Returns a `&'static [&'static T]` by leaking a box + boxed array
+fn sref_slice<T>(v: T) -> &'static [&'static T] {
+    Box::leak(vec![sref(v)].into_boxed_slice())
+}
+
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr`.
 fn parse_action(expr: &SExpr, parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     match expr {
@@ -690,10 +695,22 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
-        "lrld" => return Ok(sref(Action::Custom(CustomAction::LiveReload))),
-        "mlft" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Left)))),
-        "mrgt" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Right)))),
-        "mmid" => return Ok(sref(Action::Custom(CustomAction::Mouse(Btn::Mid)))),
+        "lrld" => return Ok(sref(Action::Custom(sref_slice(CustomAction::LiveReload)))),
+        "mlft" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Left,
+            )))))
+        }
+        "mrgt" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Right,
+            )))))
+        }
+        "mmid" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Mid,
+            )))))
+        }
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
@@ -840,53 +857,26 @@ fn parse_timeout(a: &SExpr) -> Result<u16> {
     }
 }
 
-#[derive(Debug)]
-enum MultiCustom {
-    Unset,
-    Cmd(Vec<&'static [String]>),
-    Unicode(Vec<char>),
-    Mouse(Vec<Btn>),
-}
-
 fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("multi expects at least one atom after it")
     }
     let mut actions = Vec::new();
-    let mut multi_custom = MultiCustom::Unset;
+    let mut custom_actions: Vec<&'static CustomAction> = Vec::new();
     for expr in ac_params {
         let ac = parse_action(expr, parsed_state)?;
         match ac {
-            Action::Custom(ac) => {
-                match (ac, &mut multi_custom) {
-                    (CustomAction::LiveReload, _) => bail!("Live reload not supported in multi action"),
-                    (_, MultiCustom::Unset) => match ac {
-                        CustomAction::Cmd(ac) => multi_custom = MultiCustom::Cmd(vec![ac]),
-                        CustomAction::Unicode(ac) => multi_custom = MultiCustom::Unicode(vec![*ac]),
-                        CustomAction::Mouse(ac) => multi_custom = MultiCustom::Mouse(vec![*ac]),
-                        _ => bail!("Unsupported action in multi: {:?}", ac),
-                    }
-                    (CustomAction::Cmd(ac), MultiCustom::Cmd(acs)) => acs.push(ac),
-                    (CustomAction::Unicode(ac), MultiCustom::Unicode(acs)) => acs.push(*ac),
-                    (CustomAction::Mouse(ac), MultiCustom::Mouse(acs)) => acs.push(*ac),
-                    _ => bail!("For multi, only one type of the following actions is allowed: (mouse clicks),(unicode),(cmd)\nYou can have multiple mouse clicks, multiple unicode, or multiple cmd, but not e.g. one mouse click and one cmd."),
+            Action::Custom(acs) => {
+                for ac in acs.iter() {
+                    custom_actions.push(ac);
                 }
             }
             _ => actions.push(*ac),
         }
     }
 
-    match multi_custom {
-        MultiCustom::Cmd(v) => actions.push(Action::Custom(CustomAction::MultiCmd(Box::leak(
-            v.into_boxed_slice(),
-        )))),
-        MultiCustom::Unicode(v) => actions.push(Action::Custom(CustomAction::MultiUnicode(
-            Box::leak(v.into_boxed_slice()),
-        ))),
-        MultiCustom::Mouse(v) => actions.push(Action::Custom(CustomAction::MultiMouse(Box::leak(
-            v.into_boxed_slice(),
-        )))),
-        MultiCustom::Unset => {}
+    if !custom_actions.is_empty() {
+        actions.push(Action::Custom(Box::leak(custom_actions.into_boxed_slice())));
     }
 
     Ok(sref(Action::MultipleActions(sref(actions))))
@@ -946,9 +936,9 @@ fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
             if s.chars().count() != 1 {
                 bail!(ERR_STR)
             }
-            Ok(sref(Action::Custom(CustomAction::Unicode(
+            Ok(sref(Action::Custom(sref_slice(CustomAction::Unicode(
                 s.chars().next().unwrap(),
-            ))))
+            )))))
         }
         _ => bail!(ERR_STR),
     }
@@ -962,18 +952,20 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
     if ac_params.is_empty() {
         bail!(ERR_STR);
     }
-    Ok(sref(Action::Custom(CustomAction::Cmd(Box::leak(
-        ac_params
-            .iter()
-            .try_fold(Vec::new(), |mut v, p| {
-                if let SExpr::Atom(s) = p {
-                    v.push(s.clone());
-                    Ok(v)
-                } else {
-                    bail!("{}, found a list", ERR_STR);
-                }
-            })?
-            .into_boxed_slice(),
+    Ok(sref(Action::Custom(sref_slice(CustomAction::Cmd(
+        Box::leak(
+            ac_params
+                .iter()
+                .try_fold(Vec::new(), |mut v, p| {
+                    if let SExpr::Atom(s) = p {
+                        v.push(s.clone());
+                        Ok(v)
+                    } else {
+                        bail!("{}, found a list", ERR_STR);
+                    }
+                })?
+                .into_boxed_slice(),
+        ),
     )))))
 }
 
