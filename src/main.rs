@@ -61,12 +61,18 @@ fn cli_init() -> Result<ValidatedArgs> {
         (false, false) => LevelFilter::Info,
     };
 
+    let mut log_cfg = ConfigBuilder::new();
+    if let Err(e) = log_cfg.set_time_offset_to_local() {
+        eprintln!("WARNING: could not set log TZ to local: {:?}", e);
+    };
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,
-        Config::default(),
+        log_cfg.build(),
         TerminalMode::Mixed,
+        ColorChoice::AlwaysAnsi,
     )])
     .expect("Couldn't initialize the logger");
+    log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
 
     if !cfg_path.exists() {
         bail!(

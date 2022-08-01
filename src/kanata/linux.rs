@@ -14,7 +14,7 @@ impl Kanata {
     /// thread.
     #[cfg(target_os = "linux")]
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
-        info!("Kanata: entering the event loop");
+        info!("entering the event loop");
         {
             let mut mapped_keys = MAPPED_KEYS.lock();
             *mapped_keys = kanata.lock().mapped_keys;

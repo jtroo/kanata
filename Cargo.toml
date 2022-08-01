@@ -14,7 +14,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "3", features = [ "derive" ] }
 log = "0.4.8"
-simplelog = "0.8.0"
+simplelog = "0.12.0"
 anyhow = "1"
 parking_lot = "0.12"
 crossbeam-channel = "0.5"

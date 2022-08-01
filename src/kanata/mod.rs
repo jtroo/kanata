@@ -315,7 +315,7 @@ impl Kanata {
         rx: Receiver<ServerMessage>,
         clients: Arc<Mutex<HashMap<String, TcpStream>>>,
     ) {
-        info!("Kanata: listening for event notifications to relay to connected clients");
+        info!("listening for event notifications to relay to connected clients");
         std::thread::spawn(move || {
             loop {
                 match rx.recv() {
@@ -364,7 +364,7 @@ impl Kanata {
         rx: Receiver<KeyEvent>,
         tx: Option<Sender<ServerMessage>>,
     ) {
-        info!("Kanata: entering the processing loop");
+        info!("entering the processing loop");
         std::thread::spawn(move || {
             info!("Init: catching only releases and sending immediately");
             for _ in 0..500 {
