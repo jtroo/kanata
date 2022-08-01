@@ -33,7 +33,7 @@ impl Kanata {
 
             // Pass-through non-key events
             for in_event in events.into_iter() {
-                let key_event = match KeyEvent::try_from(&in_event) {
+                let key_event = match KeyEvent::try_from(in_event) {
                     Ok(ev) => ev,
                     _ => {
                         let mut kanata = kanata.lock();
