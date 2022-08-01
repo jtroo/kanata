@@ -105,13 +105,13 @@ fn main_impl() -> Result<()> {
     let (server, ntx, nrx) = if let Some(port) = args.port {
         let mut server = TcpServer::new(port);
         server.start(kanata_arc.clone());
-        let (ntx, nrx) = crossbeam_channel::bounded(10);
+        let (ntx, nrx) = crossbeam_channel::unbounded();
         (Some(server), Some(ntx), Some(nrx))
     } else {
         (None, None, None)
     };
 
-    let (tx, rx) = crossbeam_channel::bounded(10);
+    let (tx, rx) = crossbeam_channel::unbounded();
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
@@ -126,7 +126,7 @@ fn main_impl() -> Result<()> {
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {
-        log::error!("{}", e);
+        log::error!("main got error {}", e);
     }
     eprintln!("\nPress any key to exit");
     let _ = std::io::stdin().read_line(&mut String::new());

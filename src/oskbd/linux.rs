@@ -72,11 +72,17 @@ impl KbdIn {
         let mut input_events = vec![];
         loop {
             log::debug!("polling");
-            self.poll.poll(&mut self.events, None)?;
+            if let Err(e) = self.poll.poll(&mut self.events, None) {
+                log::error!("failed poll: {:?}", e);
+                return Ok(vec![]);
+            }
             for event in &self.events {
                 if let Some(device) = self.devices.get_mut(&event.token()) {
                     device
-                        .fetch_events()?
+                        .fetch_events().map_err(|e| {
+                            log::error!("failed fetch events");
+                            e
+                        })?
                         .into_iter()
                         .for_each(|ev| input_events.push(ev));
                 } else {
