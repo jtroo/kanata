@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use crossbeam_channel::Sender;
 use log::info;
 use parking_lot::Mutex;
@@ -28,7 +28,7 @@ impl Kanata {
         };
 
         loop {
-            let events = kbd_in.read()?;
+            let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("{events:?}");
 
             // Pass-through non-key events
@@ -37,7 +37,7 @@ impl Kanata {
                     Ok(ev) => ev,
                     _ => {
                         let mut kanata = kanata.lock();
-                        kanata.kbd_out.write(in_event)?;
+                        kanata.kbd_out.write(in_event).map_err(|e| anyhow!("failed write: {}", e))?;
                         continue;
                     }
                 };
@@ -47,7 +47,7 @@ impl Kanata {
                 let kc: usize = key_event.code.into();
                 if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
                     let mut kanata = kanata.lock();
-                    kanata.kbd_out.write_key(key_event.code, key_event.value)?;
+                    kanata.kbd_out.write_key(key_event.code, key_event.value).map_err(|e| anyhow!("failed write key: {}", e))?;
                     continue;
                 }
 

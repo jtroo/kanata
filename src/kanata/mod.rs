@@ -231,7 +231,7 @@ impl Kanata {
             }
             Ok(cfg) => {
                 if let Err(e) = set_altgr_behaviour(&cfg) {
-                    log::error!("{}", e);
+                    log::error!("failed to set altgr behaviour {}", e);
                     return;
                 }
                 self.layout = cfg.layout;
@@ -389,7 +389,8 @@ impl Kanata {
                         std::thread::sleep(time::Duration::from_millis(1));
                     }
                     Err(TryRecvError::Disconnected) => {
-                        panic!("channel disconnected")
+                        log::error!("channel disconnected");
+                        return;
                     }
                 }
             };
