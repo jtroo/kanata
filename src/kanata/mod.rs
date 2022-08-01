@@ -179,12 +179,14 @@ impl Kanata {
                 run_multi_cmd(cmds);
             }
             CustomEvent::Release(custacts) => {
-                if let Some(Err(e)) = custacts.iter().fold(None, |pbtn, ac| {
-                    match ac {
+                if let Some(Err(e)) = custacts
+                    .iter()
+                    .fold(None, |pbtn, ac| match ac {
                         CustomAction::Mouse(btn) => Some(btn),
                         _ => pbtn,
-                    }
-                }).map(|btn| self.kbd_out.release_btn(*btn)) {
+                    })
+                    .map(|btn| self.kbd_out.release_btn(*btn))
+                {
                     bail!(e);
                 }
             }
