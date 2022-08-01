@@ -4,7 +4,10 @@ use evdev::uinput;
 use evdev::Device;
 use evdev::InputEvent;
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
-use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
+use signal_hook::{
+    consts::{SIGINT, SIGTERM},
+    iterator::Signals,
+};
 
 use std::collections::HashMap;
 use std::fs;
@@ -13,8 +16,8 @@ use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
-use crate::keys::KeyEvent;
 use crate::custom_action::*;
+use crate::keys::KeyEvent;
 use crate::keys::*;
 
 pub struct KbdIn {
@@ -79,7 +82,8 @@ impl KbdIn {
             for event in &self.events {
                 if let Some(device) = self.devices.get_mut(&event.token()) {
                     device
-                        .fetch_events().map_err(|e| {
+                        .fetch_events()
+                        .map_err(|e| {
                             log::error!("failed fetch events");
                             e
                         })?

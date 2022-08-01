@@ -37,7 +37,10 @@ impl Kanata {
                     Ok(ev) => ev,
                     _ => {
                         let mut kanata = kanata.lock();
-                        kanata.kbd_out.write(in_event).map_err(|e| anyhow!("failed write: {}", e))?;
+                        kanata
+                            .kbd_out
+                            .write(in_event)
+                            .map_err(|e| anyhow!("failed write: {}", e))?;
                         continue;
                     }
                 };
@@ -47,7 +50,10 @@ impl Kanata {
                 let kc: usize = key_event.code.into();
                 if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
                     let mut kanata = kanata.lock();
-                    kanata.kbd_out.write_key(key_event.code, key_event.value).map_err(|e| anyhow!("failed write key: {}", e))?;
+                    kanata
+                        .kbd_out
+                        .write_key(key_event.code, key_event.value)
+                        .map_err(|e| anyhow!("failed write key: {}", e))?;
                     continue;
                 }
 
