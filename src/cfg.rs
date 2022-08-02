@@ -841,13 +841,13 @@ fn parse_tap_hold(
     {
         bail!("tap-hold is not allowed inside of tap-hold")
     }
-    Ok(sref(Action::HoldTap {
+    Ok(sref(Action::HoldTap(sref(HoldTapAction {
         config,
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
-        tap: tap_action,
-        hold: hold_action,
-    }))
+        tap: *tap_action,
+        hold: *hold_action,
+    }))))
 }
 
 fn parse_timeout(a: &SExpr) -> Result<u16> {
@@ -999,7 +999,12 @@ fn parse_one_shot(
         bail!("one-shot is only allowed to contain layer-toggle, a keycode, or a chord");
     }
 
-    Ok(sref(Action::OneShot { timeout, action }))
+    let end_config = OneShotEndConfig::EndOnFirstPress;
+    Ok(sref(Action::OneShot(sref(OneShot {
+        timeout,
+        action,
+        end_config,
+    }))))
 }
 
 fn parse_tap_dance(
@@ -1034,7 +1039,7 @@ fn parse_tap_dance(
         _ => bail!(ERR_MSG),
     };
 
-    Ok(sref(Action::TapDance { timeout, actions }))
+    Ok(sref(Action::TapDance(sref(TapDance { timeout, actions }))))
 }
 
 fn parse_release_key(
@@ -1127,13 +1132,7 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
                 Action::KeyCode(kc) => {
                     add_kc_output(i, kc.into(), &mut outs);
                 }
-                Action::HoldTap {
-                    tap,
-                    hold,
-                    timeout: _,
-                    config: _,
-                    tap_hold_interval: _,
-                } => {
+                Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
                     if let Action::KeyCode(kc) = tap {
                         add_kc_output(i, kc.into(), &mut outs);
                     }
