@@ -50,7 +50,7 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
-pub type KanataLayout = Layout<256, 1, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KanataLayout = Layout<256, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
 
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
@@ -306,7 +306,6 @@ fn parse_cfg_raw(
     let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order);
     let mut parsed_state = ParsedState {
         layer_exprs,
-        aliases: Default::default(),
         layer_idxs,
         mapping_order,
         defsrc_layer,
@@ -328,7 +327,15 @@ fn parse_cfg_raw(
                 false
             }
         },
+        ..Default::default()
     };
+
+    let fake_keys_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("deffakekeys"))
+        .collect::<Vec<_>>();
+    parse_fake_keys(&fake_keys_exprs, &mut parsed_state)?;
+
     parse_aliases(&alias_exprs, &mut parsed_state)?;
 
     let klayers = parse_layers(&parsed_state)?;
@@ -632,6 +639,7 @@ struct ParsedState<'a> {
     aliases: Aliases,
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
+    fake_keys: HashMap<String, (usize, &'static KanataAction)>,
     defsrc_layer: [KanataAction; 256],
     is_cmd_enabled: bool,
 }
@@ -644,6 +652,7 @@ impl<'a> Default for ParsedState<'a> {
             layer_idxs: Default::default(),
             mapping_order: Default::default(),
             defsrc_layer: empty_layer!(),
+            fake_keys: Default::default(),
             is_cmd_enabled: false,
         }
     }
@@ -662,7 +671,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Resul
         while let Some(alias) = subexprs.next() {
             let action = match subexprs.next() {
                 Some(v) => v,
-                None => bail!("Incorrect number of elements found in defcfg; they should be pairs of aliases and actions."),
+                None => bail!("Incorrect number of elements found in defalias; they should be pairs of aliases and actions."),
             };
             let alias = match alias {
                 SExpr::Atom(a) => a,
@@ -805,6 +814,8 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "tap-dance" => parse_tap_dance(&ac[1..], parsed_state),
         "release-key" => parse_release_key(&ac[1..], parsed_state),
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
+        "on-press-fakekey" => parse_fake_key_op(&ac[1..], parsed_state),
+        "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], parsed_state),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\ttap-hold-press\n\ttap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key\n\trelease-layer\n\tcmd",
@@ -1101,6 +1112,100 @@ fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataActio
     layer
 }
 
+fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Result<()> {
+    for expr in exprs {
+        let mut subexprs = match check_first_expr(expr.iter(), "deffakekeys") {
+            Ok(s) => s,
+            Err(e) => bail!(e),
+        };
+
+        // Read k-v pairs from the configuration
+        while let Some(key_name) = subexprs.next() {
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail!("Incorrect number of elements found in deffakekeys; they should be pairs of key-names and actions."),
+            };
+            let key_name = match key_name {
+                SExpr::Atom(a) => a,
+                _ => bail!(
+                    "fake key names must be atoms. Invalid key name: {:?}",
+                    key_name
+                ),
+            };
+            let action = parse_action(action, parsed_state)?;
+            let idx = parsed_state.fake_keys.len();
+            if parsed_state
+                .fake_keys
+                .insert(key_name.into(), (idx, action))
+                .is_some()
+            {
+                bail!("Duplicate fake key: {}", key_name);
+            }
+        }
+    }
+    if parsed_state.fake_keys.len() > KEYS_IN_ROW {
+        bail!(
+            "Maximum number of fake keys is {KEYS_IN_ROW}, found {}",
+            parsed_state.fake_keys.len()
+        );
+    }
+    Ok(())
+}
+
+fn parse_fake_key_op(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    let (coord, action) = parse_fake_key_op_coord_action(ac_params, parsed_state)?;
+    Ok(sref(Action::Custom(sref_slice(CustomAction::FakeKey {
+        coord,
+        action,
+    }))))
+}
+
+fn parse_on_release_fake_key_op(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    let (coord, action) = parse_fake_key_op_coord_action(ac_params, parsed_state)?;
+    Ok(sref(Action::Custom(sref_slice(
+        CustomAction::FakeKeyOnRelease { coord, action },
+    ))))
+}
+
+fn parse_fake_key_op_coord_action(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<(Coord, FakeKeyAction)> {
+    const ERR_MSG: &str = "fake-key-op expects two parameters: <fake key name> <operation>\n\tvalid operations: tap, press, release";
+    if ac_params.len() != 2 {
+        bail!("{ERR_MSG}");
+    }
+    let y = match parsed_state.fake_keys.get(match &ac_params[0] {
+        SExpr::Atom(fake_key_name) => fake_key_name,
+        _ => bail!(
+            "{ERR_MSG}\n\tinvalid first parameter (list): {:?}",
+            &ac_params[0]
+        ),
+    }) {
+        Some((y, _)) => *y as u8, // cast should be safe; checked in `parse_fake_keys`
+        None => bail!("unknown fake key name {:?}", &ac_params[0]),
+    };
+    let action = match &ac_params[1] {
+        SExpr::Atom(op) => match op.as_str() {
+            "tap" => FakeKeyAction::Tap,
+            "press" => FakeKeyAction::Press,
+            "release" => FakeKeyAction::Release,
+            _ => bail!("{ERR_MSG}\n\tinvalid second parameter: {:?}", op),
+        },
+        _ => bail!(
+            "{ERR_MSG}\n\tinvalid second parameter (list): {:?}",
+            ac_params[1]
+        ),
+    };
+    Ok((Coord { x: 1, y }, action))
+}
+
 /// Mutates `layers::LAYERS` using the inputs.
 fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
     let mut layers_cfg = new_layers();
@@ -1118,6 +1223,9 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
             }
+        }
+        for (y, action) in parsed_state.fake_keys.values() {
+            layers_cfg[layer_level][1][*y] = **action;
         }
     }
     Ok(layers_cfg)

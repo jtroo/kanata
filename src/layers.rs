@@ -268,18 +268,21 @@ macro_rules! empty_layer {
 
 pub(crate) use empty_layer;
 
+pub const KEYS_IN_ROW: usize = 256;
+pub const LAYER_COLUMNS: usize = 2;
 pub const MAX_LAYERS: usize = 25;
 pub const ACTUAL_NUM_LAYERS: usize = MAX_LAYERS * 2;
 
-pub type KanataLayers = Layers<256, 1, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KanataLayers =
+    Layers<KEYS_IN_ROW, LAYER_COLUMNS, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+
+type Row = [kanata_keyberon::action::Action<&'static [&'static CustomAction]>; KEYS_IN_ROW];
 
 pub fn new_layers() -> Box<KanataLayers> {
-    let boxed_slice: Box<
-        [[kanata_keyberon::action::Action<&'static [&'static CustomAction]>; 256]],
-    > = {
+    let boxed_slice: Box<[[Row; LAYER_COLUMNS]]> = {
         let mut layers = Vec::with_capacity(ACTUAL_NUM_LAYERS);
         for _ in 0..ACTUAL_NUM_LAYERS {
-            layers.push(empty_layer!());
+            layers.push([empty_layer!(), empty_layer!()]);
         }
         layers
     }

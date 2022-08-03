@@ -74,7 +74,7 @@ impl KbdIn {
     pub fn read(&mut self) -> Result<Vec<InputEvent>, std::io::Error> {
         let mut input_events = vec![];
         loop {
-            log::debug!("polling");
+            log::trace!("polling");
             if let Err(e) = self.poll.poll(&mut self.events, None) {
                 log::error!("failed poll: {:?}", e);
                 return Ok(vec![]);

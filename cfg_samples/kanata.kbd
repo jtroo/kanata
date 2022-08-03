@@ -88,7 +88,7 @@
 (deflayer dvorak
   @grl 1    2    3    4    5    6    7    8    9    0    [    ]    bspc
   tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
-  @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
+  @cap @anm @oar @ech @umc @ifk d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
   lctl lmet lalt           spc           @ralt rmet rctl
 )
@@ -112,6 +112,7 @@
   msc (layer-toggle misc)
   lay (layer-toggle layers)
   mse (layer-toggle mouse)
+  fks (layer-toggle fakekeys)
 
   ;; tap-hold aliases with tap for dvorak key, and hold for toggle layers
   ;;
@@ -152,6 +153,7 @@
   umc (tap-hold 200 200 u @msc)   ;; tap: u      hold: misc layer
   grl (tap-hold 200 200 grv @lay) ;; tap: grave  hold: layers layer
   .ms (tap-hold 200 200 . @mse)   ;; tap: .      hold: mouse layer
+  ifk (tap-hold 200 200 i @fks)   ;; tap: i      hold: fake keys layer
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
@@ -361,4 +363,63 @@
   _    _    _    _    _    _    _    @lft @rlr @rgt _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
+)
+
+;; Press and release fake keys.
+;;
+;; Fake keys can't be pressed by any physical keyboard buttons and can only be
+;; acted upon by the actions on-press-fakekey and on-release-fakekey. The
+;; purpose of fake keys is for a use case such as holding modifier keys for
+;; any number of keypresses and then releasing the modifiers when desired.
+;;
+;; The actions associated with fake keys in deffakekeys are parsed before
+;; aliases, so you can't use aliases within deffakekeys. Other than the lack
+;; of alias support, fake keys can do any action that a normal key can,
+;; including doing operations on previously defined fake keys.
+;;
+;; Operations on fake keys can occur either on press (on-press-fakekey or
+;; on release (on-release-fakekey The use cases for the on-release variant
+;; are left up to your own creativity.
+(deflayer fakekeys
+  _    @fcp @fsp @fmp @pal _    _    _    _    _    _    _    _    _
+  _    @fcr @fsr @fap @ral _    _    _    _    _    _    _    _    _
+  _    @fct @fst @rma _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
+
+(deffakekeys
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+  pal (multi
+        (on-press-fakekey ctl press)
+        (on-press-fakekey sft press)
+        (on-press-fakekey met press)
+        (on-press-fakekey alt press)
+      )
+  ral (multi
+        (on-press-fakekey ctl release)
+        (on-press-fakekey sft release)
+        (on-press-fakekey met release)
+        (on-press-fakekey alt release)
+      )
+)
+
+(defalias
+  fcp (on-press-fakekey ctl press)
+  fcr (on-press-fakekey ctl release)
+  fct (on-press-fakekey ctl tap)
+  fsp (on-release-fakekey sft press)
+  fsr (on-release-fakekey sft release)
+  fst (on-release-fakekey sft tap)
+  fmp (on-press-fakekey met press)
+  fap (on-press-fakekey alt press)
+  rma (multi
+        (on-press-fakekey met release)
+        (on-press-fakekey alt release)
+      )
+  pal (on-press-fakekey pal tap)
+  ral (on-press-fakekey ral tap)
 )
