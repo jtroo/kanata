@@ -184,6 +184,19 @@ impl Kanata {
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
                         }
+                        CustomAction::FakeKey { coord, action } => {
+                            let (x, y) = (coord.x, coord.y);
+                            log::debug!("fake key on press   {action:?} {x:?},{y:?}");
+                            match action {
+                                FakeKeyAction::Press => self.layout.event(Event::Press(x, y)),
+                                FakeKeyAction::Release => self.layout.event(Event::Release(x, y)),
+                                FakeKeyAction::Tap => {
+                                    self.layout.event(Event::Press(x, y));
+                                    self.layout.event(Event::Release(x, y));
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 run_multi_cmd(cmds);
@@ -194,6 +207,19 @@ impl Kanata {
                     .iter()
                     .fold(None, |pbtn, ac| match ac {
                         CustomAction::Mouse(btn) => Some(btn),
+                        CustomAction::FakeKeyOnRelease { coord, action } => {
+                            let (x, y) = (coord.x, coord.y);
+                            log::debug!("fake key on release {action:?} {x:?},{y:?}");
+                            match action {
+                                FakeKeyAction::Press => self.layout.event(Event::Press(x, y)),
+                                FakeKeyAction::Release => self.layout.event(Event::Release(x, y)),
+                                FakeKeyAction::Tap => {
+                                    self.layout.event(Event::Press(x, y));
+                                    self.layout.event(Event::Release(x, y));
+                                }
+                            }
+                            pbtn
+                        }
                         _ => pbtn,
                     })
                     .map(|btn| {

@@ -4,6 +4,8 @@ pub enum CustomAction {
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
+    FakeKey { coord: Coord, action: FakeKeyAction },
+    FakeKeyOnRelease { coord: Coord, action: FakeKeyAction },
     LiveReload,
 }
 
@@ -12,4 +14,17 @@ pub enum Btn {
     Left,
     Right,
     Mid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Coord {
+    pub x: u8,
+    pub y: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FakeKeyAction {
+    Press,
+    Release,
+    Tap,
 }
