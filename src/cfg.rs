@@ -696,18 +696,33 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
         "lrld" => return Ok(sref(Action::Custom(sref_slice(CustomAction::LiveReload)))),
-        "mlft" => {
+        "mlft" | "mouseleft" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
                 Btn::Left,
             )))))
         }
-        "mrgt" => {
+        "mrgt" | "mouseright" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
                 Btn::Right,
             )))))
         }
-        "mmid" => {
+        "mmid" | "mousemid" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Mid,
+            )))))
+        }
+        "mltp" | "mousetapleft" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
+                Btn::Left,
+            )))))
+        }
+        "mrtp" | "mousetapright" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
+                Btn::Right,
+            )))))
+        }
+        "mmtp" | "mousetapmid" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
                 Btn::Mid,
             )))))
         }

@@ -312,11 +312,28 @@
 
 ;; In Windows, using mouse buttons on the kanata window seems to cause it to hang.
 ;; Using the mouse on other windows seems to be fine though.
+;;
+;; The mouse buttons can be clicked using mlft, mrgt and mmid, representing the
+;; left, right, and middle mouse buttons respectively. If the key is held, the
+;; button press will also be held.
+;;
+;; If there are multiple mouse click actions within a single multi action, e.g.
+;; (multi mrgt mlft), then all the buttons except the last will be clicked then
+;; unclicked. The last button will remain held until key release. In the example
+;; given, the button sequence will be:
+;; press key->click right->unclick right->click left->release key->release left
+;;
+;; There are variants of the standard mouse buttons which "tap" the button.
+;; These are mltp, mrtp, and mmtp. Rather than holding until key release, this
+;; action will click and unclick the button once the key is pressed. Nothing
+;; happens on key release. The action (multi lctl mltp) will result in the
+;; sequence below:
+;; press key->press lctl->click left->unclick left->release key->release lctl
 (deflayer mouse
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
   _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
 

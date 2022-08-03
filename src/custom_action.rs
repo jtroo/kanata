@@ -3,6 +3,7 @@ pub enum CustomAction {
     Cmd(&'static [String]),
     Unicode(char),
     Mouse(Btn),
+    MouseTap(Btn),
     LiveReload,
 }
 

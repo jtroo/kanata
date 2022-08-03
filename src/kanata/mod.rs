@@ -175,6 +175,12 @@ impl Kanata {
                             self.kbd_out.click_btn(*btn)?;
                             prev_mouse_btn = Some(*btn);
                         }
+                        CustomAction::MouseTap(btn) => {
+                            log::debug!("click     {:?}", btn);
+                            self.kbd_out.click_btn(*btn)?;
+                            log::debug!("unclick   {:?}", btn);
+                            self.kbd_out.release_btn(*btn)?;
+                        }
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
                         }
