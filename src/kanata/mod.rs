@@ -124,9 +124,9 @@ impl Kanata {
         let mut live_reload_requested = false;
 
         for _ in 0..ms_elapsed {
-            live_reload_requested |= self.tick_handle_custom_event()?;
-
+            let custom_event = self.layout.tick();
             let cur_keys = self.handle_keystate_changes()?;
+            live_reload_requested |= self.handle_custom_event(custom_event)?;
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
@@ -148,9 +148,12 @@ impl Kanata {
     }
 
     /// Returns true if live reload is requested and false otherwise.
-    fn tick_handle_custom_event(&mut self) -> Result<bool> {
+    fn handle_custom_event(
+        &mut self,
+        custom_event: CustomEvent<&'static [&'static CustomAction]>,
+    ) -> Result<bool> {
         let mut live_reload_requested = false;
-        match self.layout.tick() {
+        match custom_event {
             CustomEvent::Press(custacts) => {
                 let mut cmds = vec![];
                 let mut prev_mouse_btn = None;
@@ -164,8 +167,9 @@ impl Kanata {
                             log::info!("Requested live reload")
                         }
                         CustomAction::Mouse(btn) => {
-                            log::debug!("press     {:?}", btn);
+                            log::debug!("click     {:?}", btn);
                             if let Some(pbtn) = prev_mouse_btn {
+                                log::debug!("unclick   {:?}", pbtn);
                                 self.kbd_out.release_btn(pbtn)?;
                             }
                             self.kbd_out.click_btn(*btn)?;
@@ -179,13 +183,17 @@ impl Kanata {
                 run_multi_cmd(cmds);
             }
             CustomEvent::Release(custacts) => {
+                // Unclick only the last mouse button
                 if let Some(Err(e)) = custacts
                     .iter()
                     .fold(None, |pbtn, ac| match ac {
                         CustomAction::Mouse(btn) => Some(btn),
                         _ => pbtn,
                     })
-                    .map(|btn| self.kbd_out.release_btn(*btn))
+                    .map(|btn| {
+                        log::debug!("unclick   {:?}", btn);
+                        self.kbd_out.release_btn(*btn)
+                    })
                 {
                     bail!(e);
                 }
@@ -207,7 +215,7 @@ impl Kanata {
             if cur_keys.contains(k) {
                 continue;
             }
-            log::debug!("release   {:?}", k);
+            log::debug!("key release   {:?}", k);
             if let Err(e) = self.kbd_out.release_key(k.into()) {
                 bail!("failed to release key: {:?}", e);
             }
@@ -218,7 +226,7 @@ impl Kanata {
             if self.prev_keys.contains(k) {
                 continue;
             }
-            log::debug!("press     {:?}", k);
+            log::debug!("key press     {:?}", k);
             if let Err(e) = self.kbd_out.press_key(k.into()) {
                 bail!("failed to press key: {:?}", e);
             }
