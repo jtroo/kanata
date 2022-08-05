@@ -1,13 +1,22 @@
+;; Comments are prefixed by double-semicolon. A single semicolon is parsed as the
+;; keyboard key. Comments are ignored for the configuration file.
+;;
+;; This configuration language is Lisp-like. If you're unfamiliar with Lisp,
+;; don't be alarmed. The maintainer jtroo is also unfamiliar with Lisp. You
+;; don't need to know Lisp in-depth to be able to configure kanata.
+;;
+;; If you follow along with the examples, you should be fine. Kanata should
+;; also hopefully have helpful error messages in case something goes wrong.
+;; If you need help, you are welcome to ask.
+
 (defcfg
-  ;; Comments (not read as part of config) are prefixed by a double-semicolon: ;;
-  ;;
-  ;; If you are using windows, you do not need the linux-dev line below, but
-  ;; you still need a defcfg entry (it can be empty).
+  ;; If you are using Windows, you do not need the linux-dev line below, but
+  ;; you still need a defcfg entry. You can leave the linux-dev entry and it
+  ;; will be ignored or you can delete it if desired.
   ;;
   ;; Your keyboard device may differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
   ;; but I didn't find any keyboard device in there in my VM.
-  ;; Windows, you do not need this.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 )
 

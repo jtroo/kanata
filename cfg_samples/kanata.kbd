@@ -10,9 +10,9 @@
 ;; also unfamiliar with Lisp. You don't need to know Lisp in-depth to
 ;; be able to configure kanata.
 ;;
-;; If you follow along with the examples, you should be good to go. Kanata should
-;; also hopefully have helpful error messages in case something goes wrong. If it
-;; does not, please file an issue or contribute an improvement.
+;; If you follow along with the examples, you should be fine. Kanata should
+;; also hopefully have helpful error messages in case something goes wrong.
+;; If you need help, you are welcome to ask.
 
 ;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
 (defcfg
