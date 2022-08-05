@@ -187,4 +187,4 @@ exists.
 While kanata is the best tool for me (jtroo), it may not be the best tool for
 you. I'm happy to introduce you to tools that may better suit your needs. This
 list is also useful as reference/inspiration for functionality that could be
-added kanata.
+added to kanata.
