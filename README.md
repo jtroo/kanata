@@ -101,10 +101,6 @@ Contributions are welcome!
 Unless explicitly stated otherwise, your contributions will be made under the
 LGPL-3.0-only[*] license.
 
-The keyberon project contains all of the heavy keyboard state logic, so if you
-want new keyboard mapping functionality, it's recommended to add it to keyberon
-first.
-
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
 [*]: https://www.gnu.org/licenses/identify-licenses-clearly.html
@@ -113,7 +109,7 @@ first.
 
 - Try it out and let me know what you think. Feel free to file an issue or
   start a discussion.
-- Browse the open issues and see if you can help out
+- Browse the open issues and help out if you would like to
 
 ## What does the name mean?
 
@@ -170,24 +166,25 @@ wrap my head around it. And there are a few [outstanding issues](./docs/kmonad_c
 at the time of writing that make kmonad suboptimal for my personal workflows.
 
 This project is written in Rust because Rust is my favourite programming
-language and the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
+language and the prior work of the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
 exists.
-
-I've tried compiling kmonad myself and it was quite the slog, though I was able
-to get it working eventually. Comparing the process to `cargo build` though, it
-was a huge contrast. My hope is that using Rust will lower the barrier to entry
-for contributions to a project like this.
 
 ## Similar Projects
 
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata (Linux, Windows, Mac)
 - [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware
 - [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware
-- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support
-- [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with support for layers and unicode
-- [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
-- [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
-- [karabiner-elements](https://karabiner-elements.pqrs.org/): A keyboard customizer for Mac
-- [capsicain](https://github.com/cajhin/capsicain): A Windows-only key remapper with driver-level key interception
-- [keyd](https://github.com/rvaiya/keyd): A Linux-only key remapper very similar to QMK, kmonad, and kanata with fewer features
-- [xremap](https://github.com/k0kubun/xremap): A Linux-only application-aware key remapper inspired by Emacs key sequences as opposed to QMK layers or Vim modes
+- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with layers, a TCP server, and audio support
+- [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with layers and unicode
+- [xcape](https://github.com/alols/xcape): Linux-only tap-hold modifiers
+- [karabiner-elements](https://karabiner-elements.pqrs.org/): Mac-only keyboard customizer
+- [capsicain](https://github.com/cajhin/capsicain): Windows-only key remapper with driver-level key interception
+- [keyd](https://github.com/rvaiya/keyd): Linux-only key remapper very similar to QMK, kmonad, and kanata
+- [xremap](https://github.com/k0kubun/xremap): Linux-only application-aware key remapper inspired more by Emacs key sequences vs. QMK layers/Vim modes
+
+### Why the list?
+
+While kanata is the best tool for me (jtroo), it may not be the best tool for
+you. I'm happy to introduce you to tools that may better suit your needs. This
+list is also useful as reference/inspiration for functionality that could be
+added kanata.
