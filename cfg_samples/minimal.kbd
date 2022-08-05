@@ -1,0 +1,37 @@
+;; This minimal config changes Caps Lock to act as Caps Lock on quick tap, but
+;; if held, it will act as Left Ctrl. It also changes the backtick/grave key to
+;; act as backtick/grave on quick tap, but change ijkl keys to arrow keys on hold.
+
+;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
+(defcfg
+  ;; Your keyboard device will likely differ from this.
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+
+  ;; Windows doesn't need any input/output configuration entries; however, there
+  ;; must still be a defcfg entry. You can keep the linux-dev entry or delete
+  ;; it and leave it empty.
+)
+
+(defsrc
+  caps grv         i
+              j    k    l
+  lsft rsft ;; note: the reason for mapping the Shift keys is so that they get
+            ;; processed correctly by kanata for tap-hold keys.
+)
+
+(deflayer default
+  @cap @grv        _
+              _    _    _
+  _    _
+)
+
+(deflayer arrows
+  _    _           up
+              left down rght
+  _    _
+)
+
+(defalias
+  cap (tap-hold-press 200 200 caps lctl)
+  grv (tap-hold-press 200 200 grv (layer-toggle arrows))
+)

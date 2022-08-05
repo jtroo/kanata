@@ -40,7 +40,10 @@
   ;; Known applications with issues: GWSL/VcXsrv
 
   ;; Optional configuration: enable kanata to execute commands.
-  ;; It is also not enabled in this sample configuration.
+  ;;
+  ;; I consider this feature a hazard so it is conditionally compiled out of
+  ;; the default binary.
+  ;;
   ;; This is dangerous because it allows kanata to execute arbitrary commands.
   ;; Using a binary compiled with the cmd feature enabled, uncomment below to
   ;; enable command execution:
@@ -53,7 +56,7 @@
 ;; keys matches the deflayer declarations and all deflayer declarations must
 ;; have the same number of keys as defsrc.
 ;;
-;; The visual/spatial positioning is **not** mandatory; it is done by convention
+;; The visual/spatial positioning is *not* mandatory; it is done by convention
 ;; for visual ease. These items are parsed as a long list with newlines being
 ;; ignored.
 ;;

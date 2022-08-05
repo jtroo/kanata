@@ -104,6 +104,11 @@ fn parse_simple() {
 }
 
 #[test]
+fn parse_minimal() {
+    parse_cfg(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
+}
+
+#[test]
 fn parse_default() {
     parse_cfg(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
 }

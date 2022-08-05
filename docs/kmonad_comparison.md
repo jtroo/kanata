@@ -5,8 +5,8 @@ mature and has had many more contributions than kanata.
 
 ## Benefits of kmonad over kanata
 
-- More features
 - MacOS support
+- Different features
 
 ## Why I built and use kanata
 
@@ -16,16 +16,14 @@ Limitations that don't affect me:
 - My personal layout in QMK is fully replicable with the
   [keyberon library's features](https://github.com/TeXitoi/keyberon/blob/master/src/action.rs)
 
-Issues with kmonad:
+Why I don't use kmonad:
 
-- kanata supports sending mouse buttons but [kmonad does not](https://github.com/kmonad/kmonad/issues/150)
-- Key repeating in kmonad [doesn't work in Windows](https://github.com/kmonad/kmonad/issues/82)
-  in the master branch
 - [Double-tapping a tap-hold key](https://github.com/kmonad/kmonad/issues/163) does not behave
   [how I want it to](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold)
 - Some key sequences with tap-hold keys [don't behave how I want](https://github.com/kmonad/kmonad/issues/466):
   - `(press lsft) (press a) (release lsft) (release a)` (a is a tap-hold key)
   - The above outputs `a` in kmonad, but I want it to output `A`
+- kanata supports sending mouse buttons but [kmonad does not](https://github.com/kmonad/kmonad/issues/150)
 
 The issues listed are all fixable in kmonad and I hope they are one day! For me
 though, I don't know Haskell well enough to poke around the kmonad codebase and

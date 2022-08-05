@@ -7,43 +7,45 @@ Improve keyboard comfort and usability with advanced customization.
 This is a software keyboard remapper for Linux and Windows. A short summary of
 the features:
 
-- cross-platform human readable configuration file
 - multiple layers of key functionality
 - advanced key behaviour customization (e.g. tap-hold, key sequences, unicode)
-
-[Here's a demo video showcasing multi-layer functionality](https://user-images.githubusercontent.com/6634136/179384077-261554cb-3cc3-43aa-aaf2-ad06c5e678af.mp4).
-The demo video has a lot going on in a short period of time. To help understand
-what's going on, here's a description of what's happening:
-
-- the foreground terminal is the active window which receives the keyboard inputs
-- the background terminal is showing the kanata logs which outputs the currently active layer
-- the far right shows the key being pressed followed by the actual key being
-  received by the application.
+- cross-platform human readable configuration file
 
 To see all of the features, see the [features](#features) section.
+
+[Here's a demo video showcasing multi-layer functionality](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
 
+## Why is this useful?
+
+Imagine if, instead of pressing Shift to type uppercase letters, we had giant
+keyboards with separate keys for lowercase and uppercase letters. I hope we can
+all agree: that would be a terrible user experience!
+
+A way to think of how Shift keys work is that they switch your input to another
+layer of functionality where you now type uppercase letters and symbols
+instead of lowercase letters and numbers.
+
+What kanata allows you to do is take this alternate layer concept that Shift
+keys add and apply it to any key. You can then customize what those layers do to
+suit your exact needs and workflows.
+
 ## Usage
 
-This is tested on Windows 10 and Debian 10. See the
+This is tested by jtroo on Windows 10 and Debian 10. See the
 [releases page](https://github.com/jtroo/kanata/releases) for executables.
 
 Using `cargo install`:
 
     # Note: on Linux you may need to install libevdev manually; see below.
     cargo install kanata
-    kanata --cfg <conf_file> # may not have permissions on Linux, see below
+
+    # may not have permissions without sudo on Linux, see below
+    kanata --cfg <conf_file>
 
 Build and run yourself in Linux:
-
-    # evdev-sys is dependency that uses a C library: libevdev. evdev-sys can
-    # find and use your system's libevdev; otherwise you need to have the
-    # dependencies required to build libevdev from scratch.
-    #
-    # Here is an example Debian for how to install your system's libevdev:
-    sudo apt install libevdev-dev pkg-config
 
     cargo build   # release optional, not really perf sensitive
 
@@ -71,7 +73,9 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
 ## Features
 
-- Human readable configuration file. [Simple example](./cfg_samples/simple.kbd).
+- Human readable configuration file.
+  [Minimal example](./cfg_samples/minimal.kbd).
+  [Simple example with explanations](./cfg_samples/simple.kbd).
   [All features showcase](./cfg_samples/kanata.kbd).
 - Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
 - Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
@@ -107,8 +111,9 @@ first.
 
 ## How you can help
 
-- Try it out and let me know what you think
-- Add support for MacOS
+- Try it out and let me know what you think. Feel free to file an issue or
+  start a discussion.
+- Browse the open issues and see if you can help out
 
 ## What does the name mean?
 
@@ -175,14 +180,14 @@ for contributions to a project like this.
 
 ## Similar Projects
 
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata.
-- [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware.
-- [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware.
-- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support.
+- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata
+- [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware
+- [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware
+- [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with audio support
 - [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with support for layers and unicode
 - [xcape](https://github.com/alols/xcape): Implements tap-hold only for modifiers (Linux)
 - [Space2Ctrl](https://github.com/r0adrunner/Space2Ctrl): Similar to `xcape`
-- [interception tools](https://gitlab.com/interception/linux/tools): A framework for implementing tools like kanata
-- [karabiner-elements](https://karabiner-elements.pqrs.org/): A mature keyboard customizer for Mac
+- [karabiner-elements](https://karabiner-elements.pqrs.org/): A keyboard customizer for Mac
 - [capsicain](https://github.com/cajhin/capsicain): A Windows-only key remapper with driver-level key interception
-- [keyd](https://github.com/rvaiya/keyd): A Linux-only key remapper very similar to kanata and kmonad
+- [keyd](https://github.com/rvaiya/keyd): A Linux-only key remapper very similar to QMK, kmonad, and kanata with fewer features
+- [xremap](https://github.com/k0kubun/xremap): A Linux-only application-aware key remapper inspired by Emacs key sequences as opposed to QMK layers or Vim modes
