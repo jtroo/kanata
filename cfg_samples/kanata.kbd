@@ -105,14 +105,17 @@
   dvk (layer-switch dvorak)
   qwr (layer-switch qwerty)
 
-  ;; aliases for layer toggling
+  ;; Aliases for layer "toggling". It's not quite toggling because the layer
+  ;; will be active while the key is held and deactivated when the key is
+  ;; released. An alternate action name you can use is layer-while-held.
+  ;; However, the rest of this document will use The term "toggle" for brevity.
   num (layer-toggle numbers)
   chr (layer-toggle chords)
   arr (layer-toggle arrows)
   msc (layer-toggle misc)
   lay (layer-toggle layers)
   mse (layer-toggle mouse)
-  fks (layer-toggle fakekeys)
+  fks (layer-while-held fakekeys)
 
   ;; tap-hold aliases with tap for dvorak key, and hold for toggle layers
   ;;
