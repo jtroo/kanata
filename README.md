@@ -13,7 +13,7 @@ the features:
 
 To see all of the features, see the [features](#features) section.
 
-[Here's a demo video showcasing multi-layer functionality](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
+[Here's a demo video showcasing multi-layer functionality (30s, 1.7 MB)](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
