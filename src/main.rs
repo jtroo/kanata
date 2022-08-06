@@ -31,20 +31,20 @@ struct Args {
     #[clap(short, long, default_value = "kanata.kbd")]
     cfg: String,
 
-    /// Port to run the notification server on
+    /// Port to run the TCP server on
     #[clap(short, long)]
     port: Option<i32>,
-
-    /// Enable debug logging
-    #[clap(short, long)]
-    debug: bool,
 
     /// Path of the symlink pointing to the newly-created device
     #[cfg(target_os = "linux")]
     #[clap(short, long)]
     symlink_path: Option<String>,
 
-    /// Enable trace logging
+    /// Enable debug logging
+    #[clap(short, long)]
+    debug: bool,
+
+    /// Enable trace logging (implies --debug as well)
     #[clap(short, long)]
     trace: bool,
 }
