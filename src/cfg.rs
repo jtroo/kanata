@@ -816,9 +816,11 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "on-press-fakekey" => parse_fake_key_op(&ac[1..], parsed_state),
         "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], parsed_state),
+        "mwheel-up" => parse_mwheel(&ac[1..], MWheelDirection::Up),
+        "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
             ac_type
         ),
     }
@@ -1204,6 +1206,36 @@ fn parse_fake_key_op_coord_action(
         ),
     };
     Ok((Coord { x: 1, y }, action))
+}
+
+fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "mwheel expects two parameters: <interval (ms)> <distance>";
+    if ac_params.len() != 2 {
+        bail!("{ERR_MSG}");
+    }
+    let interval = get_atom(&ac_params[0])
+        .map(|s| str::parse::<u16>(&s))
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|i| match i {
+            0 => None,
+            _ => Some(i),
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
+    let distance = get_atom(&ac_params[1])
+        .map(|s| str::parse::<u16>(&s))
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|d| match d {
+            0 => None,
+            _ => Some(d),
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-65535"))?;
+    Ok(sref(Action::Custom(sref_slice(CustomAction::MWheel {
+        direction,
+        interval,
+        distance,
+    }))))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.

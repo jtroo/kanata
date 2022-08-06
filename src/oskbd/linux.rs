@@ -1,8 +1,6 @@
 //! Contains the input/output code for keyboards on Linux.
 
-use evdev::uinput;
-use evdev::Device;
-use evdev::InputEvent;
+use evdev::{uinput, Device, EventType, InputEvent, RelativeAxisType};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
@@ -102,8 +100,11 @@ impl KbdIn {
 
 pub struct KbdOut {
     device: uinput::VirtualDevice,
+    accumulated_scroll: u16,
     // _symlink: Option<Symlink>,
 }
+
+pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 impl KbdOut {
     pub fn new(_symlink_path: &Option<String>) -> Result<Self, io::Error> {
@@ -111,6 +112,8 @@ impl KbdOut {
         for k in 0..300u16 {
             keys.insert(evdev::Key(k));
         }
+        let mut axes = evdev::AttributeSet::new();
+        axes.insert(RelativeAxisType::REL_WHEEL);
 
         // let devnode = device
         //     .devnode()
@@ -130,7 +133,9 @@ impl KbdOut {
                 .name("kanata")
                 .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
                 .with_keys(&keys)?
+                .with_relative_axes(&axes)?
                 .build()?,
+            accumulated_scroll: 0,
         })
     }
 
@@ -183,6 +188,37 @@ impl KbdOut {
 
     pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
         self.release_key(btn.into())
+    }
+
+    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+        log::debug!("scroll: {direction:?} {distance:?}");
+        let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+        if lo_res_distance > 0 {
+            self.do_scroll(direction, lo_res_distance)?;
+        }
+
+        let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+        if leftover_scroll > 0 {
+            self.accumulated_scroll += leftover_scroll;
+            if self.accumulated_scroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
+                self.accumulated_scroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.do_scroll(direction, 1)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn do_scroll(&mut self, direction: MWheelDirection, lo_res_distance: u16) -> Result<(), io::Error> {
+        let ev = InputEvent::new(
+            EventType::RELATIVE,
+            RelativeAxisType::REL_WHEEL.0,
+            match direction {
+                MWheelDirection::Up => i32::from(lo_res_distance),
+                MWheelDirection::Down => -i32::from(lo_res_distance),
+            },
+            );
+        self.write(ev)
     }
 }
 
