@@ -338,11 +338,27 @@
 ;; sequence below:
 ;; press key->press lctl->click left->unclick left->release key->release lctl
 (deflayer mouse
-  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    @mwu @mwd _    _    _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
   _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
   _    _    mltp _    mrtp mmtp _    _    _    _    _    _
   _    _    _              _              _    _    _
+)
+
+(defalias
+  ;; Mouse wheel actions. The first number is the interval in milliseconds
+  ;; between scroll actions. The second number is the distance in some arbitrary
+  ;; unit. Play with the parameters to see what feels correct. Both numbers
+  ;; must be in the range 1-65535
+  ;;
+  ;; In both Windows and Linux, 120 distance units is equivalent to a single
+  ;; notch movement on a physical wheel. In Linux, not all desktop environments
+  ;; support the REL_WHEEL_HI_RES event so kanata just doesn't use it; instead a
+  ;; scroll happens if 120 or more distance units are accumulated. This may result
+  ;; in poor scrolling experience so in Linux it is recommended to use a distance
+  ;; value that is a multiple of 120.
+  mwu (mwheel-up 50 120)
+  mwd (mwheel-down 50 120)
 )
 
 (defalias

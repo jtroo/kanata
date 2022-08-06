@@ -4,8 +4,19 @@ pub enum CustomAction {
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
-    FakeKey { coord: Coord, action: FakeKeyAction },
-    FakeKeyOnRelease { coord: Coord, action: FakeKeyAction },
+    FakeKey {
+        coord: Coord,
+        action: FakeKeyAction,
+    },
+    FakeKeyOnRelease {
+        coord: Coord,
+        action: FakeKeyAction,
+    },
+    MWheel {
+        direction: MWheelDirection,
+        interval: u16,
+        distance: u16,
+    },
     LiveReload,
 }
 
@@ -27,4 +38,10 @@ pub enum FakeKeyAction {
     Press,
     Release,
     Tap,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MWheelDirection {
+    Up,
+    Down,
 }

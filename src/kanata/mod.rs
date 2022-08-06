@@ -33,7 +33,15 @@ pub struct Kanata {
     pub prev_keys: Vec<KeyCode>,
     pub layer_info: Vec<LayerInfo>,
     pub prev_layer: usize,
+    pub scroll_state: Option<ScrollState>,
     last_tick: time::Instant,
+}
+
+pub struct ScrollState {
+    pub direction: MWheelDirection,
+    pub interval: u16,
+    pub ticks_until_scroll: u16,
+    pub distance: u16,
 }
 
 use once_cell::sync::Lazy;
@@ -95,6 +103,7 @@ impl Kanata {
             layer_info: cfg.layer_info,
             prev_keys: Vec::new(),
             prev_layer: 0,
+            scroll_state: None,
             last_tick: time::Instant::now(),
         })
     }
@@ -127,6 +136,7 @@ impl Kanata {
             let custom_event = self.layout.tick();
             let cur_keys = self.handle_keystate_changes()?;
             live_reload_requested |= self.handle_custom_event(custom_event)?;
+            self.handle_scrolling()?;
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
@@ -181,6 +191,18 @@ impl Kanata {
                             log::debug!("unclick   {:?}", btn);
                             self.kbd_out.release_btn(*btn)?;
                         }
+                        CustomAction::MWheel {
+                            direction,
+                            interval,
+                            distance,
+                        } => {
+                            self.scroll_state = Some(ScrollState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_scroll: 0,
+                                interval: *interval,
+                            })
+                        }
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
                         }
@@ -207,6 +229,10 @@ impl Kanata {
                     .iter()
                     .fold(None, |pbtn, ac| match ac {
                         CustomAction::Mouse(btn) => Some(btn),
+                        CustomAction::MWheel { .. } => {
+                            self.scroll_state = None;
+                            pbtn
+                        }
                         CustomAction::FakeKeyOnRelease { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
                             log::debug!("fake key on release {action:?} {x:?},{y:?}");
@@ -233,6 +259,19 @@ impl Kanata {
             _ => {}
         };
         Ok(live_reload_requested)
+    }
+
+    fn handle_scrolling(&mut self) -> Result<()> {
+        if let Some(scroll_state) = &mut self.scroll_state {
+            if scroll_state.ticks_until_scroll == 0 {
+                scroll_state.ticks_until_scroll = scroll_state.interval - 1;
+                self.kbd_out
+                    .scroll(scroll_state.direction, scroll_state.distance)?;
+            } else {
+                scroll_state.ticks_until_scroll -= 1;
+            }
+        }
+        Ok(())
     }
 
     /// Sends OS key events according to the change in key state between the current and the
