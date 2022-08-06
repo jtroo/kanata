@@ -4,7 +4,7 @@ use net2::TcpStreamExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -87,6 +87,18 @@ impl TcpServer {
                                                 kanata.lock().change_layer(new);
                                             }
                                         }
+                                    } else {
+                                        log::warn!(
+                                            "client sent an invalid message of size {size}, disconnecting them"
+                                        );
+                                        // Ignore write result because we're about to disconnect
+                                        // the client anyway.
+                                        let _ = stream.write(
+                                            "you sent an invalid message; disconnecting you"
+                                                .as_bytes(),
+                                        );
+                                        connections.lock().remove(&addr);
+                                        break;
                                     }
                                 }
                                 Err(_) => {
