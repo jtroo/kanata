@@ -803,7 +803,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
     let layers = &parsed_state.layer_idxs;
     match ac_type.as_str() {
         "layer-switch" => parse_layer_base(&ac[1..], layers),
-        "layer-toggle" => parse_layer_toggle(&ac[1..], layers),
+        "layer-toggle" | "layer-while-held" => parse_layer_toggle(&ac[1..], layers),
         "tap-hold" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::Default),
         "tap-hold-press" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::HoldOnOtherKeyPress),
         "tap-hold-release" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::PermissiveHold),
@@ -818,7 +818,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], parsed_state),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle\n\ttap-hold\n\ttap-hold-press\n\ttap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key\n\trelease-layer\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
             ac_type
         ),
     }
