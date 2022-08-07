@@ -244,10 +244,18 @@ impl Kanata {
                         CustomAction::MWheel { direction, .. } => {
                             match direction {
                                 MWheelDirection::Up | MWheelDirection::Down => {
-                                    self.scroll_state = None
+                                    if let Some(ss) = &self.scroll_state {
+                                        if ss.direction == *direction {
+                                            self.scroll_state = None;
+                                        }
+                                    }
                                 }
                                 MWheelDirection::Left | MWheelDirection::Right => {
-                                    self.hscroll_state = None
+                                    if let Some(ss) = &self.hscroll_state {
+                                        if ss.direction == *direction {
+                                            self.hscroll_state = None;
+                                        }
+                                    }
                                 }
                             }
                             pbtn
