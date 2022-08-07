@@ -302,7 +302,7 @@ impl Kanata {
             if hscroll_state.ticks_until_scroll == 0 {
                 hscroll_state.ticks_until_scroll = hscroll_state.interval - 1;
                 self.kbd_out
-                    .hscroll(hscroll_state.direction, hscroll_state.distance)?;
+                    .scroll(hscroll_state.direction, hscroll_state.distance)?;
             } else {
                 hscroll_state.ticks_until_scroll -= 1;
             }

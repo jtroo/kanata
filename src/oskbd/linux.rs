@@ -195,36 +195,34 @@ impl KbdOut {
 
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
-        let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
-        if lo_res_distance > 0 {
-            self.do_scroll(direction, lo_res_distance)?;
-        }
-
-        let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
-        if leftover_scroll > 0 {
-            self.accumulated_scroll += leftover_scroll;
-            if self.accumulated_scroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
-                self.accumulated_scroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
-                self.do_scroll(direction, 1)?;
+        match direction {
+            MWheelDirection::Up | MWheelDirection::Down => {
+                let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                if lo_res_distance > 0 {
+                    self.do_scroll(direction, lo_res_distance)?;
+                }
+                let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+                if leftover_scroll > 0 {
+                    self.accumulated_scroll += leftover_scroll;
+                    if self.accumulated_scroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
+                        self.accumulated_scroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                        self.do_scroll(direction, 1)?;
+                    }
+                }
             }
-        }
-
-        Ok(())
-    }
-
-    pub fn hscroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
-        log::debug!("scroll: {direction:?} {distance:?}");
-        let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
-        if lo_res_distance > 0 {
-            self.do_hscroll(direction, lo_res_distance)?;
-        }
-
-        let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
-        if leftover_scroll > 0 {
-            self.accumulated_hscroll += leftover_scroll;
-            if self.accumulated_hscroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
-                self.accumulated_hscroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
-                self.do_hscroll(direction, 1)?;
+            MWheelDirection::Left | MWheelDirection::Right => {
+                let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                if lo_res_distance > 0 {
+                    self.do_hscroll(direction, lo_res_distance)?;
+                }
+                let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+                if leftover_scroll > 0 {
+                    self.accumulated_hscroll += leftover_scroll;
+                    if self.accumulated_hscroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
+                        self.accumulated_hscroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                        self.do_hscroll(direction, 1)?;
+                    }
+                }
             }
         }
 
@@ -242,7 +240,7 @@ impl KbdOut {
             match direction {
                 MWheelDirection::Up => i32::from(lo_res_distance),
                 MWheelDirection::Down => -i32::from(lo_res_distance),
-                _ => panic!("invalid direction {direction:?}"),
+                _ => unreachable!(), // unreachable based on pub fn scroll
             },
         );
         self.write(ev)
@@ -259,7 +257,7 @@ impl KbdOut {
             match direction {
                 MWheelDirection::Right => i32::from(lo_res_distance),
                 MWheelDirection::Left => -i32::from(lo_res_distance),
-                _ => panic!("invalid direction {direction:?}"),
+                _ => unreachable!(), // unreachable based on pub fn scroll
             },
         );
         self.write(ev)

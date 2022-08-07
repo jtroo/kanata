@@ -230,13 +230,10 @@ impl KbdOut {
 
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
-        scroll(direction, distance);
-        Ok(())
-    }
-
-    pub fn hscroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
-        log::debug!("scroll: {direction:?} {distance:?}");
-        hscroll(direction, distance);
+        match direction {
+            MWheelDirection::Up | MWheelDirection::Down => scroll(direction, distance),
+            MWheelDirection::Left | MWheelDirection::Right => hscroll(direction, distance),
+        }
         Ok(())
     }
 }
@@ -265,7 +262,7 @@ fn scroll(direction: MWheelDirection, distance: u16) {
         m_input.mouseData = match direction {
             MWheelDirection::Up => distance.into(),
             MWheelDirection::Down => (-i32::from(distance)) as u32,
-            _ => panic!("invalid direction {direction:?}"),
+            _ => unreachable!(), // unreachable based on pub fn scroll
         };
 
         *inputs[0].u.mi_mut() = m_input;
@@ -283,7 +280,7 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
         m_input.mouseData = match direction {
             MWheelDirection::Right => distance.into(),
             MWheelDirection::Left => (-i32::from(distance)) as u32,
-            _ => panic!("invalid direction {direction:?}"),
+            _ => unreachable!(), // unreachable based on pub fn scroll
         };
 
         *inputs[0].u.mi_mut() = m_input;
