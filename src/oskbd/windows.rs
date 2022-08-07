@@ -233,6 +233,12 @@ impl KbdOut {
         scroll(direction, distance);
         Ok(())
     }
+
+    pub fn hscroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+        log::debug!("scroll: {direction:?} {distance:?}");
+        hscroll(direction, distance);
+        Ok(())
+    }
 }
 
 fn send_btn(flag: u32) {
@@ -259,6 +265,25 @@ fn scroll(direction: MWheelDirection, distance: u16) {
         m_input.mouseData = match direction {
             MWheelDirection::Up => distance.into(),
             MWheelDirection::Down => (-i32::from(distance)) as u32,
+            _ => panic!("invalid direction {direction:?}"),
+        };
+
+        *inputs[0].u.mi_mut() = m_input;
+        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
+    }
+}
+
+fn hscroll(direction: MWheelDirection, distance: u16) {
+    unsafe {
+        let mut inputs: [INPUT; 1] = mem::zeroed();
+        inputs[0].type_ = INPUT_MOUSE;
+
+        let mut m_input: MOUSEINPUT = mem::zeroed();
+        m_input.dwFlags |= MOUSEEVENTF_HWHEEL;
+        m_input.mouseData = match direction {
+            MWheelDirection::Right => distance.into(),
+            MWheelDirection::Left => (-i32::from(distance)) as u32,
+            _ => panic!("invalid direction {direction:?}"),
         };
 
         *inputs[0].u.mi_mut() = m_input;

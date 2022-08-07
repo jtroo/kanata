@@ -818,9 +818,11 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], parsed_state),
         "mwheel-up" => parse_mwheel(&ac[1..], MWheelDirection::Up),
         "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down),
+        "mwheel-left" => parse_mwheel(&ac[1..], MWheelDirection::Left),
+        "mwheel-right" => parse_mwheel(&ac[1..], MWheelDirection::Right),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
             ac_type
         ),
     }

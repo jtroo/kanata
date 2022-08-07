@@ -34,6 +34,7 @@ pub struct Kanata {
     pub layer_info: Vec<LayerInfo>,
     pub prev_layer: usize,
     pub scroll_state: Option<ScrollState>,
+    pub hscroll_state: Option<ScrollState>,
     last_tick: time::Instant,
 }
 
@@ -104,6 +105,7 @@ impl Kanata {
             prev_keys: Vec::new(),
             prev_layer: 0,
             scroll_state: None,
+            hscroll_state: None,
             last_tick: time::Instant::now(),
         })
     }
@@ -195,14 +197,24 @@ impl Kanata {
                             direction,
                             interval,
                             distance,
-                        } => {
-                            self.scroll_state = Some(ScrollState {
-                                direction: *direction,
-                                distance: *distance,
-                                ticks_until_scroll: 0,
-                                interval: *interval,
-                            })
-                        }
+                        } => match direction {
+                            MWheelDirection::Up | MWheelDirection::Down => {
+                                self.scroll_state = Some(ScrollState {
+                                    direction: *direction,
+                                    distance: *distance,
+                                    ticks_until_scroll: 0,
+                                    interval: *interval,
+                                })
+                            }
+                            MWheelDirection::Left | MWheelDirection::Right => {
+                                self.hscroll_state = Some(ScrollState {
+                                    direction: *direction,
+                                    distance: *distance,
+                                    ticks_until_scroll: 0,
+                                    interval: *interval,
+                                })
+                            }
+                        },
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
                         }
@@ -229,8 +241,15 @@ impl Kanata {
                     .iter()
                     .fold(None, |pbtn, ac| match ac {
                         CustomAction::Mouse(btn) => Some(btn),
-                        CustomAction::MWheel { .. } => {
-                            self.scroll_state = None;
+                        CustomAction::MWheel { direction, .. } => {
+                            match direction {
+                                MWheelDirection::Up | MWheelDirection::Down => {
+                                    self.scroll_state = None
+                                }
+                                MWheelDirection::Left | MWheelDirection::Right => {
+                                    self.hscroll_state = None
+                                }
+                            }
                             pbtn
                         }
                         CustomAction::FakeKeyOnRelease { coord, action } => {
@@ -269,6 +288,15 @@ impl Kanata {
                     .scroll(scroll_state.direction, scroll_state.distance)?;
             } else {
                 scroll_state.ticks_until_scroll -= 1;
+            }
+        }
+        if let Some(hscroll_state) = &mut self.hscroll_state {
+            if hscroll_state.ticks_until_scroll == 0 {
+                hscroll_state.ticks_until_scroll = hscroll_state.interval - 1;
+                self.kbd_out
+                    .hscroll(hscroll_state.direction, hscroll_state.distance)?;
+            } else {
+                hscroll_state.ticks_until_scroll -= 1;
             }
         }
         Ok(())

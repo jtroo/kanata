@@ -101,6 +101,7 @@ impl KbdIn {
 pub struct KbdOut {
     device: uinput::VirtualDevice,
     accumulated_scroll: u16,
+    accumulated_hscroll: u16,
     // _symlink: Option<Symlink>,
 }
 
@@ -114,6 +115,7 @@ impl KbdOut {
         }
         let mut axes = evdev::AttributeSet::new();
         axes.insert(RelativeAxisType::REL_WHEEL);
+        axes.insert(RelativeAxisType::REL_HWHEEL);
 
         // let devnode = device
         //     .devnode()
@@ -136,6 +138,7 @@ impl KbdOut {
                 .with_relative_axes(&axes)?
                 .build()?,
             accumulated_scroll: 0,
+            accumulated_hscroll: 0,
         })
     }
 
@@ -209,15 +212,56 @@ impl KbdOut {
         Ok(())
     }
 
-    fn do_scroll(&mut self, direction: MWheelDirection, lo_res_distance: u16) -> Result<(), io::Error> {
+    pub fn hscroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+        log::debug!("scroll: {direction:?} {distance:?}");
+        let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+        if lo_res_distance > 0 {
+            self.do_hscroll(direction, lo_res_distance)?;
+        }
+
+        let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+        if leftover_scroll > 0 {
+            self.accumulated_hscroll += leftover_scroll;
+            if self.accumulated_hscroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
+                self.accumulated_hscroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.do_hscroll(direction, 1)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn do_scroll(
+        &mut self,
+        direction: MWheelDirection,
+        lo_res_distance: u16,
+    ) -> Result<(), io::Error> {
         let ev = InputEvent::new(
             EventType::RELATIVE,
             RelativeAxisType::REL_WHEEL.0,
             match direction {
                 MWheelDirection::Up => i32::from(lo_res_distance),
                 MWheelDirection::Down => -i32::from(lo_res_distance),
+                _ => panic!("invalid direction {direction:?}"),
             },
-            );
+        );
+        self.write(ev)
+    }
+
+    fn do_hscroll(
+        &mut self,
+        direction: MWheelDirection,
+        lo_res_distance: u16,
+    ) -> Result<(), io::Error> {
+        let ev = InputEvent::new(
+            EventType::RELATIVE,
+            RelativeAxisType::REL_HWHEEL.0,
+            match direction {
+                MWheelDirection::Right => i32::from(lo_res_distance),
+                MWheelDirection::Left => -i32::from(lo_res_distance),
+                _ => panic!("invalid direction {direction:?}"),
+            },
+        );
         self.write(ev)
     }
 }
