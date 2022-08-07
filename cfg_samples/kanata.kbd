@@ -338,7 +338,7 @@
 ;; sequence below:
 ;; press key->press lctl->click left->unclick left->release key->release lctl
 (deflayer mouse
-  _    @mwu @mwd _    _    _    _    _    _    _    _    _    _    _
+  _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
   _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
   _    _    mltp _    mrtp mmtp _    _    _    _    _    _
@@ -359,6 +359,10 @@
   ;; value that is a multiple of 120.
   mwu (mwheel-up 50 120)
   mwd (mwheel-down 50 120)
+
+  ;; Horizontal mouse wheel actions. Similar story to vertical mouse wheel.
+  mwl (mwheel-left 50 120)
+  mwr (mwheel-right 50 120)
 )
 
 (defalias

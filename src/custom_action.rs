@@ -44,4 +44,6 @@ pub enum FakeKeyAction {
 pub enum MWheelDirection {
     Up,
     Down,
+    Left,
+    Right,
 }
