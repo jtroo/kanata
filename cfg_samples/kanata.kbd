@@ -414,8 +414,10 @@
 (deffakekeys
   ctl lctl
   sft lsft
+  lsft lsft
   met lmet
   alt lalt
+  mmid mmid
   pal (multi
         (on-press-fakekey ctl press)
         (on-press-fakekey sft press)
@@ -445,4 +447,21 @@
       )
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
+
+  ;; If you find that an application isn't registering keypresses correctly
+  ;; with multi, you can try out:
+  ;; - on-press-fakekey-delay
+  ;; - on-release-fakekey-delay
+  ;;
+  ;; Do note that processing a fakekey-delay and even a sequence of delays will
+  ;; delay any other inputs from being processed until the fakekey-delays are
+  ;; all complete, so use with care.
+  stm (multi ;; Shift -> middle mouse with a delay
+    (on-press-fakekey lsft press)
+    (on-press-fakekey-delay 200)
+    (on-press-fakekey mmid press)
+    (on-release-fakekey mmid release)
+    (on-release-fakekey-delay 200)
+    (on-release-fakekey lsft release)
+  )
 )

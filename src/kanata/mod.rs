@@ -230,6 +230,10 @@ impl Kanata {
                                 }
                             }
                         }
+                        CustomAction::Delay(delay) => {
+                            log::debug!("on-press: sleeping for {delay} ms");
+                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                        }
                         _ => {}
                     }
                 }
@@ -258,6 +262,11 @@ impl Kanata {
                                     }
                                 }
                             }
+                            pbtn
+                        }
+                        CustomAction::Delay(delay) => {
+                            log::debug!("on-press: sleeping for {delay} ms");
+                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                             pbtn
                         }
                         CustomAction::FakeKeyOnRelease { coord, action } => {

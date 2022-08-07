@@ -12,6 +12,8 @@ pub enum CustomAction {
         coord: Coord,
         action: FakeKeyAction,
     },
+    Delay(u16),
+    DelayOnRelease(u16),
     MWheel {
         direction: MWheelDirection,
         interval: u16,

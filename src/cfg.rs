@@ -816,13 +816,15 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "on-press-fakekey" => parse_fake_key_op(&ac[1..], parsed_state),
         "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], parsed_state),
+        "on-press-fakekey-delay" => parse_fake_key_delay(&ac[1..]),
+        "on-release-fakekey-delay" => parse_on_release_fake_key_delay(&ac[1..]),
         "mwheel-up" => parse_mwheel(&ac[1..], MWheelDirection::Up),
         "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down),
         "mwheel-left" => parse_mwheel(&ac[1..], MWheelDirection::Left),
         "mwheel-right" => parse_mwheel(&ac[1..], MWheelDirection::Right),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\tcmd",
+            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
             ac_type
         ),
     }
@@ -1208,6 +1210,27 @@ fn parse_fake_key_op_coord_action(
         ),
     };
     Ok((Coord { x: 1, y }, action))
+}
+
+fn parse_fake_key_delay(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
+    parse_delay(ac_params, false)
+}
+
+fn parse_on_release_fake_key_delay(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
+    parse_delay(ac_params, true)
+}
+
+fn parse_delay(ac_params: &[SExpr], is_release: bool) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
+    let delay = get_atom(&ac_params[0])
+        .map(|s| str::parse::<u16>(&s))
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .ok_or_else(|| anyhow!("{ERR_MSG}"))?;
+    Ok(sref(Action::Custom(sref_slice(match is_release {
+        false => CustomAction::Delay(delay),
+        true => CustomAction::DelayOnRelease(delay),
+    }))))
 }
 
 fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'static KanataAction> {
