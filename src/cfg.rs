@@ -43,6 +43,7 @@ use crate::keys::*;
 use crate::layers::*;
 
 use anyhow::{anyhow, bail, Result};
+use radix_trie::Trie;
 use std::collections::HashMap;
 
 use kanata_keyberon::action::*;
@@ -51,6 +52,7 @@ use kanata_keyberon::layout::*;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
 pub type KanataLayout = Layout<256, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KeySeqsToFKeys = Trie<Vec<u8>, (u8, u8)>;
 
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
@@ -58,11 +60,12 @@ pub struct Cfg {
     pub layer_info: Vec<LayerInfo>,
     pub items: HashMap<String, String>,
     pub layout: KanataLayout,
+    pub sequences: KeySeqsToFKeys,
 }
 
 impl Cfg {
     pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (items, mapped_keys, layer_info, key_outputs, layout) = parse_cfg(p)?;
+        let (items, mapped_keys, layer_info, key_outputs, layout, sequences) = parse_cfg(p)?;
         log::info!("config parsed");
         Ok(Self {
             items,
@@ -70,6 +73,7 @@ impl Cfg {
             layer_info,
             key_outputs,
             layout,
+            sequences,
         })
     }
 }
@@ -115,7 +119,7 @@ fn parse_default() {
 
 #[test]
 fn parse_jtroo() {
-    let (_, _, layer_strings, _, _) =
+    let (_, _, layer_strings, _, _, _) =
         parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
     assert_eq!(layer_strings.len(), 16);
 }
@@ -127,7 +131,7 @@ fn parse_f13_f24() {
 
 #[test]
 fn parse_transparent_default() {
-    let (_, _, layer_strings, layers) = parse_cfg_raw(&std::path::PathBuf::from(
+    let (_, _, layer_strings, layers, _) = parse_cfg_raw(&std::path::PathBuf::from(
         "./cfg_samples/transparent_default.kbd",
     ))
     .unwrap();
@@ -168,13 +172,31 @@ fn parse_transparent_default() {
 
 #[test]
 fn disallow_nested_tap_hold() {
-    // Note: unwrap_err won't compile due to const generic trait problem, so had to use match
-    // instead.
     match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| e.to_string())
     {
-        Ok(_) => panic!("tap-hold"),
+        Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
         Err(e) => assert!(e.contains("tap-hold")),
+    }
+}
+
+#[test]
+fn disallow_ancestor_seq() {
+    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
+        .map_err(|e| e.to_string())
+    {
+        Ok(_) => panic!("invalid ancestor seq was Ok'd"),
+        Err(e) => assert!(e.contains("is contained")),
+    }
+}
+
+#[test]
+fn disallow_descendent_seq() {
+    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
+        .map_err(|e| e.to_string())
+    {
+        Ok(_) => panic!("invalid descendant seq was Ok'd"),
+        Err(e) => assert!(e.contains("contains")),
     }
 }
 
@@ -193,8 +215,9 @@ fn parse_cfg(
     Vec<LayerInfo>,
     KeyOutputs,
     KanataLayout,
+    KeySeqsToFKeys,
 )> {
-    let (cfg, src, layer_info, klayers) = parse_cfg_raw(p)?;
+    let (cfg, src, layer_info, klayers, seqs) = parse_cfg_raw(p)?;
 
     Ok((
         cfg,
@@ -202,6 +225,7 @@ fn parse_cfg(
         layer_info,
         create_key_outputs(&klayers),
         create_layout(klayers),
+        seqs,
     ))
 }
 
@@ -213,6 +237,7 @@ fn parse_cfg_raw(
     MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
+    KeySeqsToFKeys,
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
@@ -336,11 +361,17 @@ fn parse_cfg_raw(
         .collect::<Vec<_>>();
     parse_fake_keys(&fake_keys_exprs, &mut parsed_state)?;
 
+    let sequence_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defseq"))
+        .collect::<Vec<_>>();
+    let sequences = parse_sequences(&sequence_exprs, &parsed_state)?;
+
     parse_aliases(&alias_exprs, &mut parsed_state)?;
 
     let klayers = parse_layers(&parsed_state)?;
 
-    Ok((cfg, src, layer_info, klayers))
+    Ok((cfg, src, layer_info, klayers, sequences))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
@@ -366,6 +397,22 @@ fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
 enum SExpr {
     Atom(String),
     List(Vec<SExpr>),
+}
+
+impl SExpr {
+    fn atom(&self) -> Option<&str> {
+        match self {
+            SExpr::Atom(a) => Some(a.as_str()),
+            _ => None,
+        }
+    }
+
+    fn list(&self) -> Option<&[SExpr]> {
+        match self {
+            SExpr::List(l) => Some(l),
+            _ => None,
+        }
+    }
 }
 
 /// Get the root expressions and strip comments.
@@ -494,38 +541,21 @@ fn check_first_expr<'a>(
     mut exprs: impl Iterator<Item = &'a SExpr>,
     expected_first: &str,
 ) -> Result<impl Iterator<Item = &'a SExpr>> {
-    if let Some(first) = exprs.next() {
-        match first {
-            SExpr::Atom(a) => {
-                if a != expected_first {
-                    bail!(
-                        "Passed non-{} expression to parse_defcfg: {}",
-                        expected_first,
-                        a
-                    );
-                }
-            }
-            SExpr::List(_) => {
-                bail!(
-                    "First entry is expected to be an atom for {}",
-                    expected_first
-                );
-            }
-        };
-    } else {
-        bail!("Passed empty list to check_first_expr")
-    };
+    let first_atom = exprs
+        .next()
+        .ok_or_else(|| anyhow!("Passed empty list to {expected_first}"))?
+        .atom()
+        .ok_or_else(|| anyhow!("First entry is expected to be an atom for {expected_first}"))?;
+    if first_atom != expected_first {
+        bail!("Passed non-{expected_first} expression to {expected_first}: {first_atom}");
+    }
     Ok(exprs)
 }
 
 /// Parse configuration entries from an expression starting with defcfg.
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     let mut cfg = HashMap::new();
-    let mut exprs = match check_first_expr(expr.iter(), "defcfg") {
-        Ok(s) => s,
-        Err(e) => bail!(e),
-    };
-
+    let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
     // Read k-v pairs from the configuration
     loop {
         let key = match exprs.next() {
@@ -557,12 +587,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
 /// a vec of the indexes in order. The length of the returned vec should be matched by the length
 /// of all layer declarations.
 fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
-    // Validate first expression, which should be defsrc
-    let exprs = match check_first_expr(expr.iter(), "defsrc") {
-        Ok(s) => s,
-        Err(e) => bail!(e),
-    };
-
+    let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = [false; 256];
     let mut ordered_codes = Vec::new();
     for expr in exprs {
@@ -594,16 +619,13 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::new();
     for (i, expr) in exprs.iter().enumerate() {
-        let mut subexprs = match check_first_expr(expr.iter(), "deflayer") {
-            Ok(s) => s,
-            Err(e) => bail!(e),
-        };
-        let layer_name = get_atom(
-            subexprs
-                .next()
-                .ok_or_else(|| anyhow!("deflayer requires a name and keys"))?,
-        )
-        .ok_or_else(|| anyhow!("layer name after deflayer must be an atom"))?;
+        let mut subexprs = check_first_expr(expr.iter(), "deflayer")?;
+        let layer_name = subexprs
+            .next()
+            .ok_or_else(|| anyhow!("deflayer requires a name and keys"))?
+            .atom()
+            .ok_or_else(|| anyhow!("layer name after deflayer must be an atom"))?
+            .to_owned();
         let num_actions = subexprs.count();
         if num_actions != expected_len {
             bail!(
@@ -617,14 +639,6 @@ fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<Lay
     }
 
     Ok(layer_indexes)
-}
-
-/// Returns the content of an `SExpr::Atom` or returns `None` for `SExpr::List`.
-fn get_atom(a: &SExpr) -> Option<String> {
-    match a {
-        SExpr::Atom(a) => Some(a.clone()),
-        _ => None,
-    }
 }
 
 #[derive(Debug)]
@@ -656,11 +670,7 @@ impl<'a> Default for ParsedState<'a> {
 /// Mutates the input `parsed_state` by storing aliases inside.
 fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Result<()> {
     for expr in exprs {
-        let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
-            Ok(s) => s,
-            Err(e) => bail!(e),
-        };
-
+        let mut subexprs = check_first_expr(expr.iter(), "defalias")?;
         // Read k-v pairs from the configuration
         while let Some(alias) = subexprs.next() {
             let action = match subexprs.next() {
@@ -704,6 +714,11 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
         "lrld" => return Ok(sref(Action::Custom(sref_slice(CustomAction::LiveReload)))),
+        "sldr" => {
+            return Ok(sref(Action::Custom(sref_slice(
+                CustomAction::SequenceLeader,
+            ))))
+        }
         "mlft" | "mouseleft" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
                 Btn::Left,
@@ -1113,11 +1128,7 @@ fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataActio
 
 fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Result<()> {
     for expr in exprs {
-        let mut subexprs = match check_first_expr(expr.iter(), "deffakekeys") {
-            Ok(s) => s,
-            Err(e) => bail!(e),
-        };
-
+        let mut subexprs = check_first_expr(expr.iter(), "deffakekeys")?;
         // Read k-v pairs from the configuration
         while let Some(key_name) = subexprs.next() {
             let action = match subexprs.next() {
@@ -1202,7 +1213,13 @@ fn parse_fake_key_op_coord_action(
             ac_params[1]
         ),
     };
-    Ok((Coord { x: 1, y }, action))
+    let (x, y) = get_fake_key_coords(y);
+    Ok((Coord { x, y }, action))
+}
+
+fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u8) {
+    let y: usize = y.into();
+    (1, y as u8)
 }
 
 fn parse_fake_key_delay(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
@@ -1215,8 +1232,9 @@ fn parse_on_release_fake_key_delay(ac_params: &[SExpr]) -> Result<&'static Kanat
 
 fn parse_delay(ac_params: &[SExpr], is_release: bool) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
-    let delay = get_atom(&ac_params[0])
-        .map(|s| str::parse::<u16>(&s))
+    let delay = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
         .transpose()
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .ok_or_else(|| anyhow!("{ERR_MSG}"))?;
@@ -1231,8 +1249,9 @@ fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'sta
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
-    let interval = get_atom(&ac_params[0])
-        .map(|s| str::parse::<u16>(&s))
+    let interval = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
         .transpose()
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|i| match i {
@@ -1240,8 +1259,9 @@ fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'sta
             _ => Some(i),
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
-    let distance = get_atom(&ac_params[1])
-        .map(|s| str::parse::<u16>(&s))
+    let distance = ac_params[1]
+        .atom()
+        .map(str::parse::<u16>)
         .transpose()
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
@@ -1275,10 +1295,60 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
             }
         }
         for (y, action) in parsed_state.fake_keys.values() {
-            layers_cfg[layer_level][1][*y] = **action;
+            let (x, y) = get_fake_key_coords(*y);
+            layers_cfg[layer_level][x as usize][y as usize] = **action;
         }
     }
     Ok(layers_cfg)
+}
+
+fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<KeySeqsToFKeys> {
+    const ERR_MSG: &str = "defseq expects two parameters: <fake_key_name> <key_list>";
+    let mut sequences = Trie::new();
+    for expr in exprs {
+        let mut subexprs = check_first_expr(expr.iter(), "defseq")?;
+        let fake_key = subexprs
+            .next()
+            .ok_or_else(|| anyhow!(ERR_MSG))?
+            .atom()
+            .ok_or_else(|| anyhow!("{ERR_MSG}: got a list for fake_key_name"))?;
+        if !parsed_state.fake_keys.contains_key(fake_key) {
+            bail!("{ERR_MSG}: {fake_key} is not the name of a fake key");
+        }
+        let key_seq = subexprs
+            .next()
+            .ok_or_else(|| anyhow!(ERR_MSG))?
+            .list()
+            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for key_list"))?;
+        let keycode_seq =
+            key_seq
+                .iter()
+                .try_fold::<_, _, Result<Vec<_>>>(vec![], |mut keys, key| {
+                    keys.push(
+                        str_to_oscode(key.atom().ok_or_else(|| {
+                            anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
+                        })?)
+                        .map(|k| u32::from(k) as u8) // u8 is sufficient for all keys in the keyberon array
+                        .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
+                    );
+                    Ok(keys)
+                })?;
+        if sequences.get_ancestor(&keycode_seq).is_some() {
+            bail!("defseq {key_seq:?} has a conflict: it contains an earlier defined sequence");
+        }
+        if sequences.get_raw_descendant(&keycode_seq).is_some() {
+            bail!("defseq {key_seq:?} has a conflict: it is contained within an earlier defined seqence");
+        }
+        sequences.insert(
+            keycode_seq,
+            parsed_state
+                .fake_keys
+                .get(fake_key)
+                .map(|(y, _)| get_fake_key_coords(*y))
+                .unwrap(),
+        );
+    }
+    Ok(sequences)
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.

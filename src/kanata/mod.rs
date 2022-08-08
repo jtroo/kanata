@@ -35,6 +35,9 @@ pub struct Kanata {
     pub prev_layer: usize,
     pub scroll_state: Option<ScrollState>,
     pub hscroll_state: Option<ScrollState>,
+    pub sequence_timeout: u16,
+    pub sequence_state: Option<SequenceState>,
+    pub sequences: cfg::KeySeqsToFKeys,
     last_tick: time::Instant,
 }
 
@@ -44,6 +47,14 @@ pub struct ScrollState {
     pub ticks_until_scroll: u16,
     pub distance: u16,
 }
+
+pub struct SequenceState {
+    pub sequence: Vec<u8>,
+    pub ticks_until_timeout: u16,
+}
+
+const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
+const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
 
 use once_cell::sync::Lazy;
 
@@ -94,6 +105,19 @@ impl Kanata {
 
         set_altgr_behaviour(&cfg)?;
 
+        let sequence_timeout = cfg
+            .items
+            .get("sequence-timeout")
+            .map(|s| str::parse::<u16>(s))
+            .transpose()
+            .map_err(|e| anyhow!("{SEQUENCE_TIMEOUT_ERR}: {e:?}"))?
+            .map(|i| match i {
+                0 => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                _ => Ok(i),
+            })
+            .transpose()?
+            .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+
         Ok(Self {
             kbd_in_paths,
             kbd_out,
@@ -106,6 +130,9 @@ impl Kanata {
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
+            sequence_timeout,
+            sequence_state: None,
+            sequences: cfg.sequences,
             last_tick: time::Instant::now(),
         })
     }
@@ -139,10 +166,13 @@ impl Kanata {
             let cur_keys = self.handle_keystate_changes()?;
             live_reload_requested |= self.handle_custom_event(custom_event)?;
             self.handle_scrolling()?;
+            self.tick_sequence_state();
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
-                self.do_reload();
+                if let Err(e) = self.do_reload() {
+                    log::error!("live reload failed {e}");
+                }
             }
 
             self.prev_keys = cur_keys;
@@ -234,6 +264,13 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
+                        CustomAction::SequenceLeader => {
+                            log::debug!("entering sequence mode");
+                            self.sequence_state = Some(SequenceState {
+                                sequence: vec![],
+                                ticks_until_timeout: self.sequence_timeout,
+                            });
+                        }
                         _ => {}
                     }
                 }
@@ -319,6 +356,16 @@ impl Kanata {
         Ok(())
     }
 
+    fn tick_sequence_state(&mut self) {
+        if let Some(state) = &mut self.sequence_state {
+            state.ticks_until_timeout -= 1;
+            if state.ticks_until_timeout == 0 {
+                log::debug!("sequence timeout; exiting sequence state");
+                self.sequence_state = None;
+            }
+        }
+    }
+
     /// Sends OS key events according to the change in key state between the current and the
     /// previous keyberon keystate. Returns the current keys.
     fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
@@ -339,41 +386,82 @@ impl Kanata {
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
         for k in &cur_keys {
+            log::trace!("{k:?} is pressed");
             if self.prev_keys.contains(k) {
+                log::trace!("{k:?} is contained");
                 continue;
             }
-            log::debug!("key press     {:?}", k);
-            if let Err(e) = self.kbd_out.press_key(k.into()) {
-                bail!("failed to press key: {:?}", e);
+            match &mut self.sequence_state {
+                None => {
+                    log::debug!("key press     {:?}", k);
+                    if let Err(e) = self.kbd_out.press_key(k.into()) {
+                        bail!("failed to press key: {:?}", e);
+                    }
+                }
+                Some(state) => {
+                    state.ticks_until_timeout = self.sequence_timeout;
+                    state.sequence.push(OsCode::from(*k) as u8);
+                    log::debug!("sequence got {k:?}");
+                    if let Some((x, y)) = self.sequences.get(&state.sequence) {
+                        log::debug!("sequence complete; tapping fake key");
+                        // Make sure to unpress any keys that were pressed as part of the sequence
+                        // so that the keyberon internal sequence mechanism can do press+unpress of
+                        // them.
+                        for k in state.sequence.iter() {
+                            self.layout.states.retain(|s| match s {
+                                State::NormalKey { keycode, .. } => {
+                                    KeyCode::from(OsCode::from(*k as u32)) != *keycode
+                                }
+                                _ => true,
+                            });
+                        }
+                        self.sequence_state = None;
+                        self.layout.event(Event::Press(*x, *y));
+                        self.layout.event(Event::Release(*x, *y));
+                    } else if self.sequences.get_raw_descendant(&state.sequence).is_none() {
+                        log::debug!("got invalid sequence; exiting sequence mode");
+                        self.sequence_state = None;
+                    }
+                }
             }
         }
         Ok(cur_keys)
     }
 
-    fn do_reload(&mut self) {
-        match cfg::Cfg::new_from_file(&self.cfg_path) {
-            Err(e) => {
-                log::error!("Could not reload configuration:\n{}", e);
-            }
-            Ok(cfg) => {
-                if let Err(e) = set_altgr_behaviour(&cfg) {
-                    log::error!("failed to set altgr behaviour {}", e);
-                    return;
-                }
-                self.layout = cfg.layout;
-                let mut mapped_keys = MAPPED_KEYS.lock();
-                *mapped_keys = cfg.mapped_keys;
-                self.key_outputs = cfg.key_outputs;
-                self.layer_info = cfg.layer_info;
-                log::info!("Live reload successful")
-            }
-        };
+    fn do_reload(&mut self) -> Result<()> {
+        let cfg = cfg::Cfg::new_from_file(&self.cfg_path)?;
+        set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
+        self.sequence_timeout = cfg
+            .items
+            .get("sequence-timeout")
+            .map(|s| str::parse::<u16>(s))
+            .transpose()
+            .map_err(|e| anyhow!("{SEQUENCE_TIMEOUT_ERR}: {e:?}"))?
+            .map(|i| match i {
+                0 => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                _ => Ok(i),
+            })
+            .transpose()?
+            .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+        self.layout = cfg.layout;
+        let mut mapped_keys = MAPPED_KEYS.lock();
+        *mapped_keys = cfg.mapped_keys;
+        self.key_outputs = cfg.key_outputs;
+        self.layer_info = cfg.layer_info;
+        self.sequences = cfg.sequences;
+        log::info!("Live reload successful");
+        Ok(())
     }
 
     /// This compares the active keys in the keyberon layout against the potential key outputs for
     /// corresponding physical key in the configuration. If any of keyberon active keys match any
     /// potential physical key output, write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
+        if self.sequence_state.is_some() {
+            // While in sequence mode, don't send key repeats since regular presses also aren't
+            // being sent.
+            return Ok(());
+        }
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
         let idx: usize = event.code.into();
         let outputs_for_key: &Vec<OsCode> = match &self.key_outputs[idx] {

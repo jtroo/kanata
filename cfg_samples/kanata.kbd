@@ -90,7 +90,7 @@
   tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc @ifk d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
-  lctl lmet lalt           spc           @ralt rmet rctl
+  lctl lmet lalt           spc           @ralt rmet @rcl
 )
 
 ;; defalias is used to declare a shortcut for a more complicated action to keep
@@ -465,3 +465,13 @@
     (on-release-fakekey lsft release)
   )
 )
+
+;; Vim-style leader-key sequences. Activate a fakekey-tap by pressing a "leader"
+;; key and then a sequence of characters.
+;; See: https://github.com/jtroo/kanata/issues/97
+;;
+;; You can add an entry to defcfg to change the sequence timeout (default is 1000):
+;;     sequence-timeout <number(ms)>
+(defseq git-status (g s t))
+(deffakekeys git-status (macro g i t spc s t a t u s))
+(defalias rcl (tap-hold-release 200 200 sldr rctl))
