@@ -39,7 +39,6 @@ This is tested by jtroo on Windows 10 and Debian 10. See the
 
 Using `cargo install`:
 
-    # Note: on Linux you may need to install libevdev manually; see below.
     cargo install kanata
 
     # may not have permissions without sudo on Linux, see below
