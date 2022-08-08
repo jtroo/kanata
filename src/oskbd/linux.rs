@@ -102,13 +102,14 @@ pub struct KbdOut {
     device: uinput::VirtualDevice,
     accumulated_scroll: u16,
     accumulated_hscroll: u16,
-    // _symlink: Option<Symlink>,
+    #[allow(dead_code)] // stored here for persistence+cleanup on exit
+    symlink: Option<Symlink>,
 }
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 impl KbdOut {
-    pub fn new(_symlink_path: &Option<String>) -> Result<Self, io::Error> {
+    pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {
         let mut keys = evdev::AttributeSet::new();
         for k in 0..300u16 {
             keys.insert(evdev::Key(k));
@@ -117,28 +118,31 @@ impl KbdOut {
         axes.insert(RelativeAxisType::REL_WHEEL);
         axes.insert(RelativeAxisType::REL_HWHEEL);
 
-        // let devnode = device
-        //     .devnode()
-        //     .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))?;
-        // log::info!("Created device {:#?}", devnode);
-        // let symlink = if let Some(symlink_path) = symlink_path {
-        //     let dest = PathBuf::from(symlink_path);
-        //     let symlink = Symlink::new(PathBuf::from(devnode), dest)?;
-        //     Symlink::clean_when_killed(symlink.clone());
-        //     Some(symlink)
-        // } else {
-        //     None
-        // };
+        let mut device = uinput::VirtualDeviceBuilder::new()?
+            .name("kanata")
+            .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
+            .with_keys(&keys)?
+            .with_relative_axes(&axes)?
+            .build()?;
+        let devnode = device
+            .enumerate_dev_nodes_blocking()?
+            .next() // Expect only one. Using fold or calling next again blocks indefinitely
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))??;
+        log::info!("Created device {:#?}", devnode);
+        let symlink = if let Some(symlink_path) = symlink_path {
+            let dest = PathBuf::from(symlink_path);
+            let symlink = Symlink::new(devnode, dest)?;
+            Symlink::clean_when_killed(symlink.clone());
+            Some(symlink)
+        } else {
+            None
+        };
 
         Ok(KbdOut {
-            device: uinput::VirtualDeviceBuilder::new()?
-                .name("kanata")
-                .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
-                .with_keys(&keys)?
-                .with_relative_axes(&axes)?
-                .build()?,
+            device,
             accumulated_scroll: 0,
             accumulated_hscroll: 0,
+            symlink,
         })
     }
 
@@ -279,8 +283,6 @@ struct Symlink {
     dest: PathBuf,
 }
 
-// TODO: add back in when evdev merges and releases devnode info
-#[allow(unused)]
 impl Symlink {
     fn new(source: PathBuf, dest: PathBuf) -> Result<Self, io::Error> {
         if let Ok(metadata) = fs::symlink_metadata(&dest) {
