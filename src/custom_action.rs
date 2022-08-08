@@ -19,6 +19,7 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
+    SequenceLeader,
     LiveReload,
 }
 

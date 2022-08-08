@@ -1,0 +1,10 @@
+(defcfg)
+
+(defsrc a b c)
+
+(deflayer base _ _ _)
+
+(deffakekeys a a)
+
+(defseq a (a b c))
+(defseq a (a b))
