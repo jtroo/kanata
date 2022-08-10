@@ -179,7 +179,7 @@ impl KbdOut {
         let mut s = String::new();
         for c in hex.chars() {
             s.push(c);
-            let osc = str_to_oscode(&s).expect("invalid char in unicode output");
+            let osc = str_to_oscode(&s).expect("valid keycodes for unicode");
             s.clear();
             self.press_key(osc)?;
             self.release_key(osc)?;

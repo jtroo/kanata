@@ -63,7 +63,7 @@ impl<'a> KeyboardHook<'a> {
                 handle: unsafe {
                     SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
                         .as_mut()
-                        .expect("Failed to install low-level keyboard hook.")
+                        .expect("install low-level keyboard hook successfully")
                 },
                 lifetime: PhantomData,
             }

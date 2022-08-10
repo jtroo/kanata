@@ -448,9 +448,7 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
                 expr
             )
         } else if token.starts_with('"') {
-            let mut token = token
-                .strip_prefix('"')
-                .expect("Dquote prefix was checked. Cosmic ray?");
+            let mut token = token.strip_prefix('"').unwrap();
             let mut quoted_tokens = vec![];
             loop {
                 let num_dquotes = token.matches('"').count();
@@ -469,11 +467,7 @@ fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
                         if !token.ends_with('"') {
                             bail!("Invalid end of quoted string {}", token);
                         }
-                        quoted_tokens.push(
-                            token
-                                .strip_suffix('"')
-                                .expect("Dquote suffix was checked. Cosmic ray?"),
-                        );
+                        quoted_tokens.push(token.strip_suffix('"').unwrap());
                         break;
                     }
                     _ => bail!(

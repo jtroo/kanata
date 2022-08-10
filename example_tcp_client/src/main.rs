@@ -31,11 +31,11 @@ fn main() {
         &SocketAddr::from(([127, 0, 0, 1], args.port)),
         Duration::from_secs(5),
     )
-    .expect("could not connect to kanata");
+    .expect("connect to kanata");
     log::info!("successfully connected");
     let writer_stream = kanata_conn
         .try_clone()
-        .expect("failed to clone socket handle");
+        .unwrap();
     let reader_stream = kanata_conn;
     std::thread::spawn(move || write_to_kanata(writer_stream));
     read_from_kanata(reader_stream);
@@ -57,7 +57,7 @@ fn init_logger(args: &Args) {
         TerminalMode::Mixed,
         ColorChoice::AlwaysAnsi,
     )])
-    .expect("failed to initialize logger");
+    .unwrap();
     log::info!(
         "kanata_example_tcp_client v{} starting",
         env!("CARGO_PKG_VERSION")
@@ -87,13 +87,13 @@ fn write_to_kanata(mut s: TcpStream) {
     log::info!("writer: type layer name then press enter to send a change layer request to kanata");
     let mut layer = String::new();
     loop {
-        stdin().read_line(&mut layer).expect("failed to read stdin");
+        stdin().read_line(&mut layer).expect("stdin is readable");
         let new = layer.trim_end().to_owned();
         log::info!("writer: telling kanata to change layer to \"{new}\"");
         let msg =
-            serde_json::to_string(&ClientMessage::ChangeLayer { new }).expect("deserialize failed");
+            serde_json::to_string(&ClientMessage::ChangeLayer { new }).expect("deserializable");
         let expected_wsz = msg.len();
-        let wsz = s.write(msg.as_bytes()).expect("write failed");
+        let wsz = s.write(msg.as_bytes()).expect("stream writable");
         if wsz != expected_wsz {
             panic!("failed to write entire message {wsz} {expected_wsz}");
         }
@@ -105,9 +105,9 @@ fn read_from_kanata(mut s: TcpStream) {
     log::info!("reader starting");
     let mut buf = vec![0; 256];
     loop {
-        let sz = s.read(&mut buf).expect("read failed");
+        let sz = s.read(&mut buf).expect("stream readable");
         let msg = String::from_utf8_lossy(&buf[..sz]);
-        let parsed_msg = ServerMessage::from_str(&msg).expect("invalid msg from kanata");
+        let parsed_msg = ServerMessage::from_str(&msg).expect("kanata sends valid message");
         match parsed_msg {
             ServerMessage::LayerChange { new } => {
                 log::info!("reader: kanata changed layers to \"{new}\"");
