@@ -90,6 +90,7 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
   by the target application).
 - Optionally run a TCP server to interact with other programs
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
+- Vim-like leader sequences to execute other actions
 - Live reloading of the configuration for easy testing of your changes.
 - Run binaries from kanata (disabled by default)
 
