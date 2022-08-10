@@ -1,6 +1,6 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use log::{error, info};
 
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
@@ -75,14 +75,14 @@ impl Kanata {
             }
         };
 
-        #[cfg(target_os = "linux")]
-        let kbd_in_paths = cfg
-            .items
-            .get("linux-dev")
-            .cloned()
-            .expect("linux-dev required in defcfg");
-        #[cfg(target_os = "windows")]
-        let kbd_in_paths = "unused".into();
+        let kbd_in_paths = if cfg!(target_os = "linux") {
+            cfg.items
+                .get("linux-dev")
+                .cloned()
+                .ok_or_else(|| anyhow!("A linux-dev entry is required in defcfg"))?
+        } else {
+            "unused".into()
+        };
 
         #[cfg(target_os = "windows")]
         unsafe {
@@ -488,9 +488,7 @@ impl Kanata {
                     if kev.value == KeyValue::Release {
                         let mut k = kanata.lock();
                         info!("Init: releasing {:?}", kev.code);
-                        k.kbd_out
-                            .release_key(kev.code)
-                            .expect("could not release key");
+                        k.kbd_out.release_key(kev.code).expect("key released");
                     }
                 }
                 std::thread::sleep(time::Duration::from_millis(1));
@@ -537,7 +535,7 @@ fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
         let mut args = cmd_and_args.iter().cloned();
         let mut cmd = std::process::Command::new(
             args.next()
-                .expect("Parsing should have forbidden empty cmd"),
+                .expect("parsing should have forbidden empty cmd"),
         );
         for arg in args {
             cmd.arg(arg);

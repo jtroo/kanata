@@ -48,8 +48,8 @@ impl TcpServer {
     }
 
     pub fn start(&mut self, kanata: Arc<Mutex<Kanata>>) {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port))
-            .expect("could not start the tcp server");
+        let listener =
+            TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
 
         let connections = self.connections.clone();
 
@@ -59,16 +59,16 @@ impl TcpServer {
                     Ok(mut stream) => {
                         stream
                             .set_keepalive(Some(Duration::from_secs(30)))
-                            .expect("could not set tcp connection keepalive");
+                            .expect("TCP keepalive is set");
 
                         let addr = stream
                             .peer_addr()
-                            .expect("could not find peer address")
+                            .expect("incoming conn has known address")
                             .to_string();
 
                         connections.lock().insert(
                             addr.clone(),
-                            stream.try_clone().expect("could not clone stream"),
+                            stream.try_clone().expect("stream is clonable"),
                         );
 
                         log::info!("listening for incoming messages {}", &addr);
