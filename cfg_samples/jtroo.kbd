@@ -24,16 +24,16 @@
   dvk (layer-switch dvorak)
   qwr (layer-switch qwerty)
 
-  ;; tap-hold keys with letters for tap and layer charge for hold
-  anm (tap-hold 200 200 a @num)
-  oar (tap-hold 200 200 o @arr)
-  ech (tap-hold 200 200 e @chr)
-  umc (tap-hold 200 200 u @msc)
-  grl (tap-hold 200 200 grv @lay)
-  .ms (tap-hold 200 200 . @mse)
+  ;; tap-hold keys with letters for tap and layer change for hold
+  anm (tap-hold-release 200 200 a @num)
+  oar (tap-hold-release 200 200 o @arr)
+  ech (tap-hold-release 200 200 e @chr)
+  umc (tap-hold-release 200 200 u @msc)
+  grl (tap-hold-release 200 200 grv @lay)
+  .ms (tap-hold-release 200 200 . @mse)
 
   ;; tap for capslk, hold for lctl
-  cap (tap-hold 200 200 caps lctl)
+  cap (tap-hold-release 200 200 caps lctl)
 
   ;; chords
   csv C-S-v
@@ -45,7 +45,7 @@
   { S-[
   } S-]
   : S-;
-  ssp (tap-hold 200 200 spc lsft)
+  ral (tap-hold-release 200 200 sldr ralt)
 )
 
 (defalias
@@ -58,7 +58,7 @@
   tab  '    ,    @.ms p    y    f    g    c    r    l    /    =    \
   @cap @anm @oar @ech @umc i    d    h    t    n    s    -    ret
   lsft ;    q    j    k    x    b    m    w    v    z    rsft
-  lctl lmet lalt           @ssp           rsft rmet rctl
+  lctl lmet lalt           spc            @ral rmet rctl
 )
 
 (deflayer qwerty
@@ -109,11 +109,51 @@
   _    _    _              _              _    _    _
 )
 
+(defalias
+  mwu (mwheel-up 50 120)
+  mwd (mwheel-down 50 120)
+  mwl (mwheel-left 50 120)
+  mwr (mwheel-right 50 120)
+)
+
 (deflayer mouse
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
-  _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    @mwu bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    @mwd mlft _    mrgt mmid _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
 
+(defseq "git status" (g s t))
+(defseq "git commit --amend --no-edit" (g c a))
+(defseq "git rebase -i HEAD~" (g r e b))
+(defseq "git log --pretty=oneline --abbrev-commit" (g l s))
+(defseq "git diff --ignore-space-change" (g d f))
+(defseq "git diff --cached --ignore-space-change" (g d c))
+(defseq "git push -f" (g p f))
+(defseq "git commit -m 'fix_this_commit_message'" (g c m))
+
+(deffakekeys
+  "git status" (macro g i t spc s t a t u s)
+  "git commit --amend --no-edit" (macro g i t spc c o m m i t spc - - a m e n d spc - - n o - e d i t)
+  "git rebase -i HEAD~" (macro g i t spc r e b a s e spc - i spc S-h S-e S-a S-d S-grv)
+  "git log --pretty=oneline --abbrev-commit" (macro
+    g i t spc l o g spc
+      - - p r e t t y = o n e l i n e spc
+      - - a b b r e v - c o m m i t
+  )
+  "git diff --ignore-space-change" (macro
+    g i t spc d i f f spc
+      - - i g n o r e - s p a c e - c h a n g e
+  )
+  "git diff --cached --ignore-space-change" (macro
+    g i t spc d i f f spc
+      - - c a c h e d spc
+      - - i g n o r e - s p a c e - c h a n g e
+  )
+  "git push -f" (macro g i t spc p u s h spc - f)
+  "git commit -m 'fix_this_commit_message'" (macro
+    g i t spc c o m m i t spc
+      - m spc ' f i x S-- t h i s S-- c o m m i t S-- m e s s a g e '
+  )
+)
