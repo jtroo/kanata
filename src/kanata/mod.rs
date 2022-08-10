@@ -400,7 +400,7 @@ impl Kanata {
                 }
                 Some(state) => {
                     state.ticks_until_timeout = self.sequence_timeout;
-                    state.sequence.push(OsCode::from(*k) as u8);
+                    state.sequence.push(u32::from(OsCode::from(*k)) as u8);
                     log::debug!("sequence got {k:?}");
                     if let Some((x, y)) = self.sequences.get(&state.sequence) {
                         log::debug!("sequence complete; tapping fake key");
