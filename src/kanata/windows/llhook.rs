@@ -1,4 +1,3 @@
-use anyhow::{bail, Result};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use parking_lot::Mutex;
 use std::collections::HashSet;
@@ -7,20 +6,9 @@ use std::sync::Arc;
 use std::time;
 
 use crate::cfg;
-
-use super::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AltGrBehaviour {
-    DoNothing,
-    CancelLctlPress,
-    AddLctlRelease,
-}
+use crate::kanata::*;
 
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
-
-pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
-    Lazy::new(|| Mutex::new(AltGrBehaviour::DoNothing));
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
@@ -96,27 +84,6 @@ fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
     if let Err(e) = tx.try_send(kev) {
         panic!("failed to send on channel: {:?}", e)
     }
-}
-
-pub fn set_win_altgr_behaviour(cfg: &cfg::Cfg) -> Result<()> {
-    *ALTGR_BEHAVIOUR.lock() = {
-        const CANCEL: &str = "cancel-lctl-press";
-        const ADD: &str = "add-lctl-release";
-        match cfg.items.get("windows-altgr") {
-            None => AltGrBehaviour::DoNothing,
-            Some(cfg_val) => match cfg_val.as_str() {
-                CANCEL => AltGrBehaviour::CancelLctlPress,
-                ADD => AltGrBehaviour::AddLctlRelease,
-                _ => bail!(
-                    "Invalid value for windows-altgr: {}. Valid values are {},{}",
-                    cfg_val,
-                    CANCEL,
-                    ADD
-                ),
-            },
-        }
-    };
-    Ok(())
 }
 
 fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {

@@ -39,9 +39,11 @@ winapi = { version = "0.3.9", features = [
     "mmsystem",
 ] }
 native-windows-gui = "1.0.12"
+interception = { version = "0.1.2", optional = true }
 
 [features]
 cmd = []
+interception_driver = [ "interception" ]
 
 [profile.release]
 opt-level = "z"

@@ -39,6 +39,8 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
     last_tick: time::Instant,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    kbd_out_rx: Receiver<InputEvent>,
 }
 
 pub struct ScrollState {
@@ -75,9 +77,14 @@ impl Kanata {
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = cfg::Cfg::new_from_file(&args.path)?;
 
+        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+        let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
+
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            kbd_out_tx,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -134,6 +141,8 @@ impl Kanata {
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: time::Instant::now(),
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            kbd_out_rx,
         })
     }
 
