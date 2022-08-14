@@ -51,7 +51,7 @@ Build and run yourself in Linux:
     # sudo is used because kanata opens /dev/ files
     #
     # See below if you want to avoid needing sudo:
-    # https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
+    # https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux
     sudo target/debug/kanata --cfg <conf_file>
 
 Build and run yourself in Windows:
