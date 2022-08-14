@@ -31,9 +31,20 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/kmo
 
 # cmd_allowed variants
 
-The binaries `kanata_cmd_allowed` and `kanata_cmd_allowed.exe` are conditionally compiled with the `cmd` action enabled.
+The binaries with the name `cmd_allowed` are conditionally compiled with the `cmd` action enabled.
 
 Using the regular binaries, there is no way to get the `cmd` action to work. This action is restricted behind conditional compilation because I consider the action to be a security risk that should be explicitly opted into and completely forbidden by default.
+
+# wintercept variant
+
+This variant uses the [Interception driver](http://www.oblita.com/interception) instead of Windows hooks. You will need to install the driver using the assets from the linked website or from the [copy in this repo](../assets/Interception.zip). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications, including administrator-privileged apps.
+
+Steps to install the driver:
+
+- extract the `.zip`
+- run a shell with administrator privilege
+- run the script `"command line installer/install-interception.exe"`
+- reboot
 
 # sha256 checksums
 

@@ -92,6 +92,7 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
 - Vim-like leader sequences to execute other actions
 - Live reloading of the configuration for easy testing of your changes.
+- [Interception driver](http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
 - Run binaries from kanata (disabled by default)
 
 ## Contributing

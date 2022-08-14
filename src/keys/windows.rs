@@ -1,5 +1,6 @@
 // This file is adapted from the original ktrl's `keys.rs` file for Windows.
 
+#[cfg(not(feature = "interception_driver"))]
 use crate::oskbd::*;
 use kanata_keyberon::key_code::*;
 use std::convert::TryFrom;
@@ -1443,12 +1444,14 @@ pub struct KeyEvent {
     pub value: KeyValue,
 }
 
+#[cfg(not(feature = "interception_driver"))]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }
     }
 }
 
+#[cfg(not(feature = "interception_driver"))]
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
@@ -1462,6 +1465,7 @@ impl TryFrom<InputEvent> for KeyEvent {
     }
 }
 
+#[cfg(not(feature = "interception_driver"))]
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         Self {

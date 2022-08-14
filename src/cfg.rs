@@ -1265,10 +1265,10 @@ fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'sta
         .transpose()
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
-            0 => None,
-            _ => Some(d),
+            1..=30000 => Some(d),
+            _ => None,
         })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-65535"))?;
+        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
     Ok(sref(Action::Custom(sref_slice(CustomAction::MWheel {
         direction,
         interval,
