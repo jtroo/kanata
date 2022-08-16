@@ -3,9 +3,8 @@
 // This file is taken from kbremap with minor modifications.
 // https://github.com/timokroeger/kbremap
 
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::io;
-use std::marker::PhantomData;
 use std::{mem, ptr};
 
 use winapi::ctypes::*;
@@ -18,46 +17,32 @@ use encode_unicode::CharExt;
 use crate::custom_action::*;
 use crate::keys::*;
 
-type HookFn<'a> = dyn FnMut(InputEvent) -> bool + 'a;
+type HookFn = dyn FnMut(InputEvent) -> bool;
 
 thread_local! {
     /// Stores the hook callback for the current thread.
-    static HOOK_STATE: RefCell<HookState> = RefCell::default();
-}
-
-#[derive(Default)]
-struct HookState {
-    hook: Option<Box<HookFn<'static>>>,
+    static HOOK: Cell<Option<Box<HookFn>>> = Cell::default();
 }
 
 /// Wrapper for the low-level keyboard hook API.
 /// Automatically unregisters the hook when dropped.
-pub struct KeyboardHook<'a> {
+pub struct KeyboardHook {
     handle: HHOOK,
-    lifetime: PhantomData<&'a ()>,
 }
 
-impl<'a> KeyboardHook<'a> {
+impl KeyboardHook {
     /// Sets the low-level keyboard hook for this thread.
     ///
     /// Panics when a hook is already registered from the same thread.
-    #[must_use = "The hook will immediately be unregistered and not work."]
-    pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + 'a) -> KeyboardHook<'a> {
-        HOOK_STATE.with(|state| {
-            let mut state = state.borrow_mut();
+    #[must_use = "The hook will immediatelly be unregistered and not work."]
+    pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + 'static) -> KeyboardHook {
+        HOOK.with(|state| {
             assert!(
-                state.hook.is_none(),
+                state.take().is_none(),
                 "Only one keyboard hook can be registered per thread."
             );
 
-            // The rust compiler needs type annotations to create a trait object rather than a
-            // specialized boxed closure so that we can use transmute in the next step.
-            let boxed_cb: Box<HookFn<'a>> = Box::new(callback);
-
-            // Safety: Transmuting to 'static lifetime is required to put the closure in thread
-            // local storage. It is safe to do so because we properly unregister the hook on drop
-            // after which the global (thread local) variable `HOOK` will not be accessed anymore.
-            state.hook = Some(unsafe { mem::transmute(boxed_cb) });
+            state.set(Some(Box::new(callback)));
 
             KeyboardHook {
                 handle: unsafe {
@@ -65,16 +50,15 @@ impl<'a> KeyboardHook<'a> {
                         .as_mut()
                         .expect("install low-level keyboard hook successfully")
                 },
-                lifetime: PhantomData,
             }
         })
     }
 }
 
-impl<'a> Drop for KeyboardHook<'a> {
+impl Drop for KeyboardHook {
     fn drop(&mut self) {
         unsafe { UnhookWindowsHookEx(self.handle) };
-        HOOK_STATE.with(|state| state.take());
+        HOOK.with(|state| state.take());
     }
 }
 
@@ -121,14 +105,17 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
 
-    let handled = HOOK_STATE.with(|state| {
-        // The mutable reference can be taken as long as we properly prevent recursion
-        // by dropping injected events.
-        let mut state = state.borrow_mut();
-
-        // The unwrap cannot fail, because windows only calls this function after
-        // registering the hook (before which we have set [`HOOK_STATE`]).
-        state.hook.as_mut().unwrap()(key_event)
+    let mut handled = false;
+    HOOK.with(|state| {
+        // The unwrap cannot fail, because we have initialized [`HOOK`] with a
+        // valid closure before registering the hook (this function).
+        // To access the closure we move it out of the cell and put it back
+        // after it returned. For this to work we need to prevent recursion by
+        // dropping injected events. Otherwise we would try to take the closure
+        // twice and the `unwrap()` call would fail the second time.
+        let mut hook = state.take().unwrap();
+        handled = hook(key_event);
+        state.set(Some(hook));
     });
 
     if handled {
