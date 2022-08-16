@@ -10,7 +10,7 @@ use crate::cfg;
 
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AltGrBehaviour {
     DoNothing,
     CancelLctlPress,
