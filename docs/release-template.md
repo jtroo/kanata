@@ -1,6 +1,6 @@
 # Changelog
 
-- <fill this out>
+**fill_this_out**
 
 # Sample configuration file
 
@@ -27,7 +27,7 @@ chmod +x kanata   # may be downloaded without executable permissions
 sudo ./kanata --cfg <cfg_file>`
 ```
 
-To avoid requiring `sudo`, [follow the instructions here](https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux).
+To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux).
 
 # cmd_allowed variants
 
@@ -35,9 +35,11 @@ The binaries with the name `cmd_allowed` are conditionally compiled with the `cm
 
 Using the regular binaries, there is no way to get the `cmd` action to work. This action is restricted behind conditional compilation because I consider the action to be a security risk that should be explicitly opted into and completely forbidden by default.
 
-# wintercept variant
+# wintercept variants
 
-This variant uses the [Interception driver](http://www.oblita.com/interception) instead of Windows hooks. You will need to install the driver using the assets from the linked website or from the [copy in this repo](../assets/Interception.zip). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications, including administrator-privileged apps.
+## Description
+
+These variants use the [Interception driver](http://www.oblita.com/interception) instead of Windows hooks. You will need to install the driver using the assets from the linked website or from the [copy in this repo](https://github.com/jtroo/kanata/tree/main/assets). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications, including administrator-privileged apps.
 
 Steps to install the driver:
 
@@ -48,6 +50,4 @@ Steps to install the driver:
 
 # sha256 checksums
 
-```
-< fill this out>
-```
+**fill_this_out**
