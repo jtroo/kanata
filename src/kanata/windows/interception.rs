@@ -14,10 +14,7 @@ impl Kanata {
         let rx = kanata.lock().kbd_out_rx.clone();
         *MAPPED_KEYS.lock() = kanata.lock().mapped_keys;
         let intrcptn = ic::Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
-        intrcptn.set_filter(
-            ic::is_keyboard,
-            ic::Filter::KeyFilter(ic::KeyFilter::UP | ic::KeyFilter::DOWN),
-        );
+        intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
         let mut strokes = [ic::Stroke::Keyboard {
             code: ic::ScanCode::Esc,
             state: ic::KeyState::empty(),

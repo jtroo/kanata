@@ -315,7 +315,7 @@ impl TryFrom<Stroke> for OsCode {
                         }
                     }
 
-                    (true, false) => {
+                    (true, _) => {
                         match code as u8 {
                             0x10 => OsCode::KEY_PREVIOUSSONG,
                             0x19 => OsCode::KEY_NEXTSONG,
