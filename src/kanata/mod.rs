@@ -593,30 +593,62 @@ impl Kanata {
 
             info!("Starting kanata proper");
             let err = loop {
-                match rx.try_recv() {
-                    Ok(kev) => {
-                        let mut k = kanata.lock();
-                        if let Err(e) = k.handle_key_event(&kev) {
-                            break e;
+                if kanata.lock().can_block() {
+                    log::trace!("blocking on channel");
+                    match rx.recv() {
+                        Ok(kev) => {
+                            let mut k = kanata.lock();
+                            k.last_tick = time::Instant::now()
+                                .checked_sub(time::Duration::from_millis(1))
+                                .unwrap();
+                            if let Err(e) = k.handle_key_event(&kev) {
+                                break e;
+                            }
+                            if let Err(e) = k.handle_time_ticks(&tx) {
+                                break e;
+                            }
                         }
-                        if let Err(e) = k.handle_time_ticks(&tx) {
-                            break e;
+                        Err(_) => {
+                            log::error!("channel disconnected");
+                            return;
                         }
                     }
-                    Err(TryRecvError::Empty) => {
-                        if let Err(e) = kanata.lock().handle_time_ticks(&tx) {
-                            break e;
+                } else {
+                    let mut k = kanata.lock();
+                    match rx.try_recv() {
+                        Ok(kev) => {
+                            if let Err(e) = k.handle_key_event(&kev) {
+                                break e;
+                            }
+                            if let Err(e) = k.handle_time_ticks(&tx) {
+                                break e;
+                            }
                         }
-                        std::thread::sleep(time::Duration::from_millis(1));
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        log::error!("channel disconnected");
-                        return;
+                        Err(TryRecvError::Empty) => {
+                            if let Err(e) = k.handle_time_ticks(&tx) {
+                                break e;
+                            }
+                            std::thread::sleep(time::Duration::from_millis(1));
+                        }
+                        Err(TryRecvError::Disconnected) => {
+                            log::error!("channel disconnected");
+                            return;
+                        }
                     }
                 }
             };
             panic!("processing loop encountered error {:?}", err)
         });
+    }
+
+    pub fn can_block(&self) -> bool {
+        self.layout.stacked.is_empty()
+            && self.layout.waiting.is_none()
+            && self.layout.tap_hold_tracker.timeout == 0
+            && (self.layout.oneshot.timeout == 0 || self.layout.oneshot.keys.is_empty())
+            && self.layout.active_sequences.is_empty()
+            && self.scroll_state.is_none()
+            && self.hscroll_state.is_none()
     }
 }
 
