@@ -197,6 +197,10 @@
   ;; by using `multi` as well. The lmeta key is also known by some other
   ;; names: "Windows", "GUI", "Command", "Super".
   ;;
+  ;; For ralt/altgr, you can use either of: `RA-` or `AG-`. They both work the
+  ;; same and only one is allowed in a single chord. This chord can be useful for
+  ;; international layouts.
+  ;;
   ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
@@ -207,6 +211,13 @@
 
   ;; Windows shortcut for displaying all windows
   win M-tab
+
+  ;; Accented e characters for France layout using altgr sequence. Showcases
+  ;; both of the shortcuts. You can just use one version of shortcut at your
+  ;; preference.
+  é AG-2
+  è RA-7
+  testmacro (macro AG-2 RA-7)
 
   ;; macro accepts keys, chords, and numbers (a delay in ms). Note that numbers
   ;; will be parsed as delays, so they will need to be aliased to be used.
@@ -299,8 +310,8 @@
 )
 
 (deflayer misc
-  _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    ins  @{   @}    [    ]    _    _    _
+  _    _    _    _    _    _    _    _    _    @é   @è    _    _    _
+  _    _    _    _    _    _    ins  @{   @}   [    ]    _    _    _
   _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
   _    C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
   _    _    _              _              _    _    _
