@@ -243,11 +243,6 @@ fn parse_cfg_raw(
     let cfg = std::fs::read_to_string(p)?;
 
     let root_exprs = parse_exprs(Lexer::new(&cfg))?;
-    // let root_expr_strs = get_root_exprs(&cfg)?;
-    // let mut root_exprs = Vec::new();
-    // for expr in root_expr_strs.iter() {
-    //     root_exprs.push(parse_expr(expr)?);
-    // }
 
     let cfg_expr = root_exprs
         .iter()
@@ -308,17 +303,6 @@ fn parse_cfg_raw(
             std::iter::repeat(s).take(2)
         })
         .collect::<Vec<_>>();
-
-    // let layer_strings = root_expr_strs
-    //     .into_iter()
-    //     .zip(root_exprs.iter())
-    //     .filter(|(_, expr)| deflayer_filter(expr))
-    //     .flat_map(|(s, _)| {
-    //         // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
-    //         // two versions of each layer.
-    //         std::iter::repeat(s).take(2)
-    //     })
-    //     .collect::<Vec<_>>();
 
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
@@ -533,126 +517,6 @@ fn parse_exprs<'a>(mut tokens: impl Iterator<Item = Result<Token<'a>>>) -> Resul
             _ => bail!("Toplevel must be lists"),
         })
         .collect()
-}
-
-/// Get the root expressions and strip comments.
-fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
-    let mut open_paren_count = 0;
-    let mut close_paren_count = 0;
-    let mut s_exprs = Vec::new();
-    let mut cur_expr = String::new();
-    for line in cfg.lines() {
-        // remove comments
-        let line = line.split(";;").next().unwrap();
-        for c in line.chars() {
-            if c == '(' {
-                open_paren_count += 1;
-            } else if c == ')' {
-                close_paren_count += 1;
-            }
-        }
-        if open_paren_count == 0 {
-            continue;
-        }
-        cur_expr.push_str(line);
-        cur_expr.push('\n');
-        if open_paren_count == close_paren_count {
-            open_paren_count = 0;
-            close_paren_count = 0;
-            s_exprs.push(cur_expr.trim().to_owned());
-            cur_expr.clear();
-        }
-    }
-    if !cur_expr.is_empty() {
-        bail!("Unclosed root expression:\n{}", cur_expr)
-    }
-    Ok(s_exprs)
-}
-
-/// Parse an expression string into an SExpr
-fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
-    if !expr.starts_with('(') {
-        bail!("Expression in cfg does not start with '(':\n{}", expr)
-    }
-    if !expr.ends_with(')') {
-        bail!("Expression in cfg does not end with ')':\n{}", expr)
-    }
-    let expr = expr.strip_prefix('(').unwrap_or(expr);
-    let expr = expr.strip_suffix(')').unwrap_or(expr);
-
-    let mut ret = Vec::new();
-    let mut tokens = expr.split_whitespace();
-    loop {
-        let token = match tokens.next() {
-            None => break,
-            Some(t) => t,
-        };
-        if token.contains('(') {
-            // seek to matching close paren and recurse
-            let mut paren_stack_size = token.chars().filter(|c| *c == '(').count();
-            paren_stack_size -= token.chars().filter(|c| *c == ')').count();
-            let mut subexpr = String::new();
-            subexpr.push_str(token);
-            while paren_stack_size > 0 {
-                let token = match tokens.next() {
-                    None => bail!(
-                        "Sub expression does not close:\n{}\nwhole expr:\n{}",
-                        subexpr,
-                        expr
-                    ),
-                    Some(t) => t,
-                };
-                paren_stack_size += token.chars().filter(|c| *c == '(').count();
-                paren_stack_size -= token.chars().filter(|c| *c == ')').count();
-                subexpr.push(' ');
-                subexpr.push_str(token);
-            }
-            ret.push(SExpr::List(parse_expr(&subexpr)?))
-        } else if token.contains(')') {
-            bail!(
-                "Unexpected closing paren in token {} in expr:\n{}",
-                token,
-                expr
-            )
-        } else if token.starts_with('"') {
-            let mut token = token.strip_prefix('"').unwrap();
-            let mut quoted_tokens = vec![];
-            loop {
-                let num_dquotes = token.matches('"').count();
-                // seek to end of quoted string
-                match num_dquotes {
-                    0 => {
-                        quoted_tokens.push(token);
-                        token = match tokens.next() {
-                            Some(t) => t,
-                            None => {
-                                bail!("Unterminated quoted string: {}", quoted_tokens.join(" "))
-                            }
-                        };
-                    }
-                    1 => {
-                        if !token.ends_with('"') {
-                            bail!("Invalid end of quoted string {}", token);
-                        }
-                        quoted_tokens.push(token.strip_suffix('"').unwrap());
-                        break;
-                    }
-                    _ => bail!(
-                        "Invalid quoted string \"{} {}",
-                        quoted_tokens.join(" "),
-                        token
-                    ),
-                }
-            }
-            ret.push(SExpr::Atom(quoted_tokens.join(" ")));
-        } else if token.contains('"') {
-            // token contains " but does not start with "; not valid
-            bail!("Invalid start of quoted string: {}", token);
-        } else {
-            ret.push(SExpr::Atom(token.to_owned()));
-        }
-    }
-    Ok(ret)
 }
 
 /// Consumes the first element and returns the rest of the iterator. Returns `Ok` if the first
@@ -1524,31 +1388,8 @@ fn create_layout(layers: Box<KanataLayers>) -> KanataLayout {
 mod tests {
     use super::*;
 
-    fn run_parse(s: &str) -> impl std::fmt::Debug {
-        (|| -> Result<_> {
-            let root_expr_strs = get_root_exprs(s)?;
-            dbg!(&root_expr_strs);
-            let mut root_exprs = Vec::new();
-            for expr in root_expr_strs.iter() {
-                root_exprs.push(parse_expr(expr)?);
-            }
-            Ok(root_exprs)
-        })()
-    }
     fn run_parse2(s: &str) -> impl std::fmt::Debug {
         parse_exprs(Lexer::new(s))
-    }
-
-    #[test]
-    fn smoke() {
-        dbg!(run_parse("(asdf())"));
-        dbg!(run_parse("(asdf adsf(asdf asdf))"));
-        dbg!(run_parse(
-            "
-(((adsf)))
-((asdf))
-"
-        ));
     }
 
     #[test]
@@ -1558,14 +1399,6 @@ mod tests {
             "(asdfasdf (adsfasd adsfad) (adsfafds asdfasdf) )
             (((asdfa) (((asdfsdf)))))
             "
-        ));
-    }
-
-    #[test]
-    fn suceeds() {
-        dbg!(run_parse(
-            "(asdf ())
-(asdf ())"
         ));
     }
 }
