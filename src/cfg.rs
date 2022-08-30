@@ -45,6 +45,8 @@ use crate::layers::*;
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
 use std::collections::HashMap;
+use std::iter;
+use std::str::Bytes;
 
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
@@ -176,7 +178,7 @@ fn disallow_nested_tap_hold() {
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
-        Err(e) => assert!(e.contains("tap-hold")),
+        Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
     }
 }
 
@@ -203,7 +205,6 @@ fn disallow_descendent_seq() {
 #[derive(Debug)]
 pub struct LayerInfo {
     pub name: String,
-    pub cfg_text: String,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -241,11 +242,12 @@ fn parse_cfg_raw(
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
-    let root_expr_strs = get_root_exprs(&cfg)?;
-    let mut root_exprs = Vec::new();
-    for expr in root_expr_strs.iter() {
-        root_exprs.push(parse_expr(expr)?);
-    }
+    let root_exprs = parse_exprs(Lexer::new(&cfg))?;
+    // let root_expr_strs = get_root_exprs(&cfg)?;
+    // let mut root_exprs = Vec::new();
+    // for expr in root_expr_strs.iter() {
+    //     root_exprs.push(parse_expr(expr)?);
+    // }
 
     let cfg_expr = root_exprs
         .iter()
@@ -307,21 +309,20 @@ fn parse_cfg_raw(
         })
         .collect::<Vec<_>>();
 
-    let layer_strings = root_expr_strs
-        .into_iter()
-        .zip(root_exprs.iter())
-        .filter(|(_, expr)| deflayer_filter(expr))
-        .flat_map(|(s, _)| {
-            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
-            // two versions of each layer.
-            std::iter::repeat(s).take(2)
-        })
-        .collect::<Vec<_>>();
+    // let layer_strings = root_expr_strs
+    //     .into_iter()
+    //     .zip(root_exprs.iter())
+    //     .filter(|(_, expr)| deflayer_filter(expr))
+    //     .flat_map(|(s, _)| {
+    //         // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
+    //         // two versions of each layer.
+    //         std::iter::repeat(s).take(2)
+    //     })
+    //     .collect::<Vec<_>>();
 
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
-        .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
+        .map(|name| LayerInfo { name })
         .collect();
 
     let alias_exprs = root_exprs
@@ -413,6 +414,125 @@ impl SExpr {
             _ => None,
         }
     }
+}
+
+#[derive(Debug)]
+enum Token<'a> {
+    Open,
+    Close,
+    String(&'a str),
+}
+
+struct Lexer<'a> {
+    s: &'a str,
+    bytes: Bytes<'a>,
+}
+
+fn is_start(b: u8) -> bool {
+    matches!(b, b'(' | b')' | b'"') || b.is_ascii_whitespace()
+}
+
+impl<'a> Lexer<'a> {
+    fn new(s: &str) -> impl Iterator<Item = Result<Token<'_>>> {
+        let mut lexer = Lexer {
+            s,
+            bytes: s.bytes(),
+        };
+        iter::from_fn(move || lexer.next_token())
+    }
+
+    fn next_while(&mut self, f: impl Fn(u8) -> bool) {
+        while let Some(b) = self.bytes.clone().next() {
+            if f(b) {
+                self.bytes.next().unwrap();
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn pos(&self) -> usize {
+        self.s.len() - self.bytes.len()
+    }
+
+    fn consumed(&self, start: usize) -> &'a str {
+        &self.s[start..self.pos()]
+    }
+
+    fn next_token(&mut self) -> Option<Result<Token<'a>>> {
+        use Token::*;
+        loop {
+            let start = self.pos();
+            break match self.bytes.next() {
+                Some(b) => Some(Ok(match b {
+                    b'(' => Open,
+                    b')' => Close,
+                    b'"' => {
+                        self.next_while(|b| b != b'"' && b != b'\n');
+                        match self.bytes.next() {
+                            Some(b'"') => (),
+                            _ => return Some(Err(anyhow!("Unterminated string"))),
+                        }
+                        String(self.consumed(start))
+                    }
+                    b if b.is_ascii_whitespace() => {
+                        self.next_while(|b| b.is_ascii_whitespace());
+                        continue;
+                    }
+                    b';' => match self.bytes.clone().next() {
+                        Some(b';') => {
+                            self.next_while(|b| b != b'\n');
+                            // possibly consume the newline (or EOF handled in next iteration)
+                            let _ = self.bytes.next();
+                            continue;
+                        }
+                        _ => self.next_string(start),
+                    },
+                    _ => self.next_string(start),
+                })),
+                None => None,
+            };
+        }
+    }
+
+    fn next_string(&mut self, start: usize) -> Token<'a> {
+        // might want to limit this to ascii or XID_START/XID_CONTINUE
+        self.next_while(|b| !is_start(b));
+        Token::String(self.consumed(start))
+    }
+}
+
+fn parse_exprs<'a>(mut tokens: impl Iterator<Item = Result<Token<'a>>>) -> Result<Vec<Vec<SExpr>>> {
+    use SExpr::*;
+    use Token::*;
+    let mut stack = vec![vec![]];
+    loop {
+        match tokens.next() {
+            None => break,
+            Some(t) => match t? {
+                Open => stack.push(vec![]),
+                Close => {
+                    let expr = List(stack.pop().unwrap());
+                    if stack.is_empty() {
+                        bail!("Unexpected paren");
+                    }
+                    stack.last_mut().unwrap().push(expr);
+                }
+                String(s) => stack.last_mut().unwrap().push(Atom(s.to_string())),
+            },
+        }
+    }
+    let exprs = stack.pop().unwrap();
+    if !stack.is_empty() {
+        bail!("Unclosed parens");
+    }
+    exprs
+        .into_iter()
+        .map(|expr| match expr {
+            SExpr::List(es) => Ok(es),
+            _ => bail!("Toplevel must be lists"),
+        })
+        .collect()
 }
 
 /// Get the root expressions and strip comments.
@@ -1398,4 +1518,54 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
 /// Create a layout from `layers::LAYERS`.
 fn create_layout(layers: Box<KanataLayers>) -> KanataLayout {
     Layout::new(Box::leak(layers))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run_parse(s: &str) -> impl std::fmt::Debug {
+        (|| -> Result<_> {
+            let root_expr_strs = get_root_exprs(s)?;
+            dbg!(&root_expr_strs);
+            let mut root_exprs = Vec::new();
+            for expr in root_expr_strs.iter() {
+                root_exprs.push(parse_expr(expr)?);
+            }
+            Ok(root_exprs)
+        })()
+    }
+    fn run_parse2(s: &str) -> impl std::fmt::Debug {
+        parse_exprs(Lexer::new(s))
+    }
+
+    #[test]
+    fn smoke() {
+        dbg!(run_parse("(asdf())"));
+        dbg!(run_parse("(asdf adsf(asdf asdf))"));
+        dbg!(run_parse(
+            "
+(((adsf)))
+((asdf))
+"
+        ));
+    }
+
+    #[test]
+    fn smoke2() {
+        dbg!(run_parse2("(adsf())"));
+        dbg!(run_parse2(
+            "(asdfasdf (adsfasd adsfad) (adsfafds asdfasdf) )
+            (((asdfa) (((asdfsdf)))))
+            "
+        ));
+    }
+
+    #[test]
+    fn suceeds() {
+        dbg!(run_parse(
+            "(asdf ())
+(asdf ())"
+        ));
+    }
 }

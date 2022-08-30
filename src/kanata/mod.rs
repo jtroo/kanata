@@ -521,7 +521,7 @@ impl Kanata {
     }
 
     fn print_layer(&self, layer: usize) {
-        log::info!("Entered layer:\n{}", self.layer_info[layer].cfg_text);
+        log::info!("Entered layer:\n{}", self.layer_info[layer].name);
     }
 
     pub fn start_notification_loop(
