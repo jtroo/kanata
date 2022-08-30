@@ -779,6 +779,18 @@ fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataActio
             }
             key_stack.push(KeyCode::LShift);
             rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("AG-") {
+            if key_stack.contains(&KeyCode::RAlt) {
+                bail!("Redundant \"AltGr\" in {}", ac)
+            }
+            key_stack.push(KeyCode::RAlt);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("RA-") {
+            if key_stack.contains(&KeyCode::RAlt) {
+                bail!("Redundant \"AltGr\" in {}", ac)
+            }
+            key_stack.push(KeyCode::RAlt);
+            rem = rest;
         } else if let Some(rest) = rem.strip_prefix("A-") {
             if key_stack.contains(&KeyCode::LAlt) {
                 bail!("Redundant \"A-\" in {}", ac)
