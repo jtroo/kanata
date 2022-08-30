@@ -20,8 +20,13 @@
   ;; is preferable; I recall reading that it's less likely to change names on you,
   ;; but I didn't find any keyboard device in there in my VM.
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+
   ;; If you want to read from multiple devices, separate them by `:`.
   ;; linux-dev /dev/input/<dev1>:/dev/input/<dev2>
+  ;;
+  ;; If you have a colon in your device path, add a backslash before it so that
+  ;; kanata does not parse it as multiple devices.
+  ;; linux-dev /dev/input/path-to\:device
 
   ;; Windows doesn't need any input/output configuration entries; however, there
   ;; must still be a defcfg entry.

@@ -29,7 +29,11 @@ impl KbdIn {
         match KbdIn::new_linux(dev_paths) {
             Ok(s) => Ok(s),
             Err(e) => {
-                log::error!("Failed to open the input keyboard device. Make sure you've added kanata to the `input` group. E: {}", e);
+                log::error!(
+                    "Failed to open the input keyboard devices {:?}. Make sure the user running kanata is part of the input and uinput groups. Error: {}" ,
+                    parse_dev_paths(dev_paths),
+                    e,
+                );
                 Err(e)
             }
         }
@@ -38,12 +42,12 @@ impl KbdIn {
     fn new_linux(dev_paths: &str) -> Result<Self, std::io::Error> {
         let mut devices = HashMap::new();
         let poll = Poll::new()?;
-        for (i, dev_path) in dev_paths.split(':').enumerate() {
-            let mut kbd_in_dev = Device::open(dev_path)?;
 
-            // NOTE: This grab-ungrab-grab sequence magically
-            // fix an issue with a Lenovo Yoga trackpad not working.
-            // No idea why this works.
+        for (i, dev_path) in parse_dev_paths(dev_paths).iter().enumerate() {
+            let mut kbd_in_dev = Device::open(&dev_path)?;
+
+            // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
+            // trackpad not working. No idea why this works.
             kbd_in_dev.grab()?;
             kbd_in_dev.ungrab()?;
             kbd_in_dev.grab()?;
@@ -318,6 +322,31 @@ impl Symlink {
             }
         });
     }
+}
+
+fn parse_dev_paths(paths: &str) -> Vec<String> {
+    let mut all_paths = vec![];
+    let mut full_dev_path = String::new();
+    let mut dev_path_iter = paths.split(':').peekable();
+    while let Some(dev_path) = dev_path_iter.next() {
+        if dev_path.ends_with('\\') && dev_path_iter.peek().is_some() {
+            full_dev_path.push_str(dev_path.trim_end_matches('\\'));
+            full_dev_path.push(':');
+            continue;
+        } else {
+            full_dev_path.push_str(dev_path);
+        }
+        all_paths.push(full_dev_path.clone());
+        full_dev_path.clear();
+    }
+    all_paths
+}
+
+#[test]
+fn test_parse_dev_paths() {
+    assert_eq!(parse_dev_paths("h:w"), ["h", "w"]);
+    assert_eq!(parse_dev_paths("h\\:w"), ["h:w"]);
+    assert_eq!(parse_dev_paths("h\\:w\\"), ["h:w\\"]);
 }
 
 impl Drop for Symlink {
