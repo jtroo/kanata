@@ -15,8 +15,8 @@ pub struct Span {
 }
 
 pub struct LineCol {
-    line: u32,
-    col: u32,
+    pub line: u32,
+    pub col: u32,
 }
 
 impl LineCol {
@@ -262,19 +262,11 @@ impl LineIndex {
     pub fn new(s: &str) -> LineIndex {
         let mut newlines = vec![0];
         let mut curr_row = 0;
-        let mut curr_col = 0;
-        let mut line = 0;
         for c in s.chars() {
             let c_len = c.len_utf8();
             curr_row += c_len;
             if c == '\n' {
                 newlines.push(curr_row);
-
-                // Prepare for processing the next line
-                curr_col = 0;
-                line += 1;
-            } else {
-                curr_col += c_len;
             }
         }
 
@@ -329,7 +321,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn smoke2() {
+    #[ignore]
+    fn smoke() {
         dbg!(parse("(adsf())"));
         parse(
             r#"
