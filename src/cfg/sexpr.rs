@@ -60,6 +60,13 @@ impl Index<Span> for str {
     }
 }
 
+impl Index<Span> for String {
+    type Output = str;
+    fn index(&self, span: Span) -> &Self::Output {
+        &self[span.start()..span.end()]
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Spanned<T> {
     pub t: T,

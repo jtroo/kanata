@@ -207,6 +207,7 @@ fn disallow_descendent_seq() {
 #[derive(Debug)]
 pub struct LayerInfo {
     pub name: String,
+    pub cfg_text: String,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -242,9 +243,11 @@ fn parse_cfg_raw(
     Box<KanataLayers>,
     KeySeqsToFKeys,
 )> {
-    let cfg = std::fs::read_to_string(p)?;
+    let text = std::fs::read_to_string(p)?;
 
-    let root_exprs: Vec<_> = sexpr::parse(&cfg)?.into_iter().map(|t| t.t).collect();
+    let spanned_root_exprs = sexpr::parse(&text)?;
+    // TODO: get rid of clone
+    let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
     let cfg_expr = root_exprs
         .iter()
@@ -306,9 +309,21 @@ fn parse_cfg_raw(
         })
         .collect::<Vec<_>>();
 
+    let layer_strings = spanned_root_exprs
+        .iter()
+        .filter(|expr| deflayer_filter(&&expr.t))
+        .map(|expr| text[expr.span].to_string())
+        .flat_map(|s| {
+            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
+            // two versions of each layer.
+            std::iter::repeat(s).take(2)
+        })
+        .collect::<Vec<_>>();
+
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
-        .map(|name| LayerInfo { name })
+        .zip(layer_strings)
+        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
         .collect();
 
     let alias_exprs = root_exprs
