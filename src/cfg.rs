@@ -37,6 +37,7 @@
 //! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
+mod sexpr;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -45,12 +46,13 @@ use crate::layers::*;
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
 use std::collections::HashMap;
-use std::iter;
-use std::str::Bytes;
 
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
+use sexpr::SExpr;
+
+use self::sexpr::Spanned;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
 pub type KanataLayout = Layout<256, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
@@ -242,7 +244,7 @@ fn parse_cfg_raw(
 )> {
     let cfg = std::fs::read_to_string(p)?;
 
-    let root_exprs = parse_exprs(Lexer::new(&cfg))?;
+    let root_exprs: Vec<_> = sexpr::parse(&cfg)?.into_iter().map(|t| t.t).collect();
 
     let cfg_expr = root_exprs
         .iter()
@@ -364,159 +366,16 @@ fn parse_cfg_raw(
 /// otherwise.
 fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
     let a = a.to_owned();
-    move |expr: &&Vec<SExpr>| {
+    move |expr| {
         if expr.is_empty() {
             return false;
         }
         if let SExpr::Atom(atom) = &expr[0] {
-            atom == &a
+            atom.t == a
         } else {
             false
         }
     }
-}
-
-#[derive(Clone, Debug)]
-/// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
-/// this is more convenient to work with (I find).
-enum SExpr {
-    Atom(String),
-    List(Vec<SExpr>),
-}
-
-impl SExpr {
-    fn atom(&self) -> Option<&str> {
-        match self {
-            SExpr::Atom(a) => Some(a.as_str()),
-            _ => None,
-        }
-    }
-
-    fn list(&self) -> Option<&[SExpr]> {
-        match self {
-            SExpr::List(l) => Some(l),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug)]
-enum Token<'a> {
-    Open,
-    Close,
-    String(&'a str),
-}
-
-struct Lexer<'a> {
-    s: &'a str,
-    bytes: Bytes<'a>,
-}
-
-fn is_start(b: u8) -> bool {
-    matches!(b, b'(' | b')' | b'"') || b.is_ascii_whitespace()
-}
-
-impl<'a> Lexer<'a> {
-    fn new(s: &str) -> impl Iterator<Item = Result<Token<'_>>> {
-        let mut lexer = Lexer {
-            s,
-            bytes: s.bytes(),
-        };
-        iter::from_fn(move || lexer.next_token())
-    }
-
-    fn next_while(&mut self, f: impl Fn(u8) -> bool) {
-        while let Some(b) = self.bytes.clone().next() {
-            if f(b) {
-                self.bytes.next().unwrap();
-            } else {
-                break;
-            }
-        }
-    }
-
-    fn pos(&self) -> usize {
-        self.s.len() - self.bytes.len()
-    }
-
-    fn consumed(&self, start: usize) -> &'a str {
-        &self.s[start..self.pos()]
-    }
-
-    fn next_token(&mut self) -> Option<Result<Token<'a>>> {
-        use Token::*;
-        loop {
-            let start = self.pos();
-            break match self.bytes.next() {
-                Some(b) => Some(Ok(match b {
-                    b'(' => Open,
-                    b')' => Close,
-                    b'"' => {
-                        self.next_while(|b| b != b'"' && b != b'\n');
-                        match self.bytes.next() {
-                            Some(b'"') => (),
-                            _ => return Some(Err(anyhow!("Unterminated string"))),
-                        }
-                        String(self.consumed(start))
-                    }
-                    b if b.is_ascii_whitespace() => {
-                        self.next_while(|b| b.is_ascii_whitespace());
-                        continue;
-                    }
-                    b';' => match self.bytes.clone().next() {
-                        Some(b';') => {
-                            self.next_while(|b| b != b'\n');
-                            // possibly consume the newline (or EOF handled in next iteration)
-                            let _ = self.bytes.next();
-                            continue;
-                        }
-                        _ => self.next_string(start),
-                    },
-                    _ => self.next_string(start),
-                })),
-                None => None,
-            };
-        }
-    }
-
-    fn next_string(&mut self, start: usize) -> Token<'a> {
-        // might want to limit this to ascii or XID_START/XID_CONTINUE
-        self.next_while(|b| !is_start(b));
-        Token::String(self.consumed(start))
-    }
-}
-
-fn parse_exprs<'a>(mut tokens: impl Iterator<Item = Result<Token<'a>>>) -> Result<Vec<Vec<SExpr>>> {
-    use SExpr::*;
-    use Token::*;
-    let mut stack = vec![vec![]];
-    loop {
-        match tokens.next() {
-            None => break,
-            Some(t) => match t? {
-                Open => stack.push(vec![]),
-                Close => {
-                    let expr = List(stack.pop().unwrap());
-                    if stack.is_empty() {
-                        bail!("Unexpected paren");
-                    }
-                    stack.last_mut().unwrap().push(expr);
-                }
-                String(s) => stack.last_mut().unwrap().push(Atom(s.to_string())),
-            },
-        }
-    }
-    let exprs = stack.pop().unwrap();
-    if !stack.is_empty() {
-        bail!("Unclosed parens");
-    }
-    exprs
-        .into_iter()
-        .map(|expr| match expr {
-            SExpr::List(es) => Ok(es),
-            _ => bail!("Toplevel must be lists"),
-        })
-        .collect()
 }
 
 /// Consumes the first element and returns the rest of the iterator. Returns `Ok` if the first
@@ -552,8 +411,8 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if cfg.insert(k.clone(), v.clone()).is_some() {
-                    bail!("duplicate cfg entries for key {}", k);
+                if cfg.insert(k.t.clone(), v.t.clone()).is_some() {
+                    bail!("duplicate cfg entries for key {}", k.t);
                 }
             }
             (_, _) => {
@@ -576,7 +435,7 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
     let mut ordered_codes = Vec::new();
     for expr in exprs {
         let s = match expr {
-            SExpr::Atom(a) => a,
+            SExpr::Atom(a) => &a.t,
             _ => bail!("No lists allowed in defsrc"),
         };
         let oscode: usize = match str_to_oscode(s) {
@@ -662,7 +521,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Resul
                 None => bail!("Incorrect number of elements found in defalias; they should be pairs of aliases and actions."),
             };
             let alias = match alias {
-                SExpr::Atom(a) => a,
+                SExpr::Atom(a) => &a.t,
                 _ => bail!("Alias keys must be atoms. Invalid alias: {:?}", alias),
             };
             let action = parse_action(action, parsed_state)?;
@@ -688,12 +547,13 @@ fn sref_slice<T>(v: T) -> &'static [&'static T] {
 fn parse_action(expr: &SExpr, parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     match expr {
         SExpr::Atom(a) => parse_action_atom(a, &parsed_state.aliases),
-        SExpr::List(l) => parse_action_list(l, parsed_state),
+        SExpr::List(l) => parse_action_list(&l.t, parsed_state),
     }
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a string.
-fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataAction> {
+fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static KanataAction> {
+    let ac = &*ac.t;
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
@@ -790,7 +650,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         return Ok(sref(Action::NoOp));
     }
     let ac_type = match &ac[0] {
-        SExpr::Atom(a) => a,
+        SExpr::Atom(a) => &a.t,
         _ => bail!("Action list must start with an atom"),
     };
     let layers = &parsed_state.layer_idxs;
@@ -841,7 +701,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
         )
     }
     let layer_name = match &ac_params[0] {
-        SExpr::Atom(ln) => ln,
+        SExpr::Atom(ln) => &ln.t,
         _ => bail!(
             "layer name should be an atom, not a list: {:?}",
             ac_params[0]
@@ -881,7 +741,7 @@ fn parse_tap_hold(
 
 fn parse_timeout(a: &SExpr) -> Result<u16> {
     match a {
-        SExpr::Atom(a) => a.parse().map_err(|e| anyhow!("expected integer: {}", e)),
+        SExpr::Atom(a) => a.t.parse().map_err(|e| anyhow!("expected integer: {}", e)),
         _ => bail!("expected atom, not list for integer"),
     }
 }
@@ -962,11 +822,11 @@ fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
     }
     match &ac_params[0] {
         SExpr::Atom(s) => {
-            if s.chars().count() != 1 {
+            if s.t.chars().count() != 1 {
                 bail!(ERR_STR)
             }
             Ok(sref(Action::Custom(sref_slice(CustomAction::Unicode(
-                s.chars().next().unwrap(),
+                s.t.chars().next().unwrap(),
             )))))
         }
         _ => bail!(ERR_STR),
@@ -987,7 +847,7 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
                 .iter()
                 .try_fold(Vec::new(), |mut v, p| {
                     if let SExpr::Atom(s) = p {
-                        v.push(s.clone());
+                        v.push(s.t.clone());
                         Ok(v)
                     } else {
                         bail!("{}, found a list", ERR_STR);
@@ -1009,7 +869,7 @@ fn parse_one_shot(
 
     use std::str::FromStr;
     let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(s) {
+        SExpr::Atom(s) => match u16::from_str(&s.t) {
             Ok(t) => t,
             Err(e) => {
                 log::error!("{}", e);
@@ -1047,7 +907,7 @@ fn parse_tap_dance(
 
     use std::str::FromStr;
     let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(s) {
+        SExpr::Atom(s) => match u16::from_str(&s.t) {
             Ok(t) => t,
             Err(e) => {
                 log::error!("{}", e);
@@ -1059,7 +919,7 @@ fn parse_tap_dance(
     let actions = match &ac_params[1] {
         SExpr::List(tap_dance_actions) => {
             let mut actions = Vec::new();
-            for expr in tap_dance_actions {
+            for expr in &tap_dance_actions.t {
                 let ac = parse_action(expr, parsed_state)?;
                 actions.push(ac);
             }
@@ -1120,7 +980,7 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Res
                 None => bail!("Incorrect number of elements found in deffakekeys; they should be pairs of key-names and actions."),
             };
             let key_name = match key_name {
-                SExpr::Atom(a) => a,
+                SExpr::Atom(a) => &a.t,
                 _ => bail!(
                     "fake key names must be atoms. Invalid key name: {:?}",
                     key_name
@@ -1176,7 +1036,7 @@ fn parse_fake_key_op_coord_action(
         bail!("{ERR_MSG}");
     }
     let y = match parsed_state.fake_keys.get(match &ac_params[0] {
-        SExpr::Atom(fake_key_name) => fake_key_name,
+        SExpr::Atom(fake_key_name) => &fake_key_name.t,
         _ => bail!(
             "{ERR_MSG}\n\tinvalid first parameter (list): {:?}",
             &ac_params[0]
@@ -1186,7 +1046,7 @@ fn parse_fake_key_op_coord_action(
         None => bail!("unknown fake key name {:?}", &ac_params[0]),
     };
     let action = match &ac_params[1] {
-        SExpr::Atom(op) => match op.as_str() {
+        SExpr::Atom(op) => match op.t.as_str() {
             "tap" => FakeKeyAction::Tap,
             "press" => FakeKeyAction::Press,
             "release" => FakeKeyAction::Release,
@@ -1382,23 +1242,4 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
 /// Create a layout from `layers::LAYERS`.
 fn create_layout(layers: Box<KanataLayers>) -> KanataLayout {
     Layout::new(Box::leak(layers))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn run_parse2(s: &str) -> impl std::fmt::Debug {
-        parse_exprs(Lexer::new(s))
-    }
-
-    #[test]
-    fn smoke2() {
-        dbg!(run_parse2("(adsf())"));
-        dbg!(run_parse2(
-            "(asdfasdf (adsfasd adsfad) (adsfafds asdfasdf) )
-            (((asdfa) (((asdfsdf)))))
-            "
-        ));
-    }
 }
