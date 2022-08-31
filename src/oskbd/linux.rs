@@ -25,27 +25,29 @@ pub struct KbdIn {
 }
 
 impl KbdIn {
-    pub fn new(dev_paths: &str) -> Result<Self, std::io::Error> {
-        match KbdIn::new_linux(dev_paths) {
-            Ok(s) => Ok(s),
-            Err(e) => {
-                log::error!(
-                    "Failed to open the input keyboard devices {:?}. Make sure the user running kanata is part of the input and uinput groups. Error: {}" ,
-                    parse_dev_paths(dev_paths),
-                    e,
-                );
-                Err(e)
-            }
-        }
-    }
-
-    fn new_linux(dev_paths: &str) -> Result<Self, std::io::Error> {
-        let mut devices = HashMap::new();
+    pub fn new(dev_paths: &[String]) -> Result<Self, io::Error> {
+        let mut device_map = HashMap::new();
         let poll = Poll::new()?;
 
-        for (i, dev_path) in parse_dev_paths(dev_paths).iter().enumerate() {
-            let mut kbd_in_dev = Device::open(&dev_path)?;
-
+        let devices = if !dev_paths.is_empty() {
+            dev_paths
+                .iter()
+                .map(Device::open)
+                .collect::<io::Result<Vec<_>>>()?
+        } else {
+            let devices: Vec<_> = evdev::enumerate()
+                .map(|(_, device)| device)
+                .filter(is_input_device)
+                .collect();
+            if devices.is_empty() {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Could not auto detect any keyboard devices",
+                ));
+            }
+            devices
+        };
+        for (i, mut kbd_in_dev) in devices.into_iter().enumerate() {
             // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
             // trackpad not working. No idea why this works.
             kbd_in_dev.grab()?;
@@ -56,24 +58,18 @@ impl KbdIn {
             let fd = kbd_in_dev.as_raw_fd();
             poll.registry()
                 .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
-            devices.insert(tok, kbd_in_dev);
-        }
-        if devices.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "No valid keyboard devices provided",
-            ));
+            device_map.insert(tok, kbd_in_dev);
         }
 
         let events = Events::with_capacity(32);
         Ok(KbdIn {
-            devices,
+            devices: device_map,
             poll,
             events,
         })
     }
 
-    pub fn read(&mut self) -> Result<Vec<InputEvent>, std::io::Error> {
+    pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
         let mut input_events = vec![];
         loop {
             log::trace!("polling");
@@ -99,6 +95,27 @@ impl KbdIn {
                 return Ok(input_events);
             }
         }
+    }
+}
+
+pub fn is_input_device(device: &Device) -> bool {
+    use evdev::Key;
+    if device
+        .supported_keys()
+        .map_or(false, |keys| keys.contains(Key::KEY_ENTER))
+    {
+        if device.name() == Some("kanata") {
+            return false;
+        }
+        log::debug!(
+            "Detected Keyboard: name={} physical_path={:?}",
+            device.name().unwrap(),
+            device.physical_path()
+        );
+        true
+    } else {
+        log::trace!("Detected other device: {}", device.name().unwrap());
+        false
     }
 }
 
@@ -324,7 +341,7 @@ impl Symlink {
     }
 }
 
-fn parse_dev_paths(paths: &str) -> Vec<String> {
+pub fn parse_dev_paths(paths: &str) -> Vec<String> {
     let mut all_paths = vec![];
     let mut full_dev_path = String::new();
     let mut dev_path_iter = paths.split(':').peekable();
