@@ -94,12 +94,12 @@ impl Kanata {
         };
 
         #[cfg(target_os = "linux")]
-        let kbd_in_paths =
-            cfg.items
-                .get("linux-dev")
-                .cloned()
-                .map(|paths| parse_dev_paths(&paths))
-                .unwrap_or(vec![]);
+        let kbd_in_paths = cfg
+            .items
+            .get("linux-dev")
+            .cloned()
+            .map(|paths| parse_dev_paths(&paths))
+            .unwrap_or_default();
         #[cfg(not(target_os = "linux"))]
         let kbd_in_paths = vec![];
 

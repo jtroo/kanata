@@ -31,8 +31,8 @@ impl KbdIn {
 
         let devices = if !dev_paths.is_empty() {
             dev_paths
-                .into_iter()
-                .map(|s| Device::open(s))
+                .iter()
+                .map(Device::open)
                 .collect::<io::Result<Vec<_>>>()?
         } else {
             let devices: Vec<_> = evdev::enumerate()
