@@ -24,7 +24,7 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 pub struct Kanata {
-    pub kbd_in_paths: String,
+    pub kbd_in_paths: Vec<String>,
     pub kbd_out: KbdOut,
     pub cfg_path: PathBuf,
     pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
@@ -93,14 +93,15 @@ impl Kanata {
             }
         };
 
-        let kbd_in_paths = if cfg!(target_os = "linux") {
+        #[cfg(target_os = "linux")]
+        let kbd_in_paths =
             cfg.items
                 .get("linux-dev")
                 .cloned()
-                .ok_or_else(|| anyhow!("A linux-dev entry is required in defcfg"))?
-        } else {
-            "unused".into()
-        };
+                .map(|paths| parse_dev_paths(&paths))
+                .unwrap_or(vec![]);
+        #[cfg(not(target_os = "linux"))]
+        let kbd_in_paths = vec![];
 
         #[cfg(target_os = "windows")]
         unsafe {
