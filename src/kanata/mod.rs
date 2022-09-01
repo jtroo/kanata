@@ -474,7 +474,7 @@ impl Kanata {
         }
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
         let idx: usize = event.code.into();
-        let outputs_for_key: &Vec<OsCode> = match &self.key_outputs[idx] {
+        let outputs_for_key: &HashSet<OsCode> = match &self.key_outputs[idx] {
             None => return Ok(()),
             Some(v) => v,
         };
