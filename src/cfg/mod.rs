@@ -608,6 +608,7 @@ fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static
                 Btn::Mid,
             )))))
         }
+        "rpt" | "repeat" => return Ok(sref(Action::Custom(sref_slice(CustomAction::Repeat)))),
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {

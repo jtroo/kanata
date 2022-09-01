@@ -309,12 +309,16 @@
   td (tap-dance 200 (a b c d spc))
 )
 
+;; Can see a new action `rpt` in this layer. This repeats the most recently
+;; pressed key. Holding down the `rpt` key will not repeatedly send the key.
+;; The intended use case is to be able to use a different finger to repeat a
+;; double letter, as opposed to double-tapping a letter.
 (deflayer misc
   _    _    _    _    _    _    _    _    _    @é   @è    _    _    _
   _    _    _    _    _    _    ins  @{   @}   [    ]    _    _    _
   _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
   _    C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
-  _    _    _              _              _    _    _
+  rpt  _    _              _              _    _    _
 )
 
 
