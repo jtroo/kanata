@@ -1,4 +1,5 @@
-use std::ops::{Index, Range};
+use std::fmt::Write;
+use std::ops::Index;
 use std::str::Bytes;
 use std::{cmp, iter};
 
@@ -20,7 +21,7 @@ pub struct LineCol {
 }
 
 impl LineCol {
-    fn new(line: u32, col: u32) -> LineCol {
+    pub fn new(line: u32, col: u32) -> LineCol {
         LineCol { line, col }
     }
 }
@@ -29,13 +30,6 @@ impl Span {
     fn new(start: usize, end: usize) -> Span {
         assert!(start <= end);
         Span { start, end }
-    }
-
-    fn from_range(range: Range<usize>) -> Span {
-        Span::new(
-            range.start.try_into().unwrap(),
-            range.end.try_into().unwrap(),
-        )
     }
 
     pub fn start(&self) -> usize {
@@ -161,12 +155,8 @@ impl<'a> Lexer<'a> {
                             self.next_while(|b| b != b'"' && b != b'\n');
                             match self.bytes.next() {
                                 Some(b'"') => String,
-                                _ => return Some((start, Err(format!("Unterminated string")))),
+                                _ => return Some((start, Err("Unterminated string".to_string()))),
                             }
-                        }
-                        b if b.is_ascii_whitespace() => {
-                            self.next_while(|b| b.is_ascii_whitespace());
-                            continue;
                         }
                         b';' => match self.bytes.clone().next() {
                             Some(b';') => {
@@ -177,6 +167,10 @@ impl<'a> Lexer<'a> {
                             }
                             _ => self.next_string(),
                         },
+                        b if b.is_ascii_whitespace() => {
+                            self.next_while(|b| b.is_ascii_whitespace());
+                            continue;
+                        }
                         _ => self.next_string(),
                     }),
                 )),
@@ -202,7 +196,7 @@ fn parse_(s: &str) -> ParseResult<Vec<TopLevel>> {
     parse_with(s, Lexer::new(s))
 }
 
-fn parse_with<'a>(
+fn parse_with(
     s: &str,
     mut tokens: impl Iterator<Item = Spanned<TokenRes>>,
 ) -> ParseResult<Vec<TopLevel>> {
@@ -229,7 +223,7 @@ fn parse_with<'a>(
                     .last_mut()
                     .unwrap()
                     .t
-                    .push(Atom(Spanned::new(s[span.clone()].to_string(), span))),
+                    .push(Atom(Spanned::new(s[span].to_string(), span))),
             },
         }
     }
@@ -237,10 +231,7 @@ fn parse_with<'a>(
     if !stack.is_empty() {
         return Err(Spanned::new(
             format!("{} Unclosed parentheses", stack.len()),
-            Span::new(
-                s.len().saturating_sub(1).try_into().unwrap(),
-                s.len().try_into().unwrap(),
-            ),
+            Span::new(s.len().saturating_sub(1), s.len()),
         ));
         // bail!("Unclosed parens");
     }
@@ -277,10 +268,7 @@ impl LineIndex {
         let line = self.newlines.partition_point(|&it| it <= offset) - 1;
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
-        LineCol {
-            line: line as u32,
-            col: col as u32,
-        }
+        LineCol::new(line as u32, col as u32)
     }
 
     pub fn get_line<'a>(&self, s: &'a str, line: usize) -> Option<&'a str> {
@@ -302,7 +290,7 @@ fn pretty_error(line_index: &LineIndex, s: &str, e: ParseError) -> String {
     for line_num in line_col_start.line..line_col_end.line {
         let line = line_index.get_line(s, line_num as usize).unwrap();
         let padding = " ".repeat(padding - line_num.to_string().len());
-        res.push_str(&format!("{line_num}{padding} | {line}"));
+        write!(res, "{line_num}{padding} | {line}").unwrap();
     }
     res
 }
@@ -314,25 +302,4 @@ pub fn pretty_errors(s: &str, mut errors: Vec<ParseError>) -> String {
         .into_iter()
         .map(|e| format!("{}\n\n", pretty_error(&line_index, s, e)))
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[ignore]
-    fn smoke() {
-        dbg!(parse("(adsf())"));
-        parse(
-            r#"
-            (asdfasdf (adsfasd adsfad) (adsfafds asdfasdf) )
-
-"this string is incorrect
-
-(adfasdfa (adfadsf  ())
-            "#,
-        )
-        .unwrap();
-    }
 }
