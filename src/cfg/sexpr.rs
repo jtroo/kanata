@@ -115,6 +115,7 @@ fn is_start(b: u8) -> bool {
 type TokenRes = Result<Token, String>;
 
 impl<'a> Lexer<'a> {
+    #[allow(clippy::new_ret_no_self)]
     fn new(s: &str) -> impl Iterator<Item = Spanned<TokenRes>> + '_ {
         let mut lexer = Lexer {
             s,
