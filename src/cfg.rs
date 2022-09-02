@@ -45,7 +45,7 @@ use crate::layers::*;
 
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
@@ -89,19 +89,19 @@ pub const MAPPED_KEYS_LEN: usize = 256;
 /// just use a HashSet for this.
 pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
 
-/// Used as a silly `HashMap<OsCode, Vec<OsCode>>` to know which `OsCode`s are potential outputs
+/// Used as a silly `HashMap<OsCode, HashSet<OsCode>>` to know which `OsCode`s are potential outputs
 /// for a given physical key location. I should probably just use a HashMap for this.
-pub type KeyOutputs = [Option<Vec<OsCode>>; MAPPED_KEYS_LEN];
+pub type KeyOutputs = [Option<HashSet<OsCode>>; MAPPED_KEYS_LEN];
 
 fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
     match outs[i].as_mut() {
         None => {
-            outs[i] = Some(vec![kc]);
+            let mut outputs = HashSet::new();
+            outputs.insert(kc);
+            outs[i] = Some(outputs);
         }
-        Some(v) => {
-            if !v.contains(&kc) {
-                v.push(kc);
-            }
+        Some(outputs) => {
+            outputs.insert(kc);
         }
     }
 }
@@ -1259,9 +1259,25 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
                         add_kc_output(i, kc.into(), &mut outs);
                     }
                 }
+                Action::OneShot(OneShot {
+                    action: Action::KeyCode(kc),
+                    ..
+                }) => {
+                    add_kc_output(i, kc.into(), &mut outs);
+                }
+                Action::TapDance(TapDance { actions, .. }) => {
+                    for action in actions.iter() {
+                        if let Action::KeyCode(kc) = action {
+                            add_kc_output(i, kc.into(), &mut outs);
+                        }
+                    }
+                }
                 _ => {} // do nothing for other types
             };
         }
+    }
+    for hset in outs.iter_mut().flatten() {
+        hset.shrink_to_fit();
     }
     outs
 }
