@@ -37,6 +37,7 @@
 //! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
+mod sexpr;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -49,6 +50,9 @@ use std::collections::HashMap;
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
+use sexpr::SExpr;
+
+use self::sexpr::Spanned;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
 pub type KanataLayout = Layout<256, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
@@ -176,7 +180,7 @@ fn disallow_nested_tap_hold() {
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
-        Err(e) => assert!(e.contains("tap-hold")),
+        Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
     }
 }
 
@@ -239,13 +243,11 @@ fn parse_cfg_raw(
     Box<KanataLayers>,
     KeySeqsToFKeys,
 )> {
-    let cfg = std::fs::read_to_string(p)?;
+    let text = std::fs::read_to_string(p)?;
 
-    let root_expr_strs = get_root_exprs(&cfg)?;
-    let mut root_exprs = Vec::new();
-    for expr in root_expr_strs.iter() {
-        root_exprs.push(parse_expr(expr)?);
-    }
+    let spanned_root_exprs = sexpr::parse(&text)?;
+    // TODO: get rid of clone
+    let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
     let cfg_expr = root_exprs
         .iter()
@@ -307,11 +309,11 @@ fn parse_cfg_raw(
         })
         .collect::<Vec<_>>();
 
-    let layer_strings = root_expr_strs
-        .into_iter()
-        .zip(root_exprs.iter())
-        .filter(|(_, expr)| deflayer_filter(expr))
-        .flat_map(|(s, _)| {
+    let layer_strings = spanned_root_exprs
+        .iter()
+        .filter(|expr| deflayer_filter(&&expr.t))
+        .map(|expr| text[expr.span].to_string())
+        .flat_map(|s| {
             // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
             // two versions of each layer.
             std::iter::repeat(s).take(2)
@@ -379,160 +381,16 @@ fn parse_cfg_raw(
 /// otherwise.
 fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
     let a = a.to_owned();
-    move |expr: &&Vec<SExpr>| {
+    move |expr| {
         if expr.is_empty() {
             return false;
         }
         if let SExpr::Atom(atom) = &expr[0] {
-            atom == &a
+            atom.t == a
         } else {
             false
         }
     }
-}
-
-#[derive(Clone, Debug)]
-/// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
-/// this is more convenient to work with (I find).
-enum SExpr {
-    Atom(String),
-    List(Vec<SExpr>),
-}
-
-impl SExpr {
-    fn atom(&self) -> Option<&str> {
-        match self {
-            SExpr::Atom(a) => Some(a.as_str()),
-            _ => None,
-        }
-    }
-
-    fn list(&self) -> Option<&[SExpr]> {
-        match self {
-            SExpr::List(l) => Some(l),
-            _ => None,
-        }
-    }
-}
-
-/// Get the root expressions and strip comments.
-fn get_root_exprs(cfg: &str) -> Result<Vec<String>> {
-    let mut open_paren_count = 0;
-    let mut close_paren_count = 0;
-    let mut s_exprs = Vec::new();
-    let mut cur_expr = String::new();
-    for line in cfg.lines() {
-        // remove comments
-        let line = line.split(";;").next().unwrap();
-        for c in line.chars() {
-            if c == '(' {
-                open_paren_count += 1;
-            } else if c == ')' {
-                close_paren_count += 1;
-            }
-        }
-        if open_paren_count == 0 {
-            continue;
-        }
-        cur_expr.push_str(line);
-        cur_expr.push('\n');
-        if open_paren_count == close_paren_count {
-            open_paren_count = 0;
-            close_paren_count = 0;
-            s_exprs.push(cur_expr.trim().to_owned());
-            cur_expr.clear();
-        }
-    }
-    if !cur_expr.is_empty() {
-        bail!("Unclosed root expression:\n{}", cur_expr)
-    }
-    Ok(s_exprs)
-}
-
-/// Parse an expression string into an SExpr
-fn parse_expr(expr: &str) -> Result<Vec<SExpr>> {
-    if !expr.starts_with('(') {
-        bail!("Expression in cfg does not start with '(':\n{}", expr)
-    }
-    if !expr.ends_with(')') {
-        bail!("Expression in cfg does not end with ')':\n{}", expr)
-    }
-    let expr = expr.strip_prefix('(').unwrap_or(expr);
-    let expr = expr.strip_suffix(')').unwrap_or(expr);
-
-    let mut ret = Vec::new();
-    let mut tokens = expr.split_whitespace();
-    loop {
-        let token = match tokens.next() {
-            None => break,
-            Some(t) => t,
-        };
-        if token.contains('(') {
-            // seek to matching close paren and recurse
-            let mut paren_stack_size = token.chars().filter(|c| *c == '(').count();
-            paren_stack_size -= token.chars().filter(|c| *c == ')').count();
-            let mut subexpr = String::new();
-            subexpr.push_str(token);
-            while paren_stack_size > 0 {
-                let token = match tokens.next() {
-                    None => bail!(
-                        "Sub expression does not close:\n{}\nwhole expr:\n{}",
-                        subexpr,
-                        expr
-                    ),
-                    Some(t) => t,
-                };
-                paren_stack_size += token.chars().filter(|c| *c == '(').count();
-                paren_stack_size -= token.chars().filter(|c| *c == ')').count();
-                subexpr.push(' ');
-                subexpr.push_str(token);
-            }
-            ret.push(SExpr::List(parse_expr(&subexpr)?))
-        } else if token.contains(')') {
-            bail!(
-                "Unexpected closing paren in token {} in expr:\n{}",
-                token,
-                expr
-            )
-        } else if token.starts_with('"') {
-            let mut token = token.strip_prefix('"').unwrap();
-            let mut quoted_tokens = vec![];
-            loop {
-                let num_dquotes = token.matches('"').count();
-                // seek to end of quoted string
-                match num_dquotes {
-                    0 => {
-                        quoted_tokens.push(token);
-                        token = match tokens.next() {
-                            Some(t) => t,
-                            None => {
-                                bail!("Unterminated quoted string: {}", quoted_tokens.join(" "))
-                            }
-                        };
-                    }
-                    1 => {
-                        if !token.ends_with('"') {
-                            bail!("Invalid end of quoted string {}", token);
-                        }
-                        quoted_tokens.push(token.strip_suffix('"').unwrap());
-                        break;
-                    }
-                    _ => bail!(
-                        "Invalid quoted string \"{} {}",
-                        quoted_tokens.join(" "),
-                        token
-                    ),
-                }
-            }
-            ret.push(SExpr::Atom(quoted_tokens.join(" ")));
-        } else if token.contains('"') {
-            // token contains " but does not start with "; not valid
-            bail!("Invalid start of quoted string: {}", token);
-        } else {
-            ret.push(SExpr::Atom(token.to_owned()));
-        }
-    }
-    Ok(ret)
 }
 
 /// Consumes the first element and returns the rest of the iterator. Returns `Ok` if the first
@@ -568,8 +426,8 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if cfg.insert(k.clone(), v.clone()).is_some() {
-                    bail!("duplicate cfg entries for key {}", k);
+                if cfg.insert(k.t.clone(), v.t.clone()).is_some() {
+                    bail!("duplicate cfg entries for key {}", k.t);
                 }
             }
             (_, _) => {
@@ -592,7 +450,7 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
     let mut ordered_codes = Vec::new();
     for expr in exprs {
         let s = match expr {
-            SExpr::Atom(a) => a,
+            SExpr::Atom(a) => &a.t,
             _ => bail!("No lists allowed in defsrc"),
         };
         let oscode: usize = match str_to_oscode(s) {
@@ -678,7 +536,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Resul
                 None => bail!("Incorrect number of elements found in defalias; they should be pairs of aliases and actions."),
             };
             let alias = match alias {
-                SExpr::Atom(a) => a,
+                SExpr::Atom(a) => &a.t,
                 _ => bail!("Alias keys must be atoms. Invalid alias: {:?}", alias),
             };
             let action = parse_action(action, parsed_state)?;
@@ -704,12 +562,13 @@ fn sref_slice<T>(v: T) -> &'static [&'static T] {
 fn parse_action(expr: &SExpr, parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     match expr {
         SExpr::Atom(a) => parse_action_atom(a, &parsed_state.aliases),
-        SExpr::List(l) => parse_action_list(l, parsed_state),
+        SExpr::List(l) => parse_action_list(&l.t, parsed_state),
     }
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a string.
-fn parse_action_atom(ac: &str, aliases: &Aliases) -> Result<&'static KanataAction> {
+fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static KanataAction> {
+    let ac = &*ac.t;
     match ac {
         "_" => return Ok(sref(Action::Trans)),
         "XX" => return Ok(sref(Action::NoOp)),
@@ -818,7 +677,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         return Ok(sref(Action::NoOp));
     }
     let ac_type = match &ac[0] {
-        SExpr::Atom(a) => a,
+        SExpr::Atom(a) => &a.t,
         _ => bail!("Action list must start with an atom"),
     };
     let layers = &parsed_state.layer_idxs;
@@ -869,7 +728,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
         )
     }
     let layer_name = match &ac_params[0] {
-        SExpr::Atom(ln) => ln,
+        SExpr::Atom(ln) => &ln.t,
         _ => bail!(
             "layer name should be an atom, not a list: {:?}",
             ac_params[0]
@@ -909,7 +768,7 @@ fn parse_tap_hold(
 
 fn parse_timeout(a: &SExpr) -> Result<u16> {
     match a {
-        SExpr::Atom(a) => a.parse().map_err(|e| anyhow!("expected integer: {}", e)),
+        SExpr::Atom(a) => a.t.parse().map_err(|e| anyhow!("expected integer: {}", e)),
         _ => bail!("expected atom, not list for integer"),
     }
 }
@@ -990,11 +849,11 @@ fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
     }
     match &ac_params[0] {
         SExpr::Atom(s) => {
-            if s.chars().count() != 1 {
+            if s.t.chars().count() != 1 {
                 bail!(ERR_STR)
             }
             Ok(sref(Action::Custom(sref_slice(CustomAction::Unicode(
-                s.chars().next().unwrap(),
+                s.t.chars().next().unwrap(),
             )))))
         }
         _ => bail!(ERR_STR),
@@ -1015,7 +874,7 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
                 .iter()
                 .try_fold(Vec::new(), |mut v, p| {
                     if let SExpr::Atom(s) = p {
-                        v.push(s.clone());
+                        v.push(s.t.clone());
                         Ok(v)
                     } else {
                         bail!("{}, found a list", ERR_STR);
@@ -1037,7 +896,7 @@ fn parse_one_shot(
 
     use std::str::FromStr;
     let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(s) {
+        SExpr::Atom(s) => match u16::from_str(&s.t) {
             Ok(t) => t,
             Err(e) => {
                 log::error!("{}", e);
@@ -1075,7 +934,7 @@ fn parse_tap_dance(
 
     use std::str::FromStr;
     let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(s) {
+        SExpr::Atom(s) => match u16::from_str(&s.t) {
             Ok(t) => t,
             Err(e) => {
                 log::error!("{}", e);
@@ -1087,7 +946,7 @@ fn parse_tap_dance(
     let actions = match &ac_params[1] {
         SExpr::List(tap_dance_actions) => {
             let mut actions = Vec::new();
-            for expr in tap_dance_actions {
+            for expr in &tap_dance_actions.t {
                 let ac = parse_action(expr, parsed_state)?;
                 actions.push(ac);
             }
@@ -1148,7 +1007,7 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Res
                 None => bail!("Incorrect number of elements found in deffakekeys; they should be pairs of key-names and actions."),
             };
             let key_name = match key_name {
-                SExpr::Atom(a) => a,
+                SExpr::Atom(a) => &a.t,
                 _ => bail!(
                     "fake key names must be atoms. Invalid key name: {:?}",
                     key_name
@@ -1204,7 +1063,7 @@ fn parse_fake_key_op_coord_action(
         bail!("{ERR_MSG}");
     }
     let y = match parsed_state.fake_keys.get(match &ac_params[0] {
-        SExpr::Atom(fake_key_name) => fake_key_name,
+        SExpr::Atom(fake_key_name) => &fake_key_name.t,
         _ => bail!(
             "{ERR_MSG}\n\tinvalid first parameter (list): {:?}",
             &ac_params[0]
@@ -1214,7 +1073,7 @@ fn parse_fake_key_op_coord_action(
         None => bail!("unknown fake key name {:?}", &ac_params[0]),
     };
     let action = match &ac_params[1] {
-        SExpr::Atom(op) => match op.as_str() {
+        SExpr::Atom(op) => match op.t.as_str() {
             "tap" => FakeKeyAction::Tap,
             "press" => FakeKeyAction::Press,
             "release" => FakeKeyAction::Release,
