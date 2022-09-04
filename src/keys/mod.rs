@@ -85,6 +85,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
         "102d" | "lsgt" | "nubs" => OsCode::KEY_102ND,
         "scrlck" | "slck" => OsCode::KEY_SCROLLLOCK,
+        "pause" | "break" | "brk" => OsCode::KEY_PAUSE,
         "prnt" => OsCode::KEY_PRINT,
         "wkup" => OsCode::KEY_WAKEUP,
         "esc" => OsCode::KEY_ESC,
