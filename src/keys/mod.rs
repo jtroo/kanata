@@ -95,7 +95,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "lalt" | "alt" => OsCode::KEY_LEFTALT,
         "spc" => OsCode::KEY_SPACE,
         "ralt" => OsCode::KEY_RIGHTALT,
-        "comp" | "cmps" | "cmp" | "menu" | "app" => OsCode::KEY_COMPOSE,
+        "comp" | "cmps" | "cmp" | "menu" | "apps" => OsCode::KEY_COMPOSE,
         "rmeta" | "rmet" => OsCode::KEY_RIGHTMETA,
         "rctrl" | "rctl" => OsCode::KEY_RIGHTCTRL,
         "del" => OsCode::KEY_DELETE,
