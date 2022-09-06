@@ -210,8 +210,11 @@ fn parse_with(
             Some(Spanned { t, span }) => match t.map_err(|s| Spanned::new(s, span))? {
                 Open => stack.push(Spanned::new(vec![], span)),
                 Close => {
-                    let Spanned { t: exprs, span } = stack.pop().unwrap();
-                    let expr = List(Spanned::new(exprs, span.cover(span)));
+                    let Spanned {
+                        t: exprs,
+                        span: stack_span,
+                    } = stack.pop().unwrap();
+                    let expr = List(Spanned::new(exprs, stack_span.cover(span)));
                     if stack.is_empty() {
                         return Err(Spanned::new(
                             "Unexpected closing parenthesis".to_string(),
@@ -303,4 +306,15 @@ pub fn pretty_errors(s: &str, mut errors: Vec<ParseError>) -> String {
         .into_iter()
         .map(|e| format!("{}\n\n", pretty_error(&line_index, s, e)))
         .collect()
+}
+
+#[test]
+fn span_works() {
+    let s = "(hello world my oyster)\n(row two)";
+    let tlevel = parse(s).unwrap();
+    assert_eq!(
+        &s[tlevel[0].span.start..tlevel[0].span.end],
+        "(hello world my oyster)"
+    );
+    assert_eq!(&s[tlevel[1].span.start..tlevel[1].span.end], "(row two)");
 }
