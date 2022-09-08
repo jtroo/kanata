@@ -21,6 +21,7 @@ pub enum CustomAction {
     },
     SequenceLeader,
     LiveReload,
+    Repeat,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

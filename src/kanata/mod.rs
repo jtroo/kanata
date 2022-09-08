@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering::SeqCst};
 use std::time;
 
 use parking_lot::Mutex;
@@ -54,6 +55,8 @@ pub struct SequenceState {
     pub sequence: Vec<u8>,
     pub ticks_until_timeout: u16,
 }
+
+static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
 
 const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
 const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
@@ -281,6 +284,14 @@ impl Kanata {
                                 ticks_until_timeout: self.sequence_timeout,
                             });
                         }
+                        CustomAction::Repeat => {
+                            let key = OsCode::from(LAST_PRESSED_KEY.load(SeqCst));
+                            log::debug!("repeating a keypress {key:?}");
+                            // Release key in case the most recently pressed key is still pressed.
+                            self.kbd_out.release_key(key)?;
+                            self.kbd_out.press_key(key)?;
+                            self.kbd_out.release_key(key)?;
+                        }
                         _ => {}
                     }
                 }
@@ -401,6 +412,7 @@ impl Kanata {
                 log::trace!("{k:?} is contained");
                 continue;
             }
+            LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);
