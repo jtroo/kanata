@@ -349,7 +349,6 @@ dependencies = [
  "crossbeam-channel",
  "encode_unicode",
  "evdev",
- "heapless",
  "interception",
  "kanata-keyberon",
  "log",
@@ -368,9 +367,9 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "596822571aa881c0572074132be86c5c53aa6fe4d6e9709f6e8c1caebac92175"
+checksum = "ad5c3b2e13de70963652c69cd0bed3d0008cf805e333f28a0b51d763e017f3bd"
 dependencies = [
  "arraydeque",
  "either",
