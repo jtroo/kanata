@@ -39,10 +39,8 @@ impl Kanata {
                                     continue;
                                 }
                             };
-                            if usize::from(code) >= cfg::MAPPED_KEYS_LEN
-                                || !MAPPED_KEYS.lock()[usize::from(code)]
-                            {
-                                log::debug!("code is not mapped");
+                            if usize::from(code) >= cfg::MAPPED_KEYS_LEN {
+                                log::debug!("{code:?} is not mapped");
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
@@ -57,6 +55,11 @@ impl Kanata {
                             continue;
                         }
                     };
+                    check_for_exit(&key_event);
+                    if !MAPPED_KEYS.lock()[usize::from(key_event.code)] {
+                        log::debug!("{key_event:?} is not mapped");
+                        continue;
+                    }
                     log::debug!("sending {key_event:?} to processing loop");
                     match key_event.value {
                         KeyValue::Release => {

@@ -47,6 +47,7 @@ impl Kanata {
 
                 // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
                 // it immediately.
+                check_for_exit(&key_event);
                 let kc: usize = key_event.code.into();
                 if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
                     let mut kanata = kanata.lock();
