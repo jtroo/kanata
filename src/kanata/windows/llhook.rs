@@ -38,14 +38,15 @@ impl Kanata {
             if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
                 return false;
             }
-            if !MAPPED_KEYS.lock()[input_event.code as usize] {
-                return false;
-            }
 
             let mut key_event = match KeyEvent::try_from(input_event) {
                 Ok(ev) => ev,
                 _ => return false,
             };
+            check_for_exit(&key_event);
+            if !MAPPED_KEYS.lock()[input_event.code as usize] {
+                return false;
+            }
 
             // Unlike Linux, Windows does not use a separate value for repeat. However, our code
             // needs to differentiate between initial press and repeat press.

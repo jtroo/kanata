@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::time;
 
 use parking_lot::Mutex;
@@ -717,3 +717,35 @@ fn run_multi_cmd(cmds: Vec<&'static [String]>) {
 
 #[cfg(not(feature = "cmd"))]
 fn run_multi_cmd(_cmds: Vec<&'static [String]>) {}
+
+/// Checks if kanata should exit based on the fixed key combination of:
+/// Lctl+Spc+Esc
+fn check_for_exit(event: &KeyEvent) {
+    static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
+    static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
+    static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
+    let is_pressed = match event.value {
+        KeyValue::Press => true,
+        KeyValue::Release => false,
+        _ => return,
+    };
+    match event.code {
+        OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
+        OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
+        OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
+        _ => return,
+    }
+    const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
+    if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
+        #[cfg(not(target_os = "linux"))]
+        {
+            log::info!("{EXIT_MSG}");
+            panic!("{EXIT_MSG}");
+        }
+        #[cfg(target_os = "linux")]
+        {
+            log::info!("{EXIT_MSG}");
+            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+        }
+    }
+}
