@@ -12,7 +12,6 @@ use super::*;
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing
     /// thread.
-    #[cfg(target_os = "linux")]
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
         {

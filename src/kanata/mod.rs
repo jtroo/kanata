@@ -393,7 +393,7 @@ impl Kanata {
         let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
         // Release keys that are missing from the current state but exist in the previous
         // state. It's important to iterate using a Vec because the order matters. This used to
-        // use HashSet force computing `difference` but that iteration order is random which is
+        // use HashSet for computing `difference` but that iteration order is random which is
         // not what we want.
         for k in &self.prev_keys {
             if cur_keys.contains(k) {
