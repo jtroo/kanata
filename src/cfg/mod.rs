@@ -1183,7 +1183,7 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<
                         str_to_oscode(key.atom().ok_or_else(|| {
                             anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
                         })?)
-                        .map(|k| u16::from(k)) // u16 is sufficient for all keys in the keyberon array
+                        .map(u16::from) // u16 is sufficient for all keys in the keyberon array
                         .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
                     );
                     Ok(keys)

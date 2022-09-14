@@ -4,7 +4,7 @@
 use crate::oskbd::*;
 use std::convert::TryFrom;
 
-use super::{OsCode, KeyEvent, KeyValue};
+use super::{KeyEvent, KeyValue, OsCode};
 
 #[allow(unused)]
 mod keys {
