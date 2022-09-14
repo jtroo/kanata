@@ -1132,6 +1132,12 @@ impl From<u32> for OsCode {
     }
 }
 
+impl From<u16> for OsCode {
+    fn from(item: u16) -> Self {
+        Self::from_u32(item as u32).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
+    }
+}
+
 impl From<OsCode> for usize {
     fn from(item: OsCode) -> Self {
         item as usize
@@ -1141,6 +1147,12 @@ impl From<OsCode> for usize {
 impl From<OsCode> for u32 {
     fn from(item: OsCode) -> Self {
         item as u32
+    }
+}
+
+impl From<OsCode> for u16 {
+    fn from(item: OsCode) -> Self {
+        item as u16
     }
 }
 

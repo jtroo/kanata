@@ -34,7 +34,7 @@ pub enum Btn {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Coord {
     pub x: u8,
-    pub y: u8,
+    pub y: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

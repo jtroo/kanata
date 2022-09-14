@@ -162,6 +162,9 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "prtsc" => OsCode::KEY_SYSRQ,
         #[cfg(target_os = "windows")]
         "prtsc" => OsCode::KEY_PRINT,
+        "mlft" | "mouseleft" => OsCode::BTN_LEFT,
+        "mrgt" | "mouseright" => OsCode::BTN_RIGHT,
+        "mmid" | "mousemid" => OsCode::BTN_MIDDLE,
         _ => return None,
     })
 }

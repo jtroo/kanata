@@ -28,7 +28,7 @@ pub struct Kanata {
     pub kbd_in_paths: Vec<String>,
     pub kbd_out: KbdOut,
     pub cfg_path: PathBuf,
-    pub mapped_keys: [bool; cfg::MAPPED_KEYS_LEN],
+    pub mapped_keys: cfg::MappedKeys,
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
     pub prev_keys: Vec<KeyCode>,
@@ -52,7 +52,7 @@ pub struct ScrollState {
 }
 
 pub struct SequenceState {
-    pub sequence: Vec<u8>,
+    pub sequence: Vec<u16>,
     pub ticks_until_timeout: u16,
 }
 
@@ -63,7 +63,7 @@ const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
 
 use once_cell::sync::Lazy;
 
-static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new([false; 256]));
+static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new(cfg::MappedKeys::new()));
 
 #[cfg(target_os = "windows")]
 mod windows;
@@ -159,8 +159,8 @@ impl Kanata {
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         let evc: u32 = event.code.into();
         let kbrn_ev = match event.value {
-            KeyValue::Press => Event::Press(0, evc as u8),
-            KeyValue::Release => Event::Release(0, evc as u8),
+            KeyValue::Press => Event::Press(0, evc as u16),
+            KeyValue::Release => Event::Release(0, evc as u16),
             KeyValue::Repeat => return self.handle_repeat(event),
         };
         self.layout.event(kbrn_ev);
@@ -422,7 +422,7 @@ impl Kanata {
                 }
                 Some(state) => {
                     state.ticks_until_timeout = self.sequence_timeout;
-                    state.sequence.push(u32::from(OsCode::from(*k)) as u8);
+                    state.sequence.push(u16::from(OsCode::from(*k)));
                     log::debug!("sequence got {k:?}");
                     if let Some((x, y)) = self.sequences.get(&state.sequence) {
                         log::debug!("sequence complete; tapping fake key");
@@ -485,8 +485,7 @@ impl Kanata {
             return Ok(());
         }
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
-        let idx: usize = event.code.into();
-        let outputs_for_key: &HashSet<OsCode> = match &self.key_outputs[idx] {
+        let outputs_for_key: &HashSet<OsCode> = match &self.key_outputs.get(&event.code) {
             None => return Ok(()),
             Some(v) => v,
         };
