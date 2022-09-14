@@ -138,6 +138,12 @@ impl KbdOut {
         let mut axes = evdev::AttributeSet::new();
         axes.insert(RelativeAxisType::REL_WHEEL);
         axes.insert(RelativeAxisType::REL_HWHEEL);
+        axes.insert(RelativeAxisType::REL_X);
+        axes.insert(RelativeAxisType::REL_Y);
+        axes.insert(RelativeAxisType::REL_Z);
+        axes.insert(RelativeAxisType::REL_RX);
+        axes.insert(RelativeAxisType::REL_RY);
+        axes.insert(RelativeAxisType::REL_RZ);
 
         let mut device = uinput::VirtualDeviceBuilder::new()?
             .name("kanata")
