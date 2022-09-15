@@ -100,15 +100,25 @@ impl KbdIn {
 
 pub fn is_input_device(device: &Device) -> bool {
     use evdev::Key;
-    if device
+    let is_keyboard = device
         .supported_keys()
-        .map_or(false, |keys| keys.contains(Key::KEY_ENTER))
-    {
+        .map_or(false, |keys| keys.contains(Key::KEY_ENTER));
+    let is_mouse = device
+        .supported_relative_axes()
+        .map_or(false, |axes| axes.contains(RelativeAxisType::REL_X));
+    if is_keyboard || is_mouse {
         if device.name() == Some("kanata") {
             return false;
         }
         log::debug!(
-            "Detected Keyboard: name={} physical_path={:?}",
+            "Detected {}: name={} physical_path={:?}",
+            if is_keyboard && is_mouse {
+                "Keyboard/Mouse"
+            } else if is_keyboard {
+                "Keyboard"
+            } else {
+                "Mouse"
+            },
             device.name().unwrap(),
             device.physical_path()
         );
@@ -131,25 +141,31 @@ pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 impl KbdOut {
     pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {
-        let mut keys = evdev::AttributeSet::new();
-        for k in 0..300u16 {
-            keys.insert(evdev::Key(k));
-        }
-        let mut axes = evdev::AttributeSet::new();
-        axes.insert(RelativeAxisType::REL_WHEEL);
-        axes.insert(RelativeAxisType::REL_HWHEEL);
-        axes.insert(RelativeAxisType::REL_X);
-        axes.insert(RelativeAxisType::REL_Y);
-        axes.insert(RelativeAxisType::REL_Z);
-        axes.insert(RelativeAxisType::REL_RX);
-        axes.insert(RelativeAxisType::REL_RY);
-        axes.insert(RelativeAxisType::REL_RZ);
+        // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
+        // TODO investigate the rare possibility that a device is e.g. a Joystick and a Keyboard or a Mouse at the same time, which could lead to lost events
+
+        // For some reason 0..0x300 (max value for a key) doesn't work, the closest that I've got to work is 560
+        let keys = evdev::AttributeSet::from_iter((0..560).map(evdev::Key));
+        let relative_axes = evdev::AttributeSet::from_iter([
+            RelativeAxisType::REL_WHEEL,
+            RelativeAxisType::REL_HWHEEL,
+            RelativeAxisType::REL_X,
+            RelativeAxisType::REL_Y,
+            RelativeAxisType::REL_Z,
+            RelativeAxisType::REL_RX,
+            RelativeAxisType::REL_RY,
+            RelativeAxisType::REL_RZ,
+            RelativeAxisType::REL_DIAL,
+            RelativeAxisType::REL_MISC,
+            RelativeAxisType::REL_WHEEL_HI_RES,
+            RelativeAxisType::REL_HWHEEL_HI_RES,
+        ]);
 
         let mut device = uinput::VirtualDeviceBuilder::new()?
             .name("kanata")
             .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
             .with_keys(&keys)?
-            .with_relative_axes(&axes)?
+            .with_relative_axes(&relative_axes)?
             .build()?;
         let devnode = device
             .enumerate_dev_nodes_blocking()?
@@ -332,7 +348,7 @@ impl Symlink {
 
     fn clean_when_killed(symlink: Self) {
         thread::spawn(|| {
-            let mut signals = Signals::new(&[SIGINT, SIGTERM]).unwrap();
+            let mut signals = Signals::new([SIGINT, SIGTERM]).unwrap();
             for signal in &mut signals {
                 match signal {
                     SIGINT | SIGTERM => {
