@@ -5,9 +5,9 @@ use crate::oskbd::*;
 #[cfg(not(feature = "interception_driver"))]
 use std::convert::TryFrom;
 
+use super::OsCode;
 #[cfg(not(feature = "interception_driver"))]
 use super::{KeyEvent, KeyValue};
-use super::OsCode;
 
 #[allow(unused)]
 mod keys {
