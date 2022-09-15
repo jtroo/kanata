@@ -2,9 +2,12 @@
 
 #[cfg(not(feature = "interception_driver"))]
 use crate::oskbd::*;
+#[cfg(not(feature = "interception_driver"))]
 use std::convert::TryFrom;
 
-use super::{KeyEvent, KeyValue, OsCode};
+#[cfg(not(feature = "interception_driver"))]
+use super::{KeyEvent, KeyValue};
+use super::OsCode;
 
 #[allow(unused)]
 mod keys {

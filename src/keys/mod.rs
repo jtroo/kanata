@@ -985,6 +985,8 @@ pub struct KeyEvent {
     pub value: KeyValue,
 }
 
+
+#[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }
