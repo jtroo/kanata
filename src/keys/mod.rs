@@ -592,19 +592,19 @@ impl From<u16> for OsCode {
 
 impl From<OsCode> for usize {
     fn from(item: OsCode) -> Self {
-        item as usize
+        item.as_u32() as usize
     }
 }
 
 impl From<OsCode> for u32 {
     fn from(item: OsCode) -> Self {
-        item as u32
+        item.as_u32()
     }
 }
 
 impl From<OsCode> for u16 {
     fn from(item: OsCode) -> Self {
-        item as u16
+        item.as_u32() as u16
     }
 }
 

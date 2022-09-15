@@ -6,6 +6,10 @@ use std::convert::TryFrom;
 use super::{KeyEvent, KeyValue, OsCode};
 
 impl OsCode {
+    pub fn as_u32(self) -> u32 {
+        self as u32
+    }
+
     pub fn from_u32(code: u32) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),
