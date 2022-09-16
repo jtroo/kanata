@@ -45,6 +45,7 @@ use crate::layers::*;
 
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
 use kanata_keyberon::action::*;
@@ -55,8 +56,8 @@ use sexpr::SExpr;
 use self::sexpr::Spanned;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
-pub type KanataLayout = Layout<256, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
-pub type KeySeqsToFKeys = Trie<Vec<u8>, (u8, u8)>;
+pub type KanataLayout = Layout<KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
 
 pub struct Cfg {
     pub mapped_keys: MappedKeys,
@@ -82,28 +83,15 @@ impl Cfg {
     }
 }
 
-/// Length of the MappedKeys array.
-pub const MAPPED_KEYS_LEN: usize = 256;
+pub type MappedKeys = HashSet<OsCode>;
+pub type KeyOutputs = HashMap<OsCode, HashSet<OsCode>>;
 
-/// Used as a silly `HashSet<OsCode>` to know which `OsCode`s are used in defsrc. I should probably
-/// just use a HashSet for this.
-pub type MappedKeys = [bool; MAPPED_KEYS_LEN];
-
-/// Used as a silly `HashMap<OsCode, HashSet<OsCode>>` to know which `OsCode`s are potential outputs
-/// for a given physical key location. I should probably just use a HashMap for this.
-pub type KeyOutputs = [Option<HashSet<OsCode>>; MAPPED_KEYS_LEN];
-
-fn add_kc_output(i: usize, kc: OsCode, outs: &mut KeyOutputs) {
-    match outs[i].as_mut() {
-        None => {
-            let mut outputs = HashSet::new();
-            outputs.insert(kc);
-            outs[i] = Some(outputs);
-        }
-        Some(outputs) => {
-            outputs.insert(kc);
-        }
-    }
+fn add_kc_output(i: OsCode, kc: OsCode, outs: &mut KeyOutputs) {
+    let outputs = match outs.entry(i) {
+        Entry::Occupied(o) => o.into_mut(),
+        Entry::Vacant(v) => v.insert(HashSet::new()),
+    };
+    outputs.insert(kc);
 }
 
 #[test]
@@ -446,26 +434,21 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
 /// of all layer declarations.
 fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
-    let mut mkeys = [false; 256];
+    let mut mkeys = MappedKeys::new();
     let mut ordered_codes = Vec::new();
     for expr in exprs {
         let s = match expr {
             SExpr::Atom(a) => &a.t,
             _ => bail!("No lists allowed in defsrc"),
         };
-        let oscode: usize = match str_to_oscode(s) {
-            Some(c) => c.into(),
-            None => bail!("Unknown key in defsrc: \"{}\"", s),
-        };
-        if oscode >= MAPPED_KEYS_LEN {
-            bail!("Cannot use key \"{}\"", s)
-        }
-        if mkeys[oscode] {
+        let oscode = str_to_oscode(s).ok_or_else(|| anyhow!("Unknown key in defsrc: \"{}\"", s))?;
+        if mkeys.contains(&oscode) {
             bail!("Repeat declaration of key in defsrc: \"{}\"", s)
         }
-        mkeys[oscode] = true;
-        ordered_codes.push(oscode);
+        mkeys.insert(oscode);
+        ordered_codes.push(oscode.into());
     }
+    mkeys.shrink_to_fit();
     Ok((mkeys, ordered_codes))
 }
 
@@ -506,7 +489,7 @@ struct ParsedState<'a> {
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
     fake_keys: HashMap<String, (usize, &'static KanataAction)>,
-    defsrc_layer: [KanataAction; 256],
+    defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
 }
 
@@ -517,7 +500,7 @@ impl<'a> Default for ParsedState<'a> {
             aliases: Default::default(),
             layer_idxs: Default::default(),
             mapping_order: Default::default(),
-            defsrc_layer: empty_layer!(),
+            defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
             fake_keys: Default::default(),
             is_cmd_enabled: false,
         }
@@ -987,8 +970,8 @@ fn parse_release_layer(
     ))))
 }
 
-fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; 256] {
-    let mut layer = empty_layer!();
+fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataAction; KEYS_IN_ROW] {
+    let mut layer = [KanataAction::Trans; KEYS_IN_ROW];
 
     // These can be default (empty) since the defsrc layer definitely won't use it.
     for (i, ac) in defsrc.iter().skip(1).enumerate() {
@@ -1089,9 +1072,9 @@ fn parse_fake_key_op_coord_action(
     Ok((Coord { x, y }, action))
 }
 
-fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u8) {
+fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u16) {
     let y: usize = y.into();
-    (1, y as u8)
+    (1, y as u16)
 }
 
 fn parse_fake_key_delay(ac_params: &[SExpr]) -> Result<&'static KanataAction> {
@@ -1200,7 +1183,7 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<
                         str_to_oscode(key.atom().ok_or_else(|| {
                             anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
                         })?)
-                        .map(|k| u32::from(k) as u8) // u8 is sufficient for all keys in the keyberon array
+                        .map(u16::from) // u16 is sufficient for all keys in the keyberon array
                         .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
                     );
                     Ok(keys)
@@ -1225,29 +1208,13 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
 fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
-    // Option<Vec<..>> is not Copy, so need to manually write out all of the None values :(
-    let mut outs = [
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-        None,
-    ];
+    let mut outs = KeyOutputs::new();
     for layer in layers.iter() {
         for (i, action) in layer[0].iter().enumerate() {
+            let i = match i.try_into() {
+                Ok(i) => i,
+                Err(_) => continue,
+            };
             match action {
                 Action::KeyCode(kc) => {
                     add_kc_output(i, kc.into(), &mut outs);
@@ -1277,9 +1244,10 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
             };
         }
     }
-    for hset in outs.iter_mut().flatten() {
+    for hset in outs.values_mut() {
         hset.shrink_to_fit();
     }
+    outs.shrink_to_fit();
     outs
 }
 

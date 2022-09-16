@@ -12,7 +12,7 @@ static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(Hash
 impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         let rx = kanata.lock().kbd_out_rx.clone();
-        *MAPPED_KEYS.lock() = kanata.lock().mapped_keys;
+        *MAPPED_KEYS.lock() = kanata.lock().mapped_keys.clone();
         let intrcptn = ic::Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
         intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
         let mut strokes = [ic::Stroke::Keyboard {
@@ -39,11 +39,6 @@ impl Kanata {
                                     continue;
                                 }
                             };
-                            if usize::from(code) >= cfg::MAPPED_KEYS_LEN {
-                                log::debug!("{code:?} is not mapped");
-                                intrcptn.send(dev, &strokes[i..i + 1]);
-                                continue;
-                            }
                             let value = match state.contains(ic::KeyState::UP) {
                                 false => KeyValue::Press,
                                 true => KeyValue::Release,
@@ -56,7 +51,7 @@ impl Kanata {
                         }
                     };
                     check_for_exit(&key_event);
-                    if !MAPPED_KEYS.lock()[usize::from(key_event.code)] {
+                    if !MAPPED_KEYS.lock().contains(&key_event.code) {
                         log::debug!("{key_event:?} is not mapped");
                         continue;
                     }

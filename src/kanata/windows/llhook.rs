@@ -5,7 +5,6 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 use std::time;
 
-use crate::cfg;
 use crate::kanata::*;
 
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::new()));
@@ -24,7 +23,7 @@ impl Kanata {
         native_windows_gui::init()?;
         {
             let mut mapped_keys = MAPPED_KEYS.lock();
-            *mapped_keys = kanata.lock().mapped_keys;
+            *mapped_keys = kanata.lock().mapped_keys.clone();
         }
 
         let (preprocess_tx, preprocess_rx) = crossbeam_channel::bounded(10);
@@ -35,16 +34,15 @@ impl Kanata {
         // informs the callback caller that the input event should be handed back to the OS for
         // normal processing.
         let _kbhook = KeyboardHook::set_input_cb(move |input_event| {
-            if input_event.code as usize >= cfg::MAPPED_KEYS_LEN {
-                return false;
-            }
-
             let mut key_event = match KeyEvent::try_from(input_event) {
                 Ok(ev) => ev,
                 _ => return false,
             };
+
             check_for_exit(&key_event);
-            if !MAPPED_KEYS.lock()[input_event.code as usize] {
+            // unwrap is safe because the KeyEvent conversion above would've returned false otherwise
+            let oscode = OsCode::from_u32(input_event.code).unwrap();
+            if !MAPPED_KEYS.lock().contains(&oscode) {
                 return false;
             }
 

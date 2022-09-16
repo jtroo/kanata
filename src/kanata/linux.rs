@@ -5,8 +5,6 @@ use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-use crate::cfg;
-
 use super::*;
 
 impl Kanata {
@@ -16,7 +14,7 @@ impl Kanata {
         info!("entering the event loop");
         {
             let mut mapped_keys = MAPPED_KEYS.lock();
-            *mapped_keys = kanata.lock().mapped_keys;
+            *mapped_keys = kanata.lock().mapped_keys.clone();
         }
 
         let mut kbd_in = match KbdIn::new(&kanata.lock().kbd_in_paths) {
@@ -47,8 +45,7 @@ impl Kanata {
                 // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
                 // it immediately.
                 check_for_exit(&key_event);
-                let kc: usize = key_event.code.into();
-                if kc >= cfg::MAPPED_KEYS_LEN || !MAPPED_KEYS.lock()[kc] {
+                if !MAPPED_KEYS.lock().contains(&key_event.code) {
                     let mut kanata = kanata.lock();
                     kanata
                         .kbd_out
