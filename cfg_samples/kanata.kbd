@@ -52,6 +52,7 @@
   ;; This is dangerous because it allows kanata to execute arbitrary commands.
   ;; Using a binary compiled with the cmd feature enabled, uncomment below to
   ;; enable command execution:
+  ;;
   ;; danger-enable-cmd yes
 )
 
