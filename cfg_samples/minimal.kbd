@@ -15,19 +15,23 @@
 (defsrc
   caps grv         i
               j    k    l
+  lsft rsft ;; note: the reason for mapping the Shift keys is so that they get
+            ;; processed correctly by kanata for tap-hold keys.
 )
 
 (deflayer default
   @cap @grv        _
               _    _    _
+  _    _
 )
 
 (deflayer arrows
   _    _           up
               left down rght
+  _    _
 )
 
 (defalias
   cap (tap-hold-press 200 200 caps lctl)
-  grv (tap-hold-release 200 200 grv (layer-toggle arrows))
+  grv (tap-hold-press 200 200 grv (layer-toggle arrows))
 )

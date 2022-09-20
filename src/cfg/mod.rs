@@ -263,7 +263,7 @@ fn parse_cfg_raw(
     {
         bail!("Only one defsrc is allowed in the configuration")
     }
-    let (src, mapping_order) = parse_defsrc(src_expr)?;
+    let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
     let deflayer_filter = gen_first_atom_filter("deflayer");
     let layer_exprs = root_exprs
@@ -432,7 +432,10 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
 /// a vec of the indexes in order. The length of the returned vec should be matched by the length
 /// of all layer declarations.
-fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
+fn parse_defsrc(
+    expr: &[SExpr],
+    defcfg: &HashMap<String, String>,
+) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = MappedKeys::new();
     let mut ordered_codes = Vec::new();
@@ -448,6 +451,25 @@ fn parse_defsrc(expr: &[SExpr]) -> Result<(MappedKeys, Vec<usize>)> {
         mkeys.insert(oscode);
         ordered_codes.push(oscode.into());
     }
+
+    let process_unmapped_keys = defcfg
+        .get("process-unmapped-keys")
+        .map(|text| matches!(text.to_lowercase().as_str(), "true" | "yes"))
+        .unwrap_or(false);
+    log::info!("process unmapped keys: {process_unmapped_keys}");
+    if process_unmapped_keys {
+        for osc in 0..KEYS_IN_ROW as u32 {
+            if let Some(osc) = OsCode::from_u32(osc) {
+                match KeyCode::from(osc) {
+                    KeyCode::No => {}
+                    _ => {
+                        mkeys.insert(osc);
+                    }
+                }
+            }
+        }
+    }
+
     mkeys.shrink_to_fit();
     Ok((mkeys, ordered_codes))
 }
@@ -1141,12 +1163,23 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
             layers_cfg[layer_level * 2][0][parsed_state.mapping_order[i]] = *ac;
             layers_cfg[layer_level * 2 + 1][0][parsed_state.mapping_order[i]] = *ac;
         }
-        for (layer_action, defsrc_action) in layers_cfg[layer_level * 2][0]
+        for (i, (layer_action, defsrc_action)) in layers_cfg[layer_level * 2][0]
             .iter_mut()
             .zip(parsed_state.defsrc_layer)
+            .enumerate()
         {
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
+            }
+            // If key is unmapped in defsrc as well, default it to the OsCode for that index if the
+            // configuration says to do so.
+            if *layer_action == Action::Trans {
+                *layer_action = OsCode::from_u32(i as u32)
+                    .and_then(|osc| match KeyCode::from(osc) {
+                        KeyCode::No => None,
+                        kc => Some(Action::KeyCode(kc)),
+                    })
+                    .unwrap_or(Action::Trans);
             }
         }
         for (y, action) in parsed_state.fake_keys.values() {

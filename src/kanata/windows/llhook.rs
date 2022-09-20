@@ -43,11 +43,6 @@ impl Kanata {
             // unwrap is safe because the KeyEvent conversion above would've returned false otherwise
             let oscode = OsCode::from_u32(input_event.code).unwrap();
             if !MAPPED_KEYS.lock().contains(&oscode) {
-                log::debug!("{key_event:?} is not mapped");
-                // #139: send an event that is guaranteed to map to no-op to the processing loop so
-                // that it will process tap-hold-press and tap-hold-release even for unmapped keys.
-                key_event.code = OsCode::KEY_RESERVED;
-                try_send_panic(&preprocess_tx, key_event);
                 return false;
             }
 
