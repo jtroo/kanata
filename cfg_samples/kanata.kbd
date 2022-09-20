@@ -52,7 +52,19 @@
   ;; This is dangerous because it allows kanata to execute arbitrary commands.
   ;; Using a binary compiled with the cmd feature enabled, uncomment below to
   ;; enable command execution:
+  ;;
   ;; danger-enable-cmd yes
+
+  ;; Optional configuration: enable processing of keys that are not in defsrc.
+  ;; This is useful if you are only mapping a few keys in defsrc instead of
+  ;; most of the keys on your keyboard. Without this, the tap-hold-release and
+  ;; tap-hold-press actions will not activate for keys that are not in defsrc.
+  ;;
+  ;; The reason this is not enabled by default is because some keys may not
+  ;; work correctly if they are intercepted. E.g. rctl/altgr on Windows; see the
+  ;; windows-altgr configuration item above for context.
+  ;;
+  ;; process-unmapped-keys yes
 )
 
 ;; Only one defsrc is allowed.
