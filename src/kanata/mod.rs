@@ -183,7 +183,7 @@ impl Kanata {
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
-                if let Err(e) = self.do_reload() {
+                if let Err(e) = self.do_live_reload() {
                     log::error!("live reload failed {e}");
                 }
             }
@@ -387,10 +387,7 @@ impl Kanata {
         }
     }
 
-    /// Sends OS key events according to the change in key state between the current and the
-    /// previous keyberon keystate. Returns the current keys.
-    fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
-        let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+    fn release_with_keyberon_output(&mut self, cur_keys: &[KeyCode]) -> Result<()> {
         // Release keys that are missing from the current state but exist in the previous
         // state. It's important to iterate using a Vec because the order matters. This used to
         // use HashSet for computing `difference` but that iteration order is random which is
@@ -404,6 +401,15 @@ impl Kanata {
                 bail!("failed to release key: {:?}", e);
             }
         }
+        Ok(())
+    }
+
+    /// Sends OS key events according to the change in key state between the current and the
+    /// previous keyberon keystate. Returns the current keys.
+    fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
+        let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
+        self.check_release_non_physical_shift()?;
+        self.release_with_keyberon_output(&cur_keys)?;
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
         for k in &cur_keys {
@@ -450,7 +456,7 @@ impl Kanata {
         Ok(cur_keys)
     }
 
-    fn do_reload(&mut self) -> Result<()> {
+    fn do_live_reload(&mut self) -> Result<()> {
         let cfg = cfg::Cfg::new_from_file(&self.cfg_path)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg

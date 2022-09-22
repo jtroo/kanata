@@ -61,4 +61,8 @@ impl Kanata {
             }
         }
     }
+
+    pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
