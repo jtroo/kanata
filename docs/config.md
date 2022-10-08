@@ -46,7 +46,7 @@ order of keys that the configuration entries `deflayer`s will operate on.
 A `defsrc` entry is composed of `(defsrc` followed by key names that are
 separated by whitespace.
 
-It should be noted that the `defsrc` entry is treated as a long list; the
+It should be noted that the `defsrc` entry is treated as a long sequence; the
 amount of spaces, tabs, and newlines are not relevant. You may use spaces,
 tabs, or newlines however you like to format `defsrc` to your liking.
 
@@ -112,6 +112,128 @@ An example minimal configuration is:
 
 This will make kanata remap your `a b c` keys to `1 2 3`, which is almost
 certainly undesirable, but this will run.
+
+## Special actions
+
+The special actions kanata provides are what make it truly customizable.
+
+### defalias
+
+Before seeing the actual special actions, you should first learn about aliases.
+Using the `defalias` configuration item, you can introduce a shorter form of
+another action to keep alignment in `deflayer` entries clean.
+
+Similar to how `defcfg` works, `defalias` reads pairs of items in a sequence
+where the first item in the pair is the alias name and the second item is the
+action it can be substituted for. However, unlike before, the second item in
+`defalias` is may be a "list" as opposed to a single string like it was in
+`defcfg`.
+
+A list is a sequence of strings separated by whitespace, surrounded by
+parentheses. All of the configuration items we've looked at so far are lists;
+`defalias` is where we'll first see nested lists in this guide.
+
+Example:
+
+```
+(defalias
+  ;; tap for caps lock, hold for left control
+  ;; tap-hold-release will be explained later.
+  cap (tap-hold-release 200 200 caps lctl)
+)
+```
+
+This alias can be used in `deflayer` as a substitute for the long special
+action. The alias name is prefixed with `@` to signify that an alias should
+be substituted.
+
+```
+(deflayer example
+  @cap a s d f
+)
+```
+
+You can choose to put special actions without aliasing them right into
+`deflayer`. However for the long actions, it is recommended not to do so, in
+order to keep a nice visual alignment for ease of reading for your
+configuration.
+
+Example:
+
+```
+(deflayer example
+  ;; this is equivalent to the previous example
+  (tap-hold-release 200 200 caps lctl) a s d f
+)
+```
+
+You may have multiple `defalias` entries and multiple aliases within a single
+`defalias`.
+
+Example:
+
+```
+(defalias one (tap-hold-release 200 200 caps lctl))
+(defalias two (tap-hold-release 200 200 esc lctl))
+(defalias
+  3 (tap-hold-release 200 200 home lalt)
+  4 (tap-hold-release 200 200 end ralt)
+)
+```
+
+### layer-switch
+
+This action allows you to switch to another "base" layer. This is permanent
+until a `layer-switch` to another layer is activated. The concept of a base
+layer makes more sense when looking at the next action you'll see:
+`layer-while-held`.
+
+This action accepts a single subsequent string which must be a defined layer
+name from a `deflayer` entry.
+
+Example:
+
+```
+(defalias dvk (layer-switch dvorak))
+```
+
+### layer-while-held
+
+This action allows you to temporarily change to another layer while the key
+remains held. When the key is released, you go back to the currently active
+"base" layer.
+
+This action accepts a single subsequent string which must be a defined layer
+name from a `deflayer` entry.
+
+Example:
+
+```
+(defalias nav (layer-while-held navigation))
+```
+
+You may also use `layer-toggle` in place of `layer-while-held`; they behave
+exactly the same. The `layer-toggle` name is slightly shorter but is a bit
+inaccurate with regards to its meaning.
+
+### Transparent key
+
+If you use a single underscore for a key `_` then it acts as a "transparent"
+key. The behaviour depends if `_` is on a base layer or a while-held layer.
+When `_` is pressed on the active base layer, the key will default to the
+corresponding `defsrc` key. If `_` is pressed on the active while-held layer,
+the base layer's behaviour will activate.
+
+Example:
+
+```
+(defsrc
+  a b c
+)
+(deflayer remap-only-c
+  _ _ d
+)
+```
 
 ## Optional defcfg entries
 
@@ -242,3 +364,9 @@ will be ignored when used on the non-applicable operating system.
   windows-altgr add-lctl-release
 )
 ```
+
+## Advanced
+
+### defseq
+
+### deffakekeys
