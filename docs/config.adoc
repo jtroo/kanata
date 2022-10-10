@@ -53,7 +53,7 @@ Example:
 <<table-of-contents,Back to ToC>>
 
 Your configuration file must have exactly one `defsrc` entry. This defines the
-order of keys that the configuration entries `+deflayer+`s will operate on.
+order of keys that the `+deflayer+` entries will operate on.
 
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
@@ -83,14 +83,14 @@ Your configuration file must have at least one `+deflayer+` entry. This defines
 how each physical key mapped in `+defsrc+` behaves when kanata runs.
 
 A `+deflayer+` configuration entry is followed by the layer name then a list of
-keys or special actions. The usable key names are the same as in defsrc. Special
-actions are explained further on in this document. The whitespace story is the
-same as with `+defsrc+`. The order of keys/actions in `+deflayer+` corresponds
-to the physical key in the same sequence position defined in `+defsrc+`.
+keys or actions. The usable key names are the same as in defsrc. Actions are
+explained further on in this document. The whitespace story is the same as with
+`+defsrc+`. The order of keys/actions in `+deflayer+` corresponds to the
+physical key in the same sequence position defined in `+defsrc+`.
 
 The first layer defined in your configuration file will be the starting layer
 when kanata runs. Other layers can be temporarily activated or switched to
-using special actions. There is currently a maximum of 25 layers allowed.
+using actions. There is currently a maximum of 25 layers allowed.
 
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
@@ -133,10 +133,9 @@ An example minimal configuration is:
 ----
 
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
-certainly undesirable but is a valid configuration
+certainly undesirable but is a valid configuration.
 
 == Optional defcfg entries
-<<table-of-contents,Back to ToC>>
 
 There are a few `defcfg` entries that are used to customize various kanata
 behaviours.
@@ -148,12 +147,12 @@ Enabling this configuration makes kanata process keys that are not in defsrc.
 This is useful if you are only mapping a few keys in defsrc instead of most of
 the keys on your keyboard.
 
-Without this, the special actions `+rpt+`, `+tap-hold-release+`, and
-`+tap-hold-press+` actions will not activate for keys that are not in defsrc.
+Without this, the `+rpt+`, `+tap-hold-release+`, `+tap-hold-press+`, and
+`+defseq+` actions will not activate for keys that are not in defsrc.
 
 This is disabled by default. The reason this is not enabled by default is
 because some keys may not work correctly if they are intercepted. For example,
-see the [windows-altgr](#windows-only-windows-altgr) option below.
+see the <<windows-only-windows-altgr>> option below.
 
 Example:
 
@@ -166,9 +165,8 @@ Example:
 === danger-enable-cmd
 <<table-of-contents,Back to ToC>>
 
-This option can be used to enable the `cmd` special action in your
-configuration. The `+cmd+` action allows kanata to execute programs with
-arguments passed to them.
+This option can be used to enable the `cmd` action in your configuration. The
+`+cmd+` action allows kanata to execute programs with arguments passed to them.
 
 This requires using a kanata program that is compiled with the `cmd` action
 enabled. The reason for this is so that if you choose to, there is no way for
@@ -242,7 +240,7 @@ Example:
 
 For more context, see: https://github.com/jtroo/kanata/issues/55.
 
-NOTE: even with these workarounds, putting lctl+ralt in your defsrc may not
+NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
 work properly with other applications that also use keyboard interception.
 Known applications with issues:
 
@@ -276,9 +274,9 @@ a non-applicable operating system.
 == Aliases
 <<table-of-contents,Back to ToC>>
 
-Before learning about special actions, it should be useful to first learn about
-aliases. Using the `defalias` configuration entry, you can introduce a shortcut
-label for an action.
+Before learning about actions, it will be useful to first learn about aliases.
+Using the `defalias` configuration entry, you can introduce a shortcut label
+for an action.
 
 Similar to how `defcfg` works, `defalias` reads pairs of items in a sequence
 where the first item in the pair is the alias name and the second item is the
@@ -299,9 +297,9 @@ Example:
 )
 ----
 
-This alias can be used in `deflayer` as a substitute for the long special
-action. The alias name is prefixed with `@` to signify that it's an alias as
-opposed to a normal key.
+This alias can be used in `deflayer` as a substitute for the long action. The
+alias name is prefixed with `@` to signify that it's an alias as opposed to a
+normal key.
 
 ----
 (deflayer example
@@ -324,10 +322,10 @@ Example:
 )
 ----
 
-You can choose to put special actions without aliasing them right into
-`deflayer`. However, for long actions it is recommended not to do so
-to keep a nice visual alignment. Visually aligning your `deflayer` entries
-will hopefully make your configuration file easier to read.
+You can choose to put actions without aliasing them right into `deflayer`.
+However, for long actions it is recommended not to do so to keep a nice visual
+alignment. Visually aligning your `deflayer` entries will hopefully make your
+configuration file easier to read.
 
 Example:
 
@@ -338,10 +336,10 @@ Example:
 )
 ----
 
-== Special actions
+== Actions
 
-The special actions kanata provides are what make it truly customizable. This
-section explains the available special actions.
+The actions kanata provides are what make it truly customizable. This section
+explains the available actions.
 
 === Live reload
 <<table-of-contents,Back to ToC>>
@@ -446,9 +444,9 @@ Example:
 <<table-of-contents,Back to ToC>>
 
 You may use the action `+XX+` as a "no operation" key, meaning pressing the key
-will do nothing. This might be desirable on an incomplete layer in place of a
-transparent key so that a key that is not intended to be mapped will do nothing
-as opposed to typing a letter.
+will do nothing. This might be desirable in place of a transparent key on an
+layer that is not fully mapped so that a key that is intentionally not mapped
+will do nothing as opposed to typing a letter.
 
 Example:
 
@@ -479,8 +477,6 @@ application.
 )
 ----
 
-NOTE: TODO: write me
-
 === Chords
 <<table-of-contents,Back to ToC>>
 
@@ -510,15 +506,67 @@ Example:
 )
 ----
 
+=== Release a key or layer
+<<table-of-contents,Back to ToC>>
+
+You can release a held key or layer via the related actions:
+
+* `release-key`: release a key, as per `defsrc` compatible names
+* `release-layer`: release a while-held layer
+
+An example practical use case for `release-key` is seen in the `multi` section
+directly below. There is currently no known practical use case for
+`release-layer`, but it exists nonetheless.
+
 === multi
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+The `+multi+` action executes multiple keys or actions in order but also
+simultaneously. It accepts one or more actions.
+
+This action may result in unexpected or incorrect behaviour if combining
+complicated actions. If you find incorrect behaviour, please feel free to file
+an issue.
+
+An example use case is to press the "Alt" key while also activating another
+layer.
+
+In the example below, holding the physical "Alt" key will result in a held
+layer being activated while also holding "Alt" itself. The held layer operates
+nearly the same as the standard keyboard, so for example the sequence (hold
+Alt)+(Tab+Tab+Tab) will work as expected. This is in contrast to having a layer
+where `tab` is mapped to `A-tab`, which results in repeated press+release of
+the two keys and has different behaviour than expected. Some special keys will
+release the "Alt" key and do some other action that requires "Alt" to be
+released. In other words, the "Alt" key serves a dual purpose of still
+fulfilling the "Alt" key role for some button presses (e.g. Tab), but also as a
+new layer for keys that aren't typically used with "Alt" to have added useful
+functionality.
+
+----
+(defalias
+  atl (multi alt (layer-while-held alted-with-exceptions))
+  lft (multi (release-key alt) left) ;; release alt if held and also press left
+  rgt (multi (release-key alt) rght) ;; release alt if held and also press rght
+)
+
+(defsrc
+  alt  a    s    d    f
+)
+
+(deflayer base
+  @atl _    _    _    _
+)
+
+(deflayer alted-with-exceptions
+  _    _    _    @lft @rgt
+)
+----
 
 === tap-dance
 <<table-of-contents,Back to ToC>>
 
-The `+tap-dance+` special action allows repeated tapping of a key to result in
+The `+tap-dance+` action allows repeated tapping of a key to result in
 different actions. It is followed by a timeout (unit: milliseconds) and a list
 of keys or actions. Each time the key is pressed, its timeout will reset. The
 action will be chosen if one of the following events occur:
@@ -527,7 +575,7 @@ action will be chosen if one of the following events occur:
 * a different key is pressed
 * the key is repeated up to the final action
 
-You may put normal keys or other special actions in `+tap-dance+`.
+You may put normal keys or other actions in `+tap-dance+`.
 
 Example:
 
@@ -544,10 +592,10 @@ Example:
 === one-shot
 <<table-of-contents,Back to ToC>>
 
-The `+one-shot+` special action is similar to "sticky keys", if you know what
-that is. This activates an action until either the timeout expires or a
-different key is pressed. The `+one-shot+` special action must be followed by a
-timeout (unit: milliseconds) and another key or action.
+The `+one-shot+` action is similar to "sticky keys", if you know what that is.
+This activates an action until either the timeout expires or a different key is
+pressed. The `+one-shot+` action must be followed by a timeout (unit:
+milliseconds) and another key or action.
 
 Some of the intended use cases are pressing a modifier for exactly one key or
 switching to another layer for exactly one key.
@@ -579,11 +627,6 @@ NOTE: TODO: write me
 
 NOTE: TODO: write me
 
-=== Release key or layer
-<<table-of-contents,Back to ToC>>
-
-NOTE: TODO: write me
-
 === Mouse actions
 <<table-of-contents,Back to ToC>>
 
@@ -593,8 +636,6 @@ NOTE: TODO: write me
 <<table-of-contents,Back to ToC>>
 
 NOTE: TODO: write me
-
-== Advanced
 
 === defseq
 <<table-of-contents,Back to ToC>>
