@@ -627,7 +627,43 @@ Example:
 === tap-hold
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+The `+tap-hold+` action allows you to have one action/key for a "tap" and a
+different action/key for a "hold". A tap is a rapid press then release of the
+key whereas a hold is a long press.
+
+The action takes 4 parameters in the listed order:
+
+. tap timeout (unit: ms)
+. hold timeout (unit: ms)
+. tap action
+. hold action
+
+The tap timeout is the number of milliseconds within which a rapid
+press+release+press of a key will result in the tap action being held instead
+of the hold action activating.
+
+The hold timeout is the number of milliseconds after which the hold action will
+activate.
+
+There are two additional variants of `+tap-hold-+`:
+
+* tap-hold-press
+** If there is a press of a different key, the hold action is activated even if
+the hold timeout hasn't expired yet
+* tap-hold-release
+** If there is a press+release of a different key, the hold action is activated
+even if the hold timeout hasn't expired yet
+
+These variants may be useful if you have want more responsive tap-hold keys,
+but you should be wary of activating the hold action unintentionally.
+
+----
+(defalias
+  anm (tap-hold         200 200 a @num) ;; tap: a      hold: numbers layer
+  oar (tap-hold-press   200 200 o @arr) ;; tap: o      hold: arrows layer
+  ech (tap-hold-release 200 200 e @chr) ;; tap: e      hold: chords layer
+)
+----
 
 === macro
 <<table-of-contents,Back to ToC>>
