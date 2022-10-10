@@ -170,7 +170,7 @@ This option can be used to enable the `cmd` action in your configuration. The
 
 This requires using a kanata program that is compiled with the `cmd` action
 enabled. The reason for this is so that if you choose to, there is no way for
-kanata to execute arbitrary binaries even if you're testing out a configuration
+kanata to execute arbitrary programs even if you're testing out a configuration
 with `danger-enable-cmd` enabled.
 
 This configuration is disabled by default and can be enabled by giving it the
@@ -370,7 +370,7 @@ Example:
 === Repeat key
 <<table-of-contents,Back to ToC>>
 
-The action `+rpt+` repeats the most recently pressed key. Holding down this key
+The action `+rpt+` repeats the most recently typed key. Holding down this key
 will not repeatedly send the key. The intended use case is to be able to use a
 different finger or even thumb key to repeat a double layer, as opposed to
 double-tapping a key.
@@ -378,7 +378,7 @@ double-tapping a key.
 Example:
 
 ----
-(deflayer has-live-repeat
+(deflayer has-repeat
   rpt a s d f
 )
 ----
