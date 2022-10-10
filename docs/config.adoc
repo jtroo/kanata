@@ -170,8 +170,8 @@ This option can be used to enable the `cmd` action in your configuration. The
 
 This requires using a kanata program that is compiled with the `cmd` action
 enabled. The reason for this is so that if you choose to, there is no way for
-kanata to execute arbitrary programs even if you're testing out a configuration
-with `danger-enable-cmd` enabled.
+kanata to execute arbitrary programs even if you download some random
+configuration from the internet.
 
 This configuration is disabled by default and can be enabled by giving it the
 value `yes`.
@@ -181,6 +181,20 @@ Example:
 ----
 (defcfg
   danger-enable-cmd yes
+)
+----
+
+=== sequence-timeout
+<<table-of-contents,Back to ToC>>
+
+This option customizes the key sequence timeout (unit: ms). Its default value
+is 1000. The purpose of this item is explained in <<sequences>>.
+
+Example:
+
+----
+(defcfg
+  sequence-timeout 2000
 )
 ----
 
@@ -668,7 +682,28 @@ but you should be wary of activating the hold action unintentionally.
 === macro
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+The `+macro+` action will tap a sequence of keys or chords with optional
+delays. This is different from `+multi+` because in the `+multi+` action,
+all keys are held, whereas in `+macro+`, keys are pressed then released.
+
+This means that with `+macro+` you can have some letters capitalized and others
+not. This is not possible with `+multi+`.
+
+The `+macro+` action accepts one or more keys, chords, and delays (unit: ms).
+The number keys will be parsed as delays, so they must be aliased to be used in
+a macro.
+
+Example:
+
+----
+(defalias
+  : S-;
+  8 8
+  0 0
+  ;; Type "http://localhost:8080"
+  lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
+)
+----
 
 === Mouse actions
 <<table-of-contents,Back to ToC>>
@@ -678,14 +713,149 @@ NOTE: TODO: write me
 === cmd
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+The `+cmd+` action executes a program with arguments. It accepts one or more
+strings. The first string is the program that will be run and the following
+strings are arguments to that program in the given order.
 
-=== defseq
+Note that the command is executed directly and not via a shell, so you cannot
+make use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not
+be substituted with your home directory.
+
+Example:
+
+----
+(defalias
+  cm1 (cmd rm -fr /tmp/testing)
+
+  ;; You can use bash -c and then a quoted string to execute arbitrary text in
+  ;; bash. All text within double-quotes is treated as a single string.
+  cm2 (cmd bash -c "echo hello world")
+)
+----
+
+== Advanced/weird features
+
+This section contains more advanced configurations that introduces
+configuration entries with related actions and so does not fit as neatly into
+the Actions section. You may also not understand the appeal of this
+functionality which is very understandable, so it is saved for the end.
+
+For context about the features in this section, see:
+
+* https://github.com/jtroo/kanata/issues/80[Discussion that created fake keys]
+* https://github.com/jtroo/kanata/issues/97[Design and motivation of sequences]
+
+=== Fake keys
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+You can define up to 256 fake keys. These keys are not directly mapped to any
+physical key presses and can only be activated via these actions:
 
-=== deffakekeys
+* `+(on-press-fakekey <fake key name> <key action>)+`
+** Activates a fake key action when pressing the key mapped to this action
+* `+(on-release-fakekey <fake key name> <key action>)+`
+** Activates a fake key action when releasing the key mapped to this action
+
+A fake key can be defined in a `+deffakekeys+` configuration entry. This entry
+works very similarly to `+defalias+`, but you cannot make use of aliases inside
+of `+deffakekeys+` to shorten an action. You can however refer to previously
+defined fake keys.
+
+The aforementioned `+<key action>+` can be one of three values:
+
+* press
+** Presses the fake key which will not be released until a release or tap.
+* release
+** Releases the fake key. If it's already released, this does nothing.
+* tap
+** Press and release the fake key. If it's already pressed, this only releases it.
+
+Example:
+
+----
+(deffakekeys
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+
+  ;; Press all modifiers
+  pal (multi
+        (on-press-fakekey ctl press)
+        (on-press-fakekey sft press)
+        (on-press-fakekey met press)
+        (on-press-fakekey alt press)
+      )
+
+  ;; Release all modifiers
+  ral (multi
+        (on-press-fakekey ctl release)
+        (on-press-fakekey sft release)
+        (on-press-fakekey met release)
+        (on-press-fakekey alt release)
+      )
+)
+
+(defalias
+  psf (on-press-fakekey sft press)
+  rsf (on-press-fakekey sft release)
+
+  pal (on-press-fakekey pal tap)
+  ral (on-press-fakekey ral tap)
+)
+
+(deflayer use-fake-keys
+  @psf @rsf @pal @ral a s d f
+)
+----
+
+If you find that an application isn't registering keypresses correctly with
+multi, you can try out:
+
+* `+on-press-fakekey-delay+`
+* `+on-release-fakekey-delay+`
+
+Do note that processing a fakekey-delay and even a sequence of delays will
+delay any other inputs from being processed until the fakekey-delays are all
+complete, so use with care.
+
+----
+(defalias
+  stm (multi ;; Shift -> middle mouse with a delay
+    (on-press-fakekey lsft press)
+    (on-press-fakekey-delay 200)
+    (on-press-fakekey mmid press)
+    (on-release-fakekey mmid release)
+    (on-release-fakekey-delay 200)
+    (on-release-fakekey lsft release)
+  )
+)
+----
+
+=== Sequences
 <<table-of-contents,Back to ToC>>
 
-NOTE: TODO: write me
+The `+ldr+` action makes kanata go into "sequence" mode. The action name is
+short for "leader". This comes from Vim which has the concept of a configurable
+sequence leader key. When in sequence mode, keys are not typed but are saved
+until one of the following happens:
+
+* A key is typed that does not match any sequence
+* `+sequence-timeout+` milliseconds elapses since the most recent key press
+
+Sequences can be defined via `+defseq+`. While writing this, I realize that
+`+defseq+` behaves inconsistently with other similar configuration entries
+because it only accepts exactly two parameters as opposed to an arbitrary
+number of parameter pairs. This can be fixed at some point.
+
+The first parameter of the pair must be a defined fake key name. The second
+parameter is a list of keys that will activate a
+`+(on-press-fakekey <fake key name> tap)+` when typed in the defined order.
+
+Example:
+
+----
+(defseq git-status (g s t))
+(deffakekeys git-status (macro g i t spc s t a t u s))
+(defalias rcl (tap-hold-release 200 200 sldr rctl))
+----
