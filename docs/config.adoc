@@ -1,6 +1,6 @@
 = Configuration
-
 :toc:
+:toc-placement!:
 
 This document describes how to create a kanata configuration file. The kanata
 configuration file will determine your keyboard behaviour upon running kanata.
@@ -12,6 +12,8 @@ keyboard behaviour to your exact liking.
 
 If you have any questions or confusions, feel free to file an issue or start a
 discussion.
+
+toc::[]
 
 == Comments
 
