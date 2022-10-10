@@ -461,6 +461,24 @@ Example:
 === Unicode
 <<table-of-contents,Back to ToC>>
 
+The `+unicode+` action accepts a single unicode character. The character will
+not be repeatedly typed if you hold the key down.
+
+You use unicode character as the alias itself if desired.
+
+NOTE: the unicode action may not be correctly accepted by the targeted
+application.
+
+----
+(defalias
+  sml (unicode 😀)
+  🙁 (unicode 🙁)
+)
+(deflayer has-happy-sad
+  @sml @🙁 a s d f
+)
+----
+
 NOTE: TODO: write me
 
 === Chords
