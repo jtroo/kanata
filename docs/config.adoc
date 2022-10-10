@@ -406,8 +406,8 @@ This action allows you to temporarily change to another layer while the key
 remains held. When the key is released, you go back to the currently active
 "base" layer.
 
-This action accepts a single subsequent string which must be a defined layer
-name from a `deflayer` entry.
+This action accepts a single subsequent string which must be a layer name
+defined in a `deflayer` entry.
 
 Example:
 
@@ -462,9 +462,9 @@ Example:
 The `+unicode+` action accepts a single unicode character. The character will
 not be repeatedly typed if you hold the key down.
 
-You use unicode character as the alias itself if desired.
+You may use a unicode character as an alias if desired.
 
-NOTE: the unicode action may not be correctly accepted by the targeted
+NOTE: The unicode action may not be correctly accepted by the active
 application.
 
 ----
@@ -480,9 +480,9 @@ application.
 === Chords
 <<table-of-contents,Back to ToC>>
 
-You may want to remap a key to automatically be pressed alongside modifiers
-such as Control or Shift. There is a shortcut for this: prefix the normal key
-name with one or more of:
+You may want to remap a key to automatically be pressed in combination with
+modifiers such as Control or Shift. There is a shortcut for this: prefix the
+normal key name with one or more of:
 
 * `+C-+`: Left Control
 * `+A-+`: Left Alt
@@ -506,16 +506,21 @@ Example:
 )
 ----
 
+This is stated to be a shortcut because the behaviour can be replicated with
+the `+multi+` action which is showcased later in this document.
+
 === Release a key or layer
 <<table-of-contents,Back to ToC>>
 
-You can release a held key or layer via the related actions:
+You can release a held key or layer via these actions:
 
-* `release-key`: release a key, as per `defsrc` compatible names
+* `release-key`: release a key, accepts `defsrc` compatible names
 * `release-layer`: release a while-held layer
 
 An example practical use case for `release-key` is seen in the `multi` section
-directly below. There is currently no known practical use case for
+directly below.
+
+There is currently no known practical use case for
 `release-layer`, but it exists nonetheless.
 
 === multi
@@ -567,7 +572,7 @@ functionality.
 <<table-of-contents,Back to ToC>>
 
 The `+tap-dance+` action allows repeated tapping of a key to result in
-different actions. It is followed by a timeout (unit: milliseconds) and a list
+different actions. It is followed by a timeout (unit: ms) and a list
 of keys or actions. Each time the key is pressed, its timeout will reset. The
 action will be chosen if one of the following events occur:
 
@@ -583,7 +588,7 @@ Example:
 (defalias
   ;; 1 tap : "A" key
   ;; 2 taps: Control+C
-  ;; 3 taps: one-shot of Left Shift
+  ;; 3 taps: Switch to another layer
   ;; 4 taps: Escape key
   td (tap-dance 200 (a C-c (layer-switch l2) esc))
 )
@@ -593,19 +598,21 @@ Example:
 <<table-of-contents,Back to ToC>>
 
 The `+one-shot+` action is similar to "sticky keys", if you know what that is.
-This activates an action until either the timeout expires or a different key is
-pressed. The `+one-shot+` action must be followed by a timeout (unit:
-milliseconds) and another key or action.
+This activates an action or key until either the timeout expires or a different
+key is pressed. The `+one-shot+` action must be followed by a timeout (unit:
+ms) and another key or action.
 
-Some of the intended use cases are pressing a modifier for exactly one key or
-switching to another layer for exactly one key.
+Some of the intended use cases are:
+
+* pressa modifier for exactly one following key press
+* switch to another layer for exactly one following key press
 
 If a `+one-shot+` key is held then it will act as the regular key. E.g. holding
 a key assigned with `+@os1+` in the example below will keep Left Shift held for
 every key, not just one, as long as it's still physically pressed.
 
-Pressing multiple `+one-shot+` keys in a row within the timeouts will combine
-the actions of those keys and reset the timeout to the latest that of the most
+Pressing multiple `+one-shot+` keys in a row within the timeout will combine
+the actions of those keys and reset the timeout to the value of the most
 recently pressed `+one-shot+` key.
 
 Example:
