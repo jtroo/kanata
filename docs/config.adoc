@@ -12,7 +12,8 @@ document will hopefully be a sufficient guide to help you customize your
 keyboard behaviour to your exact liking.
 
 If you have any questions or confusions, feel free to file an issue or start a
-discussion.
+discussion. If you have ideas for how to improve this document or any other
+part of the project, please be welcome to make a pull request or file an issue.
 
 '''
 
@@ -715,11 +716,12 @@ NOTE: TODO: write me
 
 The `+cmd+` action executes a program with arguments. It accepts one or more
 strings. The first string is the program that will be run and the following
-strings are arguments to that program in the given order.
+strings are arguments to that program, which are provided to the program in the
+order written in the config file.
 
-Note that the command is executed directly and not via a shell, so you cannot
-make use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not
-be substituted with your home directory.
+NOTE: The command is executed directly and not via a shell, so you cannot make
+use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not be
+substituted with your home directory.
 
 Example:
 
@@ -744,6 +746,7 @@ For context about the features in this section, see:
 
 * https://github.com/jtroo/kanata/issues/80[Discussion that created fake keys]
 * https://github.com/jtroo/kanata/issues/97[Design and motivation of sequences]
+* https://github.com/jtroo/kanata/issues/128[Motivation for custom tap-hold behaviour]
 
 === Fake keys
 <<table-of-contents,Back to ToC>>
@@ -751,24 +754,21 @@ For context about the features in this section, see:
 You can define up to 256 fake keys. These keys are not directly mapped to any
 physical key presses and can only be activated via these actions:
 
-* `+(on-press-fakekey <fake key name> <key action>)+`
-** Activates a fake key action when pressing the key mapped to this action
-* `+(on-release-fakekey <fake key name> <key action>)+`
-** Activates a fake key action when releasing the key mapped to this action
+* `+(on-press-fakekey <fake key name> <key action>)+`: Activate a fake key
+  action when pressing the key mapped to this action.
+* `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
+  action when releasing the key mapped to this action.
 
-A fake key can be defined in a `+deffakekeys+` configuration entry. This entry
-works very similarly to `+defalias+`, but you cannot make use of aliases inside
-of `+deffakekeys+` to shorten an action. You can however refer to previously
-defined fake keys.
+A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
+this entry is similar to `+defalias+`, but you cannot make use of aliases
+inside of `+deffakekeys+` to shorten an action. You can however refer to
+previously defined fake keys.
 
 The aforementioned `+<key action>+` can be one of three values:
 
-* press
-** Presses the fake key which will not be released until a release or tap.
-* release
-** Releases the fake key. If it's already released, this does nothing.
-* tap
-** Press and release the fake key. If it's already pressed, this only releases it.
+* `+press+`: Press the fake key which will not be released until a release or tap.
+* `+release+`: Release the fake key. If it's already released, this does nothing.
+* `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
 
 Example:
 
@@ -810,7 +810,8 @@ Example:
 ----
 
 If you find that an application isn't registering keypresses correctly with
-multi, you can try out:
+`+multi+` because the sequence activates too quickly, you can try using fake
+key actions alongside the delay actions below.
 
 * `+on-press-fakekey-delay+`
 * `+on-release-fakekey-delay+`
@@ -859,3 +860,13 @@ Example:
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
 ----
+
+=== Custom tap-hold behaviour
+<<table-of-contents,Back to ToC>>
+
+This is not currently configurable without modifying the source code, but if
+you're willing and/or capable, there is a tap-hold behaviour that is currently
+not exposed. Using this behaviour, one be very particular about when and how
+tap vs. hold will activate by using extra information. The available
+information that can be used is exactly which keys have been pressed or
+released as well as the timing in milliseconds of those key presses.
