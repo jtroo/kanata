@@ -68,11 +68,16 @@ approximately 60% layout.
 Your configuration file must have at least one `deflayer` entry. This defines
 how each physical key mapped in `defsrc` behaves when `kanata` runs.
 
-The first layer defined in your configuration file will be the starting layer
-when kanata runs. Other layers can be either toggled or switched to using
-special actions which will be explained later.
+A `deflayer` configuration entry is followed by the layer name then a list of
+keys or special actions. The usable key names are the same as in defsrc. Special
+actions are explained further on in this document.
 
-An example of remapping of QWERTY to the Dvorak layout would be:
+The first layer defined in your configuration file will be the starting layer
+when kanata runs. Other layers can be temporarily activated or switched to
+using special actions.
+
+An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
+would be:
 
 ```
 (defsrc
@@ -110,23 +115,19 @@ An example minimal configuration is:
 (deflayer start 1 2 3)
 ```
 
-This will make kanata remap your `a b c` keys to `1 2 3`, which is almost
-certainly undesirable, but this will run.
+This will make kanata remap your `a b c` keys to `1 2 3` which is almost
+certainly undesirable but is a valid configuration
 
-## Special actions
+## Aliases
 
-The special actions kanata provides are what make it truly customizable.
-
-### defalias
-
-Before seeing the actual special actions, you should first learn about aliases.
-Using the `defalias` configuration item, you can introduce a shorter form of
-another action to keep alignment in `deflayer` entries clean.
+Before learning about special actions, it should be useful to first learn about
+aliases. Using the `defalias` configuration item, you can introduce a shortcut
+label for an action.
 
 Similar to how `defcfg` works, `defalias` reads pairs of items in a sequence
 where the first item in the pair is the alias name and the second item is the
 action it can be substituted for. However, unlike before, the second item in
-`defalias` is may be a "list" as opposed to a single string like it was in
+`defalias` may be a "list" as opposed to a single string like it was in
 `defcfg`.
 
 A list is a sequence of strings separated by whitespace, surrounded by
@@ -138,32 +139,17 @@ Example:
 ```
 (defalias
   ;; tap for caps lock, hold for left control
-  ;; tap-hold-release will be explained later.
   cap (tap-hold-release 200 200 caps lctl)
 )
 ```
 
 This alias can be used in `deflayer` as a substitute for the long special
-action. The alias name is prefixed with `@` to signify that an alias should
-be substituted.
+action. The alias name is prefixed with `@` to signify that it's an alias as
+opposed to a normal key.
 
 ```
 (deflayer example
   @cap a s d f
-)
-```
-
-You can choose to put special actions without aliasing them right into
-`deflayer`. However for the long actions, it is recommended not to do so, in
-order to keep a nice visual alignment for ease of reading for your
-configuration.
-
-Example:
-
-```
-(deflayer example
-  ;; this is equivalent to the previous example
-  (tap-hold-release 200 200 caps lctl) a s d f
 )
 ```
 
@@ -180,6 +166,26 @@ Example:
   4 (tap-hold-release 200 200 end ralt)
 )
 ```
+
+You can choose to put special actions without aliasing them right into
+`deflayer`. However, for long actions it is recommended not to do so
+to keep a nice visual alignment. Visually aligning your `deflayer` entries
+will hopefully make your configuration file easier to read.
+
+Example:
+
+```
+(deflayer example
+  ;; this is equivalent to the previous deflayer example
+  (tap-hold-release 200 200 caps lctl) a s d f
+)
+```
+
+## Special actions
+
+The special actions kanata provides are what make it truly customizable. This
+section explains the available special actions. The order they are written in
+is generally simpler to more complex.
 
 ### layer-switch
 
