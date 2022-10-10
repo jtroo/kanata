@@ -230,10 +230,10 @@ inaccurate with regards to its meaning.
 
 === Transparent key
 
-If you use a single underscore for a key `_` then it acts as a "transparent"
-key. The behaviour depends if `_` is on a base layer or a while-held layer.
-When `_` is pressed on the active base layer, the key will default to the
-corresponding `defsrc` key. If `_` is pressed on the active while-held layer,
+If you use a single underscore for a key `+_+` then it acts as a "transparent"
+key. The behaviour depends if `+_+` is on a base layer or a while-held layer.
+When `+_+` is pressed on the active base layer, the key will default to the
+corresponding `defsrc` key. If `+_+` is pressed on the active while-held layer,
 the base layer's behaviour will activate.
 
 Example:
