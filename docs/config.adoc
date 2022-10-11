@@ -583,6 +583,83 @@ functionality.
 )
 ----
 
+=== Mouse actions
+<<table-of-contents,Back to ToC>>
+
+You can click the left, middle, and right buttons using kanata actions as well as
+do vertical and horizontal scrolling.
+
+The mouse button actions are:
+
+* `mlft`: left mouse button
+* `mmid`: middle mouse button
+* `mrgt`: right mouse button
+
+The mouse button will be held while the key mapped to it is held.
+
+If there are multiple mouse click actions within a single multi action, e.g.
+
+`+(multi mrgt mlft)+`
+
+then all the buttons except the last will be clicked then unclicked. The last
+button will remain held until key release. In the example above, pressing then
+releasing the key mapped to this action will result in the following event
+sequence:
+
+. press key mapped to `+multi+`
+. click right mouse button
+. unclick right mouse button
+. click left mouse button
+. release key mapped to `+multi+`
+. release left mouse button
+
+There are variants of the standard mouse butons which "tap" the button. Rather
+than holding the button while the key is held, a mouse click will be
+immediately followed by the release. Nothing happens when the key is released.
+The actions are as follows:
+
+* `mltp`: tap left mouse button
+* `mmtp`: tap middle mouse button
+* `mrtp`: tap right mouse button
+
+The mouse wheel actions are:
+
+* `mwheel-up`: vertical scroll up
+* `mwheel-down`: vertical scroll down
+* `mwheel-left`: horizontal scroll left
+* `mwheel-right`: horizontal scroll right
+
+All of these actions accept two numbers. The first is the interval (unit:
+milliseconds) between scroll actions. The second number is the distance (unit:
+arbitrary). In both Windows and Linux, 120 distance units is equivalent to a
+notch movement on a physical wheel. You can play with the parameters to see
+what feels correct to you. Both numbers must be in the range [1,65535].
+
+NOTE: Notch movement on a physical wheel. In Linux, not all desktop
+environments support the `REL_WHEEL_HI_RES` event so kanata just doesn't use
+it. Instead, a scroll happens when 120 or more distance units are accumulated.
+This may result in poor scrolling experience so in Linux it is recommended to
+use a distance value that is a multiple of 120.
+
+Example:
+
+----
+(defalias
+  mwu (mwheel-up 50 120)
+  mwd (mwheel-down 50 120)
+  mwl (mwheel-left 50 120)
+  mwr (mwheel-right 50 120)
+)
+
+(deflayer mouse
+  _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
+  _    _    bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    _    mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
+----
+
 === tap-dance
 <<table-of-contents,Back to ToC>>
 
@@ -705,11 +782,6 @@ Example:
   lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
 )
 ----
-
-=== Mouse actions
-<<table-of-contents,Back to ToC>>
-
-NOTE: TODO: write me
 
 === cmd
 <<table-of-contents,Back to ToC>>
