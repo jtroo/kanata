@@ -73,9 +73,11 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
 ## Features
 
 - Human readable configuration file.
-  [Minimal example](./cfg_samples/minimal.kbd).
-  [Simple example with explanations](./cfg_samples/simple.kbd).
-  [All features showcase](./cfg_samples/kanata.kbd).
+  - [Minimal example](./cfg_samples/minimal.kbd)
+  - [Full guide](./docs/config.adoc)
+  - [Simple example with explanations](./cfg_samples/simple.kbd)
+  - [All features showcase](./cfg_samples/kanata.kbd)
+- Press (Left Control+Space+Escape) to terminate kanata at any time in case you've messed up your config.
 - Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
 - Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
 - One-shot keys. Activate a modifier like `LShift` for exactly one subsequent keypress.

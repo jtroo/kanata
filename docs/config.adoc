@@ -1,0 +1,946 @@
+= Configuration
+:toc:
+:toc-placement!:
+:toc-title!:
+
+This document describes how to create a kanata configuration file. The kanata
+configuration file will determine your keyboard behaviour upon running kanata.
+
+The configuration file uses S-expression syntax from Lisps. If you are not
+familiar with any Lisp-like programming language, do not be too worried. This
+document will hopefully be a sufficient guide to help you customize your
+keyboard behaviour to your exact liking.
+
+If you have any questions or confusions, feel free to file an issue or start a
+discussion. If you have ideas for how to improve this document or any other
+part of the project, please be welcome to make a pull request or file an issue.
+
+'''
+
+[[table-of-contents]]
+== Table of contents
+toc::[]
+
+== Comments
+<<table-of-contents,Back to ToC>>
+
+You can add comments to your configuration file. Comments are prefixed with two
+semicolons. E.g:
+
+----
+;; This is a comment in a kanata configuration file.
+;; There is no special syntax for multi-line comments at this time.
+;; Comments will be ignored and are intended for you to help understand your
+;; own configuration when reading it later.
+----
+
+== Required configuration entries
+
+=== defcfg
+<<table-of-contents,Back to ToC>>
+
+Your configuration file must have a `defcfg` entry.
+
+It can be empty but there are options that can change kanata's behaviour that
+will be described later.
+
+Example:
+
+----
+(defcfg)
+----
+
+=== defsrc
+<<table-of-contents,Back to ToC>>
+
+Your configuration file must have exactly one `defsrc` entry. This defines the
+order of keys that the `+deflayer+` entries will operate on.
+
+A `defsrc` entry is composed of `defsrc` followed by key names that are
+separated by whitespace.
+
+It should be noted that the `defsrc` entry is treated as a long sequence; the
+amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
+spaces, tabs, or newlines however you like to visually format `defsrc` to your
+liking.
+
+An example `defsrc` containing the standard QWERTY keyboard keys as an
+approximately 60% keyboard layout:
+
+----
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+=== deflayer
+<<table-of-contents,Back to ToC>>
+
+Your configuration file must have at least one `+deflayer+` entry. This defines
+how each physical key mapped in `+defsrc+` behaves when kanata runs.
+
+A `+deflayer+` configuration entry is followed by the layer name then a list of
+keys or actions. The usable key names are the same as in defsrc. Actions are
+explained further on in this document. The whitespace story is the same as with
+`+defsrc+`. The order of keys/actions in `+deflayer+` corresponds to the
+physical key in the same sequence position defined in `+defsrc+`.
+
+The first layer defined in your configuration file will be the starting layer
+when kanata runs. Other layers can be temporarily activated or switched to
+using actions. There is currently a maximum of 25 layers allowed.
+
+An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
+would be:
+
+----
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer dvorak
+  grv  1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  tab  '    ,    .    p    y    f    g    c    r    l    /    =    \
+  caps a    o    e    u    i    d    h    t    n    s    -    ret
+  lsft ;    q    j    k    x    b    m    w    v    z    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+=== Review of required configuration entries
+<<table-of-contents,Back to ToC>>
+
+If you're reading in order, you have now seen all of the required entries:
+
+* `+defcfg+`
+* `+defsrc+`
+* `+deflayer+`
+
+An example minimal configuration is:
+
+----
+(defcfg)
+
+(defsrc a b c)
+
+(deflayer start 1 2 3)
+----
+
+This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
+certainly undesirable but is a valid configuration.
+
+== Optional defcfg entries
+
+There are a few `defcfg` entries that are used to customize various kanata
+behaviours.
+
+=== process-unmapped-keys
+<<table-of-contents,Back to ToC>>
+
+Enabling this configuration makes kanata process keys that are not in defsrc.
+This is useful if you are only mapping a few keys in defsrc instead of most of
+the keys on your keyboard.
+
+Without this, the `+rpt+`, `+tap-hold-release+`, `+tap-hold-press+`, and
+`+defseq+` actions will not activate for keys that are not in defsrc.
+
+This is disabled by default. The reason this is not enabled by default is
+because some keys may not work correctly if they are intercepted. For example,
+see the <<windows-only-windows-altgr>> option below.
+
+Example:
+
+----
+(defcfg
+  process-unmapped-keys yes
+)
+----
+
+=== danger-enable-cmd
+<<table-of-contents,Back to ToC>>
+
+This option can be used to enable the `cmd` action in your configuration. The
+`+cmd+` action allows kanata to execute programs with arguments passed to them.
+
+This requires using a kanata program that is compiled with the `cmd` action
+enabled. The reason for this is so that if you choose to, there is no way for
+kanata to execute arbitrary programs even if you download some random
+configuration from the internet.
+
+This configuration is disabled by default and can be enabled by giving it the
+value `yes`.
+
+Example:
+
+----
+(defcfg
+  danger-enable-cmd yes
+)
+----
+
+=== sequence-timeout
+<<table-of-contents,Back to ToC>>
+
+This option customizes the key sequence timeout (unit: ms). Its default value
+is 1000. The purpose of this item is explained in <<sequences>>.
+
+Example:
+
+----
+(defcfg
+  sequence-timeout 2000
+)
+----
+
+=== Linux only: linux-dev
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices from the
+`/dev/input` directories using the `linux-dev` configuration.
+
+Example:
+
+----
+(defcfg
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+)
+----
+
+If you want to specify multiple keyboards, you can separate the paths with a
+colon `+:+`. Example:
+
+----
+(defcfg
+  linux-dev /dev/input/dev1:/dev/input/dev2
+)
+----
+
+Due to using the colon to separate devices, if you have a device with colons in
+its file name, you must escape those colons with backslashes:
+
+----
+(defcfg
+  linux-dev /dev/input/path-to\:device
+)
+----
+
+=== Windows only: windows-altgr
+<<table-of-contents,Back to ToC>>
+
+There is an option for Windows to help mitigate the strange behaviour of AltGr
+(ralt) if you're using that key in your defsrc. This is applicable for many
+non-US layouts. You can use one of the listed values to change what kanata does
+with the key:
+
+* `cancel-lctl-release`
+** This will remove the `lctl` press that is generated alonside `ralt`
+* `add-lctl-release`
+** This adds an `lctl` release when `ralt` is released
+
+Example:
+
+----
+(defcfg
+  windows-altgr add-lctl-release
+)
+----
+
+For more context, see: https://github.com/jtroo/kanata/issues/55.
+
+NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
+work properly with other applications that also use keyboard interception.
+Known applications with issues:
+
+* GWSL/VcXsrv
+
+=== Using multiple defcfg entries
+<<table-of-contents,Back to ToC>>
+
+The `defcfg` entry is treated as a list with pairs of strings. For example:
+
+----
+(defcfg a 1 b 2)
+----
+
+This will be treated as configuration `a` having value `1` and configuration
+`b` having value `2`.
+
+An example defcfg containing all of the options is shown below. It should be
+noted options that are Linux-only or Windows-only will be ignored when used on
+a non-applicable operating system.
+
+----
+(defcfg
+  process-unmapped-keys yes
+  danger-enable-cmd yes
+  sequence-timeout 2000
+  linux-dev /dev/input/dev1:/dev/input/dev2
+  windows-altgr add-lctl-release
+)
+----
+
+== Aliases
+<<table-of-contents,Back to ToC>>
+
+Before learning about actions, it will be useful to first learn about aliases.
+Using the `defalias` configuration entry, you can introduce a shortcut label
+for an action.
+
+Similar to how `defcfg` works, `defalias` reads pairs of items in a sequence
+where the first item in the pair is the alias name and the second item is the
+action it can be substituted for. However, unlike `+defcfg+`, the second item
+in `defalias` may be a "list" as opposed to a single string like it was in
+`defcfg`.
+
+A list is a sequence of strings separated by whitespace, surrounded by
+parentheses. All of the configuration entries we've looked at so far are lists;
+`defalias` is where we'll first see nested lists in this guide.
+
+Example:
+
+----
+(defalias
+  ;; tap for caps lock, hold for left control
+  cap (tap-hold 200 200 caps lctl)
+)
+----
+
+This alias can be used in `deflayer` as a substitute for the long action. The
+alias name is prefixed with `@` to signify that it's an alias as opposed to a
+normal key.
+
+----
+(deflayer example
+  @cap a s d f
+)
+----
+
+You may have multiple `defalias` entries and multiple aliases within a single
+`defalias`. Aliases may also refer to other aliases that were defined earlier
+in the configuration file.
+
+Example:
+
+----
+(defalias one (tap-hold 200 200 caps lctl))
+(defalias two (tap-hold 200 200 esc lctl))
+(defalias
+  three C-A-del ;; Ctrl+Alt+Del
+  four (tap-hold 200 200 @three ralt)
+)
+----
+
+You can choose to put actions without aliasing them right into `deflayer`.
+However, for long actions it is recommended not to do so to keep a nice visual
+alignment. Visually aligning your `deflayer` entries will hopefully make your
+configuration file easier to read.
+
+Example:
+
+----
+(deflayer example
+  ;; this is equivalent to the previous deflayer example
+  (tap-hold 200 200 caps lctl) a s d f
+)
+----
+
+== Actions
+
+The actions kanata provides are what make it truly customizable. This section
+explains the available actions.
+
+=== Live reload
+<<table-of-contents,Back to ToC>>
+
+You can put the `+lrld+` action onto a key to live-reload your configuration
+file. If kanata can't parse the file, it will continue using the previous
+configuration.
+
+It should be noted that the live reload action currently leaks memory. In
+practice this should not matter. Some measurements on Windows for version
+1.0.0:
+
+* 20 reloads: 15.4 MB memory consumed
+* 50 reloads: 20.4 MB memory consumed
+
+This is about 170 KB used per live reload. In more recent versions the memory
+usage per reload has likely more than doubled, but even still, in practice this
+is negligible memory usage compared to other applications like a browser.
+
+Example:
+
+----
+(deflayer has-live-reload
+  lrld a s d f
+)
+----
+
+=== Repeat key
+<<table-of-contents,Back to ToC>>
+
+The action `+rpt+` repeats the most recently typed key. Holding down this key
+will not repeatedly send the key. The intended use case is to be able to use a
+different finger or even thumb key to repeat a double layer, as opposed to
+double-tapping a key.
+
+Example:
+
+----
+(deflayer has-repeat
+  rpt a s d f
+)
+----
+
+=== layer-switch
+<<table-of-contents,Back to ToC>>
+
+This action allows you to switch to another "base" layer. This is permanent
+until a `layer-switch` to another layer is activated. The concept of a base
+layer makes more sense when looking at the next action: `layer-while-held`.
+
+This action accepts a single subsequent string which must be a layer name
+defined in a `deflayer` entry.
+
+Example:
+
+----
+(defalias dvk (layer-switch dvorak))
+----
+
+=== layer-while-held
+<<table-of-contents,Back to ToC>>
+
+This action allows you to temporarily change to another layer while the key
+remains held. When the key is released, you go back to the currently active
+"base" layer.
+
+This action accepts a single subsequent string which must be a layer name
+defined in a `deflayer` entry.
+
+Example:
+
+----
+(defalias nav (layer-while-held navigation))
+----
+
+You may also use `layer-toggle` in place of `layer-while-held`; they behave
+exactly the same. The `layer-toggle` name is slightly shorter but is a bit
+inaccurate with regards to its meaning.
+
+=== Transparent key
+<<table-of-contents,Back to ToC>>
+
+If you use a single underscore for a key `+_+` then it acts as a "transparent"
+key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
+while-held layer. When `+_+` is pressed on the active base layer, the key will
+default to the corresponding `defsrc` key. If `+_+` is pressed on the active
+while-held layer, the base layer's behaviour will activate.
+
+Example:
+
+----
+(defsrc
+  a b c
+)
+
+(deflayer remap-only-c-to-d
+  _ _ d
+)
+----
+
+=== No-op
+<<table-of-contents,Back to ToC>>
+
+You may use the action `+XX+` as a "no operation" key, meaning pressing the key
+will do nothing. This might be desirable in place of a transparent key on an
+layer that is not fully mapped so that a key that is intentionally not mapped
+will do nothing as opposed to typing a letter.
+
+Example:
+
+----
+(deflayer contains-no-op
+  XX a s d f
+)
+----
+
+=== Unicode
+<<table-of-contents,Back to ToC>>
+
+The `+unicode+` action accepts a single unicode character. The character will
+not be repeatedly typed if you hold the key down.
+
+You may use a unicode character as an alias if desired.
+
+NOTE: The unicode action may not be correctly accepted by the active
+application.
+
+----
+(defalias
+  sml (unicode 😀)
+  🙁 (unicode 🙁)
+)
+(deflayer has-happy-sad
+  @sml @🙁 a s d f
+)
+----
+
+=== Chords
+<<table-of-contents,Back to ToC>>
+
+You may want to remap a key to automatically be pressed in combination with
+modifiers such as Control or Shift. There is a shortcut for this: prefix the
+normal key name with one or more of:
+
+* `+C-+`: Left Control
+* `+A-+`: Left Alt
+* `+S-+`: Left Shift
+* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super
+* `+RA-+` or `+AG+`: Right Alt, a.k.a. AltGr
+
+These modifiers may be combined together if desired.
+
+Example:
+
+----
+(defalias
+  ;; Ctrl+C: send SIGINT to a Linux terminal program
+  int C-c
+  ;; Win+Tab: open Windows' Task View
+  tsk M-tab
+  ;; Ctrl+Shift+(C|V): copy or paste from certain terminal programs
+  cpy C-S-c
+  pst C-S-v
+)
+----
+
+This is stated to be a shortcut because the behaviour can be replicated with
+the `+multi+` action which is showcased later in this document.
+
+=== Release a key or layer
+<<table-of-contents,Back to ToC>>
+
+You can release a held key or layer via these actions:
+
+* `release-key`: release a key, accepts `defsrc` compatible names
+* `release-layer`: release a while-held layer
+
+An example practical use case for `release-key` is seen in the `multi` section
+directly below.
+
+There is currently no known practical use case for
+`release-layer`, but it exists nonetheless.
+
+=== multi
+<<table-of-contents,Back to ToC>>
+
+The `+multi+` action executes multiple keys or actions in order but also
+simultaneously. It accepts one or more actions.
+
+This action may result in unexpected or incorrect behaviour if combining
+complicated actions. If you find incorrect behaviour, please feel free to file
+an issue.
+
+An example use case is to press the "Alt" key while also activating another
+layer.
+
+In the example below, holding the physical "Alt" key will result in a held
+layer being activated while also holding "Alt" itself. The held layer operates
+nearly the same as the standard keyboard, so for example the sequence (hold
+Alt)+(Tab+Tab+Tab) will work as expected. This is in contrast to having a layer
+where `tab` is mapped to `A-tab`, which results in repeated press+release of
+the two keys and has different behaviour than expected. Some special keys will
+release the "Alt" key and do some other action that requires "Alt" to be
+released. In other words, the "Alt" key serves a dual purpose of still
+fulfilling the "Alt" key role for some button presses (e.g. Tab), but also as a
+new layer for keys that aren't typically used with "Alt" to have added useful
+functionality.
+
+----
+(defalias
+  atl (multi alt (layer-while-held alted-with-exceptions))
+  lft (multi (release-key alt) left) ;; release alt if held and also press left
+  rgt (multi (release-key alt) rght) ;; release alt if held and also press rght
+)
+
+(defsrc
+  alt  a    s    d    f
+)
+
+(deflayer base
+  @atl _    _    _    _
+)
+
+(deflayer alted-with-exceptions
+  _    _    _    @lft @rgt
+)
+----
+
+=== Mouse actions
+<<table-of-contents,Back to ToC>>
+
+You can click the left, middle, and right buttons using kanata actions as well as
+do vertical and horizontal scrolling.
+
+The mouse button actions are:
+
+* `mlft`: left mouse button
+* `mmid`: middle mouse button
+* `mrgt`: right mouse button
+
+The mouse button will be held while the key mapped to it is held.
+
+If there are multiple mouse click actions within a single multi action, e.g.
+
+`+(multi mrgt mlft)+`
+
+then all the buttons except the last will be clicked then unclicked. The last
+button will remain held until key release. In the example above, pressing then
+releasing the key mapped to this action will result in the following event
+sequence:
+
+. press key mapped to `+multi+`
+. click right mouse button
+. unclick right mouse button
+. click left mouse button
+. release key mapped to `+multi+`
+. release left mouse button
+
+There are variants of the standard mouse butons which "tap" the button. Rather
+than holding the button while the key is held, a mouse click will be
+immediately followed by the release. Nothing happens when the key is released.
+The actions are as follows:
+
+* `mltp`: tap left mouse button
+* `mmtp`: tap middle mouse button
+* `mrtp`: tap right mouse button
+
+The mouse wheel actions are:
+
+* `mwheel-up`: vertical scroll up
+* `mwheel-down`: vertical scroll down
+* `mwheel-left`: horizontal scroll left
+* `mwheel-right`: horizontal scroll right
+
+All of these actions accept two number strings. The first is the interval
+(unit: milliseconds) between scroll actions. The second number is the distance
+(unit: arbitrary). In both Windows and Linux, 120 distance units is equivalent
+to a notch movement on a physical wheel. You can play with the parameters to
+see what feels correct to you. Both numbers must be in the range [1,65535].
+
+NOTE: Notch movement on a physical wheel. In Linux, not all desktop
+environments support the `REL_WHEEL_HI_RES` event so kanata just doesn't use
+it. Instead, a scroll happens when 120 or more distance units are accumulated.
+This may result in poor scrolling experience so in Linux it is recommended to
+use a distance value that is a multiple of 120.
+
+Example:
+
+----
+(defalias
+  mwu (mwheel-up 50 120)
+  mwd (mwheel-down 50 120)
+  mwl (mwheel-left 50 120)
+  mwr (mwheel-right 50 120)
+)
+
+(deflayer mouse
+  _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
+  _    _    bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    _    mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
+----
+
+=== tap-dance
+<<table-of-contents,Back to ToC>>
+
+The `+tap-dance+` action allows repeated tapping of a key to result in
+different actions. It is followed by a timeout (unit: ms) and a list
+of keys or actions. Each time the key is pressed, its timeout will reset. The
+action will be chosen if one of the following events occur:
+
+* the timeout expires
+* a different key is pressed
+* the key is repeated up to the final action
+
+You may put normal keys or other actions in `+tap-dance+`.
+
+Example:
+
+----
+(defalias
+  ;; 1 tap : "A" key
+  ;; 2 taps: Control+C
+  ;; 3 taps: Switch to another layer
+  ;; 4 taps: Escape key
+  td (tap-dance 200 (a C-c (layer-switch l2) esc))
+)
+----
+
+=== one-shot
+<<table-of-contents,Back to ToC>>
+
+The `+one-shot+` action is similar to "sticky keys", if you know what that is.
+This activates an action or key until either the timeout expires or a different
+key is pressed. The `+one-shot+` action must be followed by a timeout (unit:
+ms) and another key or action.
+
+Some of the intended use cases are:
+
+* pressa modifier for exactly one following key press
+* switch to another layer for exactly one following key press
+
+If a `+one-shot+` key is held then it will act as the regular key. E.g. holding
+a key assigned with `+@os1+` in the example below will keep Left Shift held for
+every key, not just one, as long as it's still physically pressed.
+
+Pressing multiple `+one-shot+` keys in a row within the timeout will combine
+the actions of those keys and reset the timeout to the value of the most
+recently pressed `+one-shot+` key.
+
+Example:
+
+----
+(defalias
+  os1 (one-shot 500 lsft)
+  os2 (one-shot 2000 (layer-while-held another-layer))
+)
+----
+
+=== tap-hold
+<<table-of-contents,Back to ToC>>
+
+The `+tap-hold+` action allows you to have one action/key for a "tap" and a
+different action/key for a "hold". A tap is a rapid press then release of the
+key whereas a hold is a long press.
+
+The action takes 4 parameters in the listed order:
+
+. tap timeout (unit: ms)
+. hold timeout (unit: ms)
+. tap action
+. hold action
+
+The tap timeout is the number of milliseconds within which a rapid
+press+release+press of a key will result in the tap action being held instead
+of the hold action activating.
+
+The hold timeout is the number of milliseconds after which the hold action will
+activate.
+
+There are two additional variants of `+tap-hold-+`:
+
+* tap-hold-press
+** If there is a press of a different key, the hold action is activated even if
+the hold timeout hasn't expired yet
+* tap-hold-release
+** If there is a press+release of a different key, the hold action is activated
+even if the hold timeout hasn't expired yet
+
+These variants may be useful if you have want more responsive tap-hold keys,
+but you should be wary of activating the hold action unintentionally.
+
+----
+(defalias
+  anm (tap-hold         200 200 a @num) ;; tap: a      hold: numbers layer
+  oar (tap-hold-press   200 200 o @arr) ;; tap: o      hold: arrows layer
+  ech (tap-hold-release 200 200 e @chr) ;; tap: e      hold: chords layer
+)
+----
+
+=== macro
+<<table-of-contents,Back to ToC>>
+
+The `+macro+` action will tap a sequence of keys or chords with optional
+delays. This is different from `+multi+` because in the `+multi+` action,
+all keys are held, whereas in `+macro+`, keys are pressed then released.
+
+This means that with `+macro+` you can have some letters capitalized and others
+not. This is not possible with `+multi+`.
+
+The `+macro+` action accepts one or more keys, chords, and delays (unit: ms).
+The number keys will be parsed as delays, so they must be aliased to be used in
+a macro.
+
+Example:
+
+----
+(defalias
+  : S-;
+  8 8
+  0 0
+  ;; Type "http://localhost:8080"
+  lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
+)
+----
+
+=== cmd
+<<table-of-contents,Back to ToC>>
+
+The `+cmd+` action executes a program with arguments. It accepts one or more
+strings. The first string is the program that will be run and the following
+strings are arguments to that program. The arguments are provided to the
+program in the order written in the config file.
+
+NOTE: The command is executed directly and not via a shell, so you cannot make
+use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not be
+substituted with your home directory.
+
+Example:
+
+----
+(defalias
+  cm1 (cmd rm -fr /tmp/testing)
+
+  ;; You can use bash -c and then a quoted string to execute arbitrary text in
+  ;; bash. All text within double-quotes is treated as a single string.
+  cm2 (cmd bash -c "echo hello world")
+)
+----
+
+== Advanced/weird features
+
+=== Fake keys
+<<table-of-contents,Back to ToC>>
+
+You can define up to 256 fake keys. These keys are not directly mapped to any
+physical key presses and can only be activated via these actions:
+
+* `+(on-press-fakekey <fake key name> <key action>)+`: Activate a fake key
+  action when pressing the key mapped to this action.
+* `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
+  action when releasing the key mapped to this action.
+
+A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
+this entry is similar to `+defalias+`, but you cannot make use of aliases
+inside of `+deffakekeys+` to shorten an action. You can however refer to
+previously defined fake keys.
+
+The aforementioned `+<key action>+` can be one of three values:
+
+* `+press+`: Press the fake key. It will not be released until another action
+  triggers a release or tap.
+* `+release+`: Release the fake key. If it's not already pressed, this does nothing.
+* `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
+
+Example:
+
+----
+(deffakekeys
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+
+  ;; Press all modifiers
+  pal (multi
+        (on-press-fakekey ctl press)
+        (on-press-fakekey sft press)
+        (on-press-fakekey met press)
+        (on-press-fakekey alt press)
+      )
+
+  ;; Release all modifiers
+  ral (multi
+        (on-press-fakekey ctl release)
+        (on-press-fakekey sft release)
+        (on-press-fakekey met release)
+        (on-press-fakekey alt release)
+      )
+)
+
+(defalias
+  psf (on-press-fakekey sft press)
+  rsf (on-press-fakekey sft release)
+
+  pal (on-press-fakekey pal tap)
+  ral (on-press-fakekey ral tap)
+)
+
+(deflayer use-fake-keys
+  @psf @rsf @pal @ral a s d f
+)
+----
+
+If you find that an application isn't registering keypresses correctly with
+`+multi+` because the sequence activates too quickly, you can try using fake
+key actions alongside the delay actions below.
+
+* `+on-press-fakekey-delay+`
+* `+on-release-fakekey-delay+`
+
+Do note that processing a fakekey-delay and even a sequence of delays will
+delay any other inputs from being processed until the fakekey-delays are all
+complete, so use with care.
+
+----
+(defalias
+  stm (multi ;; Shift -> middle mouse with a delay
+    (on-press-fakekey lsft press)
+    (on-press-fakekey-delay 200)
+    (on-press-fakekey mmid press)
+    (on-release-fakekey mmid release)
+    (on-release-fakekey-delay 200)
+    (on-release-fakekey lsft release)
+  )
+)
+----
+
+For more context, you could read the
+https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
+
+=== Sequences
+<<table-of-contents,Back to ToC>>
+
+The `+ldr+` action makes kanata go into "sequence" mode. The action name is
+short for "leader". This comes from Vim which has the concept of a configurable
+sequence leader key. When in sequence mode, keys are not typed but are saved
+until one of the following happens:
+
+* A key is typed that does not match any sequence
+* `+sequence-timeout+` milliseconds elapses since the most recent key press
+
+Sequences can be defined via `+defseq+`. While writing this, I realize that
+`+defseq+` behaves inconsistently with other similar configuration entries
+because it only accepts exactly two parameters as opposed to an arbitrary
+number of parameter pairs. This can be fixed at some point.
+
+The first parameter of the pair must be a defined fake key name. The second
+parameter is a list of keys that will activate a fake key tap when typed in the
+defined order. More precisely, the action triggered is:
+
+`+(on-press-fakekey <fake key name> tap)+`
+
+Example:
+
+----
+(defseq git-status (g s t))
+(deffakekeys git-status (macro g i t spc s t a t u s))
+(defalias rcl (tap-hold-release 200 200 sldr rctl))
+----
+
+For more context, you can read the
+https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
+
+=== Custom tap-hold behaviour
+<<table-of-contents,Back to ToC>>
+
+This is not currently configurable without modifying the source code, but if
+you're willing and/or capable, there is a tap-hold behaviour that is currently
+not exposed. Using this behaviour, one be very particular about when and how
+tap vs. hold will activate by using extra information. The available
+information that can be used is exactly which keys have been pressed or
+released as well as the timing in milliseconds of those key presses.
+
+For more context, you can read the
+https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behaviour].
