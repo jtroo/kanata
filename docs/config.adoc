@@ -281,6 +281,7 @@ a non-applicable operating system.
 (defcfg
   process-unmapped-keys yes
   danger-enable-cmd yes
+  sequence-timeout 2000
   linux-dev /dev/input/dev1:/dev/input/dev2
   windows-altgr add-lctl-release
 )
@@ -629,11 +630,11 @@ The mouse wheel actions are:
 * `mwheel-left`: horizontal scroll left
 * `mwheel-right`: horizontal scroll right
 
-All of these actions accept two numbers. The first is the interval (unit:
-milliseconds) between scroll actions. The second number is the distance (unit:
-arbitrary). In both Windows and Linux, 120 distance units is equivalent to a
-notch movement on a physical wheel. You can play with the parameters to see
-what feels correct to you. Both numbers must be in the range [1,65535].
+All of these actions accept two number strings. The first is the interval
+(unit: milliseconds) between scroll actions. The second number is the distance
+(unit: arbitrary). In both Windows and Linux, 120 distance units is equivalent
+to a notch movement on a physical wheel. You can play with the parameters to
+see what feels correct to you. Both numbers must be in the range [1,65535].
 
 NOTE: Notch movement on a physical wheel. In Linux, not all desktop
 environments support the `REL_WHEEL_HI_RES` event so kanata just doesn't use
