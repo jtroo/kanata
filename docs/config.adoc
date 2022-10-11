@@ -716,8 +716,8 @@ NOTE: TODO: write me
 
 The `+cmd+` action executes a program with arguments. It accepts one or more
 strings. The first string is the program that will be run and the following
-strings are arguments to that program, which are provided to the program in the
-order written in the config file.
+strings are arguments to that program. The arguments are provided to the
+program in the order written in the config file.
 
 NOTE: The command is executed directly and not via a shell, so you cannot make
 use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not be
@@ -737,17 +737,6 @@ Example:
 
 == Advanced/weird features
 
-This section contains more advanced configurations that introduces
-configuration entries with related actions and so does not fit as neatly into
-the Actions section. You may also not understand the appeal of this
-functionality which is very understandable, so it is saved for the end.
-
-For context about the features in this section, see:
-
-* https://github.com/jtroo/kanata/issues/80[Discussion that created fake keys]
-* https://github.com/jtroo/kanata/issues/97[Design and motivation of sequences]
-* https://github.com/jtroo/kanata/issues/128[Motivation for custom tap-hold behaviour]
-
 === Fake keys
 <<table-of-contents,Back to ToC>>
 
@@ -766,8 +755,9 @@ previously defined fake keys.
 
 The aforementioned `+<key action>+` can be one of three values:
 
-* `+press+`: Press the fake key which will not be released until a release or tap.
-* `+release+`: Release the fake key. If it's already released, this does nothing.
+* `+press+`: Press the fake key. It will not be released until another action
+  triggers a release or tap.
+* `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
 
 Example:
@@ -833,6 +823,9 @@ complete, so use with care.
 )
 ----
 
+For more context, you could read the
+https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
+
 === Sequences
 <<table-of-contents,Back to ToC>>
 
@@ -850,8 +843,10 @@ because it only accepts exactly two parameters as opposed to an arbitrary
 number of parameter pairs. This can be fixed at some point.
 
 The first parameter of the pair must be a defined fake key name. The second
-parameter is a list of keys that will activate a
-`+(on-press-fakekey <fake key name> tap)+` when typed in the defined order.
+parameter is a list of keys that will activate a fake key tap when typed in the
+defined order. More precisely, the action triggered is:
+
+`+(on-press-fakekey <fake key name> tap)+`
 
 Example:
 
@@ -860,6 +855,9 @@ Example:
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
 ----
+
+For more context, you can read the
+https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
@@ -870,3 +868,6 @@ not exposed. Using this behaviour, one be very particular about when and how
 tap vs. hold will activate by using extra information. The available
 information that can be used is exactly which keys have been pressed or
 released as well as the timing in milliseconds of those key presses.
+
+For more context, you can read the
+https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behaviour].
