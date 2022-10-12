@@ -9,7 +9,7 @@ type ParseError = Spanned<String>;
 
 type ParseResult<T> = Result<T, ParseError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     start: usize,
     end: usize,
@@ -61,7 +61,7 @@ impl Index<Span> for String {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Spanned<T> {
     pub t: T,
     pub span: Span,
@@ -73,7 +73,7 @@ impl<T> Spanned<T> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
 /// this is more convenient to work with (I find).
 pub enum SExpr {
@@ -93,6 +93,25 @@ impl SExpr {
         match self {
             SExpr::List(l) => Some(&l.t),
             _ => None,
+        }
+    }
+}
+
+impl std::fmt::Debug for SExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SExpr::Atom(a) => write!(f, "{}", &a.t),
+            SExpr::List(l) => {
+                write!(f, "(")?;
+                for i in 0..l.t.len()-1 {
+                    write!(f, "{:?} ", &l.t[i])?;
+                }
+                if !l.t.is_empty() {
+                    write!(f, "{:?}", &l.t.last().unwrap())?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
         }
     }
 }

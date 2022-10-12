@@ -1224,10 +1224,10 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<
                         Ok(keys)
                     })?;
             if sequences.get_ancestor(&keycode_seq).is_some() {
-                bail!("defseq {key_seq:?} has a conflict: it contains an earlier defined sequence");
+                bail!("defseq {fake_key} {key_seq:?} has a conflict: its sequence contains an earlier defined sequence");
             }
             if sequences.get_raw_descendant(&keycode_seq).is_some() {
-                bail!("defseq {key_seq:?} has a conflict: it is contained within an earlier defined seqence");
+                bail!("defseq {fake_key} {key_seq:?} has a conflict: its sequence is contained within an earlier defined seqence");
             }
             sequences.insert(
                 keycode_seq,
