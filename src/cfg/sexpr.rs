@@ -103,7 +103,7 @@ impl std::fmt::Debug for SExpr {
             SExpr::Atom(a) => write!(f, "{}", &a.t),
             SExpr::List(l) => {
                 write!(f, "(")?;
-                for i in 0..l.t.len()-1 {
+                for i in 0..l.t.len() - 1 {
                     write!(f, "{:?} ", &l.t[i])?;
                 }
                 if !l.t.is_empty() {
