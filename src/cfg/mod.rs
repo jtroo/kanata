@@ -1191,50 +1191,53 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
 }
 
 fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<KeySeqsToFKeys> {
-    const ERR_MSG: &str = "defseq expects two parameters: <fake_key_name> <key_list>";
+    const ERR_MSG: &str = "defseq expects pairs of parameters: <fake_key_name> <key_list>";
     let mut sequences = Trie::new();
     for expr in exprs {
-        let mut subexprs = check_first_expr(expr.iter(), "defseq")?;
-        let fake_key = subexprs
-            .next()
-            .ok_or_else(|| anyhow!(ERR_MSG))?
-            .atom()
-            .ok_or_else(|| anyhow!("{ERR_MSG}: got a list for fake_key_name"))?;
-        if !parsed_state.fake_keys.contains_key(fake_key) {
-            bail!("{ERR_MSG}: {fake_key} is not the name of a fake key");
+        let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
+
+        while subexprs.peek().is_some() {
+            let fake_key = subexprs
+                .next()
+                .ok_or_else(|| anyhow!(ERR_MSG))?
+                .atom()
+                .ok_or_else(|| anyhow!("{ERR_MSG}: got a list for fake_key_name"))?;
+            if !parsed_state.fake_keys.contains_key(fake_key) {
+                bail!("{ERR_MSG}: {fake_key} is not the name of a fake key");
+            }
+            let key_seq = subexprs
+                .next()
+                .ok_or_else(|| anyhow!("{ERR_MSG}: missing key_list for {fake_key}"))?
+                .list()
+                .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for key_list"))?;
+            let keycode_seq =
+                key_seq
+                    .iter()
+                    .try_fold::<_, _, Result<Vec<_>>>(vec![], |mut keys, key| {
+                        keys.push(
+                            str_to_oscode(key.atom().ok_or_else(|| {
+                                anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
+                            })?)
+                            .map(u16::from) // u16 is sufficient for all keys in the keyberon array
+                            .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
+                        );
+                        Ok(keys)
+                    })?;
+            if sequences.get_ancestor(&keycode_seq).is_some() {
+                bail!("defseq {key_seq:?} has a conflict: it contains an earlier defined sequence");
+            }
+            if sequences.get_raw_descendant(&keycode_seq).is_some() {
+                bail!("defseq {key_seq:?} has a conflict: it is contained within an earlier defined seqence");
+            }
+            sequences.insert(
+                keycode_seq,
+                parsed_state
+                    .fake_keys
+                    .get(fake_key)
+                    .map(|(y, _)| get_fake_key_coords(*y))
+                    .unwrap(),
+            );
         }
-        let key_seq = subexprs
-            .next()
-            .ok_or_else(|| anyhow!(ERR_MSG))?
-            .list()
-            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for key_list"))?;
-        let keycode_seq =
-            key_seq
-                .iter()
-                .try_fold::<_, _, Result<Vec<_>>>(vec![], |mut keys, key| {
-                    keys.push(
-                        str_to_oscode(key.atom().ok_or_else(|| {
-                            anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
-                        })?)
-                        .map(u16::from) // u16 is sufficient for all keys in the keyberon array
-                        .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
-                    );
-                    Ok(keys)
-                })?;
-        if sequences.get_ancestor(&keycode_seq).is_some() {
-            bail!("defseq {key_seq:?} has a conflict: it contains an earlier defined sequence");
-        }
-        if sequences.get_raw_descendant(&keycode_seq).is_some() {
-            bail!("defseq {key_seq:?} has a conflict: it is contained within an earlier defined seqence");
-        }
-        sequences.insert(
-            keycode_seq,
-            parsed_state
-                .fake_keys
-                .get(fake_key)
-                .map(|(y, _)| get_fake_key_coords(*y))
-                .unwrap(),
-        );
     }
     Ok(sequences)
 }
