@@ -614,7 +614,7 @@ sequence:
 . release key mapped to `+multi+`
 . release left mouse button
 
-There are variants of the standard mouse butons which "tap" the button. Rather
+There are variants of the standard mouse buttons which "tap" the button. Rather
 than holding the button while the key is held, a mouse click will be
 immediately followed by the release. Nothing happens when the key is released.
 The actions are as follows:
@@ -910,14 +910,10 @@ until one of the following happens:
 * A key is typed that does not match any sequence
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
 
-Sequences can be defined via `+defseq+`. While writing this, I realize that
-`+defseq+` behaves inconsistently with other similar configuration entries
-because it only accepts exactly two parameters as opposed to an arbitrary
-number of parameter pairs. This can be fixed at some point.
-
-The first parameter of the pair must be a defined fake key name. The second
-parameter is a list of keys that will activate a fake key tap when typed in the
-defined order. More precisely, the action triggered is:
+Sequences are configured similarly to `+deffakekeys+`. The first parameter of a
+pair must be a defined fake key name. The second parameter is a list of keys
+that will activate a fake key tap when typed in the defined order. More
+precisely, the action triggered is:
 
 `+(on-press-fakekey <fake key name> tap)+`
 

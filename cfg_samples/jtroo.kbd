@@ -124,14 +124,15 @@
   _    _    _              _              _    _    _
 )
 
-(defseq "git status" (g s t))
-(defseq "git commit --amend --no-edit" (g c a))
-(defseq "git rebase -i HEAD~" (g r e b))
-(defseq "git log --pretty=oneline --abbrev-commit" (g l s))
-(defseq "git diff --ignore-space-change" (g d f))
-(defseq "git diff --cached --ignore-space-change" (g d c))
-(defseq "git push -f" (g p f))
-(defseq "git commit -m 'fix_this_commit_message'" (g c m))
+(defseq "git status" (g s t)
+  "git commit --amend --no-edit" (g c a)
+  "git rebase -i HEAD~" (g r e b)
+  "git log --pretty=oneline --abbrev-commit" (g l s)
+  "git diff --ignore-space-change" (g d f)
+  "git diff --cached --ignore-space-change" (g d c)
+  "git push -f" (g p f)
+  "git commit -m 'fix_this_commit_message'" (g c m)
+)
 
 (deffakekeys
   "git status" (macro g i t spc s t a t u s)
