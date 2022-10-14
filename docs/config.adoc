@@ -545,9 +545,9 @@ There is currently no known practical use case for
 The `+multi+` action executes multiple keys or actions in order but also
 simultaneously. It accepts one or more actions.
 
-This action may result in unexpected or incorrect behaviour if combining
-complicated actions. If you find incorrect behaviour, please feel free to file
-an issue.
+This action may result in unexpected or incorrect behaviour when creating a
+complicated combination of actions. If you find incorrect behaviour, please
+feel free to file an issue.
 
 An example use case is to press the "Alt" key while also activating another
 layer.
@@ -636,8 +636,8 @@ All of these actions accept two number strings. The first is the interval
 to a notch movement on a physical wheel. You can play with the parameters to
 see what feels correct to you. Both numbers must be in the range [1,65535].
 
-NOTE: Notch movement on a physical wheel. In Linux, not all desktop
-environments support the `REL_WHEEL_HI_RES` event so kanata just doesn't use
+NOTE: In Linux, not all desktop
+environments support the `REL_WHEEL_HI_RES` event, so kanata just doesn't use
 it. Instead, a scroll happens when 120 or more distance units are accumulated.
 This may result in poor scrolling experience so in Linux it is recommended to
 use a distance value that is a multiple of 120.
@@ -933,7 +933,7 @@ https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 
 This is not currently configurable without modifying the source code, but if
 you're willing and/or capable, there is a tap-hold behaviour that is currently
-not exposed. Using this behaviour, one be very particular about when and how
+not exposed. Using this behaviour, one can be very particular about when and how
 tap vs. hold will activate by using extra information. The available
 information that can be used is exactly which keys have been pressed or
 released as well as the timing in milliseconds of those key presses.
