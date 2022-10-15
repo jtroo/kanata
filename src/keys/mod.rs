@@ -571,7 +571,7 @@ pub enum OsCode {
 impl TryFrom<usize> for OsCode {
     type Error = ();
     fn try_from(item: usize) -> Result<Self, Self::Error> {
-        match Self::from_u32(item as u32) {
+        match Self::from_u16(item as u16) {
             Some(kc) => Ok(kc),
             _ => Err(()),
         }
@@ -580,31 +580,31 @@ impl TryFrom<usize> for OsCode {
 
 impl From<u32> for OsCode {
     fn from(item: u32) -> Self {
-        Self::from_u32(item).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
+        Self::from_u16(item as u16).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
     }
 }
 
 impl From<u16> for OsCode {
     fn from(item: u16) -> Self {
-        Self::from_u32(item as u32).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
+        Self::from_u16(item).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
     }
 }
 
 impl From<OsCode> for usize {
     fn from(item: OsCode) -> Self {
-        item.as_u32() as usize
+        item.as_u16() as usize
     }
 }
 
 impl From<OsCode> for u32 {
     fn from(item: OsCode) -> Self {
-        item.as_u32()
+        item.as_u16() as u32
     }
 }
 
 impl From<OsCode> for u16 {
     fn from(item: OsCode) -> Self {
-        item.as_u32() as u16
+        item.as_u16()
     }
 }
 
