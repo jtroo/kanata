@@ -6,11 +6,11 @@ use std::convert::TryFrom;
 use super::{KeyEvent, KeyValue, OsCode};
 
 impl OsCode {
-    pub fn as_u32(self) -> u32 {
-        self as u32
+    pub fn as_u16(self) -> u16 {
+        self as u16
     }
 
-    pub fn from_u32(code: u32) -> Option<Self> {
+    pub fn from_u16(code: u16) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),
             1 => Some(OsCode::KEY_ESC),
@@ -570,7 +570,7 @@ impl TryFrom<InputEvent> for KeyEvent {
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
         match item.kind() {
             evdev::InputEventKind::Key(k) => Ok(Self {
-                code: OsCode::from_u32(k.0.into()).ok_or(())?,
+                code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
             }),
             _ => Err(()),

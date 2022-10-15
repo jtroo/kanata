@@ -458,8 +458,8 @@ fn parse_defsrc(
         .unwrap_or(false);
     log::info!("process unmapped keys: {process_unmapped_keys}");
     if process_unmapped_keys {
-        for osc in 0..KEYS_IN_ROW as u32 {
-            if let Some(osc) = OsCode::from_u32(osc) {
+        for osc in 0..KEYS_IN_ROW as u16 {
+            if let Some(osc) = OsCode::from_u16(osc) {
                 match KeyCode::from(osc) {
                     KeyCode::No => {}
                     _ => {
@@ -1174,7 +1174,7 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
             // If key is unmapped in defsrc as well, default it to the OsCode for that index if the
             // configuration says to do so.
             if *layer_action == Action::Trans {
-                *layer_action = OsCode::from_u32(i as u32)
+                *layer_action = OsCode::from_u16(i as u16)
                     .and_then(|osc| match KeyCode::from(osc) {
                         KeyCode::No => None,
                         kc => Some(Action::KeyCode(kc)),
