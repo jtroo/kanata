@@ -9,7 +9,7 @@ type ParseError = Spanned<String>;
 
 type ParseResult<T> = Result<T, ParseError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     start: usize,
     end: usize,
@@ -68,7 +68,7 @@ pub struct Spanned<T> {
 }
 
 impl<T> Spanned<T> {
-    fn new(t: T, span: Span) -> Spanned<T> {
+    pub fn new(t: T, span: Span) -> Spanned<T> {
         Spanned { t, span }
     }
 }
