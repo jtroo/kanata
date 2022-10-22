@@ -793,6 +793,19 @@ fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
                     custom_actions.push(ac);
                 }
             }
+            // Flatten multi actions
+            Action::MultipleActions(acs) => {
+                for ac in acs.iter() {
+                    match ac {
+                        Action::Custom(acs) => {
+                            for ac in acs.iter() {
+                                custom_actions.push(ac);
+                            }
+                        }
+                        _ => actions.push(*ac),
+                    }
+                }
+            }
             _ => actions.push(*ac),
         }
     }
@@ -802,6 +815,52 @@ fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     }
 
     Ok(sref(Action::MultipleActions(sref(actions))))
+}
+
+#[test]
+fn recursive_multi_is_flattened() {
+    macro_rules! atom {
+        ($e:expr) => {
+            SExpr::Atom(Spanned::new($e.into(), Span::default()))
+        };
+    }
+    macro_rules! list {
+        ($e:tt) => {
+            SExpr::List(Spanned::new(vec! $e, Span::default()))
+        };
+    }
+    use sexpr::*;
+    let params = [
+        atom!("a"),
+        atom!("mmtp"),
+        list!([
+            atom!("multi"),
+            atom!("b"),
+            atom!("mltp"),
+            list!([atom!("multi"), atom!("c"), atom!("mrtp"),])
+        ]),
+    ];
+    let parsed_state = ParsedState::default();
+    if let KanataAction::MultipleActions(parsed_multi) =
+        parse_multi(&params, &parsed_state).unwrap()
+    {
+        assert_eq!(parsed_multi.len(), 4);
+        assert_eq!(parsed_multi[0], Action::KeyCode(KeyCode::A));
+        assert_eq!(parsed_multi[1], Action::KeyCode(KeyCode::B));
+        assert_eq!(parsed_multi[2], Action::KeyCode(KeyCode::C));
+        assert_eq!(
+            parsed_multi[3],
+            Action::Custom(
+                &[
+                    &CustomAction::MouseTap(Btn::Mid),
+                    &CustomAction::MouseTap(Btn::Left),
+                    &CustomAction::MouseTap(Btn::Right),
+                ][..]
+            )
+        );
+    } else {
+        panic!("multi did not parse into multi");
+    }
 }
 
 fn parse_macro(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
