@@ -317,6 +317,8 @@ impl From<Btn> for OsCode {
             Btn::Left => OsCode::BTN_LEFT,
             Btn::Right => OsCode::BTN_RIGHT,
             Btn::Mid => OsCode::BTN_MIDDLE,
+            Btn::Extra => OsCode::BTN_EXTRA,
+            Btn::Side => OsCode::BTN_SIDE,
         }
     }
 }
