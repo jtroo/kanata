@@ -172,8 +172,8 @@ impl KbdOut {
             Btn::Left => send_btn(MOUSEEVENTF_LEFTDOWN),
             Btn::Right => send_btn(MOUSEEVENTF_RIGHTDOWN),
             Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEDOWN),
-            Btn::Side => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON1),
-            Btn::Extra => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON2),
+            Btn::Backward => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON1),
+            Btn::Forward => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON2),
         };
         Ok(())
     }
@@ -184,8 +184,8 @@ impl KbdOut {
             Btn::Left => send_btn(MOUSEEVENTF_LEFTUP),
             Btn::Right => send_btn(MOUSEEVENTF_RIGHTUP),
             Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEUP),
-            Btn::Side => send_xbtn(MOUSEEVENTF_XUP, XBUTTON1),
-            Btn::Extra => send_xbtn(MOUSEEVENTF_XUP, XBUTTON2),
+            Btn::Backward => send_xbtn(MOUSEEVENTF_XUP, XBUTTON1),
+            Btn::Forward => send_xbtn(MOUSEEVENTF_XUP, XBUTTON2),
         };
         Ok(())
     }
