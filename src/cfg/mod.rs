@@ -909,8 +909,8 @@ fn parse_macro_item<'a>(
     }
 }
 
+/// Parses mod keys like `C-S-`. There must be no remaining text after the prefixes.
 fn parse_mods_held_for_submacro(held_mods: &SExpr) -> Result<Vec<KeyCode>> {
-    // Parse a sequence like `C-S-v` or `C-A-del`
     let mods = held_mods
         .atom()
         .ok_or_else(|| anyhow!("{MACRO_ERR}. Invalid value: {held_mods:?}"))?;
@@ -921,8 +921,9 @@ fn parse_mods_held_for_submacro(held_mods: &SExpr) -> Result<Vec<KeyCode>> {
     Ok(mod_keys)
 }
 
+/// Parses mod keys like `C-S-`. There must be no remaining text after the prefixes. Returns the
+/// `KeyCode`s for the modifiers parsed and the unparsed text after any parsed modifier prefixes.
 fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
-    // Parse a sequence like `C-S-v` or `C-A-del`
     let mut key_stack = Vec::new();
     let mut rem = mods;
     loop {
