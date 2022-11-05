@@ -600,6 +600,8 @@ The mouse button actions are:
 * `mlft`: left mouse button
 * `mmid`: middle mouse button
 * `mrgt`: right mouse button
+* `mfwd`: forward mouse button
+* `mbck`: backward mouse button
 
 The mouse button will be held while the key mapped to it is held.
 
@@ -627,6 +629,8 @@ The actions are as follows:
 * `mltp`: tap left mouse button
 * `mmtp`: tap middle mouse button
 * `mrtp`: tap right mouse button
+* `mftp`: tap forward mouse button
+* `mbtp`: tap bacward mouse button
 
 The mouse wheel actions are:
 

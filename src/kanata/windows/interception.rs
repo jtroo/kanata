@@ -53,6 +53,7 @@ impl Kanata {
                     check_for_exit(&key_event);
                     if !MAPPED_KEYS.lock().contains(&key_event.code) {
                         log::debug!("{key_event:?} is not mapped");
+                        intrcptn.send(dev, &strokes[i..i + 1]);
                         continue;
                     }
                     log::debug!("sending {key_event:?} to processing loop");

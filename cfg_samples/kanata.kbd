@@ -355,8 +355,8 @@
 ;; In Windows, using mouse buttons on the kanata window seems to cause it to hang.
 ;; Using the mouse on other windows seems to be fine though.
 ;;
-;; The mouse buttons can be clicked using mlft, mrgt and mmid, representing the
-;; left, right, and middle mouse buttons respectively. If the key is held, the
+;; The mouse buttons can be clicked using mlft, mrgt, mmid, mfwd and mbck, representing the
+;; left, right, middle, forward and backward mouse buttons respectively. If the key is held, the
 ;; button press will also be held.
 ;;
 ;; If there are multiple mouse click actions within a single multi action, e.g.
@@ -374,8 +374,8 @@
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
-  _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
-  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd    _    _    _    _
+  _    _    mltp _    mrtp mmtp _    mbtp mftp    _    _    _
   _    _    _              _              _    _    _
 )
 

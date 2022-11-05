@@ -171,6 +171,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "mlft" | "mouseleft" => OsCode::BTN_LEFT,
         "mrgt" | "mouseright" => OsCode::BTN_RIGHT,
         "mmid" | "mousemid" => OsCode::BTN_MIDDLE,
+        "mfwd" | "mouseforward" => OsCode::BTN_EXTRA,
+        "mbck" | "mousebackward" => OsCode::BTN_SIDE,
 
         "hmpg" | "homepage" => OsCode::KEY_HOMEPAGE,
         "mdia" | "media" => OsCode::KEY_MEDIA,

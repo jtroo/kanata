@@ -29,6 +29,8 @@ pub enum Btn {
     Left,
     Right,
     Mid,
+    Forward,
+    Backward,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

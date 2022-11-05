@@ -598,6 +598,16 @@ fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static
                 Btn::Mid,
             )))))
         }
+        "mfwd" | "mouseforward" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Forward,
+            )))))
+        }
+        "mbck" | "mousebackward" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::Mouse(
+                Btn::Backward,
+            )))))
+        }
         "mltp" | "mousetapleft" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
                 Btn::Left,
@@ -611,6 +621,16 @@ fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static
         "mmtp" | "mousetapmid" => {
             return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
                 Btn::Mid,
+            )))))
+        }
+        "mftp" | "mousetapforward" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
+                Btn::Forward,
+            )))))
+        }
+        "mbtp" | "mousetapbackward" => {
+            return Ok(sref(Action::Custom(sref_slice(CustomAction::MouseTap(
+                Btn::Backward,
             )))))
         }
         "rpt" | "repeat" => return Ok(sref(Action::Custom(sref_slice(CustomAction::Repeat)))),
