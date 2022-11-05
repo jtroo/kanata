@@ -628,53 +628,15 @@ fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static
             ),
         };
     }
+
     // Parse a sequence like `C-S-v` or `C-A-del`
-    let mut rem = ac;
-    let mut key_stack = Vec::new();
-    loop {
-        if let Some(rest) = rem.strip_prefix("C-") {
-            if key_stack.contains(&KeyCode::LCtrl) {
-                bail!("Redundant \"C-\" in {}", ac)
-            }
-            key_stack.push(KeyCode::LCtrl);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("S-") {
-            if key_stack.contains(&KeyCode::LShift) {
-                bail!("Redundant \"S-\" in {}", ac)
-            }
-            key_stack.push(KeyCode::LShift);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("AG-") {
-            if key_stack.contains(&KeyCode::RAlt) {
-                bail!("Redundant \"AltGr\" in {}", ac)
-            }
-            key_stack.push(KeyCode::RAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("RA-") {
-            if key_stack.contains(&KeyCode::RAlt) {
-                bail!("Redundant \"AltGr\" in {}", ac)
-            }
-            key_stack.push(KeyCode::RAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("A-") {
-            if key_stack.contains(&KeyCode::LAlt) {
-                bail!("Redundant \"A-\" in {}", ac)
-            }
-            key_stack.push(KeyCode::LAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("M-") {
-            if key_stack.contains(&KeyCode::LGui) {
-                bail!("Redundant \"M-\" in {}", ac)
-            }
-            key_stack.push(KeyCode::LGui);
-            rem = rest;
-        } else if let Some(oscode) = str_to_oscode(rem) {
-            key_stack.push(oscode.into());
-            return Ok(sref(Action::MultipleKeyCodes(sref(key_stack).as_ref())));
-        } else {
-            bail!("Could not parse value: {}", ac)
-        }
-    }
+    let (mut keys, unparsed_str) = parse_mod_prefix(ac)?;
+    keys.push(
+        str_to_oscode(unparsed_str)
+            .ok_or_else(|| anyhow!("Could not parse: {ac:?}"))?
+            .into(),
+    );
+    Ok(sref(Action::MultipleKeyCodes(sref(keys).as_ref())))
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr::List`.
@@ -863,48 +825,149 @@ fn recursive_multi_is_flattened() {
     }
 }
 
+const MACRO_ERR: &str =
+    "Action \"macro\" only accepts delays, keys, chords, and chorded sub-macros";
+
 fn parse_macro(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!("macro expects at least one atom after it")
     }
-    let mut events = Vec::new();
-    for expr in ac_params {
-        if let Ok(delay) = parse_timeout(expr) {
-            events.push(SequenceEvent::Delay {
-                duration: delay.into(),
-            });
-            continue;
-        }
-        match parse_action(expr, parsed_state)? {
-            Action::KeyCode(kc) => {
-                // Should note that I tried `SequenceEvent::Tap` initially but it seems to be buggy
-                // so I changed the code to use individual press and release. The SequenceEvent
-                // code is from a PR that (at the time of this writing) hasn't yet been merged into
-                // keyberon master and doesn't have tests written for it yet. This seems to work as
-                // expected right now though.
-                events.push(SequenceEvent::Press(*kc));
-                events.push(SequenceEvent::Release(*kc));
-            }
-            Action::MultipleKeyCodes(kcs) => {
-                // chord - press in order then release in the reverse order
-                for kc in kcs.iter() {
-                    events.push(SequenceEvent::Press(*kc));
-                }
-                for kc in kcs.iter().rev() {
-                    events.push(SequenceEvent::Release(*kc));
-                }
-            }
-            _ => {
-                bail!(
-                    "Action \"macro\" only accepts delays, keys, and chords. Invalid value {:?}",
-                    expr
-                )
-            }
-        }
+    let mut all_events = Vec::new();
+    let mut events;
+    let mut params_remainder = ac_params;
+    while !params_remainder.is_empty() {
+        (events, params_remainder) = parse_macro_item(params_remainder, parsed_state)?;
+        all_events.append(&mut events);
     }
     Ok(sref(Action::Sequence {
-        events: sref(events),
+        events: sref(all_events),
     }))
+}
+
+fn parse_macro_item<'a>(
+    acs: &'a [SExpr],
+    parsed_state: &ParsedState,
+) -> Result<(Vec<SequenceEvent>, &'a [SExpr])> {
+    if let Ok(duration) = parse_timeout(&acs[0]) {
+        let duration = u32::from(duration);
+        return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
+    }
+    match parse_action(&acs[0], parsed_state) {
+        Ok(Action::KeyCode(kc)) => {
+            // Should note that I tried `SequenceEvent::Tap` initially but it seems to be buggy
+            // so I changed the code to use individual press and release. The SequenceEvent
+            // code is from a PR that (at the time of this writing) hasn't yet been merged into
+            // keyberon master and doesn't have tests written for it yet. This seems to work as
+            // expected right now though.
+            Ok((
+                vec![SequenceEvent::Press(*kc), SequenceEvent::Release(*kc)],
+                &acs[1..],
+            ))
+        }
+        Ok(Action::MultipleKeyCodes(kcs)) => {
+            // chord - press in order then release in the reverse order
+            let mut events = vec![];
+            for kc in kcs.iter() {
+                events.push(SequenceEvent::Press(*kc));
+            }
+            for kc in kcs.iter().rev() {
+                events.push(SequenceEvent::Release(*kc));
+            }
+            Ok((events, &acs[1..]))
+        }
+        _ => {
+            // Try to parse a chorded sub-macro, e.g. S-(tab tab tab)
+            if acs.len() < 2 {
+                bail!("{MACRO_ERR}. Invalid value {acs:?}");
+            }
+            let held_mods = parse_mods_held_for_submacro(&acs[0])?;
+            let mut all_events = vec![];
+
+            // First, press all of the modifiers
+            for kc in held_mods.iter().copied() {
+                all_events.push(SequenceEvent::Press(kc));
+            }
+
+            // Do the submacro
+            let submacro = acs[1]
+                .list()
+                .ok_or_else(|| anyhow!("{MACRO_ERR}. Invalid value: {acs:?}"))?;
+            let mut submacro_remainder = submacro;
+            let mut events;
+            while !submacro_remainder.is_empty() {
+                (events, submacro_remainder) = parse_macro_item(submacro_remainder, parsed_state)?;
+                all_events.append(&mut events);
+            }
+
+            // Lastly, release modifiers
+            for kc in held_mods.iter().copied() {
+                all_events.push(SequenceEvent::Release(kc));
+            }
+
+            Ok((all_events, &acs[2..]))
+        }
+    }
+}
+
+/// Parses mod keys like `C-S-`. There must be no remaining text after the prefixes.
+fn parse_mods_held_for_submacro(held_mods: &SExpr) -> Result<Vec<KeyCode>> {
+    let mods = held_mods
+        .atom()
+        .ok_or_else(|| anyhow!("{MACRO_ERR}. Invalid value: {held_mods:?}"))?;
+    let (mod_keys, unparsed_str) = parse_mod_prefix(mods)?;
+    if !unparsed_str.is_empty() {
+        bail!("{MACRO_ERR}. Invalid value: {held_mods:?}");
+    }
+    Ok(mod_keys)
+}
+
+/// Parses mod keys like `C-S-`. There must be no remaining text after the prefixes. Returns the
+/// `KeyCode`s for the modifiers parsed and the unparsed text after any parsed modifier prefixes.
+fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
+    let mut key_stack = Vec::new();
+    let mut rem = mods;
+    loop {
+        if let Some(rest) = rem.strip_prefix("C-") {
+            if key_stack.contains(&KeyCode::LCtrl) {
+                bail!("Redundant \"C-\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::LCtrl);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("S-") {
+            if key_stack.contains(&KeyCode::LShift) {
+                bail!("Redundant \"S-\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::LShift);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("AG-") {
+            if key_stack.contains(&KeyCode::RAlt) {
+                bail!("Redundant \"AltGr\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::RAlt);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("RA-") {
+            if key_stack.contains(&KeyCode::RAlt) {
+                bail!("Redundant \"AltGr\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::RAlt);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("A-") {
+            if key_stack.contains(&KeyCode::LAlt) {
+                bail!("Redundant \"A-\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::LAlt);
+            rem = rest;
+        } else if let Some(rest) = rem.strip_prefix("M-") {
+            if key_stack.contains(&KeyCode::LGui) {
+                bail!("Redundant \"M-\" in {mods:?}");
+            }
+            key_stack.push(KeyCode::LGui);
+            rem = rest;
+        } else {
+            break;
+        }
+    }
+    Ok((key_stack, rem))
 }
 
 fn parse_unicode(ac_params: &[SExpr]) -> Result<&'static KanataAction> {

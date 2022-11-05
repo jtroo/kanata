@@ -774,8 +774,9 @@ This means that with `+macro+` you can have some letters capitalized and others
 not. This is not possible with `+multi+`.
 
 The `+macro+` action accepts one or more keys, chords, and delays (unit: ms).
-The number keys will be parsed as delays, so they must be aliased to be used in
-a macro.
+It also accepts a chorded list where the list is subject to the aforementioned
+restrictions. The number keys will be parsed as delays, so they must be aliased
+to be used in a macro.
 
 Example:
 
@@ -784,8 +785,16 @@ Example:
   : S-;
   8 8
   0 0
+
   ;; Type "http://localhost:8080"
   lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
+
+  ;; Type "I am HAPPY my FrIeNd"
+  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d)
+
+  ;; alt-tab(x3) and alt-shift-tab(x3) with macro
+  tfd (macro A-(tab 200 tab 200 tab))
+  tbk (macro A-S-(tab 200 tab 200 tab))
 )
 ----
 
