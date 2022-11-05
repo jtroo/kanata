@@ -27,7 +27,7 @@
 
 (deflayer arrows
   _    _           up
-              mstp down mxtp
+              left down rght
   _    _
 )
 
