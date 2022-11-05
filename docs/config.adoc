@@ -629,6 +629,8 @@ The actions are as follows:
 * `mltp`: tap left mouse button
 * `mmtp`: tap middle mouse button
 * `mrtp`: tap right mouse button
+* `mftp`: tap forward mouse button
+* `mbtp`: tap bacward mouse button
 
 The mouse wheel actions are:
 

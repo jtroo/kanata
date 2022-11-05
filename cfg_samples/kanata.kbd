@@ -372,8 +372,8 @@
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
-  _    pgdn mlft _    mrgt mmid _    _    _    _    _    _    _
-  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd    _    _    _    _
+  _    _    mltp _    mrtp mmtp _    mbtp mftp    _    _    _
   _    _    _              _              _    _    _
 )
 
