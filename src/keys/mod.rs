@@ -19,6 +19,7 @@ pub use windows::*;
 ///
 /// Do your best to keep the str side a maximum character length of 4 so that configuration file
 /// can stay clean.
+#[rustfmt::skip]
 pub fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
         "grv" | "`" => OsCode::KEY_GRAVE,
@@ -35,8 +36,6 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "+" => OsCode::KEY_KPPLUS,
         "min" | "-" => OsCode::KEY_MINUS,
         "eql" | "=" => OsCode::KEY_EQUAL,
-        "powr" => OsCode::KEY_POWER,
-        "zzz" => OsCode::KEY_SLEEP,
         "bspc" | "bks" => OsCode::KEY_BACKSPACE,
         "tab" => OsCode::KEY_TAB,
         "q" => OsCode::KEY_Q,
@@ -80,12 +79,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "/" => OsCode::KEY_SLASH,
         "kp=" | "clr" => OsCode::KEY_CLEAR,
         // The kp<etc> keys are also known as the numpad keys. E.g. below is numpad enter.
-        "kprt" => OsCode::KEY_KPENTER,
-        "kp/" => OsCode::KEY_KPSLASH,
-        "kp+" => OsCode::KEY_KPPLUS,
-        "kp*" => OsCode::KEY_KPASTERISK,
-        "kp-" => OsCode::KEY_KPMINUS,
-        "kp." => OsCode::KEY_KPDOT,
+        "kp0" => OsCode::KEY_KP1,
         "kp1" => OsCode::KEY_KP1,
         "kp2" => OsCode::KEY_KP2,
         "kp3" => OsCode::KEY_KP3,
@@ -95,11 +89,17 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "kp7" => OsCode::KEY_KP7,
         "kp8" => OsCode::KEY_KP8,
         "kp9" => OsCode::KEY_KP9,
+        "kprt" => OsCode::KEY_KPENTER,
+        "kp/" => OsCode::KEY_KPSLASH,
+        "kp+" => OsCode::KEY_KPPLUS,
+        "kp*" => OsCode::KEY_KPASTERISK,
+        "kp-" => OsCode::KEY_KPMINUS,
+        "kp." => OsCode::KEY_KPDOT,
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
-        "102d" | "lsgt" | "nubs" | "nonusbslash" => OsCode::KEY_102ND, // Typicalyl the non-US backslash
+        // Typically the Non-US backslash, near the left shift key
+        "102d" | "lsgt" | "nubs" | "nonusbslash" => OsCode::KEY_102ND,
         "scrlck" | "slck" => OsCode::KEY_SCROLLLOCK,
         "pause" | "break" | "brk" => OsCode::KEY_PAUSE,
-        "prnt" => OsCode::KEY_PRINT,
         "wkup" => OsCode::KEY_WAKEUP,
         "esc" => OsCode::KEY_ESC,
         "rshift" | "rshft" | "rsft" => OsCode::KEY_RIGHTSHIFT,
@@ -159,19 +159,33 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f22" => OsCode::KEY_F22,
         "f23" => OsCode::KEY_F23,
         "f24" => OsCode::KEY_F24,
-        "kp0" => OsCode::KEY_KP0,
         "hangeul" => OsCode::KEY_HANGEUL,
         "hanja" => OsCode::KEY_HANJA,
         "ro" => OsCode::KEY_RO,
+
         #[cfg(target_os = "linux")]
-        "prtsc" => OsCode::KEY_SYSRQ,
+        "prtsc" | "prnt" => OsCode::KEY_SYSRQ,
         #[cfg(target_os = "windows")]
-        "prtsc" => OsCode::KEY_PRINT,
+        "prtsc" | "prnt" => OsCode::KEY_PRINT,
+
         "mlft" | "mouseleft" => OsCode::BTN_LEFT,
         "mrgt" | "mouseright" => OsCode::BTN_RIGHT,
         "mmid" | "mousemid" => OsCode::BTN_MIDDLE,
         "mext" | "mouseextra" => OsCode::BTN_EXTRA,
         "msde" | "mouseside" => OsCode::BTN_SIDE,
+
+        "hmpg" | "homepage" => OsCode::KEY_HOMEPAGE,
+        "mdia" | "media" => OsCode::KEY_MEDIA,
+        "mail" | "email" => OsCode::KEY_EMAIL,
+
+        // NOTE: these are linux-only right now due to missing the mappings in windows.rs
+        #[cfg(tagret_os = "linux")]
+        "plyr" | "player" => OsCode::KEY_PLAYER,
+        #[cfg(tagret_os = "linux")]
+        "powr" | "power" => OsCode::KEY_POWER,
+        #[cfg(tagret_os = "linux")]
+        "zzz" | "sleep" => OsCode::KEY_SLEEP,
+
         _ => return None,
     })
 }
@@ -935,6 +949,10 @@ impl From<KeyCode> for OsCode {
             KeyCode::Cancel => OsCode::KEY_CANCEL,
             KeyCode::MediaMute => OsCode::KEY_MICMUTE,
             KeyCode::Intl1 => OsCode::KEY_RO,
+            KeyCode::K0xAA => OsCode::KEY_MEDIA,
+            KeyCode::K0xAB => OsCode::KEY_EMAIL,
+            KeyCode::K0xAC => OsCode::KEY_PLAYER,
+            KeyCode::K0xAD => OsCode::KEY_HOMEPAGE,
             _ => OsCode::KEY_UNKNOWN,
         }
     }
@@ -1103,6 +1121,10 @@ impl From<OsCode> for KeyCode {
             OsCode::KEY_CANCEL => KeyCode::Cancel,
             OsCode::KEY_MICMUTE => KeyCode::MediaMute,
             OsCode::KEY_RO => KeyCode::Intl1,
+            OsCode::KEY_MEDIA => KeyCode::K0xAA,
+            OsCode::KEY_EMAIL => KeyCode::K0xAB,
+            OsCode::KEY_PLAYER => KeyCode::K0xAC,
+            OsCode::KEY_HOMEPAGE => KeyCode::K0xAD,
             _ => KeyCode::No,
         }
     }

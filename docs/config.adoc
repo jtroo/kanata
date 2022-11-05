@@ -636,7 +636,7 @@ The mouse wheel actions are:
 * `mwheel-right`: horizontal scroll right
 
 All of these actions accept two number strings. The first is the interval
-(unit: milliseconds) between scroll actions. The second number is the distance
+(unit: ms) between scroll actions. The second number is the distance
 (unit: arbitrary). In both Windows and Linux, 120 distance units is equivalent
 to a notch movement on a physical wheel. You can play with the parameters to
 see what feels correct to you. Both numbers must be in the range [1,65535].
@@ -702,7 +702,7 @@ ms) and another key or action.
 
 Some of the intended use cases are:
 
-* pressa modifier for exactly one following key press
+* press a modifier for exactly one following key press
 * switch to another layer for exactly one following key press
 
 If a `+one-shot+` key is held then it will act as the regular key. E.g. holding
