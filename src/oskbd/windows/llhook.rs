@@ -172,6 +172,8 @@ impl KbdOut {
             Btn::Left => send_btn(MOUSEEVENTF_LEFTDOWN),
             Btn::Right => send_btn(MOUSEEVENTF_RIGHTDOWN),
             Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEDOWN),
+            Btn::Side => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON1),
+            Btn::Extra => send_xbtn(MOUSEEVENTF_XDOWN, XBUTTON2),
         };
         Ok(())
     }
@@ -182,6 +184,8 @@ impl KbdOut {
             Btn::Left => send_btn(MOUSEEVENTF_LEFTUP),
             Btn::Right => send_btn(MOUSEEVENTF_RIGHTUP),
             Btn::Mid => send_btn(MOUSEEVENTF_MIDDLEUP),
+            Btn::Side => send_xbtn(MOUSEEVENTF_XUP, XBUTTON1),
+            Btn::Extra => send_xbtn(MOUSEEVENTF_XUP, XBUTTON2),
         };
         Ok(())
     }
@@ -204,6 +208,21 @@ fn send_btn(flag: u32) {
         // set button
         let mut m_input: MOUSEINPUT = mem::zeroed();
         m_input.dwFlags |= flag;
+
+        *inputs[0].u.mi_mut() = m_input;
+        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
+    }
+}
+
+fn send_xbtn(flag: u32, xbtn: u16) {
+    unsafe {
+        let mut inputs: [INPUT; 1] = mem::zeroed();
+        inputs[0].type_ = INPUT_MOUSE;
+
+        // set button
+        let mut m_input: MOUSEINPUT = mem::zeroed();
+        m_input.dwFlags |= flag;
+        m_input.mouseData = xbtn.into();
 
         *inputs[0].u.mi_mut() = m_input;
         SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
