@@ -234,6 +234,8 @@
   ;; macro accepts keys, chords, and numbers (a delay in ms). Note that numbers
   ;; will be parsed as delays, so they will need to be aliased to be used.
   lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
+  tbm (macro A-(tab 200 tab 200 tab) 200 S-A-(tab 200 tab 200 tab))
+  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d)
 
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name
@@ -336,7 +338,7 @@
 
 (deflayer chords      ;; you can put list actions directly in deflayer but it's ugly, so prefer aliases.
   _    _    _    _    _    _    _    _    _    _    @🙁  (unicode 😀) _    _
-  _    _    _    _    _    _    _    _    @csc _    @lch _            _    _
+  _    _    _    _    _    _    _    _    @csc @hpy @lch @tbm         _    _
   _    @alp _    _    _    _    _    _    _    _    _    _            _
   _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _
