@@ -118,6 +118,8 @@ otherwise.
 - Try it out and let me know what you think. Feel free to file an issue or
   start a discussion.
 - Browse the open issues and help out if you are able and/or would like to.
+- If you know anything about writing a keyboard driver for Windows, starting an
+  open-source alternative to the Interception driver would be lovely
 
 ## What does the name mean?
 
@@ -196,3 +198,14 @@ While kanata is the best tool for me (jtroo), it may not be the best tool for
 you. I'm happy to introduce you to tools that may better suit your needs. This
 list is also useful as reference/inspiration for functionality that could be
 added to kanata.
+
+## Donations/Support?
+
+The author (jtroo) will not accept monetary donations for work on kanata.
+Please instead donate your time and/or money to charity.
+
+Some links are below. These links are provided for learning and as interesting
+reads. They are **not** an endorsement.
+
+- https://www.effectivealtruism.org/
+- https://www.givewell.org/
