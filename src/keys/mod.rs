@@ -79,7 +79,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "/" => OsCode::KEY_SLASH,
         "kp=" | "clr" => OsCode::KEY_CLEAR,
         // The kp<etc> keys are also known as the numpad keys. E.g. below is numpad enter.
-        "kp0" => OsCode::KEY_KP1,
+        "kp0" => OsCode::KEY_KP0,
         "kp1" => OsCode::KEY_KP1,
         "kp2" => OsCode::KEY_KP2,
         "kp3" => OsCode::KEY_KP3,
