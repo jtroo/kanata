@@ -1,0 +1,17 @@
+| Keyboard                                                                   | PCB or Handwired | MCU       | Feature Status                                                                                 |
+| -                                                                          | -                | -         | -                                                                                              |
+| [KeySeeBee](https://github.com/TeXitoi/keyseebee)                          | PCB              | STM32F072 | <ul><li>[x] Matrix </li><li>[x] Split</li></ul>                                                |
+| [Keyberon-f4](https://github.com/TeXitoi/keyberon-f4)                      | Handwired        | STM32F401 | <ul><li>[x] Matrix </li></ul>                                                                  |
+| [Arisu](https://github.com/help-14/arisu-handwired)                        | Handwired        | STM32F401 | <ul><li>[x] Matrix </li></ul>                                                                  |
+| [ortho60-keyberon](https://github.com/TeXitoi/ortho60-keyberon)            | PCB              | STM32F103 | <ul><li>[x] Matrix </li></ul>                                                                  |
+| [keyberon-grid](https://github.com/TeXitoi/keyberon-grid)                  | Handwired        | STM32F103 | <ul><li>[x] Matrix </li></ul>                                                                  |
+| [Clueboard 66% LP](https://github.com/wezm/clueboard-rust-firmware)        | PCB              | STM32F303 | <ul><li>[x] Matrix </li><li>[ ] LEDs</li><li>[ ] Speakers</li></ul>                            |
+| [anne-keyberon](https://github.com/hdhoang/anne-keyberon)                  | PCB              | STM32L151 | <ul><li>[ ] Matrix </li><li>[ ] BT proto </li><li>[ ] LED proto </li><li>[ ] LED MCU </li></ul>                                                                  |
+| [corne-xiao](https://github.com/lehmanju/corne-xiao)                       | PCB              | ATSAMD21  | <ul><li>[x] Matrix </li></ul>                                                                  |
+| [pinci](https://github.com/camrbuss/pinci)                                 | PCB              | RP2040    | <ul><li>[x] Matrix </li><li>[x] Split</li></ul>                                                |
+| [nibble-rp2040-rs](https://github.com/DrewTChrist/nibble-rp2040-rs)        | PCB              | RP2040    | <ul><li>[x] Matrix </li><li>[ ] Rotary Encoder</li><li>[ ] RGB LEDs</li><li>[ ] OLED</li></ul> |
+| [keyboard-labs](https://github.com/rgoulter/keyboard-labs)                 | PCB              | STM32F401 | <ul><li>[x] Matrix </li><li>[x] Split</li></ul>                                                |
+| [makerdiary M60](https://github.com/jamesmunns/m60-keyboard/)              | PCB              | nRF52840  | <ul><li>[x] Matrix </li><li>[x] RGB LEDs</li> |
+| [PouetPouet](https://github.com/dkm/pouetpouet-board)                          | PCB              | STM32F072 | <ul><li>[x] Matrix </li></ul>                                                |
+| [corne](https://github.com/simmsb/keyboard)                                | PCB              | nRF52840  | <ul><li>[x] Matrix </li><li>[x] RGB LEDs</li><li>[x] OLED</li><li>[x] split</li></ul>          |
+| [Cantor](https://github.com/dariogoetz/cantor-firmware-keyberon)           | PCB              | STM32F401 | <ul><li>[x] Matrix </li><li>[ ] LEDs</li><li>[x] Split</li><li>[x] Diodeless</li></ul>         |

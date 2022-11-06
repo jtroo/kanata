@@ -1,0 +1,20 @@
+[package]
+name = "kanata-keyberon"
+version = "0.3.2"
+authors = ["Guillaume Pinot <texitoi@texitoi.eu>", "Robin Krahl <robin.krahl@ireas.org>", "jtroo <j.andreitabs@gmail.com>"]
+edition = "2018"
+description = "Pure Rust keyboard firmware. Fork intended for use with kanata."
+documentation = "https://docs.rs/keyberon"
+repository = "https://github.com/TeXitoi/keyberon"
+keywords = ["keyboard", "usb-device", "firmware", "kanata"]
+categories = ["embedded", "no-std"]
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+kanata-keyberon-macros = { version = "0.1.0" }
+either = { version = "1.6", default-features = false }
+embedded-hal = { version = "0.2", features = ["unproven"] }
+usb-device = "0.2"
+heapless = "0.7.15"
+arraydeque = { version = "0.4.5", default-features = false }

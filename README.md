@@ -101,8 +101,13 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
 Contributions are welcome!
 
-Unless explicitly stated otherwise, your contributions will be made under the
-LGPL-3.0-only[*] license.
+Unless explicitly stated otherwise, your contributions to kanata will be made
+under the LGPL-3.0-only[*] license.
+
+The exception to this is the code under the [keyberon](./keyberon) directory,
+which is licensed under the MIT license, and likewise, contributions to code
+in this directory will made under the MIT license unless explicitly stated
+otherwise.
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
@@ -112,7 +117,7 @@ LGPL-3.0-only[*] license.
 
 - Try it out and let me know what you think. Feel free to file an issue or
   start a discussion.
-- Browse the open issues and help out if you would like to
+- Browse the open issues and help out if you are able and/or would like to.
 
 ## What does the name mean?
 
