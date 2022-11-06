@@ -271,9 +271,9 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "heapless"
-version = "0.7.15"
+version = "0.7.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f6733da246dc2af610133c8be0667170fd68e8ca5630936b520300eee8846f9"
+checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
 dependencies = [
  "atomic-polyfill",
  "hash32",
@@ -367,9 +367,9 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a56e9b340e26cc0b758556d196a3103ee02237b549967fdcf4b722c426b2b4bf"
+checksum = "f1045f162723bf513d2923e3ad2e0da0e2f9bf0f031c352154ae76de2f5c4302"
 dependencies = [
  "arraydeque",
  "either",
