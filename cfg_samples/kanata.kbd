@@ -237,6 +237,8 @@
   tbm (macro A-(tab 200 tab 200 tab) 200 S-A-(tab 200 tab 200 tab))
   hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d)
 
+  rls (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
+
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
