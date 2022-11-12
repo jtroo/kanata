@@ -677,6 +677,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "tap-hold-release" => parse_tap_hold(&ac[1..], parsed_state, HoldTapConfig::PermissiveHold),
         "multi" => parse_multi(&ac[1..], parsed_state),
         "macro" => parse_macro(&ac[1..], parsed_state),
+        "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], parsed_state),
         "unicode" => parse_unicode(&ac[1..]),
         "one-shot" => parse_one_shot(&ac[1..], parsed_state),
         "tap-dance" => parse_tap_dance(&ac[1..], parsed_state),
@@ -862,6 +863,17 @@ fn parse_macro(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     Ok(sref(Action::Sequence {
         events: sref(all_events),
     }))
+}
+
+fn parse_macro_release_cancel(
+    ac_params: &[SExpr],
+    parsed_state: &ParsedState,
+) -> Result<&'static KanataAction> {
+    let macro_action = parse_macro(ac_params, parsed_state)?;
+    Ok(sref(Action::MultipleActions(sref(vec![
+        *macro_action,
+        Action::Custom(sref_slice(CustomAction::CancelMacroOnRelease)),
+    ]))))
 }
 
 fn parse_macro_item<'a>(

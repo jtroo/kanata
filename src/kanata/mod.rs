@@ -340,6 +340,14 @@ impl Kanata {
                             }
                             pbtn
                         }
+                        CustomAction::CancelMacroOnRelease => {
+                            log::debug!("cancelling all macros");
+                            self.layout.active_sequences.clear();
+                            self.layout
+                                .states
+                                .retain(|s| !matches!(s, State::FakeKey { .. }));
+                            pbtn
+                        }
                         _ => pbtn,
                     })
                     .map(|btn| {

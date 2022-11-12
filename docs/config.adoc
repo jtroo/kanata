@@ -782,6 +782,8 @@ It also accepts a chorded list where the list is subject to the aforementioned
 restrictions. The number keys will be parsed as delays, so they must be aliased
 to be used in a macro.
 
+Up to 4 macros can be active at the same time.
+
 Example:
 
 ----
@@ -799,6 +801,25 @@ Example:
   ;; alt-tab(x3) and alt-shift-tab(x3) with macro
   tfd (macro A-(tab 200 tab 200 tab))
   tbk (macro A-S-(tab 200 tab 200 tab))
+)
+----
+
+There is a variant of the `+macro+` action that will cancel all active macros
+upon releasing the key: `+macro-release-cancel+`. It is parsed identically to
+the non-cancelling version. An example use case for this action is holding down
+a key to get different outputs, similar to tap-dance but one can see which keys
+are being outputted.
+
+E.g. in the example below, when holding the key, first `1` is typed, then
+replaced by `!` after 500ms, and finally that is replaced by `@` after another
+500ms. However, if the key is released, the last character typed will remain
+and the rest of the macro does not run.
+
+----
+(defalias
+  ;; macro-release-cancel to output different characters with visual feedback
+  ;; after holding for different amounts of time.
+  1!@ (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
 )
 ----
 
