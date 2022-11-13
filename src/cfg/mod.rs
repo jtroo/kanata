@@ -876,10 +876,14 @@ fn parse_macro_release_cancel(
     ]))))
 }
 
+#[allow(clippy::type_complexity)] // return type is not pub
 fn parse_macro_item<'a>(
     acs: &'a [SExpr],
     parsed_state: &ParsedState,
-) -> Result<(Vec<SequenceEvent>, &'a [SExpr])> {
+) -> Result<(
+    Vec<SequenceEvent<&'static [&'static CustomAction]>>,
+    &'a [SExpr],
+)> {
     if let Ok(duration) = parse_timeout(&acs[0]) {
         let duration = u32::from(duration);
         return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
@@ -907,6 +911,7 @@ fn parse_macro_item<'a>(
             }
             Ok((events, &acs[1..]))
         }
+        Ok(Action::Custom(custom)) => Ok((vec![SequenceEvent::Custom(custom)], &acs[1..])),
         _ => {
             // Try to parse a chorded sub-macro, e.g. S-(tab tab tab)
             if acs.len() < 2 {

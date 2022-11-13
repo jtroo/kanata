@@ -61,7 +61,7 @@ where
     pub stacked: Stack,
     pub oneshot: OneShotState,
     pub tap_hold_tracker: TapHoldTracker,
-    pub active_sequences: ArrayDeque<[SequenceState; 4], arraydeque::behavior::Wrapping>,
+    pub active_sequences: ArrayDeque<[SequenceState<T>; 4], arraydeque::behavior::Wrapping>,
 }
 
 /// An event on the key matrix.
@@ -158,6 +158,9 @@ pub enum State<T: 'static> {
     LayerModifier { value: usize, coord: (u8, u16) },
     Custom { value: &'static T, coord: (u8, u16) },
     FakeKey { keycode: KeyCode }, // Fake key event for sequences
+    SeqCustomPending(&'static T),
+    SeqCustomActive(&'static T),
+    Tombstone,
 }
 impl<T> Copy for State<T> {}
 impl<T> Clone for State<T> {
@@ -381,11 +384,11 @@ impl<T> WaitingState<T> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct SequenceState {
-    cur_event: Option<SequenceEvent>,
+pub struct SequenceState<T: 'static> {
+    cur_event: Option<SequenceEvent<T>>,
     delay: u32,              // Keeps track of SequenceEvent::Delay time remaining
     tapped: Option<KeyCode>, // Keycode of a key that should be released at the next tick
-    remaining_events: &'static [SequenceEvent],
+    remaining_events: &'static [SequenceEvent<T>],
 }
 
 type OneShotKeys = [(u8, u16); ONE_SHOT_MAX_ACTIVE];
@@ -512,7 +515,7 @@ impl TapHoldTracker {
     }
 }
 
-impl<const C: usize, const R: usize, const L: usize, T: 'static> Layout<C, R, L, T> {
+impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C, R, L, T> {
     /// Creates a new `Layout` object.
     pub fn new(layers: &'static [[[Action<T>; C]; R]; L]) -> Self {
         Self {
@@ -597,8 +600,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static> Layout<C, R, L,
                 None => CustomEvent::NoEvent,
             },
         });
-
-        custom
+        self.process_sequence_custom(custom)
     }
     /// Takes care of draining and populating the `active_sequences` ArrayDeque,
     /// giving us sequences (aka macros) of nearly limitless length!
@@ -645,10 +647,6 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static> Layout<C, R, L,
                         Some(SequenceEvent::Tap(keycode)) => {
                             // Same as Press() except we track it for one tick via seq.tapped:
                             let _ = self.states.push(FakeKey { keycode });
-
-                            // Coord here doesn't matter; only matters if 2nd param is true. Need
-                            // to fake the coord anyway; sequence events don't have associated
-                            // coordinates.
                             self.oneshot.handle_press(OneShotHandlePressKey::Other);
 
                             seq.tapped = Some(keycode);
@@ -664,6 +662,9 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static> Layout<C, R, L,
                                 seq.delay = duration - 1;
                             }
                         }
+                        Some(SequenceEvent::Custom(custom)) => {
+                            let _ =  self.states.push(State::SeqCustomPending(&custom));
+                        }
                         _ => {} // We'll never get here
                     }
                 }
@@ -673,6 +674,28 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static> Layout<C, R, L,
                 }
             }
         }
+    }
+    fn process_sequence_custom(&mut self, mut current_custom: CustomEvent<T>) -> CustomEvent<T> {
+        if self.states.is_empty() || !matches!(current_custom, CustomEvent::NoEvent) {
+            return current_custom;
+        }
+        self.states.retain(|s| !matches!(s, State::Tombstone));
+        for state in self.states.iter_mut() {
+            match state {
+                State::SeqCustomPending(custom) => {
+                    current_custom.update(CustomEvent::Press(custom));
+                    *state = State::SeqCustomActive(custom);
+                    break;
+                }
+                State::SeqCustomActive(custom) => {
+                    current_custom.update(CustomEvent::Release(custom));
+                    *state = State::Tombstone;
+                    break;
+                }
+                _ => continue,
+            };
+        }
+        current_custom
     }
     fn unstack(&mut self, stacked: Stacked) -> CustomEvent<T> {
         use Event::*;
