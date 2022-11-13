@@ -6,8 +6,8 @@ use core::fmt::Debug;
 
 /// The different types of actions we support for key sequences/macros
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum SequenceEvent {
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum SequenceEvent<T: 'static> {
     /// No operation action: just do nothing (a placeholder).
     NoOp,
     /// A keypress/keydown
@@ -27,11 +27,28 @@ pub enum SequenceEvent {
         /// The current chunk
         index: usize,
         /// The full list of Sequence Events (that aren't Continue())
-        events: &'static [SequenceEvent],
+        events: &'static [SequenceEvent<T>],
     },
+    /// Custom event in sequence.
+    Custom(&'static T),
     /// Cancels the running sequence and can be used to mark the end of a sequence
     /// instead of using a number of Release() events
     Complete,
+}
+
+impl<T> Debug for SequenceEvent<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NoOp => write!(f, "NoOp"),
+            Self::Press(arg0) => f.debug_tuple("Press").field(arg0).finish(),
+            Self::Release(arg0) => f.debug_tuple("Release").field(arg0).finish(),
+            Self::Tap(arg0) => f.debug_tuple("Tap").field(arg0).finish(),
+            Self::Delay { duration } => f.debug_struct("Delay").field("duration", duration).finish(),
+            Self::Continue { index, events } => f.debug_struct("Continue").field("index", index).field("events", events).finish(),
+            Self::Custom(_) => write!(f, "Custom"),
+            Self::Complete => write!(f, "Complete"),
+        }
+    }
 }
 
 /// Behavior configuration of HoldTap.
@@ -233,7 +250,7 @@ where
     /// A sequence of SequenceEvents
     Sequence {
         /// An array of SequenceEvents that will be triggered (in order)
-        events: &'static [SequenceEvent],
+        events: &'static [SequenceEvent<T>],
     },
     /// Cancels any running sequences
     CancelSequences,

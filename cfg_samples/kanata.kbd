@@ -230,12 +230,13 @@
   é AG-2
   è RA-7
   testmacro (macro AG-2 RA-7)
+  🙃 (unicode 🙃)
 
   ;; macro accepts keys, chords, and numbers (a delay in ms). Note that numbers
   ;; will be parsed as delays, so they will need to be aliased to be used.
   lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
   tbm (macro A-(tab 200 tab 200 tab) 200 S-A-(tab 200 tab 200 tab))
-  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d)
+  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d @🙃)
 
   rls (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
 
@@ -443,7 +444,7 @@
   _    @fcp @fsp @fmp @pal _    _    _    _    _    _    _    _    _
   _    @fcr @fsr @fap @ral _    _    _    _    _    _    _    _    _
   _    @fct @fst @rma _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _
+  _    @t1  _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
 )
 
@@ -483,6 +484,9 @@
       )
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
+
+  ;; Test of on-press-fakekey and on-release-fakekey in a macro
+  t1 (macro-release-cancel @fsp 5 a b c @fsr 5 c b a)
 
   ;; If you find that an application isn't registering keypresses correctly
   ;; with multi, you can try out:

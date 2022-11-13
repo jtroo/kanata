@@ -153,8 +153,8 @@ Enabling this configuration makes kanata process keys that are not in defsrc.
 This is useful if you are only mapping a few keys in defsrc instead of most of
 the keys on your keyboard.
 
-Without this, the `+rpt+`, `+tap-hold-release+`, `+tap-hold-press+`, and
-`+defseq+` actions will not activate for keys that are not in defsrc.
+Without this, some actions like `+rpt+`, `+tap-hold-release+`, `+one-shot+`,
+will not work correctly for subsequent key presses that are not in defsrc.
 
 This is disabled by default. The reason this is not enabled by default is
 because some keys may not work correctly if they are intercepted. For example,
@@ -262,9 +262,8 @@ For more context, see: https://github.com/jtroo/kanata/issues/55.
 
 NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
 work properly with other applications that also use keyboard interception.
-Known applications with issues:
+Known application with issues: GWSL/VcXsrv
 
-* GWSL/VcXsrv
 
 === Using multiple defcfg entries
 <<table-of-contents,Back to ToC>>
@@ -747,12 +746,12 @@ of the hold action activating.
 The hold timeout is the number of milliseconds after which the hold action will
 activate.
 
-There are two additional variants of `+tap-hold-+`:
+There are two additional variants of `+tap-hold+`:
 
-* tap-hold-press
+* `+tap-hold-press+`
 ** If there is a press of a different key, the hold action is activated even if
 the hold timeout hasn't expired yet
-* tap-hold-release
+* `+tap-hold-release+`
 ** If there is a press+release of a different key, the hold action is activated
 even if the hold timeout hasn't expired yet
 
@@ -777,12 +776,18 @@ all keys are held, whereas in `+macro+`, keys are pressed then released.
 This means that with `+macro+` you can have some letters capitalized and others
 not. This is not possible with `+multi+`.
 
-The `+macro+` action accepts one or more keys, chords, and delays (unit: ms).
+The `+macro+` action accepts one or more keys, some actions, chords, and delays (unit: ms).
 It also accepts a chorded list where the list is subject to the aforementioned
 restrictions. The number keys will be parsed as delays, so they must be aliased
 to be used in a macro.
 
 Up to 4 macros can be active at the same time.
+
+The actions supported in `+macro+` are:
+
+* <<cmd, cmd>>
+* <<unicode, unicode>>
+* <<mouse-actions,mouse actions>>
 
 Example:
 
@@ -791,12 +796,13 @@ Example:
   : S-;
   8 8
   0 0
+  🙃 (unicode 🙃)
 
   ;; Type "http://localhost:8080"
   lch (macro h t t p @: / / 100 l o c a l h o s t @: @8 @0 @8 @0)
 
-  ;; Type "I am HAPPY my FrIeNd"
-  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d)
+  ;; Type "I am HAPPY my FrIeNd 🙃"
+  hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d spc @🙃)
 
   ;; alt-tab(x3) and alt-shift-tab(x3) with macro
   tfd (macro A-(tab 200 tab 200 tab))
@@ -922,6 +928,9 @@ Do note that processing a fakekey-delay and even a sequence of delays will
 delay any other inputs from being processed until the fakekey-delays are all
 complete, so use with care.
 
+NOTE: You will likely want to use `+macro+` instead of fake keys with delays now
+that `+macro+` supports more actions.
+
 ----
 (defalias
   stm (multi ;; Shift -> middle mouse with a delay
@@ -935,7 +944,7 @@ complete, so use with care.
 )
 ----
 
-For more context, you could read the
+For more context, you can read the
 https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
 
 === Sequences
