@@ -35,7 +35,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "0" => OsCode::KEY_0,
         "+" => OsCode::KEY_KPPLUS,
         "min" | "-" => OsCode::KEY_MINUS,
-        "eql" | "=" => OsCode::KEY_EQUAL,
+        "eql" | "=" | "ì" => OsCode::KEY_EQUAL, // Italian KB has this as ì key
         "bspc" | "bks" => OsCode::KEY_BACKSPACE,
         "tab" => OsCode::KEY_TAB,
         "q" => OsCode::KEY_Q,
