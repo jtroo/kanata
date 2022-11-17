@@ -663,7 +663,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
                             }
                         }
                         Some(SequenceEvent::Custom(custom)) => {
-                            let _ =  self.states.push(State::SeqCustomPending(&custom));
+                            let _ = self.states.push(State::SeqCustomPending(custom));
                         }
                         _ => {} // We'll never get here
                     }

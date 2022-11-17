@@ -358,6 +358,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "radix_trie",
+ "rustc-hash",
  "serde",
  "serde_json",
  "signal-hook",
@@ -367,9 +368,9 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bded72defbe3f926390f6bfdb95fc84118ea3882dad47ff771a3bcc00e4d8ca"
+checksum = "41fc12097885f8c361bac7de8264e8425c4d961f8e526d91315cbc7aecc4e162"
 dependencies = [
  "arraydeque",
  "either",
@@ -723,6 +724,12 @@ dependencies = [
  "lazy_static",
  "regex",
 ]
+
+[[package]]
+name = "rustc-hash"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc_version"

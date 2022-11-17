@@ -7,7 +7,6 @@ use signal_hook::{
     iterator::Signals,
 };
 
-use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::os::unix::io::AsRawFd;
@@ -18,6 +17,8 @@ use crate::custom_action::*;
 use crate::keys::KeyEvent;
 use crate::keys::*;
 
+type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
+
 pub struct KbdIn {
     devices: HashMap<Token, Device>,
     poll: Poll,
@@ -26,7 +27,7 @@ pub struct KbdIn {
 
 impl KbdIn {
     pub fn new(dev_paths: &[String]) -> Result<Self, io::Error> {
-        let mut device_map = HashMap::new();
+        let mut device_map = HashMap::default();
         let poll = Poll::new()?;
 
         let devices = if !dev_paths.is_empty() {

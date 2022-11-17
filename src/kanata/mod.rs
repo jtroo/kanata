@@ -4,7 +4,6 @@ use anyhow::{anyhow, bail, Result};
 use log::{error, info};
 
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
-use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
@@ -23,6 +22,9 @@ use crate::{cfg, ValidatedArgs};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
+
+type HashSet<T> = rustc_hash::FxHashSet<T>;
+type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 pub struct Kanata {
     pub kbd_in_paths: Vec<String>,
@@ -63,7 +65,8 @@ const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
 
 use once_cell::sync::Lazy;
 
-static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> = Lazy::new(|| Mutex::new(cfg::MappedKeys::new()));
+static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
+    Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 #[cfg(target_os = "windows")]
 mod windows;
@@ -499,21 +502,42 @@ impl Kanata {
             return Ok(());
         }
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
-        let outputs_for_key: &HashSet<OsCode> = match &self.key_outputs.get(&event.code) {
+        let current_layer = self.layout.current_layer();
+        if current_layer % 2 == 1 {
+            // Prioritize checking the active layer in case a layer-while-held is active.
+            if let Some(outputs_for_key) = self.key_outputs[current_layer].get(&event.code) {
+                log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
+                for kc in outputs_for_key.iter().rev() {
+                    if active_keycodes.contains(&kc.into()) {
+                        log::debug!("repeat    {:?}", KeyCode::from(*kc));
+                        if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
+                            bail!("could not write key {:?}", e)
+                        }
+                        return Ok(());
+                    }
+                }
+            } else {
+                log::debug!("empty layer-while-held outputs, probably transparent");
+            }
+        }
+        // Try matching a key on the default layer.
+        //
+        // This code executes in two cases:
+        // 1. current layer is the default layer
+        // 2. current layer is layer-while-held but did not find a match in the code above, e.g. a
+        //    transparent key was pressed.
+        let outputs_for_key = match self.key_outputs[self.layout.default_layer].get(&event.code) {
             None => return Ok(()),
             Some(v) => v,
         };
-        let mut output = None;
-        for valid_output in outputs_for_key.iter() {
-            if active_keycodes.contains(&valid_output.into()) {
-                output = Some(valid_output);
-                break;
-            }
-        }
-        if let Some(kc) = output {
-            log::debug!("repeat    {:?}", KeyCode::from(*kc));
-            if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
-                bail!("could not write key {:?}", e)
+        log::debug!("key outs for default layer: {outputs_for_key:?};");
+        for kc in outputs_for_key.iter().rev() {
+            if active_keycodes.contains(&kc.into()) {
+                log::debug!("repeat    {:?}", KeyCode::from(*kc));
+                if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
+                    bail!("could not write key {:?}", e)
+                }
+                return Ok(());
             }
         }
         Ok(())
