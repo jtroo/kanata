@@ -43,8 +43,14 @@ impl<T> Debug for SequenceEvent<T> {
             Self::Press(arg0) => f.debug_tuple("Press").field(arg0).finish(),
             Self::Release(arg0) => f.debug_tuple("Release").field(arg0).finish(),
             Self::Tap(arg0) => f.debug_tuple("Tap").field(arg0).finish(),
-            Self::Delay { duration } => f.debug_struct("Delay").field("duration", duration).finish(),
-            Self::Continue { index, events } => f.debug_struct("Continue").field("index", index).field("events", events).finish(),
+            Self::Delay { duration } => {
+                f.debug_struct("Delay").field("duration", duration).finish()
+            }
+            Self::Continue { index, events } => f
+                .debug_struct("Continue")
+                .field("index", index)
+                .field("events", events)
+                .finish(),
             Self::Custom(_) => write!(f, "Custom"),
             Self::Complete => write!(f, "Complete"),
         }
@@ -221,7 +227,6 @@ where
 }
 
 /// The different actions that can be done.
-#[non_exhaustive]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Action<T = core::convert::Infallible>
 where

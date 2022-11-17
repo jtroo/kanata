@@ -16,14 +16,14 @@ const INTERFACE_CLASS_HID: u8 = 0x03;
 
 pub struct Error;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Subclass {
     None = 0x00,
     BootInterface = 0x01,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Protocol {
     None = 0x00,
@@ -39,7 +39,7 @@ pub enum DescriptorType {
     _Physical = 0x23,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Request {
     GetReport = 0x01,
@@ -64,7 +64,7 @@ impl Request {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReportType {
     Input,
     Output,

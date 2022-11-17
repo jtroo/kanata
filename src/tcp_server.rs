@@ -3,12 +3,13 @@ use anyhow::Result;
 use net2::TcpStreamExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+
+type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
@@ -43,7 +44,7 @@ impl TcpServer {
     pub fn new(port: i32) -> Self {
         Self {
             port,
-            connections: Arc::new(Mutex::new(HashMap::new())),
+            connections: Arc::new(Mutex::new(HashMap::default())),
         }
     }
 

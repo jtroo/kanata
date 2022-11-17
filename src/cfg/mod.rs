@@ -46,7 +46,9 @@ use crate::layers::*;
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+
+type HashSet<T> = rustc_hash::FxHashSet<T>;
+type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
@@ -60,11 +62,20 @@ pub type KanataLayout = Layout<KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static [&'st
 pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
 
 pub struct Cfg {
+    /// The list of keys that kanata should be processing. Keys that are missing from `mapped_keys`
+    /// that are received from the OS input mechanism will be forwarded to OS output mechanism
+    /// without going through kanata's processing.
     pub mapped_keys: MappedKeys,
+    /// The potential outputs for a physical key position. The intention behind this is for sending
+    /// key repeats.
     pub key_outputs: KeyOutputs,
+    /// Layer info used for printing to the logs.
     pub layer_info: Vec<LayerInfo>,
+    /// Configuration items in `defcfg`.
     pub items: HashMap<String, String>,
+    /// The keyberon layout state machine struct.
     pub layout: KanataLayout,
+    /// Sequences defined in `defseq`.
     pub sequences: KeySeqsToFKeys,
 }
 
@@ -84,14 +95,16 @@ impl Cfg {
 }
 
 pub type MappedKeys = HashSet<OsCode>;
-pub type KeyOutputs = HashMap<OsCode, HashSet<OsCode>>;
+// Note: this uses a Vec instead of a HashSet because ordering matters, e.g. for chords like `S-b`,
+// we want to ensure that `b` is checked first, so this will be iterated over in reverse order.
+pub type KeyOutputs = Vec<HashMap<OsCode, Vec<OsCode>>>;
 
-fn add_kc_output(i: OsCode, kc: OsCode, outs: &mut KeyOutputs) {
-    let outputs = match outs.entry(i) {
+fn add_kc_output(osc_slot: OsCode, kc: OsCode, outs: &mut HashMap<OsCode, Vec<OsCode>>) {
+    let outputs = match outs.entry(osc_slot) {
         Entry::Occupied(o) => o.into_mut(),
-        Entry::Vacant(v) => v.insert(HashSet::new()),
+        Entry::Vacant(v) => v.insert(vec![]),
     };
-    outputs.insert(kc);
+    outputs.push(kc);
 }
 
 #[test]
@@ -400,7 +413,7 @@ fn check_first_expr<'a>(
 
 /// Parse configuration entries from an expression starting with defcfg.
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
-    let mut cfg = HashMap::new();
+    let mut cfg = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
     // Read k-v pairs from the configuration
     loop {
@@ -437,7 +450,7 @@ fn parse_defsrc(
     defcfg: &HashMap<String, String>,
 ) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
-    let mut mkeys = MappedKeys::new();
+    let mut mkeys = MappedKeys::default();
     let mut ordered_codes = Vec::new();
     for expr in exprs {
         let s = match expr {
@@ -480,7 +493,7 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// Returns layer names and their indexes into the keyberon layout. This also checks that all
 /// layers have the same number of items as the defsrc.
 fn parse_layer_indexes(exprs: &[&Vec<SExpr>], expected_len: usize) -> Result<LayerIndexes> {
-    let mut layer_indexes = HashMap::new();
+    let mut layer_indexes = HashMap::default();
     for (i, expr) in exprs.iter().enumerate() {
         let mut subexprs = check_first_expr(expr.iter(), "deflayer")?;
         let layer_name = subexprs
@@ -1405,45 +1418,66 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], parsed_state: &ParsedState) -> Result<
 fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
     let mut outs = KeyOutputs::new();
     for layer in layers.iter() {
+        let mut layer_outputs = HashMap::default();
         for (i, action) in layer[0].iter().enumerate() {
-            let i = match i.try_into() {
+            let osc_slot = match i.try_into() {
                 Ok(i) => i,
                 Err(_) => continue,
             };
-            match action {
-                Action::KeyCode(kc) => {
-                    add_kc_output(i, kc.into(), &mut outs);
-                }
-                Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
-                    if let Action::KeyCode(kc) = tap {
-                        add_kc_output(i, kc.into(), &mut outs);
-                    }
-                    if let Action::KeyCode(kc) = hold {
-                        add_kc_output(i, kc.into(), &mut outs);
-                    }
-                }
-                Action::OneShot(OneShot {
-                    action: Action::KeyCode(kc),
-                    ..
-                }) => {
-                    add_kc_output(i, kc.into(), &mut outs);
-                }
-                Action::TapDance(TapDance { actions, .. }) => {
-                    for action in actions.iter() {
-                        if let Action::KeyCode(kc) = action {
-                            add_kc_output(i, kc.into(), &mut outs);
-                        }
-                    }
-                }
-                _ => {} // do nothing for other types
-            };
+            add_key_output_from_action_to_key_pos(osc_slot, action, &mut layer_outputs);
         }
+        outs.push(layer_outputs);
     }
-    for hset in outs.values_mut() {
-        hset.shrink_to_fit();
+    for layer_outs in outs.iter_mut() {
+        for keys_out in layer_outs.values_mut() {
+            keys_out.shrink_to_fit();
+        }
+        layer_outs.shrink_to_fit();
     }
     outs.shrink_to_fit();
     outs
+}
+
+fn add_key_output_from_action_to_key_pos(
+    osc_slot: OsCode,
+    action: &KanataAction,
+    outputs: &mut HashMap<OsCode, Vec<OsCode>>,
+) {
+    match action {
+        Action::KeyCode(kc) => {
+            add_kc_output(osc_slot, kc.into(), outputs);
+        }
+        Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
+            add_key_output_from_action_to_key_pos(osc_slot, tap, outputs);
+            add_key_output_from_action_to_key_pos(osc_slot, hold, outputs);
+        }
+        Action::OneShot(OneShot { action: ac, .. }) => {
+            add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+        }
+        Action::MultipleKeyCodes(kcs) => {
+            for kc in kcs.iter() {
+                add_kc_output(osc_slot, kc.into(), outputs);
+            }
+        }
+        Action::MultipleActions(actions) => {
+            for ac in actions.iter() {
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+            }
+        }
+        Action::TapDance(TapDance { actions, .. }) => {
+            for ac in actions.iter() {
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+            }
+        }
+        Action::NoOp
+        | Action::Trans
+        | Action::Layer(_)
+        | Action::DefaultLayer(_)
+        | Action::Sequence { .. }
+        | Action::CancelSequences
+        | Action::ReleaseState(_)
+        | Action::Custom(_) => {}
+    };
 }
 
 /// Create a layout from `layers::LAYERS`.
