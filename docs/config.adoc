@@ -788,6 +788,10 @@ The actions supported in `+macro+` are:
 * <<cmd, cmd>>
 * <<unicode, unicode>>
 * <<mouse-actions,mouse actions>>
+* <<repeat-key,repeat>>
+* <<live-reload,live reload>>
+* <<fake-keys,fake keys>>
+* <<sequences,sequence leader>>
 
 Example:
 
@@ -950,8 +954,8 @@ https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fak
 === Sequences
 <<table-of-contents,Back to ToC>>
 
-The `+ldr+` action makes kanata go into "sequence" mode. The action name is
-short for "leader". This comes from Vim which has the concept of a configurable
+The `+sldr+` action makes kanata go into "sequence" mode. The action name is
+short for "sequence leader". This comes from Vim which has the concept of a configurable
 sequence leader key. When in sequence mode, keys are not typed but are saved
 until one of the following happens:
 
