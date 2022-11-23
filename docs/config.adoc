@@ -392,7 +392,7 @@ Example:
 
 The action `+rpt+` repeats the most recently typed key. Holding down this key
 will not repeatedly send the key. The intended use case is to be able to use a
-different finger or even thumb key to repeat a double layer, as opposed to
+different finger or even thumb key to repeat a typed key, as opposed to
 double-tapping a key.
 
 Example:
