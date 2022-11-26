@@ -33,8 +33,15 @@ impl KbdIn {
         let devices = if !dev_paths.is_empty() {
             dev_paths
                 .iter()
-                .map(Device::open)
-                .collect::<io::Result<Vec<_>>>()?
+                .map(|dev_path| (dev_path, Device::open(dev_path)))
+                .filter_map(|(dev_path, open_result)| match open_result {
+                    Ok(d) => Some(d),
+                    Err(e) => {
+                        log::warn!("failed to open device '{dev_path}': {e:?}");
+                        None
+                    }
+                })
+                .collect()
         } else {
             let devices: Vec<_> = evdev::enumerate()
                 .map(|(_, device)| device)
@@ -48,6 +55,12 @@ impl KbdIn {
             }
             devices
         };
+        if devices.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "No keyboard devices were found",
+            ));
+        }
         for (i, mut kbd_in_dev) in devices.into_iter().enumerate() {
             // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
             // trackpad not working. No idea why this works.
