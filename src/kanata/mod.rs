@@ -266,7 +266,12 @@ impl Kanata {
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
-                            log::debug!("fake key on press   {action:?} {x:?},{y:?}");
+                            log::debug!(
+                                "fake key on press   {action:?} {:?},{x:?},{y:?} {:?}",
+                                self.layout.default_layer,
+                                self.layout.layers[self.layout.default_layer as usize][x as usize]
+                                    [y as usize]
+                            );
                             match action {
                                 FakeKeyAction::Press => self.layout.event(Event::Press(x, y)),
                                 FakeKeyAction::Release => self.layout.event(Event::Release(x, y)),

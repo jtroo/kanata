@@ -1193,6 +1193,7 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Res
             };
             let action = parse_action(action, parsed_state)?;
             let idx = parsed_state.fake_keys.len();
+            log::trace!("inserting {key_name}->{idx}:{action:?}");
             if parsed_state
                 .fake_keys
                 .insert(key_name.into(), (idx, action))
@@ -1356,7 +1357,7 @@ fn parse_layers(parsed_state: &ParsedState) -> Result<Box<KanataLayers>> {
         }
         for (y, action) in parsed_state.fake_keys.values() {
             let (x, y) = get_fake_key_coords(*y);
-            layers_cfg[layer_level][x as usize][y as usize] = **action;
+            layers_cfg[layer_level * 2][x as usize][y as usize] = **action;
         }
     }
     Ok(layers_cfg)
