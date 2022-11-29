@@ -52,7 +52,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "}" => OsCode::KEY_RIGHTBRACE,
         "lbrc" | "[" => OsCode::KEY_LEFTBRACE,
         "rbrc" | "]" => OsCode::KEY_RIGHTBRACE,
-        "\\" | "bksl" => OsCode::KEY_BACKSLASH,
+        "\\" | "bksl" | "yen" | "¥" => OsCode::KEY_BACKSLASH,
         "caps" => OsCode::KEY_CAPSLOCK,
         "a" => OsCode::KEY_A,
         "s" => OsCode::KEY_S,
@@ -159,8 +159,16 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f22" => OsCode::KEY_F22,
         "f23" => OsCode::KEY_F23,
         "f24" => OsCode::KEY_F24,
-        "hangeul" => OsCode::KEY_HANGEUL,
-        "hanja" => OsCode::KEY_HANJA,
+        #[cfg(target_os = "windows")]
+        "kana" | "katakana" | "katakanahiragana" => OsCode::KEY_HANGEUL,
+        #[cfg(target_os = "linux")]
+        "kana" | "katakanahiragana" => OsCode::KEY_KATAKANAHIRAGANA,
+        #[cfg(target_os = "linux")]
+        "hiragana" => OsCode::KEY_HIRAGANA,
+        #[cfg(target_os = "linux")]
+        "katakana" => OsCode::KEY_KATAKANA,
+        "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
+        "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,
         "ro" => OsCode::KEY_RO,
 
         #[cfg(target_os = "linux")]

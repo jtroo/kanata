@@ -347,6 +347,8 @@ impl OsCode {
             VK_BROWSER_SEARCH => Some(OsCode::KEY_SEARCH),
             VK_BROWSER_FAVORITES => Some(OsCode::KEY_FAVORITES),
             0xC1 => Some(OsCode::KEY_RO),
+            VK_CONVERT => Some(OsCode::KEY_HENKAN),
+            VK_NONCONVERT => Some(OsCode::KEY_MUHENKAN),
             _ => None,
         }
     }
@@ -489,6 +491,8 @@ impl OsCode {
             OsCode::KEY_SEARCH => VK_BROWSER_SEARCH,
             OsCode::KEY_FAVORITES => VK_BROWSER_FAVORITES,
             OsCode::KEY_RO => 0xC1,
+            OsCode::KEY_HENKAN => VK_CONVERT,
+            OsCode::KEY_MUHENKAN => VK_NONCONVERT,
             _ => 0,
         }
     }
