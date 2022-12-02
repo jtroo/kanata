@@ -176,6 +176,14 @@ fn parse_transparent_default() {
 }
 
 #[test]
+fn parse_all_keys() {
+    parse_cfg(&std::path::PathBuf::from(
+        "./cfg_samples/all_keys_in_defsrc.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| e.to_string())
