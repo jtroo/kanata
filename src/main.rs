@@ -25,26 +25,35 @@ pub struct ValidatedArgs {
 }
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about, verbatim_doc_comment)]
+/// kanata: an advanced software key remapper
+///
+/// kanata remaps key presses to other keys or complex actions depending on the
+/// configuration for that key. You can find the guide for creating a config
+/// file here:    https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+///
+/// If you need help, please feel welcome to create an issue or discussion in
+/// the kanata repository:     https://github.com/jtroo/kanata
 struct Args {
-    /// Configuration file to use with kanata
+    /// Configuration file to use with kanata.
     #[clap(short, long, default_value = "kanata.kbd")]
     cfg: String,
 
-    /// Port to run the TCP server on
+    /// Port to run the optional TCP server on. If blank, no TCP port will be listened on.
     #[clap(short, long)]
     port: Option<i32>,
 
-    /// Path of the symlink pointing to the newly-created device
+    /// Path for the symlink pointing to the newly-created device. If blank, no symlink will be
+    /// created.
     #[cfg(target_os = "linux")]
     #[clap(short, long)]
     symlink_path: Option<String>,
 
-    /// Enable debug logging
+    /// Enable debug logging.
     #[clap(short, long)]
     debug: bool,
 
-    /// Enable trace logging (implies --debug as well)
+    /// Enable trace logging; implies --debug as well.
     #[clap(short, long)]
     trace: bool,
 }
@@ -76,7 +85,7 @@ fn cli_init() -> Result<ValidatedArgs> {
 
     if !cfg_path.exists() {
         bail!(
-            "Could not find your config file ({})",
+            "Could not find your config file ({})\nFor more info, pass the `-h` or `--help` flags.",
             cfg_path.to_str().unwrap_or("?")
         )
     }
@@ -126,8 +135,8 @@ fn main_impl() -> Result<()> {
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(e) = ret {
-        log::error!("main got error `{}`", &e);
-        return Err(e);
+        log::error!("{e}\n");
+        std::process::exit(1);
     }
     eprintln!("\nPress any key to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
