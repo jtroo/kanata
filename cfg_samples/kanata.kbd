@@ -1,18 +1,29 @@
-;; This is a sample configuration file that showcases every feature in kanata.
-;; If anything is confusing or hard to discover, please file an issue or
-;; contribute a pull request to help improve the document.
-;;
-;; Comments are prefixed by double-semicolon. A single semicolon is parsed as the
-;; keyboard key. Comments are ignored for the configuration file.
-;;
-;; This configuration language is Lisp-like and uses S-Expression syntax.
-;; If you're unfamiliar with Lisp, don't be alarmed. The maintainer jtroo is
-;; also unfamiliar with Lisp. You don't need to know Lisp in-depth to
-;; be able to configure kanata.
-;;
-;; If you follow along with the examples, you should be fine. Kanata should
-;; also hopefully have helpful error messages in case something goes wrong.
-;; If you need help, you are welcome to ask.
+#|
+This is a sample configuration file that showcases every feature in kanata.
+If anything is confusing or hard to discover, please file an issue or
+contribute a pull request to help improve the document.
+|#
+
+;; Single-line comments are prefixed by double-semicolon. A single semicolon
+;; is parsed as the keyboard key. Comments are ignored for the configuration
+;; file.
+
+#|
+A multi-line comment block begin with an octothorphe followed by a pipe: `#|`.
+To end the multi-line comment block, have a pipe followed by an octothorpe,
+like the following sequence with the colon removed: `|:#`. The actual two
+character sequence is not used because it would end this multi-line comment
+block and cause a parsing error.
+
+This configuration language is Lisp-like and uses S-Expression syntax.
+If you're unfamiliar with Lisp, don't be alarmed. The maintainer jtroo is
+also unfamiliar with Lisp. You don't need to know Lisp in-depth to
+be able to configure kanata.
+
+If you follow along with the examples, you should be fine. Kanata should
+also hopefully have helpful error messages in case something goes wrong.
+If you need help, you are welcome to ask.
+|#
 
 ;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
 (defcfg

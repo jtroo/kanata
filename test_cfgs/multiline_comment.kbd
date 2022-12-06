@@ -1,0 +1,34 @@
+(defcfg)
+
+#|
+
+Top level multi-line comment
+Hello world
+
+|#
+
+(defsrc #||# a #| |# b #|  |# c #|   |#)
+
+(deflayer
+base _
+
+#| --------------------------------------------------------------------------
+Quick reference: https://github.com/jtroo/kanata/blob/main/cfg_samples/kanata.kbd
+List of keycodes: https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
+-------------------------------------------------------------------------- |#
+_
+#| inner multi-line comment block
+1
+2
+3|#
+#|  |#
+#| |#
+#||#
+#||##||##| |##|  |#
+_
+)
+
+#|
+#| || # #|
+|#
+

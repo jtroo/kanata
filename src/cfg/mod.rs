@@ -184,6 +184,14 @@ fn parse_all_keys() {
 }
 
 #[test]
+fn parse_multiline_comment() {
+    parse_cfg(&std::path::PathBuf::from(
+        "./test_cfgs/multiline_comment.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| e.to_string())

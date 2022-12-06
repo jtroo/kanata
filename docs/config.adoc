@@ -34,6 +34,16 @@ semicolons. E.g:
 ;; own configuration when reading it later.
 ----
 
+You can begin a multi-line comment block with `#|` and end it with `|#`:
+
+----
+#|
+This
+is
+a multi-line comment block
+|#
+----
+
 == Required configuration entries
 
 === defcfg
