@@ -184,7 +184,9 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
 
         "hmpg" | "homepage" => OsCode::KEY_HOMEPAGE,
         "mdia" | "media" => OsCode::KEY_MEDIA,
-        "mail" | "email" => OsCode::KEY_EMAIL,
+        "mail" => OsCode::KEY_MAIL,
+        "email" => OsCode::KEY_EMAIL,
+        "calc" => OsCode::KEY_CALC,
 
         // NOTE: these are linux-only right now due to missing the mappings in windows.rs
         #[cfg(tagret_os = "linux")]
@@ -961,6 +963,7 @@ impl From<KeyCode> for OsCode {
             KeyCode::K0xAB => OsCode::KEY_EMAIL,
             KeyCode::K0xAC => OsCode::KEY_PLAYER,
             KeyCode::K0xAD => OsCode::KEY_HOMEPAGE,
+            KeyCode::K0xAE => OsCode::KEY_MAIL,
             _ => OsCode::KEY_UNKNOWN,
         }
     }
@@ -1133,6 +1136,7 @@ impl From<OsCode> for KeyCode {
             OsCode::KEY_EMAIL => KeyCode::K0xAB,
             OsCode::KEY_PLAYER => KeyCode::K0xAC,
             OsCode::KEY_HOMEPAGE => KeyCode::K0xAD,
+            OsCode::KEY_MAIL => KeyCode::K0xAE,
             _ => KeyCode::No,
         }
     }
