@@ -66,10 +66,10 @@ liking.
 
 The the primary source of all key names is the
 https://github.com/jtroo/kanata/blob/main/src/keys/mod.rs[str_to_oscode]
-function in the source code. Feel free to file an issue if you're unable to
-find the key you're looking for.
+function in the source code. Please feel free to file an issue if you're unable
+to find the key you're looking for.
 
-An example `defsrc` containing the standard QWERTY keyboard keys as an
+An example `defsrc` containing the US QWERTY keyboard keys as an
 approximately 60% keyboard layout:
 
 ----
@@ -81,6 +81,11 @@ approximately 60% keyboard layout:
   lctl lmet lalt           spc            ralt rmet rctl
 )
 ----
+
+For non-US layouts, there is a discussion here that may be of help:
+https://github.com/jtroo/kanata/discussions/158. If you do not see your locale
+there, please be welcome to ask for help to generate a `defsrc` for yours, and
+then kindly contribute to the discussion with a working sample.
 
 === deflayer
 <<table-of-contents,Back to ToC>>
