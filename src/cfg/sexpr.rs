@@ -148,13 +148,31 @@ impl<'a> Lexer<'a> {
     }
 
     fn next_while(&mut self, f: impl Fn(u8) -> bool) {
-        while let Some(b) = self.bytes.clone().next() {
+        for b in self.bytes.clone() {
             if f(b) {
                 self.bytes.next().unwrap();
             } else {
                 break;
             }
         }
+    }
+
+    /// Looks for "|#", consuming bytes until found. If not found, returns Some(Err(...));
+    /// otherwise returns None.
+    fn read_until_multiline_comment_end(&mut self) -> Option<TokenRes> {
+        let mut found_comment_end = false;
+        for b2 in self.bytes.clone().skip(1) {
+            let b1 = self.bytes.next().unwrap();
+            if b1 == b'|' && b2 == b'#' {
+                found_comment_end = true;
+                break;
+            }
+        }
+        if !found_comment_end {
+            return Some(Err("Unterminated multiline comment".to_string()));
+        }
+        self.bytes.next();
+        None
     }
 
     fn pos(&self) -> usize {
@@ -183,6 +201,17 @@ impl<'a> Lexer<'a> {
                                 self.next_while(|b| b != b'\n');
                                 // possibly consume the newline (or EOF handled in next iteration)
                                 let _ = self.bytes.next();
+                                continue;
+                            }
+                            _ => self.next_string(),
+                        },
+                        b'#' => match self.bytes.clone().next() {
+                            Some(b'|') => {
+                                // consume the '|'
+                                self.bytes.next();
+                                if let Some(e) = self.read_until_multiline_comment_end() {
+                                    return Some((start, e));
+                                }
                                 continue;
                             }
                             _ => self.next_string(),
