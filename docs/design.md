@@ -36,10 +36,10 @@
 - uses keyberon
 - indices of `kanata_keyberon::layout::Event::{Press, Release}(x,y)`:
 
-      x = 0   # keyberon doesn't handle values larger than 255 anyway
-      y = keycode % 256
+      x = 0 or 1 (0 is for physical key presses, 1 is for fake keys)
+      y = OS code of key used as an index
 
 ## OS-specific code
 
 Most of the OS specific code is in `oskbd/` and `keys/`. There's a bit of it in
-`kanata.rs` since the event loops to receive OS events are different.
+`kanata/` since the event loops to receive OS events are different.
