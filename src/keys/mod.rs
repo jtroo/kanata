@@ -1,6 +1,9 @@
 //! Platform specific code for OS key code mappings.
 
 use kanata_keyberon::key_code::KeyCode;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -11,6 +14,42 @@ pub use linux::*;
 mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::*;
+
+static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {
+    let mut mappings = HashMap::default();
+    add_default_str_osc_mappings(&mut mappings);
+    mappings.shrink_to_fit();
+    Mutex::new(mappings)
+});
+
+/// Replaces the stateful custom `String` to `OsCode` mapping in this module with the input
+/// mapping.
+///
+/// This will change how `str_to_oscode` behaves. One could imagine that a new `struct` could be
+/// created and `str_to_oscode` would become a method on that struct instead of a standalone
+/// function. I'm too lazy to do that right now and based on how `keys` is used right now, it
+/// should not be a problem. A potential immediate issue that comes to mind is concurrent tests
+/// that have `defcustomkeys`.
+pub fn replace_custom_str_oscode_mapping(mapping: &HashMap<String, OsCode>) {
+    let mut local_mapping = CUSTOM_STRS_TO_OSCODES.lock();
+    local_mapping.clear();
+    local_mapping.extend(mapping.iter().map(|kv| (kv.0.clone(), *kv.1)));
+    add_default_str_osc_mappings(&mut local_mapping);
+    local_mapping.shrink_to_fit();
+}
+
+/// Clears the stateful custom `String` to `OsCode` mapping in this module.
+pub fn clear_custom_str_oscode_mapping() {
+    let mut local_mapping = CUSTOM_STRS_TO_OSCODES.lock();
+    local_mapping.clear();
+}
+
+/// Used for backwards compatibility. If there is hardcoded key name in `str_to_oscode` that would
+/// be useful to remap via `defcustomkeys`, then it should be moved into here. This is so that the
+/// key name can be remapped while also working for older configurations that already use it.
+fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
+    mapping.entry("+".into()).or_insert(OsCode::KEY_KPPLUS);
+}
 
 /// Convert a `&str` to an `OsCode`.
 ///
@@ -33,9 +72,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "8" => OsCode::KEY_8,
         "9" => OsCode::KEY_9,
         "0" => OsCode::KEY_0,
-        "+" => OsCode::KEY_KPPLUS,
         "min" | "-" => OsCode::KEY_MINUS,
-        "eql" | "=" | "ì" => OsCode::KEY_EQUAL, // Italian KB has this as ì key
+        "eql" | "=" => OsCode::KEY_EQUAL,
         "bspc" | "bks" => OsCode::KEY_BACKSPACE,
         "tab" => OsCode::KEY_TAB,
         "q" => OsCode::KEY_Q,
@@ -196,13 +234,20 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(tagret_os = "linux")]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
 
-        _ => return None,
+        _ => {
+            let custom_mappings = CUSTOM_STRS_TO_OSCODES.lock();
+            match custom_mappings.get(s) {
+                Some(osc) => *osc,
+                None => return None,
+            }
+        }
     })
 }
 
 /// This is a shameless copy of evdev_rs::enums::EV_KEY.
 /// I've added the Copy trait and I'll be able
 /// to added my own Impl(s) to it
+#[repr(u16)]
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OsCode {

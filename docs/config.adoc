@@ -92,10 +92,7 @@ approximately 60% keyboard layout:
 )
 ----
 
-For non-US layouts, there is a discussion here that may be of help:
-https://github.com/jtroo/kanata/discussions/158. If you do not see your locale
-there, please be welcome to ask for help to generate a `defsrc` for yours, and
-then kindly contribute to the discussion with a working sample.
+For non-US keyboards, see <<non-us-keyboards,this section>>.
 
 === deflayer
 <<table-of-contents,Back to ToC>>
@@ -155,6 +152,49 @@ An example minimal configuration is:
 
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
 certainly undesirable but is a valid configuration.
+
+== Non-US keyboards
+<<table-of-contents,Back to ToC>>
+
+For non-US keyboard users, you may have some keys on your keyboard that are
+cannot be mapped in `defsrc` by default. You can use `defcustomkeys` to define
+additional key names that can be used in `defsrc`, `deflayer` and anywhere else
+in the configuration.
+
+You can find configurations that others have made in xref:locales.adoc[this
+document]. If you do not see your keyboard there and are not confident in using
+the available tools, you are welcome to ask for help in a discussion or issue.
+Please contribute to the document if you are able!
+
+Example:
+
+----
+(defcustomkeys
+  ì 13
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    ì    bspc
+)
+----
+
+The number used for a custom key represents the converted value for an OsCode in
+base 10. This differs between Windows-hooks, Windows-interception, and Linux.
+
+In Linux, `evtest` will give the correct number for the physical key you press.
+
+In Windows using the default hook mechanism, the non-interception version of the
+keyboard tester in the kanata repository will give the correct number.
+(https://github.com/jtroo/kanata/releases/tag/win-keycode-tester-v0.2.0[prebuilt binary])
+
+In Windows using Interception, the interception version of the keyboard tester
+will give the correct number. Between the hook and interception versions, some
+keys may agree but some will not; do be aware that they are **not** compatible!
+
+Ideas are for improving the user-friendliness of this system is welcome! As
+mentioned before, please ask for help in an issue or discussion if needed, and
+help with xref:locales.adoc[this document] is very welcome, so that future
+users can have an easier time 🙂.
 
 == Optional defcfg entries
 

@@ -78,6 +78,25 @@ If you need help, you are welcome to ask.
   ;; process-unmapped-keys yes
 )
 
+;; defcustomkeys enables you to define and use key names that match your locale
+;; by defining OS code number mappings for that character.
+;;
+;; Only one defcustomkeys is allowed. It is parsed similarly to defcfg; it is
+;; composed of pairs of keys and values.
+;;
+;; You can check docs/locales.adoc for the mapping for your locale. If your
+;; locale is not there, please ask for help if needed, and add the mapping for
+;; your locale to the document.
+;;
+;; This example is for an Italian keyboard remapping in Linux. The numbers will
+;; unfortunately differ between Linux, Windows-hooks, and Windows-interception.
+;;
+;; To see how you can discover key mappings for yourself, see the "Non-US keyboards"
+;; section of docs/config.adoc.
+(defcustomkeys
+  ì 13
+)
+
 ;; Only one defsrc is allowed.
 ;;
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the
@@ -342,8 +361,8 @@ If you need help, you are welcome to ask.
 ;; The intended use case is to be able to use a different finger to repeat a
 ;; double letter, as opposed to double-tapping a letter.
 (deflayer misc
-  _    _    _    _    _    _    _    _    _    @é   @è    _    _    _
-  _    _    _    _    _    _    ins  @{   @}   [    ]    _    _    _
+  _    _    _    _    _    _    _    _    _    @é   @è   _    ì #|random custom key for testing|#   _
+  _    _    _    _    _    _    ins  @{   @}   [    ]    _    _    +
   _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
   _    C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
   rpt  _    _              _              _    _    _

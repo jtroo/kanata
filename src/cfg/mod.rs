@@ -280,6 +280,22 @@ fn parse_cfg_raw(
     }
     let cfg = parse_defcfg(cfg_expr)?;
 
+    if let Some(result) = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("defcustomkeys"))
+        .map(|custom_keys| parse_defcustomkeys(custom_keys))
+    {
+        result?;
+    }
+    if root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defcustomkeys"))
+        .count()
+        > 1
+    {
+        bail!("Only one defcustomkeys is allowed in the configuration")
+    }
+
     let src_expr = root_exprs
         .iter()
         .find(gen_first_atom_filter("defsrc"))
@@ -455,6 +471,42 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                 );
             }
         }
+    }
+}
+
+/// Parse custom keys from an expression starting with defcustomkeys. Statefully updates the `keys`
+/// module using the custom keys parsed.
+fn parse_defcustomkeys(expr: &[SExpr]) -> Result<()> {
+    let mut cfg = HashMap::default();
+    let mut exprs = check_first_expr(expr.iter(), "defcustomkeys")?;
+    clear_custom_str_oscode_mapping();
+    // Read k-v pairs from the configuration
+    loop {
+        let key = match exprs.next() {
+            Some(k) => k
+                .atom()
+                .ok_or_else(|| anyhow!("defcustomkeys contains a list; no lists are allowed"))?,
+            None => {
+                replace_custom_str_oscode_mapping(&cfg);
+                return Ok(());
+            }
+        };
+        if str_to_oscode(key).is_some() {
+            bail!("{key} is a default key name in kanata; it cannot be used in defcustomkeys");
+        } else if cfg.contains_key(key) {
+            bail!(
+                "{key} has been defined more than once in defcustomkeys; no duplicates are allowed"
+            );
+        }
+        let osc = match exprs.next() {
+            Some(v) => v.atom()
+                .ok_or_else(|| anyhow!("defcustomkeys contains a list; no lists are allowed"))
+                .and_then(|osc| osc.parse::<u16>().map_err(|_| anyhow!("defcustomkeys unknown number {osc}")))
+                .and_then(|osc| OsCode::from_u16(osc).ok_or_else(|| anyhow!("defcustomkeys unknown number {osc}")))?,
+            None => bail!("Incorrect number of elements found in defcustomkeys; they should be pairs of keys and numbers."),
+        };
+        log::debug!("custom mapping: {key} {}", osc.as_u16());
+        cfg.insert(key.to_owned(), osc);
     }
 }
 

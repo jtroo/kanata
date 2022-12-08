@@ -1,0 +1,45 @@
+= Keyboard locales
+:toc:
+:toc-placement!:
+:toc-title!:
+
+== Table of contents
+toc::[]
+
+== ISO German QWERTZ - Windows hooks
+
+=== Using `defcustomkeys`:
+
+----
+(defcustomkeys
+  ü    186
+  +    187
+  #    191
+  ö    192
+  ß    219
+  ^    220
+  ´    221
+  ä    222
+  <>|  226
+)
+
+(defsrc
+  ^         1    2    3    4    5    6    7    8    9    0    ß    ´    bspc
+  tab       q    w    e    r    t    z    u    i    o    p    ü    +
+  caps      a    s    d    f    g    h    j    k    l    ö    ä    #    ret
+  lsft <>|  y    x    c    v    b    n    m    ,    .    -    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+=== Without using `defcustomkeys`:
+
+----
+(defsrc
+  \         1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  tab       q    w    e    r    t    z    u    i    o    p    ;    =
+  caps      a    s    d    f    g    h    j    k    l    grv  '    /    ret
+  lsft 102d y    x    c    v    b    n    m    ,    .    -    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
