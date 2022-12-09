@@ -44,6 +44,8 @@ pub struct Kanata {
     last_tick: time::Instant,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     kbd_out_rx: Receiver<InputEvent>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    intercept_mouse_hwid: Option<Vec<u8>>,
 }
 
 pub struct ScrollState {
@@ -85,6 +87,22 @@ impl Kanata {
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
+        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+        let intercept_mouse_hwid = cfg
+            .items
+            .get("windows-interception-mouse-hwid")
+            .map(|hwid: &String| {
+                log::trace!("win hwid: {hwid}");
+                hwid.split_whitespace()
+                    .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
+                        hwid_byte.trim_matches(',').parse::<u8>().map(|b| {
+                            hwid_bytes.push(b);
+                            hwid_bytes
+                        })
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
 
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
@@ -150,6 +168,8 @@ impl Kanata {
             last_tick: time::Instant::now(),
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             kbd_out_rx,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_hwid,
         })
     }
 

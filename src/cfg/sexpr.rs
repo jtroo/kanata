@@ -120,7 +120,7 @@ impl std::fmt::Debug for SExpr {
 enum Token {
     Open,
     Close,
-    String,
+    StringTok,
 }
 pub struct Lexer<'a> {
     s: &'a str,
@@ -192,7 +192,7 @@ impl<'a> Lexer<'a> {
                         b'"' => {
                             self.next_while(|b| b != b'"' && b != b'\n');
                             match self.bytes.next() {
-                                Some(b'"') => String,
+                                Some(b'"') => StringTok,
                                 _ => return Some((start, Err("Unterminated string".to_string()))),
                             }
                         }
@@ -231,7 +231,7 @@ impl<'a> Lexer<'a> {
     fn next_string(&mut self) -> Token {
         // might want to limit this to ascii or XID_START/XID_CONTINUE
         self.next_while(|b| !is_start(b));
-        Token::String
+        Token::StringTok
     }
 }
 
@@ -271,7 +271,7 @@ fn parse_with(
                     }
                     stack.last_mut().unwrap().t.push(expr);
                 }
-                String => stack
+                StringTok => stack
                     .last_mut()
                     .unwrap()
                     .t

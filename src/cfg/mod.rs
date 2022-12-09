@@ -443,7 +443,13 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if cfg.insert(k.t.clone(), v.t.clone()).is_some() {
+                if cfg
+                    .insert(
+                        k.t.trim_matches('"').to_owned(),
+                        v.t.trim_matches('"').to_owned(),
+                    )
+                    .is_some()
+                {
                     bail!("duplicate cfg entries for key {}", k.t);
                 }
             }
@@ -1066,9 +1072,9 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
         Box::leak(
             ac_params
                 .iter()
-                .try_fold(Vec::new(), |mut v, p| {
+                .try_fold(vec![], |mut v, p| {
                     if let SExpr::Atom(s) = p {
-                        v.push(s.t.clone());
+                        v.push(s.t.trim_matches('"').to_owned());
                         Ok(v)
                     } else {
                         bail!("{}, found a list", ERR_STR);
