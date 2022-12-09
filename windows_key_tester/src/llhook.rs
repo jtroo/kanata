@@ -28,7 +28,7 @@ impl KeyboardHook {
                 SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
                     .as_mut()
                     .expect("install low-level keyboard hook successfully")
-            }
+            },
         }
     }
 }
@@ -61,7 +61,7 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
     let key_event = InputEvent::from_hook_lparam(hook_lparam);
-    log::info!("{code}, {wparam:?}, {is_injected}, {key_event:02X?}");
+    log::info!("{code}, {wparam:?}, {is_injected}, {key_event:?}");
     CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
 }
 
