@@ -20,9 +20,11 @@ use crate::keys::*;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 pub struct KbdIn {
-    devices: HashMap<Token, Device>,
+    devices: HashMap<Token, (Device, String)>,
+    missing_device_paths: Vec<String>,
     poll: Poll,
     events: Events,
+    token_counter: usize,
 }
 
 impl KbdIn {
@@ -30,22 +32,31 @@ impl KbdIn {
         let mut device_map = HashMap::default();
         let poll = Poll::new()?;
 
+        let mut missing_device_paths = vec![];
         let devices = if !dev_paths.is_empty() {
             dev_paths
                 .iter()
                 .map(|dev_path| (dev_path, Device::open(dev_path)))
                 .filter_map(|(dev_path, open_result)| match open_result {
-                    Ok(d) => Some(d),
+                    Ok(d) => Some((d, dev_path.clone())),
                     Err(e) => {
                         log::warn!("failed to open device '{dev_path}': {e:?}");
+                        missing_device_paths.push(dev_path.clone());
                         None
                     }
                 })
                 .collect()
         } else {
             let devices: Vec<_> = evdev::enumerate()
-                .map(|(_, device)| device)
-                .filter(is_input_device)
+                .map(|(path, device)| {
+                    (
+                        device,
+                        path.to_str()
+                            .expect("non-utf8 path found for device")
+                            .to_owned(),
+                    )
+                })
+                .filter(|pd| is_input_device(&pd.0))
                 .collect();
             if devices.is_empty() {
                 return Err(io::Error::new(
@@ -61,18 +72,20 @@ impl KbdIn {
                 "No keyboard devices were found",
             ));
         }
-        for (i, mut kbd_in_dev) in devices.into_iter().enumerate() {
+        let mut token_counter = 0;
+        for (mut kbd_in_dev, path) in devices.into_iter() {
             // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
             // trackpad not working. No idea why this works.
             kbd_in_dev.grab()?;
             kbd_in_dev.ungrab()?;
             kbd_in_dev.grab()?;
 
-            let tok = Token(i);
+            let tok = Token(token_counter);
+            token_counter += 1;
             let fd = kbd_in_dev.as_raw_fd();
             poll.registry()
                 .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
-            device_map.insert(tok, kbd_in_dev);
+            device_map.insert(tok, (kbd_in_dev, path));
         }
 
         let events = Events::with_capacity(32);
@@ -80,6 +93,8 @@ impl KbdIn {
             devices: device_map,
             poll,
             events,
+            missing_device_paths,
+            token_counter,
         })
     }
 
@@ -87,20 +102,68 @@ impl KbdIn {
         let mut input_events = vec![];
         loop {
             log::trace!("polling");
-            if let Err(e) = self.poll.poll(&mut self.events, None) {
+            let timeout = match self.missing_device_paths.is_empty() {
+                true => None,
+                false => Some(std::time::Duration::from_secs(5)),
+            };
+
+            if let Err(e) = self.poll.poll(&mut self.events, timeout) {
                 log::error!("failed poll: {:?}", e);
                 return Ok(vec![]);
             }
+
+            if self.events.is_empty() {
+                // empty means timeout or something weird, but probably timeout
+                let discovered_devices = self
+                    .missing_device_paths
+                    .iter()
+                    .filter_map(|dev_path| match Device::open(dev_path) {
+                        Ok(device) => Some((device, dev_path.clone())),
+                        Err(_) => None,
+                    })
+                    .collect::<Vec<(_, _)>>();
+
+                for (mut device, dev_path) in discovered_devices {
+                    log::info!("discovered device {dev_path}");
+                    device.grab()?;
+                    device.ungrab()?;
+                    device.grab()?;
+                    let tok = Token(self.token_counter);
+                    self.token_counter += 1;
+                    let fd = device.as_raw_fd();
+                    self.poll
+                        .registry()
+                        .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
+                    log::info!("device {dev_path} registered");
+                    self.missing_device_paths.retain(|path| path != &dev_path);
+                    self.devices.insert(tok, (device, dev_path));
+                }
+            }
+
             for event in &self.events {
-                if let Some(device) = self.devices.get_mut(&event.token()) {
-                    device
+                if let Some((device, _)) = self.devices.get_mut(&event.token()) {
+                    if let Err(e) = device
                         .fetch_events()
-                        .map_err(|e| {
-                            log::error!("failed fetch events");
-                            e
-                        })?
-                        .into_iter()
-                        .for_each(|ev| input_events.push(ev));
+                        .map(|evs| evs.into_iter().for_each(|ev| input_events.push(ev)))
+                    {
+                        // Currently the kind() is uncategorized... not helpful, need to match
+                        // on os error (19)
+                        match e.raw_os_error() {
+                            Some(19) => {
+                                self.poll
+                                    .registry()
+                                    .deregister(&mut SourceFd(&device.as_raw_fd()))?;
+                                if let Some((_, path)) = self.devices.remove(&event.token()) {
+                                    log::warn!("removing kbd device: {path}");
+                                    self.missing_device_paths.push(path);
+                                }
+                            }
+                            _ => {
+                                log::error!("failed fetch events due to {e}, kind: {}", e.kind());
+                                return Err(e);
+                            }
+                        };
+                    }
                 } else {
                     panic!("encountered unexpected epoll event {event:?}");
                 }
