@@ -20,7 +20,7 @@ impl Kanata {
         let mut kbd_in = match KbdIn::new(&kanata.lock().kbd_in_paths) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {
-                bail!("failed to open keyboard device: {}", e)
+                bail!("failed to open keyboard device(s): {}", e)
             }
         };
 
