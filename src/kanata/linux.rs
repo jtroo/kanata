@@ -17,12 +17,14 @@ impl Kanata {
             *mapped_keys = kanata.lock().mapped_keys.clone();
         }
 
-        let mut kbd_in = match KbdIn::new(&kanata.lock().kbd_in_paths) {
+        let k = kanata.lock();
+        let mut kbd_in = match KbdIn::new(&k.kbd_in_paths, k.continue_if_no_devices) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {
                 bail!("failed to open keyboard device(s): {}", e)
             }
         };
+        drop(k);
 
         loop {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;

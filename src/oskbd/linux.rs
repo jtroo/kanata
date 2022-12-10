@@ -35,7 +35,7 @@ const INOTIFY_TOKEN_VALUE: usize = 0;
 const INOTIFY_TOKEN: Token = Token(INOTIFY_TOKEN_VALUE);
 
 impl KbdIn {
-    pub fn new(dev_paths: &[String]) -> Result<Self, io::Error> {
+    pub fn new(dev_paths: &[String], continue_if_no_devices: bool) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
 
         let mut missing_device_paths = None;
@@ -46,10 +46,14 @@ impl KbdIn {
             discover_devices()?
         };
         if devices.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "No keyboard devices were found",
-            ));
+            if continue_if_no_devices {
+                log::warn!("no keyboard devices found; kanata is waiting");
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "No keyboard devices were found",
+                ));
+            }
         }
         let _inotify = watch_devinput().map_err(|e| {
             log::error!("failed to watch files: {e:?}");

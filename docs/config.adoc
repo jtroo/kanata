@@ -252,6 +252,20 @@ its file name, you must escape those colons with backslashes:
 )
 ----
 
+=== Linux only: linux-continue-if-no-devs-found
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will crash if no input devices are found. You can change
+this behaviour by setting `linux-continue-if-no-dev-found`.
+
+Example: 
+
+----
+(defcfg
+  linux-continue-if-no-dev-found yes
+)
+----
+
 === Windows only: windows-altgr
 <<table-of-contents,Back to ToC>>
 
@@ -327,6 +341,7 @@ a non-applicable operating system.
   danger-enable-cmd yes
   sequence-timeout 2000
   linux-dev /dev/input/dev1:/dev/input/dev2
+  linux-continue-if-no-dev-found yes
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
 )
