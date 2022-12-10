@@ -256,13 +256,13 @@ its file name, you must escape those colons with backslashes:
 <<table-of-contents,Back to ToC>>
 
 By default, kanata will crash if no input devices are found. You can change
-this behaviour by setting `linux-continue-if-no-dev-found`.
+this behaviour by setting `linux-continue-if-no-devs-found`.
 
 Example: 
 
 ----
 (defcfg
-  linux-continue-if-no-dev-found yes
+  linux-continue-if-no-devs-found yes
 )
 ----
 
