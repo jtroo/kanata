@@ -42,6 +42,8 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
     last_tick: time::Instant,
+    #[cfg(target_os = "linux")]
+    continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     kbd_out_rx: Receiver<InputEvent>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -166,6 +168,13 @@ impl Kanata {
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: time::Instant::now(),
+            #[cfg(target_os = "linux")]
+            continue_if_no_devices: cfg
+                .items
+                .get("linux-continue-if-no-devs-found")
+                .map(|s| matches!(s.to_lowercase().as_str(), "yes" | "true"))
+                .unwrap_or_default(),
+
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             kbd_out_rx,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]

@@ -39,6 +39,11 @@ If you need help, you are welcome to ask.
   ;; kanata does not parse it as multiple devices.
   ;; linux-dev /dev/input/path-to\:device
 
+  ;; By default, kanata will crash if no input devices are found. You can change
+  ;; this behaviour by setting `linux-continue-if-no-devs-found`.
+  ;; 
+  ;; linux-continue-if-no-devs-found yes
+
   ;; Windows doesn't need any input/output configuration entries; however, there
   ;; must still be a defcfg entry.
   ;;

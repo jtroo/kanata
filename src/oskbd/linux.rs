@@ -1,7 +1,10 @@
 //! Contains the input/output code for keyboards on Linux.
 
 use evdev::{uinput, Device, EventType, InputEvent, RelativeAxisType};
+use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
+use nix::ioctl_read_buf;
+use rustc_hash::FxHashMap as HashMap;
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -17,129 +20,102 @@ use crate::custom_action::*;
 use crate::keys::KeyEvent;
 use crate::keys::*;
 
-type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
-
 pub struct KbdIn {
     devices: HashMap<Token, (Device, String)>,
-    missing_device_paths: Vec<String>,
+    /// Some(_) if devices are explicitly listed, otherwise None.
+    missing_device_paths: Option<Vec<String>>,
     poll: Poll,
     events: Events,
     token_counter: usize,
+    /// stored to prevent dropping
+    _inotify: Inotify,
 }
 
+const INOTIFY_TOKEN_VALUE: usize = 0;
+const INOTIFY_TOKEN: Token = Token(INOTIFY_TOKEN_VALUE);
+
 impl KbdIn {
-    pub fn new(dev_paths: &[String]) -> Result<Self, io::Error> {
-        let mut device_map = HashMap::default();
+    pub fn new(dev_paths: &[String], continue_if_no_devices: bool) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
 
-        let mut missing_device_paths = vec![];
+        let mut missing_device_paths = None;
         let devices = if !dev_paths.is_empty() {
-            dev_paths
-                .iter()
-                .map(|dev_path| (dev_path, Device::open(dev_path)))
-                .filter_map(|(dev_path, open_result)| match open_result {
-                    Ok(d) => Some((d, dev_path.clone())),
-                    Err(e) => {
-                        log::warn!("failed to open device '{dev_path}': {e:?}");
-                        missing_device_paths.push(dev_path.clone());
-                        None
-                    }
-                })
-                .collect()
+            missing_device_paths = Some(vec![]);
+            devices_from_input_paths(dev_paths, missing_device_paths.as_mut().unwrap())
         } else {
-            let devices: Vec<_> = evdev::enumerate()
-                .map(|(path, device)| {
-                    (
-                        device,
-                        path.to_str()
-                            .expect("non-utf8 path found for device")
-                            .to_owned(),
-                    )
-                })
-                .filter(|pd| is_input_device(&pd.0))
-                .collect();
-            if devices.is_empty() {
-                return Err(io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "Could not auto detect any keyboard devices",
-                ));
-            }
-            devices
+            discover_devices()?
         };
         if devices.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "No keyboard devices were found",
-            ));
+            if continue_if_no_devices {
+                log::warn!("no keyboard devices found; kanata is waiting");
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "No keyboard devices were found",
+                ));
+            }
         }
-        let mut token_counter = 0;
-        for (mut kbd_in_dev, path) in devices.into_iter() {
-            // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
-            // trackpad not working. No idea why this works.
-            kbd_in_dev.grab()?;
-            kbd_in_dev.ungrab()?;
-            kbd_in_dev.grab()?;
+        let _inotify = watch_devinput().map_err(|e| {
+            log::error!("failed to watch files: {e:?}");
+            e
+        })?;
+        poll.registry().register(
+            &mut SourceFd(&_inotify.as_raw_fd()),
+            INOTIFY_TOKEN,
+            Interest::READABLE,
+        )?;
 
-            let tok = Token(token_counter);
-            token_counter += 1;
-            let fd = kbd_in_dev.as_raw_fd();
-            poll.registry()
-                .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
-            device_map.insert(tok, (kbd_in_dev, path));
-        }
-
-        let events = Events::with_capacity(32);
-        Ok(KbdIn {
-            devices: device_map,
+        let mut kbdin = Self {
             poll,
-            events,
             missing_device_paths,
-            token_counter,
-        })
+            _inotify,
+            events: Events::with_capacity(32),
+            devices: HashMap::default(),
+            token_counter: INOTIFY_TOKEN_VALUE + 1,
+        };
+
+        for (device, dev_path) in devices.into_iter() {
+            if let Err(e) = kbdin.register_device(device, dev_path.clone()) {
+                log::warn!("found device {dev_path} but could not register it {e:?}");
+                if let Some(ref mut missing) = kbdin.missing_device_paths {
+                    missing.push(dev_path);
+                }
+            }
+        }
+
+        Ok(kbdin)
+    }
+
+    fn register_device(&mut self, mut dev: Device, path: String) -> Result<(), io::Error> {
+        log::info!("registering {path}");
+        wait_for_all_keys_unpressed(&dev)?;
+        // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
+        // trackpad not working. No idea why this works.
+        dev.grab()?;
+        dev.ungrab()?;
+        dev.grab()?;
+
+        let tok = Token(self.token_counter);
+        self.token_counter += 1;
+        let fd = dev.as_raw_fd();
+        self.poll
+            .registry()
+            .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
+        self.devices.insert(tok, (dev, path));
+        Ok(())
     }
 
     pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
         let mut input_events = vec![];
         loop {
             log::trace!("polling");
-            let timeout = match self.missing_device_paths.is_empty() {
-                true => None,
-                false => Some(std::time::Duration::from_secs(5)),
-            };
 
-            if let Err(e) = self.poll.poll(&mut self.events, timeout) {
+            if let Err(e) = self.poll.poll(&mut self.events, None) {
                 log::error!("failed poll: {:?}", e);
                 return Ok(vec![]);
             }
 
-            if self.events.is_empty() {
-                // empty means timeout or something weird, but probably timeout
-                let discovered_devices = self
-                    .missing_device_paths
-                    .iter()
-                    .filter_map(|dev_path| match Device::open(dev_path) {
-                        Ok(device) => Some((device, dev_path.clone())),
-                        Err(_) => None,
-                    })
-                    .collect::<Vec<(_, _)>>();
-
-                for (mut device, dev_path) in discovered_devices {
-                    log::info!("discovered device {dev_path}");
-                    device.grab()?;
-                    device.ungrab()?;
-                    device.grab()?;
-                    let tok = Token(self.token_counter);
-                    self.token_counter += 1;
-                    let fd = device.as_raw_fd();
-                    self.poll
-                        .registry()
-                        .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
-                    log::info!("device {dev_path} registered");
-                    self.missing_device_paths.retain(|path| path != &dev_path);
-                    self.devices.insert(tok, (device, dev_path));
-                }
-            }
-
+            let mut do_rediscover = false;
             for event in &self.events {
                 if let Some((device, _)) = self.devices.get_mut(&event.token()) {
                     if let Err(e) = device
@@ -155,7 +131,9 @@ impl KbdIn {
                                     .deregister(&mut SourceFd(&device.as_raw_fd()))?;
                                 if let Some((_, path)) = self.devices.remove(&event.token()) {
                                     log::warn!("removing kbd device: {path}");
-                                    self.missing_device_paths.push(path);
+                                    if let Some(ref mut missing) = self.missing_device_paths {
+                                        missing.push(path);
+                                    }
                                 }
                             }
                             _ => {
@@ -164,14 +142,70 @@ impl KbdIn {
                             }
                         };
                     }
+                } else if event.token() == INOTIFY_TOKEN {
+                    do_rediscover = true;
                 } else {
                     panic!("encountered unexpected epoll event {event:?}");
                 }
+            }
+            if do_rediscover {
+                log::info!("watch found file changes, looking for new devices");
+                self.rediscover_devices()?;
             }
             if !input_events.is_empty() {
                 return Ok(input_events);
             }
         }
+    }
+
+    fn rediscover_devices(&mut self) -> Result<(), io::Error> {
+        // This function is kinda ugly but the borrow checker doesn't like all this mutation.
+        let mut paths_registered = vec![];
+        if let Some(ref mut missing) = self.missing_device_paths {
+            if missing.is_empty() {
+                log::info!("no devices are missing, doing nothing");
+                return Ok(());
+            }
+            log::info!("checking for {missing:?}");
+            let discovered_devices = missing
+                .iter()
+                .filter_map(|dev_path| {
+                    for _ in 0..10 {
+                        // try a few times with waits in between; device might not be ready
+                        if let Ok(device) = Device::open(dev_path) {
+                            return Some((device, dev_path.clone()));
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    None
+                })
+                .collect::<Vec<(_, _)>>();
+            for (device, dev_path) in discovered_devices {
+                if let Err(e) = self.register_device(device, dev_path.clone()) {
+                    log::warn!("found device {dev_path} but could not register it {e:?}");
+                } else {
+                    paths_registered.push(dev_path);
+                }
+            }
+        }
+        if let Some(ref mut missing) = self.missing_device_paths {
+            missing.retain(|path| !paths_registered.contains(path));
+        } else {
+            discover_devices()?
+                .into_iter()
+                .try_for_each(|(dev, path)| {
+                    if !self
+                        .devices
+                        .values()
+                        .any(|(_, registered_path)| &path == registered_path)
+                    {
+                        self.register_device(dev, path)
+                    } else {
+                        Ok(())
+                    }
+                })?;
+        }
+        Ok(())
     }
 }
 
@@ -388,6 +422,52 @@ impl KbdOut {
     }
 }
 
+fn devices_from_input_paths(
+    dev_paths: &[String],
+    missing_device_paths: &mut Vec<String>,
+) -> Vec<(Device, String)> {
+    dev_paths
+        .iter()
+        .map(|dev_path| (dev_path, Device::open(dev_path)))
+        .filter_map(|(dev_path, open_result)| match open_result {
+            Ok(d) => Some((d, dev_path.clone())),
+            Err(e) => {
+                log::warn!("failed to open device '{dev_path}': {e:?}");
+                missing_device_paths.push(dev_path.clone());
+                None
+            }
+        })
+        .collect()
+}
+
+fn discover_devices() -> Result<Vec<(Device, String)>, io::Error> {
+    log::info!("looking for devices in /dev/input");
+    let devices: Vec<_> = evdev::enumerate()
+        .map(|(path, device)| {
+            (
+                device,
+                path.to_str()
+                    .expect("non-utf8 path found for device")
+                    .to_owned(),
+            )
+        })
+        .filter(|pd| is_input_device(&pd.0))
+        .collect();
+    if devices.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Could not auto detect any keyboard devices",
+        ));
+    }
+    Ok(devices)
+}
+
+fn watch_devinput() -> Result<Inotify, io::Error> {
+    let mut inotify = Inotify::init().expect("Failed to initialize inotify");
+    inotify.add_watch("/dev/input", WatchMask::CREATE)?;
+    Ok(inotify)
+}
+
 impl From<Btn> for OsCode {
     fn from(btn: Btn) -> Self {
         match btn {
@@ -458,6 +538,31 @@ pub fn parse_dev_paths(paths: &str) -> Vec<String> {
         full_dev_path.clear();
     }
     all_paths
+}
+
+fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
+    let mut pending_release = false;
+    const KEY_MAX: usize = OsCode::KEY_MAX as usize;
+    let mut keystate = [0u8; KEY_MAX / 8 + 1];
+    loop {
+        let mut n_pressed_keys = 0;
+        ioctl_read_buf!(read_keystates, 'E', 0x18, u8);
+        unsafe { read_keystates(dev.as_raw_fd(), &mut keystate) }
+            .map_err(|_| io::Error::last_os_error())?;
+        for i in 0..=KEY_MAX {
+            if (keystate[i / 8] >> (i % 8)) & 0x1 > 0 {
+                n_pressed_keys += 1;
+            }
+        }
+        match n_pressed_keys {
+            0 => break,
+            _ => pending_release = true,
+        }
+    }
+    if pending_release {
+        std::thread::sleep(std::time::Duration::from_micros(100));
+    }
+    Ok(())
 }
 
 #[test]
