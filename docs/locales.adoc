@@ -22,14 +22,14 @@ toc::[]
   ^    220
   ´    221
   ä    222
-  <>|  226
+  <    226
 )
 
 (defsrc
   ^         1    2    3    4    5    6    7    8    9    0    ß    ´    bspc
   tab       q    w    e    r    t    z    u    i    o    p    ü    +
   caps      a    s    d    f    g    h    j    k    l    ö    ä    #    ret
-  lsft <>|  y    x    c    v    b    n    m    ,    .    -    rsft
+  lsft <    y    x    c    v    b    n    m    ,    .    -    rsft
   lctl lmet lalt           spc            ralt rmet rctl
 )
 ----
