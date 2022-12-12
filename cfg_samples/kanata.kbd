@@ -97,11 +97,15 @@ If you need help, you are welcome to ask.
 ;; locale is not there, please ask for help if needed, and add the mapping for
 ;; your locale to the document.
 ;;
+;; Web link for locales: https://github.com/jtroo/kanata/blob/main/docs/locales.adoc
+;;
 ;; This example is for an Italian keyboard remapping in Linux. The numbers will
 ;; unfortunately differ between Linux, Windows-hooks, and Windows-interception.
 ;;
 ;; To see how you can discover key mappings for yourself, see the "Non-US keyboards"
 ;; section of docs/config.adoc.
+;;
+;; Web link or config: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 
 (deflocalkeys-win
   ì 187
