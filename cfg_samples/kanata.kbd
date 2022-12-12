@@ -78,11 +78,20 @@ If you need help, you are welcome to ask.
   ;; process-unmapped-keys yes
 )
 
-;; defcustomkeys enables you to define and use key names that match your locale
+;; deflocalkeys-* enables you to define and use key names that match your locale
 ;; by defining OS code number mappings for that character.
 ;;
-;; Only one defcustomkeys is allowed. It is parsed similarly to defcfg; it is
-;; composed of pairs of keys and values.
+;; There are three variants of deflocalkeys-*:
+;; - deflocalkeys-win
+;; - deflocalkeys-wintercept
+;; - deflocalkeys-linux
+;;
+;; Only one of each deflocalkeys-* variant is allowed. The variants that are
+;; not applicable will be ignored, e.g. deflocalkeys-linux and deflocalkeys-wintercept
+;; are both ignored when using the default Windows kanata binary.
+;;
+;; The configuration item is parsed similarly to defcfg; it is composed of
+;; pairs of keys and values.
 ;;
 ;; You can check docs/locales.adoc for the mapping for your locale. If your
 ;; locale is not there, please ask for help if needed, and add the mapping for
@@ -93,7 +102,16 @@ If you need help, you are welcome to ask.
 ;;
 ;; To see how you can discover key mappings for yourself, see the "Non-US keyboards"
 ;; section of docs/config.adoc.
-(defcustomkeys
+
+(deflocalkeys-win
+  ì 187
+)
+
+(deflocalkeys-wintercept
+  ì 187
+)
+
+(deflocalkeys-linux
   ì 13
 )
 

@@ -157,9 +157,20 @@ certainly undesirable but is a valid configuration.
 <<table-of-contents,Back to ToC>>
 
 For non-US keyboard users, you may have some keys on your keyboard that are
-cannot be mapped in `defsrc` by default. You can use `defcustomkeys` to define
-additional key names that can be used in `defsrc`, `deflayer` and anywhere else
-in the configuration.
+cannot be mapped in `defsrc` by default, at least according to the symbol
+shown. You can use `deflocalkeys` to define additional key names that can be
+used in `defsrc`, `deflayer` and anywhere else in the configuration.
+
+There are three variants of deflocalkeys:
+
+- `deflocalkeys-win`
+- `deflocalkeys-winintercept`
+- `deflocalkeys-linux`
+
+
+Only one of each deflocalkeys-* variant is allowed. The variants that are not
+applicable will be ignored, e.g. deflocalkeys-linux and deflocalkeys-wintercept
+are both ignored when using the default Windows kanata binary.
 
 You can find configurations that others have made in xref:locales.adoc[this
 document]. If you do not see your keyboard there and are not confident in using
@@ -169,7 +180,15 @@ Please contribute to the document if you are able!
 Example:
 
 ----
-(defcustomkeys
+(deflocalkeys-win
+  ì 187
+)
+
+(deflocalkeys-wintercept
+  ì 187
+)
+
+(deflocalkeys-linux
   ì 13
 )
 
@@ -189,11 +208,11 @@ keyboard tester in the kanata repository will give the correct number.
 
 In Windows using Interception, the interception version of the keyboard tester
 will give the correct number. Between the hook and interception versions, some
-keys may agree but some will not; do be aware that they are **not** compatible!
+keys may agree but others may not; do be aware that they are **not** compatible!
 
-Ideas are for improving the user-friendliness of this system is welcome! As
+Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and
-help with xref:locales.adoc[this document] is very welcome, so that future
+help with xref:locales.adoc[this document] is very welcome so that future
 users can have an easier time 🙂.
 
 == Optional defcfg entries
