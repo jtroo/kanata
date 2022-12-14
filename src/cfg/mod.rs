@@ -250,6 +250,13 @@ fn parse_cfg(
     ))
 }
 
+#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
+#[cfg(all(feature = "interception_driver", target_os = "windows"))]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-winercept";
+#[cfg(target_os = "linux")]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
+
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw(
     p: &std::path::Path,
@@ -279,6 +286,22 @@ fn parse_cfg_raw(
         bail!("Only one defcfg is allowed in the configuration")
     }
     let cfg = parse_defcfg(cfg_expr)?;
+
+    if let Some(result) = root_exprs
+        .iter()
+        .find(gen_first_atom_filter(DEF_LOCAL_KEYS))
+        .map(|custom_keys| parse_deflocalkeys(custom_keys))
+    {
+        result?;
+    }
+    if root_exprs
+        .iter()
+        .filter(gen_first_atom_filter(DEF_LOCAL_KEYS))
+        .count()
+        > 1
+    {
+        bail!("Only one defcustomkeys is allowed in the configuration")
+    }
 
     let src_expr = root_exprs
         .iter()
@@ -461,6 +484,42 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                 );
             }
         }
+    }
+}
+
+/// Parse custom keys from an expression starting with deflocalkeys. Statefully updates the `keys`
+/// module using the custom keys parsed.
+fn parse_deflocalkeys(expr: &[SExpr]) -> Result<()> {
+    let mut cfg = HashMap::default();
+    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?;
+    clear_custom_str_oscode_mapping();
+    // Read k-v pairs from the configuration
+    loop {
+        let key = match exprs.next() {
+            Some(k) => k
+                .atom()
+                .ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} contains a list; no lists are allowed"))?,
+            None => {
+                replace_custom_str_oscode_mapping(&cfg);
+                return Ok(());
+            }
+        };
+        if str_to_oscode(key).is_some() {
+            bail!("{key} is a default key name in kanata; it cannot be used in {DEF_LOCAL_KEYS}");
+        } else if cfg.contains_key(key) {
+            bail!(
+                "{key} has been defined more than once in {DEF_LOCAL_KEYS}; no duplicates are allowed"
+            );
+        }
+        let osc = match exprs.next() {
+            Some(v) => v.atom()
+                .ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} contains a list; no lists are allowed"))
+                .and_then(|osc| osc.parse::<u16>().map_err(|_| anyhow!("{DEF_LOCAL_KEYS} unknown number {osc}")))
+                .and_then(|osc| OsCode::from_u16(osc).ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} unknown number {osc}")))?,
+            None => bail!("Incorrect number of elements found in {DEF_LOCAL_KEYS}; they should be pairs of keys and numbers."),
+        };
+        log::debug!("custom mapping: {key} {}", osc.as_u16());
+        cfg.insert(key.to_owned(), osc);
     }
 }
 

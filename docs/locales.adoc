@@ -1,0 +1,102 @@
+= Keyboard locales
+:toc:
+:toc-placement!:
+:toc-title!:
+
+== Table of contents
+toc::[]
+
+== ISO German QWERTZ - Windows (non-interception)
+
+=== Using `defcustomkeys`:
+
+[%collapsible]
+====
+----
+(defcustomkeys
+  ü    186
+  +    187
+  #    191
+  ö    192
+  ß    219
+  ^    220
+  ´    221
+  ä    222
+  <    226
+)
+
+(defsrc
+  ^         1    2    3    4    5    6    7    8    9    0    ß    ´    bspc
+  tab       q    w    e    r    t    z    u    i    o    p    ü    +
+  caps      a    s    d    f    g    h    j    k    l    ö    ä    #    ret
+  lsft <    y    x    c    v    b    n    m    ,    .    -    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+====
+
+=== Without using `defcustomkeys`:
+
+[%collapsible]
+====
+----
+(defsrc
+  \         1    2    3    4    5    6    7    8    9    0    [    ]    bspc
+  tab       q    w    e    r    t    z    u    i    o    p    ;    =
+  caps      a    s    d    f    g    h    j    k    l    grv  '    /    ret
+  lsft 102d y    x    c    v    b    n    m    ,    .    -    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+====
+
+=== Example aliases
+
+[%collapsible]
+====
+----
+(defalias
+  ;; shifted german keys
+  ! S-1
+  ˝ S-2  ;; unicode 02DD ˝ look-a-like is used because @" is no valid alias, to be displayed correctly
+         ;; in console requires a font that can - e.g. cascadia
+  §	S-3
+  $	S-4
+  %	S-5
+  &	S-6
+  /	S-7
+  ﴾	S-8  ;; unicode FD3E ﴾ look-a-like is used because @( is no valid alias, to be displayed correctly...
+  ﴿	S-9  ;; unicode FD3F ﴿ look-a-like is used because @) is no valid alias, to be displayed correctly ...
+  =	S-0
+  ? S-ß
+  * S-+
+  ' S-#
+  ; S-,
+  : S-.
+  _ S--
+  > S-<
+  < <   ;; not really needed but having @< and @> looks consistent
+
+  ;; change dead keys in normal keys
+  ´ (macro ´ spc )	  ;; ´ 
+  ` (macro S-´ spc )  ;; `
+  ^ (macro ^ spc )    ;; ^ = \ - shifting @^ will produce an incorrect space now
+  ° S-^
+  
+  ;; AltGr german keys
+  ~ A-C-+
+  \ A-C-ß
+  ẞ A-C-S-ß
+  | A-C-<
+  } A-C-0
+  { A-C-7
+  ] A-C-9
+  [ A-C-8	
+  € A-C-e
+  @ A-C-q
+  ² A-C-2
+  ³ A-C-3
+  µ A-C-m
+)
+----
+====
