@@ -21,7 +21,6 @@ impl Kanata {
             state: ic::KeyState::empty(),
             information: 0,
         }; 32];
-        intrcptn.set_filter(ic::is_mouse, ic::Filter::MouseFilter(ic::MouseState::all()));
 
         let mouse_to_intercept_hwid: Option<[u8; HWID_ARR_SZ]> = kanata
             .lock()
@@ -37,6 +36,9 @@ impl Kanata {
                         hwid
                     })
             });
+        if mouse_to_intercept_hwid.is_some() {
+            intrcptn.set_filter(ic::is_mouse, ic::Filter::MouseFilter(ic::MouseState::all()));
+        }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
 
         loop {
