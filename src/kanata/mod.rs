@@ -298,7 +298,7 @@ impl Kanata {
                             log::debug!(
                                 "fake key on press   {action:?} {:?},{x:?},{y:?} {:?}",
                                 self.layout.default_layer,
-                                self.layout.layers[self.layout.default_layer as usize][x as usize]
+                                self.layout.layers[self.layout.default_layer][x as usize]
                                     [y as usize]
                             );
                             match action {
