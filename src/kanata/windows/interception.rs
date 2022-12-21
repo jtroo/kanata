@@ -37,7 +37,15 @@ impl Kanata {
                     })
             });
         if mouse_to_intercept_hwid.is_some() {
-            intrcptn.set_filter(ic::is_mouse, ic::Filter::MouseFilter(ic::MouseState::all()));
+            intrcptn.set_filter(
+                ic::is_mouse,
+                ic::Filter::MouseFilter(
+                    ic::MouseState::all()
+                        & (!ic::MouseState::WHEEL)
+                        & (!ic::MouseState::HWHEEL)
+                        & (!ic::MouseState::MOVE),
+                ),
+            );
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
 
@@ -46,9 +54,9 @@ impl Kanata {
             if dev > 0 {
                 let num_strokes = intrcptn.receive(dev, &mut strokes) as usize;
                 for i in 0..num_strokes {
-                    log::debug!("got stroke {:?}", strokes[i]);
                     let mut key_event = match strokes[i] {
                         ic::Stroke::Keyboard { state, .. } => {
+                            log::debug!("got stroke {:?}", strokes[i]);
                             let code = match OsCode::try_from(strokes[i]) {
                                 Ok(c) => c,
                                 _ => {
@@ -64,9 +72,8 @@ impl Kanata {
                             KeyEvent { code, value }
                         }
                         ic::Stroke::Mouse { state, .. } => {
-                            log::trace!("matched on mouse stroke");
                             if let Some(hwid) = mouse_to_intercept_hwid {
-                                log::trace!("checking mouse state to event");
+                                log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,
                                     &hwid,
