@@ -11,6 +11,7 @@ use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
+use enigo::*;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -198,6 +199,17 @@ impl KbdOut {
         }
         Ok(())
     }
+
+    pub fn move_mouse(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+        log::debug!("move mouse: {direction:?} {distance:?}");
+        match direction {
+            MWheelDirection::Up => move_mouse(0, -i32::from(distance)),
+            MWheelDirection::Down => move_mouse(0, i32::from(distance)),
+            MWheelDirection::Left => move_mouse(-i32::from(distance), 0),
+            MWheelDirection::Right => move_mouse(i32::from(distance), 0),
+        }
+        Ok(())
+    }
 }
 
 fn send_btn(flag: u32) {
@@ -263,6 +275,11 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
         *inputs[0].u.mi_mut() = m_input;
         SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
     }
+}
+
+fn move_mouse(x: i32, y: i32) {
+    let mut enigo = Enigo::new();
+    enigo.mouse_move_relative(x, y); 
 }
 
 fn key_input_from_event(key: InputEvent) -> KEYBDINPUT {

@@ -19,6 +19,10 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
+    MouseMove {
+        direction: MWheelDirection, //TODO: fix with MoveDirection
+        distance: u16,
+    },
     SequenceLeader,
     LiveReload,
     Repeat,
@@ -49,6 +53,14 @@ pub enum FakeKeyAction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MWheelDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MoveDirection {
     Up,
     Down,
     Left,

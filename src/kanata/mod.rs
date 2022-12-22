@@ -289,6 +289,13 @@ impl Kanata {
                                     interval: *interval,
                                 })
                             }
+                        }
+                        //TODO: idk if this works
+                        CustomAction::MouseMove {
+                            direction,
+                            distance,
+                        } => {
+                            self.kbd_out.move_mouse(*direction, *distance)?;
                         },
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
