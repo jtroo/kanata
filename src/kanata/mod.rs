@@ -290,7 +290,6 @@ impl Kanata {
                                 })
                             }
                         }
-                        //TODO: idk if this works
                         CustomAction::MouseMove {
                             direction,
                             distance,

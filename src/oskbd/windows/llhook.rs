@@ -200,13 +200,13 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
         log::debug!("move mouse: {direction:?} {distance:?}");
         match direction {
-            MWheelDirection::Up => move_mouse(0, -i32::from(distance)),
-            MWheelDirection::Down => move_mouse(0, i32::from(distance)),
-            MWheelDirection::Left => move_mouse(-i32::from(distance), 0),
-            MWheelDirection::Right => move_mouse(i32::from(distance), 0),
+            MoveDirection::Up => move_mouse(0, -i32::from(distance)),
+            MoveDirection::Down => move_mouse(0, i32::from(distance)),
+            MoveDirection::Left => move_mouse(-i32::from(distance), 0),
+            MoveDirection::Right => move_mouse(i32::from(distance), 0),
         }
         Ok(())
     }

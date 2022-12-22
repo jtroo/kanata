@@ -20,7 +20,7 @@ pub enum CustomAction {
         distance: u16,
     },
     MouseMove {
-        direction: MWheelDirection, //TODO: fix with MoveDirection
+        direction: MoveDirection, //TODO: fix with MoveDirection
         distance: u16,
     },
     SequenceLeader,
