@@ -48,7 +48,25 @@ pub fn clear_custom_str_oscode_mapping() {
 /// be useful to remap via `defcustomkeys`, then it should be moved into here. This is so that the
 /// key name can be remapped while also working for older configurations that already use it.
 fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
-    mapping.entry("+".into()).or_insert(OsCode::KEY_KPPLUS);
+    let default_mappings = [
+        ("+", OsCode::KEY_KPPLUS),
+        ("[", OsCode::KEY_LEFTBRACE),
+        ("]", OsCode::KEY_RIGHTBRACE),
+        ("{", OsCode::KEY_LEFTBRACE),
+        ("}", OsCode::KEY_RIGHTBRACE),
+        ("/", OsCode::KEY_SLASH),
+        (";", OsCode::KEY_SEMICOLON),
+        ("`", OsCode::KEY_GRAVE),
+        ("=", OsCode::KEY_EQUAL),
+        ("-", OsCode::KEY_MINUS),
+        ("'", OsCode::KEY_APOSTROPHE),
+        (",", OsCode::KEY_COMMA),
+        (".", OsCode::KEY_DOT),
+        ("\\", OsCode::KEY_BACKSLASH),
+    ];
+    for dm in default_mappings {
+        mapping.entry(dm.0.into()).or_insert(dm.1);
+    }
 }
 
 /// Convert a `&str` to an `OsCode`.
@@ -61,7 +79,7 @@ fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
 #[rustfmt::skip]
 pub fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
-        "grv" | "`" => OsCode::KEY_GRAVE,
+        "grv" => OsCode::KEY_GRAVE,
         "1" => OsCode::KEY_1,
         "2" => OsCode::KEY_2,
         "3" => OsCode::KEY_3,
@@ -72,8 +90,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "8" => OsCode::KEY_8,
         "9" => OsCode::KEY_9,
         "0" => OsCode::KEY_0,
-        "min" | "-" => OsCode::KEY_MINUS,
-        "eql" | "=" => OsCode::KEY_EQUAL,
+        "min" => OsCode::KEY_MINUS,
+        "eql" => OsCode::KEY_EQUAL,
         "bspc" | "bks" => OsCode::KEY_BACKSPACE,
         "tab" => OsCode::KEY_TAB,
         "q" => OsCode::KEY_Q,
@@ -86,11 +104,9 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "i" => OsCode::KEY_I,
         "o" => OsCode::KEY_O,
         "p" => OsCode::KEY_P,
-        "{" => OsCode::KEY_LEFTBRACE,
-        "}" => OsCode::KEY_RIGHTBRACE,
-        "lbrc" | "[" => OsCode::KEY_LEFTBRACE,
-        "rbrc" | "]" => OsCode::KEY_RIGHTBRACE,
-        "\\" | "bksl" | "yen" | "¥" => OsCode::KEY_BACKSLASH,
+        "lbrc" => OsCode::KEY_LEFTBRACE,
+        "rbrc" => OsCode::KEY_RIGHTBRACE,
+        "bksl" | "yen" | "¥" => OsCode::KEY_BACKSLASH,
         "caps" => OsCode::KEY_CAPSLOCK,
         "a" => OsCode::KEY_A,
         "s" => OsCode::KEY_S,
@@ -101,8 +117,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "j" => OsCode::KEY_J,
         "k" => OsCode::KEY_K,
         "l" => OsCode::KEY_L,
-        "scln" | ";" => OsCode::KEY_SEMICOLON,
-        "'" | "apo" | "apos" => OsCode::KEY_APOSTROPHE,
+        "scln" => OsCode::KEY_SEMICOLON,
+        "apo" | "apos" => OsCode::KEY_APOSTROPHE,
         "ret" | "return" | "ent" | "enter" => OsCode::KEY_ENTER,
         "lshift" | "lshft" | "lsft" | "shft" | "sft" => OsCode::KEY_LEFTSHIFT,
         "z" => OsCode::KEY_Z,
@@ -112,9 +128,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "b" => OsCode::KEY_B,
         "n" => OsCode::KEY_N,
         "m" => OsCode::KEY_M,
-        "comm" | "," => OsCode::KEY_COMMA,
-        "." => OsCode::KEY_DOT,
-        "/" => OsCode::KEY_SLASH,
+        "comm" => OsCode::KEY_COMMA,
         "kp=" | "clr" => OsCode::KEY_CLEAR,
         // The kp<etc> keys are also known as the numpad keys. E.g. below is numpad enter.
         "kp0" => OsCode::KEY_KP0,
