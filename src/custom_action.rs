@@ -19,8 +19,9 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
-    MouseMove {
-        direction: MoveDirection, //TODO: fix with MoveDirection
+    MoveMouse {
+        direction: MoveDirection,
+        interval: u16,
         distance: u16,
     },
     SequenceLeader,

@@ -38,6 +38,7 @@ pub struct Kanata {
     pub prev_layer: usize,
     pub scroll_state: Option<ScrollState>,
     pub hscroll_state: Option<ScrollState>,
+    pub move_mouse_state: Option<MoveMouseState>,
     pub sequence_timeout: u16,
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
@@ -54,6 +55,13 @@ pub struct ScrollState {
     pub direction: MWheelDirection,
     pub interval: u16,
     pub ticks_until_scroll: u16,
+    pub distance: u16,
+}
+
+pub struct MoveMouseState {
+    pub direction: MoveDirection,
+    pub interval: u16,
+    pub ticks_until_move: u16,
     pub distance: u16,
 }
 
@@ -164,6 +172,7 @@ impl Kanata {
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
+            move_mouse_state: None,
             sequence_timeout,
             sequence_state: None,
             sequences: cfg.sequences,
@@ -211,6 +220,7 @@ impl Kanata {
             let cur_keys = self.handle_keystate_changes()?;
             live_reload_requested |= self.handle_custom_event(custom_event)?;
             self.handle_scrolling()?;
+            self.handle_move_mouse()?;
             self.tick_sequence_state();
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
@@ -290,11 +300,17 @@ impl Kanata {
                                 })
                             }
                         }
-                        CustomAction::MouseMove {
+                        CustomAction::MoveMouse {
                             direction,
+                            interval,
                             distance,
                         } => {
-                            self.kbd_out.move_mouse(*direction, *distance)?;
+                            self.move_mouse_state = Some(MoveMouseState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_move: 0,
+                                interval: *interval,
+                            })
                         },
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
@@ -365,6 +381,14 @@ impl Kanata {
                             }
                             pbtn
                         }
+                        CustomAction::MoveMouse { direction, .. } => {
+                            if let Some(move_mouse_state) = &self.move_mouse_state {
+                                if move_mouse_state.direction == *direction {
+                                    self.move_mouse_state = None;
+                                }
+                            }
+                            pbtn
+                        }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
@@ -423,6 +447,20 @@ impl Kanata {
                     .scroll(hscroll_state.direction, hscroll_state.distance)?;
             } else {
                 hscroll_state.ticks_until_scroll -= 1;
+            }
+        }
+        Ok(())
+    }
+
+        //TODO:
+    fn handle_move_mouse(&mut self) -> Result<()> {
+        if let Some(move_mouse_state) = &mut self.move_mouse_state {
+            if move_mouse_state.ticks_until_move == 0 {
+                move_mouse_state.ticks_until_move = move_mouse_state.interval - 1;
+                self.kbd_out
+                    .move_mouse(move_mouse_state.direction, move_mouse_state.distance)?;
+            } else {
+                move_mouse_state.ticks_until_move -= 1;
             }
         }
         Ok(())
@@ -739,6 +777,7 @@ impl Kanata {
             && self.layout.active_sequences.is_empty()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
+            && self.move_mouse_state.is_none()
     }
 }
 
