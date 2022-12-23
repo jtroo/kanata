@@ -45,7 +45,6 @@ winapi = { version = "0.3.9", features = [
 ] }
 native-windows-gui = "1.0.12"
 interception = { version = "0.1.2", optional = true }
-enigo = "0.0.14"
 
 [features]
 cmd = []

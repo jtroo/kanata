@@ -6,12 +6,12 @@
 use std::cell::Cell;
 use std::io;
 use std::{mem, ptr};
+use std::mem::*;
 
 use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
-use enigo::*;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -277,9 +277,26 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
     }
 }
 
+// Taken from Enigo: https://github.com/enigo-rs/enigo
+fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
+    let mut input = INPUT {
+        type_: INPUT_MOUSE,
+        u: unsafe {
+            transmute(MOUSEINPUT {
+                dx,
+                dy,
+                mouseData: data,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            })
+        },
+    };
+    unsafe { SendInput(1, &mut input as LPINPUT, size_of::<INPUT>() as c_int) };
+}
+
 fn move_mouse(x: i32, y: i32) {
-    let mut enigo = Enigo::new();
-    enigo.mouse_move_relative(x, y); 
+    mouse_event(MOUSEEVENTF_MOVE, 0, x, y);
 }
 
 fn key_input_from_event(key: InputEvent) -> KEYBDINPUT {

@@ -452,7 +452,6 @@ impl Kanata {
         Ok(())
     }
 
-        //TODO:
     fn handle_move_mouse(&mut self) -> Result<()> {
         if let Some(move_mouse_state) = &mut self.move_mouse_state {
             if move_mouse_state.ticks_until_move == 0 {
