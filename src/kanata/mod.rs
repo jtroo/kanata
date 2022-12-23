@@ -38,7 +38,8 @@ pub struct Kanata {
     pub prev_layer: usize,
     pub scroll_state: Option<ScrollState>,
     pub hscroll_state: Option<ScrollState>,
-    pub move_mouse_state: Option<MoveMouseState>,
+    pub move_mouse_state_vertical: Option<MoveMouseState>,
+    pub move_mouse_state_horizontal: Option<MoveMouseState>,
     pub sequence_timeout: u16,
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
@@ -172,7 +173,8 @@ impl Kanata {
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
-            move_mouse_state: None,
+            move_mouse_state_vertical: None,
+            move_mouse_state_horizontal: None,
             sequence_timeout,
             sequence_state: None,
             sequences: cfg.sequences,
@@ -304,13 +306,24 @@ impl Kanata {
                             direction,
                             interval,
                             distance,
-                        } => {
-                            self.move_mouse_state = Some(MoveMouseState {
-                                direction: *direction,
-                                distance: *distance,
-                                ticks_until_move: 0,
-                                interval: *interval,
-                            })
+                        } => match direction {
+                            MoveDirection::Up | MoveDirection::Down => {
+                                self.move_mouse_state_vertical = Some(MoveMouseState {
+                                    direction: *direction,
+                                    distance: *distance,
+                                    ticks_until_move: 0,
+                                    interval: *interval,
+                                })
+                            }
+                            MoveDirection::Left | MoveDirection::Right => {
+                                self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                    direction: *direction,
+                                    distance: *distance,
+                                    ticks_until_move: 0,
+                                    interval: *interval,
+                                })
+                            }
+                            
                         },
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
@@ -382,9 +395,20 @@ impl Kanata {
                             pbtn
                         }
                         CustomAction::MoveMouse { direction, .. } => {
-                            if let Some(move_mouse_state) = &self.move_mouse_state {
-                                if move_mouse_state.direction == *direction {
-                                    self.move_mouse_state = None;
+                            match direction {
+                                MoveDirection::Up | MoveDirection::Down => {
+                                    if let Some(move_mouse_state_vertical) = &self.move_mouse_state_vertical {
+                                        if move_mouse_state_vertical.direction == *direction {
+                                            self.move_mouse_state_vertical = None;
+                                        }
+                                    }
+                                }
+                                MoveDirection::Left | MoveDirection::Right => {
+                                    if let Some(move_mouse_state_horizontal) = &self.move_mouse_state_horizontal {
+                                        if move_mouse_state_horizontal.direction == *direction {
+                                            self.move_mouse_state_horizontal = None;
+                                        }
+                                    }
                                 }
                             }
                             pbtn
@@ -453,13 +477,22 @@ impl Kanata {
     }
 
     fn handle_move_mouse(&mut self) -> Result<()> {
-        if let Some(move_mouse_state) = &mut self.move_mouse_state {
-            if move_mouse_state.ticks_until_move == 0 {
-                move_mouse_state.ticks_until_move = move_mouse_state.interval - 1;
+        if let Some(move_mouse_state_vertical) = &mut self.move_mouse_state_vertical {
+            if move_mouse_state_vertical.ticks_until_move == 0 {
+                move_mouse_state_vertical.ticks_until_move = move_mouse_state_vertical.interval - 1;
                 self.kbd_out
-                    .move_mouse(move_mouse_state.direction, move_mouse_state.distance)?;
+                    .move_mouse(move_mouse_state_vertical.direction, move_mouse_state_vertical.distance)?;
             } else {
-                move_mouse_state.ticks_until_move -= 1;
+                move_mouse_state_vertical.ticks_until_move -= 1;
+            }
+        }
+        if let Some(move_mouse_state_horizontal) = &mut self.move_mouse_state_horizontal {
+            if move_mouse_state_horizontal.ticks_until_move == 0 {
+                move_mouse_state_horizontal.ticks_until_move = move_mouse_state_horizontal.interval - 1;
+                self.kbd_out
+                    .move_mouse(move_mouse_state_horizontal.direction, move_mouse_state_horizontal.distance)?;
+            } else {
+                move_mouse_state_horizontal.ticks_until_move -= 1;
             }
         }
         Ok(())
@@ -776,7 +809,8 @@ impl Kanata {
             && self.layout.active_sequences.is_empty()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
-            && self.move_mouse_state.is_none()
+            && self.move_mouse_state_vertical.is_none()
+            && self.move_mouse_state_horizontal.is_none()
     }
 }
 
