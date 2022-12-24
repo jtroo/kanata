@@ -387,7 +387,11 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, direction:MoveDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        _direction: MoveDirection,
+        _distance: u16,
+    ) -> Result<(), io::Error> {
         todo!();
     }
 
@@ -423,13 +427,6 @@ impl KbdOut {
             },
         );
         self.write(ev)
-    }
-
-    fn do_move_mouse(&mut self,
-        direction: MWheelDirection,
-        lo_res_distance: u16,
-    ) -> Result<(), io::Error> {
-        todo!();
     }
 }
 

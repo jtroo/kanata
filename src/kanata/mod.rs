@@ -301,7 +301,7 @@ impl Kanata {
                                     interval: *interval,
                                 })
                             }
-                        }
+                        },
                         CustomAction::MoveMouse {
                             direction,
                             interval,
@@ -397,14 +397,18 @@ impl Kanata {
                         CustomAction::MoveMouse { direction, .. } => {
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
-                                    if let Some(move_mouse_state_vertical) = &self.move_mouse_state_vertical {
+                                    if let Some(move_mouse_state_vertical) =
+                                        &self.move_mouse_state_vertical
+                                    {
                                         if move_mouse_state_vertical.direction == *direction {
                                             self.move_mouse_state_vertical = None;
                                         }
                                     }
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
-                                    if let Some(move_mouse_state_horizontal) = &self.move_mouse_state_horizontal {
+                                    if let Some(move_mouse_state_horizontal) =
+                                        &self.move_mouse_state_horizontal
+                                    {
                                         if move_mouse_state_horizontal.direction == *direction {
                                             self.move_mouse_state_horizontal = None;
                                         }
@@ -481,17 +485,22 @@ impl Kanata {
         if let Some(move_mouse_state_vertical) = &mut self.move_mouse_state_vertical {
             if move_mouse_state_vertical.ticks_until_move == 0 {
                 move_mouse_state_vertical.ticks_until_move = move_mouse_state_vertical.interval - 1;
-                self.kbd_out
-                    .move_mouse(move_mouse_state_vertical.direction, move_mouse_state_vertical.distance)?;
+                self.kbd_out.move_mouse(
+                    move_mouse_state_vertical.direction,
+                    move_mouse_state_vertical.distance,
+                )?;
             } else {
                 move_mouse_state_vertical.ticks_until_move -= 1;
             }
         }
         if let Some(move_mouse_state_horizontal) = &mut self.move_mouse_state_horizontal {
             if move_mouse_state_horizontal.ticks_until_move == 0 {
-                move_mouse_state_horizontal.ticks_until_move = move_mouse_state_horizontal.interval - 1;
-                self.kbd_out
-                    .move_mouse(move_mouse_state_horizontal.direction, move_mouse_state_horizontal.distance)?;
+                move_mouse_state_horizontal.ticks_until_move =
+                    move_mouse_state_horizontal.interval - 1;
+                self.kbd_out.move_mouse(
+                    move_mouse_state_horizontal.direction,
+                    move_mouse_state_horizontal.distance,
+                )?;
             } else {
                 move_mouse_state_horizontal.ticks_until_move -= 1;
             }

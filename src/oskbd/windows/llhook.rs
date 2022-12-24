@@ -5,8 +5,8 @@
 
 use std::cell::Cell;
 use std::io;
-use std::{mem, ptr};
 use std::mem::*;
+use std::{mem, ptr};
 
 use winapi::ctypes::*;
 use winapi::shared::minwindef::*;

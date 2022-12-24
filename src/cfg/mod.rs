@@ -1411,7 +1411,10 @@ fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'sta
     }))))
 }
 
-fn parse_move_mouse(ac_params: &[SExpr], direction: MoveDirection) -> Result<&'static KanataAction> {
+fn parse_move_mouse(
+    ac_params: &[SExpr],
+    direction: MoveDirection,
+) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "movemouse expects two parameters: <interval (ms)> <distance>";
     let interval = ac_params[0]
         .atom()
@@ -1433,11 +1436,11 @@ fn parse_move_mouse(ac_params: &[SExpr], direction: MoveDirection) -> Result<&'s
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
-        Ok(sref(Action::Custom(sref_slice(CustomAction::MoveMouse {
-            direction,
-            interval,
-            distance,
-        }))))
+    Ok(sref(Action::Custom(sref_slice(CustomAction::MoveMouse {
+        direction,
+        interval,
+        distance,
+    }))))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
