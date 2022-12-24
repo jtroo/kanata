@@ -19,7 +19,6 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
-    #[cfg(target_os = "windows")]
     MoveMouse {
         direction: MoveDirection,
         interval: u16,
@@ -61,7 +60,6 @@ pub enum MWheelDirection {
     Right,
 }
 
-#[cfg(target_os = "windows")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MoveDirection {
     Up,

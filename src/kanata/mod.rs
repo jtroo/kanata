@@ -38,9 +38,7 @@ pub struct Kanata {
     pub prev_layer: usize,
     pub scroll_state: Option<ScrollState>,
     pub hscroll_state: Option<ScrollState>,
-    #[cfg(target_os = "windows")]
     pub move_mouse_state_vertical: Option<MoveMouseState>,
-    #[cfg(target_os = "windows")]
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
     pub sequence_timeout: u16,
     pub sequence_state: Option<SequenceState>,
@@ -61,7 +59,6 @@ pub struct ScrollState {
     pub distance: u16,
 }
 
-#[cfg(target_os = "windows")]
 pub struct MoveMouseState {
     pub direction: MoveDirection,
     pub interval: u16,
@@ -176,9 +173,7 @@ impl Kanata {
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
-            #[cfg(target_os = "windows")]
             move_mouse_state_vertical: None,
-            #[cfg(target_os = "windows")]
             move_mouse_state_horizontal: None,
             sequence_timeout,
             sequence_state: None,
@@ -227,10 +222,7 @@ impl Kanata {
             let cur_keys = self.handle_keystate_changes()?;
             live_reload_requested |= self.handle_custom_event(custom_event)?;
             self.handle_scrolling()?;
-
-            #[cfg(target_os = "windows")]
             self.handle_move_mouse()?;
-
             self.tick_sequence_state();
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
@@ -310,8 +302,6 @@ impl Kanata {
                                 })
                             }
                         }
-
-                        #[cfg(target_os = "windows")]
                         CustomAction::MoveMouse {
                             direction,
                             interval,
@@ -404,7 +394,6 @@ impl Kanata {
                             }
                             pbtn
                         }
-                        #[cfg(target_os = "windows")]
                         CustomAction::MoveMouse { direction, .. } => {
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
@@ -488,7 +477,6 @@ impl Kanata {
         Ok(())
     }
 
-    #[cfg(target_os = "windows")]
     fn handle_move_mouse(&mut self) -> Result<()> {
         if let Some(move_mouse_state_vertical) = &mut self.move_mouse_state_vertical {
             if move_mouse_state_vertical.ticks_until_move == 0 {
@@ -814,18 +802,6 @@ impl Kanata {
         });
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn can_block(&self) -> bool {
-        self.layout.stacked.is_empty()
-            && self.layout.waiting.is_none()
-            && self.layout.tap_hold_tracker.timeout == 0
-            && (self.layout.oneshot.timeout == 0 || self.layout.oneshot.keys.is_empty())
-            && self.layout.active_sequences.is_empty()
-            && self.scroll_state.is_none()
-            && self.hscroll_state.is_none()
-    }
-
-    #[cfg(target_os = "windows")]
     pub fn can_block(&self) -> bool {
         self.layout.stacked.is_empty()
             && self.layout.waiting.is_none()
@@ -836,7 +812,6 @@ impl Kanata {
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
-
     }
 }
 
