@@ -444,11 +444,14 @@ If you need help, you are welcome to ask.
 ;; happens on key release. The action (multi lctl mltp) will result in the
 ;; sequence below:
 ;; press key->press lctl->click left->unclick left->release key->release lctl
+;;
+;; One can also see mouse movement actions at the lower right side, with the
+;; arrow unicode characters.
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
   _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
-  _    pgdn mlft _    mrgt mmid _    mbck mfwd    _    _    _    _
-  _    _    mltp _    mrtp mmtp _    mbtp mftp    _    _    _
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _    
+  _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
 
@@ -470,6 +473,11 @@ If you need help, you are welcome to ask.
   ;; Horizontal mouse wheel actions. Similar story to vertical mouse wheel.
   mwl (mwheel-left 50 120)
   mwr (mwheel-right 50 120)
+
+  ms↑ (movemouse-up 1 1)
+  ms← (movemouse-left 1 1)
+  ms↓ (movemouse-down 1 1)
+  ms→ (movemouse-right 1 1)
 )
 
 (defalias

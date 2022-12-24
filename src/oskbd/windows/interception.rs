@@ -128,4 +128,9 @@ impl KbdOut {
         super::send_uc(c, true);
         Ok(())
     }
+
+    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
+        super::move_mouse(direction, distance);
+        Ok(())
+    }
 }

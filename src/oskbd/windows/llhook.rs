@@ -198,6 +198,11 @@ impl KbdOut {
         }
         Ok(())
     }
+
+    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
+        super::move_mouse(direction, distance);
+        Ok(())
+    }
 }
 
 fn send_btn(flag: u32) {

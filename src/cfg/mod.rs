@@ -785,6 +785,10 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down),
         "mwheel-left" => parse_mwheel(&ac[1..], MWheelDirection::Left),
         "mwheel-right" => parse_mwheel(&ac[1..], MWheelDirection::Right),
+        "movemouse-up" => parse_move_mouse(&ac[1..], MoveDirection::Up),
+        "movemouse-down" => parse_move_mouse(&ac[1..], MoveDirection::Down),
+        "movemouse-left" => parse_move_mouse(&ac[1..], MoveDirection::Left),
+        "movemouse-right" => parse_move_mouse(&ac[1..], MoveDirection::Right),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
@@ -1401,6 +1405,38 @@ fn parse_mwheel(ac_params: &[SExpr], direction: MWheelDirection) -> Result<&'sta
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
     Ok(sref(Action::Custom(sref_slice(CustomAction::MWheel {
+        direction,
+        interval,
+        distance,
+    }))))
+}
+
+fn parse_move_mouse(
+    ac_params: &[SExpr],
+    direction: MoveDirection,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "movemouse expects two parameters: <interval (ms)> <distance>";
+    let interval = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|i| match i {
+            0 => None,
+            _ => Some(i),
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
+    let distance = ac_params[1]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|d| match d {
+            1..=30000 => Some(d),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
+    Ok(sref(Action::Custom(sref_slice(CustomAction::MoveMouse {
         direction,
         interval,
         distance,

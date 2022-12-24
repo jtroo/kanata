@@ -706,8 +706,11 @@ functionality.
 === Mouse actions
 <<table-of-contents,Back to ToC>>
 
-You can click the left, middle, and right buttons using kanata actions as well as
-do vertical and horizontal scrolling.
+You can click the left, middle, and right buttons using kanata actions, do
+vertical/horizontal scrolling, and move the mouse.
+
+==== Mouse buttons
+<<table-of-contents,Back to ToC>>
 
 The mouse button actions are:
 
@@ -746,6 +749,9 @@ The actions are as follows:
 * `mftp`: tap forward mouse button
 * `mbtp`: tap bacward mouse button
 
+==== Mouse wheel
+<<table-of-contents,Back to ToC>>
+
 The mouse wheel actions are:
 
 * `mwheel-up`: vertical scroll up
@@ -765,7 +771,22 @@ it. Instead, a scroll happens when 120 or more distance units are accumulated.
 This may result in poor scrolling experience so in Linux it is recommended to
 use a distance value that is a multiple of 120.
 
-Example:
+==== Mouse movement
+<<table-of-contents,Back to ToC>>
+
+The mouse movement actions are:
+
+* `movemouse-up`
+* `movemouse-down`
+* `movemouse-left`
+* `movemouse-right`
+
+Similarly to the mouse wheel, these actions accept two number strings. The first
+is the interval (unit: ms) between movement actions and the second number is the
+distance (unit: pixels) of each movement.
+
+==== Mouse all actions example
+<<table-of-contents,Back to ToC>>
 
 ----
 (defalias
@@ -773,12 +794,17 @@ Example:
   mwd (mwheel-down 50 120)
   mwl (mwheel-left 50 120)
   mwr (mwheel-right 50 120)
+
+  ms↑ (movemouse-up 1 1)
+  ms← (movemouse-left 1 1)
+  ms↓ (movemouse-down 1 1)
+  ms→ (movemouse-right 1 1)
 )
 
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
-  _    _    bck  _    fwd  _    _    _    _    _    _    _    _    _
-  _    _    mlft _    mrgt mmid _    _    _    _    _    _    _
+  _    _    bck  _    fwd  _    _    _    _    @ms↑ _    _    _    _
+  _    _    mlft _    mrgt mmid _    _    @ms← @ms↓ @ms→ _    _
   _    _    mltp _    mrtp mmtp _    _    _    _    _    _
   _    _    _              _              _    _    _
 )

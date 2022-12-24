@@ -387,6 +387,14 @@ impl KbdOut {
         Ok(())
     }
 
+    pub fn move_mouse(
+        &mut self,
+        _direction: MoveDirection,
+        _distance: u16,
+    ) -> Result<(), io::Error> {
+        todo!();
+    }
+
     fn do_scroll(
         &mut self,
         direction: MWheelDirection,
