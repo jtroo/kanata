@@ -495,7 +495,7 @@ impl OsCode {
             OsCode::KEY_MUHENKAN => VK_NONCONVERT,
             OsCode::BTN_LEFT => VK_LBUTTON,
             OsCode::BTN_RIGHT => VK_RBUTTON,
-            OsCode::BTN_MIDDLE => VK_RBUTTON,
+            OsCode::BTN_MIDDLE => VK_MBUTTON,
             OsCode::BTN_SIDE => VK_XBUTTON1,
             OsCode::BTN_EXTRA => VK_XBUTTON2,
             _ => 0,
