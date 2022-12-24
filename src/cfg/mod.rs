@@ -1489,15 +1489,19 @@ fn parse_move_mouse_accel(
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: max_distance should be 1-30000"))?;
     if min_distance > max_distance {
-        return Err(anyhow!("{ERR_MSG}: min_distance should be less than max_distance"));
+        return Err(anyhow!(
+            "{ERR_MSG}: min_distance should be less than max_distance"
+        ));
     }
-    Ok(sref(Action::Custom(sref_slice(CustomAction::MoveMouseAccel {
-        direction,
-        interval,
-        accel_time,
-        min_distance,
-        max_distance,
-    }))))
+    Ok(sref(Action::Custom(sref_slice(
+        CustomAction::MoveMouseAccel {
+            direction,
+            interval,
+            accel_time,
+            min_distance,
+            max_distance,
+        },
+    ))))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
