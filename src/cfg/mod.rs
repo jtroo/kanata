@@ -789,6 +789,10 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "movemouse-down" => parse_move_mouse(&ac[1..], MoveDirection::Down),
         "movemouse-left" => parse_move_mouse(&ac[1..], MoveDirection::Left),
         "movemouse-right" => parse_move_mouse(&ac[1..], MoveDirection::Right),
+        "movemouse-accel-up" => parse_move_mouse_accel(&ac[1..], MoveDirection::Up),
+        "movemouse-accel-down" => parse_move_mouse_accel(&ac[1..], MoveDirection::Down),
+        "movemouse-accel-left" => parse_move_mouse_accel(&ac[1..], MoveDirection::Left),
+        "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right),
         "cmd" => parse_cmd(&ac[1..], parsed_state.is_cmd_enabled),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
@@ -1440,6 +1444,59 @@ fn parse_move_mouse(
         direction,
         interval,
         distance,
+    }))))
+}
+
+fn parse_move_mouse_accel(
+    ac_params: &[SExpr],
+    direction: MoveDirection,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "movemouse-accel expects four parameters: <interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>";
+    let interval = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|i| match i {
+            0 => None,
+            _ => Some(i),
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
+    let accel_time = ac_params[1]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 0-65535"))?;
+    let min_distance = ac_params[2]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|d| match d {
+            1..=30000 => Some(d),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: min_distance should be 1-30000"))?;
+    let max_distance = ac_params[3]
+        .atom()
+        .map(str::parse::<u16>)
+        .transpose()
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
+        .and_then(|d| match d {
+            1..=30000 => Some(d),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: max_distance should be 1-30000"))?;
+    if min_distance > max_distance {
+        return Err(anyhow!("{ERR_MSG}: min_distance should be less than max_distance"));
+    }
+    Ok(sref(Action::Custom(sref_slice(CustomAction::MoveMouseAccel {
+        direction,
+        interval,
+        accel_time,
+        min_distance,
+        max_distance,
     }))))
 }
 
