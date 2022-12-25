@@ -942,6 +942,8 @@ impl Kanata {
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
+            && self.move_mouse_accel_state_vertical.is_none()
+            && self.move_mouse_accel_state_horizontal.is_none()
     }
 }
 
