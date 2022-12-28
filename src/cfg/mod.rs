@@ -1415,8 +1415,10 @@ fn parse_move_mouse(
     ac_params: &[SExpr],
     direction: MoveDirection,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "movemouse expects two parameters if acceleration is set to 0: 0 <interval (ms)> <distance>
-    movemouse expects five parameters if acceleration is set to 1: 1 <interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>";
+    const ERR_MSG: &str = "movemouse expects two more parameters if acceleration is set to 0: 0 <interval (ms)> <distance (px)> \n movemouse expects four more parameters if acceleration is set to 1: 1 <interval (ms)> <acceleration time (ms)> <min_distance (px)> <max_distance (px)>";
+    if (ac_params.len() != 3) && (ac_params.len() != 5) {
+        bail!("{ERR_MSG}");
+    }
     let acceleration = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
