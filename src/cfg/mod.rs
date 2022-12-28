@@ -1497,7 +1497,6 @@ fn parse_move_mouse(
             },
         ))))
     }
-    
 }
 
 /// Mutates `layers::LAYERS` using the inputs.

@@ -355,36 +355,34 @@ impl Kanata {
                             let increment = (f_max_distance - f_min_distance) / f_accel_time;
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
-                                    self.move_mouse_state_vertical =
-                                        Some(MoveMouseState {
-                                            direction: *direction,
-                                            distance: *min_distance,
-                                            ticks_until_move: 0,
-                                            interval: *interval,
-                                            move_mouse_accel_state: Some(MoveMouseAccelState { 
-                                                accel_ticks_from_min: 0, 
-                                                accel_ticks_until_max: *accel_time, 
-                                                accel_increment: increment, 
-                                                min_distance: *min_distance, 
-                                                max_distance: *max_distance, 
-                                            }),
-                                        })
+                                    self.move_mouse_state_vertical = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *min_distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: Some(MoveMouseAccelState {
+                                            accel_ticks_from_min: 0,
+                                            accel_ticks_until_max: *accel_time,
+                                            accel_increment: increment,
+                                            min_distance: *min_distance,
+                                            max_distance: *max_distance,
+                                        }),
+                                    })
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
-                                    self.move_mouse_state_horizontal =
-                                        Some(MoveMouseState {
-                                            direction: *direction,
-                                            distance: *min_distance,
-                                            ticks_until_move: 0,
-                                            interval: *interval,
-                                            move_mouse_accel_state: Some(MoveMouseAccelState { 
-                                                accel_ticks_from_min: 0, 
-                                                accel_ticks_until_max: *accel_time, 
-                                                accel_increment: increment, 
-                                                min_distance: *min_distance, 
-                                                max_distance: *max_distance, 
-                                            }),
-                                        })
+                                    self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *min_distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: Some(MoveMouseAccelState {
+                                            accel_ticks_from_min: 0,
+                                            accel_ticks_until_max: *accel_time,
+                                            accel_increment: increment,
+                                            min_distance: *min_distance,
+                                            max_distance: *max_distance,
+                                        }),
+                                    })
                                 }
                             }
                         }
@@ -496,8 +494,7 @@ impl Kanata {
                                     if let Some(move_mouse_state_horizontal) =
                                         &self.move_mouse_state_horizontal
                                     {
-                                        if move_mouse_state_horizontal.direction == *direction
-                                        {
+                                        if move_mouse_state_horizontal.direction == *direction {
                                             self.move_mouse_state_horizontal = None;
                                         }
                                     }
