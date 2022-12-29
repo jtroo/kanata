@@ -490,10 +490,10 @@ If you need help, you are welcome to ask.
   ;; per interval in pixels. The fourth number is the maximum distance traveled 
   ;; per interval in pixels.
 
-  ma↑ (movemouse-up 1 1000 1 5)
-  ma← (movemouse-left 1 1000 1 5)
-  ma↓ (movemouse-down 1 1000 1 5)
-  ma→ (movemouse-right 1 1000 1 5)
+  ma↑ (movemouse-accel-up 1 1000 1 5)
+  ma← (movemouse-accel-left 1 1000 1 5)
+  ma↓ (movemouse-accel-down 1 1000 1 5)
+  ma→ (movemouse-accel-right 1 1000 1 5)
 )
 
 (defalias

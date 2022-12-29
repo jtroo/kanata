@@ -814,10 +814,10 @@ and maximum distances (unit: pixels) of each movement.
   ms↓ (movemouse-down 1 1)
   ms→ (movemouse-right 1 1)
 
-  ma↑ (movemouse-up 1 1000 1 5)
-  ma← (movemouse-left 1 1000 1 5)
-  ma↓ (movemouse-down 1 1000 1 5)
-  ma→ (movemouse-right 1 1000 1 5)
+  ma↑ (movemouse-accel-up 1 1000 1 5)
+  ma← (movemouse-accel-left 1 1000 1 5)
+  ma↓ (movemouse-accel-down 1 1000 1 5)
+  ma→ (movemouse-accel-right 1 1000 1 5)
 )
 
 (deflayer mouse
