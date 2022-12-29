@@ -785,19 +785,19 @@ Similar to the mouse wheel actions, all of these actions accept two number strin
 The first is the interval (unit: ms) between movement actions and the second number 
 is the distance (unit: pixels) of each movement. 
 
-The following are variants of the above mouse movements that apply linear mouse acceleration
-from the minimum distance to the maximum distance as the mapped key is held.
+The following are variants of the above mouse movements that apply linear mouse 
+acceleration from the minimum distance to the maximum distance as the mapped key is held.
 
 * `movemouse-accel-up`
 * `movemouse-accel-down`
 * `movemouse-accel-left`
 * `movemouse-accel-right`
 
-All these actions accept four number strings. The 
-first number is the interval (unit: ms) between movement actions. The second 
-number is the time it takes (unit: ms) to linearly ramp up from the minimum 
-distance to the maximum distance. The third and fourth numbers are the minimum 
-and maximum distances (unit: pixels) of each movement.
+All these actions accept four number strings. The first number is the 
+interval (unit: ms) between movement actions. The second number is the time it 
+takes (unit: ms) to linearly ramp up from the minimum distance to the maximum 
+distance. The third and fourth numbers are the minimum and maximum distances 
+(unit: pixels) of each movement.
 
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
