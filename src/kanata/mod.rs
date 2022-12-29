@@ -74,13 +74,6 @@ pub struct MoveMouseAccelState {
     pub min_distance: u16,
     pub max_distance: u16,
 }
-// pub struct MoveMouseAccelState {
-//     pub accel_ticks_from_min: Option<u16>,
-//     pub accel_ticks_until_max: Option<u16>,
-//     pub accel_increment: Option<f64>,
-//     pub min_distance: Option<u16>,
-//     pub max_distance: Option<u16>,
-// }
 
 pub struct SequenceState {
     pub sequence: Vec<u16>,
