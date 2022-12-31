@@ -781,9 +781,23 @@ The mouse movement actions are:
 * `movemouse-left`
 * `movemouse-right`
 
-Similarly to the mouse wheel, these actions accept two number strings. The first
-is the interval (unit: ms) between movement actions and the second number is the
-distance (unit: pixels) of each movement.
+Similar to the mouse wheel actions, all of these actions accept two number strings. 
+The first is the interval (unit: ms) between movement actions and the second number 
+is the distance (unit: pixels) of each movement. 
+
+The following are variants of the above mouse movements that apply linear mouse 
+acceleration from the minimum distance to the maximum distance as the mapped key is held.
+
+* `movemouse-accel-up`
+* `movemouse-accel-down`
+* `movemouse-accel-left`
+* `movemouse-accel-right`
+
+All these actions accept four number strings. The first number is the 
+interval (unit: ms) between movement actions. The second number is the time it 
+takes (unit: ms) to linearly ramp up from the minimum distance to the maximum 
+distance. The third and fourth numbers are the minimum and maximum distances 
+(unit: pixels) of each movement.
 
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
@@ -799,13 +813,18 @@ distance (unit: pixels) of each movement.
   ms← (movemouse-left 1 1)
   ms↓ (movemouse-down 1 1)
   ms→ (movemouse-right 1 1)
+
+  ma↑ (movemouse-accel-up 1 1000 1 5)
+  ma← (movemouse-accel-left 1 1000 1 5)
+  ma↓ (movemouse-accel-down 1 1000 1 5)
+  ma→ (movemouse-accel-right 1 1000 1 5)
 )
 
 (deflayer mouse
-  _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
-  _    _    bck  _    fwd  _    _    _    _    @ms↑ _    _    _    _
-  _    _    mlft _    mrgt mmid _    _    @ms← @ms↓ @ms→ _    _
-  _    _    mltp _    mrtp mmtp _    _    _    _    _    _
+  _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
+  _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _    
+  _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
 ----

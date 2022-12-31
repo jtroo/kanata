@@ -448,8 +448,8 @@ If you need help, you are welcome to ask.
 ;; One can also see mouse movement actions at the lower right side, with the
 ;; arrow unicode characters.
 (deflayer mouse
-  _    @mwu @mwd @mwl @mwr _    _    _    _    _    _    _    _    _
-  _    pgup bck  _    fwd  _    _    _    _    _    _    _    _    _
+  _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
+  _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
   _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _    
   _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
@@ -474,10 +474,26 @@ If you need help, you are welcome to ask.
   mwl (mwheel-left 50 120)
   mwr (mwheel-right 50 120)
 
+  ;; Mouse movement actions.The first number is the interval in milliseconds
+  ;; between mouse actions. The second number is the distance traveled per interval
+  ;; in pixels.
+
   ms↑ (movemouse-up 1 1)
   ms← (movemouse-left 1 1)
   ms↓ (movemouse-down 1 1)
   ms→ (movemouse-right 1 1)
+
+  ;; Mouse movement actions with linear acceleration. The first number is the 
+  ;; interval in milliseconds between mouse actions. The second number is the time 
+  ;; in milliseconds for the distance to linearly ramp up from the minimum distance 
+  ;; to the maximum distance. The third number is the minimum distance traveled 
+  ;; per interval in pixels. The fourth number is the maximum distance traveled 
+  ;; per interval in pixels.
+
+  ma↑ (movemouse-accel-up 1 1000 1 5)
+  ma← (movemouse-accel-left 1 1000 1 5)
+  ma↓ (movemouse-accel-down 1 1000 1 5)
+  ma→ (movemouse-accel-right 1 1000 1 5)
 )
 
 (defalias

@@ -64,6 +64,15 @@ pub struct MoveMouseState {
     pub interval: u16,
     pub ticks_until_move: u16,
     pub distance: u16,
+    pub move_mouse_accel_state: Option<MoveMouseAccelState>,
+}
+
+pub struct MoveMouseAccelState {
+    pub accel_ticks_from_min: u16,
+    pub accel_ticks_until_max: u16,
+    pub accel_increment: f64,
+    pub min_distance: u16,
+    pub max_distance: u16,
 }
 
 pub struct SequenceState {
@@ -313,6 +322,7 @@ impl Kanata {
                                     distance: *distance,
                                     ticks_until_move: 0,
                                     interval: *interval,
+                                    move_mouse_accel_state: None,
                                 })
                             }
                             MoveDirection::Left | MoveDirection::Right => {
@@ -321,9 +331,54 @@ impl Kanata {
                                     distance: *distance,
                                     ticks_until_move: 0,
                                     interval: *interval,
+                                    move_mouse_accel_state: None,
                                 })
                             }
                         },
+                        CustomAction::MoveMouseAccel {
+                            direction,
+                            interval,
+                            accel_time,
+                            min_distance,
+                            max_distance,
+                        } => {
+                            let f_max_distance: f64 = *max_distance as f64;
+                            let f_min_distance: f64 = *min_distance as f64;
+                            let f_accel_time: f64 = *accel_time as f64;
+                            let increment = (f_max_distance - f_min_distance) / f_accel_time;
+                            match direction {
+                                MoveDirection::Up | MoveDirection::Down => {
+                                    self.move_mouse_state_vertical = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *min_distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: Some(MoveMouseAccelState {
+                                            accel_ticks_from_min: 0,
+                                            accel_ticks_until_max: *accel_time,
+                                            accel_increment: increment,
+                                            min_distance: *min_distance,
+                                            max_distance: *max_distance,
+                                        }),
+                                    })
+                                }
+                                MoveDirection::Left | MoveDirection::Right => {
+                                    self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *min_distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: Some(MoveMouseAccelState {
+                                            accel_ticks_from_min: 0,
+                                            accel_ticks_until_max: *accel_time,
+                                            accel_increment: increment,
+                                            min_distance: *min_distance,
+                                            max_distance: *max_distance,
+                                        }),
+                                    })
+                                }
+                            }
+                        }
 
                         CustomAction::Cmd(cmd) => {
                             cmds.push(*cmd);
@@ -417,6 +472,29 @@ impl Kanata {
                             }
                             pbtn
                         }
+                        CustomAction::MoveMouseAccel { direction, .. } => {
+                            match direction {
+                                MoveDirection::Up | MoveDirection::Down => {
+                                    if let Some(move_mouse_state_vertical) =
+                                        &self.move_mouse_state_vertical
+                                    {
+                                        if move_mouse_state_vertical.direction == *direction {
+                                            self.move_mouse_state_vertical = None;
+                                        }
+                                    }
+                                }
+                                MoveDirection::Left | MoveDirection::Right => {
+                                    if let Some(move_mouse_state_horizontal) =
+                                        &self.move_mouse_state_horizontal
+                                    {
+                                        if move_mouse_state_horizontal.direction == *direction {
+                                            self.move_mouse_state_horizontal = None;
+                                        }
+                                    }
+                                }
+                            }
+                            pbtn
+                        }
 
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
@@ -482,27 +560,42 @@ impl Kanata {
     }
 
     fn handle_move_mouse(&mut self) -> Result<()> {
-        if let Some(move_mouse_state_vertical) = &mut self.move_mouse_state_vertical {
-            if move_mouse_state_vertical.ticks_until_move == 0 {
-                move_mouse_state_vertical.ticks_until_move = move_mouse_state_vertical.interval - 1;
-                self.kbd_out.move_mouse(
-                    move_mouse_state_vertical.direction,
-                    move_mouse_state_vertical.distance,
-                )?;
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
+            if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
+                if mmas.accel_ticks_until_max != 0 {
+                    let increment =
+                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    mmsv.distance = mmas.min_distance + increment;
+                    mmas.accel_ticks_from_min += 1;
+                    mmas.accel_ticks_until_max -= 1;
+                } else {
+                    mmsv.distance = mmas.max_distance;
+                }
+            }
+            if mmsv.ticks_until_move == 0 {
+                mmsv.ticks_until_move = mmsv.interval - 1;
+                self.kbd_out.move_mouse(mmsv.direction, mmsv.distance)?;
             } else {
-                move_mouse_state_vertical.ticks_until_move -= 1;
+                mmsv.ticks_until_move -= 1;
             }
         }
-        if let Some(move_mouse_state_horizontal) = &mut self.move_mouse_state_horizontal {
-            if move_mouse_state_horizontal.ticks_until_move == 0 {
-                move_mouse_state_horizontal.ticks_until_move =
-                    move_mouse_state_horizontal.interval - 1;
-                self.kbd_out.move_mouse(
-                    move_mouse_state_horizontal.direction,
-                    move_mouse_state_horizontal.distance,
-                )?;
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
+            if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
+                if mmas.accel_ticks_until_max != 0 {
+                    let increment =
+                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    mmsh.distance = mmas.min_distance + increment;
+                    mmas.accel_ticks_from_min += 1;
+                    mmas.accel_ticks_until_max -= 1;
+                } else {
+                    mmsh.distance = mmas.max_distance;
+                }
+            }
+            if mmsh.ticks_until_move == 0 {
+                mmsh.ticks_until_move = mmsh.interval - 1;
+                self.kbd_out.move_mouse(mmsh.direction, mmsh.distance)?;
             } else {
-                move_mouse_state_horizontal.ticks_until_move -= 1;
+                mmsh.ticks_until_move -= 1;
             }
         }
         Ok(())

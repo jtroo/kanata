@@ -24,6 +24,13 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
+    MoveMouseAccel {
+        direction: MoveDirection,
+        interval: u16,
+        accel_time: u16,
+        min_distance: u16,
+        max_distance: u16,
+    },
     SequenceLeader,
     LiveReload,
     Repeat,
