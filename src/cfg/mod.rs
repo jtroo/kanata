@@ -270,7 +270,6 @@ fn parse_cfg_raw(
     let text = std::fs::read_to_string(p)?;
 
     let spanned_root_exprs = sexpr::parse(&text)?;
-    // TODO: get rid of clone
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
     let cfg_expr = root_exprs
@@ -774,7 +773,8 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], parsed_state),
         "unicode" => parse_unicode(&ac[1..]),
         "one-shot" => parse_one_shot(&ac[1..], parsed_state),
-        "tap-dance" => parse_tap_dance(&ac[1..], parsed_state),
+        "tap-dance" => parse_tap_dance(&ac[1..], parsed_state, TapDanceConfig::Lazy),
+        "tap-dance-eager" => parse_tap_dance(&ac[1..], parsed_state, TapDanceConfig::Eager),
         "release-key" => parse_release_key(&ac[1..], parsed_state),
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "on-press-fakekey" => parse_fake_key_op(&ac[1..], parsed_state),
@@ -1193,6 +1193,7 @@ fn parse_one_shot(
 fn parse_tap_dance(
     ac_params: &[SExpr],
     parsed_state: &ParsedState,
+    config: TapDanceConfig,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "tap-dance expects a timeout (number) followed by a list of actions";
     if ac_params.len() != 2 {
@@ -1222,7 +1223,11 @@ fn parse_tap_dance(
         _ => bail!(ERR_MSG),
     };
 
-    Ok(sref(Action::TapDance(sref(TapDance { timeout, actions }))))
+    Ok(sref(Action::TapDance(sref(TapDance {
+        timeout,
+        actions,
+        config,
+    }))))
 }
 
 fn parse_release_key(

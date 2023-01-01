@@ -224,6 +224,17 @@ where
     /// Timeout after which a tap will expire and become an action. A new tap for the same
     /// tap-dance key will reset this timeout.
     pub timeout: u16,
+    /// Determine behaviour of tap dance. Eager evaluation will activate every action in the
+    /// sequence as keys are pressed. Lazy will activate only a single action, decided by the
+    /// number of taps in the sequence.
+    pub config: TapDanceConfig,
+}
+
+/// Determines the behaviour for a `TapDance`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TapDanceConfig {
+    Lazy,
+    Eager,
 }
 
 /// The different actions that can be done.
@@ -329,10 +340,15 @@ impl<T> Debug for Action<T> {
                 .field("timeout", timeout)
                 .field("end_config", end_config)
                 .finish(),
-            Self::TapDance(TapDance { actions, timeout }) => f
+            Self::TapDance(TapDance {
+                actions,
+                timeout,
+                config,
+            }) => f
                 .debug_struct("TapDance")
                 .field("actions", actions)
                 .field("timeout", timeout)
+                .field("config", config)
                 .finish(),
             Self::Custom(_) => f.debug_tuple("Custom").finish(),
             Self::ReleaseState(arg0) => f.debug_tuple("ReleaseState").field(arg0).finish(),

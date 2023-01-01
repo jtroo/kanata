@@ -41,7 +41,7 @@ If you need help, you are welcome to ask.
 
   ;; By default, kanata will crash if no input devices are found. You can change
   ;; this behaviour by setting `linux-continue-if-no-devs-found`.
-  ;; 
+  ;;
   ;; linux-continue-if-no-devs-found yes
 
   ;; Windows doesn't need any input/output configuration entries; however, there
@@ -359,7 +359,7 @@ If you need help, you are welcome to ask.
 ;; reload, though it has not been measured. In practice it's still negligible
 ;; compared to a browser for example.
 (deflayer layers
-  _    @qwr @dvk lrld _    _    _    _    _    _    _    _    _    _
+  _    @qwr @dvk lrld @td2 _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
@@ -394,6 +394,15 @@ If you need help, you are welcome to ask.
   ;; - the tap sequence reaches the end
   ;; - a different key is pressed
   td (tap-dance 200 (a b c d spc))
+
+  ;; There is a variant of tap-dance — tap-dance-eager — that will activate
+  ;; every action tapped in the sequence rather than a single one. The example
+  ;; below is rather simple and behaves similarly to the original tap-dance.
+  td2 (tap-dance-eager 500 (
+    (macro a) ;; use macro to prevent auto-repeat of the key
+    (macro bspc b b)
+    (macro bspc bspc c c c)
+  ))
 )
 
 ;; Can see a new action `rpt` in this layer. This repeats the most recently
@@ -450,7 +459,7 @@ If you need help, you are welcome to ask.
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
   _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
-  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _    
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _
   _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
@@ -483,11 +492,11 @@ If you need help, you are welcome to ask.
   ms↓ (movemouse-down 1 1)
   ms→ (movemouse-right 1 1)
 
-  ;; Mouse movement actions with linear acceleration. The first number is the 
-  ;; interval in milliseconds between mouse actions. The second number is the time 
-  ;; in milliseconds for the distance to linearly ramp up from the minimum distance 
-  ;; to the maximum distance. The third number is the minimum distance traveled 
-  ;; per interval in pixels. The fourth number is the maximum distance traveled 
+  ;; Mouse movement actions with linear acceleration. The first number is the
+  ;; interval in milliseconds between mouse actions. The second number is the time
+  ;; in milliseconds for the distance to linearly ramp up from the minimum distance
+  ;; to the maximum distance. The third number is the minimum distance traveled
+  ;; per interval in pixels. The fourth number is the maximum distance traveled
   ;; per interval in pixels.
 
   ma↑ (movemouse-accel-up 1 1000 1 5)
