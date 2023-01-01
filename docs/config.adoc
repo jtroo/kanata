@@ -987,9 +987,11 @@ and the rest of the macro does not run.
 
 ----
 (defalias
+  1 1
+  
   ;; macro-release-cancel to output different characters with visual feedback
   ;; after holding for different amounts of time.
-  1!@ (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
+  1!@ (macro-release-cancel @1 500 bspc S-1 500 bspc S-2)
 )
 ----
 
