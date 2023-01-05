@@ -343,7 +343,7 @@ impl TryFrom<Stroke> for OsCode {
                             0x53 => OsCode::KEY_DELETE,    // sc_delete
                             0x5B => OsCode::KEY_LEFTMETA,  // sc_metaLeft
                             0x5C => OsCode::KEY_RIGHTMETA, // sc_metaRight
-                            // 0x5D => OsCode::KEY_TODO, // sc_application
+                            0x5D => OsCode::KEY_COMPOSE,   // sc_application / compose
                             // 0x5E => OsCode::KEY_TODO, // sc_power
                             // 0x5F => OsCode::KEY_TODO, // sc_sleep
                             // 0x63 => OsCode::KEY_TODO, // sc_wake
@@ -513,6 +513,7 @@ impl TryFrom<OsCode> for Stroke {
             OsCode::KEY_RIGHTMETA => (ScanCode::Oem3, KeyState::E0), // 0x5C // sc_metaRight
             OsCode::KEY_FORWARD => (ScanCode::F18, KeyState::E0), // 0x69 // sc_browser_forward
             OsCode::KEY_BACK => (ScanCode::F19, KeyState::E0),   // 0x6A    // sc_browser_back
+            OsCode::KEY_COMPOSE => (ScanCode::EraseEOF, KeyState::E0),
             // OsCode::KEY_TODO => 0x24 as ScanCode, // sc_media_stop
             // OsCode::KEY_TODO => 0x32 as ScanCode, // sc_browser_home
             // OsCode::KEY_TODO => 0x46 as ScanCode, // sc_cancel
