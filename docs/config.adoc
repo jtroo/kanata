@@ -856,7 +856,7 @@ Example:
 ----
 
 There is a variant of `tap-dance` with the name `tap-dance-eager`. The variant
-gets is parsed identically but the difference is that the it will activate every
+is parsed identically but the difference is that the it will activate every
 action in the sequence as the taps progress.
 
 In the example below, repeated taps will, in order:
