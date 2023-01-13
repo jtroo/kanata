@@ -317,7 +317,7 @@ its file name, you must escape those colons with backslashes:
 By default, kanata will crash if no input devices are found. You can change
 this behaviour by setting `linux-continue-if-no-devs-found`.
 
-Example: 
+Example:
 
 ----
 (defcfg
@@ -781,11 +781,11 @@ The mouse movement actions are:
 * `movemouse-left`
 * `movemouse-right`
 
-Similar to the mouse wheel actions, all of these actions accept two number strings. 
-The first is the interval (unit: ms) between movement actions and the second number 
-is the distance (unit: pixels) of each movement. 
+Similar to the mouse wheel actions, all of these actions accept two number strings.
+The first is the interval (unit: ms) between movement actions and the second number
+is the distance (unit: pixels) of each movement.
 
-The following are variants of the above mouse movements that apply linear mouse 
+The following are variants of the above mouse movements that apply linear mouse
 acceleration from the minimum distance to the maximum distance as the mapped key is held.
 
 * `movemouse-accel-up`
@@ -793,10 +793,10 @@ acceleration from the minimum distance to the maximum distance as the mapped key
 * `movemouse-accel-left`
 * `movemouse-accel-right`
 
-All these actions accept four number strings. The first number is the 
-interval (unit: ms) between movement actions. The second number is the time it 
-takes (unit: ms) to linearly ramp up from the minimum distance to the maximum 
-distance. The third and fourth numbers are the minimum and maximum distances 
+All these actions accept four number strings. The first number is the
+interval (unit: ms) between movement actions. The second number is the time it
+takes (unit: ms) to linearly ramp up from the minimum distance to the maximum
+distance. The third and fourth numbers are the minimum and maximum distances
 (unit: pixels) of each movement.
 
 ==== Mouse all actions example
@@ -823,7 +823,7 @@ distance. The third and fourth numbers are the minimum and maximum distances
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
   _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
-  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _    
+  _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _
   _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
@@ -852,6 +852,26 @@ Example:
   ;; 3 taps: Switch to another layer
   ;; 4 taps: Escape key
   td (tap-dance 200 (a C-c (layer-switch l2) esc))
+)
+----
+
+There is a variant of `tap-dance` with the name `tap-dance-eager`. The variant
+is parsed identically but the difference is that it will activate every
+action in the sequence as the taps progress.
+
+In the example below, repeated taps will, in order:
+
+1. type `a`
+2. erase the `a` and type `bb`
+3. erase the `bb` and type `ccc`
+
+----
+(defalias
+  td2 (tap-dance-eager 500 (
+    (macro a) ;; use macro to prevent auto-repeat of the key
+    (macro bspc b b)
+    (macro bspc bspc c c c)
+  ))
 )
 ----
 
@@ -988,7 +1008,7 @@ and the rest of the macro does not run.
 ----
 (defalias
   1 1
-  
+
   ;; macro-release-cancel to output different characters with visual feedback
   ;; after holding for different amounts of time.
   1!@ (macro-release-cancel @1 500 bspc S-1 500 bspc S-2)

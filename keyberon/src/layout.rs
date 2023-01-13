@@ -22,10 +22,7 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
-use crate::action::{Action, HoldTapAction, HoldTapConfig, OneShotEndConfig, ONE_SHOT_MAX_ACTIVE};
-
-use crate::action::{ReleasableState, SequenceEvent};
-
+use crate::action::*;
 use crate::key_code::KeyCode;
 use arraydeque::ArrayDeque;
 use heapless::Vec;
@@ -58,6 +55,7 @@ where
     /// Key states.
     pub states: Vec<State<T>, 64>,
     pub waiting: Option<WaitingState<T>>,
+    pub tap_dance_eager: Option<TapDanceEagerState<T>>,
     pub stacked: Stack,
     pub oneshot: OneShotState,
     pub tap_hold_tracker: TapHoldTracker,
@@ -179,6 +177,7 @@ impl<T: 'static> State<T> {
     fn tick(&self) -> Option<Self> {
         Some(*self)
     }
+    /// Returns None if the key has been released and Some otherwise.
     pub fn release(&self, c: (u8, u16), custom: &mut CustomEvent<T>) -> Option<Self> {
         match *self {
             NormalKey { coord, .. } | LayerModifier { coord, .. } if coord == c => None,
@@ -227,6 +226,34 @@ struct TapDanceState<T: 'static> {
     actions: &'static [&'static Action<T>],
     timeout: u16,
     num_taps: u16,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct TapDanceEagerState<T: 'static> {
+    coord: (u8, u16),
+    actions: &'static [&'static Action<T>],
+    timeout: u16,
+    orig_timeout: u16,
+    num_taps: u16,
+}
+
+impl<T> TapDanceEagerState<T> {
+    fn tick(&mut self) {
+        self.timeout = self.timeout.saturating_sub(1);
+    }
+
+    fn is_expired(self) -> bool {
+        self.timeout == 0 || usize::from(self.num_taps) >= self.actions.len()
+    }
+
+    fn set_expired(&mut self) {
+        self.timeout = 0;
+    }
+
+    fn incr_taps(&mut self) {
+        self.num_taps += 1;
+        self.timeout = self.orig_timeout;
+    }
 }
 
 #[derive(Debug)]
@@ -523,6 +550,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
             default_layer: 0,
             states: Vec::new(),
             waiting: None,
+            tap_dance_eager: None,
             stacked: ArrayDeque::new(),
             oneshot: OneShotState {
                 timeout: 0,
@@ -576,6 +604,12 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
         self.states = self.states.iter().filter_map(State::tick).collect();
         self.stacked.iter_mut().for_each(Stacked::tick);
         self.tap_hold_tracker.tick();
+        if let Some(ref mut tde) = self.tap_dance_eager {
+            tde.tick();
+            if tde.is_expired() {
+                self.tap_dance_eager = None;
+            }
+        }
         self.process_sequences();
 
         let mut custom = CustomEvent::NoEvent;
@@ -702,28 +736,40 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
         match stacked.event {
             Release(i, j) => {
                 let mut custom = CustomEvent::NoEvent;
-
                 let (do_release, overflow_key) = self.oneshot.handle_release((i, j));
                 if do_release {
-                    self.states = self
-                        .states
-                        .iter()
-                        .filter_map(|s| s.release((i, j), &mut custom))
-                        .collect();
+                    self.states
+                        .retain(|s| s.release((i, j), &mut custom).is_some());
                 }
                 if let Some((i2, j2)) = overflow_key {
-                    self.states = self
-                        .states
-                        .iter()
-                        .filter_map(|s| s.release((i2, j2), &mut custom))
-                        .collect();
+                    self.states
+                        .retain(|s| s.release((i2, j2), &mut custom).is_some());
                 }
-
                 custom
             }
+
             Press(i, j) => {
-                let action = self.press_as_action((i, j), self.current_layer());
-                self.do_action(action, (i, j), stacked.since, false)
+                if let Some(tde) = self.tap_dance_eager {
+                    if (i, j) == self.tap_hold_tracker.coord && !tde.is_expired() {
+                        let custom = self.do_action(
+                            tde.actions[usize::from(tde.num_taps)],
+                            (i, j),
+                            stacked.since,
+                            false,
+                        );
+                        // unwrap is here because tde cannot be ref mut
+                        self.tap_dance_eager.as_mut().unwrap().incr_taps();
+                        custom
+                    } else {
+                        // unwrap is here because tde cannot be ref mut
+                        self.tap_dance_eager.as_mut().unwrap().set_expired();
+                        let action = self.press_as_action((i, j), self.current_layer());
+                        self.do_action(action, (i, j), stacked.since, false)
+                    }
+                } else {
+                    let action = self.press_as_action((i, j), self.current_layer());
+                    self.do_action(action, (i, j), stacked.since, false)
+                }
             }
         }
     }
@@ -806,20 +852,49 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
                 }
                 return custom;
             }
-            &TapDance(tapdance) => {
+            &TapDance(td) => {
                 self.tap_hold_tracker.coord = coord;
-                self.waiting = Some(WaitingState {
-                    coord,
-                    timeout: tapdance.timeout,
-                    delay,
-                    hold: &Action::NoOp,
-                    tap: &Action::NoOp,
-                    config: WaitingConfig::TapDance(TapDanceState {
-                        actions: tapdance.actions,
-                        timeout: tapdance.timeout,
-                        num_taps: 1,
-                    }),
-                });
+                match td.config {
+                    TapDanceConfig::Lazy => {
+                        self.waiting = Some(WaitingState {
+                            coord,
+                            timeout: td.timeout,
+                            delay,
+                            hold: &Action::NoOp,
+                            tap: &Action::NoOp,
+                            config: WaitingConfig::TapDance(TapDanceState {
+                                actions: td.actions,
+                                timeout: td.timeout,
+                                num_taps: 1,
+                            }),
+                        });
+                    }
+                    TapDanceConfig::Eager => {
+                        match self.tap_dance_eager {
+                            None => {
+                                self.tap_dance_eager = Some(TapDanceEagerState {
+                                    coord,
+                                    actions: td.actions,
+                                    timeout: td.timeout,
+                                    orig_timeout: td.timeout,
+                                    num_taps: 1,
+                                })
+                            }
+                            Some(tde) => {
+                                if tde.coord != coord {
+                                    self.tap_dance_eager = Some(TapDanceEagerState {
+                                        coord,
+                                        actions: td.actions,
+                                        timeout: td.timeout,
+                                        orig_timeout: td.timeout,
+                                        num_taps: 1,
+                                    });
+                                }
+                            }
+                        };
+                        self.do_action(td.actions[0], coord, delay, false);
+                    }
+                }
             }
             &KeyCode(keycode) => {
                 self.tap_hold_tracker.coord = coord;
@@ -1995,6 +2070,7 @@ mod test {
                             tap_hold_interval: 0,
                         }),
                     ],
+                    config: TapDanceConfig::Lazy,
                 }),
                 k(A),
             ],
@@ -2109,6 +2185,93 @@ mod test {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[LAlt], layout.keycodes());
         }
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn tap_dance_eager() {
+        static LAYERS: Layers<2, 2, 1> = [[
+            [
+                TapDance(&crate::action::TapDance {
+                    timeout: 100,
+                    actions: &[&k(Kb1), &k(Kb2), &k(Kb3)],
+                    config: TapDanceConfig::Eager,
+                }),
+                k(A),
+            ],
+            [k(B), k(C)],
+        ]];
+        let mut layout = Layout::new(&LAYERS);
+
+        // Test: tap-dance-eager first key
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        for _ in 0..200 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[Kb1], layout.keycodes());
+        }
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test: tap-dance-eager first key, press another key
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1, A], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_keys(&[Kb1, A], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test: tap-dance second key
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        layout.event(Release(0, 0));
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb2], layout.keycodes());
+        layout.event(Release(0, 0));
+        for _ in 0..99 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test: tap-dance third key
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        layout.event(Release(0, 0));
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb2], layout.keycodes());
+        layout.event(Release(0, 0));
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb3], layout.keycodes());
         layout.event(Release(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
