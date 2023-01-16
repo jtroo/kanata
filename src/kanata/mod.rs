@@ -911,6 +911,7 @@ impl Kanata {
             && (self.layout.oneshot.timeout == 0 || self.layout.oneshot.keys.is_empty())
             && self.layout.active_sequences.is_empty()
             && self.layout.tap_dance_eager.is_none()
+            && self.sequence_state.is_none()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
