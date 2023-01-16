@@ -278,6 +278,32 @@ Example:
 )
 ----
 
+=== sequence-input-mode
+<<table-of-contents,Back to ToC>>
+
+This option customizes the key sequence input mode. Its default value when not
+configured is `hidden-suppressed`.
+
+The options are:
+
+- `visible-backspaced`: types sequence characters as they are inputted. The
+  typed characters will be erased with backspaces for a valid sequence termination
+- `hidden-suppressed`: hides sequence characters as they are typed. Does not
+  output the hidden characters for an invalid sequence termination.
+- `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
+  hidden characters for an invalid sequence termination either after either a
+  timeout or after a non-sequence key is typed.
+  
+See <<sequences>> for more about sequences.
+
+Example:
+
+----
+(defcfg
+  sequence-input-mode visible-backspaced
+)
+----
+
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
 
@@ -399,6 +425,7 @@ a non-applicable operating system.
   process-unmapped-keys yes
   danger-enable-cmd yes
   sequence-timeout 2000
+  sequence-input-mode visible-backspaced
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-continue-if-no-dev-found yes
   windows-altgr add-lctl-release

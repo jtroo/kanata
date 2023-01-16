@@ -615,6 +615,22 @@ If you need help, you are welcome to ask.
 ;;
 ;; You can add an entry to defcfg to change the sequence timeout (default is 1000):
 ;;     sequence-timeout <number(ms)>
+;;
+;; There is also an option to customize the key sequence input mode. Its default
+;; value when not configured is `hidden-suppressed`.
+;; 
+;; The options are:
+;; 
+;; - `visible-backspaced`: types sequence characters as they are inputted. The
+;;   typed characters will be erased with backspaces for a valid sequence termination.
+;; - `hidden-suppressed`: hides sequence characters as they are typed. Does not
+;;   output the hidden characters for an invalid sequence termination.
+;; - `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
+;;   hidden characters for an invalid sequence termination either after either a
+;;   timeout or after a non-sequence key is typed.
+;;
+;; Example:
+;;     sequence-input-mode visible-backspaced
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))

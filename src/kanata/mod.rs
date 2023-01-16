@@ -43,6 +43,7 @@ pub struct Kanata {
     pub sequence_timeout: u16,
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
+    pub sequence_input_mode: SequenceInputMode,
     last_tick: time::Instant,
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
@@ -78,6 +79,39 @@ pub struct MoveMouseAccelState {
 pub struct SequenceState {
     pub sequence: Vec<u16>,
     pub ticks_until_timeout: u16,
+}
+
+/// This controls the behaviour of kanata when sequence mode is initiated by the sequence leader
+/// action.
+///
+/// - `HiddenSuppressed` hides the keys typed as part of the sequence and does not output the keys
+///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
+/// - `HiddenDelayType` hides the keys typed as part of the sequence and outputs the keys when an
+///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
+/// - `VisibleBackspaced` will type the keys that are typed as part of the sequence but will
+///   backspace the typed sequence keys before performing the fake key tap when a valid sequence is
+///   the result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SequenceInputMode {
+    HiddenSuppressed,
+    HiddenDelayType,
+    VisibleBackspaced,
+}
+
+const SEQ_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
+const SEQ_VISIBLE_BACKSPACED: &str = "visible-backspaced";
+const SEQ_HIDDEN_SUPPRESSED: &str = "hidden-suppressed";
+const SEQ_HIDDEN_DELAY_TYPE: &str = "hidden-delay-type";
+
+impl SequenceInputMode {
+    fn try_from_str(s: &str) -> Result<Self> {
+        match s {
+            SEQ_VISIBLE_BACKSPACED => Ok(SequenceInputMode::VisibleBackspaced),
+            SEQ_HIDDEN_SUPPRESSED => Ok(SequenceInputMode::HiddenSuppressed),
+            SEQ_HIDDEN_DELAY_TYPE => Ok(SequenceInputMode::HiddenDelayType),
+            _ => Err(anyhow!("{SEQ_INPUT_MODE_CFG_NAME} mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"))
+        }
+    }
 }
 
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
@@ -169,6 +203,12 @@ impl Kanata {
             })
             .transpose()?
             .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+        let sequence_input_mode = cfg
+            .items
+            .get(SEQ_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .transpose()?
+            .unwrap_or(SequenceInputMode::HiddenSuppressed);
 
         Ok(Self {
             kbd_in_paths,
@@ -187,6 +227,7 @@ impl Kanata {
             sequence_timeout,
             sequence_state: None,
             sequences: cfg.sequences,
+            sequence_input_mode,
             last_tick: time::Instant::now(),
             #[cfg(target_os = "linux")]
             continue_if_no_devices: cfg
@@ -232,7 +273,7 @@ impl Kanata {
             live_reload_requested |= self.handle_custom_event(custom_event)?;
             self.handle_scrolling()?;
             self.handle_move_mouse()?;
-            self.tick_sequence_state();
+            self.tick_sequence_state()?;
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
@@ -601,14 +642,26 @@ impl Kanata {
         Ok(())
     }
 
-    fn tick_sequence_state(&mut self) {
+    fn tick_sequence_state(&mut self) -> Result<()> {
         if let Some(state) = &mut self.sequence_state {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
+                match self.sequence_input_mode {
+                    SequenceInputMode::HiddenDelayType => {
+                        for code in state.sequence.iter().copied() {
+                            if let Some(osc) = OsCode::from_u16(code) {
+                                self.kbd_out.press_key(osc)?;
+                                self.kbd_out.release_key(osc)?;
+                            }
+                        }
+                    }
+                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
+                }
                 self.sequence_state = None;
             }
         }
+        Ok(())
     }
 
     fn release_with_keyberon_output(&mut self, cur_keys: &[KeyCode]) -> Result<()> {
@@ -652,10 +705,29 @@ impl Kanata {
                 }
                 Some(state) => {
                     state.ticks_until_timeout = self.sequence_timeout;
-                    state.sequence.push(u16::from(OsCode::from(*k)));
+                    let osc = OsCode::from(*k);
+                    state.sequence.push(u16::from(osc));
+                    match self.sequence_input_mode {
+                        SequenceInputMode::VisibleBackspaced => {
+                            self.kbd_out.press_key(osc)?;
+                            self.kbd_out.release_key(osc)?;
+                        }
+                        SequenceInputMode::HiddenSuppressed
+                        | SequenceInputMode::HiddenDelayType => {}
+                    }
                     log::debug!("sequence got {k:?}");
                     if let Some((x, y)) = self.sequences.get(&state.sequence) {
                         log::debug!("sequence complete; tapping fake key");
+                        match self.sequence_input_mode {
+                            SequenceInputMode::HiddenSuppressed
+                            | SequenceInputMode::HiddenDelayType => {}
+                            SequenceInputMode::VisibleBackspaced => {
+                                for _ in state.sequence.iter() {
+                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
+                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                }
+                            }
+                        }
                         // Make sure to unpress any keys that were pressed as part of the sequence
                         // so that the keyberon internal sequence mechanism can do press+unpress of
                         // them.
@@ -672,6 +744,18 @@ impl Kanata {
                         self.layout.event(Event::Release(*x, *y));
                     } else if self.sequences.get_raw_descendant(&state.sequence).is_none() {
                         log::debug!("got invalid sequence; exiting sequence mode");
+                        match self.sequence_input_mode {
+                            SequenceInputMode::HiddenDelayType => {
+                                for code in state.sequence.iter().copied() {
+                                    if let Some(osc) = OsCode::from_u16(code) {
+                                        self.kbd_out.press_key(osc)?;
+                                        self.kbd_out.release_key(osc)?;
+                                    }
+                                }
+                            }
+                            SequenceInputMode::HiddenSuppressed
+                            | SequenceInputMode::VisibleBackspaced => {}
+                        }
                         self.sequence_state = None;
                     }
                 }
@@ -695,6 +779,12 @@ impl Kanata {
             })
             .transpose()?
             .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+        self.sequence_input_mode = cfg
+            .items
+            .get(SEQ_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .transpose()?
+            .unwrap_or(SequenceInputMode::HiddenSuppressed);
         self.layout = cfg.layout;
         let mut mapped_keys = MAPPED_KEYS.lock();
         *mapped_keys = cfg.mapped_keys;
@@ -710,8 +800,10 @@ impl Kanata {
     /// potential physical key output, write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
         if self.sequence_state.is_some() {
-            // While in sequence mode, don't send key repeats since regular presses also aren't
-            // being sent.
+            // While in sequence mode, don't send key repeats. I can't imagine it's a helpful use
+            // case for someone trying to type in a sequence that they want to rely on key repeats
+            // to finish a sequence. I suppose one might want to do repeat in order to try and
+            // cancel an input sequence... I'll wait for a user created issue to deal with this.
             return Ok(());
         }
         let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
