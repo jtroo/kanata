@@ -799,17 +799,7 @@ impl Kanata {
                         panic!("channel disconnected")
                     }
                     Ok(event) => {
-                        let notification = match event.as_bytes() {
-                            Ok(serialized_notification) => serialized_notification,
-                            Err(error) => {
-                                log::warn!(
-                                    "failed to serialize layer change notification: {}",
-                                    error
-                                );
-                                return;
-                            }
-                        };
-
+                        let notification = event.as_bytes();
                         let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
