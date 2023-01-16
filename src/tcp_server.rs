@@ -1,5 +1,4 @@
 use crate::Kanata;
-use anyhow::Result;
 use net2::TcpStreamExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -16,14 +15,25 @@ pub enum ServerMessage {
     LayerChange { new: String },
 }
 
+#[test]
+fn layer_change_serializes() {
+    serde_json::to_string(&ServerMessage::LayerChange {
+        new: "hello".into(),
+    })
+    .expect("ServerMessage serializes");
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
     ChangeLayer { new: String },
 }
 
 impl ServerMessage {
-    pub fn as_bytes(&self) -> Result<Vec<u8>> {
-        Ok(serde_json::to_string(self)?.as_bytes().to_vec())
+    pub fn as_bytes(&self) -> Vec<u8> {
+        serde_json::to_string(self)
+            .expect("ServerMessage should serialize")
+            .as_bytes()
+            .to_vec()
     }
 }
 
@@ -61,6 +71,19 @@ impl TcpServer {
                         stream
                             .set_keepalive(Some(Duration::from_secs(30)))
                             .expect("TCP keepalive is set");
+
+                        {
+                            let k = kanata.lock();
+                            if let Err(e) = stream.write(
+                                &ServerMessage::LayerChange {
+                                    new: k.layer_info[k.layout.current_layer()].name.clone(),
+                                }
+                                .as_bytes(),
+                            ) {
+                                log::warn!("failed to write to stream, dropping it: {e:?}");
+                                continue;
+                            }
+                        }
 
                         let addr = stream
                             .peer_addr()
