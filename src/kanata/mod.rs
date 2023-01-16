@@ -446,11 +446,15 @@ impl Kanata {
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
                         CustomAction::SequenceLeader => {
-                            log::debug!("entering sequence mode");
-                            self.sequence_state = Some(SequenceState {
-                                sequence: vec![],
-                                ticks_until_timeout: self.sequence_timeout,
-                            });
+                            if self.sequence_state.is_none()
+                                && self.sequence_input_mode != SequenceInputMode::HiddenSuppressed
+                            {
+                                log::debug!("entering sequence mode");
+                                self.sequence_state = Some(SequenceState {
+                                    sequence: vec![],
+                                    ticks_until_timeout: self.sequence_timeout,
+                                });
+                            }
                         }
                         CustomAction::Repeat => {
                             let key = OsCode::from(LAST_PRESSED_KEY.load(SeqCst));

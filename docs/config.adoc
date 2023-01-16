@@ -287,12 +287,17 @@ configured is `hidden-suppressed`.
 The options are:
 
 - `visible-backspaced`: types sequence characters as they are inputted. The
-  typed characters will be erased with backspaces for a valid sequence termination
+  typed characters will be erased with backspaces for a valid sequence termination.
 - `hidden-suppressed`: hides sequence characters as they are typed. Does not
   output the hidden characters for an invalid sequence termination.
 - `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
   hidden characters for an invalid sequence termination either after either a
   timeout or after a non-sequence key is typed.
+  
+For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
+be ignored if a sequence is already active. For historical reasons, and in case
+it is desired behaviour, a sequence leader input using `hidden-suppressed` will
+reset the key sequence.
   
 See <<sequences>> for more about sequences.
 
