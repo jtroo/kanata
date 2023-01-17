@@ -714,7 +714,6 @@ impl Kanata {
                     match self.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
                             self.kbd_out.press_key(osc)?;
-                            self.kbd_out.release_key(osc)?;
                         }
                         SequenceInputMode::HiddenSuppressed
                         | SequenceInputMode::HiddenDelayType => {}
