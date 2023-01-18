@@ -310,6 +310,16 @@ If you need help, you are welcome to ask.
 
   rls (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
 
+  ;; Kanata also supports dynamic macros. Dynamic macros can be nested, but
+  ;; cannot recurse.
+  dms dynamic-macro-record-stop
+  dr0 (dynamic-macro-record 0)
+  dr1 (dynamic-macro-record 1)
+  dr2 (dynamic-macro-record 2)
+  dp0 (dynamic-macro-play 0)
+  dp1 (dynamic-macro-play 1)
+  dp2 (dynamic-macro-play 2)
+
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
