@@ -523,7 +523,7 @@ impl Kanata {
                                     );
                                     if state.starting_macro_key == *key {
                                         log::debug!(
-                                            "saving and stopping dynamic macro {} recording",
+                                            "same record pressed. saving and stopping dynamic macro {} recording",
                                             state.starting_macro_key
                                         );
                                         stop_record = true;
@@ -549,7 +549,7 @@ impl Kanata {
                         CustomAction::DynamicMacroRecordStop => {
                             if let Some(state) = &mut self.dynamic_macro_record_state {
                                 // remove the last item, since it's almost certainly a "macro
-                                // record" key action which we don't want to keep.
+                                // record stop" key action which we don't want to keep.
                                 state.macro_items.remove(state.macro_items.len() - 1);
                                 log::debug!(
                                     "saving and stopping dynamic macro {} recording",
@@ -802,7 +802,6 @@ impl Kanata {
         if let Some(state) = &mut self.dynamic_macro_replay_state {
             state.delay_remaining = state.delay_remaining.saturating_sub(1);
             if state.delay_remaining == 0 {
-                log::debug!("poppin off");
                 match state.macro_items.pop_front() {
                     None => clear_replaying_macro = true,
                     Some(i) => match i {

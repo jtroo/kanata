@@ -1048,6 +1048,7 @@ and the rest of the macro does not run.
 ----
 
 === dynamic-macro
+<<table-of-contents,Back to ToC>>
 
 The dynamic-macro actions allow for recording and playing key presses. The
 dynamic macro records physical key presses, as opposed to kanata's outputs.
@@ -1062,7 +1063,7 @@ end and be saved. If `dynamic-macro-record` with a different ID is pressed then
 the current recording will end and be saved, then a new recording with the new
 ID will begin.
 
-The action `dynamic-macro-record-stop` will stop the active recording.
+The action `dynamic-macro-record-stop` will stop and save any active recording.
 
 The action `dynamic-macro-play` accepts one number (0-65535), which represents
 the macro ID. Activating this action will play the saved recording of physical
@@ -1072,6 +1073,8 @@ One can nest dynamic macros within each other, e.g. activate
 `(dynamic-macro-play 1)` while recording with `(dynamic-macro-record 0)`.
 However, dynamic macros cannot recurse; e.g. activating `(dynamic-macro-play 0)`
 while recording with `(dynamic-macro-record 0)` will be ignored.
+
+Example:
 
 ----
 (defalias
