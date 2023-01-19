@@ -35,6 +35,9 @@ pub enum CustomAction {
     LiveReload,
     Repeat,
     CancelMacroOnRelease,
+    DynamicMacroRecord(u16),
+    DynamicMacroRecordStop,
+    DynamicMacroPlay(u16),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -1,17 +1,20 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
 use anyhow::{anyhow, bail, Result};
-use log::{error, info};
-
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use log::{error, info};
+use parking_lot::Mutex;
+
+use kanata_keyberon::key_code::*;
+use kanata_keyberon::layout::*;
+
+use std::collections::VecDeque;
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
-use std::time;
-
-use parking_lot::Mutex;
 use std::sync::Arc;
+use std::time;
 
 use crate::cfg::LayerInfo;
 use crate::custom_action::*;
@@ -20,11 +23,15 @@ use crate::oskbd::*;
 use crate::tcp_server::ServerMessage;
 use crate::{cfg, ValidatedArgs};
 
-use kanata_keyberon::key_code::*;
-use kanata_keyberon::layout::*;
-
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DynamicMacroItem {
+    Press(OsCode),
+    Release(OsCode),
+    EndMacro(u16),
+}
 
 pub struct Kanata {
     pub kbd_in_paths: Vec<String>,
@@ -44,6 +51,9 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
     pub sequence_input_mode: SequenceInputMode,
+    pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
+    pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
+    pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
     last_tick: time::Instant,
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
@@ -112,6 +122,17 @@ impl SequenceInputMode {
             _ => Err(anyhow!("{SEQ_INPUT_MODE_CFG_NAME} mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"))
         }
     }
+}
+
+pub struct DynamicMacroReplayState {
+    pub active_macros: HashSet<u16>,
+    pub delay_remaining: u16,
+    pub macro_items: VecDeque<DynamicMacroItem>,
+}
+
+pub struct DynamicMacroRecordState {
+    pub starting_macro_key: u16,
+    pub macro_items: Vec<DynamicMacroItem>,
 }
 
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
@@ -240,6 +261,9 @@ impl Kanata {
             kbd_out_rx,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid,
+            dynamic_macro_replay_state: None,
+            dynamic_macro_record_state: None,
+            dynamic_macros: Default::default(),
         })
     }
 
@@ -250,10 +274,22 @@ impl Kanata {
 
     /// Update keyberon layout state for press/release, handle repeat separately
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
-        let evc: u32 = event.code.into();
+        let evc: u16 = event.code.into();
         let kbrn_ev = match event.value {
-            KeyValue::Press => Event::Press(0, evc as u16),
-            KeyValue::Release => Event::Release(0, evc as u16),
+            KeyValue::Press => {
+                if let Some(state) = &mut self.dynamic_macro_record_state {
+                    state.macro_items.push(DynamicMacroItem::Press(event.code));
+                }
+                Event::Press(0, evc)
+            }
+            KeyValue::Release => {
+                if let Some(state) = &mut self.dynamic_macro_record_state {
+                    state
+                        .macro_items
+                        .push(DynamicMacroItem::Release(event.code));
+                }
+                Event::Release(0, evc)
+            }
             KeyValue::Repeat => return self.handle_repeat(event),
         };
         self.layout.event(kbrn_ev);
@@ -274,6 +310,7 @@ impl Kanata {
             self.handle_scrolling()?;
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
+            self.tick_dynamic_macro_state()?;
 
             if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
                 live_reload_requested = false;
@@ -463,6 +500,98 @@ impl Kanata {
                             self.kbd_out.release_key(key)?;
                             self.kbd_out.press_key(key)?;
                             self.kbd_out.release_key(key)?;
+                        }
+                        CustomAction::DynamicMacroRecord(key) => {
+                            let mut stop_record = false;
+                            let mut new_recording = None;
+                            match &mut self.dynamic_macro_record_state {
+                                None => {
+                                    log::debug!("starting dynamic macro {key} recording");
+                                    self.dynamic_macro_record_state =
+                                        Some(DynamicMacroRecordState {
+                                            starting_macro_key: *key,
+                                            macro_items: vec![],
+                                        })
+                                }
+                                Some(state) => {
+                                    // remove the last item, since it's almost certainly a "macro
+                                    // record" key action which we don't want to keep.
+                                    state.macro_items.remove(state.macro_items.len() - 1);
+                                    self.dynamic_macros.insert(
+                                        state.starting_macro_key,
+                                        state.macro_items.clone(),
+                                    );
+                                    if state.starting_macro_key == *key {
+                                        log::debug!(
+                                            "same record pressed. saving and stopping dynamic macro {} recording",
+                                            state.starting_macro_key
+                                        );
+                                        stop_record = true;
+                                    } else {
+                                        log::debug!(
+                                            "saving dynamic macro {} recording then starting new macro recording {key}",
+                                            state.starting_macro_key,
+                                        );
+                                        new_recording = Some(key);
+                                    }
+                                }
+                            }
+                            if stop_record {
+                                self.dynamic_macro_record_state = None;
+                            } else if let Some(key) = new_recording {
+                                log::debug!("starting new dynamic macro {key} recording");
+                                self.dynamic_macro_record_state = Some(DynamicMacroRecordState {
+                                    starting_macro_key: *key,
+                                    macro_items: vec![],
+                                });
+                            }
+                        }
+                        CustomAction::DynamicMacroRecordStop => {
+                            if let Some(state) = &mut self.dynamic_macro_record_state {
+                                // remove the last item, since it's almost certainly a "macro
+                                // record stop" key action which we don't want to keep.
+                                state.macro_items.remove(state.macro_items.len() - 1);
+                                log::debug!(
+                                    "saving and stopping dynamic macro {} recording",
+                                    state.starting_macro_key
+                                );
+                                self.dynamic_macros
+                                    .insert(state.starting_macro_key, state.macro_items.clone());
+                            }
+                            self.dynamic_macro_record_state = None;
+                        }
+                        CustomAction::DynamicMacroPlay(key) => {
+                            match &mut self.dynamic_macro_replay_state {
+                                None => {
+                                    log::debug!("replaying macro {key}");
+                                    self.dynamic_macro_replay_state =
+                                        self.dynamic_macros.get(key).map(|macro_items| {
+                                            let mut active_macros = HashSet::default();
+                                            active_macros.insert(*key);
+                                            DynamicMacroReplayState {
+                                                active_macros,
+                                                delay_remaining: 0,
+                                                macro_items: macro_items.clone().into(),
+                                            }
+                                        });
+                                }
+                                Some(state) => {
+                                    if state.active_macros.contains(key) {
+                                        log::warn!("refusing to recurse into macro {key}");
+                                    } else if let Some(items) = self.dynamic_macros.get(key) {
+                                        log::debug!(
+                                            "prepending macro {key} items to current replay"
+                                        );
+                                        state.active_macros.insert(*key);
+                                        state
+                                            .macro_items
+                                            .push_front(DynamicMacroItem::EndMacro(*key));
+                                        for item in items.iter().copied().rev() {
+                                            state.macro_items.push_front(item);
+                                        }
+                                    }
+                                }
+                            }
                         }
                         _ => {}
                     }
@@ -664,6 +793,33 @@ impl Kanata {
                 }
                 self.sequence_state = None;
             }
+        }
+        Ok(())
+    }
+
+    fn tick_dynamic_macro_state(&mut self) -> Result<()> {
+        let mut clear_replaying_macro = false;
+        if let Some(state) = &mut self.dynamic_macro_replay_state {
+            state.delay_remaining = state.delay_remaining.saturating_sub(1);
+            if state.delay_remaining == 0 {
+                match state.macro_items.pop_front() {
+                    None => clear_replaying_macro = true,
+                    Some(i) => match i {
+                        DynamicMacroItem::Press(k) => self.layout.event(Event::Press(0, k.into())),
+                        DynamicMacroItem::Release(k) => {
+                            self.layout.event(Event::Release(0, k.into()))
+                        }
+                        DynamicMacroItem::EndMacro(key) => {
+                            state.active_macros.remove(&key);
+                        }
+                    },
+                }
+                state.delay_remaining = 5;
+            }
+        }
+        if clear_replaying_macro {
+            log::debug!("finished macro replay");
+            self.dynamic_macro_replay_state = None;
         }
         Ok(())
     }
@@ -1001,6 +1157,7 @@ impl Kanata {
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
+            && self.dynamic_macro_replay_state.is_none()
     }
 }
 

@@ -1047,6 +1047,47 @@ and the rest of the macro does not run.
 )
 ----
 
+=== dynamic-macro
+<<table-of-contents,Back to ToC>>
+
+The dynamic-macro actions allow for recording and playing key presses. The
+dynamic macro records physical key presses, as opposed to kanata's outputs.
+This allows the dynamic macro to replicate any action, but it means that if
+the macro starts and ends on different layers, then the macro might not be
+properly repeatable.
+
+The action `dynamic-macro-record` accepts one number (0-65535), which represents
+the macro ID. Activating this action will begin recording physical key inputs.
+If `dynamic-macro-record` with the same ID is pressed again, the recording will
+end and be saved. If `dynamic-macro-record` with a different ID is pressed then
+the current recording will end and be saved, then a new recording with the new
+ID will begin.
+
+The action `dynamic-macro-record-stop` will stop and save any active recording.
+
+The action `dynamic-macro-play` accepts one number (0-65535), which represents
+the macro ID. Activating this action will play the saved recording of physical
+keys from a previous `dynamic-macro-record` with the same macro ID, if it exists.
+
+One can nest dynamic macros within each other, e.g. activate
+`(dynamic-macro-play 1)` while recording with `(dynamic-macro-record 0)`.
+However, dynamic macros cannot recurse; e.g. activating `(dynamic-macro-play 0)`
+while recording with `(dynamic-macro-record 0)` will be ignored.
+
+Example:
+
+----
+(defalias
+  dr0 (dynamic-macro-record 0)
+  dr1 (dynamic-macro-record 1)
+  dr2 (dynamic-macro-record 2)
+  dp0 (dynamic-macro-play 0)
+  dp1 (dynamic-macro-play 1)
+  dp2 (dynamic-macro-play 2)
+  dms dynamic-macro-record-stop
+)
+----
+
 === cmd
 <<table-of-contents,Back to ToC>>
 
