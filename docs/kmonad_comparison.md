@@ -33,9 +33,8 @@ excellent work that had already gone into the
 [ktrl](https://github.com/ItayGarin/ktrl), and
 [kbremap](https://github.com/timokroeger/kbremap) projects.
 
-If you want to see which features are supported in kanata, the
-[sample configuration](../cfg_samples/kanata.kbd) and features list in the
-[README](../README.md#features) should hopefully provide insight.
+If you want to see the features that kanata offers, the
+[configuration guide](./config.adoc) is a good starting point.
 
 I dogfood kanata myself and it works great for my use cases. If you don't use
 any of the missing features from kmonad or are willing to part with them (or
