@@ -1500,7 +1500,7 @@ fn fill_chords(
 ) -> Option<KanataAction> {
     match action {
         Action::Chords(ChordsGroup { coords, .. }) => {
-            let (_, group_id) = coords
+            let ((_, group_id), _) = coords
                 .iter()
                 .next()
                 .expect("unresolved chords should have exactly one entry");
