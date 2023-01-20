@@ -967,7 +967,7 @@ the hold timeout hasn't expired yet
 ** If there is a press+release of a different key, the hold action is activated
 even if the hold timeout hasn't expired yet
 
-These variants may be useful if you have want more responsive tap-hold keys,
+These variants may be useful if you want more responsive tap-hold keys,
 but you should be wary of activating the hold action unintentionally.
 
 ----
