@@ -1427,7 +1427,7 @@ fn resolve_chord_groups(layers: &mut KanataLayers, parsed_state: &mut ParsedStat
         // Check that all keys in the chord group have been assigned to some coordinate
         for (key_index, key) in group.keys.iter().enumerate() {
             let key_mask = 1 << key_index;
-            if group.coords.iter().find(|(_, keys)| keys & key_mask != 0) == None {
+            if !group.coords.iter().any(|(_, keys)| keys & key_mask != 0) {
                 bail!("Coord group `{0}` defines unused key `{1}`. Did you forget to bind `(chord {0} {1})`?", group.name, key)
             }
         }
@@ -1516,24 +1516,24 @@ fn fill_chords(
         | Action::CancelSequences
         | Action::ReleaseState(_)
         | Action::Custom(_) => None,
-        Action::HoldTap(hta @ HoldTapAction { tap, hold, .. }) => {
-            let new_tap = fill_chords(chord_groups, tap);
-            let new_hold = fill_chords(chord_groups, hold);
+        Action::HoldTap(&hta @ HoldTapAction { tap, hold, .. }) => {
+            let new_tap = fill_chords(chord_groups, &tap);
+            let new_hold = fill_chords(chord_groups, &hold);
             if new_tap.is_some() || new_hold.is_some() {
                 Some(Action::HoldTap(sref(HoldTapAction {
-                    hold: new_hold.unwrap_or_else(|| hold.clone()),
-                    tap: new_tap.unwrap_or_else(|| tap.clone()),
-                    ..(*hta).clone()
+                    hold: new_hold.unwrap_or(hold),
+                    tap: new_tap.unwrap_or(tap),
+                    ..hta
                 })))
             } else {
                 None
             }
         }
-        Action::OneShot(os @ OneShot { action: ac, .. }) => {
+        Action::OneShot(&os @ OneShot { action: ac, .. }) => {
             fill_chords(chord_groups, ac).map(|ac| {
                 Action::OneShot(sref(OneShot {
                     action: sref(ac),
-                    ..(*os).clone()
+                    ..os
                 }))
             })
         }
@@ -1546,7 +1546,7 @@ fn fill_chords(
                 let new_actions = new_actions
                     .iter()
                     .zip(*actions)
-                    .map(|(new_ac, ac)| new_ac.unwrap_or_else(|| ac.clone()))
+                    .map(|(new_ac, ac)| new_ac.unwrap_or(*ac))
                     .collect::<Vec<_>>();
                 Some(Action::MultipleActions(Box::leak(
                     new_actions.into_boxed_slice(),
@@ -1555,7 +1555,7 @@ fn fill_chords(
                 None
             }
         }
-        Action::TapDance(td @ TapDance { actions, .. }) => {
+        Action::TapDance(&td @ TapDance { actions, .. }) => {
             let new_actions = actions
                 .iter()
                 .map(|ac| fill_chords(chord_groups, ac))
@@ -1563,12 +1563,12 @@ fn fill_chords(
             if new_actions.iter().any(|it| it.is_some()) {
                 let new_actions = new_actions
                     .iter()
-                    .zip(*actions)
+                    .zip(actions)
                     .map(|(new_ac, ac)| new_ac.map(sref).unwrap_or(*ac))
                     .collect::<Vec<_>>();
                 Some(Action::TapDance(sref(TapDance {
                     actions: Box::leak(new_actions.into_boxed_slice()),
-                    ..(*td).clone()
+                    ..td
                 })))
             } else {
                 None
