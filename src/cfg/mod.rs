@@ -396,6 +396,12 @@ fn parse_cfg_raw(
         ..Default::default()
     };
 
+    let chords_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defchords"))
+        .collect::<Vec<_>>();
+    parse_chord_groups(&chords_exprs, &mut parsed_state)?;
+
     let fake_keys_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("deffakekeys"))
@@ -410,7 +416,9 @@ fn parse_cfg_raw(
 
     parse_aliases(&alias_exprs, &mut parsed_state)?;
 
-    let klayers = parse_layers(&parsed_state)?;
+    let mut klayers = parse_layers(&parsed_state)?;
+
+    resolve_chord_groups(&mut klayers, &mut parsed_state)?;
 
     Ok((cfg, src, layer_info, klayers, sequences))
 }
@@ -604,6 +612,7 @@ struct ParsedState<'a> {
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
     fake_keys: HashMap<String, (usize, &'static KanataAction)>,
+    chord_groups: HashMap<String, ChordGroup<'a>>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
 }
@@ -617,9 +626,20 @@ impl<'a> Default for ParsedState<'a> {
             mapping_order: Default::default(),
             defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
             fake_keys: Default::default(),
+            chord_groups: Default::default(),
             is_cmd_enabled: false,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct ChordGroup<'a> {
+    id: u16,
+    name: String,
+    keys: Vec<String>,
+    coords: Vec<((u8, u16), ChordKeys)>,
+    chords: HashMap<u32, &'a SExpr>,
+    timeout: u16,
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
@@ -780,6 +800,7 @@ fn parse_action_list(ac: &[SExpr], parsed_state: &ParsedState) -> Result<&'stati
         "one-shot" => parse_one_shot(&ac[1..], parsed_state),
         "tap-dance" => parse_tap_dance(&ac[1..], parsed_state, TapDanceConfig::Lazy),
         "tap-dance-eager" => parse_tap_dance(&ac[1..], parsed_state, TapDanceConfig::Eager),
+        "chord" => parse_chord(&ac[1..], parsed_state),
         "release-key" => parse_release_key(&ac[1..], parsed_state),
         "release-layer" => parse_release_layer(&ac[1..], parsed_state),
         "on-press-fakekey" => parse_fake_key_op(&ac[1..], parsed_state),
@@ -1237,6 +1258,39 @@ fn parse_tap_dance(
     }))))
 }
 
+fn parse_chord(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "chord expects a chords group name followed by an identifier";
+    if ac_params.len() != 2 {
+        bail!(ERR_MSG);
+    }
+
+    let name = match &ac_params[0] {
+        SExpr::Atom(s) => &s.t,
+        _ => bail!(ERR_MSG),
+    };
+    let group = match parsed_state.chord_groups.get(name) {
+        Some(t) => t,
+        None => bail!("Referenced unknown chord group `{}`.", name),
+    };
+    let chord_key_index = match &ac_params[1] {
+        SExpr::Atom(s) => match group.keys.iter().position(|e| e == &s.t) {
+            Some(i) => i,
+            None => bail!("Identifier `{}` is not used in chord group `{}`.", &s.t, name,),
+        },
+        _ => bail!(ERR_MSG),
+    };
+    let chord_keys = 1 << chord_key_index;
+
+    // We don't yet know at this point what the entire chords group will look like nor at which
+    // coords this action will end up. So instead we store a dummy action which will be properly
+    // resolved in `resolve_chord_groups`.
+    Ok(sref(Action::Chords(sref(ChordsGroup {
+        timeout: group.timeout,
+        coords: sref([((0, group.id), chord_keys)]),
+        chords: sref([]),
+    }))))
+}
+
 fn parse_release_key(
     ac_params: &[SExpr],
     parsed_state: &ParsedState,
@@ -1274,6 +1328,247 @@ fn parse_defsrc_layer(defsrc: &[SExpr], mapping_order: &[usize]) -> [KanataActio
         layer[mapping_order[i]] = *ac;
     }
     layer
+}
+
+fn parse_chord_groups<'a>(
+    exprs: &[&'a Vec<SExpr>],
+    parsed_state: &mut ParsedState<'a>,
+) -> Result<()> {
+    const MSG: &str = "Incorrect number of elements found in defchords; should be group name, followed by timeout, followed by keys-action pairs.";
+    for expr in exprs {
+        let mut subexprs = check_first_expr(expr.iter(), "defchords")?;
+        let name = match subexprs.next() {
+            Some(SExpr::Atom(a)) => &a.t,
+            _ => bail!(MSG),
+        };
+        let timeout = match subexprs.next() {
+            Some(e) => parse_timeout(e)?,
+            None => bail!(MSG),
+        };
+        let id = match parsed_state.chord_groups.len().try_into() {
+            Ok(id) => id,
+            Err(_) => bail!("Maximum number of chord groups exceeded."),
+        };
+        let mut group = ChordGroup {
+            id,
+            name: name.to_owned(),
+            keys: Vec::new(),
+            coords: Vec::new(),
+            chords: HashMap::default(),
+            timeout,
+        };
+        // Read k-v pairs from the configuration
+        while let Some(keys_expr) = subexprs.next() {
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail!(MSG),
+            };
+            let mut keys = match keys_expr {
+                SExpr::List(keys) => keys.t.iter().map(|key| match key {
+                    SExpr::Atom(a) => Ok(&a.t),
+                    _ => bail!("Chord keys must be atoms. Invalid key name: {:?}", key),
+                }),
+                _ => bail!(
+                    "Chord must be a list/set of keys, not a single atom: {:?}",
+                    keys_expr
+                ),
+            };
+            let mask = keys.try_fold(0, |mask, key| {
+                let key = key?;
+                let index = match group.keys.iter().position(|k| k == key) {
+                    Some(i) => i,
+                    None => {
+                        let i = group.keys.len();
+                        if i + 1 >= MAX_CHORD_KEYS {
+                            bail!("Maximum number of keys in a chords group ({MAX_CHORD_KEYS}) exceeded.");
+                        }
+                        group.keys.push(key.to_owned());
+                        i
+                    }
+                };
+                Ok(mask | (1 << index))
+            })?;
+            if group.chords.insert(mask, action).is_some() {
+                bail!("Duplicate chord in group {}: {:?}", name, keys_expr);
+            }
+        }
+        if parsed_state
+            .chord_groups
+            .insert(name.to_owned(), group)
+            .is_some()
+        {
+            bail!("Duplicate chords group: {}", name);
+        }
+    }
+    Ok(())
+}
+
+fn resolve_chord_groups(layers: &mut KanataLayers, parsed_state: &mut ParsedState) -> Result<()> {
+    let mut chord_groups = parsed_state
+        .chord_groups
+        .values()
+        .cloned()
+        .collect::<Vec<_>>();
+    chord_groups.sort_by_key(|group| group.id);
+
+    for layer in layers.iter() {
+        for (i, row) in layer.iter().enumerate() {
+            for (j, cell) in row.iter().enumerate() {
+                find_chords_coords(&mut chord_groups, (i as u8, j as u16), cell);
+            }
+        }
+    }
+
+    let chord_groups = chord_groups.into_iter().map(|group| {
+        // Check that all keys in the chord group have been assigned to some coordinate
+        for (key_index, key) in group.keys.iter().enumerate() {
+            let key_mask = 1 << key_index;
+            if group.coords.iter().find(|(_, keys)| keys & key_mask != 0) == None {
+                bail!("Coord group `{0}` defines unused key `{1}`. Did you forget to bind `(chord {0} {1})`?", group.name, key)
+            }
+        }
+
+        let chords = group.chords.iter().map(|(mask, action)| {
+            Ok((*mask, parse_action(action, parsed_state)?))
+        }).collect::<Result<Vec<_>>>()?;
+
+        Ok(sref(ChordsGroup {
+            coords: Box::leak(group.coords.into_boxed_slice()),
+            chords: Box::leak(chords.into_boxed_slice()),
+            timeout: group.timeout,
+        }))
+    }).collect::<Result<Vec<_>>>()?;
+
+    for layer in layers.iter_mut() {
+        for row in layer.iter_mut() {
+            for cell in row.iter_mut() {
+                if let Some(action) = fill_chords(&chord_groups, cell) {
+                    *cell = action;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action: &KanataAction) {
+    match action {
+        Action::Chords(ChordsGroup { coords, .. }) => {
+            for ((_, group_id), chord_keys) in coords.iter() {
+                let group = &mut chord_groups[*group_id as usize];
+                group.coords.push((coord, *chord_keys));
+            }
+        }
+        Action::NoOp
+        | Action::Trans
+        | Action::KeyCode(_)
+        | Action::MultipleKeyCodes(_)
+        | Action::Layer(_)
+        | Action::DefaultLayer(_)
+        | Action::Sequence { .. }
+        | Action::CancelSequences
+        | Action::ReleaseState(_)
+        | Action::Custom(_) => {}
+        Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
+            find_chords_coords(chord_groups, coord, tap);
+            find_chords_coords(chord_groups, coord, hold);
+        }
+        Action::OneShot(OneShot { action: ac, .. }) => {
+            find_chords_coords(chord_groups, coord, ac);
+        }
+        Action::MultipleActions(actions) => {
+            for ac in actions.iter() {
+                find_chords_coords(chord_groups, coord, ac);
+            }
+        }
+        Action::TapDance(TapDance { actions, .. }) => {
+            for ac in actions.iter() {
+                find_chords_coords(chord_groups, coord, ac);
+            }
+        }
+    }
+}
+
+fn fill_chords(
+    chord_groups: &[&'static ChordsGroup<&[&CustomAction]>],
+    action: &KanataAction,
+) -> Option<KanataAction> {
+    match action {
+        Action::Chords(ChordsGroup { coords, .. }) => {
+            let (_, group_id) = coords
+                .iter()
+                .next()
+                .expect("unresolved chords should have exactly one entry");
+            Some(Action::Chords(chord_groups[*group_id as usize]))
+        }
+        Action::NoOp
+        | Action::Trans
+        | Action::KeyCode(_)
+        | Action::MultipleKeyCodes(_)
+        | Action::Layer(_)
+        | Action::DefaultLayer(_)
+        | Action::Sequence { .. }
+        | Action::CancelSequences
+        | Action::ReleaseState(_)
+        | Action::Custom(_) => None,
+        Action::HoldTap(hta @ HoldTapAction { tap, hold, .. }) => {
+            let new_tap = fill_chords(chord_groups, tap);
+            let new_hold = fill_chords(chord_groups, hold);
+            if new_tap.is_some() || new_hold.is_some() {
+                Some(Action::HoldTap(sref(HoldTapAction {
+                    hold: new_hold.unwrap_or_else(|| hold.clone()),
+                    tap: new_tap.unwrap_or_else(|| tap.clone()),
+                    ..(*hta).clone()
+                })))
+            } else {
+                None
+            }
+        }
+        Action::OneShot(os @ OneShot { action: ac, .. }) => fill_chords(chord_groups, ac).map(|ac| {
+            Action::OneShot(sref(OneShot {
+                action: sref(ac),
+                ..(*os).clone()
+            }))
+        }),
+        Action::MultipleActions(actions) => {
+            let new_actions = actions
+                .iter()
+                .map(|ac| fill_chords(chord_groups, ac))
+                .collect::<Vec<_>>();
+            if new_actions.iter().any(|it| it.is_some()) {
+                let new_actions = new_actions
+                    .iter()
+                    .zip(*actions)
+                    .map(|(new_ac, ac)| new_ac.unwrap_or_else(|| ac.clone()))
+                    .collect::<Vec<_>>();
+                Some(Action::MultipleActions(Box::leak(
+                    new_actions.into_boxed_slice(),
+                )))
+            } else {
+                None
+            }
+        }
+        Action::TapDance(td @ TapDance { actions, .. }) => {
+            let new_actions = actions
+                .iter()
+                .map(|ac| fill_chords(chord_groups, ac))
+                .collect::<Vec<_>>();
+            if new_actions.iter().any(|it| it.is_some()) {
+                let new_actions = new_actions
+                    .iter()
+                    .zip(*actions)
+                    .map(|(new_ac, ac)| new_ac.map(sref).unwrap_or(*ac))
+                    .collect::<Vec<_>>();
+                Some(Action::TapDance(sref(TapDance {
+                    actions: Box::leak(new_actions.into_boxed_slice()),
+                    ..(*td).clone()
+                })))
+            } else {
+                None
+            }
+        }
+    }
 }
 
 fn parse_fake_keys(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Result<()> {
@@ -1695,6 +1990,11 @@ fn add_key_output_from_action_to_key_pos(
         }
         Action::TapDance(TapDance { actions, .. }) => {
             for ac in actions.iter() {
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+            }
+        }
+        Action::Chords(ChordsGroup { chords, .. }) => {
+            for (_, ac) in chords.iter() {
                 add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
             }
         }

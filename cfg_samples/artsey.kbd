@@ -1,0 +1,74 @@
+;; ARTSEY MINI 0.2 https://github.com/artseyio/artsey/issues/7
+
+;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
+(defcfg
+  ;; Your keyboard device will likely differ from this.
+  linux-dev /dev/input/event1
+
+  ;; Windows doesn't need any input/output configuration entries; however, there
+  ;; must still be a defcfg entry. You can keep the linux-dev entry or delete
+  ;; it and leave it empty.
+)
+
+(defsrc
+  q    w    e
+  a    s    d
+)
+
+(deflayer base
+  (chord base A) (chord base R) (chord base T)
+  (chord base S) (chord base E) (chord base Y)
+)
+
+(deflayer meta
+  (chord meta A) (chord meta R) (chord meta T)
+  (chord meta S) (chord meta E) (chord meta Y)
+)
+
+(defchords base 5000
+  (A R T S E Y) (layer-switch meta)
+  (A R T      ) (one-shot 2000 lsft)
+  (      S E Y) spc
+  (A          ) a
+  (  R T S    ) b
+  (  R   S    ) c
+  (A       E Y) d
+  (        E  ) e
+  (A R        ) f
+  (A       E  ) g
+  (      S   Y) h
+  (  R     E  ) i
+  (    T S E  ) j
+  (    T   E  ) k
+  (      S E  ) l
+  (  R T      ) m
+  (        E Y) n
+  (A     S    ) o
+  (A R       Y) p
+  (    T     Y) q
+  (  R        ) r
+  (      S    ) s
+  (    T      ) t
+  (A   T      ) u
+  (A   T   E  ) v
+  (    T S    ) w
+  (A         Y) x
+  (          Y) y
+  (  R   S E  ) z
+)
+
+(defchords meta 5000
+  (A R T S E Y) (layer-switch base)
+  (      S E Y) spc
+  (A R T      ) caps ;; should technically be shift lock, probably need to use fake keys for that 
+  (A R        ) bspc
+  (  R T      ) del
+  (      S E  ) C-c
+  (        E Y) C-v
+  (A          ) home
+  (  R        ) up
+  (    T      ) end
+  (      S    ) left
+  (        E  ) down
+  (          Y) rght
+)

@@ -431,7 +431,7 @@ If you need help, you are welcome to ask.
 (deflayer chords      ;; you can put list actions directly in deflayer but it's ugly, so prefer aliases.
   _    _    _    _    _    _    _    _    _    _    @🙁  (unicode 😀) _    _
   _    _    _    _    _    _    _    _    @csc @hpy @lch @tbm         _    _
-  _    @alp _    _    _    _    _    _    _    _    _    _            _
+  _    @alp _    _    _    _    _    @ch1 @ch2 @ch4 @ch8 _            _
   _    _    _    _    _    _    _    _    _    @csv _    _
   _    _    _              _              _    _    _
 )
@@ -649,3 +649,61 @@ If you need help, you are welcome to ask.
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
+
+;; Input chording.
+;;
+;; Not to be confused with output chords (like C-S-a or the chords layer
+;; defined above), these allow you to perform actions when a combination of
+;; input keys (a "chord") is pressed all at once (order does not matter).
+;; Each combination/chord can perform a different action, allowing you to bind
+;; up to `2^n - 1` different actions to just `n` keys.
+;;
+;; Each `defchords` defines a named group of such chord-action pairs.
+;; The 500 is a timeout after which a chord triggers if it isn't triggered by a
+;; key release or press of a non-chord key before the timeout expires.
+;; If a chord is not defined, no action will occur when it is triggered but the
+;; keys used to input it will be consumed regardless.
+;;
+;; Each pair consists of the keys that make up a given chord in the parenthesis
+;; followed by the action that should be executed when the given chord is
+;; pressed.
+;; Note that these keys do not directly correspond to real keys and are merely
+;; arbitrary labels that make sense within the context of the chord.
+;; They are mapped to real keys in layers by configuring the key in the layer to
+;; map to a `(chord name key)` action (like those in the `defalias` below) where
+;; `name` is the name of the chords group (here `binary`) and `key` is one of the
+;; arbitrary labels of the keys in a chord (here `1`, `2`, `4` and `8`).
+;;
+;; Note that it is perfectly valid to nest these `chord` actions that enter
+;; "chording mode" within other actions like `tap-dance` and that will work as
+;; one would expect.
+;; However, this only applies to the first key used to enter "chording mode".
+;; Once "chording mode" is active, all other keys will be directly handled by
+;; "chording mode" with no regard for wrapper actions.
+;;
+;; The action executed by a chord (the right side of the chord-action pairs) may
+;; be any regular or advanced action, including aliases. They currently cannot
+;; however contain a `chord` action.
+(defchords binary 500
+  (1      ) 1
+  (  2    ) 2
+  (1 2    ) 3
+  (    4  ) 4
+  (1   4  ) 5
+  (  2 4  ) 6
+  (1 2 4  ) 7
+  (      8) 8
+  (1     8) 9
+  (  2   8) (multi 1 0)
+  (1 2   8) (multi 1 1)
+  (    4 8) (multi 1 2)
+  (1   4 8) (multi 1 3)
+  (  2 4 8) (multi 1 4)
+  (1 2 4 8) (multi 1 5)
+)
+(defalias
+  ch1 (chord binary 1)
+  ch2 (chord binary 2)
+  ch4 (chord binary 4)
+  ch8 (chord binary 8)
+)

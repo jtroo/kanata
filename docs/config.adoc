@@ -1240,6 +1240,47 @@ Example:
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 
+=== Input Chords
+<<table-of-contents,Back to ToC>>
+
+Not to be confused with <<chords,output chords>>, `+chord+` actions can allow you
+to perform various actions based on which specific combination of input keys
+is pressed together (such an unordered combination of keys is called a "chord").
+Each combination/chord can perform a different action, allowing you to bind up to
+`+2^n - 1+` different actions to just `+n+` keys.
+
+Input chords are configured similarly to `+defalias+` with two extra parameters
+at the beginning of each `+defchords+` group: the name of the group and a
+timeout value after which a chord triggers if it isn't triggered by a key release
+or press of a non-chord key before the timeout expires.
+
+----
+(defchords example 500
+  (a      ) a
+  (   b   ) b
+  (a     c) C-v
+  (a  b  c) @three
+)
+----
+
+The first item of each pair specifies the keys that make up a given chord.
+The second item of each pair is the action to be executed when the given chord
+is pressed and may be any regular or advanced action, including aliases. It
+currently cannot however contain another `+chord+` action.
+
+Note that unlike with `+defseq+`, these keys do not directly correspond to real
+keys and are merely arbitrary labels that make sense within the context of the
+chord.
+They are mapped to real keys in layers by configuring the key in the layer to
+map to a `+(chord name key)+` action where `+name+` is the name of the chords
+group (above `+example+`) and `+key+` is one of these arbitrary labels.
+
+It is perfectly valid to nest these `+chord+` actions that enter "chording mode"
+within other actions like `+tap-dance+` and that will work as one would expect.
+However, this only applies to the first key used to enter "chording mode".
+Once "chording mode" is active, all other keys will be directly handled by
+"chording mode" with no regard for wrapper actions.
+
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
 

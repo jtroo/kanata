@@ -260,6 +260,7 @@ impl<T> TapDanceEagerState<T> {
 enum WaitingConfig<T: 'static + std::fmt::Debug> {
     HoldTap(HoldTapConfig),
     TapDance(TapDanceState<T>),
+    Chord(&'static ChordsGroup<T>),
 }
 
 #[derive(Debug)]
@@ -304,6 +305,14 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                     ret,
                     Some(WaitingConfig::TapDance(TapDanceState { num_taps, ..*tds })),
                 )
+            }
+            WaitingConfig::Chord(ref config) => {
+                if let Some((ret, action)) = self.handle_chord(config, stacked) {
+                    self.tap = action;
+                    (Some(ret), None)
+                } else {
+                    (None, None)
+                }
             }
         };
         if let Some(cfg) = cfg_change {
@@ -399,6 +408,76 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                 (Some(WaitingAction::Tap), num_taps)
             }
         }
+    }
+
+    fn handle_chord(
+        &self,
+        config: &ChordsGroup<T>,
+        stacked: &mut Stack,
+    ) -> Option<(WaitingAction, &'static Action<T>)> {
+        // need to keep track of how many Press events we handled so we can filter them out later
+        let mut handled_press_events = 0;
+
+        // Compute the set of chord keys that are currently pressed
+        // `Ok` when chording mode may continue
+        // `Err` when it should end for various reasons
+        let active = stacked
+            .iter()
+            .try_fold(config.get_keys(self.coord).unwrap_or(0), |active, s| {
+                if let Some(chord_keys) = config.get_keys(s.event.coord()) {
+                    match s.event {
+                        Event::Press(_, _) => {
+                            handled_press_events += 1;
+                            Ok(active | chord_keys)
+                        }
+                        Event::Release(_, _) => Err(active), // released a chord key, abort
+                    }
+                } else if matches!(s.event, Event::Press(..)) {
+                    Err(active) // pressed a non-chord key, abort
+                } else {
+                    Ok(active)
+                }
+            })
+            .and_then(|active| {
+                if self.timeout == 0 {
+                    Err(active) // timeout expired, abort
+                } else {
+                    Ok(active)
+                }
+            });
+
+        let res = match active {
+            Ok(active) => {
+                // Chording mode still active, only trigger action if it's unambiguous
+                if let Some(action) = config.get_chord_if_unambiguous(active) {
+                    (WaitingAction::Tap, action)
+                } else {
+                    return None; // nothing to do yet, we'll check back later
+                }
+            }
+            Err(active) => {
+                // Abort chording mode. Trigger a chord action if there is one.
+                if let Some(action) = config.get_chord(active) {
+                    (WaitingAction::Tap, action)
+                } else {
+                    (WaitingAction::NoOp, &Action::NoOp)
+                }
+            }
+        };
+
+        // Consume all press events that were logically handled by this chording event
+        stacked.retain(|s| {
+            if matches!(s.event, Event::Press(i, j) if config.get_keys((i, j)).is_some())
+                && handled_press_events > 0
+            {
+                handled_press_events -= 1;
+                false
+            } else {
+                true
+            }
+        });
+
+        Some(res)
     }
 
     fn is_corresponding_release(&self, event: &Event) -> bool {
@@ -903,6 +982,17 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                         self.do_action(td.actions[0], coord, delay, false);
                     }
                 }
+            }
+            &Chords(chords) => {
+                self.tap_hold_tracker.coord = coord;
+                self.waiting = Some(WaitingState {
+                    coord,
+                    timeout: chords.timeout,
+                    delay,
+                    hold: &Action::NoOp,
+                    tap: &Action::NoOp,
+                    config: WaitingConfig::Chord(chords),
+                });
             }
             &KeyCode(keycode) => {
                 self.tap_hold_tracker.coord = coord;
