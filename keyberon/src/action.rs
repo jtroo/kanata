@@ -238,7 +238,7 @@ pub enum TapDanceConfig {
 }
 
 /// The different actions that can be done.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Action<T = core::convert::Infallible>
 where
     T: 'static,
@@ -300,60 +300,6 @@ where
     /// - `timeout` ticks elapse since the last tap of the same tap-dance key
     /// - the number of taps is equal to the length of `actions`.
     TapDance(&'static TapDance<T>),
-}
-
-impl<T> Debug for Action<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NoOp => write!(f, "NoOp"),
-            Self::Trans => write!(f, "Trans"),
-            Self::KeyCode(arg0) => f.debug_tuple("KeyCode").field(arg0).finish(),
-            Self::MultipleKeyCodes(arg0) => f.debug_tuple("MultipleKeyCodes").field(arg0).finish(),
-            Self::MultipleActions(arg0) => f.debug_tuple("MultipleActions").field(arg0).finish(),
-            Self::Layer(arg0) => f.debug_tuple("Layer").field(arg0).finish(),
-            Self::DefaultLayer(arg0) => f.debug_tuple("DefaultLayer").field(arg0).finish(),
-            Self::HoldTap(HoldTapAction {
-                timeout,
-                hold,
-                tap,
-                config,
-                tap_hold_interval,
-            }) => f
-                .debug_struct("HoldTap")
-                .field("timeout", timeout)
-                .field("hold", hold)
-                .field("tap", tap)
-                .field("config", config)
-                .field("tap_hold_interval", tap_hold_interval)
-                .finish(),
-            Self::Sequence { events } => {
-                f.debug_struct("Sequence").field("events", events).finish()
-            }
-            Self::CancelSequences => write!(f, "CancelSequences"),
-            Self::OneShot(OneShot {
-                action,
-                timeout,
-                end_config,
-            }) => f
-                .debug_struct("OneShot")
-                .field("action", action)
-                .field("timeout", timeout)
-                .field("end_config", end_config)
-                .finish(),
-            Self::TapDance(TapDance {
-                actions,
-                timeout,
-                config,
-            }) => f
-                .debug_struct("TapDance")
-                .field("actions", actions)
-                .field("timeout", timeout)
-                .field("config", config)
-                .finish(),
-            Self::Custom(_) => f.debug_tuple("Custom").finish(),
-            Self::ReleaseState(arg0) => f.debug_tuple("ReleaseState").field(arg0).finish(),
-        }
-    }
 }
 
 impl<T> Action<T> {

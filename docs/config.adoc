@@ -293,12 +293,12 @@ The options are:
 - `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
   hidden characters for an invalid sequence termination either after either a
   timeout or after a non-sequence key is typed.
-  
+
 For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
 be ignored if a sequence is already active. For historical reasons, and in case
 it is desired behaviour, a sequence leader input using `hidden-suppressed` will
 reset the key sequence.
-  
+
 See <<sequences>> for more about sequences.
 
 Example:
@@ -1205,6 +1205,11 @@ that `+macro+` supports more actions.
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
+
+Something notable about fake keys is that they don't always interrupt the state
+of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
+key, this won't interrupt a tap dance. However, most other action types,
+notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
 
 === Sequences
 <<table-of-contents,Back to ToC>>
