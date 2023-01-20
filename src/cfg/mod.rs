@@ -1275,7 +1275,11 @@ fn parse_chord(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     let chord_key_index = match &ac_params[1] {
         SExpr::Atom(s) => match group.keys.iter().position(|e| e == &s.t) {
             Some(i) => i,
-            None => bail!("Identifier `{}` is not used in chord group `{}`.", &s.t, name,),
+            None => bail!(
+                "Identifier `{}` is not used in chord group `{}`.",
+                &s.t,
+                name,
+            ),
         },
         _ => bail!(ERR_MSG),
     };
@@ -1525,12 +1529,14 @@ fn fill_chords(
                 None
             }
         }
-        Action::OneShot(os @ OneShot { action: ac, .. }) => fill_chords(chord_groups, ac).map(|ac| {
-            Action::OneShot(sref(OneShot {
-                action: sref(ac),
-                ..(*os).clone()
-            }))
-        }),
+        Action::OneShot(os @ OneShot { action: ac, .. }) => {
+            fill_chords(chord_groups, ac).map(|ac| {
+                Action::OneShot(sref(OneShot {
+                    action: sref(ac),
+                    ..(*os).clone()
+                }))
+            })
+        }
         Action::MultipleActions(actions) => {
             let new_actions = actions
                 .iter()
