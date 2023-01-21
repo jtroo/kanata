@@ -74,6 +74,9 @@ impl TcpServer {
 
                         {
                             let k = kanata.lock();
+                            log::info!(
+                                "new client connection, sending initial LayerChange event to inform them of current layer"
+                            );
                             if let Err(e) = stream.write(
                                 &ServerMessage::LayerChange {
                                     new: k.layer_info[k.layout.current_layer()].name.clone(),
