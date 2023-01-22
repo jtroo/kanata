@@ -515,17 +515,6 @@ You can put the `+lrld+` action onto a key to live-reload your configuration
 file. If kanata can't parse the file, it will continue using the previous
 configuration.
 
-It should be noted that the live reload action currently leaks memory. In
-practice this should not matter. Some measurements on Windows for version
-1.0.0:
-
-* 20 reloads: 15.4 MB memory consumed
-* 50 reloads: 20.4 MB memory consumed
-
-This is about 170 KB used per live reload. In more recent versions the memory
-usage per reload has likely more than doubled, but even still, in practice this
-is negligible memory usage compared to other applications like a browser.
-
 Example:
 
 ----

@@ -39,6 +39,9 @@
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 mod sexpr;
 
+mod alloc;
+use alloc::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -46,6 +49,7 @@ use crate::layers::*;
 use anyhow::{anyhow, bail, Result};
 use radix_trie::Trie;
 use std::collections::hash_map::Entry;
+use std::ops::{Deref, DerefMut};
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -58,8 +62,36 @@ use sexpr::SExpr;
 use self::sexpr::Spanned;
 
 pub type KanataAction = Action<&'static [&'static CustomAction]>;
-pub type KanataLayout = Layout<KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KLayout = Layout<KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
 pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
+
+pub struct KanataLayout {
+    layout: KLayout,
+    _allocations: Allocations,
+}
+
+impl KanataLayout {
+    fn new(layout: KLayout) -> Self {
+        Self {
+            layout,
+            _allocations: unsafe { claim_new_allocations() },
+        }
+    }
+}
+
+impl Deref for KanataLayout {
+    type Target = KLayout;
+
+    fn deref(&self) -> &Self::Target {
+        &self.layout
+    }
+}
+
+impl DerefMut for KanataLayout {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.layout
+    }
+}
 
 pub struct Cfg {
     /// The list of keys that kanata should be processing. Keys that are missing from `mapped_keys`
@@ -79,19 +111,28 @@ pub struct Cfg {
     pub sequences: KeySeqsToFKeys,
 }
 
-impl Cfg {
-    pub fn new_from_file(p: &std::path::Path) -> Result<Self> {
-        let (items, mapped_keys, layer_info, key_outputs, layout, sequences) = parse_cfg(p)?;
-        log::info!("config parsed");
-        Ok(Self {
-            items,
-            mapped_keys,
-            layer_info,
-            key_outputs,
-            layout,
-            sequences,
-        })
-    }
+use std::sync::Mutex;
+static ALLOC_LOCK: Mutex<()> = Mutex::new(());
+
+/// Parse a new configuration from a file.
+pub fn new_from_file(p: &std::path::Path) -> Result<Cfg> {
+    let _lk = ALLOC_LOCK.lock();
+    let (items, mapped_keys, layer_info, key_outputs, layout, sequences) = match parse_cfg(p) {
+        Ok(v) => v,
+        Err(e) => {
+            unsafe { free_new_allocations() };
+            return Err(e);
+        }
+    };
+    log::info!("config parsed");
+    Ok(Cfg {
+        items,
+        mapped_keys,
+        layer_info,
+        key_outputs,
+        layout,
+        sequences,
+    })
 }
 
 pub type MappedKeys = HashSet<OsCode>;
@@ -109,33 +150,33 @@ fn add_kc_output(osc_slot: OsCode, kc: OsCode, outs: &mut HashMap<OsCode, Vec<Os
 
 #[test]
 fn parse_simple() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
 }
 
 #[test]
 fn parse_minimal() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
 }
 
 #[test]
 fn parse_default() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
 }
 
 #[test]
 fn parse_jtroo() {
-    let (_, _, layer_strings, _, _, _) =
-        parse_cfg(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
-    assert_eq!(layer_strings.len(), 16);
+    let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
+    assert_eq!(cfg.layer_info.len(), 16);
 }
 
 #[test]
 fn parse_f13_f24() {
-    parse_cfg(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
 }
 
 #[test]
 fn parse_transparent_default() {
+    let _lk = ALLOC_LOCK.lock();
     let (_, _, layer_strings, layers, _) = parse_cfg_raw(&std::path::PathBuf::from(
         "./cfg_samples/transparent_default.kbd",
     ))
@@ -177,7 +218,7 @@ fn parse_transparent_default() {
 
 #[test]
 fn parse_all_keys() {
-    parse_cfg(&std::path::PathBuf::from(
+    new_from_file(&std::path::PathBuf::from(
         "./cfg_samples/all_keys_in_defsrc.kbd",
     ))
     .unwrap();
@@ -185,7 +226,7 @@ fn parse_all_keys() {
 
 #[test]
 fn parse_multiline_comment() {
-    parse_cfg(&std::path::PathBuf::from(
+    new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/multiline_comment.kbd",
     ))
     .unwrap();
@@ -193,7 +234,7 @@ fn parse_multiline_comment() {
 
 #[test]
 fn disallow_nested_tap_hold() {
-    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
+    match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
@@ -203,7 +244,7 @@ fn disallow_nested_tap_hold() {
 
 #[test]
 fn disallow_ancestor_seq() {
-    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
+    match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("invalid ancestor seq was Ok'd"),
@@ -213,7 +254,7 @@ fn disallow_ancestor_seq() {
 
 #[test]
 fn disallow_descendent_seq() {
-    match parse_cfg(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
+    match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
         .map_err(|e| e.to_string())
     {
         Ok(_) => panic!("invalid descendant seq was Ok'd"),
@@ -666,16 +707,6 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], parsed_state: &mut ParsedState) -> Resul
     Ok(())
 }
 
-/// Returns a `&'static T` by leaking a box.
-fn sref<T>(v: T) -> &'static T {
-    Box::leak(Box::new(v))
-}
-
-/// Returns a `&'static [&'static T]` by leaking a box + boxed array
-fn sref_slice<T>(v: T) -> &'static [&'static T] {
-    Box::leak(vec![sref(v)].into_boxed_slice())
-}
-
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr`.
 fn parse_action(expr: &SExpr, parsed_state: &ParsedState) -> Result<&'static KanataAction> {
     match expr {
@@ -774,7 +805,7 @@ fn parse_action_atom(ac: &Spanned<String>, aliases: &Aliases) -> Result<&'static
             .ok_or_else(|| anyhow!("Could not parse: {ac:?}"))?
             .into(),
     );
-    Ok(sref(Action::MultipleKeyCodes(sref(keys).as_ref())))
+    Ok(sref(Action::MultipleKeyCodes(sref_vec(keys))))
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr::List`.
@@ -924,10 +955,10 @@ fn parse_multi(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     }
 
     if !custom_actions.is_empty() {
-        actions.push(Action::Custom(Box::leak(custom_actions.into_boxed_slice())));
+        actions.push(Action::Custom(sref_vec(custom_actions)));
     }
 
-    Ok(sref(Action::MultipleActions(sref(actions))))
+    Ok(sref(Action::MultipleActions(sref_vec(actions))))
 }
 
 #[test]
@@ -983,15 +1014,15 @@ fn parse_macro(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     if ac_params.is_empty() {
         bail!("macro expects at least one atom after it")
     }
-    let mut all_events = Vec::new();
-    let mut events;
+    let mut all_events = Vec::with_capacity(256);
     let mut params_remainder = ac_params;
     while !params_remainder.is_empty() {
+        let mut events;
         (events, params_remainder) = parse_macro_item(params_remainder, parsed_state)?;
         all_events.append(&mut events);
     }
     Ok(sref(Action::Sequence {
-        events: sref(all_events),
+        events: sref_vec(all_events),
     }))
 }
 
@@ -1000,7 +1031,7 @@ fn parse_macro_release_cancel(
     parsed_state: &ParsedState,
 ) -> Result<&'static KanataAction> {
     let macro_action = parse_macro(ac_params, parsed_state)?;
-    Ok(sref(Action::MultipleActions(sref(vec![
+    Ok(sref(Action::MultipleActions(sref_vec(vec![
         *macro_action,
         Action::Custom(sref_slice(CustomAction::CancelMacroOnRelease)),
     ]))))
@@ -1164,19 +1195,14 @@ fn parse_cmd(ac_params: &[SExpr], is_cmd_enabled: bool) -> Result<&'static Kanat
         bail!(ERR_STR);
     }
     Ok(sref(Action::Custom(sref_slice(CustomAction::Cmd(
-        Box::leak(
-            ac_params
-                .iter()
-                .try_fold(vec![], |mut v, p| {
-                    if let SExpr::Atom(s) = p {
-                        v.push(s.t.trim_matches('"').to_owned());
-                        Ok(v)
-                    } else {
-                        bail!("{}, found a list", ERR_STR);
-                    }
-                })?
-                .into_boxed_slice(),
-        ),
+        sref_vec(ac_params.iter().try_fold(vec![], |mut v, p| {
+            if let SExpr::Atom(s) = p {
+                v.push(s.t.trim_matches('"').to_owned());
+                Ok(v)
+            } else {
+                bail!("{}, found a list", ERR_STR);
+            }
+        })?),
     )))))
 }
 
@@ -1206,7 +1232,6 @@ fn parse_one_shot(
         action,
         Action::Layer(..) | Action::KeyCode(..) | Action::MultipleKeyCodes(..)
     ) {
-        dbg!(action);
         bail!("one-shot is only allowed to contain layer-toggle, a keycode, or a chord");
     }
 
@@ -1246,7 +1271,7 @@ fn parse_tap_dance(
                 let ac = parse_action(expr, parsed_state)?;
                 actions.push(ac);
             }
-            sref(actions.into_boxed_slice())
+            sref_vec(actions)
         }
         _ => bail!(ERR_MSG),
     };
@@ -1290,8 +1315,8 @@ fn parse_chord(ac_params: &[SExpr], parsed_state: &ParsedState) -> Result<&'stat
     // resolved in `resolve_chord_groups`.
     Ok(sref(Action::Chords(sref(ChordsGroup {
         timeout: group.timeout,
-        coords: sref([((0, group.id), chord_keys)]),
-        chords: sref([]),
+        coords: sref_vec(vec![((0, group.id), chord_keys)]),
+        chords: sref_vec(vec![]),
     }))))
 }
 
@@ -1437,8 +1462,8 @@ fn resolve_chord_groups(layers: &mut KanataLayers, parsed_state: &mut ParsedStat
         }).collect::<Result<Vec<_>>>()?;
 
         Ok(sref(ChordsGroup {
-            coords: Box::leak(group.coords.into_boxed_slice()),
-            chords: Box::leak(chords.into_boxed_slice()),
+            coords: sref_vec(group.coords),
+            chords: sref_vec(chords),
             timeout: group.timeout,
         }))
     }).collect::<Result<Vec<_>>>()?;
@@ -1548,9 +1573,7 @@ fn fill_chords(
                     .zip(*actions)
                     .map(|(new_ac, ac)| new_ac.unwrap_or(*ac))
                     .collect::<Vec<_>>();
-                Some(Action::MultipleActions(Box::leak(
-                    new_actions.into_boxed_slice(),
-                )))
+                Some(Action::MultipleActions(sref_vec(new_actions)))
             } else {
                 None
             }
@@ -1567,7 +1590,7 @@ fn fill_chords(
                     .map(|(new_ac, ac)| new_ac.map(sref).unwrap_or(*ac))
                     .collect::<Vec<_>>();
                 Some(Action::TapDance(sref(TapDance {
-                    actions: Box::leak(new_actions.into_boxed_slice()),
+                    actions: sref_vec(new_actions),
                     ..td
                 })))
             } else {
@@ -2017,5 +2040,5 @@ fn add_key_output_from_action_to_key_pos(
 
 /// Create a layout from `layers::LAYERS`.
 fn create_layout(layers: Box<KanataLayers>) -> KanataLayout {
-    Layout::new(Box::leak(layers))
+    KanataLayout::new(Layout::new(bref(layers)))
 }

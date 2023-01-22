@@ -158,7 +158,7 @@ pub use linux::*;
 impl Kanata {
     /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        let cfg = cfg::Cfg::new_from_file(&args.path)?;
+        let cfg = cfg::new_from_file(&args.path)?;
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
@@ -924,7 +924,7 @@ impl Kanata {
     }
 
     fn do_live_reload(&mut self) -> Result<()> {
-        let cfg = cfg::Cfg::new_from_file(&self.cfg_path)?;
+        let cfg = cfg::new_from_file(&self.cfg_path)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg
             .items
