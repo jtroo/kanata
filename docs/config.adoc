@@ -1255,6 +1255,11 @@ timeout value after which a chord triggers if it isn't triggered by a key releas
 or press of a non-chord key before the timeout expires.
 
 ----
+(defsrc a b c)
+(deflayer default
+  @cha @chb @chc
+)
+
 (defalias
   cha (chord example a)
   chb (chord example b)

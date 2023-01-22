@@ -658,7 +658,10 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let hold = w.hold;
             let coord = w.coord;
-            let delay = w.delay + w.ticks;
+            let delay = match w.config {
+                WaitingConfig::HoldTap(..) => w.delay + w.ticks,
+                WaitingConfig::TapDance(_) | WaitingConfig::Chord(_) => 0,
+            };
             self.waiting = None;
             if coord == self.tap_hold_tracker.coord {
                 self.tap_hold_tracker.timeout = 0;
@@ -672,7 +675,10 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let tap = w.tap;
             let coord = w.coord;
-            let delay = w.delay + w.ticks;
+            let delay = match w.config {
+                WaitingConfig::HoldTap(..) => w.delay + w.ticks,
+                WaitingConfig::TapDance(_) | WaitingConfig::Chord(_) => 0,
+            };
             self.waiting = None;
             self.do_action(tap, coord, delay, false)
         } else {
