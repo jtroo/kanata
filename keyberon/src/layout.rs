@@ -268,6 +268,7 @@ pub struct WaitingState<T: 'static + std::fmt::Debug> {
     coord: (u8, u16),
     timeout: u16,
     delay: u16,
+    ticks: u16,
     hold: &'static Action<T>,
     tap: &'static Action<T>,
     config: WaitingConfig<T>,
@@ -287,6 +288,7 @@ pub enum WaitingAction {
 impl<T: std::fmt::Debug> WaitingState<T> {
     fn tick(&mut self, stacked: &mut Stack) -> Option<WaitingAction> {
         self.timeout = self.timeout.saturating_sub(1);
+        self.ticks = self.ticks.saturating_add(1);
         let (ret, cfg_change) = match self.config {
             WaitingConfig::HoldTap(htc) => (self.handle_hold_tap(htc, stacked), None),
             WaitingConfig::TapDance(ref tds) => {
@@ -306,7 +308,7 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                     Some(WaitingConfig::TapDance(TapDanceState { num_taps, ..*tds })),
                 )
             }
-            WaitingConfig::Chord(ref config) => {
+            WaitingConfig::Chord(config) => {
                 if let Some((ret, action)) = self.handle_chord(config, stacked) {
                     self.tap = action;
                     (Some(ret), None)
@@ -424,7 +426,9 @@ impl<T: std::fmt::Debug> WaitingState<T> {
         let active = stacked
             .iter()
             .try_fold(config.get_keys(self.coord).unwrap_or(0), |active, s| {
-                if let Some(chord_keys) = config.get_keys(s.event.coord()) {
+                if self.delay.saturating_sub(s.since) > self.timeout {
+                    Ok(active)
+                } else if let Some(chord_keys) = config.get_keys(s.event.coord()) {
                     match s.event {
                         Event::Press(_, _) => {
                             handled_press_events += 1;
@@ -439,7 +443,7 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                 }
             })
             .and_then(|active| {
-                if self.timeout == 0 {
+                if self.timeout.saturating_sub(self.delay) == 0 {
                     Err(active) // timeout expired, abort
                 } else {
                     Ok(active)
@@ -467,7 +471,9 @@ impl<T: std::fmt::Debug> WaitingState<T> {
 
         // Consume all press events that were logically handled by this chording event
         stacked.retain(|s| {
-            if matches!(s.event, Event::Press(i, j) if config.get_keys((i, j)).is_some())
+            if self.delay.saturating_sub(s.since) > self.timeout {
+                true
+            } else if matches!(s.event, Event::Press(i, j) if config.get_keys((i, j)).is_some())
                 && handled_press_events > 0
             {
                 handled_press_events -= 1;
@@ -652,11 +658,12 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let hold = w.hold;
             let coord = w.coord;
+            let delay = w.delay + w.ticks;
             self.waiting = None;
             if coord == self.tap_hold_tracker.coord {
                 self.tap_hold_tracker.timeout = 0;
             }
-            self.do_action(hold, coord, 0, false)
+            self.do_action(hold, coord, delay, false)
         } else {
             CustomEvent::NoEvent
         }
@@ -665,8 +672,9 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let tap = w.tap;
             let coord = w.coord;
+            let delay = w.delay + w.ticks;
             self.waiting = None;
-            self.do_action(tap, coord, 0, false)
+            self.do_action(tap, coord, delay, false)
         } else {
             CustomEvent::NoEvent
         }
@@ -913,6 +921,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                         coord,
                         timeout: *timeout,
                         delay,
+                        ticks: 0,
                         hold,
                         tap,
                         config: WaitingConfig::HoldTap(*config),
@@ -947,6 +956,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                             coord,
                             timeout: td.timeout,
                             delay,
+                            ticks: 0,
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             config: WaitingConfig::TapDance(TapDanceState {
@@ -989,6 +999,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                     coord,
                     timeout: chords.timeout,
                     delay,
+                    ticks: 0,
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
                     config: WaitingConfig::Chord(chords),
