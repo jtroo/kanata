@@ -58,7 +58,7 @@ pub struct Kanata {
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    kbd_out_rx: Receiver<InputEvent>,
+    kbd_out_rx: Receiver<(bool, InputEvent)>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
 }
@@ -1099,6 +1099,8 @@ impl Kanata {
             let err = loop {
                 if kanata.lock().can_block() {
                     log::trace!("blocking on channel");
+                    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+                    kanata.lock().kbd_out.notify_can_block().unwrap();
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();

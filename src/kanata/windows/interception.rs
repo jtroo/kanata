@@ -49,8 +49,15 @@ impl Kanata {
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
 
+        let mut can_block = false;
         loop {
-            let dev = intrcptn.wait_with_timeout(std::time::Duration::from_millis(1));
+            let dev = match can_block {
+                true => {
+                    dbg!(can_block);
+                    intrcptn.wait()
+                }
+                false => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
+            };
             if dev > 0 {
                 let num_strokes = intrcptn.receive(dev, &mut strokes) as usize;
                 for i in 0..num_strokes {
@@ -117,19 +124,24 @@ impl Kanata {
                 }
             }
 
+            can_block = false;
             match rx.try_recv() {
                 Ok(event) => {
-                    log::debug!("kanata sending {:?} to driver", event.0);
-                    strokes[0] = event.0;
-                    match event.0 {
-                        // Note regarding device numbers:
-                        // Keyboard devices are 1-10 and mouse devices are 11-20. Source:
-                        // https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
-                        ic::Stroke::Keyboard { .. } => {
-                            intrcptn.send(1, &strokes[0..1]);
-                        }
-                        ic::Stroke::Mouse { .. } => {
-                            intrcptn.send(11, &strokes[0..1]);
+                    if event.0 {
+                        can_block = true;
+                    } else {
+                        strokes[0] = event.1 .0;
+                        log::debug!("kanata sending {:?} to driver", strokes[0]);
+                        match strokes[0] {
+                            // Note regarding device numbers:
+                            // Keyboard devices are 1-10 and mouse devices are 11-20. Source:
+                            // https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
+                            ic::Stroke::Keyboard { .. } => {
+                                intrcptn.send(1, &strokes[0..1]);
+                            }
+                            ic::Stroke::Mouse { .. } => {
+                                intrcptn.send(11, &strokes[0..1]);
+                            }
                         }
                     }
                 }
