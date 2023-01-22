@@ -253,12 +253,12 @@ where
 }
 
 impl<T> ChordsGroup<T> {
-    /// Gets they chord keys corresponding to the given key coordinates.
+    /// Gets the chord keys corresponding to the given key coordinates.
     pub fn get_keys(&self, coord: (u8, u16)) -> Option<ChordKeys> {
         self.coords.iter().find(|c| c.0 == coord).map(|c| c.1)
     }
 
-    /// Gets chord action assigned to the given chord keys.
+    /// Gets the chord action assigned to the given chord keys.
     pub fn get_chord(&self, keys: ChordKeys) -> Option<&'static Action<T>> {
         self.chords
             .iter()

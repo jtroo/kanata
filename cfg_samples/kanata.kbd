@@ -654,7 +654,7 @@ If you need help, you are welcome to ask.
 ;;
 ;; Not to be confused with output chords (like C-S-a or the chords layer
 ;; defined above), these allow you to perform actions when a combination of
-;; input keys (a "chord") is pressed all at once (order does not matter).
+;; input keys (a "chord") are pressed all at once (order does not matter).
 ;; Each combination/chord can perform a different action, allowing you to bind
 ;; up to `2^n - 1` different actions to just `n` keys.
 ;;
@@ -679,7 +679,10 @@ If you need help, you are welcome to ask.
 ;; one would expect.
 ;; However, this only applies to the first key used to enter "chording mode".
 ;; Once "chording mode" is active, all other keys will be directly handled by
-;; "chording mode" with no regard for wrapper actions.
+;; "chording mode" with no regard for wrapper actions; e.g. if a key is pressed
+;; and it maps to a tap-hold with a chord as the hold action within, that chord
+;; will immediately activate instead of the key needing to be held for the
+;; timeout period.
 ;;
 ;; The action executed by a chord (the right side of the chord-action pairs) may
 ;; be any regular or advanced action, including aliases. They currently cannot
