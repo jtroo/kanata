@@ -1247,7 +1247,7 @@ Not to be confused with <<chords,output chords>>, `+chord+` actions can allow yo
 to perform various actions based on which specific combination of input keys
 is pressed together (such an unordered combination of keys is called a "chord").
 Each combination/chord can perform a different action, allowing you to bind up to
-`+(n)(n+1)/2+` different actions to just `+n+` keys.
+`+2^n - 1+` different actions to just `+n+` keys.
 
 Input chords are configured similarly to `+defalias+` with two extra parameters
 at the beginning of each `+defchords+` group: the name of the group and a
