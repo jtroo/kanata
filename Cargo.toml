@@ -48,7 +48,7 @@ interception = { version = "0.1.2", optional = true }
 
 [features]
 cmd = []
-interception_driver = [ "interception" ]
+interception_driver = ["interception"]
 
 [profile.release]
 opt-level = "z"

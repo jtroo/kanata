@@ -36,8 +36,8 @@ use State::*;
 /// corresponds to the key on the first layer, row 2, column 3.
 /// The generic parameters are in order: the number of columns, rows and layers,
 /// and the type contained in custom actions.
-pub type Layers<const C: usize, const R: usize, const L: usize, T = core::convert::Infallible> =
-    [[[Action<T>; C]; R]; L];
+pub type Layers<'a, const C: usize, const R: usize, const L: usize, T = core::convert::Infallible> =
+    [[[Action<'a, T>; C]; R]; L];
 
 /// The current event stack.
 ///
@@ -46,20 +46,20 @@ type Stack = ArrayDeque<[Stacked; 16], arraydeque::behavior::Wrapping>;
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
 /// generate keyboard reports.
-pub struct Layout<const C: usize, const R: usize, const L: usize, T = core::convert::Infallible>
+pub struct Layout<'a, const C: usize, const R: usize, const L: usize, T = core::convert::Infallible>
 where
-    T: 'static + std::fmt::Debug,
+    T: 'a + std::fmt::Debug,
 {
-    pub layers: &'static [[[Action<T>; C]; R]; L],
+    pub layers: &'a [[[Action<'a, T>; C]; R]; L],
     pub default_layer: usize,
     /// Key states.
-    pub states: Vec<State<T>, 64>,
-    pub waiting: Option<WaitingState<T>>,
-    pub tap_dance_eager: Option<TapDanceEagerState<T>>,
+    pub states: Vec<State<'a, T>, 64>,
+    pub waiting: Option<WaitingState<'a, T>>,
+    pub tap_dance_eager: Option<TapDanceEagerState<'a, T>>,
     pub stacked: Stack,
     pub oneshot: OneShotState,
     pub last_press_tracker: LastPressTracker,
-    pub active_sequences: ArrayDeque<[SequenceState<T>; 4], arraydeque::behavior::Wrapping>,
+    pub active_sequences: ArrayDeque<[SequenceState<'a, T>; 4], arraydeque::behavior::Wrapping>,
 }
 
 /// An event on the key matrix.
@@ -122,15 +122,15 @@ impl Event {
 
 /// Event from custom action.
 #[derive(Debug, PartialEq, Eq)]
-pub enum CustomEvent<T: 'static> {
+pub enum CustomEvent<'a, T: 'a> {
     /// No custom action.
     NoEvent,
     /// The given custom action key is pressed.
-    Press(&'static T),
+    Press(&'a T),
     /// The given custom action key is released.
-    Release(&'static T),
+    Release(&'a T),
 }
-impl<T> CustomEvent<T> {
+impl<'a, T> CustomEvent<'a, T> {
     /// Update an event according to a new event.
     ///
     ///The event can only be modified in the order `NoEvent < Press <
@@ -144,29 +144,29 @@ impl<T> CustomEvent<T> {
         }
     }
 }
-impl<T> Default for CustomEvent<T> {
+impl<'a, T> Default for CustomEvent<'a, T> {
     fn default() -> Self {
         CustomEvent::NoEvent
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum State<T: 'static> {
+pub enum State<'a, T: 'a> {
     NormalKey { keycode: KeyCode, coord: (u8, u16) },
     LayerModifier { value: usize, coord: (u8, u16) },
-    Custom { value: &'static T, coord: (u8, u16) },
+    Custom { value: &'a T, coord: (u8, u16) },
     FakeKey { keycode: KeyCode }, // Fake key event for sequences
-    SeqCustomPending(&'static T),
-    SeqCustomActive(&'static T),
+    SeqCustomPending(&'a T),
+    SeqCustomActive(&'a T),
     Tombstone,
 }
-impl<T> Copy for State<T> {}
-impl<T> Clone for State<T> {
+impl<'a, T> Copy for State<'a, T> {}
+impl<'a, T> Clone for State<'a, T> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<T: 'static> State<T> {
+impl<'a, T: 'a> State<'a, T> {
     fn keycode(&self) -> Option<KeyCode> {
         match self {
             NormalKey { keycode, .. } => Some(*keycode),
@@ -178,7 +178,7 @@ impl<T: 'static> State<T> {
         Some(*self)
     }
     /// Returns None if the key has been released and Some otherwise.
-    pub fn release(&self, c: (u8, u16), custom: &mut CustomEvent<T>) -> Option<Self> {
+    pub fn release(&self, c: (u8, u16), custom: &mut CustomEvent<'a, T>) -> Option<Self> {
         match *self {
             NormalKey { coord, .. } | LayerModifier { coord, .. } if coord == c => None,
             Custom { value, coord } if coord == c => {
@@ -222,22 +222,22 @@ impl<T: 'static> State<T> {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct TapDanceState<T: 'static> {
-    actions: &'static [&'static Action<T>],
+struct TapDanceState<'a, T: 'a> {
+    actions: &'a [&'a Action<'a, T>],
     timeout: u16,
     num_taps: u16,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct TapDanceEagerState<T: 'static> {
+pub struct TapDanceEagerState<'a, T: 'a> {
     coord: (u8, u16),
-    actions: &'static [&'static Action<T>],
+    actions: &'a [&'a Action<'a, T>],
     timeout: u16,
     orig_timeout: u16,
     num_taps: u16,
 }
 
-impl<T> TapDanceEagerState<T> {
+impl<'a, T> TapDanceEagerState<'a, T> {
     fn tick(&mut self) {
         self.timeout = self.timeout.saturating_sub(1);
     }
@@ -257,21 +257,21 @@ impl<T> TapDanceEagerState<T> {
 }
 
 #[derive(Debug)]
-enum WaitingConfig<T: 'static + std::fmt::Debug> {
+enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
     HoldTap(HoldTapConfig),
-    TapDance(TapDanceState<T>),
-    Chord(&'static ChordsGroup<T>),
+    TapDance(TapDanceState<'a, T>),
+    Chord(&'a ChordsGroup<'a, T>),
 }
 
 #[derive(Debug)]
-pub struct WaitingState<T: 'static + std::fmt::Debug> {
+pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     coord: (u8, u16),
     timeout: u16,
     delay: u16,
     ticks: u16,
-    hold: &'static Action<T>,
-    tap: &'static Action<T>,
-    config: WaitingConfig<T>,
+    hold: &'a Action<'a, T>,
+    tap: &'a Action<'a, T>,
+    config: WaitingConfig<'a, T>,
 }
 
 /// Actions that can be triggered for a key configured for HoldTap.
@@ -285,7 +285,7 @@ pub enum WaitingAction {
     NoOp,
 }
 
-impl<T: std::fmt::Debug> WaitingState<T> {
+impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     fn tick(&mut self, stacked: &mut Stack) -> Option<WaitingAction> {
         self.timeout = self.timeout.saturating_sub(1);
         self.ticks = self.ticks.saturating_add(1);
@@ -414,9 +414,9 @@ impl<T: std::fmt::Debug> WaitingState<T> {
 
     fn handle_chord(
         &self,
-        config: &ChordsGroup<T>,
+        config: &'a ChordsGroup<'a, T>,
         stacked: &mut Stack,
-    ) -> Option<(WaitingAction, &'static Action<T>)> {
+    ) -> Option<(WaitingAction, &'a Action<'a, T>)> {
         // need to keep track of how many Press events we handled so we can filter them out later
         let mut handled_press_events = 0;
 
@@ -496,11 +496,11 @@ impl<T: std::fmt::Debug> WaitingState<T> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct SequenceState<T: 'static> {
-    cur_event: Option<SequenceEvent<T>>,
+pub struct SequenceState<'a, T: 'a> {
+    cur_event: Option<SequenceEvent<'a, T>>,
     delay: u32,              // Keeps track of SequenceEvent::Delay time remaining
     tapped: Option<KeyCode>, // Keycode of a key that should be released at the next tick
-    remaining_events: &'static [SequenceEvent<T>],
+    remaining_events: &'a [SequenceEvent<'a, T>],
 }
 
 type OneShotKeys = [(u8, u16); ONE_SHOT_MAX_ACTIVE];
@@ -627,11 +627,11 @@ impl LastPressTracker {
     }
 }
 
-impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fmt::Debug>
-    Layout<C, R, L, T>
+impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt::Debug>
+    Layout<'a, C, R, L, T>
 {
     /// Creates a new `Layout` object.
-    pub fn new(layers: &'static [[[Action<T>; C]; R]; L]) -> Self {
+    pub fn new(layers: &'a [[[Action<T>; C]; R]; L]) -> Self {
         Self {
             layers,
             default_layer: 0,
@@ -654,7 +654,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
     pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + '_ {
         self.states.iter().filter_map(State::keycode)
     }
-    fn waiting_into_hold(&mut self) -> CustomEvent<T> {
+    fn waiting_into_hold(&mut self) -> CustomEvent<'a, T> {
         if let Some(w) = &self.waiting {
             let hold = w.hold;
             let coord = w.coord;
@@ -671,7 +671,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
             CustomEvent::NoEvent
         }
     }
-    fn waiting_into_tap(&mut self) -> CustomEvent<T> {
+    fn waiting_into_tap(&mut self) -> CustomEvent<'a, T> {
         if let Some(w) = &self.waiting {
             let tap = w.tap;
             let coord = w.coord;
@@ -685,7 +685,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
             CustomEvent::NoEvent
         }
     }
-    fn drop_waiting(&mut self) -> CustomEvent<T> {
+    fn drop_waiting(&mut self) -> CustomEvent<'a, T> {
         self.waiting = None;
         CustomEvent::NoEvent
     }
@@ -695,7 +695,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
     ///
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
-    pub fn tick(&mut self) -> CustomEvent<T> {
+    pub fn tick(&mut self) -> CustomEvent<'a, T> {
         self.states = self.states.iter().filter_map(State::tick).collect();
         self.stacked.iter_mut().for_each(Stacked::tick);
         self.last_press_tracker.tick();
@@ -804,7 +804,10 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
             }
         }
     }
-    fn process_sequence_custom(&mut self, mut current_custom: CustomEvent<T>) -> CustomEvent<T> {
+    fn process_sequence_custom(
+        &mut self,
+        mut current_custom: CustomEvent<'a, T>,
+    ) -> CustomEvent<'a, T> {
         if self.states.is_empty() || !matches!(current_custom, CustomEvent::NoEvent) {
             return current_custom;
         }
@@ -826,7 +829,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         }
         current_custom
     }
-    fn unstack(&mut self, stacked: Stacked) -> CustomEvent<T> {
+    fn unstack(&mut self, stacked: Stacked) -> CustomEvent<'a, T> {
         use Event::*;
         match stacked.event {
             Release(i, j) => {
@@ -881,7 +884,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
             self.unstack(stacked);
         }
     }
-    fn press_as_action(&self, coord: (u8, u16), layer: usize) -> &'static Action<T> {
+    fn press_as_action(&self, coord: (u8, u16), layer: usize) -> &'a Action<'a, T> {
         use crate::action::Action::*;
         let action = self
             .layers
@@ -902,11 +905,11 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
     }
     fn do_action(
         &mut self,
-        action: &'static Action<T>,
+        action: &'a Action<'a, T>,
         coord: (u8, u16),
         delay: u16,
         is_oneshot: bool,
-    ) -> CustomEvent<T> {
+    ) -> CustomEvent<'a, T> {
         assert!(self.waiting.is_none() || matches!(action, Action::Custom(..)));
         if self.last_press_tracker.coord != coord {
             self.last_press_tracker.tap_hold_timeout = 0;
@@ -1130,7 +1133,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
             ]],
-            [[Trans, m(&[LCtrl, Enter].as_slice())]],
+            [[Trans, m([LCtrl, Enter].as_slice())]],
         ];
         let mut layout = Layout::new(&LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());

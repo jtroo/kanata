@@ -1,6 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
-    Cmd(&'static [String]),
+    Cmd(Vec<String>),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),

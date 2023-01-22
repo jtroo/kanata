@@ -55,6 +55,7 @@ pub struct Kanata {
     pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
     pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
     last_tick: time::Instant,
+    live_reload_requested: bool,
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -158,7 +159,7 @@ pub use linux::*;
 impl Kanata {
     /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        let cfg = cfg::Cfg::new_from_file(&args.path)?;
+        let cfg = cfg::new_from_file(&args.path)?;
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
@@ -250,6 +251,7 @@ impl Kanata {
             sequences: cfg.sequences,
             sequence_input_mode,
             last_tick: time::Instant::now(),
+            live_reload_requested: false,
             #[cfg(target_os = "linux")]
             continue_if_no_devices: cfg
                 .items
@@ -292,7 +294,7 @@ impl Kanata {
             }
             KeyValue::Repeat => return self.handle_repeat(event),
         };
-        self.layout.event(kbrn_ev);
+        self.layout.bm().event(kbrn_ev);
         Ok(())
     }
 
@@ -301,19 +303,16 @@ impl Kanata {
         let now = time::Instant::now();
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
-        let mut live_reload_requested = false;
-
         for _ in 0..ms_elapsed {
-            let custom_event = self.layout.tick();
-            let cur_keys = self.handle_keystate_changes()?;
-            live_reload_requested |= self.handle_custom_event(custom_event)?;
+            let (cur_keys, reload_requested) = self.handle_keystate_changes()?;
+            self.live_reload_requested |= reload_requested;
             self.handle_scrolling()?;
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
             self.tick_dynamic_macro_state()?;
 
-            if live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
-                live_reload_requested = false;
+            if self.live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
+                self.live_reload_requested = false;
                 if let Err(e) = self.do_live_reload() {
                     log::error!("live reload failed {e}");
                 }
@@ -333,12 +332,219 @@ impl Kanata {
         Ok(())
     }
 
-    /// Returns true if live reload is requested and false otherwise.
-    fn handle_custom_event(
-        &mut self,
-        custom_event: CustomEvent<&'static [&'static CustomAction]>,
-    ) -> Result<bool> {
+    fn handle_scrolling(&mut self) -> Result<()> {
+        if let Some(scroll_state) = &mut self.scroll_state {
+            if scroll_state.ticks_until_scroll == 0 {
+                scroll_state.ticks_until_scroll = scroll_state.interval - 1;
+                self.kbd_out
+                    .scroll(scroll_state.direction, scroll_state.distance)?;
+            } else {
+                scroll_state.ticks_until_scroll -= 1;
+            }
+        }
+        if let Some(hscroll_state) = &mut self.hscroll_state {
+            if hscroll_state.ticks_until_scroll == 0 {
+                hscroll_state.ticks_until_scroll = hscroll_state.interval - 1;
+                self.kbd_out
+                    .scroll(hscroll_state.direction, hscroll_state.distance)?;
+            } else {
+                hscroll_state.ticks_until_scroll -= 1;
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_move_mouse(&mut self) -> Result<()> {
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
+            if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
+                if mmas.accel_ticks_until_max != 0 {
+                    let increment =
+                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    mmsv.distance = mmas.min_distance + increment;
+                    mmas.accel_ticks_from_min += 1;
+                    mmas.accel_ticks_until_max -= 1;
+                } else {
+                    mmsv.distance = mmas.max_distance;
+                }
+            }
+            if mmsv.ticks_until_move == 0 {
+                mmsv.ticks_until_move = mmsv.interval - 1;
+                self.kbd_out.move_mouse(mmsv.direction, mmsv.distance)?;
+            } else {
+                mmsv.ticks_until_move -= 1;
+            }
+        }
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
+            if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
+                if mmas.accel_ticks_until_max != 0 {
+                    let increment =
+                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    mmsh.distance = mmas.min_distance + increment;
+                    mmas.accel_ticks_from_min += 1;
+                    mmas.accel_ticks_until_max -= 1;
+                } else {
+                    mmsh.distance = mmas.max_distance;
+                }
+            }
+            if mmsh.ticks_until_move == 0 {
+                mmsh.ticks_until_move = mmsh.interval - 1;
+                self.kbd_out.move_mouse(mmsh.direction, mmsh.distance)?;
+            } else {
+                mmsh.ticks_until_move -= 1;
+            }
+        }
+        Ok(())
+    }
+
+    fn tick_sequence_state(&mut self) -> Result<()> {
+        if let Some(state) = &mut self.sequence_state {
+            state.ticks_until_timeout -= 1;
+            if state.ticks_until_timeout == 0 {
+                log::debug!("sequence timeout; exiting sequence state");
+                match self.sequence_input_mode {
+                    SequenceInputMode::HiddenDelayType => {
+                        for code in state.sequence.iter().copied() {
+                            if let Some(osc) = OsCode::from_u16(code) {
+                                self.kbd_out.press_key(osc)?;
+                                self.kbd_out.release_key(osc)?;
+                            }
+                        }
+                    }
+                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
+                }
+                self.sequence_state = None;
+            }
+        }
+        Ok(())
+    }
+
+    fn tick_dynamic_macro_state(&mut self) -> Result<()> {
+        let mut clear_replaying_macro = false;
+        if let Some(state) = &mut self.dynamic_macro_replay_state {
+            state.delay_remaining = state.delay_remaining.saturating_sub(1);
+            if state.delay_remaining == 0 {
+                match state.macro_items.pop_front() {
+                    None => clear_replaying_macro = true,
+                    Some(i) => match i {
+                        DynamicMacroItem::Press(k) => {
+                            self.layout.bm().event(Event::Press(0, k.into()))
+                        }
+                        DynamicMacroItem::Release(k) => {
+                            self.layout.bm().event(Event::Release(0, k.into()))
+                        }
+                        DynamicMacroItem::EndMacro(key) => {
+                            state.active_macros.remove(&key);
+                        }
+                    },
+                }
+                state.delay_remaining = 5;
+            }
+        }
+        if clear_replaying_macro {
+            log::debug!("finished macro replay");
+            self.dynamic_macro_replay_state = None;
+        }
+        Ok(())
+    }
+
+    /// Sends OS key events according to the change in key state between the current and the
+    /// previous keyberon keystate. Also processes any custom actions.
+    ///
+    /// Returns the current keys and if live reload was requested.
+    fn handle_keystate_changes(&mut self) -> Result<(Vec<KeyCode>, bool)> {
+        let layout = self.layout.bm();
+        let custom_event = layout.tick();
         let mut live_reload_requested = false;
+        let cur_keys: Vec<KeyCode> = layout.keycodes().collect();
+
+        // Release keys that do not in the current state but exist in the previous state. This used
+        // to use a HashSet but it was changed to a Vec because the order of operations matters.
+        for k in &self.prev_keys {
+            if cur_keys.contains(k) {
+                continue;
+            }
+            log::debug!("key release   {:?}", k);
+            if let Err(e) = self.kbd_out.release_key(k.into()) {
+                bail!("failed to release key: {:?}", e);
+            }
+        }
+
+        // Press keys that exist in the current state but are missing from the previous state.
+        // Comment above regarding Vec/HashSet also applies here.
+        for k in &cur_keys {
+            log::trace!("{k:?} is pressed");
+            if self.prev_keys.contains(k) {
+                log::trace!("{k:?} is contained");
+                continue;
+            }
+            LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
+            match &mut self.sequence_state {
+                None => {
+                    log::debug!("key press     {:?}", k);
+                    if let Err(e) = self.kbd_out.press_key(k.into()) {
+                        bail!("failed to press key: {:?}", e);
+                    }
+                }
+                Some(state) => {
+                    state.ticks_until_timeout = self.sequence_timeout;
+                    let osc = OsCode::from(*k);
+                    state.sequence.push(u16::from(osc));
+                    match self.sequence_input_mode {
+                        SequenceInputMode::VisibleBackspaced => {
+                            self.kbd_out.press_key(osc)?;
+                        }
+                        SequenceInputMode::HiddenSuppressed
+                        | SequenceInputMode::HiddenDelayType => {}
+                    }
+                    log::debug!("sequence got {k:?}");
+                    if let Some((x, y)) = self.sequences.get(&state.sequence) {
+                        log::debug!("sequence complete; tapping fake key");
+                        match self.sequence_input_mode {
+                            SequenceInputMode::HiddenSuppressed
+                            | SequenceInputMode::HiddenDelayType => {}
+                            SequenceInputMode::VisibleBackspaced => {
+                                for _ in state.sequence.iter() {
+                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
+                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                }
+                            }
+                        }
+                        // Make sure to unpress any keys that were pressed as part of the sequence
+                        // so that the keyberon internal sequence mechanism can do press+unpress of
+                        // them.
+                        for k in state.sequence.iter() {
+                            layout.states.retain(|s| match s {
+                                State::NormalKey { keycode, .. } => {
+                                    KeyCode::from(OsCode::from(*k as u32)) != *keycode
+                                }
+                                _ => true,
+                            });
+                        }
+                        self.sequence_state = None;
+                        layout.event(Event::Press(*x, *y));
+                        layout.event(Event::Release(*x, *y));
+                    } else if self.sequences.get_raw_descendant(&state.sequence).is_none() {
+                        log::debug!("got invalid sequence; exiting sequence mode");
+                        match self.sequence_input_mode {
+                            SequenceInputMode::HiddenDelayType => {
+                                for code in state.sequence.iter().copied() {
+                                    if let Some(osc) = OsCode::from_u16(code) {
+                                        self.kbd_out.press_key(osc)?;
+                                        self.kbd_out.release_key(osc)?;
+                                    }
+                                }
+                            }
+                            SequenceInputMode::HiddenSuppressed
+                            | SequenceInputMode::VisibleBackspaced => {}
+                        }
+                        self.sequence_state = None;
+                    }
+                }
+            }
+        }
+
+        // Handle custom events. This used to be in a separate function but lifetime issues cause
+        // it to now be here.
         match custom_event {
             CustomEvent::Press(custacts) => {
                 let mut cmds = vec![];
@@ -459,22 +665,21 @@ impl Kanata {
                         }
 
                         CustomAction::Cmd(cmd) => {
-                            cmds.push(*cmd);
+                            cmds.push(cmd.clone());
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
                             log::debug!(
                                 "fake key on press   {action:?} {:?},{x:?},{y:?} {:?}",
-                                self.layout.default_layer,
-                                self.layout.layers[self.layout.default_layer][x as usize]
-                                    [y as usize]
+                                layout.default_layer,
+                                layout.layers[layout.default_layer][x as usize][y as usize]
                             );
                             match action {
-                                FakeKeyAction::Press => self.layout.event(Event::Press(x, y)),
-                                FakeKeyAction::Release => self.layout.event(Event::Release(x, y)),
+                                FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+                                FakeKeyAction::Release => layout.event(Event::Release(x, y)),
                                 FakeKeyAction::Tap => {
-                                    self.layout.event(Event::Press(x, y));
-                                    self.layout.event(Event::Release(x, y));
+                                    layout.event(Event::Press(x, y));
+                                    layout.event(Event::Release(x, y));
                                 }
                             }
                         }
@@ -679,19 +884,19 @@ impl Kanata {
                             let (x, y) = (coord.x, coord.y);
                             log::debug!("fake key on release {action:?} {x:?},{y:?}");
                             match action {
-                                FakeKeyAction::Press => self.layout.event(Event::Press(x, y)),
-                                FakeKeyAction::Release => self.layout.event(Event::Release(x, y)),
+                                FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+                                FakeKeyAction::Release => layout.event(Event::Release(x, y)),
                                 FakeKeyAction::Tap => {
-                                    self.layout.event(Event::Press(x, y));
-                                    self.layout.event(Event::Release(x, y));
+                                    layout.event(Event::Press(x, y));
+                                    layout.event(Event::Release(x, y));
                                 }
                             }
                             pbtn
                         }
                         CustomAction::CancelMacroOnRelease => {
                             log::debug!("cancelling all macros");
-                            self.layout.active_sequences.clear();
-                            self.layout
+                            layout.active_sequences.clear();
+                            layout
                                 .states
                                 .retain(|s| !matches!(s, State::FakeKey { .. }));
                             pbtn
@@ -708,223 +913,13 @@ impl Kanata {
             }
             _ => {}
         };
-        Ok(live_reload_requested)
-    }
 
-    fn handle_scrolling(&mut self) -> Result<()> {
-        if let Some(scroll_state) = &mut self.scroll_state {
-            if scroll_state.ticks_until_scroll == 0 {
-                scroll_state.ticks_until_scroll = scroll_state.interval - 1;
-                self.kbd_out
-                    .scroll(scroll_state.direction, scroll_state.distance)?;
-            } else {
-                scroll_state.ticks_until_scroll -= 1;
-            }
-        }
-        if let Some(hscroll_state) = &mut self.hscroll_state {
-            if hscroll_state.ticks_until_scroll == 0 {
-                hscroll_state.ticks_until_scroll = hscroll_state.interval - 1;
-                self.kbd_out
-                    .scroll(hscroll_state.direction, hscroll_state.distance)?;
-            } else {
-                hscroll_state.ticks_until_scroll -= 1;
-            }
-        }
-        Ok(())
-    }
-
-    fn handle_move_mouse(&mut self) -> Result<()> {
-        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
-            if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsv.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsv.distance = mmas.max_distance;
-                }
-            }
-            if mmsv.ticks_until_move == 0 {
-                mmsv.ticks_until_move = mmsv.interval - 1;
-                self.kbd_out.move_mouse(mmsv.direction, mmsv.distance)?;
-            } else {
-                mmsv.ticks_until_move -= 1;
-            }
-        }
-        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
-            if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsh.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsh.distance = mmas.max_distance;
-                }
-            }
-            if mmsh.ticks_until_move == 0 {
-                mmsh.ticks_until_move = mmsh.interval - 1;
-                self.kbd_out.move_mouse(mmsh.direction, mmsh.distance)?;
-            } else {
-                mmsh.ticks_until_move -= 1;
-            }
-        }
-        Ok(())
-    }
-
-    fn tick_sequence_state(&mut self) -> Result<()> {
-        if let Some(state) = &mut self.sequence_state {
-            state.ticks_until_timeout -= 1;
-            if state.ticks_until_timeout == 0 {
-                log::debug!("sequence timeout; exiting sequence state");
-                match self.sequence_input_mode {
-                    SequenceInputMode::HiddenDelayType => {
-                        for code in state.sequence.iter().copied() {
-                            if let Some(osc) = OsCode::from_u16(code) {
-                                self.kbd_out.press_key(osc)?;
-                                self.kbd_out.release_key(osc)?;
-                            }
-                        }
-                    }
-                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
-                }
-                self.sequence_state = None;
-            }
-        }
-        Ok(())
-    }
-
-    fn tick_dynamic_macro_state(&mut self) -> Result<()> {
-        let mut clear_replaying_macro = false;
-        if let Some(state) = &mut self.dynamic_macro_replay_state {
-            state.delay_remaining = state.delay_remaining.saturating_sub(1);
-            if state.delay_remaining == 0 {
-                match state.macro_items.pop_front() {
-                    None => clear_replaying_macro = true,
-                    Some(i) => match i {
-                        DynamicMacroItem::Press(k) => self.layout.event(Event::Press(0, k.into())),
-                        DynamicMacroItem::Release(k) => {
-                            self.layout.event(Event::Release(0, k.into()))
-                        }
-                        DynamicMacroItem::EndMacro(key) => {
-                            state.active_macros.remove(&key);
-                        }
-                    },
-                }
-                state.delay_remaining = 5;
-            }
-        }
-        if clear_replaying_macro {
-            log::debug!("finished macro replay");
-            self.dynamic_macro_replay_state = None;
-        }
-        Ok(())
-    }
-
-    fn release_with_keyberon_output(&mut self, cur_keys: &[KeyCode]) -> Result<()> {
-        // Release keys that are missing from the current state but exist in the previous
-        // state. It's important to iterate using a Vec because the order matters. This used to
-        // use HashSet for computing `difference` but that iteration order is random which is
-        // not what we want.
-        for k in &self.prev_keys {
-            if cur_keys.contains(k) {
-                continue;
-            }
-            log::debug!("key release   {:?}", k);
-            if let Err(e) = self.kbd_out.release_key(k.into()) {
-                bail!("failed to release key: {:?}", e);
-            }
-        }
-        Ok(())
-    }
-
-    /// Sends OS key events according to the change in key state between the current and the
-    /// previous keyberon keystate. Returns the current keys.
-    fn handle_keystate_changes(&mut self) -> Result<Vec<KeyCode>> {
-        let cur_keys: Vec<KeyCode> = self.layout.keycodes().collect();
         self.check_release_non_physical_shift()?;
-        self.release_with_keyberon_output(&cur_keys)?;
-        // Press keys that exist in the current state but are missing from the previous state.
-        // Comment above regarding Vec/HashSet also applies here.
-        for k in &cur_keys {
-            log::trace!("{k:?} is pressed");
-            if self.prev_keys.contains(k) {
-                log::trace!("{k:?} is contained");
-                continue;
-            }
-            LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
-            match &mut self.sequence_state {
-                None => {
-                    log::debug!("key press     {:?}", k);
-                    if let Err(e) = self.kbd_out.press_key(k.into()) {
-                        bail!("failed to press key: {:?}", e);
-                    }
-                }
-                Some(state) => {
-                    state.ticks_until_timeout = self.sequence_timeout;
-                    let osc = OsCode::from(*k);
-                    state.sequence.push(u16::from(osc));
-                    match self.sequence_input_mode {
-                        SequenceInputMode::VisibleBackspaced => {
-                            self.kbd_out.press_key(osc)?;
-                        }
-                        SequenceInputMode::HiddenSuppressed
-                        | SequenceInputMode::HiddenDelayType => {}
-                    }
-                    log::debug!("sequence got {k:?}");
-                    if let Some((x, y)) = self.sequences.get(&state.sequence) {
-                        log::debug!("sequence complete; tapping fake key");
-                        match self.sequence_input_mode {
-                            SequenceInputMode::HiddenSuppressed
-                            | SequenceInputMode::HiddenDelayType => {}
-                            SequenceInputMode::VisibleBackspaced => {
-                                for _ in state.sequence.iter() {
-                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
-                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
-                                }
-                            }
-                        }
-                        // Make sure to unpress any keys that were pressed as part of the sequence
-                        // so that the keyberon internal sequence mechanism can do press+unpress of
-                        // them.
-                        for k in state.sequence.iter() {
-                            self.layout.states.retain(|s| match s {
-                                State::NormalKey { keycode, .. } => {
-                                    KeyCode::from(OsCode::from(*k as u32)) != *keycode
-                                }
-                                _ => true,
-                            });
-                        }
-                        self.sequence_state = None;
-                        self.layout.event(Event::Press(*x, *y));
-                        self.layout.event(Event::Release(*x, *y));
-                    } else if self.sequences.get_raw_descendant(&state.sequence).is_none() {
-                        log::debug!("got invalid sequence; exiting sequence mode");
-                        match self.sequence_input_mode {
-                            SequenceInputMode::HiddenDelayType => {
-                                for code in state.sequence.iter().copied() {
-                                    if let Some(osc) = OsCode::from_u16(code) {
-                                        self.kbd_out.press_key(osc)?;
-                                        self.kbd_out.release_key(osc)?;
-                                    }
-                                }
-                            }
-                            SequenceInputMode::HiddenSuppressed
-                            | SequenceInputMode::VisibleBackspaced => {}
-                        }
-                        self.sequence_state = None;
-                    }
-                }
-            }
-        }
-        Ok(cur_keys)
+        Ok((cur_keys, live_reload_requested))
     }
 
     fn do_live_reload(&mut self) -> Result<()> {
-        let cfg = cfg::Cfg::new_from_file(&self.cfg_path)?;
+        let cfg = cfg::new_from_file(&self.cfg_path)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg
             .items
@@ -965,8 +960,8 @@ impl Kanata {
             // cancel an input sequence... I'll wait for a user created issue to deal with this.
             return Ok(());
         }
-        let active_keycodes: HashSet<KeyCode> = self.layout.keycodes().collect();
-        let current_layer = self.layout.current_layer();
+        let active_keycodes: HashSet<KeyCode> = self.layout.bm().keycodes().collect();
+        let current_layer = self.layout.bm().current_layer();
         if current_layer % 2 == 1 {
             // Prioritize checking the active layer in case a layer-while-held is active.
             if let Some(outputs_for_key) = self.key_outputs[current_layer].get(&event.code) {
@@ -990,10 +985,11 @@ impl Kanata {
         // 1. current layer is the default layer
         // 2. current layer is layer-while-held but did not find a match in the code above, e.g. a
         //    transparent key was pressed.
-        let outputs_for_key = match self.key_outputs[self.layout.default_layer].get(&event.code) {
-            None => return Ok(()),
-            Some(v) => v,
-        };
+        let outputs_for_key =
+            match self.key_outputs[self.layout.bm().default_layer].get(&event.code) {
+                None => return Ok(()),
+                Some(v) => v,
+            };
         log::debug!("key outs for default layer: {outputs_for_key:?};");
         for kc in outputs_for_key.iter().rev() {
             if active_keycodes.contains(&kc.into()) {
@@ -1010,14 +1006,14 @@ impl Kanata {
     pub fn change_layer(&mut self, layer_name: String) {
         for (i, l) in self.layer_info.iter().enumerate() {
             if l.name == layer_name {
-                self.layout.set_default_layer(i);
+                self.layout.bm().set_default_layer(i);
                 return;
             }
         }
     }
 
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
-        let cur_layer = self.layout.current_layer();
+        let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
             self.prev_layer = cur_layer;
@@ -1152,12 +1148,12 @@ impl Kanata {
         let wintercept_can_block = true;
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let wintercept_can_block = self.kbd_out_rx.is_empty();
-        self.layout.stacked.is_empty()
-            && self.layout.waiting.is_none()
-            && self.layout.last_press_tracker.tap_hold_timeout == 0
-            && (self.layout.oneshot.timeout == 0 || self.layout.oneshot.keys.is_empty())
-            && self.layout.active_sequences.is_empty()
-            && self.layout.tap_dance_eager.is_none()
+        self.layout.b().stacked.is_empty()
+            && self.layout.b().waiting.is_none()
+            && self.layout.b().last_press_tracker.tap_hold_timeout == 0
+            && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
+            && self.layout.b().active_sequences.is_empty()
+            && self.layout.b().tap_dance_eager.is_none()
             && self.sequence_state.is_none()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
@@ -1175,7 +1171,7 @@ fn set_altgr_behaviour(_cfg: &cfg::Cfg) -> Result<()> {
 }
 
 #[cfg(feature = "cmd")]
-fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
+fn run_cmd(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut args = cmd_and_args.iter().cloned();
         let mut cmd = std::process::Command::new(
@@ -1208,7 +1204,7 @@ fn run_cmd(cmd_and_args: &'static [String]) -> std::thread::JoinHandle<()> {
 }
 
 #[cfg(feature = "cmd")]
-fn run_multi_cmd(cmds: Vec<&'static [String]>) {
+fn run_multi_cmd(cmds: Vec<Vec<String>>) {
     std::thread::spawn(move || {
         for cmd in cmds {
             if let Err(e) = run_cmd(cmd).join() {
@@ -1219,7 +1215,7 @@ fn run_multi_cmd(cmds: Vec<&'static [String]>) {
 }
 
 #[cfg(not(feature = "cmd"))]
-fn run_multi_cmd(_cmds: Vec<&'static [String]>) {}
+fn run_multi_cmd(_cmds: Vec<Vec<String>>) {}
 
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
