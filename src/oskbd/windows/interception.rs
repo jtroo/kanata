@@ -3,7 +3,7 @@
 use std::io;
 
 use crossbeam_channel::Sender;
-use interception::{KeyState, MouseFlags, MouseState, Stroke};
+use interception::{scancode::ScanCode, KeyState, MouseFlags, MouseState, Stroke};
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -75,16 +75,31 @@ impl InputEvent {
 
 /// Handle for writing keys to the OS.
 pub struct KbdOut {
-    keys_tx: Sender<InputEvent>,
+    // The bool is used to tell the interception reading loop that it can block.
+    keys_tx: Sender<(bool, InputEvent)>,
 }
 
 impl KbdOut {
-    pub fn new(keys_tx: Sender<InputEvent>) -> Result<Self, io::Error> {
+    pub fn new(keys_tx: Sender<(bool, InputEvent)>) -> Result<Self, io::Error> {
         Ok(Self { keys_tx })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        self.keys_tx.try_send(event).unwrap();
+        self.keys_tx.try_send((false, event)).unwrap();
+        Ok(())
+    }
+
+    pub fn notify_can_block(&mut self) -> Result<(), io::Error> {
+        self.keys_tx
+            .try_send((
+                true,
+                InputEvent(Stroke::Keyboard {
+                    code: ScanCode::Esc,
+                    state: KeyState::empty(),
+                    information: 0,
+                }),
+            ))
+            .unwrap();
         Ok(())
     }
 
@@ -104,21 +119,21 @@ impl KbdOut {
     pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
         log::debug!("click btn: {:?}", btn);
         let event = InputEvent::from_mouse_btn(btn, false);
-        self.keys_tx.send(event).unwrap();
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
     pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
         log::debug!("release btn: {:?}", btn);
         let event = InputEvent::from_mouse_btn(btn, true);
-        self.keys_tx.send(event).unwrap();
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
         let event = InputEvent::from_mouse_scroll(direction, distance);
-        self.keys_tx.send(event).unwrap();
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
