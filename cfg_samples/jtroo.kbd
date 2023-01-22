@@ -79,7 +79,7 @@
 
 (deflayer numbers
   _    _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
-  _    _    C-S-tab C-tab _ XX  _    kp4  kp5  kp6  -    _    _    _
+  _    _    C-S-tab C-tab _ XX  _    kp4  kp5  kp6  min  _    _    _
   _    _    C-z  C-y  M-tab XX  _    kp1  kp2  kp3  +    _    _
   _    C-z  C-x  C-c  C-v  XX   _    kp0  kp0  .    /    _
   _    _    _              _              _    _    _
@@ -136,25 +136,25 @@
 
 (deffakekeys
   "git status" (macro g i t spc s t a t u s)
-  "git commit --amend --no-edit" (macro g i t spc c o m m i t spc - - a m e n d spc - - n o - e d i t)
-  "git rebase -i HEAD~" (macro g i t spc r e b a s e spc - i spc S-h S-e S-a S-d S-grv)
+  "git commit --amend --no-edit" (macro g i t spc c o m m i t spc min min a m e n d spc min min n o min e d i t)
+  "git rebase -i HEAD~" (macro g i t spc r e b a s e spc min i spc S-h S-e S-a S-d S-grv)
   "git log --pretty=oneline --abbrev-commit" (macro
     g i t spc l o g spc
-      - - p r e t t y = o n e l i n e spc
-      - - a b b r e v - c o m m i t
+      min min p r e t t y = o n e l i n e spc
+      min min a b b r e v min c o m m i t
   )
   "git diff --ignore-space-change" (macro
     g i t spc d i f f spc
-      - - i g n o r e - s p a c e - c h a n g e
+      min min i g n o r e min s p a c e min c h a n g e
   )
   "git diff --cached --ignore-space-change" (macro
     g i t spc d i f f spc
-      - - c a c h e d spc
-      - - i g n o r e - s p a c e - c h a n g e
+      min min c a c h e d spc
+      min min i g n o r e min s p a c e min c h a n g e
   )
-  "git push -f" (macro g i t spc p u s h spc - f)
+  "git push -f" (macro g i t spc p u s h spc min f)
   "git commit -m 'fix_this_commit_message'" (macro
     g i t spc c o m m i t spc
-      - m spc ' f i x S-- t h i s S-- c o m m i t S-- m e s s a g e '
+      min m spc ' f i x S-min t h i s S-min c o m m i t S-min m e s s a g e '
   )
 )
