@@ -48,7 +48,7 @@ type Stack = ArrayDeque<[Stacked; 16], arraydeque::behavior::Wrapping>;
 /// generate keyboard reports.
 pub struct Layout<const C: usize, const R: usize, const L: usize, T = core::convert::Infallible>
 where
-    T: 'static,
+    T: 'static + std::fmt::Debug,
 {
     pub layers: &'static [[[Action<T>; C]; R]; L],
     pub default_layer: usize,
@@ -242,7 +242,7 @@ impl<T> TapDanceEagerState<T> {
         self.timeout = self.timeout.saturating_sub(1);
     }
 
-    fn is_expired(self) -> bool {
+    fn is_expired(&self) -> bool {
         self.timeout == 0 || usize::from(self.num_taps) >= self.actions.len()
     }
 
@@ -257,13 +257,13 @@ impl<T> TapDanceEagerState<T> {
 }
 
 #[derive(Debug)]
-enum WaitingConfig<T: 'static> {
+enum WaitingConfig<T: 'static + std::fmt::Debug> {
     HoldTap(HoldTapConfig),
     TapDance(TapDanceState<T>),
 }
 
 #[derive(Debug)]
-pub struct WaitingState<T: 'static> {
+pub struct WaitingState<T: 'static + std::fmt::Debug> {
     coord: (u8, u16),
     timeout: u16,
     delay: u16,
@@ -283,7 +283,7 @@ pub enum WaitingAction {
     NoOp,
 }
 
-impl<T> WaitingState<T> {
+impl<T: std::fmt::Debug> WaitingState<T> {
     fn tick(&mut self, stacked: &mut Stack) -> Option<WaitingAction> {
         self.timeout = self.timeout.saturating_sub(1);
         let (ret, cfg_change) = match self.config {
@@ -542,7 +542,9 @@ impl TapHoldTracker {
     }
 }
 
-impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C, R, L, T> {
+impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fmt::Debug>
+    Layout<C, R, L, T>
+{
     /// Creates a new `Layout` object.
     pub fn new(layers: &'static [[[Action<T>; C]; R]; L]) -> Self {
         Self {
@@ -760,9 +762,15 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
                         // unwrap is here because tde cannot be ref mut
                         self.tap_dance_eager.as_mut().unwrap().incr_taps();
                         custom
-                    } else {
+
+                    // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
+                    // interrupt tap-dance-eager if real key.
+                    } else if i == 0 {
                         // unwrap is here because tde cannot be ref mut
                         self.tap_dance_eager.as_mut().unwrap().set_expired();
+                        let action = self.press_as_action((i, j), self.current_layer());
+                        self.do_action(action, (i, j), stacked.since, false)
+                    } else {
                         let action = self.press_as_action((i, j), self.current_layer());
                         self.do_action(action, (i, j), stacked.since, false)
                     }
@@ -806,7 +814,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy> Layout<C
         delay: u16,
         is_oneshot: bool,
     ) -> CustomEvent<T> {
-        assert!(self.waiting.is_none());
+        assert!(self.waiting.is_none() || matches!(action, Action::Custom(..)));
         use Action::*;
         match action {
             NoOp | Trans => (),
