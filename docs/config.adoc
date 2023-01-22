@@ -1247,7 +1247,7 @@ Not to be confused with <<chords,output chords>>, `+chord+` actions can allow yo
 to perform various actions based on which specific combination of input keys
 is pressed together (such an unordered combination of keys is called a "chord").
 Each combination/chord can perform a different action, allowing you to bind up to
-`+2^n - 1+` different actions to just `+n+` keys.
+`+(n)(n+1)/2+` different actions to just `+n+` keys.
 
 Input chords are configured similarly to `+defalias+` with two extra parameters
 at the beginning of each `+defchords+` group: the name of the group and a
@@ -1255,6 +1255,12 @@ timeout value after which a chord triggers if it isn't triggered by a key releas
 or press of a non-chord key before the timeout expires.
 
 ----
+(defalias
+  cha (chord example a)
+  chb (chord example b)
+  chc (chord example c)
+)
+
 (defchords example 500
   (a      ) a
   (   b   ) b
@@ -1279,7 +1285,10 @@ It is perfectly valid to nest these `+chord+` actions that enter "chording mode"
 within other actions like `+tap-dance+` and that will work as one would expect.
 However, this only applies to the first key used to enter "chording mode".
 Once "chording mode" is active, all other keys will be directly handled by
-"chording mode" with no regard for wrapper actions.
+"chording mode" with no regard for wrapper actions; e.g. if a key is pressed
+and it maps to a tap-hold with a chord as the hold action within, that chord
+key will immediately activate instead of the key needing to be held for the
+timeout period.
 
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>

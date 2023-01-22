@@ -628,9 +628,9 @@ If you need help, you are welcome to ask.
 ;;
 ;; There is also an option to customize the key sequence input mode. Its default
 ;; value when not configured is `hidden-suppressed`.
-;; 
+;;
 ;; The options are:
-;; 
+;;
 ;; - `visible-backspaced`: types sequence characters as they are inputted. The
 ;;   typed characters will be erased with backspaces for a valid sequence termination.
 ;; - `hidden-suppressed`: hides sequence characters as they are typed. Does not
@@ -638,7 +638,7 @@ If you need help, you are welcome to ask.
 ;; - `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
 ;;   hidden characters for an invalid sequence termination either after either a
 ;;   timeout or after a non-sequence key is typed.
-;; 
+;;
 ;; For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
 ;; be ignored if a sequence is already active. For historical reasons, and in case
 ;; it is desired behaviour, a sequence leader input using `hidden-suppressed` will
@@ -656,7 +656,7 @@ If you need help, you are welcome to ask.
 ;; defined above), these allow you to perform actions when a combination of
 ;; input keys (a "chord") are pressed all at once (order does not matter).
 ;; Each combination/chord can perform a different action, allowing you to bind
-;; up to `2^n - 1` different actions to just `n` keys.
+;; up to `(n)(n+1)/2` different actions to just `n` keys.
 ;;
 ;; Each `defchords` defines a named group of such chord-action pairs.
 ;; The 500 is a timeout after which a chord triggers if it isn't triggered by a
@@ -681,7 +681,7 @@ If you need help, you are welcome to ask.
 ;; Once "chording mode" is active, all other keys will be directly handled by
 ;; "chording mode" with no regard for wrapper actions; e.g. if a key is pressed
 ;; and it maps to a tap-hold with a chord as the hold action within, that chord
-;; will immediately activate instead of the key needing to be held for the
+;; key will immediately activate instead of the key needing to be held for the
 ;; timeout period.
 ;;
 ;; The action executed by a chord (the right side of the chord-action pairs) may
