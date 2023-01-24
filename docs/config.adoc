@@ -156,8 +156,8 @@ certainly undesirable but is a valid configuration.
 == Non-US keyboards
 <<table-of-contents,Back to ToC>>
 
-For non-US keyboard users, you may have some keys on your keyboard that are
-cannot be mapped in `defsrc` by default, at least according to the symbol
+For non-US keyboard users, you may have some keys on your keyboard with characters
+that are not allowed in `defsrc` by default, at least according to the symbol
 shown. You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
@@ -169,12 +169,12 @@ There are three variants of deflocalkeys:
 
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
-applicable will be ignored, e.g. deflocalkeys-linux and deflocalkeys-wintercept
+applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
 are both ignored when using the default Windows kanata binary.
 
 You can find configurations that others have made in xref:locales.adoc[this
 document]. If you do not see your keyboard there and are not confident in using
-the available tools, you are welcome to ask for help in a discussion or issue.
+the available tools, please feel welcome to ask for help in a discussion or issue.
 Please contribute to the document if you are able!
 
 Example:
