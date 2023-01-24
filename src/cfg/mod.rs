@@ -26,7 +26,7 @@
 //!     layers[0] = { xx, esc, a, s, d, 4, xx... }
 //!     layers[1] = { xx, _  , a, s, d, _, xx... }
 //!     layers[2] = { xx, esc, a, o, e, 4, xx... }
-//!     layers[3] = { xx, _  , a, s, d, _, xx... }
+//!     layers[3] = { xx, _  , a, o, e, _, xx... }
 //!
 //! Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
 //! are at the beginning of the array. The column index for layers is the numerical value of
