@@ -1150,7 +1150,7 @@ impl Kanata {
     pub fn can_block(&self) -> bool {
         self.layout.stacked.is_empty()
             && self.layout.waiting.is_none()
-            && self.layout.tap_hold_tracker.timeout == 0
+            && self.layout.last_press_tracker.tap_hold_timeout == 0
             && (self.layout.oneshot.timeout == 0 || self.layout.oneshot.keys.is_empty())
             && self.layout.active_sequences.is_empty()
             && self.layout.tap_dance_eager.is_none()

@@ -58,7 +58,7 @@ where
     pub tap_dance_eager: Option<TapDanceEagerState<T>>,
     pub stacked: Stack,
     pub oneshot: OneShotState,
-    pub tap_hold_tracker: TapHoldTracker,
+    pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<[SequenceState<T>; 4], arraydeque::behavior::Wrapping>,
 }
 
@@ -260,6 +260,7 @@ impl<T> TapDanceEagerState<T> {
 enum WaitingConfig<T: 'static + std::fmt::Debug> {
     HoldTap(HoldTapConfig),
     TapDance(TapDanceState<T>),
+    Chord(&'static ChordsGroup<T>),
 }
 
 #[derive(Debug)]
@@ -267,6 +268,7 @@ pub struct WaitingState<T: 'static + std::fmt::Debug> {
     coord: (u8, u16),
     timeout: u16,
     delay: u16,
+    ticks: u16,
     hold: &'static Action<T>,
     tap: &'static Action<T>,
     config: WaitingConfig<T>,
@@ -286,6 +288,7 @@ pub enum WaitingAction {
 impl<T: std::fmt::Debug> WaitingState<T> {
     fn tick(&mut self, stacked: &mut Stack) -> Option<WaitingAction> {
         self.timeout = self.timeout.saturating_sub(1);
+        self.ticks = self.ticks.saturating_add(1);
         let (ret, cfg_change) = match self.config {
             WaitingConfig::HoldTap(htc) => (self.handle_hold_tap(htc, stacked), None),
             WaitingConfig::TapDance(ref tds) => {
@@ -304,6 +307,14 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                     ret,
                     Some(WaitingConfig::TapDance(TapDanceState { num_taps, ..*tds })),
                 )
+            }
+            WaitingConfig::Chord(config) => {
+                if let Some((ret, action)) = self.handle_chord(config, stacked) {
+                    self.tap = action;
+                    (Some(ret), None)
+                } else {
+                    (None, None)
+                }
             }
         };
         if let Some(cfg) = cfg_change {
@@ -399,6 +410,80 @@ impl<T: std::fmt::Debug> WaitingState<T> {
                 (Some(WaitingAction::Tap), num_taps)
             }
         }
+    }
+
+    fn handle_chord(
+        &self,
+        config: &ChordsGroup<T>,
+        stacked: &mut Stack,
+    ) -> Option<(WaitingAction, &'static Action<T>)> {
+        // need to keep track of how many Press events we handled so we can filter them out later
+        let mut handled_press_events = 0;
+
+        // Compute the set of chord keys that are currently pressed
+        // `Ok` when chording mode may continue
+        // `Err` when it should end for various reasons
+        let active = stacked
+            .iter()
+            .try_fold(config.get_keys(self.coord).unwrap_or(0), |active, s| {
+                if self.delay.saturating_sub(s.since) > self.timeout {
+                    Ok(active)
+                } else if let Some(chord_keys) = config.get_keys(s.event.coord()) {
+                    match s.event {
+                        Event::Press(_, _) => {
+                            handled_press_events += 1;
+                            Ok(active | chord_keys)
+                        }
+                        Event::Release(_, _) => Err(active), // released a chord key, abort
+                    }
+                } else if matches!(s.event, Event::Press(..)) {
+                    Err(active) // pressed a non-chord key, abort
+                } else {
+                    Ok(active)
+                }
+            })
+            .and_then(|active| {
+                if self.timeout.saturating_sub(self.delay) == 0 {
+                    Err(active) // timeout expired, abort
+                } else {
+                    Ok(active)
+                }
+            });
+
+        let res = match active {
+            Ok(active) => {
+                // Chording mode still active, only trigger action if it's unambiguous
+                if let Some(action) = config.get_chord_if_unambiguous(active) {
+                    (WaitingAction::Tap, action)
+                } else {
+                    return None; // nothing to do yet, we'll check back later
+                }
+            }
+            Err(active) => {
+                // Abort chording mode. Trigger a chord action if there is one.
+                if let Some(action) = config.get_chord(active) {
+                    (WaitingAction::Tap, action)
+                } else {
+                    (WaitingAction::NoOp, &Action::NoOp)
+                }
+            }
+        };
+
+        // Consume all press events that were logically handled by this chording event
+        stacked.retain(|s| {
+            if self.delay.saturating_sub(s.since) > self.timeout {
+                true
+            } else if matches!(s.event, Event::Press(i, j) if config.get_keys((i, j)).is_some())
+                && handled_press_events > 0
+            {
+                handled_press_events -= 1;
+                false
+            } else {
+                true
+            }
+        });
+
+        Some(res)
     }
 
     fn is_corresponding_release(&self, event: &Event) -> bool {
@@ -531,14 +616,14 @@ impl Stacked {
 }
 
 #[derive(Default)]
-pub struct TapHoldTracker {
+pub struct LastPressTracker {
     pub coord: (u8, u16),
-    pub timeout: u16,
+    pub tap_hold_timeout: u16,
 }
 
-impl TapHoldTracker {
+impl LastPressTracker {
     fn tick(&mut self) {
-        self.timeout = self.timeout.saturating_sub(1);
+        self.tap_hold_timeout = self.tap_hold_timeout.saturating_sub(1);
     }
 }
 
@@ -561,7 +646,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                 released_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
             },
-            tap_hold_tracker: Default::default(),
+            last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
         }
     }
@@ -573,11 +658,15 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let hold = w.hold;
             let coord = w.coord;
+            let delay = match w.config {
+                WaitingConfig::HoldTap(..) => w.delay + w.ticks,
+                WaitingConfig::TapDance(_) | WaitingConfig::Chord(_) => 0,
+            };
             self.waiting = None;
-            if coord == self.tap_hold_tracker.coord {
-                self.tap_hold_tracker.timeout = 0;
+            if coord == self.last_press_tracker.coord {
+                self.last_press_tracker.tap_hold_timeout = 0;
             }
-            self.do_action(hold, coord, 0, false)
+            self.do_action(hold, coord, delay, false)
         } else {
             CustomEvent::NoEvent
         }
@@ -586,8 +675,12 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         if let Some(w) = &self.waiting {
             let tap = w.tap;
             let coord = w.coord;
+            let delay = match w.config {
+                WaitingConfig::HoldTap(..) => w.delay + w.ticks,
+                WaitingConfig::TapDance(_) | WaitingConfig::Chord(_) => 0,
+            };
             self.waiting = None;
-            self.do_action(tap, coord, 0, false)
+            self.do_action(tap, coord, delay, false)
         } else {
             CustomEvent::NoEvent
         }
@@ -605,7 +698,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
     pub fn tick(&mut self) -> CustomEvent<T> {
         self.states = self.states.iter().filter_map(State::tick).collect();
         self.stacked.iter_mut().for_each(Stacked::tick);
-        self.tap_hold_tracker.tick();
+        self.last_press_tracker.tick();
         if let Some(ref mut tde) = self.tap_dance_eager {
             tde.tick();
             if tde.is_expired() {
@@ -752,7 +845,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
 
             Press(i, j) => {
                 if let Some(tde) = self.tap_dance_eager {
-                    if (i, j) == self.tap_hold_tracker.coord && !tde.is_expired() {
+                    if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let custom = self.do_action(
                             tde.actions[usize::from(tde.num_taps)],
                             (i, j),
@@ -815,6 +908,9 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
         is_oneshot: bool,
     ) -> CustomEvent<T> {
         assert!(self.waiting.is_none() || matches!(action, Action::Custom(..)));
+        if self.last_press_tracker.coord != coord {
+            self.last_press_tracker.tap_hold_timeout = 0;
+        }
         use Action::*;
         match action {
             NoOp | Trans => (),
@@ -827,29 +923,30 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
             }) => {
                 let mut custom = CustomEvent::NoEvent;
                 if *tap_hold_interval == 0
-                    || coord != self.tap_hold_tracker.coord
-                    || self.tap_hold_tracker.timeout == 0
+                    || coord != self.last_press_tracker.coord
+                    || self.last_press_tracker.tap_hold_timeout == 0
                 {
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
                         timeout: *timeout,
                         delay,
+                        ticks: 0,
                         hold,
                         tap,
                         config: WaitingConfig::HoldTap(*config),
                     };
                     self.waiting = Some(waiting);
-                    self.tap_hold_tracker.timeout = *tap_hold_interval;
+                    self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
                 } else {
-                    self.tap_hold_tracker.timeout = 0;
+                    self.last_press_tracker.tap_hold_timeout = 0;
                     custom.update(self.do_action(tap, coord, delay, is_oneshot));
                 }
                 // Need to set tap_hold_tracker coord AFTER the checks.
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 return custom;
             }
             &OneShot(oneshot) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 let custom = self.do_action(oneshot.action, coord, delay, true);
                 self.oneshot
                     .handle_press(OneShotHandlePressKey::OneShotKey(coord));
@@ -861,13 +958,14 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                 return custom;
             }
             &TapDance(td) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 match td.config {
                     TapDanceConfig::Lazy => {
                         self.waiting = Some(WaitingState {
                             coord,
                             timeout: td.timeout,
                             delay,
+                            ticks: 0,
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             config: WaitingConfig::TapDance(TapDanceState {
@@ -904,15 +1002,27 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                     }
                 }
             }
+            &Chords(chords) => {
+                self.last_press_tracker.coord = coord;
+                self.waiting = Some(WaitingState {
+                    coord,
+                    timeout: chords.timeout,
+                    delay,
+                    ticks: 0,
+                    hold: &Action::NoOp,
+                    tap: &Action::NoOp,
+                    config: WaitingConfig::Chord(chords),
+                });
+            }
             &KeyCode(keycode) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 let _ = self.states.push(NormalKey { coord, keycode });
                 if !is_oneshot {
                     self.oneshot.handle_press(OneShotHandlePressKey::Other);
                 }
             }
             &MultipleKeyCodes(v) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 for &keycode in v {
                     let _ = self.states.push(NormalKey { coord, keycode });
                 }
@@ -921,7 +1031,7 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                 }
             }
             &MultipleActions(v) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 let mut custom = CustomEvent::NoEvent;
                 for action in v {
                     custom.update(self.do_action(action, coord, delay, is_oneshot));
@@ -946,15 +1056,15 @@ impl<const C: usize, const R: usize, const L: usize, T: 'static + Copy + std::fm
                 }
             }
             &Layer(value) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 let _ = self.states.push(LayerModifier { value, coord });
             }
             DefaultLayer(value) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 self.set_default_layer(*value);
             }
             Custom(value) => {
-                self.tap_hold_tracker.coord = coord;
+                self.last_press_tracker.coord = coord;
                 if self.states.push(State::Custom { value, coord }).is_ok() {
                     return CustomEvent::Press(value);
                 }

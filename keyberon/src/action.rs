@@ -237,6 +237,62 @@ pub enum TapDanceConfig {
     Eager,
 }
 
+/// A group of chords (actions mapped to a combination of multiple physical keys pressed together).
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ChordsGroup<T = core::convert::Infallible>
+where
+    T: 'static,
+{
+    /// List of key coordinates participating in this chord group, each with the corresponding [ChordKeys] they map to.
+    pub coords: &'static [((u8, u16), ChordKeys)],
+    /// Map of chords to actions they execute.
+    pub chords: &'static [(ChordKeys, &'static Action<T>)],
+    /// Timeout after which a chord will expire and either trigger its action or be discarded if there is no corresponding action.
+    /// A chord may trigger its action even before this timeout expires, if a chord key is released, a non-chord key is pressed or the pressed chord is already uniquely identifyable.
+    pub timeout: u16,
+}
+
+impl<T> ChordsGroup<T> {
+    /// Gets the chord keys corresponding to the given key coordinates.
+    pub fn get_keys(&self, coord: (u8, u16)) -> Option<ChordKeys> {
+        self.coords.iter().find(|c| c.0 == coord).map(|c| c.1)
+    }
+
+    /// Gets the chord action assigned to the given chord keys.
+    pub fn get_chord(&self, keys: ChordKeys) -> Option<&'static Action<T>> {
+        self.chords
+            .iter()
+            .find(|(chord_keys, _)| *chord_keys == keys)
+            .map(|(_, action)| *action)
+    }
+
+    /// Gets the chord action assigned to the given chord keys if they are already unambigous (i.e. there is no key that could still be pressed that would result in a different chord).
+    pub fn get_chord_if_unambiguous(&self, keys: ChordKeys) -> Option<&'static Action<T>> {
+        self.chords
+            .iter()
+            .try_fold(None, |res, &(chord_keys, action)| {
+                if chord_keys == keys {
+                    Ok(Some(action))
+                } else if chord_keys | keys == chord_keys {
+                    // The given keys are a subset of this chord but not an exact match
+                    // -> ambiguity
+                    Err(())
+                } else {
+                    Ok(res)
+                }
+            })
+            .unwrap_or_default()
+    }
+}
+
+/// A set of virtual keys (represented as a bit mask) pressed together.
+/// The keys do not directly correspond to physical keys. They are unique to a given [ChordGroup] and their mapping from physical keys is definied in [ChordGroup.coords].
+/// As such, each chord group can effectively have at most 32 different keys (though multiple physical keys may be mapped to the same virtual key).
+pub type ChordKeys = u32;
+
+/// Defines the maximum number of (virtual) keys that can be used in a single chords group.
+pub const MAX_CHORD_KEYS: usize = ChordKeys::BITS as usize;
+
 /// The different actions that can be done.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Action<T = core::convert::Infallible>
@@ -300,6 +356,15 @@ where
     /// - `timeout` ticks elapse since the last tap of the same tap-dance key
     /// - the number of taps is equal to the length of `actions`.
     TapDance(&'static TapDance<T>),
+    /// Chord key. Enters chording mode where multiple keys may be pressed together to active
+    /// different actions depending on the specific combination ("chord") pressed.
+    /// See `struct ChordGroup` for configuration info.
+    ///
+    /// Keys participating in chording mode are listed in `coords`.
+    /// Chording mode ends when a non-participating key is pressed, a participating key is released,
+    /// the timeout expires, or when the pressed chord uniquely identifies an action (i.e. there are
+    /// no more keys you could press to change the result).
+    Chords(&'static ChordsGroup<T>),
 }
 
 impl<T> Action<T> {
