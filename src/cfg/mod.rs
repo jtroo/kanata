@@ -86,7 +86,7 @@ impl KanataLayout {
         unsafe { std::mem::transmute(&mut self.layout) }
     }
 
-    /// b stands for borrow mut.
+    /// b stands for borrow.
     pub fn b(&self) -> &BorrowedKLayout {
         // shrink the lifetime
         unsafe { std::mem::transmute(&self.layout) }
