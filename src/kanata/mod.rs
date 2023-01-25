@@ -1148,6 +1148,10 @@ impl Kanata {
     }
 
     pub fn can_block(&self) -> bool {
+        #[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
+        let wintercept_can_block = true;
+        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+        let wintercept_can_block = self.kbd_out_rx.is_empty();
         self.layout.stacked.is_empty()
             && self.layout.waiting.is_none()
             && self.layout.last_press_tracker.tap_hold_timeout == 0
@@ -1160,6 +1164,7 @@ impl Kanata {
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
+            && wintercept_can_block
     }
 }
 
