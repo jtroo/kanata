@@ -79,7 +79,7 @@ impl TcpServer {
                             );
                             if let Err(e) = stream.write(
                                 &ServerMessage::LayerChange {
-                                    new: k.layer_info[k.layout.current_layer()].name.clone(),
+                                    new: k.layer_info[k.layout.b().current_layer()].name.clone(),
                                 }
                                 .as_bytes(),
                             ) {

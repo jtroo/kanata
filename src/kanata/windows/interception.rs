@@ -52,10 +52,7 @@ impl Kanata {
         let mut can_block = false;
         loop {
             let dev = match can_block {
-                true => {
-                    dbg!(can_block);
-                    intrcptn.wait()
-                }
+                true => intrcptn.wait(),
                 false => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
             };
             if dev > 0 {

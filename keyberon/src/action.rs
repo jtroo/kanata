@@ -7,7 +7,7 @@ use core::fmt::Debug;
 /// The different types of actions we support for key sequences/macros
 #[non_exhaustive]
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub enum SequenceEvent<T: 'static> {
+pub enum SequenceEvent<'a, T: 'a> {
     /// No operation action: just do nothing (a placeholder).
     NoOp,
     /// A keypress/keydown
@@ -27,16 +27,16 @@ pub enum SequenceEvent<T: 'static> {
         /// The current chunk
         index: usize,
         /// The full list of Sequence Events (that aren't Continue())
-        events: &'static [SequenceEvent<T>],
+        events: &'a [SequenceEvent<'a, T>],
     },
     /// Custom event in sequence.
-    Custom(&'static T),
+    Custom(&'a T),
     /// Cancels the running sequence and can be used to mark the end of a sequence
     /// instead of using a number of Release() events
     Complete,
 }
 
-impl<T> Debug for SequenceEvent<T> {
+impl<'a, T> Debug for SequenceEvent<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoOp => write!(f, "NoOp"),
@@ -150,17 +150,17 @@ pub enum ReleasableState {
 /// than `timeout`, the hold action is activated (if no other
 /// action was determined before).
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct HoldTapAction<T>
+pub struct HoldTapAction<'a, T>
 where
-    T: 'static,
+    T: 'a,
 {
     /// The duration, in ticks (usually milliseconds) giving the
     /// difference between a hold and a tap.
     pub timeout: u16,
     /// The hold action.
-    pub hold: Action<T>,
+    pub hold: Action<'a, T>,
     /// The tap action.
-    pub tap: Action<T>,
+    pub tap: Action<'a, T>,
     /// Behavior configuration.
     pub config: HoldTapConfig,
     /// Configuration of the tap and hold holds the tap action.
@@ -183,12 +183,12 @@ where
 
 /// Define one shot key behaviour.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct OneShot<T = core::convert::Infallible>
+pub struct OneShot<'a, T = core::convert::Infallible>
 where
-    T: 'static,
+    T: 'a,
 {
     /// Action to activate until timeout expires or exactly one non-one-shot key is activated.
-    pub action: &'static Action<T>,
+    pub action: &'a Action<'a, T>,
     /// Timeout after which one shot will expire. Note: timeout will be overwritten if another
     /// one shot key is pressed.
     pub timeout: u16,
@@ -213,14 +213,14 @@ pub const ONE_SHOT_MAX_ACTIVE: usize = 8;
 
 /// Define tap dance behaviour.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct TapDance<T = core::convert::Infallible>
+pub struct TapDance<'a, T = core::convert::Infallible>
 where
-    T: 'static,
+    T: 'a,
 {
     /// List of actions that activate based on number of taps. Only one of the actions will
     /// activate. Tapping the tap-dance key once will activate the action in index 0, three
     /// times will activate the action in index 2.
-    pub actions: &'static [&'static Action<T>],
+    pub actions: &'a [&'a Action<'a, T>],
     /// Timeout after which a tap will expire and become an action. A new tap for the same
     /// tap-dance key will reset this timeout.
     pub timeout: u16,
@@ -239,27 +239,27 @@ pub enum TapDanceConfig {
 
 /// A group of chords (actions mapped to a combination of multiple physical keys pressed together).
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct ChordsGroup<T = core::convert::Infallible>
+pub struct ChordsGroup<'a, T = core::convert::Infallible>
 where
-    T: 'static,
+    T: 'a,
 {
     /// List of key coordinates participating in this chord group, each with the corresponding [ChordKeys] they map to.
-    pub coords: &'static [((u8, u16), ChordKeys)],
+    pub coords: &'a [((u8, u16), ChordKeys)],
     /// Map of chords to actions they execute.
-    pub chords: &'static [(ChordKeys, &'static Action<T>)],
+    pub chords: &'a [(ChordKeys, &'a Action<'a, T>)],
     /// Timeout after which a chord will expire and either trigger its action or be discarded if there is no corresponding action.
     /// A chord may trigger its action even before this timeout expires, if a chord key is released, a non-chord key is pressed or the pressed chord is already uniquely identifyable.
     pub timeout: u16,
 }
 
-impl<T> ChordsGroup<T> {
+impl<'a, T> ChordsGroup<'a, T> {
     /// Gets the chord keys corresponding to the given key coordinates.
     pub fn get_keys(&self, coord: (u8, u16)) -> Option<ChordKeys> {
         self.coords.iter().find(|c| c.0 == coord).map(|c| c.1)
     }
 
     /// Gets the chord action assigned to the given chord keys.
-    pub fn get_chord(&self, keys: ChordKeys) -> Option<&'static Action<T>> {
+    pub fn get_chord(&self, keys: ChordKeys) -> Option<&'a Action<'a, T>> {
         self.chords
             .iter()
             .find(|(chord_keys, _)| *chord_keys == keys)
@@ -267,7 +267,7 @@ impl<T> ChordsGroup<T> {
     }
 
     /// Gets the chord action assigned to the given chord keys if they are already unambigous (i.e. there is no key that could still be pressed that would result in a different chord).
-    pub fn get_chord_if_unambiguous(&self, keys: ChordKeys) -> Option<&'static Action<T>> {
+    pub fn get_chord_if_unambiguous(&self, keys: ChordKeys) -> Option<&'a Action<'a, T>> {
         self.chords
             .iter()
             .try_fold(None, |res, &(chord_keys, action)| {
@@ -295,9 +295,9 @@ pub const MAX_CHORD_KEYS: usize = ChordKeys::BITS as usize;
 
 /// The different actions that can be done.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub enum Action<T = core::convert::Infallible>
+pub enum Action<'a, T = core::convert::Infallible>
 where
-    T: 'static,
+    T: 'a,
 {
     /// No operation action: just do nothing.
     NoOp,
@@ -309,9 +309,9 @@ where
     /// Multiple key codes sent at the same time, as if these keys
     /// were pressed at the same time. Useful to send a shifted key,
     /// or complex shortcuts like Ctrl+Alt+Del in a single key press.
-    MultipleKeyCodes(&'static [KeyCode]),
+    MultipleKeyCodes(&'a [KeyCode]),
     /// Multiple actions sent at the same time.
-    MultipleActions(&'static [Action<T>]),
+    MultipleActions(&'a [Action<'a, T>]),
     /// While pressed, change the current layer. That's the classic
     /// Fn key. If several layer actions are hold at the same time,
     /// the last pressed defines the current layer.
@@ -322,7 +322,7 @@ where
     /// A sequence of SequenceEvents
     Sequence {
         /// An array of SequenceEvents that will be triggered (in order)
-        events: &'static [SequenceEvent<T>],
+        events: &'a [SequenceEvent<'a, T>],
     },
     /// Cancels any running sequences
     CancelSequences,
@@ -330,11 +330,11 @@ where
     ReleaseState(ReleasableState),
 
     /// Perform different actions on key hold/tap (see [`HoldTapAction`]).
-    HoldTap(&'static HoldTapAction<T>),
+    HoldTap(&'a HoldTapAction<'a, T>),
     /// Custom action.
     ///
     /// Define a user defined action. This enum can be anything you
-    /// want, as long as it has the `'static` lifetime. It can be used
+    /// want, as long as it has the `'a` lifetime. It can be used
     /// to drive any non keyboard related actions that you might
     /// manage with key events.
     Custom(T),
@@ -348,14 +348,14 @@ where
     /// action) then you will likely have undesired behaviour. E.g. one shot with the space
     /// key will hold space until either another key is pressed or the timeout occurs, which will
     /// probably send many undesired space characters to your active application.
-    OneShot(&'static OneShot<T>),
+    OneShot(&'a OneShot<'a, T>),
     /// Tap-dance key. When tapping the key N times in quck succession, activates the N'th action
     /// in `actions`. The action will activate in the following conditions:
     ///
     /// - a different key is pressed
     /// - `timeout` ticks elapse since the last tap of the same tap-dance key
     /// - the number of taps is equal to the length of `actions`.
-    TapDance(&'static TapDance<T>),
+    TapDance(&'a TapDance<'a, T>),
     /// Chord key. Enters chording mode where multiple keys may be pressed together to active
     /// different actions depending on the specific combination ("chord") pressed.
     /// See `struct ChordGroup` for configuration info.
@@ -364,10 +364,10 @@ where
     /// Chording mode ends when a non-participating key is pressed, a participating key is released,
     /// the timeout expires, or when the pressed chord uniquely identifies an action (i.e. there are
     /// no more keys you could press to change the result).
-    Chords(&'static ChordsGroup<T>),
+    Chords(&'a ChordsGroup<'a, T>),
 }
 
-impl<T> Action<T> {
+impl<'a, T> Action<'a, T> {
     /// Gets the layer number if the action is the `Layer` action.
     pub fn layer(self) -> Option<usize> {
         match self {
@@ -387,24 +387,24 @@ impl<T> Action<T> {
 
 /// A shortcut to create a `Action::KeyCode`, useful to create compact
 /// layout.
-pub const fn k<T>(kc: KeyCode) -> Action<T> {
+pub const fn k<T>(kc: KeyCode) -> Action<'static, T> {
     Action::KeyCode(kc)
 }
 
 /// A shortcut to create a `Action::Layer`, useful to create compact
 /// layout.
-pub const fn l<T>(layer: usize) -> Action<T> {
+pub const fn l<T>(layer: usize) -> Action<'static, T> {
     Action::Layer(layer)
 }
 
 /// A shortcut to create a `Action::DefaultLayer`, useful to create compact
 /// layout.
-pub const fn d<T>(layer: usize) -> Action<T> {
+pub const fn d<T>(layer: usize) -> Action<'static, T> {
     Action::DefaultLayer(layer)
 }
 
 /// A shortcut to create a `Action::MultipleKeyCodes`, useful to
 /// create compact layout.
-pub const fn m<T>(kcs: &'static &'static [KeyCode]) -> Action<T> {
+pub const fn m<T>(kcs: &[KeyCode]) -> Action<T> {
     Action::MultipleKeyCodes(kcs)
 }

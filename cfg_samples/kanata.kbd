@@ -358,16 +358,6 @@ If you need help, you are welcome to ask.
 ;; Upon a successful reload, the kanata state will begin on the default base layer
 ;; in the configuration. E.g. in this example configuration, you would start on
 ;; the qwerty layer.
-;;
-;; WARNING: live reload leaks memory. This should not be a major problem though.
-;; Here are the measurements of memory consumption on Windows for version 1.0.0:
-;; - 20 reloads: 15.4 MB memory consumed
-;; - 50 reloads: 20.4 MB memory consumed
-;; So about 170 KB used per live reload. You'll probably be fine.
-;;
-;; Note: version 1.0.3 has probably doubled the amount of memory leaked per
-;; reload, though it has not been measured. In practice it's still negligible
-;; compared to a browser for example.
 (deflayer layers
   _    @qwr @dvk lrld @td2 _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
