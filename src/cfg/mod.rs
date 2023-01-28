@@ -857,6 +857,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
         "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
         "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
+        "arbitrary-code" => parse_arbitrary_code(&ac[1..], s),
         "cmd" => parse_cmd(&ac[1..], s),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
@@ -1946,6 +1947,24 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
         }
     }
     Ok(sequences)
+}
+
+fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "arbitrary code expects one parameter: <code: 0-767>";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}");
+    }
+    let code = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
+        .and_then(|c| match c {
+            Ok(code @ 0..=767) => Some(code),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}: got {:?}", ac_params[0]))?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref_slice(CustomAction::SendArbitraryCode(code)),
+    )))
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.

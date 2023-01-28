@@ -1101,6 +1101,26 @@ Example:
 )
 ----
 
+=== arbitrary-code
+<<table-of-contents,Back to ToC>>
+
+The `arbitrary-code` action allows sending an arbitrary number to kanata's
+output mechanism. The press is sent when pressed, and the release sent when
+released. This action can be useful for testing keys that are not yet named or
+mapped in kanata. Please contribute findings with names and mappings, either in
+a GitHub issue or as a pull request!
+
+WARNING: This is not cross platform!
+
+NOTE: This is currently not supported with Windows when using the interception
+driver.
+
+----
+(defalias
+  ab1 (arbitrary-code 700)
+)
+----
+
 == Advanced/weird features
 
 === Fake keys
