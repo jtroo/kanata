@@ -216,21 +216,16 @@ impl Kanata {
         let sequence_timeout = cfg
             .items
             .get("sequence-timeout")
-            .map(|s| str::parse::<u16>(s))
-            .transpose()
-            .map_err(|e| anyhow!("{SEQUENCE_TIMEOUT_ERR}: {e:?}"))?
-            .map(|i| match i {
-                0 => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                _ => Ok(i),
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
             })
-            .transpose()?
-            .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
         let sequence_input_mode = cfg
             .items
             .get(SEQ_INPUT_MODE_CFG_NAME)
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .transpose()?
-            .unwrap_or(SequenceInputMode::HiddenSuppressed);
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
 
         Ok(Self {
             kbd_in_paths,
@@ -924,21 +919,16 @@ impl Kanata {
         self.sequence_timeout = cfg
             .items
             .get("sequence-timeout")
-            .map(|s| str::parse::<u16>(s))
-            .transpose()
-            .map_err(|e| anyhow!("{SEQUENCE_TIMEOUT_ERR}: {e:?}"))?
-            .map(|i| match i {
-                0 => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                _ => Ok(i),
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
             })
-            .transpose()?
-            .unwrap_or(SEQUENCE_TIMEOUT_DEFAULT);
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
         self.sequence_input_mode = cfg
             .items
             .get(SEQ_INPUT_MODE_CFG_NAME)
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .transpose()?
-            .unwrap_or(SequenceInputMode::HiddenSuppressed);
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         self.layout = cfg.layout;
         let mut mapped_keys = MAPPED_KEYS.lock();
         *mapped_keys = cfg.mapped_keys;
