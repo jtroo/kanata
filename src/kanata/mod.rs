@@ -40,6 +40,7 @@ pub struct Kanata {
     pub mapped_keys: cfg::MappedKeys,
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
+    pub cur_keys: Vec<KeyCode>,
     pub prev_keys: Vec<KeyCode>,
     pub layer_info: Vec<LayerInfo>,
     pub prev_layer: usize,
@@ -235,6 +236,7 @@ impl Kanata {
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
+            cur_keys: Vec::new(),
             prev_keys: Vec::new(),
             prev_layer: 0,
             scroll_state: None,
@@ -299,21 +301,21 @@ impl Kanata {
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
         for _ in 0..ms_elapsed {
-            let (cur_keys, reload_requested) = self.handle_keystate_changes()?;
-            self.live_reload_requested |= reload_requested;
+            self.live_reload_requested = self.handle_keystate_changes()?;
             self.handle_scrolling()?;
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
             self.tick_dynamic_macro_state()?;
 
-            if self.live_reload_requested && self.prev_keys.is_empty() && cur_keys.is_empty() {
+            if self.live_reload_requested && self.prev_keys.is_empty() && self.cur_keys.is_empty() {
                 self.live_reload_requested = false;
                 if let Err(e) = self.do_live_reload() {
                     log::error!("live reload failed {e}");
                 }
             }
 
-            self.prev_keys = cur_keys;
+            self.prev_keys.clear();
+            self.prev_keys.append(&mut self.cur_keys);
         }
 
         if ms_elapsed > 0 {
@@ -445,12 +447,15 @@ impl Kanata {
     /// Sends OS key events according to the change in key state between the current and the
     /// previous keyberon keystate. Also processes any custom actions.
     ///
-    /// Returns the current keys and if live reload was requested.
-    fn handle_keystate_changes(&mut self) -> Result<(Vec<KeyCode>, bool)> {
+    /// Updates self.cur_keys.
+    ///
+    /// Returns whether live reload was requested.
+    fn handle_keystate_changes(&mut self) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
-        let cur_keys: Vec<KeyCode> = layout.keycodes().collect();
+        let cur_keys = &mut self.cur_keys;
+        cur_keys.extend(layout.keycodes());
 
         // Release keys that do not in the current state but exist in the previous state. This used
         // to use a HashSet but it was changed to a Vec because the order of operations matters.
@@ -466,7 +471,7 @@ impl Kanata {
 
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
-        for k in &cur_keys {
+        for k in cur_keys.iter() {
             log::trace!("{k:?} is pressed");
             if self.prev_keys.contains(k) {
                 log::trace!("{k:?} is contained");
@@ -910,7 +915,7 @@ impl Kanata {
         };
 
         self.check_release_non_physical_shift()?;
-        Ok((cur_keys, live_reload_requested))
+        Ok(live_reload_requested)
     }
 
     fn do_live_reload(&mut self) -> Result<()> {
@@ -1093,12 +1098,31 @@ impl Kanata {
                             k.last_tick = time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
                                 .unwrap();
+
+                            #[cfg(feature = "perf_logging")]
+                            let start = std::time::Instant::now();
+
                             if let Err(e) = k.handle_key_event(&kev) {
                                 break e;
                             }
+
+                            #[cfg(feature = "perf_logging")]
+                            log::info!(
+                                "[PERF]: handle key event: {} ns",
+                                (start.elapsed()).as_nanos()
+                            );
+                            #[cfg(feature = "perf_logging")]
+                            let start = std::time::Instant::now();
+
                             if let Err(e) = k.handle_time_ticks(&tx) {
                                 break e;
                             }
+
+                            #[cfg(feature = "perf_logging")]
+                            log::info!(
+                                "[PERF]: handle time ticks: {} ns",
+                                (start.elapsed()).as_nanos()
+                            );
                         }
                         Err(_) => {
                             log::error!("channel disconnected");
@@ -1109,17 +1133,45 @@ impl Kanata {
                     let mut k = kanata.lock();
                     match rx.try_recv() {
                         Ok(kev) => {
+                            #[cfg(feature = "perf_logging")]
+                            let start = std::time::Instant::now();
+
                             if let Err(e) = k.handle_key_event(&kev) {
                                 break e;
                             }
+
+                            #[cfg(feature = "perf_logging")]
+                            log::info!(
+                                "[PERF]: handle key event: {} ns",
+                                (start.elapsed()).as_nanos()
+                            );
+                            #[cfg(feature = "perf_logging")]
+                            let start = std::time::Instant::now();
+
                             if let Err(e) = k.handle_time_ticks(&tx) {
                                 break e;
                             }
+
+                            #[cfg(feature = "perf_logging")]
+                            log::info!(
+                                "[PERF]: handle time ticks: {} ns",
+                                (start.elapsed()).as_nanos()
+                            );
                         }
                         Err(TryRecvError::Empty) => {
+                            #[cfg(feature = "perf_logging")]
+                            let start = std::time::Instant::now();
+
                             if let Err(e) = k.handle_time_ticks(&tx) {
                                 break e;
                             }
+
+                            #[cfg(feature = "perf_logging")]
+                            log::info!(
+                                "[PERF]: handle time ticks: {} ns",
+                                (start.elapsed()).as_nanos()
+                            );
+
                             std::thread::sleep(time::Duration::from_millis(1));
                         }
                         Err(TryRecvError::Disconnected) => {
@@ -1134,10 +1186,6 @@ impl Kanata {
     }
 
     pub fn can_block(&self) -> bool {
-        #[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
-        let wintercept_can_block = true;
-        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-        let wintercept_can_block = self.kbd_out_rx.is_empty();
         self.layout.b().stacked.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
@@ -1150,7 +1198,6 @@ impl Kanata {
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
-            && wintercept_can_block
     }
 }
 

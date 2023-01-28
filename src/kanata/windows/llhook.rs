@@ -82,7 +82,7 @@ impl Kanata {
 
 fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
     if let Err(e) = tx.try_send(kev) {
-        panic!("failed to send on channel: {:?}", e)
+        panic!("failed to send on channel: {e:?}")
     }
 }
 

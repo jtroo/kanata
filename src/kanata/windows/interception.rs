@@ -124,7 +124,7 @@ impl Kanata {
             can_block = false;
             match rx.try_recv() {
                 Ok(event) => {
-                    if event.0 {
+                    if event.0 && rx.is_empty() {
                         can_block = true;
                     } else {
                         strokes[0] = event.1 .0;

@@ -48,6 +48,7 @@ interception = { version = "0.1.2", optional = true }
 
 [features]
 cmd = []
+perf_logging = []
 interception_driver = ["interception"]
 
 [profile.release]
