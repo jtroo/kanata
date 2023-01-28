@@ -827,13 +827,13 @@ impl TryFrom<usize> for OsCode {
 
 impl From<u32> for OsCode {
     fn from(item: u32) -> Self {
-        Self::from_u16(item as u16).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
+        Self::from_u16(item as u16).unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
     }
 }
 
 impl From<u16> for OsCode {
     fn from(item: u16) -> Self {
-        Self::from_u16(item).unwrap_or_else(|| panic!("Invalid KeyCode: {}", item))
+        Self::from_u16(item).unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
     }
 }
 

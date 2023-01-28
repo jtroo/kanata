@@ -240,6 +240,16 @@ pub fn is_input_device(device: &Device) -> bool {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UnicodeTermination {
+    Enter,
+    Space,
+    SpaceEnter,
+    EnterSpace,
+}
+
+use std::cell::Cell;
+
 pub struct KbdOut {
     device: uinput::VirtualDevice,
     accumulated_scroll: u16,
@@ -247,6 +257,8 @@ pub struct KbdOut {
     #[allow(dead_code)] // stored here for persistence+cleanup on exit
     symlink: Option<Symlink>,
     raw_buf: Vec<InputEvent>,
+    pub unicode_termination: Cell<UnicodeTermination>,
+    pub unicode_u_code: Cell<OsCode>,
 }
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
@@ -299,7 +311,21 @@ impl KbdOut {
             accumulated_hscroll: 0,
             symlink,
             raw_buf: vec![],
+
+            // historically was the only option, so make Enter the default
+            unicode_termination: Cell::new(UnicodeTermination::Enter),
+
+            // historically was the only option, so make KEY_U the default
+            unicode_u_code: Cell::new(OsCode::KEY_U),
         })
+    }
+
+    pub fn update_unicode_termination(&self, t: UnicodeTermination) {
+        self.unicode_termination.replace(t);
+    }
+
+    pub fn update_unicode_u_code(&self, u: OsCode) {
+        self.unicode_u_code.replace(u);
     }
 
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
@@ -347,13 +373,13 @@ impl KbdOut {
         self.write_key(key, KeyValue::Release)
     }
 
-    /// Send using C-S-u + <unicode hex number> + ret
+    /// Send using C-S-u + <unicode hex number> + spc
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
         let hex = format!("{:x}", c as u32);
         self.press_key(OsCode::KEY_LEFTCTRL)?;
         self.press_key(OsCode::KEY_LEFTSHIFT)?;
-        self.press_key(OsCode::KEY_U)?;
-        self.release_key(OsCode::KEY_U)?;
+        self.press_key(self.unicode_u_code.get())?;
+        self.release_key(self.unicode_u_code.get())?;
         self.release_key(OsCode::KEY_LEFTSHIFT)?;
         self.release_key(OsCode::KEY_LEFTCTRL)?;
         let mut s = String::new();
@@ -364,8 +390,28 @@ impl KbdOut {
             self.press_key(osc)?;
             self.release_key(osc)?;
         }
-        self.press_key(OsCode::KEY_ENTER)?;
-        self.release_key(OsCode::KEY_ENTER)?;
+        match self.unicode_termination.get() {
+            UnicodeTermination::Enter => {
+                self.press_key(OsCode::KEY_ENTER)?;
+                self.release_key(OsCode::KEY_ENTER)?;
+            }
+            UnicodeTermination::Space => {
+                self.press_key(OsCode::KEY_SPACE)?;
+                self.release_key(OsCode::KEY_SPACE)?;
+            }
+            UnicodeTermination::SpaceEnter => {
+                self.press_key(OsCode::KEY_SPACE)?;
+                self.release_key(OsCode::KEY_SPACE)?;
+                self.press_key(OsCode::KEY_ENTER)?;
+                self.release_key(OsCode::KEY_ENTER)?;
+            }
+            UnicodeTermination::EnterSpace => {
+                self.press_key(OsCode::KEY_ENTER)?;
+                self.release_key(OsCode::KEY_ENTER)?;
+                self.press_key(OsCode::KEY_SPACE)?;
+                self.release_key(OsCode::KEY_SPACE)?;
+            }
+        }
         Ok(())
     }
 

@@ -211,6 +211,7 @@ impl Kanata {
             }
         }
 
+        update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
         let sequence_timeout = cfg
@@ -267,6 +268,33 @@ impl Kanata {
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
     pub fn new_arc(args: &ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
+    }
+
+    fn do_live_reload(&mut self) -> Result<()> {
+        let cfg = cfg::new_from_file(&self.cfg_path)?;
+        update_kbd_out(&cfg.items, &self.kbd_out)?;
+        set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
+        self.sequence_timeout = cfg
+            .items
+            .get("sequence-timeout")
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
+            })
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
+        self.sequence_input_mode = cfg
+            .items
+            .get(SEQ_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
+        self.layout = cfg.layout;
+        let mut mapped_keys = MAPPED_KEYS.lock();
+        *mapped_keys = cfg.mapped_keys;
+        self.key_outputs = cfg.key_outputs;
+        self.layer_info = cfg.layer_info;
+        self.sequences = cfg.sequences;
+        log::info!("Live reload successful");
+        Ok(())
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
@@ -913,32 +941,6 @@ impl Kanata {
         Ok((cur_keys, live_reload_requested))
     }
 
-    fn do_live_reload(&mut self) -> Result<()> {
-        let cfg = cfg::new_from_file(&self.cfg_path)?;
-        set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
-        self.sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
-        self.sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
-        self.layout = cfg.layout;
-        let mut mapped_keys = MAPPED_KEYS.lock();
-        *mapped_keys = cfg.mapped_keys;
-        self.key_outputs = cfg.key_outputs;
-        self.layer_info = cfg.layer_info;
-        self.sequences = cfg.sequences;
-        log::info!("Live reload successful");
-        Ok(())
-    }
-
     /// This compares the active keys in the keyberon layout against the potential key outputs for
     /// corresponding physical key in the configuration. If any of keyberon active keys match any
     /// potential physical key output, write the repeat event to the OS.
@@ -1129,7 +1131,7 @@ impl Kanata {
                     }
                 }
             };
-            panic!("processing loop encountered error {:?}", err)
+            panic!("processing loop encountered error {err:?}")
         });
     }
 
@@ -1237,4 +1239,29 @@ fn check_for_exit(event: &KeyEvent) {
             signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
         }
     }
+}
+
+fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        _kbd_out.update_unicode_termination(
+                _cfg.get("linux-unicode-termination").map(|s| {
+                match s.as_str() {
+                    "enter" => Ok(UnicodeTermination::Enter),
+                    "space" => Ok(UnicodeTermination::Space),
+                    "enter-space" => Ok(UnicodeTermination::EnterSpace),
+                    "space-enter" => Ok(UnicodeTermination::SpaceEnter),
+                    _ => Err(anyhow!("linux-unicode-termination got {s}. It accepts: enter|space|enter-space|space-enter")),
+                }
+            }).unwrap_or(Ok(_kbd_out.unicode_termination.get()))?);
+        _kbd_out.update_unicode_u_code(
+            _cfg.get("linux-unicode-u-code")
+                .map(|s| {
+                    str_to_oscode(s)
+                        .ok_or_else(|| anyhow!("unknown code for linux-unicode-u-code {s}"))
+                })
+                .unwrap_or(Ok(_kbd_out.unicode_u_code.get()))?,
+        );
+    }
+    Ok(())
 }

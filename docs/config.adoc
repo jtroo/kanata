@@ -356,6 +356,41 @@ Example:
 )
 ----
 
+=== Linux only: linux-unicode-u-code
+<<table-of-contents,Back to ToC>>
+
+Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
+then pressing Enter. However, if you do remapping in userspace, e.g. via
+xmodmap/xkb, the "U" that kanata outputs may not become a "U" after the
+userspace remapping. You can use `evtest` against kanata and press the key that
+outputs "U" to see which underlying key code is sent. Then you can use this
+configuration to change the behaviour.
+
+Example:
+
+----
+(defcfg
+  linux-unicode-u-code v
+)
+----
+
+=== Linux only: linux-unicode-termination
+<<table-of-contents,Back to ToC>>
+
+Unicode on Linux terminates with the Enter key by default. This may not work in
+some applications. The termination is configurable with the following options:
+
+- `enter`
+- `space`
+- `enter-space`
+- `space-enter`
+
+----
+(defcfg
+  linux-unicode-termination space
+)
+----
+
 === Windows only: windows-altgr
 <<table-of-contents,Back to ToC>>
 
@@ -622,6 +657,9 @@ You may use a unicode character as an alias if desired.
 
 NOTE: The unicode action may not be correctly accepted by the active
 application.
+
+NOTE: If using Linux, make sure to look at the
+<<linux-only-linux-unicode-u-code,unicode behaviour customization>> in defcfg.
 
 ----
 (defalias
