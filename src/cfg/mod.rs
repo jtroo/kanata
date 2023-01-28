@@ -1699,9 +1699,8 @@ fn parse_delay(
     let delay = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
-        .ok_or_else(|| anyhow!("{ERR_MSG}"))?;
+        .ok_or_else(|| anyhow!("{ERR_MSG}"))?
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     Ok(s.a.sref(Action::Custom(s.a.sref_slice(match is_release {
         false => CustomAction::Delay(delay),
         true => CustomAction::DelayOnRelease(delay),
@@ -1720,20 +1719,16 @@ fn parse_mwheel(
     let interval = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|i| match i {
-            0 => None,
-            _ => Some(i),
+            Err(_) | Ok(0) => None,
+            Ok(itv) => Some(itv),
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
     let distance = ac_params[1]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
-            1..=30000 => Some(d),
+            Ok(dist @ 1..=30000) => Some(dist),
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
@@ -1757,20 +1752,16 @@ fn parse_move_mouse(
     let interval = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|i| match i {
-            0 => None,
-            _ => Some(i),
+            Err(_) | Ok(0) => None,
+            Ok(itv) => Some(itv),
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
     let distance = ac_params[1]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
-            1..=30000 => Some(d),
+            Ok(dist @ 1..=30000) => Some(dist),
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
@@ -1794,36 +1785,29 @@ fn parse_move_mouse_accel(
     let interval = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|i| match i {
-            0 => None,
-            _ => Some(i),
+            Err(_) | Ok(0) => None,
+            Ok(itv) => Some(itv),
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
     let accel_time = ac_params[1]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
-        .ok_or_else(|| anyhow!("{ERR_MSG}: acceleration time should be 0-65535"))?;
+        .ok_or_else(|| anyhow!("{ERR_MSG}: acceleration time should be 0-65535"))?
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     let min_distance = ac_params[2]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
-            1..=30000 => Some(d),
+            Ok(dist @ 1..=30000) => Some(dist),
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: min_distance should be 1-30000"))?;
     let max_distance = ac_params[3]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
         .and_then(|d| match d {
-            1..=30000 => Some(d),
+            Ok(dist @ 1..=30000) => Some(dist),
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: max_distance should be 1-30000"))?;
@@ -1854,9 +1838,8 @@ fn parse_dynamic_macro_record(
     let key = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
-        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?;
+        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     return Ok(s.a.sref(Action::Custom(
         s.a.sref_slice(CustomAction::DynamicMacroRecord(key)),
     )));
@@ -1870,9 +1853,8 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
     let key = ac_params[0]
         .atom()
         .map(str::parse::<u16>)
-        .transpose()
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?
-        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?;
+        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
+        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     return Ok(s.a.sref(Action::Custom(
         s.a.sref_slice(CustomAction::DynamicMacroPlay(key)),
     )));
