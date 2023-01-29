@@ -8,7 +8,7 @@ toc::[]
 
 == ISO German QWERTZ - Windows (non-interception)
 
-=== Using `defcustomkeys`:
+=== Using `deflocalkeys-win`:
 
 [%collapsible]
 ====
@@ -35,7 +35,7 @@ toc::[]
 ----
 ====
 
-=== Without using `defcustomkeys`:
+=== Without using `deflocalkeys`:
 
 [%collapsible]
 ====
