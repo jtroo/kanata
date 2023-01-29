@@ -361,10 +361,15 @@ Example:
 
 Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
 then pressing Enter. However, if you do remapping in userspace, e.g. via
-xmodmap/xkb, the "U" that kanata outputs may not become a "U" after the
-userspace remapping. You can use `evtest` against kanata and press the key that
-outputs "U" to see which underlying key code is sent. Then you can use this
-configuration to change the behaviour.
+xmodmap/xkb, the keycode "U" that kanata outputs may not become a keysym "u"
+after the userspace remapping. This will be likely if you use non-US,
+non-European keyboards on top of kanata. For unicode to work, kanata needs to
+use the keycode that outputs the keysym "u", which might not be the keycode
+"U".
+
+You can use `evtest` or `kanata --debug`, set your userspace key remapping,
+then press the key that outputs the keysym "u" to see which underlying keycode
+is sent. Then you can use this configuration to change kanata's behaviour.
 
 Example:
 
