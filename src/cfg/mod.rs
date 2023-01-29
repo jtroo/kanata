@@ -42,6 +42,9 @@ mod sexpr;
 mod alloc;
 use alloc::*;
 
+mod key_override;
+pub use key_override::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -109,11 +112,13 @@ pub struct Cfg {
     pub layout: KanataLayout,
     /// Sequences defined in `defseq`.
     pub sequences: KeySeqsToFKeys,
+    /// Overrides defined in `defoverrides`.
+    pub overrides: Overrides,
 }
 
 /// Parse a new configuration from a file.
 pub fn new_from_file(p: &std::path::Path) -> Result<Cfg> {
-    let (items, mapped_keys, layer_info, key_outputs, layout, sequences) = parse_cfg(p)?;
+    let (items, mapped_keys, layer_info, key_outputs, layout, sequences, overrides) = parse_cfg(p)?;
     log::info!("config parsed");
     Ok(Cfg {
         items,
@@ -122,21 +127,15 @@ pub fn new_from_file(p: &std::path::Path) -> Result<Cfg> {
         key_outputs,
         layout,
         sequences,
+        overrides,
     })
 }
 
 pub type MappedKeys = HashSet<OsCode>;
-// Note: this uses a Vec instead of a HashSet because ordering matters, e.g. for chords like `S-b`,
-// we want to ensure that `b` is checked first, so this will be iterated over in reverse order.
+// Note: this uses a Vec inside the HashMap instead of a HashSet because ordering matters, e.g. for
+// chords like `S-b`, we want to ensure that `b` is checked first because key repeat for `b` is
+// useful while it is not useful for shift. The outputs should be iterated over in reverse order.
 pub type KeyOutputs = Vec<HashMap<OsCode, Vec<OsCode>>>;
-
-fn add_kc_output(osc_slot: OsCode, kc: OsCode, outs: &mut HashMap<OsCode, Vec<OsCode>>) {
-    let outputs = match outs.entry(osc_slot) {
-        Entry::Occupied(o) => o.into_mut(),
-        Entry::Vacant(v) => v.insert(vec![]),
-    };
-    outputs.push(kc);
-}
 
 #[test]
 fn parse_simple() {
@@ -167,7 +166,7 @@ fn parse_f13_f24() {
 #[test]
 fn parse_transparent_default() {
     let mut s = ParsedState::default();
-    let (_, _, layer_strings, layers, _) = parse_cfg_raw(
+    let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
         &std::path::PathBuf::from("./cfg_samples/transparent_default.kbd"),
         &mut s,
     )
@@ -279,17 +278,19 @@ fn parse_cfg(
     KeyOutputs,
     KanataLayout,
     KeySeqsToFKeys,
+    Overrides,
 )> {
     let mut s = ParsedState::default();
-    let (cfg, src, layer_info, klayers, seqs) = parse_cfg_raw(p, &mut s)?;
+    let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
 
     Ok((
         cfg,
         src,
         layer_info,
-        create_key_outputs(&klayers),
+        create_key_outputs(&klayers, &overrides),
         create_layout(klayers, s.a),
         seqs,
+        overrides,
     ))
 }
 
@@ -310,6 +311,7 @@ fn parse_cfg_raw(
     Vec<LayerInfo>,
     Box<KanataLayers>,
     KeySeqsToFKeys,
+    Overrides,
 )> {
     let text = std::fs::read_to_string(p)?;
 
@@ -467,7 +469,17 @@ fn parse_cfg_raw(
 
     resolve_chord_groups(&mut klayers, s)?;
 
-    Ok((cfg, src, layer_info, klayers, sequences))
+    let override_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defoverrides"))
+        .collect::<Vec<_>>();
+    let overrides = match override_exprs.len() {
+        0 => Overrides::new(&[]),
+        1 => parse_overrides(override_exprs[0])?,
+        len => bail!("Only one defoverrides allowed, found {len}"),
+    };
+
+    Ok((cfg, src, layer_info, klayers, sequences, overrides))
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
@@ -1995,8 +2007,53 @@ fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
     )))
 }
 
+fn parse_overrides(exprs: &[SExpr]) -> Result<Overrides> {
+    const ERR_MSG: &str =
+        "defoverrides expects pairs of parameters: <input key list> <output key list>";
+    let mut subexprs = check_first_expr(exprs.iter(), "defoverrides")?.peekable();
+
+    let mut overrides = Vec::<Override>::new();
+    while subexprs.peek().is_some() {
+        let in_keys = subexprs
+            .next()
+            .ok_or_else(|| anyhow!(ERR_MSG))?
+            .list()
+            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for input keys"))?;
+        let out_keys = subexprs
+            .next()
+            .ok_or_else(|| anyhow!("{ERR_MSG}: missing output keys for {in_keys:?}"))?
+            .list()
+            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for output keys"))?;
+        let in_keys = in_keys
+            .iter()
+            .try_fold(vec![], |mut keys, key| -> Result<Vec<OsCode>> {
+                let key = key
+                    .atom()
+                    .and_then(str_to_oscode)
+                    .ok_or_else(|| anyhow!("{ERR_MSG}: {key:?} is not a known key"))?;
+                keys.push(key);
+                Ok(keys)
+            })?;
+        let out_keys =
+            out_keys
+                .iter()
+                .try_fold(vec![], |mut keys, key| -> Result<Vec<OsCode>> {
+                    let key = key
+                        .atom()
+                        .and_then(str_to_oscode)
+                        .ok_or_else(|| anyhow!("{ERR_MSG}: {key:?} is not a known key"))?;
+                    keys.push(key);
+                    Ok(keys)
+                })?;
+        overrides
+            .push(Override::try_new(&in_keys, &out_keys).map_err(|e| anyhow!("{ERR_MSG}: {e}"))?);
+    }
+    log::debug!("All overrides:\n{overrides:#?}");
+    Ok(Overrides::new(&overrides))
+}
+
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
-fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
+fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutputs {
     let mut outs = KeyOutputs::new();
     for layer in layers.iter() {
         let mut layer_outputs = HashMap::default();
@@ -2005,7 +2062,7 @@ fn create_key_outputs(layers: &KanataLayers) -> KeyOutputs {
                 Ok(i) => i,
                 Err(_) => continue,
             };
-            add_key_output_from_action_to_key_pos(osc_slot, action, &mut layer_outputs);
+            add_key_output_from_action_to_key_pos(osc_slot, action, &mut layer_outputs, overrides);
         }
         outs.push(layer_outputs);
     }
@@ -2023,36 +2080,37 @@ fn add_key_output_from_action_to_key_pos(
     osc_slot: OsCode,
     action: &KanataAction,
     outputs: &mut HashMap<OsCode, Vec<OsCode>>,
+    overrides: &Overrides,
 ) {
     match action {
         Action::KeyCode(kc) => {
-            add_kc_output(osc_slot, kc.into(), outputs);
+            add_kc_output(osc_slot, kc.into(), outputs, overrides);
         }
         Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
-            add_key_output_from_action_to_key_pos(osc_slot, tap, outputs);
-            add_key_output_from_action_to_key_pos(osc_slot, hold, outputs);
+            add_key_output_from_action_to_key_pos(osc_slot, tap, outputs, overrides);
+            add_key_output_from_action_to_key_pos(osc_slot, hold, outputs, overrides);
         }
         Action::OneShot(OneShot { action: ac, .. }) => {
-            add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+            add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
         }
         Action::MultipleKeyCodes(kcs) => {
             for kc in kcs.iter() {
-                add_kc_output(osc_slot, kc.into(), outputs);
+                add_kc_output(osc_slot, kc.into(), outputs, overrides);
             }
         }
         Action::MultipleActions(actions) => {
             for ac in actions.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
             }
         }
         Action::TapDance(TapDance { actions, .. }) => {
             for ac in actions.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
             }
         }
         Action::Chords(ChordsGroup { chords, .. }) => {
             for (_, ac) in chords.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs);
+                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
             }
         }
         Action::NoOp
@@ -2064,6 +2122,30 @@ fn add_key_output_from_action_to_key_pos(
         | Action::ReleaseState(_)
         | Action::Custom(_) => {}
     };
+}
+
+fn add_kc_output(
+    osc_slot: OsCode,
+    osc: OsCode,
+    outs: &mut HashMap<OsCode, Vec<OsCode>>,
+    overrides: &Overrides,
+) {
+    let outputs = match outs.entry(osc_slot) {
+        Entry::Occupied(o) => o.into_mut(),
+        Entry::Vacant(v) => v.insert(vec![]),
+    };
+    if !outputs.contains(&osc) {
+        outputs.push(osc);
+    }
+    for ov_osc in overrides
+        .output_non_mods_for_input_non_mod(osc)
+        .iter()
+        .copied()
+    {
+        if !outputs.contains(&ov_osc) {
+            outputs.push(ov_osc);
+        }
+    }
 }
 
 /// Create a layout from `layers::LAYERS`.

@@ -16,12 +16,22 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
-use crate::cfg::LayerInfo;
+use crate::cfg::*;
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::oskbd::*;
 use crate::tcp_server::ServerMessage;
 use crate::{cfg, ValidatedArgs};
+
+#[cfg(target_os = "windows")]
+mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::*;
+
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+pub use linux::*;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -55,6 +65,8 @@ pub struct Kanata {
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
     pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
     pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
+    pub overrides: Overrides,
+    pub override_states: OverrideStates,
     last_tick: time::Instant,
     live_reload_requested: bool,
     #[cfg(target_os = "linux")]
@@ -146,16 +158,6 @@ use once_cell::sync::Lazy;
 
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
-
-#[cfg(target_os = "windows")]
-mod windows;
-#[cfg(target_os = "windows")]
-pub use windows::*;
-
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "linux")]
-pub use linux::*;
 
 impl Kanata {
     /// Create a new configuration from a file.
@@ -250,6 +252,8 @@ impl Kanata {
             sequence_input_mode,
             last_tick: time::Instant::now(),
             live_reload_requested: false,
+            overrides: cfg.overrides,
+            override_states: OverrideStates::new(),
             #[cfg(target_os = "linux")]
             continue_if_no_devices: cfg
                 .items
@@ -295,6 +299,7 @@ impl Kanata {
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
+        self.overrides = cfg.overrides;
         log::info!("Live reload successful");
         Ok(())
     }
@@ -317,7 +322,11 @@ impl Kanata {
                 }
                 Event::Release(0, evc)
             }
-            KeyValue::Repeat => return self.handle_repeat(event),
+            KeyValue::Repeat => {
+                let ret = self.handle_repeat(event);
+                self.cur_keys.clear();
+                return ret;
+            }
         };
         self.layout.bm().event(kbrn_ev);
         Ok(())
@@ -484,9 +493,12 @@ impl Kanata {
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
+        self.overrides
+            .override_keys(cur_keys, &mut self.override_states);
 
-        // Release keys that do not in the current state but exist in the previous state. This used
-        // to use a HashSet but it was changed to a Vec because the order of operations matters.
+        // Release keys that do not exist in the current state but exist in the previous state.
+        // This used to use a HashSet but it was changed to a Vec because the order of operations
+        // matters.
         for k in &self.prev_keys {
             if cur_keys.contains(k) {
                 continue;
@@ -966,14 +978,16 @@ impl Kanata {
             // cancel an input sequence... I'll wait for a user created issue to deal with this.
             return Ok(());
         }
-        let active_keycodes: HashSet<KeyCode> = self.layout.bm().keycodes().collect();
+        self.cur_keys.extend(self.layout.bm().keycodes());
+        self.overrides
+            .override_keys(&mut self.cur_keys, &mut self.override_states);
         let current_layer = self.layout.bm().current_layer();
         if current_layer % 2 == 1 {
             // Prioritize checking the active layer in case a layer-while-held is active.
             if let Some(outputs_for_key) = self.key_outputs[current_layer].get(&event.code) {
                 log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
                 for kc in outputs_for_key.iter().rev() {
-                    if active_keycodes.contains(&kc.into()) {
+                    if self.cur_keys.contains(&kc.into()) {
                         log::debug!("repeat    {:?}", KeyCode::from(*kc));
                         if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
                             bail!("could not write key {:?}", e)
@@ -998,7 +1012,7 @@ impl Kanata {
             };
         log::debug!("key outs for default layer: {outputs_for_key:?};");
         for kc in outputs_for_key.iter().rev() {
-            if active_keycodes.contains(&kc.into()) {
+            if self.cur_keys.contains(&kc.into()) {
                 log::debug!("repeat    {:?}", KeyCode::from(*kc));
                 if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
                     bail!("could not write key {:?}", e)

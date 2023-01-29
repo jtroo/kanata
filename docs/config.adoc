@@ -1164,6 +1164,36 @@ driver.
 )
 ----
 
+== Global overrides
+<<table-of-contents,Back to ToC>>
+
+The `defoverrides` optional configuration item allows you to create global
+key overrides, irrespective of what actions are used to generate those keys.
+It accepts pairs of lists:
+
+1. the input key list that gets replaced
+2. the output key list to replace the input keys with
+
+Both input and output lists accept 0 or more modifier keys (e.g. lctl, rsft)
+and exactly 1 non-modifier key (e.g. 1, bspc).
+
+Only zero or one `defoverrides` is allowed in a configuration file.
+
+Example:
+
+----
+;; Swap numbers and their symbols with respect to shift
+(defoverrides
+  (1) (lsft 1)
+  (2) (lsft 2)
+  ;; repeat for all remaining numbers
+
+  (lsft 1) (1)
+  (lsft 2) (2)
+  ;; repeat for all remaining numbers
+)
+----
+
 == Advanced/weird features
 
 === Fake keys
