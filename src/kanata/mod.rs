@@ -301,7 +301,7 @@ impl Kanata {
         let ms_elapsed = now.duration_since(self.last_tick).as_millis();
 
         for _ in 0..ms_elapsed {
-            self.live_reload_requested = self.handle_keystate_changes()?;
+            self.live_reload_requested |= self.handle_keystate_changes()?;
             self.handle_scrolling()?;
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
