@@ -155,8 +155,8 @@ impl KbdOut {
         self.write(InputEvent {
             code,
             up: match value {
-                KeyValue::Press | KeyValue::Repeat => true,
-                KeyValue::Release => false,
+                KeyValue::Press | KeyValue::Repeat => false,
+                KeyValue::Release => true,
             },
         })
     }
