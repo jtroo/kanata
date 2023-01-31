@@ -151,6 +151,16 @@ impl KbdOut {
         self.write(event)
     }
 
+    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+        self.write(InputEvent {
+            code,
+            up: match value {
+                KeyValue::Press | KeyValue::Repeat => false,
+                KeyValue::Release => true,
+            },
+        })
+    }
+
     pub fn press_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Press)
     }

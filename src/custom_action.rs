@@ -38,6 +38,7 @@ pub enum CustomAction {
     DynamicMacroRecord(u16),
     DynamicMacroRecordStop,
     DynamicMacroPlay(u16),
+    SendArbitraryCode(u16),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

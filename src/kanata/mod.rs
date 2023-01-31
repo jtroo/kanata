@@ -826,6 +826,9 @@ impl Kanata {
                                 }
                             }
                         }
+                        CustomAction::SendArbitraryCode(code) => {
+                            self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
+                        }
                         _ => {}
                     }
                 }
@@ -927,6 +930,12 @@ impl Kanata {
                             layout
                                 .states
                                 .retain(|s| !matches!(s, State::FakeKey { .. }));
+                            pbtn
+                        }
+                        CustomAction::SendArbitraryCode(code) => {
+                            self.kbd_out
+                                .write_code(*code as u32, KeyValue::Release)
+                                .unwrap();
                             pbtn
                         }
                         _ => pbtn,

@@ -365,6 +365,12 @@ impl KbdOut {
         Ok(())
     }
 
+    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+        let event = InputEvent::new_now(EventType::KEY, code as u16, value as i32);
+        self.device.emit(&[event])?;
+        Ok(())
+    }
+
     pub fn press_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Press)
     }

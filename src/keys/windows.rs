@@ -498,7 +498,7 @@ impl OsCode {
             OsCode::BTN_MIDDLE => VK_MBUTTON,
             OsCode::BTN_SIDE => VK_XBUTTON1,
             OsCode::BTN_EXTRA => VK_XBUTTON2,
-            _ => 0,
+            osc => osc as u16,
         }
     }
 }
