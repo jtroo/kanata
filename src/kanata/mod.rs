@@ -1251,7 +1251,7 @@ fn run_cmd(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
                         let mut printable_cmd = Vec::new();
                         printable_cmd.push(format!("{:?}", cmd.get_program()));
                         let printable_cmd = cmd.get_args().fold(printable_cmd, |mut cmd, arg| {
-                            cmd.push(format!("{:?}", arg));
+                            cmd.push(format!("{arg:?}"));
                             cmd
                         });
                         printable_cmd.join(" ")
