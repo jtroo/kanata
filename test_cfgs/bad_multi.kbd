@@ -1,0 +1,3 @@
+(defcfg)
+(defsrc 1)
+(deflayer base (multi (tap-hold 1 1 a b) (tap-dance 1 (a b c))))

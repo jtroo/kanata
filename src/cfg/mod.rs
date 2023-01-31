@@ -253,6 +253,16 @@ fn disallow_descendent_seq() {
     }
 }
 
+#[test]
+fn disallow_multiple_waiting_actions() {
+    match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
+        .map_err(|e| e.to_string())
+    {
+        Ok(_) => panic!("invalid multiple waiting actions Ok'd"),
+        Err(e) => assert!(dbg!(e).contains("cannot combine multiple")),
+    }
+}
+
 #[derive(Debug)]
 pub struct LayerInfo {
     pub name: String,
@@ -961,6 +971,24 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
 
     if !custom_actions.is_empty() {
         actions.push(Action::Custom(s.a.sref_vec(custom_actions)));
+    }
+
+    if actions
+        .iter()
+        .filter(|ac| {
+            matches!(
+                ac,
+                Action::TapDance(TapDance {
+                    config: TapDanceConfig::Lazy,
+                    ..
+                }) | Action::HoldTap { .. }
+                    | Action::Chords { .. }
+            )
+        })
+        .count()
+        > 1
+    {
+        bail!("cannot combine multiple tap-hold/tap-dance/chord: {ac_params:?}");
     }
 
     Ok(s.a.sref(Action::MultipleActions(s.a.sref_vec(actions))))
