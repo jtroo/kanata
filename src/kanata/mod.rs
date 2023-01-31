@@ -717,7 +717,7 @@ impl Kanata {
                         }
                         CustomAction::SequenceLeader => {
                             if self.sequence_state.is_none()
-                                && self.sequence_input_mode != SequenceInputMode::HiddenSuppressed
+                                || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
