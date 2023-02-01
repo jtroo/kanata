@@ -107,9 +107,7 @@ impl Overrides {
         oscs_to_add: &mut Vec<OsCode>,
         oscs_to_remove: &mut Vec<OsCode>,
     ) {
-        let Some(ovds) = self.overrides_by_osc.get(&active_osc) else {
-            return;
-        };
+       if let Some(ovds) = self.overrides_by_osc.get(&active_osc){
         let mut cur_chord_size = 0;
         if let Some(ovd) = ovds
             .iter()
@@ -134,7 +132,8 @@ impl Overrides {
             ovd.add_override_keys(oscs_to_add);
             ovd.add_removed_keys(oscs_to_remove);
         }
-    }
+    } else { return; }
+  }         
 }
 
 /// A global key override.
