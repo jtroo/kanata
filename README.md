@@ -54,6 +54,7 @@ Using `cargo install`:
 
 Build and run yourself in Linux:
 
+    git clone https://github.com/jtroo/kanata && cd kanata
     cargo build   # --release optional, not really perf sensitive
 
     # sudo is used because kanata opens /dev/ files
@@ -64,6 +65,7 @@ Build and run yourself in Linux:
 
 Build and run yourself in Windows:
 
+    git clone https://github.com/jtroo/kanata; cd kanata
     cargo build   # --release optional, not really perf sensitive
     target\debug\kanata --cfg <conf_file>
 
