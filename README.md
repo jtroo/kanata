@@ -34,19 +34,27 @@ suit your exact needs and workflows.
 
 ## Usage
 
-This is tested by jtroo on Windows 10 and Debian 10. See the
-[releases page](https://github.com/jtroo/kanata/releases) for executables.
+### Pre-built executables
+
+See the [releases page](https://github.com/jtroo/kanata/releases) for executables.
+
+### Build it yourself
+
+This project uses the latest Rust stable toolchain. If you installed the
+Rust toolchain using `rustup`, e.g. by using the instructions from the
+[official website](https://www.rust-lang.org/learn/get-started),
+you can get the latest stable toolchain with `rustup update stable`.
 
 Using `cargo install`:
 
     cargo install kanata
 
-    # may not have permissions without sudo on Linux, see below
+    # On Linux, this may not work without `sudo`, see below
     kanata --cfg <conf_file>
 
 Build and run yourself in Linux:
 
-    cargo build   # release optional, not really perf sensitive
+    cargo build   # --release optional, not really perf sensitive
 
     # sudo is used because kanata opens /dev/ files
     #
@@ -56,14 +64,16 @@ Build and run yourself in Linux:
 
 Build and run yourself in Windows:
 
-    cargo build   # release optional, not really perf sensitive
+    cargo build   # --release optional, not really perf sensitive
     target\debug\kanata --cfg <conf_file>
+
+The full configuration guide is [found here](./docs/config.adoc).
 
 Sample configuration files are found in [cfg_samples](./cfg_samples). The
 [simple.kbd](./cfg_samples/simple.kbd) file contains a basic configuration file
 that is hopefully easy to understand but does not contain all features. The
-`kanata.kbd` contains an example of all features with documentation. The latest
-release assets also has a `kanata.kbd` file that is tested to work with that
+`kanata.kbd` contains an example of all features with documentation. The
+release assets also have a `kanata.kbd` file that is tested to work with that
 release. All key names can be found in the [keys module](./src/keys/mod.rs).
 
 ## Other installation methods
