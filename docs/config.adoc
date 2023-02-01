@@ -291,7 +291,7 @@ The options are:
 - `hidden-suppressed`: hides sequence characters as they are typed. Does not
   output the hidden characters for an invalid sequence termination.
 - `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
-  hidden characters for an invalid sequence termination either after either a
+  hidden characters for an invalid sequence termination either after a
   timeout or after a non-sequence key is typed.
 
 For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
@@ -640,7 +640,7 @@ Example:
 <<table-of-contents,Back to ToC>>
 
 You may use the action `+XX+` as a "no operation" key, meaning pressing the key
-will do nothing. This might be desirable in place of a transparent key on an
+will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
 will do nothing as opposed to typing a letter.
 
