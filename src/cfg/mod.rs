@@ -746,6 +746,16 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
                 .a
                 .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReload))))
         }
+        "lrld-next" | "lrnx" => {
+            return Ok(s
+                .a
+                .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReloadNext))))
+        }
+        "lrld-prev" | "lrpv" => {
+            return Ok(s
+                .a
+                .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReloadPrev))))
+        }
         "sldr" => {
             return Ok(s
                 .a

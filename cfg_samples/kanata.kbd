@@ -353,13 +353,15 @@ If you need help, you are welcome to ask.
 
 ;; The `lrld` action stands for "live reload". This will re-parse everything
 ;; except for linux-dev. So in Linux, you cannot live reload and switch keyboard
-;; devices at the time of writing.
+;; devices at the time of writing. The variants `lrpv` and `lrnx` will cycle
+;; between multiple configuration files, if they are specified in the startup.
+;; arguments.
 ;;
 ;; Upon a successful reload, the kanata state will begin on the default base layer
 ;; in the configuration. E.g. in this example configuration, you would start on
 ;; the qwerty layer.
 (deflayer layers
-  _    @qwr @dvk lrld @td2 _    _    _    _    _    _    _    _    _
+  _    @qwr @dvk lrld lrpv lrnx _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
@@ -367,6 +369,7 @@ If you need help, you are welcome to ask.
 )
 
 (defalias
+
   ;; Alias for one-shot which will activate an action until either the timeout
   ;; expires or a different key is pressed. The timeout is the first parameter
   ;; and the action is the second parameter.

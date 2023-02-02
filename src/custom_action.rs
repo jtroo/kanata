@@ -33,6 +33,8 @@ pub enum CustomAction {
     },
     SequenceLeader,
     LiveReload,
+    LiveReloadNext,
+    LiveReloadPrev,
     Repeat,
     CancelMacroOnRelease,
     DynamicMacroRecord(u16),

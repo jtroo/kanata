@@ -563,6 +563,26 @@ Example:
 )
 ----
 
+There are variants of `lrld`: `lrld-prev` and `lrld-next`. These will cycle
+through different configuration files that you specify on kanata's startup.
+The first configuration file specified will be the one loaded on startup.
+The prev/next variants can be used with shortened names of `lrpv` and `lrnx` as
+well.
+
+Example:
+
+----
+(deflayer has-live-reloads
+  lrld lrpv lrnx
+)
+----
+
+Example specifying multiple config files in the command line:
+
+----
+kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
+----
+
 === Repeat key
 <<table-of-contents,Back to ToC>>
 

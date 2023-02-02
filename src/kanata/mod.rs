@@ -46,7 +46,8 @@ pub enum DynamicMacroItem {
 pub struct Kanata {
     pub kbd_in_paths: Vec<String>,
     pub kbd_out: KbdOut,
-    pub cfg_path: PathBuf,
+    pub cfg_paths: Vec<PathBuf>,
+    pub cur_cfg_idx: usize,
     pub mapped_keys: cfg::MappedKeys,
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
@@ -162,7 +163,7 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
 impl Kanata {
     /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        let cfg = cfg::new_from_file(&args.path)?;
+        let cfg = cfg::new_from_file(&args.paths[0])?;
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
@@ -234,7 +235,8 @@ impl Kanata {
         Ok(Self {
             kbd_in_paths,
             kbd_out,
-            cfg_path: args.path.clone(),
+            cfg_paths: args.paths.clone(),
+            cur_cfg_idx: 0,
             mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
@@ -277,7 +279,7 @@ impl Kanata {
     }
 
     fn do_live_reload(&mut self) -> Result<()> {
-        let cfg = cfg::new_from_file(&self.cfg_path)?;
+        let cfg = cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx])?;
         update_kbd_out(&cfg.items, &self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg
@@ -596,7 +598,33 @@ impl Kanata {
                         CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
                         CustomAction::LiveReload => {
                             live_reload_requested = true;
-                            log::info!("Requested live reload")
+                            log::info!(
+                                "Requested live reload of file: {}",
+                                self.cfg_paths[self.cur_cfg_idx].display()
+                            );
+                        }
+                        CustomAction::LiveReloadNext => {
+                            live_reload_requested = true;
+                            self.cur_cfg_idx = if self.cur_cfg_idx == self.cfg_paths.len() - 1 {
+                                0
+                            } else {
+                                self.cur_cfg_idx + 1
+                            };
+                            log::info!(
+                                "Requested live reload of next file: {}",
+                                self.cfg_paths[self.cur_cfg_idx].display()
+                            );
+                        }
+                        CustomAction::LiveReloadPrev => {
+                            live_reload_requested = true;
+                            self.cur_cfg_idx = match self.cur_cfg_idx {
+                                0 => self.cfg_paths.len() - 1,
+                                i => i - 1,
+                            };
+                            log::info!(
+                                "Requested live reload of prev file: {}",
+                                self.cfg_paths[self.cur_cfg_idx].display()
+                            );
                         }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
