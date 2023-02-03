@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use log::info;
 use simplelog::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod cfg;
 mod custom_action;
@@ -18,7 +18,7 @@ use tcp_server::TcpServer;
 type CfgPath = PathBuf;
 
 pub struct ValidatedArgs {
-    path: CfgPath,
+    paths: Vec<CfgPath>,
     port: Option<i32>,
     #[cfg(target_os = "linux")]
     symlink_path: Option<String>,
@@ -35,9 +35,10 @@ pub struct ValidatedArgs {
 /// If you need help, please feel welcome to create an issue or discussion in
 /// the kanata repository:     https://github.com/jtroo/kanata
 struct Args {
-    /// Configuration file to use with kanata.
+    /// Configuration file(s) to use with kanata. If not specified, defaults to kanata.kbd in the
+    /// current working directory.
     #[clap(short, long, default_value = "kanata.kbd")]
-    cfg: String,
+    cfg: Vec<String>,
 
     /// Port to run the optional TCP server on. If blank, no TCP port will be listened on.
     #[clap(short, long)]
@@ -62,7 +63,10 @@ struct Args {
 fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
 
-    let cfg_path = Path::new(&args.cfg);
+    let mut cfg_paths = args.cfg.iter().map(PathBuf::from).collect::<Vec<_>>();
+    if cfg_paths.is_empty() {
+        cfg_paths.push(PathBuf::from("kanata.kbd"));
+    }
 
     let log_lvl = match (args.debug, args.trace) {
         (_, true) => LevelFilter::Trace,
@@ -83,15 +87,15 @@ fn cli_init() -> Result<ValidatedArgs> {
     .expect("logger can init");
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
 
-    if !cfg_path.exists() {
+    if !cfg_paths[0].exists() {
         bail!(
-            "Could not find your config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-            cfg_path.to_str().unwrap_or("?")
+            "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+            cfg_paths[0].to_str().unwrap_or("?")
         )
     }
 
     Ok(ValidatedArgs {
-        path: cfg_path.into(),
+        paths: cfg_paths,
         port: args.port,
         #[cfg(target_os = "linux")]
         symlink_path: args.symlink_path,
