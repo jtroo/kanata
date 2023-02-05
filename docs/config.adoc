@@ -696,11 +696,11 @@ NOTE: If using Linux, make sure to look at the
 )
 ----
 
-=== Chords
+=== Output chords/combos
 <<table-of-contents,Back to ToC>>
 
 You may want to remap a key to automatically be pressed in combination with
-modifiers such as Control or Shift. There is a shortcut for this: prefix the
+modifiers such as Control or Shift. You can achieve this by prefixing the
 normal key name with one or more of:
 
 * `+C-+`: Left Control
@@ -724,9 +724,6 @@ Example:
   pst C-S-v
 )
 ----
-
-This is stated to be a shortcut because the behaviour can be replicated with
-the `+multi+` action which is showcased later in this document.
 
 === Release a key or layer
 <<table-of-contents,Back to ToC>>
@@ -1033,17 +1030,17 @@ but you should be wary of activating the hold action unintentionally.
 === macro
 <<table-of-contents,Back to ToC>>
 
-The `+macro+` action will tap a sequence of keys or chords with optional
+The `+macro+` action will tap a sequence of keys with optional
 delays. This is different from `+multi+` because in the `+multi+` action,
 all keys are held, whereas in `+macro+`, keys are pressed then released.
 
 This means that with `+macro+` you can have some letters capitalized and others
 not. This is not possible with `+multi+`.
 
-The `+macro+` action accepts one or more keys, some actions, chords, and delays (unit: ms).
-It also accepts a chorded list where the list is subject to the aforementioned
-restrictions. The number keys will be parsed as delays, so they must be aliased
-to be used in a macro.
+The `+macro+` action accepts one or more keys, some actions, chords, and delays
+(unit: ms).  It also accepts a list prefixed with <<output-chords-combos,output chord>>
+modifiers where the list is subject to the aforementioned restrictions. The
+number keys will be parsed as delays, so they must be aliased to be used in a macro.
 
 Up to 4 macros can be active at the same time.
 
@@ -1342,14 +1339,14 @@ Example:
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 
-=== Input Chords
+=== Input chords
 <<table-of-contents,Back to ToC>>
 
-Not to be confused with <<chords,output chords>>, `+chord+` actions can allow you
-to perform various actions based on which specific combination of input keys
-is pressed together (such an unordered combination of keys is called a "chord").
-Each combination/chord can perform a different action, allowing you to bind up to
-`+2^n - 1+` different actions to just `+n+` keys.
+Not to be confused with <<output-chords-combos,output chords>>, `+chord+`
+actions allow you to perform various actions based on which specific combination
+of input keys are pressed together. Such an unordered combination of keys
+is called a "chord". Each chord can perform a different action, allowing you
+to bind up to `+2^n - 1+` different actions to just `+n+` keys.
 
 Input chords are configured similarly to `+defalias+` with two extra parameters
 at the beginning of each `+defchords+` group: the name of the group and a
