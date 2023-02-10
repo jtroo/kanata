@@ -40,6 +40,10 @@
   csc C-S-c
 )
 
+(deflocalkeys-linux
+  pho 445
+)
+
 (defalias
   ;; shifted keys
   { S-[
