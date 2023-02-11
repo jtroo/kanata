@@ -297,7 +297,7 @@ fn parse_cfg(
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-const DEF_LOCAL_KEYS: &str = "deflocalkeys-winercept";
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
 #[cfg(target_os = "linux")]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
