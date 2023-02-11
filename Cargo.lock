@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.2.0-prerelease-1"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "clap",
