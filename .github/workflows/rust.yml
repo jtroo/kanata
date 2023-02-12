@@ -27,10 +27,14 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Build feat cmd
-      run: cargo build --features cmd --verbose
+      run: cargo build --all-features --verbose
     - name: Run tests feat cmd
-      run: cargo test --features cmd --verbose
+      run: cargo test --all-features --verbose
     - run: rustup component add clippy
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: -- -D warnings
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -49,10 +53,14 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Build feat cmd
-      run: cargo build --features cmd --verbose
+      run: cargo build --all-features --verbose
     - name: Run tests feat cmd
-      run: cargo test --features cmd --verbose
+      run: cargo test --all-features --verbose
     - run: rustup component add clippy
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: -- -D warnings
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
