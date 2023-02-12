@@ -146,7 +146,7 @@ pub struct DynamicMacroReplayState {
 }
 
 pub struct DynamicMacroRecordState {
-    pub starting_macro_key: u16,
+    pub starting_macro_id: u16,
     pub macro_items: Vec<DynamicMacroItem>,
 }
 
@@ -468,8 +468,8 @@ impl Kanata {
                         DynamicMacroItem::Release(k) => {
                             self.layout.bm().event(Event::Release(0, k.into()))
                         }
-                        DynamicMacroItem::EndMacro(key) => {
-                            state.active_macros.remove(&key);
+                        DynamicMacroItem::EndMacro(macro_id) => {
+                            state.active_macros.remove(&macro_id);
                         }
                     },
                 }
@@ -774,15 +774,15 @@ impl Kanata {
                             self.kbd_out.press_key(key)?;
                             self.kbd_out.release_key(key)?;
                         }
-                        CustomAction::DynamicMacroRecord(key) => {
+                        CustomAction::DynamicMacroRecord(macro_id) => {
                             let mut stop_record = false;
                             let mut new_recording = None;
                             match &mut self.dynamic_macro_record_state {
                                 None => {
-                                    log::debug!("starting dynamic macro {key} recording");
+                                    log::debug!("starting dynamic macro {macro_id} recording");
                                     self.dynamic_macro_record_state =
                                         Some(DynamicMacroRecordState {
-                                            starting_macro_key: *key,
+                                            starting_macro_id: *macro_id,
                                             macro_items: vec![],
                                         })
                                 }
@@ -790,31 +790,29 @@ impl Kanata {
                                     // remove the last item, since it's almost certainly a "macro
                                     // record" key action which we don't want to keep.
                                     state.macro_items.remove(state.macro_items.len() - 1);
-                                    self.dynamic_macros.insert(
-                                        state.starting_macro_key,
-                                        state.macro_items.clone(),
-                                    );
-                                    if state.starting_macro_key == *key {
+                                    self.dynamic_macros
+                                        .insert(state.starting_macro_id, state.macro_items.clone());
+                                    if state.starting_macro_id == *macro_id {
                                         log::debug!(
                                             "same record pressed. saving and stopping dynamic macro {} recording",
-                                            state.starting_macro_key
+                                            state.starting_macro_id
                                         );
                                         stop_record = true;
                                     } else {
                                         log::debug!(
-                                            "saving dynamic macro {} recording then starting new macro recording {key}",
-                                            state.starting_macro_key,
+                                            "saving dynamic macro {} recording then starting new macro recording {macro_id}",
+                                            state.starting_macro_id,
                                         );
-                                        new_recording = Some(key);
+                                        new_recording = Some(macro_id);
                                     }
                                 }
                             }
                             if stop_record {
                                 self.dynamic_macro_record_state = None;
-                            } else if let Some(key) = new_recording {
-                                log::debug!("starting new dynamic macro {key} recording");
+                            } else if let Some(macro_id) = new_recording {
+                                log::debug!("starting new dynamic macro {macro_id} recording");
                                 self.dynamic_macro_record_state = Some(DynamicMacroRecordState {
-                                    starting_macro_key: *key,
+                                    starting_macro_id: *macro_id,
                                     macro_items: vec![],
                                 });
                             }
@@ -826,21 +824,21 @@ impl Kanata {
                                 state.macro_items.remove(state.macro_items.len() - 1);
                                 log::debug!(
                                     "saving and stopping dynamic macro {} recording",
-                                    state.starting_macro_key
+                                    state.starting_macro_id
                                 );
                                 self.dynamic_macros
-                                    .insert(state.starting_macro_key, state.macro_items.clone());
+                                    .insert(state.starting_macro_id, state.macro_items.clone());
                             }
                             self.dynamic_macro_record_state = None;
                         }
-                        CustomAction::DynamicMacroPlay(key) => {
+                        CustomAction::DynamicMacroPlay(macro_id) => {
                             match &mut self.dynamic_macro_replay_state {
                                 None => {
-                                    log::debug!("replaying macro {key}");
+                                    log::debug!("replaying macro {macro_id}");
                                     self.dynamic_macro_replay_state =
-                                        self.dynamic_macros.get(key).map(|macro_items| {
+                                        self.dynamic_macros.get(macro_id).map(|macro_items| {
                                             let mut active_macros = HashSet::default();
-                                            active_macros.insert(*key);
+                                            active_macros.insert(*macro_id);
                                             DynamicMacroReplayState {
                                                 active_macros,
                                                 delay_remaining: 0,
@@ -849,16 +847,16 @@ impl Kanata {
                                         });
                                 }
                                 Some(state) => {
-                                    if state.active_macros.contains(key) {
-                                        log::warn!("refusing to recurse into macro {key}");
-                                    } else if let Some(items) = self.dynamic_macros.get(key) {
+                                    if state.active_macros.contains(macro_id) {
+                                        log::warn!("refusing to recurse into macro {macro_id}");
+                                    } else if let Some(items) = self.dynamic_macros.get(macro_id) {
                                         log::debug!(
-                                            "prepending macro {key} items to current replay"
+                                            "prepending macro {macro_id} items to current replay"
                                         );
-                                        state.active_macros.insert(*key);
+                                        state.active_macros.insert(*macro_id);
                                         state
                                             .macro_items
-                                            .push_front(DynamicMacroItem::EndMacro(*key));
+                                            .push_front(DynamicMacroItem::EndMacro(*macro_id));
                                         for item in items.iter().copied().rev() {
                                             state.macro_items.push_front(item);
                                         }
