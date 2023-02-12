@@ -126,7 +126,7 @@ impl Kanata {
                 Ok(event) => {
                     if event.0 && rx.is_empty() {
                         can_block = true;
-                    } else {
+                    } else if !event.0 {
                         strokes[0] = event.1 .0;
                         log::debug!("kanata sending {:?} to driver", strokes[0]);
                         match strokes[0] {
