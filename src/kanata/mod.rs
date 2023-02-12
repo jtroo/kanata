@@ -150,6 +150,23 @@ pub struct DynamicMacroRecordState {
     pub macro_items: Vec<DynamicMacroItem>,
 }
 
+impl DynamicMacroRecordState {
+    fn add_release_for_all_unreleased_presses(&mut self) {
+        let mut pressed_oscs = HashSet::default();
+        for item in self.macro_items.iter() {
+            match item {
+                DynamicMacroItem::Press(osc) => pressed_oscs.insert(*osc),
+                DynamicMacroItem::Release(osc) => pressed_oscs.remove(osc),
+                DynamicMacroItem::EndMacro(_) => false,
+            };
+        }
+        // Hopefully release order doesn't matter here since a HashSet is being used
+        for osc in pressed_oscs.into_iter() {
+            self.macro_items.push(DynamicMacroItem::Release(osc));
+        }
+    }
+}
+
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
 
 const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
@@ -786,20 +803,21 @@ impl Kanata {
                                             macro_items: vec![],
                                         })
                                 }
-                                Some(state) => {
+                                Some(ref mut state) => {
                                     // remove the last item, since it's almost certainly a "macro
-                                    // record" key action which we don't want to keep.
+                                    // record" key press action which we don't want to keep.
                                     state.macro_items.remove(state.macro_items.len() - 1);
+                                    state.add_release_for_all_unreleased_presses();
                                     self.dynamic_macros
                                         .insert(state.starting_macro_id, state.macro_items.clone());
                                     if state.starting_macro_id == *macro_id {
-                                        log::debug!(
-                                            "same record pressed. saving and stopping dynamic macro {} recording",
+                                        log::info!(
+                                            "same macro id pressed. saving and stopping dynamic macro {} recording",
                                             state.starting_macro_id
                                         );
                                         stop_record = true;
                                     } else {
-                                        log::debug!(
+                                        log::info!(
                                             "saving dynamic macro {} recording then starting new macro recording {macro_id}",
                                             state.starting_macro_id,
                                         );
@@ -810,7 +828,7 @@ impl Kanata {
                             if stop_record {
                                 self.dynamic_macro_record_state = None;
                             } else if let Some(macro_id) = new_recording {
-                                log::debug!("starting new dynamic macro {macro_id} recording");
+                                log::info!("starting new dynamic macro {macro_id} recording");
                                 self.dynamic_macro_record_state = Some(DynamicMacroRecordState {
                                     starting_macro_id: *macro_id,
                                     macro_items: vec![],
@@ -820,12 +838,13 @@ impl Kanata {
                         CustomAction::DynamicMacroRecordStop => {
                             if let Some(state) = &mut self.dynamic_macro_record_state {
                                 // remove the last item, since it's almost certainly a "macro
-                                // record stop" key action which we don't want to keep.
+                                // record stop" key press action which we don't want to keep.
                                 state.macro_items.remove(state.macro_items.len() - 1);
-                                log::debug!(
+                                log::info!(
                                     "saving and stopping dynamic macro {} recording",
                                     state.starting_macro_id
                                 );
+                                state.add_release_for_all_unreleased_presses();
                                 self.dynamic_macros
                                     .insert(state.starting_macro_id, state.macro_items.clone());
                             }
@@ -834,7 +853,7 @@ impl Kanata {
                         CustomAction::DynamicMacroPlay(macro_id) => {
                             match &mut self.dynamic_macro_replay_state {
                                 None => {
-                                    log::debug!("replaying macro {macro_id}");
+                                    log::info!("replaying macro {macro_id}");
                                     self.dynamic_macro_replay_state =
                                         self.dynamic_macros.get(macro_id).map(|macro_items| {
                                             let mut active_macros = HashSet::default();
