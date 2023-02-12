@@ -37,7 +37,7 @@
 //! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
-mod sexpr;
+pub mod sexpr;
 
 mod alloc;
 use alloc::*;
@@ -890,7 +890,8 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
         "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
         "arbitrary-code" => parse_arbitrary_code(&ac[1..], s),
-        "cmd" => parse_cmd(&ac[1..], s),
+        "cmd" => parse_cmd(&ac[1..], s, CmdType::Standard),
+        "cmd-output-keys" => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         _ => bail!(
             "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
             ac_type
@@ -1075,6 +1076,7 @@ fn parse_macro(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
         (events, params_remainder) = parse_macro_item(params_remainder, s)?;
         all_events.append(&mut events);
     }
+    all_events.shrink_to_fit();
     Ok(s.a.sref(Action::Sequence {
         events: s.a.sref_vec(all_events),
     }))
@@ -1173,9 +1175,9 @@ fn parse_mods_held_for_submacro(held_mods: &SExpr) -> Result<Vec<KeyCode>> {
     Ok(mod_keys)
 }
 
-/// Parses mod keys like `C-S-`. There must be no remaining text after the prefixes. Returns the
-/// `KeyCode`s for the modifiers parsed and the unparsed text after any parsed modifier prefixes.
-fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
+/// Parses mod keys like `C-S-`. Returns the `KeyCode`s for the modifiers parsed and the unparsed
+/// text after any parsed modifier prefixes.
+pub fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
     let mut key_stack = Vec::new();
     let mut rem = mods;
     loop {
@@ -1240,7 +1242,16 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kanata
     }
 }
 
-fn parse_cmd(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+enum CmdType {
+    Standard,
+    OutputKeys,
+}
+
+fn parse_cmd(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+    cmd_type: CmdType,
+) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "cmd expects one or more strings";
     if !s.is_cmd_enabled {
         bail!("cmd is not enabled but cmd action is specified somewhere");
@@ -1248,16 +1259,18 @@ fn parse_cmd(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataActi
     if ac_params.is_empty() {
         bail!(ERR_STR);
     }
-    Ok(s.a.sref(Action::Custom(s.a.sref_slice(CustomAction::Cmd(
-        ac_params.iter().try_fold(vec![], |mut v, p| {
-            if let SExpr::Atom(a) = p {
-                v.push(a.t.trim_matches('"').to_owned());
-                Ok(v)
-            } else {
-                bail!("{}, found a list", ERR_STR);
-            }
-        })?,
-    )))))
+    let cmd = ac_params.iter().try_fold(vec![], |mut v, p| {
+        if let SExpr::Atom(a) = p {
+            v.push(a.t.trim_matches('"').to_owned());
+            Ok(v)
+        } else {
+            bail!("{}, found a list", ERR_STR);
+        }
+    })?;
+    Ok(s.a.sref(Action::Custom(s.a.sref_slice(match cmd_type {
+        CmdType::Standard => CustomAction::Cmd(cmd),
+        CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
+    }))))
 }
 
 fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
