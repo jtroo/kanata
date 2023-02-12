@@ -309,6 +309,21 @@ Example:
 )
 ----
 
+=== dynamic-macro-delay-between-replay-actions
+
+
+This option customizes the number of milliseconds between each replay action of
+a dynamic macro. The default value is 5. This may need to be increased if some
+state changes, e.g. a layer change, is not happening at the right time.
+
+Example:
+
+----
+(defcfg
+  dynamic-macro-delay-between-replay-actions 5
+)
+----
+
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
 
@@ -473,8 +488,11 @@ a non-applicable operating system.
   sequence-input-mode visible-backspaced
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-continue-if-no-dev-found yes
+  linux-unicode-u-code v
+  linux-unicode-termination space
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
+  dynamic-macro-delay-between-replay-actions 5
 )
 ----
 

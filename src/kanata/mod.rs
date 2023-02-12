@@ -66,6 +66,7 @@ pub struct Kanata {
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
     pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
     pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
+    pub dynamic_macro_delay_between_replay_actions: u16,
     pub overrides: Overrides,
     pub override_states: OverrideStates,
     last_tick: time::Instant,
@@ -127,6 +128,12 @@ const SEQ_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
 const SEQ_VISIBLE_BACKSPACED: &str = "visible-backspaced";
 const SEQ_HIDDEN_SUPPRESSED: &str = "hidden-suppressed";
 const SEQ_HIDDEN_DELAY_TYPE: &str = "hidden-delay-type";
+
+const DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG: &str =
+    "dynamic-macro-delay-between-replay-actions";
+const DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG_ERR: &str =
+    "dynamic-macro-delay-between-replay-actions must be a number 0-65535";
+const DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_DEFAULT: u16 = 5;
 
 impl SequenceInputMode {
     fn try_from_str(s: &str) -> Result<Self> {
@@ -215,6 +222,13 @@ impl Kanata {
             }
         }
 
+        let dynamic_macro_delay_between_replay_actions: u16 = cfg
+            .items
+            .get(DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG)
+            .map(|s| str::parse::<u16>(s.as_str()))
+            .unwrap_or(Ok(DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_DEFAULT))
+            .map_err(|_| anyhow!("{DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG_ERR}"))?;
+
         update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
@@ -267,6 +281,7 @@ impl Kanata {
             kbd_out_rx,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid,
+            dynamic_macro_delay_between_replay_actions,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -295,6 +310,12 @@ impl Kanata {
             .get(SEQ_INPUT_MODE_CFG_NAME)
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
             .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
+        self.dynamic_macro_delay_between_replay_actions = cfg
+            .items
+            .get(DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG)
+            .map(|s| str::parse::<u16>(s.as_str()))
+            .unwrap_or(Ok(DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_DEFAULT))
+            .map_err(|_| anyhow!("{DYNAMIC_MACRO_DELAY_BETWEEN_REPLAY_ACTIONS_CFG_ERR}"))?;
         self.layout = cfg.layout;
         let mut mapped_keys = MAPPED_KEYS.lock();
         *mapped_keys = cfg.mapped_keys;
@@ -473,7 +494,7 @@ impl Kanata {
                         }
                     },
                 }
-                state.delay_remaining = 5;
+                state.delay_remaining = self.dynamic_macro_delay_between_replay_actions;
             }
         }
         if clear_replaying_macro {
