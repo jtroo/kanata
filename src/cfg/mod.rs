@@ -137,33 +137,42 @@ pub type MappedKeys = HashSet<OsCode>;
 // useful while it is not useful for shift. The outputs should be iterated over in reverse order.
 pub type KeyOutputs = Vec<HashMap<OsCode, Vec<OsCode>>>;
 
+#[cfg(test)]
+use serial_test::serial;
+
 #[test]
+#[serial]
 fn parse_simple() {
     new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
 }
 
 #[test]
+#[serial]
 fn parse_minimal() {
     new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
 }
 
 #[test]
+#[serial]
 fn parse_default() {
     new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
 }
 
 #[test]
+#[serial]
 fn parse_jtroo() {
     let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
     assert_eq!(cfg.layer_info.len(), 16);
 }
 
 #[test]
+#[serial]
 fn parse_f13_f24() {
     new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
 }
 
 #[test]
+#[serial]
 fn parse_transparent_default() {
     let mut s = ParsedState::default();
     let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
@@ -207,6 +216,7 @@ fn parse_transparent_default() {
 }
 
 #[test]
+#[serial]
 fn parse_all_keys() {
     new_from_file(&std::path::PathBuf::from(
         "./cfg_samples/all_keys_in_defsrc.kbd",
@@ -215,6 +225,7 @@ fn parse_all_keys() {
 }
 
 #[test]
+#[serial]
 fn parse_multiline_comment() {
     new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/multiline_comment.kbd",
@@ -223,6 +234,7 @@ fn parse_multiline_comment() {
 }
 
 #[test]
+#[serial]
 fn disallow_nested_tap_hold() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| e.to_string())
@@ -233,6 +245,7 @@ fn disallow_nested_tap_hold() {
 }
 
 #[test]
+#[serial]
 fn disallow_ancestor_seq() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
         .map_err(|e| e.to_string())
@@ -243,6 +256,7 @@ fn disallow_ancestor_seq() {
 }
 
 #[test]
+#[serial]
 fn disallow_descendent_seq() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
         .map_err(|e| e.to_string())
@@ -253,6 +267,7 @@ fn disallow_descendent_seq() {
 }
 
 #[test]
+#[serial]
 fn disallow_multiple_waiting_actions() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
         .map_err(|e| e.to_string())
