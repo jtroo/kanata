@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
 
 jobs:
 
@@ -22,23 +23,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "persist-cross-job"
+        workspaces: ./
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: Build feat cmd
+    - name: Build all features
       run: cargo build --all-features --verbose
-    - name: Run tests feat cmd
+    - name: Run tests all features
       run: cargo test --all-features --verbose
     - run: rustup component add clippy
-    - uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: -- -D warnings
-    - uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features -- -D warnings
+    - name: Run clippy no features
+      run: cargo clippy -- -D warnings
+    - name: Run clippy all features
+      run: cargo clippy --all-features -- -D warnings
 
   build-test-clippy-windows:
     runs-on: windows-latest
@@ -48,20 +49,20 @@ jobs:
           - x86_64-pc-windows-msvc
     steps:
     - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "persist-cross-job"
+        workspaces: ./
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: Build feat cmd
+    - name: Build all features
       run: cargo build --all-features --verbose
-    - name: Run tests feat cmd
+    - name: Run tests all features
       run: cargo test --all-features --verbose
     - run: rustup component add clippy
-    - uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: -- -D warnings
-    - uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features -- -D warnings
+    - name: Run clippy no features
+      run: cargo clippy
+    - name: Run clippy all features
+      run: cargo clippy --all-features
