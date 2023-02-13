@@ -27,15 +27,11 @@ jobs:
       with:
         shared-key: "persist-cross-job"
         workspaces: ./
-    - name: Build
-      run: cargo build --verbose
+    - run: rustup component add clippy
     - name: Run tests
       run: cargo test --verbose
-    - name: Build all features
-      run: cargo build --all-features --verbose
     - name: Run tests all features
       run: cargo test --all-features --verbose
-    - run: rustup component add clippy
     - name: Run clippy no features
       run: cargo clippy -- -D warnings
     - name: Run clippy all features
@@ -53,15 +49,11 @@ jobs:
       with:
         shared-key: "persist-cross-job"
         workspaces: ./
-    - name: Build
-      run: cargo build --verbose
+    - run: rustup component add clippy
     - name: Run tests
       run: cargo test --verbose
-    - name: Build all features
-      run: cargo build --all-features --verbose
     - name: Run tests all features
       run: cargo test --all-features --verbose
-    - run: rustup component add clippy
     - name: Run clippy no features
       run: cargo clippy
     - name: Run clippy all features
