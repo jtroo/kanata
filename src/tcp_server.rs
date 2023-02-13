@@ -1,12 +1,10 @@
 use crate::Kanata;
-use net2::TcpStreamExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -68,10 +66,6 @@ impl TcpServer {
             for stream in listener.incoming() {
                 match stream {
                     Ok(mut stream) => {
-                        stream
-                            .set_keepalive(Some(Duration::from_secs(30)))
-                            .expect("TCP keepalive is set");
-
                         {
                             let k = kanata.lock();
                             log::info!(
