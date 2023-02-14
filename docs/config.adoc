@@ -473,6 +473,8 @@ a non-applicable operating system.
   sequence-input-mode visible-backspaced
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-continue-if-no-dev-found yes
+  linux-unicode-u-code v
+  linux-unicode-termination space
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
 )
