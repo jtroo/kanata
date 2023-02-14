@@ -3,8 +3,20 @@ name: cargo-checks
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - Cargo.*
+      - src/**/*
+      - cfg_samples/**/*
+      - test_cfgs/**/*
+      - .github/workflows/**/*
   pull_request:
     branches: [ "main" ]
+    paths:
+      - Cargo.*
+      - src/**/*
+      - cfg_samples/**/*
+      - test_cfgs/**/*
+      - .github/workflows/**/*
 
 env:
   CARGO_TERM_COLOR: always
