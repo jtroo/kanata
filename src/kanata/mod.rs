@@ -23,6 +23,11 @@ use crate::oskbd::*;
 use crate::tcp_server::ServerMessage;
 use crate::{cfg, ValidatedArgs};
 
+#[cfg(feature = "cmd")]
+mod cmd;
+#[cfg(feature = "cmd")]
+use cmd::*;
+
 #[cfg(target_os = "windows")]
 mod windows;
 #[cfg(target_os = "windows")]
@@ -748,9 +753,19 @@ impl Kanata {
                                 }
                             }
                         }
-
                         CustomAction::Cmd(cmd) => {
                             cmds.push(cmd.clone());
+                        }
+                        CustomAction::CmdOutputKeys(_cmd) => {
+                            #[cfg(feature = "cmd")]
+                            {
+                                for (key_action, osc) in keys_for_cmd_output(_cmd) {
+                                    match key_action {
+                                        KeyAction::Press => self.kbd_out.press_key(osc)?,
+                                        KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                    }
+                                }
+                            }
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
@@ -891,6 +906,7 @@ impl Kanata {
                 }
                 run_multi_cmd(cmds);
             }
+
             CustomEvent::Release(custacts) => {
                 // Unclick only the last mouse button
                 if let Some(Err(e)) = custacts
@@ -962,7 +978,6 @@ impl Kanata {
                             }
                             pbtn
                         }
-
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
@@ -1278,43 +1293,10 @@ fn set_altgr_behaviour(_cfg: &cfg::Cfg) -> Result<()> {
 }
 
 #[cfg(feature = "cmd")]
-fn run_cmd(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut args = cmd_and_args.iter().cloned();
-        let mut cmd = std::process::Command::new(
-            args.next()
-                .expect("parsing should have forbidden empty cmd"),
-        );
-        for arg in args {
-            cmd.arg(arg);
-        }
-        match cmd.output() {
-            Ok(output) => {
-                log::info!(
-                    "Successfully ran cmd {}\nstdout:\n{}\nstderr:\n{}",
-                    {
-                        let mut printable_cmd = Vec::new();
-                        printable_cmd.push(format!("{:?}", cmd.get_program()));
-                        let printable_cmd = cmd.get_args().fold(printable_cmd, |mut cmd, arg| {
-                            cmd.push(format!("{arg:?}"));
-                            cmd
-                        });
-                        printable_cmd.join(" ")
-                    },
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                );
-            }
-            Err(e) => log::error!("Failed to execute cmd: {}", e),
-        };
-    })
-}
-
-#[cfg(feature = "cmd")]
 fn run_multi_cmd(cmds: Vec<Vec<String>>) {
     std::thread::spawn(move || {
         for cmd in cmds {
-            if let Err(e) = run_cmd(cmd).join() {
+            if let Err(e) = run_cmd_in_thread(cmd).join() {
                 log::error!("problem joining thread {:?}", e);
             }
         }

@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
+    CmdOutputKeys(Vec<String>),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
