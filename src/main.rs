@@ -131,6 +131,9 @@ fn main_impl() -> Result<()> {
         Kanata::start_notification_loop(nrx, server.connections);
     }
 
+    #[cfg(target_os = "linux")]
+    sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
+
     Kanata::event_loop(kanata_arc, tx)?;
 
     Ok(())

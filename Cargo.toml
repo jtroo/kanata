@@ -37,6 +37,7 @@ signal-hook = "0.3.14"
 inotify = { version = "0.10.0", default_features = false }
 mio = { version = "0.8.4", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
+sd-notify = "0.4.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 encode_unicode = "0.3.6"
