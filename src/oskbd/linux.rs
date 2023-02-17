@@ -465,12 +465,14 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(
-        &mut self,
-        _direction: MoveDirection,
-        _distance: u16,
-    ) -> Result<(), io::Error> {
-        todo!()
+    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
+        let (axis, distance) = match direction {
+            MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(distance)),
+            MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(distance)),
+            MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(distance)),
+            MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(distance)),
+        };
+        self.write(InputEvent::new(EventType::RELATIVE, axis.0, distance))
     }
 
     fn do_scroll(
