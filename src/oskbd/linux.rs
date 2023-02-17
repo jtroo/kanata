@@ -366,7 +366,7 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let event = InputEvent::new_now(EventType::KEY, code as u16, value as i32);
+        let event = InputEvent::new(EventType::KEY, code as u16, value as i32);
         self.device.emit(&[event])?;
         Ok(())
     }
@@ -465,12 +465,14 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(
-        &mut self,
-        _direction: MoveDirection,
-        _distance: u16,
-    ) -> Result<(), io::Error> {
-        todo!();
+    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
+        let (axis, distance) = match direction {
+            MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(distance)),
+            MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(distance)),
+            MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(distance)),
+            MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(distance)),
+        };
+        self.write(InputEvent::new(EventType::RELATIVE, axis.0, distance))
     }
 
     fn do_scroll(
