@@ -333,6 +333,8 @@ fn parse_cfg_raw(
     let spanned_root_exprs = sexpr::parse(&text)?;
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
+    error_on_unknown_top_level_atoms(&root_exprs)?;
+
     let cfg_expr = root_exprs
         .iter()
         .find(gen_first_atom_filter("defcfg"))
@@ -495,6 +497,35 @@ fn parse_cfg_raw(
     };
 
     Ok((cfg, src, layer_info, klayers, sequences, overrides))
+}
+
+fn error_on_unknown_top_level_atoms(exprs: &[Vec<SExpr>]) -> Result<()> {
+    for expr in exprs {
+        expr.first()
+            .ok_or_else(|| anyhow!("found an empty list as a configuration item"))?
+            .atom()
+            .map(|a| match a {
+                "defcfg"
+                | "defalias"
+                | "defsrc"
+                | "deflayer"
+                | "defoverrides"
+                | "deflocalkeys-linux"
+                | "deflocalkeys-win"
+                | "deflocalkeys-wintercept"
+                | "deffakekeys"
+                | "defchords"
+                | "defseq" => Ok(()),
+                _ => bail!("found unknown configuration item: {a}"),
+            })
+            .ok_or_else(|| {
+                anyhow!(
+                    "found list as first item in a configuration item: {:?}",
+                    expr.first().unwrap()
+                )
+            })??;
+    }
+    Ok(())
 }
 
 /// Return a closure that filters a root expression by the content of the first element. The
