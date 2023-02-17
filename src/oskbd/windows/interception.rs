@@ -149,6 +149,10 @@ impl KbdOut {
     }
 
     pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
+        // Note: this could be done via the interception driver instead. Right now this is not
+        // done, which means that mouse movements may not work properly when the active application
+        // has an elevated privilege, which is different from the behaviour of other key/mouse
+        // actions when using the interception driver.
         super::move_mouse(direction, distance);
         Ok(())
     }
