@@ -366,7 +366,7 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let event = InputEvent::new_now(EventType::KEY, code as u16, value as i32);
+        let event = InputEvent::new(EventType::KEY, code as u16, value as i32);
         self.device.emit(&[event])?;
         Ok(())
     }
@@ -470,7 +470,7 @@ impl KbdOut {
         _direction: MoveDirection,
         _distance: u16,
     ) -> Result<(), io::Error> {
-        todo!();
+        todo!()
     }
 
     fn do_scroll(

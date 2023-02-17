@@ -778,6 +778,6 @@ impl TryFrom<InputEvent> for KeyEvent {
 
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
-        InputEvent::new_now(EventType::KEY, item.code as u16, item.value as i32)
+        InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
     }
 }
