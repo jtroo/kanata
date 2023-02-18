@@ -3,7 +3,7 @@
 use std::io;
 
 use interception::{scancode::ScanCode, KeyState, MouseFlags, MouseState, Stroke};
-use std::sync::mpsc::SyncSender as Sender;
+use std::sync::mpsc::Sender;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -85,7 +85,7 @@ impl KbdOut {
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        self.keys_tx.try_send((false, event)).unwrap();
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
@@ -95,7 +95,7 @@ impl KbdOut {
 
     pub fn notify_can_block(&mut self) -> Result<(), io::Error> {
         self.keys_tx
-            .try_send((
+            .send((
                 true,
                 InputEvent(Stroke::Keyboard {
                     code: ScanCode::Esc,

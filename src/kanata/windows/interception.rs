@@ -50,13 +50,15 @@ impl Kanata {
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
 
         let mut can_block = false;
+        let mut empty_channel_iter_count = 0;
         loop {
-            let dev = match can_block {
-                true => {
+            let dev = match (can_block, empty_channel_iter_count) {
+                (true, 100..) => {
                     can_block = false;
+                    empty_channel_iter_count = 0;
                     intrcptn.wait()
                 }
-                false => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
+                _ => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
             };
             if dev > 0 {
                 let num_strokes = intrcptn.receive(dev, &mut strokes) as usize;
@@ -126,6 +128,7 @@ impl Kanata {
 
             match rx.try_recv() {
                 Ok(event) => {
+                    empty_channel_iter_count = 0;
                     if event.0 {
                         can_block = true;
                     } else if !event.0 {
@@ -149,7 +152,9 @@ impl Kanata {
                     log::error!("{ERR}");
                     bail!(ERR);
                 }
-                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Empty) => {
+                    empty_channel_iter_count += 1;
+                }
             }
         }
     }

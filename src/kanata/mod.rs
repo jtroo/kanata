@@ -183,7 +183,7 @@ impl Kanata {
         let cfg = cfg::new_from_file(&args.paths[0])?;
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-        let (kbd_out_tx, kbd_out_rx) = std::sync::mpsc::sync_channel(10);
+        let (kbd_out_tx, kbd_out_rx) = std::sync::mpsc::channel();
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let intercept_mouse_hwid = cfg
             .items
