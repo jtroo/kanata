@@ -1,34 +1,33 @@
 # Comparison with kmonad
 
-The kmonad project is the closest alternative for this project. It is also more
-mature and has had many more contributions than kanata.
+The kmonad project is the closest alternative for this project.
 
 ## Benefits of kmonad over kanata
 
 - MacOS support
 - Different features
+- Has a NixOS module
 
 ## Why I built and use kanata
 
 Limitations that don't affect me:
 
 - I only use Windows and Linux (PRs for MacOS support are welcome though!)
-- My personal layout in QMK is fully replicable with the
-  [keyberon library's features](https://github.com/TeXitoi/keyberon/blob/master/src/action.rs)
+- I compile kanata myself
 
-Why I don't use kmonad:
+Why I couldn't use kmonad:
 
-- [Double-tapping a tap-hold key](https://github.com/kmonad/kmonad/issues/163) does not behave
+- [Double-tapping a tap-hold key](https://github.com/kmonad/kmonad/issues/163) did not behave
   [how I want it to](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold)
-- Some key sequences with tap-hold keys [don't behave how I want](https://github.com/kmonad/kmonad/issues/466):
+- Some key sequences with tap-hold keys [didn't behave how I want](https://github.com/kmonad/kmonad/issues/466):
   - `(press lsft) (press a) (release lsft) (release a)` (a is a tap-hold key)
   - The above outputs `a` in kmonad, but I want it to output `A`
-- kanata supports sending mouse buttons but [kmonad does not](https://github.com/kmonad/kmonad/issues/150)
+- kmonad was missing [mouse buttons](https://github.com/kmonad/kmonad/issues/150)
 
 The issues listed are all fixable in kmonad and I hope they are one day! For me
-though, I don't know Haskell well enough to poke around the kmonad codebase and
-attempt fixing these. That's why I instead built kanata based off of the
-excellent work that had already gone into the
+though, I didn't and still don't know Haskell well enough to contribute to
+kmonad. That's why I instead built kanata based off of the excellent work that
+had already gone into the
 [keyberon](https://github.com/TeXitoi/keyberon),
 [ktrl](https://github.com/ItayGarin/ktrl), and
 [kbremap](https://github.com/timokroeger/kbremap) projects.
@@ -36,6 +35,7 @@ excellent work that had already gone into the
 If you want to see the features that kanata offers, the
 [configuration guide](./config.adoc) is a good starting point.
 
-I dogfood kanata myself and it works great for my use cases. If you don't use
-any of the missing features from kmonad or are willing to part with them (or
-implement them), give kanata a try!
+I dogfood kanata myself and it works great for my use cases. Though kanata is a
+younger project than kmonad, it now has more features. If you give kanata a
+try, feel free to ask for help in an issue or discussion, or let me know how it
+went 🙂.
