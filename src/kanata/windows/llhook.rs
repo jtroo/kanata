@@ -1,6 +1,6 @@
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use parking_lot::Mutex;
 use std::convert::TryFrom;
+use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time;
 
@@ -27,7 +27,7 @@ impl Kanata {
             *mapped_keys = kanata.lock().mapped_keys.clone();
         }
 
-        let (preprocess_tx, preprocess_rx) = crossbeam_channel::bounded(10);
+        let (preprocess_tx, preprocess_rx) = channel();
         start_event_preprocessor(preprocess_rx, tx);
 
         // This callback should return `false` if the input event is **not** handled by the
@@ -81,7 +81,7 @@ impl Kanata {
 }
 
 fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
-    if let Err(e) = tx.try_send(kev) {
+    if let Err(e) = tx.send(kev) {
         panic!("failed to send on channel: {e:?}")
     }
 }

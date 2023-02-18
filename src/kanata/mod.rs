@@ -1,9 +1,9 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
 use anyhow::{anyhow, bail, Result};
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use log::{error, info};
 use parking_lot::Mutex;
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
@@ -73,7 +73,7 @@ pub struct Kanata {
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    kbd_out_rx: Receiver<(bool, InputEvent)>,
+    kbd_out_rx: Option<Receiver<(bool, InputEvent)>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
 }
@@ -183,7 +183,7 @@ impl Kanata {
         let cfg = cfg::new_from_file(&args.paths[0])?;
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-        let (kbd_out_tx, kbd_out_rx) = crossbeam_channel::unbounded();
+        let (kbd_out_tx, kbd_out_rx) = std::sync::mpsc::sync_channel(10);
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let intercept_mouse_hwid = cfg
             .items
@@ -281,7 +281,7 @@ impl Kanata {
                 .unwrap_or_default(),
 
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            kbd_out_rx,
+            kbd_out_rx: Some(kbd_out_rx),
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid,
             dynamic_macro_replay_state: None,
@@ -1085,7 +1085,7 @@ impl Kanata {
             self.print_layer(cur_layer);
 
             if let Some(tx) = tx {
-                match tx.try_send(ServerMessage::LayerChange { new }) {
+                match tx.send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);

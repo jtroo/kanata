@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
-use crossbeam_channel::Sender;
 use interception as ic;
 use parking_lot::Mutex;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use crate::kanata::*;
@@ -12,7 +12,7 @@ const HWID_ARR_SZ: usize = 128;
 
 impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
-        let rx = kanata.lock().kbd_out_rx.clone();
+        let rx = kanata.lock().kbd_out_rx.take().unwrap();
         *MAPPED_KEYS.lock() = kanata.lock().mapped_keys.clone();
         let intrcptn = ic::Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
         intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
@@ -52,7 +52,10 @@ impl Kanata {
         let mut can_block = false;
         loop {
             let dev = match can_block {
-                true => intrcptn.wait(),
+                true => {
+                    can_block = false;
+                    intrcptn.wait()
+                }
                 false => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
             };
             if dev > 0 {
@@ -121,10 +124,9 @@ impl Kanata {
                 }
             }
 
-            can_block = false;
             match rx.try_recv() {
                 Ok(event) => {
-                    if event.0 && rx.is_empty() {
+                    if event.0 {
                         can_block = true;
                     } else if !event.0 {
                         strokes[0] = event.1 .0;

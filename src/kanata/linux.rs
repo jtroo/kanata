@@ -1,8 +1,8 @@
 use anyhow::{anyhow, bail, Result};
-use crossbeam_channel::Sender;
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use super::*;

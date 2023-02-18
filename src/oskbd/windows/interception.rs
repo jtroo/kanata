@@ -2,8 +2,8 @@
 
 use std::io;
 
-use crossbeam_channel::Sender;
 use interception::{scancode::ScanCode, KeyState, MouseFlags, MouseState, Stroke};
+use std::sync::mpsc::SyncSender as Sender;
 
 use crate::custom_action::*;
 use crate::keys::*;

@@ -118,13 +118,13 @@ fn main_impl() -> Result<()> {
     let (server, ntx, nrx) = if let Some(port) = args.port {
         let mut server = TcpServer::new(port);
         server.start(kanata_arc.clone());
-        let (ntx, nrx) = crossbeam_channel::unbounded();
+        let (ntx, nrx) = std::sync::mpsc::channel();
         (Some(server), Some(ntx), Some(nrx))
     } else {
         (None, None, None)
     };
 
-    let (tx, rx) = crossbeam_channel::unbounded();
+    let (tx, rx) = std::sync::mpsc::channel();
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
