@@ -6,7 +6,6 @@ The kmonad project is the closest alternative for this project.
 
 - MacOS support
 - Different features
-- Has a NixOS module
 
 ## Why I built and use kanata
 
