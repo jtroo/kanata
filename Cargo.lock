@@ -274,7 +274,7 @@ checksum = "fad582f4b9e86b6caa621cabeb0963332d92eea04729ab12892c2533951e6440"
 
 [[package]]
 name = "kanata"
-version = "1.2.1-prerelease-1"
+version = "1.2.1-prerelease-2"
 dependencies = [
  "anyhow",
  "clap",
