@@ -76,8 +76,8 @@
 )
 
 ;; The `lrld` action stands for "live reload". This will re-parse everything
-;; except for defcfg. I.e. in Linux, you cannot live reload and switch keyboard
-;; devices for the time being.
+;; except for linux-dev, meaning you cannot live reload and switch keyboard
+;; devices.
 ;;
 ;; The keys 1 and 2 switch the base layer to qwerty and dvorak respectively.
 ;;

@@ -550,8 +550,8 @@ If you need help, you are welcome to ask.
 ;; of alias support, fake keys can do any action that a normal key can,
 ;; including doing operations on previously defined fake keys.
 ;;
-;; Operations on fake keys can occur either on press (on-press-fakekey or
-;; on release (on-release-fakekey The use cases for the on-release variant
+;; Operations on fake keys can occur either on press (on-press-fakekey) or
+;; on release (on-release-fakekey). The use cases for the on-release variant
 ;; are left up to your own creativity.
 (deflayer fakekeys
   _    @fcp @fsp @fmp @pal _    _    _    _    _    _    _    _    _

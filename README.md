@@ -11,12 +11,14 @@ the features:
 - advanced key behaviour customization (e.g. tap-hold, key sequences, unicode)
 - cross-platform human readable configuration file
 
-To see all of the features, see the [features](#features) section.
-
-[Here's a demo video showcasing multi-layer functionality (30s, 1.7 MB)](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
+To see all of the features, see the [configuration guide](./docs/config.adoc).
 
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
+
+### Demo video
+
+[Showcase of multi-layer functionality (30s, 1.7 MB)](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
 
 ## Why is this useful?
 
@@ -29,8 +31,8 @@ layer of functionality where you now type uppercase letters and symbols
 instead of lowercase letters and numbers.
 
 What kanata allows you to do is take this alternate layer concept that Shift
-keys add and apply it to any key. You can then customize what those layers do to
-suit your exact needs and workflows.
+keys have and apply it to any key. You can then customize what those layers do
+to suit your exact needs and workflows.
 
 ## Usage
 
@@ -50,7 +52,7 @@ Using `cargo install`:
     cargo install kanata
 
     # On Linux, this may not work without `sudo`, see below
-    kanata --cfg <conf_file>
+    kanata --cfg <your_configuration_file>
 
 Build and run yourself in Linux:
 
@@ -61,13 +63,13 @@ Build and run yourself in Linux:
     #
     # See below if you want to avoid needing sudo:
     # https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux
-    sudo target/debug/kanata --cfg <conf_file>
+    sudo target/debug/kanata --cfg <your_configuration_file>
 
 Build and run yourself in Windows:
 
     git clone https://github.com/jtroo/kanata; cd kanata
     cargo build   # --release optional, not really perf sensitive
-    target\debug\kanata --cfg <conf_file>
+    target\debug\kanata --cfg <your_configuration_file>
 
 The full configuration guide is [found here](./docs/config.adoc).
 
@@ -76,7 +78,8 @@ Sample configuration files are found in [cfg_samples](./cfg_samples). The
 that is hopefully easy to understand but does not contain all features. The
 `kanata.kbd` contains an example of all features with documentation. The
 release assets also have a `kanata.kbd` file that is tested to work with that
-release. All key names can be found in the [keys module](./src/keys/mod.rs).
+release. All key names can be found in the [keys module](./src/keys/mod.rs),
+and you can also define your own key names.
 
 ## Other installation methods
 
@@ -89,25 +92,15 @@ release. All key names can be found in the [keys module](./src/keys/mod.rs).
   - [Full guide](./docs/config.adoc)
   - [Simple example with explanations](./cfg_samples/simple.kbd)
   - [All features showcase](./cfg_samples/kanata.kbd)
-- Press (Left Control+Space+Escape) to terminate kanata at any time in case you've messed up your config.
-- Key chords. Send a key combo like Ctrl+Shift+R or Ctrl+Alt+Delete in a single keypress.
-- Mouse buttons. Send mouse left click, right click, and middle click events with your keyboard.
-- One-shot keys. Activate a modifier like `LShift` for exactly one subsequent keypress.
-- Layer switching. Change base layers between e.g. qwerty layer, dvorak layer, experimental layout layer
-- Layer toggle. Toggle a layer temporarily, e.g. for a numpad layer, arrow keys layer, or symbols layer
-- Tap-hold keys. Different behaviour when you tap a key vs. hold the key
-  - example 1: remap caps lock to act as caps lock on tap but ctrl on hold
-  - example 2: remap 'A' to act as 'A' on tap but toggle the numpad layer on hold
-- Tap-dance. Perform different actions with the same key depending on how many rapid taps were done.
-- Macros. Send a sequence of keys with optional configurable delays, e.g. `http://localhost:8080`.
-- Unicode. Type any unicode character ([not guaranteed to be accepted](https://github.com/microsoft/terminal/issues/12977)
-  by the target application).
+- Live reloading of the configuration for easy testing of your changes.
+- Multiple layers of key functionality
+- Advanced actions such as tap-hold, unicode output, dynamic and static macros
+- Vim-like leader sequences to execute other actions
 - Optionally run a TCP server to interact with other programs
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
-- Vim-like leader sequences to execute other actions
-- Live reloading of the configuration for easy testing of your changes.
 - [Interception driver](http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
-- Run binaries from kanata (disabled by default)
+  - Note that this issue exists, which is outside the control of this project:
+    https://github.com/oblitum/Interception/issues/25
 
 ## Contributing
 
