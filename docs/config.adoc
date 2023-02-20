@@ -34,7 +34,7 @@ semicolons. E.g:
 ;; own configuration when reading it later.
 ----
 
-You can begin a multi-line comment block with `#|` and end it with `|#`:
+You can begin a multi-line comment block with `+#|+` and end it with `+|#+`:
 
 ----
 #|
