@@ -1,6 +1,17 @@
-# kanata
+<h1 align="center">Kanata</h1>
 
-Improve keyboard comfort and usability with advanced customization.
+<h3 align="center">
+  <img
+    alt="Image of a keycap with the letter K on it in pink tones"
+    title="Kanata"
+    height="160"
+    src="assets/kanata-icon.svg"
+  />
+</h3>
+
+<div align="center">
+  Improve your keyboard comfort
+</div>
 
 ## What does this do?
 
@@ -8,7 +19,7 @@ This is a software keyboard remapper for Linux and Windows. A short summary of
 the features:
 
 - multiple layers of key functionality
-- advanced key behaviour customization (e.g. tap-hold, key sequences, unicode)
+- advanced key behaviour customization (e.g. tap-hold, macros, unicode)
 - cross-platform human readable configuration file
 
 To see all of the features, see the [configuration guide](./docs/config.adoc).
