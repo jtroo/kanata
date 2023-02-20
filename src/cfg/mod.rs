@@ -876,6 +876,8 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "tap-hold" => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
         "tap-hold-press" => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
         "tap-hold-release" => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
+        "tap-hold-press-timeout" => parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
+        "tap-hold-release-timeout" => parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold),
         "multi" => parse_multi(&ac[1..], s),
         "macro" => parse_macro(&ac[1..], s),
         "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], s),
@@ -949,7 +951,13 @@ fn parse_tap_hold(
     config: HoldTapConfig,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
-        bail!("tap-hold expects 4 atoms after it: <tap-timeout> <hold-timeout> <tap-action> <hold-action>, got {}", ac_params.len())
+        bail!(
+            r"tap-hold expects 4 items after it:
+    <tap-timeout> <hold-timeout> <tap-action> <hold-action>
+    got {}:
+    {ac_params:?}",
+            ac_params.len(),
+        )
     }
     let tap_timeout =
         parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
@@ -966,6 +974,41 @@ fn parse_tap_hold(
         timeout: hold_timeout,
         tap: *tap_action,
         hold: *hold_action,
+        timeout_action: *hold_action,
+    }))))
+}
+
+fn parse_tap_hold_timeout(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+    config: HoldTapConfig,
+) -> Result<&'static KanataAction> {
+    if ac_params.len() != 5 {
+        bail!(
+            r"tap-hold-(press|release)-timeout expects 5 items after it:
+    <tap-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action>,
+    got {}:
+    {ac_params:?}",
+            ac_params.len(),
+        )
+    }
+    let tap_timeout =
+        parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let hold_timeout =
+        parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    let timeout_action = parse_action(&ac_params[4], s)?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config,
+        tap_hold_interval: tap_timeout,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *timeout_action,
     }))))
 }
 
@@ -2111,9 +2154,15 @@ fn add_key_output_from_action_to_key_pos(
         Action::KeyCode(kc) => {
             add_kc_output(osc_slot, kc.into(), outputs, overrides);
         }
-        Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
+        Action::HoldTap(HoldTapAction {
+            tap,
+            hold,
+            timeout_action,
+            ..
+        }) => {
             add_key_output_from_action_to_key_pos(osc_slot, tap, outputs, overrides);
             add_key_output_from_action_to_key_pos(osc_slot, hold, outputs, overrides);
+            add_key_output_from_action_to_key_pos(osc_slot, timeout_action, outputs, overrides);
         }
         Action::OneShot(OneShot { action: ac, .. }) => {
             add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);

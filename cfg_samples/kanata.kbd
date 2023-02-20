@@ -2,6 +2,11 @@
 This is a sample configuration file that showcases every feature in kanata.
 If anything is confusing or hard to discover, please file an issue or
 contribute a pull request to help improve the document.
+
+This sample file has documentation but it is lower effort than the configuration
+guide. The configuration guide can be found at:
+
+https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 |#
 
 ;; Single-line comments are prefixed by double-semicolon. A single semicolon
@@ -244,6 +249,15 @@ If you need help, you are welcome to ask.
   grl (tap-hold 200 200 grv @lay) ;; tap: grave  hold: layers layer
   .ms (tap-hold 200 200 . @mse)   ;; tap: .      hold: mouse layer
   ifk (tap-hold 200 200 i @fks)   ;; tap: i      hold: fake keys layer
+
+  ;; There are additional variants of tap-hold-press and tap-hold-release that
+  ;; activate the timeout action (the 5th parameter) when the action times out
+  ;; as opposed to the hold action being activated by other keys.
+
+  ;; tap: o    hold: arrows layer    timeout: backspace
+  oat (tap-hold-press-timeout   200 200 o @arr bspc)
+  ;; tap: e    hold: chords layer    timeout: esc
+  ect (tap-hold-release-timeout 200 200 e @chr esc)
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)

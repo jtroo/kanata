@@ -161,6 +161,8 @@ where
     pub hold: Action<'a, T>,
     /// The tap action.
     pub tap: Action<'a, T>,
+    /// The timeout action
+    pub timeout_action: Action<'a, T>,
     /// Behavior configuration.
     pub config: HoldTapConfig,
     /// Configuration of the tap and hold holds the tap action.

@@ -1021,11 +1021,34 @@ even if the hold timeout hasn't expired yet
 These variants may be useful if you want more responsive tap-hold keys,
 but you should be wary of activating the hold action unintentionally.
 
+Example:
+
 ----
 (defalias
   anm (tap-hold         200 200 a @num) ;; tap: a      hold: numbers layer
   oar (tap-hold-press   200 200 o @arr) ;; tap: o      hold: arrows layer
   ech (tap-hold-release 200 200 e @chr) ;; tap: e      hold: chords layer
+)
+----
+
+There are further additional variants of `tap-hold-press` and `tap-hold-release`:
+
+. `tap-hold-press-timeout`
+. `tap-hold-release-timeout`
+
+These variants take a 5th parameter, in addition to the same 4 as the other
+variants. The 5th parameter is another action, which will activate if the hold
+timeout expires as opposed to being triggered by other key actions, whereas the
+non `-timeout` variants will activate the hold action in both cases.
+
+Example:
+
+----
+(defalias
+  ;; tap: o    hold: arrows layer    timeout: backspace
+  oat (tap-hold-press-timeout   200 200 o @arr bspc)
+  ;; tap: e    hold: chords layer    timeout: esc
+  ect (tap-hold-release-timeout 200 200 e @chr esc)
 )
 ----
 
