@@ -271,6 +271,7 @@ pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     ticks: u16,
     hold: &'a Action<'a, T>,
     tap: &'a Action<'a, T>,
+    timeout_action: &'a Action<'a, T>,
     config: WaitingConfig<'a, T>,
 }
 
@@ -281,6 +282,8 @@ pub enum WaitingAction {
     Hold,
     /// Trigger the tapping event.
     Tap,
+    /// Trigger the timeout event.
+    Timeout,
     /// Drop this event. It will act as if no key was pressed.
     NoOp,
 }
@@ -355,10 +358,10 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             if self.timeout >= self.delay.saturating_sub(since) {
                 Some(WaitingAction::Tap)
             } else {
-                Some(WaitingAction::Hold)
+                Some(WaitingAction::Timeout)
             }
         } else if self.timeout == 0 {
-            Some(WaitingAction::Hold)
+            Some(WaitingAction::Timeout)
         } else {
             None
         }
@@ -685,6 +688,23 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             CustomEvent::NoEvent
         }
     }
+    fn waiting_into_timeout(&mut self) -> CustomEvent<'a, T> {
+        if let Some(w) = &self.waiting {
+            let timeout_action = w.timeout_action;
+            let coord = w.coord;
+            let delay = match w.config {
+                WaitingConfig::HoldTap(..) => w.delay + w.ticks,
+                WaitingConfig::TapDance(_) | WaitingConfig::Chord(_) => 0,
+            };
+            self.waiting = None;
+            if coord == self.last_press_tracker.coord {
+                self.last_press_tracker.tap_hold_timeout = 0;
+            }
+            self.do_action(timeout_action, coord, delay, false)
+        } else {
+            CustomEvent::NoEvent
+        }
+    }
     fn drop_waiting(&mut self) -> CustomEvent<'a, T> {
         self.waiting = None;
         CustomEvent::NoEvent
@@ -721,6 +741,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             Some(w) => match w.tick(&mut self.stacked) {
                 Some(WaitingAction::Hold) => self.waiting_into_hold(),
                 Some(WaitingAction::Tap) => self.waiting_into_tap(),
+                Some(WaitingAction::Timeout) => self.waiting_into_timeout(),
                 Some(WaitingAction::NoOp) => self.drop_waiting(),
                 None => CustomEvent::NoEvent,
             },
@@ -921,6 +942,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 timeout,
                 hold,
                 tap,
+                timeout_action,
                 config,
                 tap_hold_interval,
             }) => {
@@ -936,6 +958,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         ticks: 0,
                         hold,
                         tap,
+                        timeout_action,
                         config: WaitingConfig::HoldTap(*config),
                     };
                     self.waiting = Some(waiting);
@@ -971,6 +994,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                             ticks: 0,
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
+                            timeout_action: &Action::NoOp,
                             config: WaitingConfig::TapDance(TapDanceState {
                                 actions: td.actions,
                                 timeout: td.timeout,
@@ -1014,6 +1038,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     ticks: 0,
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
+                    timeout_action: &Action::NoOp,
                     config: WaitingConfig::Chord(chords),
                 });
             }
@@ -1122,12 +1147,66 @@ mod test {
                     timeout: 200,
                     hold: l(1),
                     tap: k(Space),
+                    timeout_action: k(RShift),
                     config: HoldTapConfig::Default,
                     tap_hold_interval: 0,
                 }),
                 HoldTap(&HoldTapAction {
                     timeout: 200,
                     hold: k(LCtrl),
+                    timeout_action: k(LShift),
+                    tap: k(Enter),
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 0,
+                }),
+            ]],
+            [[Trans, m([LCtrl, Enter].as_slice())]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Release(0, 0));
+        for _ in 0..197 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift, Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn basic_hold_tap_timeout() {
+        static LAYERS: Layers<2, 1, 2> = [
+            [[
+                HoldTap(&HoldTapAction {
+                    timeout: 200,
+                    hold: l(1),
+                    tap: k(Space),
+                    timeout_action: l(1),
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 0,
+                }),
+                HoldTap(&HoldTapAction {
+                    timeout: 200,
+                    hold: k(LCtrl),
+                    timeout_action: k(LCtrl),
                     tap: k(Enter),
                     config: HoldTapConfig::Default,
                     tap_hold_interval: 0,
@@ -1170,6 +1249,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 0,
@@ -1177,6 +1257,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 20,
                 hold: k(LCtrl),
+                timeout_action: k(LCtrl),
                 tap: k(Enter),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 0,
@@ -1217,6 +1298,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::HoldOnOtherKeyPress,
                 tap_hold_interval: 0,
@@ -1274,6 +1356,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::PermissiveHold,
                 tap_hold_interval: 0,
@@ -1433,6 +1516,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(Kb1),
+                timeout_action: k(Kb1),
                 tap: k(Kb0),
                 config: HoldTapConfig::Custom(always_tap),
                 tap_hold_interval: 0,
@@ -1440,6 +1524,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(Kb3),
+                timeout_action: k(Kb3),
                 tap: k(Kb2),
                 config: HoldTapConfig::Custom(always_hold),
                 tap_hold_interval: 0,
@@ -1447,6 +1532,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(Kb5),
+                timeout_action: k(Kb5),
                 tap: k(Kb4),
                 config: HoldTapConfig::Custom(always_nop),
                 tap_hold_interval: 0,
@@ -1454,6 +1540,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(Kb7),
+                timeout_action: k(Kb7),
                 tap: k(Kb6),
                 config: HoldTapConfig::Custom(always_none),
                 tap_hold_interval: 0,
@@ -1526,6 +1613,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 200,
@@ -1580,6 +1668,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 200,
@@ -1588,6 +1677,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Enter),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 200,
@@ -1700,6 +1790,7 @@ mod test {
         static LAYERS: Layers<1, 1, 1> = [[[HoldTap(&HoldTapAction {
             timeout: 50,
             hold: k(LAlt),
+            timeout_action: k(LAlt),
             tap: k(Space),
             config: HoldTapConfig::Default,
             tap_hold_interval: 200,
@@ -1742,6 +1833,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 50,
                 hold: k(LAlt),
+                timeout_action: k(LAlt),
                 tap: k(Space),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 200,
@@ -1749,6 +1841,7 @@ mod test {
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(RAlt),
+                timeout_action: k(RAlt),
                 tap: k(Enter),
                 config: HoldTapConfig::Default,
                 tap_hold_interval: 200,
@@ -2123,6 +2216,7 @@ mod test {
                 HoldTap(&HoldTapAction {
                     timeout: 100,
                     hold: k(LAlt),
+                    timeout_action: k(LAlt),
                     tap: k(Space),
                     config: HoldTapConfig::Default,
                     tap_hold_interval: 0,
@@ -2186,6 +2280,7 @@ mod test {
                         &HoldTap(&HoldTapAction {
                             timeout: 100,
                             hold: k(LAlt),
+                            timeout_action: k(LAlt),
                             tap: k(Space),
                             config: HoldTapConfig::Default,
                             tap_hold_interval: 0,
