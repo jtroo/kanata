@@ -57,3 +57,4 @@ interception_driver = ["interception"]
 opt-level = "z"
 lto = "fat"
 panic = "abort"
+codegen-units = 1
