@@ -141,9 +141,8 @@ fn main_impl() -> Result<()> {
 
 fn main() -> Result<()> {
     let ret = main_impl();
-    if let Err(e) = ret {
+    if let Err(ref e) = ret {
         log::error!("{e}\n");
-        std::process::exit(1);
     }
     eprintln!("\nPress any key to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
