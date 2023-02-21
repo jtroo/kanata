@@ -34,8 +34,10 @@ If you need help, you are welcome to ask.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
-  ;; but I didn't find any keyboard device in there in my VM.
-  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+  ;; but I didn't find any keyboard device in there in my VM. If you are on Linux
+  ;; and omit this entry, kanata will try to attach to every device found on your
+  ;; system that seems like a keyboard.
+  ;; linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
 
   ;; If you want to read from multiple devices, separate them by `:`.
   ;; linux-dev /dev/input/<dev1>:/dev/input/<dev2>
