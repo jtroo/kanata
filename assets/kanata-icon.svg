@@ -22,6 +22,15 @@
    inkscape:export-ydpi="300">
   <defs
      id="defs2">
+    <inkscape:path-effect
+       effect="bend_path"
+       id="path-effect4532"
+       is_visible="true"
+       bendpath="m 69.084727,92.411383 c 4.744061,0.06276 9.463891,0.0703 14.149572,0"
+       prop_scale="1.0984142"
+       scale_y_rel="false"
+       vertical="false"
+       bendpath-nodetypes="cc" />
     <linearGradient
        id="linearGradient6540"
        inkscape:collect="always">
@@ -112,11 +121,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="5.656854"
-     inkscape:cx="95.694681"
-     inkscape:cy="76.591843"
+     inkscape:zoom="7.9999996"
+     inkscape:cx="95.351987"
+     inkscape:cy="114.82954"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer2"
+     inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="2560"
      inkscape:window-height="1377"
@@ -308,20 +317,20 @@
        inkscape:export-xdpi="300"
        inkscape:export-ydpi="300"
        sodipodi:nodetypes="csccccccsccccsscc" />
-    <text
+    <g
+       aria-label="K"
        transform="scale(1.0675122,0.93675744)"
-       id="text6517"
-       y="101.97044"
-       x="67.140511"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:27.65107346px;line-height:1.25;font-family:'MS UI Gothic';-inkscape-font-specification:'MS UI Gothic, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient6523);fill-opacity:1;stroke:none;stroke-width:0.69127685;stroke-opacity:0.91372549"
-       xml:space="preserve"
-       inkscape:export-xdpi="300"
-       inkscape:export-ydpi="300"><tspan
+       id="text6517"
+       inkscape:path-effect="#path-effect4532">
+      <path
+         d="m 69.21891,82.268387 c 0.829723,0.114743 1.667617,0.194265 2.415861,0.223216 4e-6,-5.35e-4 -0.06719,9.099311 -0.06718,9.098776 2.313214,-2.067137 5.788172,-5.67719 8.333278,-9.089669 1.162469,-0.05337 2.18133,-0.150623 3.13914,-0.286287 -2.438962,3.180446 -4.288534,5.518276 -7.030273,8.289259 2.288375,4.196722 4.699158,7.989342 7.373866,11.858928 -0.918615,0.14174 -1.865718,0.19792 -2.983151,0.26727 -2.326725,-3.336543 -4.413244,-6.80043 -6.353685,-10.310705 -0.806314,0.789598 -1.616225,1.577363 -2.429358,2.363391 -0.04592,2.651653 -0.09215,5.303303 -0.138681,7.954944 -0.865516,-0.0422 -1.684362,-0.0603 -2.494848,-0.21778 0.07801,-6.717122 0.156352,-13.434235 0.235034,-20.151343 z"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:27.65107346px;font-family:'MS UI Gothic';-inkscape-font-specification:'MS UI Gothic, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient6523);fill-opacity:1;stroke:none;stroke-width:0.69127685;stroke-opacity:0.91372549"
-         y="101.97044"
-         x="67.140511"
-         id="tspan6515"
-         sodipodi:role="line">K</tspan></text>
+         id="path4529"
+         inkscape:original-d="m 69.095681,83.138908 c 0.84364,0.09442 1.697435,0.158516 2.457831,0.17867 l 0.01549,8.283713 c 2.245636,-1.859264 5.822911,-5.24119 8.409445,-8.283713 1.189138,-0.04064 2.229631,-0.118009 3.21356,-0.2286 -2.600618,2.923834 -4.366518,4.91988 -7.178177,7.502804 2.310158,3.838368 4.652985,7.265087 7.220468,10.842798 -0.900616,0.11678 -1.821904,0.15704 -2.916324,0.21183 -2.249216,-3.058967 -4.306899,-6.205241 -6.264696,-9.397047 l -2.406822,2.166524 -0.06646,7.243003 c -0.850337,-0.0313 -1.654174,-0.0393 -2.453295,-0.17291 z"
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="ccccccccccccc" />
+    </g>
     <path
        transform="translate(1.3125e-6)"
        inkscape:connector-curvature="0"
