@@ -25,37 +25,42 @@ pub struct ValidatedArgs {
 }
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about, verbatim_doc_comment)]
+#[command(author, version, verbatim_doc_comment)]
 /// kanata: an advanced software key remapper
 ///
 /// kanata remaps key presses to other keys or complex actions depending on the
 /// configuration for that key. You can find the guide for creating a config
-/// file here:    https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+/// file here:
+///
+///     https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository:     https://github.com/jtroo/kanata
+/// the kanata repository:
+///
+///     https://github.com/jtroo/kanata
 struct Args {
-    /// Configuration file(s) to use with kanata. If not specified, defaults to kanata.kbd in the
-    /// current working directory.
-    #[clap(short, long, default_value = "kanata.kbd")]
+    /// Configuration file(s) to use with kanata. If not specified, defaults to
+    /// kanata.kbd in the current working directory.
+    #[arg(short, long, default_value = "kanata.kbd", verbatim_doc_comment)]
     cfg: Vec<String>,
 
-    /// Port to run the optional TCP server on. If blank, no TCP port will be listened on.
-    #[clap(short, long)]
+    /// Port to run the optional TCP server on. If blank, no TCP port will be
+    /// listened on.
+    #[arg(short, long, verbatim_doc_comment)]
     port: Option<i32>,
 
-    /// Path for the symlink pointing to the newly-created device. If blank, no symlink will be
-    /// created.
+    /// Path for the symlink pointing to the newly-created device. If blank, no
+    /// symlink will be created.
     #[cfg(target_os = "linux")]
-    #[clap(short, long)]
+    #[arg(short, long, verbatim_doc_comment)]
     symlink_path: Option<String>,
 
     /// Enable debug logging.
-    #[clap(short, long)]
+    #[arg(short, long)]
     debug: bool,
 
     /// Enable trace logging; implies --debug as well.
-    #[clap(short, long)]
+    #[arg(short, long)]
     trace: bool,
 }
 
