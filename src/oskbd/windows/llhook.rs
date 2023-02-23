@@ -12,8 +12,9 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
-use crate::custom_action::*;
 use crate::keys::*;
+
+use super::*;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 
@@ -123,16 +124,6 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     }
 }
 
-pub fn send_key(key: InputEvent) {
-    unsafe {
-        let mut inputs: [INPUT; 1] = mem::zeroed();
-        let kb_input = key_input_from_event(key);
-        inputs[0].type_ = INPUT_KEYBOARD;
-        *inputs[0].u.ki_mut() = kb_input;
-        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
-    }
-}
-
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
@@ -142,7 +133,7 @@ impl KbdOut {
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        send_key(event);
+        super::send_key_sendinput(event.code as u16, event.up);
         Ok(())
     }
 
@@ -152,13 +143,7 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        self.write(InputEvent {
-            code,
-            up: match value {
-                KeyValue::Press | KeyValue::Repeat => false,
-                KeyValue::Release => true,
-            },
-        })
+        super::write_code(code as u16, value)
     }
 
     pub fn press_key(&mut self, key: OsCode) -> Result<(), io::Error> {
@@ -278,13 +263,4 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
         *inputs[0].u.mi_mut() = m_input;
         SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
     }
-}
-
-fn key_input_from_event(key: InputEvent) -> KEYBDINPUT {
-    let mut kb_input: KEYBDINPUT = unsafe { mem::zeroed() };
-    if key.up {
-        kb_input.dwFlags |= KEYEVENTF_KEYUP;
-    }
-    kb_input.wVk = key.code as u16;
-    kb_input
 }

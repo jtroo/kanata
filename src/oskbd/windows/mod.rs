@@ -6,6 +6,7 @@ use winapi::um::winuser::*;
 use encode_unicode::CharExt;
 
 use crate::custom_action::*;
+use crate::keys::KeyValue;
 
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;
@@ -78,4 +79,30 @@ fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
         },
     };
     unsafe { SendInput(1, &mut input as LPINPUT, mem::size_of::<INPUT>() as c_int) };
+}
+
+fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
+    send_key_sendinput(
+        code,
+        match value {
+            KeyValue::Press | KeyValue::Repeat => false,
+            KeyValue::Release => true,
+        },
+    );
+    Ok(())
+}
+
+fn send_key_sendinput(code: u16, is_key_up: bool) {
+    unsafe {
+        let mut kb_input: KEYBDINPUT = mem::zeroed();
+        if is_key_up {
+            kb_input.dwFlags |= KEYEVENTF_KEYUP;
+        }
+        kb_input.wVk = code;
+
+        let mut inputs: [INPUT; 1] = mem::zeroed();
+        inputs[0].type_ = INPUT_KEYBOARD;
+        *inputs[0].u.ki_mut() = kb_input;
+        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
+    }
 }

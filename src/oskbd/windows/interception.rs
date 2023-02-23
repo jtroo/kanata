@@ -89,8 +89,8 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_code(&mut self, _code: u32, _value: KeyValue) -> Result<(), io::Error> {
-        unimplemented!("interception-rs can't send arbitrary numbers")
+    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+        super::write_code(code as u16, value)
     }
 
     pub fn notify_can_block(&mut self) -> Result<(), io::Error> {
