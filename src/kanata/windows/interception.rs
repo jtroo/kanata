@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use interception as ic;
 use parking_lot::Mutex;
 use std::sync::mpsc::Sender;
@@ -12,7 +12,6 @@ const HWID_ARR_SZ: usize = 128;
 
 impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
-        let rx = kanata.lock().kbd_out_rx.take().unwrap();
         *MAPPED_KEYS.lock() = kanata.lock().mapped_keys.clone();
         let intrcptn = ic::Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
         intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
@@ -49,17 +48,8 @@ impl Kanata {
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
 
-        let mut can_block = false;
-        let mut empty_channel_iter_count = 0;
         loop {
-            let dev = match (can_block, empty_channel_iter_count) {
-                (true, 100..) => {
-                    can_block = false;
-                    empty_channel_iter_count = 0;
-                    intrcptn.wait()
-                }
-                _ => intrcptn.wait_with_timeout(std::time::Duration::from_millis(1)),
-            };
+            let dev = intrcptn.wait();
             if dev > 0 {
                 let num_strokes = intrcptn.receive(dev, &mut strokes) as usize;
                 for i in 0..num_strokes {
@@ -123,37 +113,6 @@ impl Kanata {
                         _ => {}
                     }
                     tx.send(key_event).unwrap();
-                }
-            }
-
-            match rx.try_recv() {
-                Ok(event) => {
-                    empty_channel_iter_count = 0;
-                    if event.0 {
-                        can_block = true;
-                    } else if !event.0 {
-                        strokes[0] = event.1 .0;
-                        log::debug!("kanata sending {:?} to driver", strokes[0]);
-                        match strokes[0] {
-                            // Note regarding device numbers:
-                            // Keyboard devices are 1-10 and mouse devices are 11-20. Source:
-                            // https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
-                            ic::Stroke::Keyboard { .. } => {
-                                intrcptn.send(1, &strokes[0..1]);
-                            }
-                            ic::Stroke::Mouse { .. } => {
-                                intrcptn.send(11, &strokes[0..1]);
-                            }
-                        }
-                    }
-                }
-                Err(TryRecvError::Disconnected) => {
-                    const ERR: &str = "interception event rx channel disconnected";
-                    log::error!("{ERR}");
-                    bail!(ERR);
-                }
-                Err(TryRecvError::Empty) => {
-                    empty_channel_iter_count += 1;
                 }
             }
         }
