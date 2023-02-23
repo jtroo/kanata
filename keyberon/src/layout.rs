@@ -1051,7 +1051,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
-                for &keycode in v {
+                for &keycode in *v {
                     let _ = self.states.push(NormalKey { coord, keycode });
                 }
                 if !is_oneshot {
@@ -1061,7 +1061,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
                 let mut custom = CustomEvent::NoEvent;
-                for action in v {
+                for action in *v {
                     custom.update(self.do_action(action, coord, delay, is_oneshot));
                 }
                 return custom;
@@ -1127,7 +1127,7 @@ mod test {
     use super::{Event::*, Layout, *};
     use crate::action::Action::*;
     use crate::action::HoldTapConfig;
-    use crate::action::{k, l, m};
+    use crate::action::{k, l};
     use crate::key_code::KeyCode;
     use crate::key_code::KeyCode::*;
     use std::collections::BTreeSet;
@@ -1160,7 +1160,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
             ]],
-            [[Trans, m([LCtrl, Enter].as_slice())]],
+            [[Trans, MultipleKeyCodes(&[LCtrl, Enter].as_slice())]],
         ];
         let mut layout = Layout::new(&LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -1212,7 +1212,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
             ]],
-            [[Trans, m([LCtrl, Enter].as_slice())]],
+            [[Trans, MultipleKeyCodes(&[LCtrl, Enter].as_slice())]],
         ];
         let mut layout = Layout::new(&LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2497,11 +2497,13 @@ mod test {
     fn release_state() {
         static LAYERS: Layers<2, 1, 2> = [
             [[
-                MultipleActions(&[KeyCode(LCtrl), Layer(1)]),
-                MultipleActions(&[KeyCode(LAlt), Layer(1)]),
+                MultipleActions(&(&[KeyCode(LCtrl), Layer(1)] as _)),
+                MultipleActions(&(&[KeyCode(LAlt), Layer(1)] as _)),
             ]],
             [[
-                MultipleActions(&[ReleaseState(ReleasableState::KeyCode(LAlt)), KeyCode(Space)]),
+                MultipleActions(
+                    &(&[ReleaseState(ReleasableState::KeyCode(LAlt)), KeyCode(Space)] as _),
+                ),
                 ReleaseState(ReleasableState::Layer(1)),
             ]],
         ];
