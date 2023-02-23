@@ -21,6 +21,7 @@ part of the project, please be welcome to make a pull request or file an issue.
 == Table of contents
 toc::[]
 
+[[comments]]
 == Comments
 <<table-of-contents,Back to ToC>>
 
@@ -44,8 +45,10 @@ a multi-line comment block
 |#
 ----
 
+[[required-configuration-entries]]
 == Required configuration entries
 
+[[defcfg]]
 === defcfg
 <<table-of-contents,Back to ToC>>
 
@@ -60,6 +63,7 @@ Example:
 (defcfg)
 ----
 
+[[defsrc]]
 === defsrc
 <<table-of-contents,Back to ToC>>
 
@@ -94,6 +98,7 @@ approximately 60% keyboard layout:
 
 For non-US keyboards, see <<non-us-keyboards,this section>>.
 
+[[deflayer]]
 === deflayer
 <<table-of-contents,Back to ToC>>
 
@@ -131,6 +136,7 @@ would be:
 )
 ----
 
+[[review-of-required-configuration-entries]]
 === Review of required configuration entries
 <<table-of-contents,Back to ToC>>
 
@@ -153,6 +159,7 @@ An example minimal configuration is:
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
 certainly undesirable but is a valid configuration.
 
+[[non-us-keyboards]]
 == Non-US keyboards
 <<table-of-contents,Back to ToC>>
 
@@ -172,7 +179,7 @@ Only one of each deflocalkeys-* variant is allowed. The variants that are not
 applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
 are both ignored when using the default Windows kanata binary.
 
-You can find configurations that others have made in xref:locales.adoc[this
+You can find configurations that others have made in https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this
 document]. If you do not see your keyboard there and are not confident in using
 the available tools, please feel welcome to ask for help in a discussion or issue.
 Please contribute to the document if you are able!
@@ -212,14 +219,16 @@ keys may agree but others may not; do be aware that they are **not** compatible!
 
 Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and
-help with xref:locales.adoc[this document] is very welcome so that future
+help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document] is very welcome so that future
 users can have an easier time 🙂.
 
+[[optional-defcfg-entries]]
 == Optional defcfg entries
 
 There are a few `defcfg` entries that are used to customize various kanata
 behaviours.
 
+[[process-unmapped-keys]]
 === process-unmapped-keys
 <<table-of-contents,Back to ToC>>
 
@@ -242,6 +251,7 @@ Example:
 )
 ----
 
+[[danger-enable-cmd]]
 === danger-enable-cmd
 <<table-of-contents,Back to ToC>>
 
@@ -264,6 +274,7 @@ Example:
 )
 ----
 
+[[sequence-timeout]]
 === sequence-timeout
 <<table-of-contents,Back to ToC>>
 
@@ -278,6 +289,7 @@ Example:
 )
 ----
 
+[[sequence-input-mode]]
 === sequence-input-mode
 <<table-of-contents,Back to ToC>>
 
@@ -309,6 +321,7 @@ Example:
 )
 ----
 
+[[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
 
@@ -342,6 +355,7 @@ its file name, you must escape those colons with backslashes:
 )
 ----
 
+[[linux-only-linux-continue-if-no-devs-found]]
 === Linux only: linux-continue-if-no-devs-found
 <<table-of-contents,Back to ToC>>
 
@@ -356,6 +370,7 @@ Example:
 )
 ----
 
+[[linux-only-linux-unicode-u-code]]
 === Linux only: linux-unicode-u-code
 <<table-of-contents,Back to ToC>>
 
@@ -379,6 +394,7 @@ Example:
 )
 ----
 
+[[linux-only-linux-unicode-termination]]
 === Linux only: linux-unicode-termination
 <<table-of-contents,Back to ToC>>
 
@@ -396,6 +412,7 @@ some applications. The termination is configurable with the following options:
 )
 ----
 
+[[windows-only-windows-altgr]]
 === Windows only: windows-altgr
 <<table-of-contents,Back to ToC>>
 
@@ -423,6 +440,7 @@ NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may 
 work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv
 
+[[windows-only--windows-interception-mouse-hwid]]
 === Windows only: windows-interception-mouse-hwid
 <<table-of-contents,Back to ToC>>
 
@@ -449,6 +467,7 @@ Example:
 )
 ----
 
+[[using-multiple-defcfg-entries]]
 === Using multiple defcfg entries
 <<table-of-contents,Back to ToC>>
 
@@ -480,6 +499,7 @@ a non-applicable operating system.
 )
 ----
 
+[[aliases]]
 == Aliases
 <<table-of-contents,Back to ToC>>
 
@@ -545,11 +565,13 @@ Example:
 )
 ----
 
+[[actions]]
 == Actions
 
 The actions kanata provides are what make it truly customizable. This section
 explains the available actions.
 
+[[live-reload]]
 === Live reload
 <<table-of-contents,Back to ToC>>
 
@@ -585,6 +607,7 @@ Example specifying multiple config files in the command line:
 kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
 ----
 
+[[repeat-key]]
 === Repeat key
 <<table-of-contents,Back to ToC>>
 
@@ -601,6 +624,7 @@ Example:
 )
 ----
 
+[[layer-switch]]
 === layer-switch
 <<table-of-contents,Back to ToC>>
 
@@ -617,6 +641,7 @@ Example:
 (defalias dvk (layer-switch dvorak))
 ----
 
+[[layer-while-held]]
 === layer-while-held
 <<table-of-contents,Back to ToC>>
 
@@ -637,6 +662,7 @@ You may also use `layer-toggle` in place of `layer-while-held`; they behave
 exactly the same. The `layer-toggle` name is slightly shorter but is a bit
 inaccurate with regards to its meaning.
 
+[[transparent-key]]
 === Transparent key
 <<table-of-contents,Back to ToC>>
 
@@ -658,6 +684,7 @@ Example:
 )
 ----
 
+[[no-op]]
 === No-op
 <<table-of-contents,Back to ToC>>
 
@@ -674,6 +701,7 @@ Example:
 )
 ----
 
+[[unicode]]
 === Unicode
 <<table-of-contents,Back to ToC>>
 
@@ -698,6 +726,7 @@ NOTE: If using Linux, make sure to look at the
 )
 ----
 
+[[output-chords-combos]]
 === Output chords/combos
 <<table-of-contents,Back to ToC>>
 
@@ -727,6 +756,7 @@ Example:
 )
 ----
 
+[[release-a-key-or-layer]]
 === Release a key or layer
 <<table-of-contents,Back to ToC>>
 
@@ -741,6 +771,7 @@ directly below.
 There is currently no known practical use case for
 `release-layer`, but it exists nonetheless.
 
+[[multi]]
 === multi
 <<table-of-contents,Back to ToC>>
 
@@ -786,12 +817,14 @@ functionality.
 )
 ----
 
+[[mouse-actions]]
 === Mouse actions
 <<table-of-contents,Back to ToC>>
 
 You can click the left, middle, and right buttons using kanata actions, do
 vertical/horizontal scrolling, and move the mouse.
 
+[[mouse-buttons]]
 ==== Mouse buttons
 <<table-of-contents,Back to ToC>>
 
@@ -832,6 +865,7 @@ The actions are as follows:
 * `mftp`: tap forward mouse button
 * `mbtp`: tap bacward mouse button
 
+[[mouse-wheel]]
 ==== Mouse wheel
 <<table-of-contents,Back to ToC>>
 
@@ -854,6 +888,7 @@ it. Instead, a scroll happens when 120 or more distance units are accumulated.
 This may result in poor scrolling experience so in Linux it is recommended to
 use a distance value that is a multiple of 120.
 
+[[mouse-movement]]
 ==== Mouse movement
 <<table-of-contents,Back to ToC>>
 
@@ -882,6 +917,7 @@ takes (unit: ms) to linearly ramp up from the minimum distance to the maximum
 distance. The third and fourth numbers are the minimum and maximum distances
 (unit: pixels) of each movement.
 
+[[mouse-all-actions-example]]
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
 
@@ -912,6 +948,7 @@ distance. The third and fourth numbers are the minimum and maximum distances
 )
 ----
 
+[[tap-dance]]
 === tap-dance
 <<table-of-contents,Back to ToC>>
 
@@ -958,6 +995,7 @@ In the example below, repeated taps will, in order:
 )
 ----
 
+[[one-shot]]
 === one-shot
 <<table-of-contents,Back to ToC>>
 
@@ -988,6 +1026,7 @@ Example:
 )
 ----
 
+[[tap-hold]]
 === tap-hold
 <<table-of-contents,Back to ToC>>
 
@@ -1052,6 +1091,7 @@ Example:
 )
 ----
 
+[[macro]]
 === macro
 <<table-of-contents,Back to ToC>>
 
@@ -1121,6 +1161,7 @@ and the rest of the macro does not run.
 )
 ----
 
+[[dynamic-macro]]
 === dynamic-macro
 <<table-of-contents,Back to ToC>>
 
@@ -1162,6 +1203,7 @@ Example:
 )
 ----
 
+[[cmd]]
 === cmd
 <<table-of-contents,Back to ToC>>
 
@@ -1201,6 +1243,7 @@ chorded lists are supported. Delays and other actions are not supported.
 )
 ----
 
+[[arbitrary-code]]
 === arbitrary-code
 <<table-of-contents,Back to ToC>>
 
@@ -1221,6 +1264,7 @@ driver.
 )
 ----
 
+[[global-overrides]]
 == Global overrides
 <<table-of-contents,Back to ToC>>
 
@@ -1251,8 +1295,10 @@ Example:
 )
 ----
 
+[[advanced-weird-features]]
 == Advanced/weird features
 
+[[fake-keys]]
 === Fake keys
 <<table-of-contents,Back to ToC>>
 
@@ -1350,6 +1396,7 @@ of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
 key, this won't interrupt a tap dance. However, most other action types,
 notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
 
+[[sequences]]
 === Sequences
 <<table-of-contents,Back to ToC>>
 
@@ -1379,6 +1426,7 @@ Example:
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 
+[[input-chords]]
 === Input chords
 <<table-of-contents,Back to ToC>>
 
@@ -1434,6 +1482,7 @@ and it maps to a tap-hold with a chord as the hold action within, that chord
 key will immediately activate instead of the key needing to be held for the
 timeout period.
 
+[[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
 
