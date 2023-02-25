@@ -338,7 +338,6 @@ impl Kanata {
             }
             KeyValue::Repeat => {
                 let ret = self.handle_repeat(event);
-                self.cur_keys.clear();
                 return ret;
             }
         };
@@ -1021,6 +1020,16 @@ impl Kanata {
     /// corresponding physical key in the configuration. If any of keyberon active keys match any
     /// potential physical key output, write the repeat event to the OS.
     fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
+        let ret = self.handle_repeat_actual(event);
+        // The cur_keys Vec is re-used for processing, for efficiency reasons to avoid allocation.
+        // Unlike prev_keys which has useful info for the next call to handle_time_ticks, cur_keys
+        // can be reused and cleared — it just needs to be empty for the next handle_time_ticks
+        // call.
+        self.cur_keys.clear();
+        ret
+    }
+
+    fn handle_repeat_actual(&mut self, event: &KeyEvent) -> Result<()> {
         if self.sequence_state.is_some() {
             // While in sequence mode, don't send key repeats. I can't imagine it's a helpful use
             // case for someone trying to type in a sequence that they want to rely on key repeats
