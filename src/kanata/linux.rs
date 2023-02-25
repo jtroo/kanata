@@ -26,11 +26,11 @@ impl Kanata {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("{events:?}");
 
-            // Pass-through non-key events
             for in_event in events.into_iter() {
                 let key_event = match KeyEvent::try_from(in_event) {
                     Ok(ev) => ev,
                     _ => {
+                        // Pass-through non-key events
                         let mut kanata = kanata.lock();
                         kanata
                             .kbd_out
@@ -40,9 +40,10 @@ impl Kanata {
                     }
                 };
 
+                check_for_exit(&key_event);
+
                 // Check if this keycode is mapped in the configuration. If it hasn't been mapped, send
                 // it immediately.
-                check_for_exit(&key_event);
                 if !MAPPED_KEYS.lock().contains(&key_event.code) {
                     let mut kanata = kanata.lock();
                     kanata

@@ -73,7 +73,7 @@ impl InputEvent {
 }
 
 thread_local! {
-    pub static INTRCPTN: Interception = Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
+    static INTRCPTN: Interception = Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
 }
 
 /// Handle for writing keys to the OS.
