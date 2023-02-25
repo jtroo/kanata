@@ -37,7 +37,6 @@ impl Kanata {
             };
 
             check_for_exit(&key_event);
-            // unwrap is safe because the KeyEvent conversion above would've returned false otherwise
             let oscode = OsCode::from(input_event.code);
             if !MAPPED_KEYS.lock().contains(&oscode) {
                 return false;
