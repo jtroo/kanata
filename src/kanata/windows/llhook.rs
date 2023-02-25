@@ -13,7 +13,7 @@ static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(Hash
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
     /// and run the native_windows_gui event loop.
-    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop(_kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         // Display debug and panic output when launched from a terminal.
         unsafe {
             use winapi::um::wincon::*;
@@ -22,10 +22,6 @@ impl Kanata {
             }
         };
         native_windows_gui::init()?;
-        {
-            let mut mapped_keys = MAPPED_KEYS.lock();
-            *mapped_keys = kanata.lock().mapped_keys.clone();
-        }
 
         let (preprocess_tx, preprocess_rx) = channel();
         start_event_preprocessor(preprocess_rx, tx);

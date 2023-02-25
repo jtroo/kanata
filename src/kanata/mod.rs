@@ -53,7 +53,6 @@ pub struct Kanata {
     pub kbd_out: KbdOut,
     pub cfg_paths: Vec<PathBuf>,
     pub cur_cfg_idx: usize,
-    pub mapped_keys: cfg::MappedKeys,
     pub key_outputs: cfg::KeyOutputs,
     pub layout: cfg::KanataLayout,
     pub cur_keys: Vec<KeyCode>,
@@ -248,12 +247,13 @@ impl Kanata {
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
             .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
 
+        *MAPPED_KEYS.lock() = cfg.mapped_keys;
+
         Ok(Self {
             kbd_in_paths,
             kbd_out,
             cfg_paths: args.paths.clone(),
             cur_cfg_idx: 0,
-            mapped_keys: cfg.mapped_keys,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
