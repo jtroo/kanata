@@ -12,7 +12,6 @@ const HWID_ARR_SZ: usize = 128;
 
 impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
-        *MAPPED_KEYS.lock() = kanata.lock().mapped_keys.clone();
         let intrcptn = ic::Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
         intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
         let mut strokes = [ic::Stroke::Keyboard {

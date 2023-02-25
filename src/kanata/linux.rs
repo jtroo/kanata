@@ -12,10 +12,6 @@ impl Kanata {
     /// thread.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
-        {
-            let mut mapped_keys = MAPPED_KEYS.lock();
-            *mapped_keys = kanata.lock().mapped_keys.clone();
-        }
 
         let k = kanata.lock();
         let mut kbd_in = match KbdIn::new(&k.kbd_in_paths, k.continue_if_no_devices) {
