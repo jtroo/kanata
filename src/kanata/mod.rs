@@ -1166,7 +1166,6 @@ impl Kanata {
             let err = loop {
                 if kanata.lock().can_block() {
                     log::trace!("blocking on channel");
-                    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
