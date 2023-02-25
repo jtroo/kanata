@@ -309,12 +309,11 @@ impl Kanata {
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
             .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         self.layout = cfg.layout;
-        let mut mapped_keys = MAPPED_KEYS.lock();
-        *mapped_keys = cfg.mapped_keys;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
+        *MAPPED_KEYS.lock() = cfg.mapped_keys;
         log::info!("Live reload successful");
         Ok(())
     }
