@@ -1083,6 +1083,9 @@ impl Kanata {
     }
 
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
+        if tx.is_none() {
+            return;
+        }
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
