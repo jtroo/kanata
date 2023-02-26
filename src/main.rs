@@ -149,7 +149,7 @@ fn main() -> Result<()> {
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
-    eprintln!("\nPress any key to exit");
+    eprintln!("\nPress enter to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
     ret
 }
