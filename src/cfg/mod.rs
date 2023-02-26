@@ -49,7 +49,10 @@ use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
 
-use anyhow::{anyhow, bail, Result};
+mod error;
+use error::*;
+
+use anyhow::anyhow;
 use radix_trie::Trie;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -64,9 +67,55 @@ use sexpr::SExpr;
 
 use self::sexpr::Spanned;
 
+macro_rules! bail {
+    ($err:expr $(,)?) => {
+        return Err(CfgError::from(anyhow!($err)))
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        return Err(CfgError::from(anyhow!($fmt, $($arg)*)))
+    };
+}
+
+macro_rules! bail_expr {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        return Err(error_expr($expr, format!($fmt)))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        return Err(error_expr($expr, format!($fmt, $($arg)*)))
+    };
+}
+
+macro_rules! bail_span {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        return Err(error_spanned($expr, format!($fmt)))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        return Err(error_spanned($expr, format!($fmt, $($arg)*)))
+    };
+}
+
+macro_rules! anyhow_expr {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        error_expr($expr, format!($fmt))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        error_expr($expr, format!($fmt, $($arg)*))
+    };
+}
+
+macro_rules! anyhow_span {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        error_spanned($expr, format!($fmt))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        error_spanned($expr, format!($fmt, $($arg)*))
+    };
+}
+
 pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction]>;
 type KLayout =
     Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
+
 pub type BorrowedKLayout<'a> =
     Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
@@ -118,7 +167,7 @@ pub struct Cfg {
 }
 
 /// Parse a new configuration from a file.
-pub fn new_from_file(p: &std::path::Path) -> Result<Cfg> {
+pub fn new_from_file(p: &std::path::Path) -> MResult<Cfg> {
     let (items, mapped_keys, layer_info, key_outputs, layout, sequences, overrides) = parse_cfg(p)?;
     log::info!("config parsed");
     Ok(Cfg {
@@ -238,7 +287,7 @@ fn parse_multiline_comment() {
 #[serial]
 fn disallow_nested_tap_hold() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
         Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
@@ -249,7 +298,7 @@ fn disallow_nested_tap_hold() {
 #[serial]
 fn disallow_ancestor_seq() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid ancestor seq was Ok'd"),
         Err(e) => assert!(e.contains("is contained")),
@@ -260,7 +309,7 @@ fn disallow_ancestor_seq() {
 #[serial]
 fn disallow_descendent_seq() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid descendant seq was Ok'd"),
         Err(e) => assert!(e.contains("contains")),
@@ -271,10 +320,10 @@ fn disallow_descendent_seq() {
 #[serial]
 fn disallow_multiple_waiting_actions() {
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid multiple waiting actions Ok'd"),
-        Err(e) => assert!(dbg!(e).contains("cannot combine multiple")),
+        Err(e) => assert!(e.contains("cannot combine multiple")),
     }
 }
 
@@ -287,7 +336,7 @@ pub struct LayerInfo {
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(
     p: &std::path::Path,
-) -> Result<(
+) -> MResult<(
     HashMap<String, String>,
     MappedKeys,
     Vec<LayerInfo>,
@@ -297,8 +346,10 @@ fn parse_cfg(
     Overrides,
 )> {
     let mut s = ParsedState::default();
-    let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
-
+    let (cfg, src, layer_info, klayers, seqs, overrides) = match parse_cfg_raw(p, &mut s) {
+        Ok(v) => v,
+        Err(e) => return Err(error_with_source(e.into(), &s)),
+    };
     Ok((
         cfg,
         src,
@@ -329,24 +380,28 @@ fn parse_cfg_raw(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let text = std::fs::read_to_string(p)?;
+    let text = std::fs::read_to_string(p).map_err(|e| anyhow!("{e}"))?;
+    s.cfg_filename = p.to_string_lossy().to_string();
+    s.cfg_text = text.clone();
+    let spanned_root_exprs = sexpr::parse(&text).map_err(|(help_msg, start, len)| CfgError {
+        err_span: Some(span_start_len(start, len)),
+        help_msg,
+    })?;
 
-    let spanned_root_exprs = sexpr::parse(&text)?;
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
-    error_on_unknown_top_level_atoms(&root_exprs)?;
+    error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
 
     let cfg_expr = root_exprs
         .iter()
         .find(gen_first_atom_filter("defcfg"))
-        .ok_or_else(|| anyhow!("defcfg is missing from the configuration"))?;
-    if root_exprs
+        .ok_or_else(|| anyhow!("Exactly one defcfg must exist, found none"))?;
+    if let Some(spanned) = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defcfg"))
-        .count()
-        > 1
+        .filter(gen_first_atom_filter_spanned("defcfg"))
+        .nth(1)
     {
-        bail!("Only one defcfg is allowed in the configuration")
+        bail_span!(spanned, "Exactly one defcfg must exist, found more")
     }
     let cfg = parse_defcfg(cfg_expr)?;
 
@@ -357,41 +412,47 @@ fn parse_cfg_raw(
     {
         result?;
     }
-    if root_exprs
+    if let Some(spanned) = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_filter(DEF_LOCAL_KEYS))
-        .count()
-        > 1
+        .filter(gen_first_atom_filter_spanned(DEF_LOCAL_KEYS))
+        .nth(1)
     {
-        bail!("Only one defcustomkeys is allowed in the configuration")
+        bail_span!(spanned, "Only one {DEF_LOCAL_KEYS} is allowed, found more")
     }
 
     let src_expr = root_exprs
         .iter()
         .find(gen_first_atom_filter("defsrc"))
-        .ok_or_else(|| anyhow!("defsrc is missing from the configuration"))?;
-    if root_exprs
+        .ok_or_else(|| anyhow!("Exactly one defsrc must exist; found none"))?;
+    if let Some(spanned) = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defsrc"))
-        .count()
-        > 1
+        .filter(gen_first_atom_filter_spanned("defsrc"))
+        .nth(1)
     {
-        bail!("Only one defsrc is allowed in the configuration")
+        bail_span!(spanned, "Exactly one defsrc is allowed, found more")
     }
     let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
     let deflayer_filter = gen_first_atom_filter("deflayer");
-    let layer_exprs = root_exprs
+    let layer_exprs = spanned_root_exprs
         .iter()
-        .filter(&deflayer_filter)
+        .filter(gen_first_atom_filter_spanned("deflayer"))
         .cloned()
         .collect::<Vec<_>>();
-
     if layer_exprs.is_empty() {
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
     if layer_exprs.len() > MAX_LAYERS {
-        bail!("Exceeded the maximum layer count of {}", MAX_LAYERS)
+        let spanned = spanned_root_exprs
+            .iter()
+            .filter(gen_first_atom_filter_spanned("deflayer"))
+            .nth(MAX_LAYERS)
+            .unwrap();
+        bail_span!(
+            spanned,
+            "Exceeded the maximum number of layers ({MAX_LAYERS}), the layer shown is #{}",
+            MAX_LAYERS + 1
+        )
     }
 
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
@@ -436,12 +497,20 @@ fn parse_cfg_raw(
         .collect::<Vec<_>>();
     let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order, s);
 
+    let layer_exprs = root_exprs
+        .iter()
+        .filter(&deflayer_filter)
+        .cloned()
+        .collect::<Vec<_>>();
+
     *s = ParsedState {
         a: s.a.clone(),
         layer_exprs,
         layer_idxs,
         mapping_order,
         defsrc_layer,
+        cfg_filename: s.cfg_filename.clone(),
+        cfg_text: s.cfg_text.clone(),
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
@@ -463,9 +532,9 @@ fn parse_cfg_raw(
         ..Default::default()
     };
 
-    let chords_exprs = root_exprs
+    let chords_exprs = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defchords"))
+        .filter(gen_first_atom_filter_spanned("defchords"))
         .collect::<Vec<_>>();
     parse_chord_groups(&chords_exprs, s)?;
 
@@ -494,16 +563,29 @@ fn parse_cfg_raw(
     let overrides = match override_exprs.len() {
         0 => Overrides::new(&[]),
         1 => parse_overrides(override_exprs[0])?,
-        len => bail!("Only one defoverrides allowed, found {len}"),
+        _ => {
+            let spanned = spanned_root_exprs
+                .iter()
+                .filter(gen_first_atom_filter_spanned("defoverrides"))
+                .nth(1)
+                .unwrap();
+            bail_span!(spanned, "Only one defoverrides allowed, found a 2nd")
+        }
     };
 
     Ok((cfg, src, layer_info, klayers, sequences, overrides))
 }
 
-fn error_on_unknown_top_level_atoms(exprs: &[Vec<SExpr>]) -> Result<()> {
+fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()> {
     for expr in exprs {
-        expr.first()
-            .ok_or_else(|| anyhow!("found an empty list as a configuration item"))?
+        expr.t
+            .first()
+            .ok_or_else(|| {
+                anyhow_span!(
+                    expr,
+                    "Found empty list as configuration item, you should delete this"
+                )
+            })?
             .atom()
             .map(|a| match a {
                 "defcfg"
@@ -517,12 +599,12 @@ fn error_on_unknown_top_level_atoms(exprs: &[Vec<SExpr>]) -> Result<()> {
                 | "deffakekeys"
                 | "defchords"
                 | "defseq" => Ok(()),
-                _ => bail!("found unknown configuration item: {a}"),
+                _ => bail_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
-                anyhow!(
-                    "found list as first item in a configuration item: {:?}",
-                    expr.first().unwrap()
+                anyhow_expr!(
+                    expr.t.first().unwrap(),
+                    "Invalid: found list as first item in a configuration item"
                 )
             })??;
     }
@@ -539,6 +621,23 @@ fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
             return false;
         }
         if let SExpr::Atom(atom) = &expr[0] {
+            atom.t == a
+        } else {
+            false
+        }
+    }
+}
+
+/// Return a closure that filters a root expression by the content of the first element. The
+/// closure returns true if the first element is an atom that matches the input `a` and false
+/// otherwise.
+fn gen_first_atom_filter_spanned(a: &str) -> impl Fn(&&Spanned<Vec<SExpr>>) -> bool {
+    let a = a.to_owned();
+    move |expr| {
+        if expr.t.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &expr.t[0] {
             atom.t == a
         } else {
             false
@@ -575,7 +674,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         let val = match exprs.next() {
             Some(v) => v,
-            None => bail!("Incorrect number of elements found in defcfg; they should be pairs of keys and values."),
+            None => bail_expr!(key, "Found a defcfg key with missing value"),
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
@@ -586,15 +685,14 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                     )
                     .is_some()
                 {
-                    bail!("duplicate cfg entries for key {}", k.t);
+                    bail_expr!(key, "Duplicate defcfg entry {}", k.t);
                 }
             }
-            (_, _) => {
-                bail!(
-                    "defcfg should only be composed of atoms. Incorrect (k,v) found: {:?},{:?}",
-                    key,
-                    val
-                );
+            (SExpr::List(_), _) => {
+                bail_expr!(key, "Lists are not allowed in defcfg");
+            }
+            (_, SExpr::List(_)) => {
+                bail_expr!(val, "Lists are not allowed in defcfg");
             }
         }
     }
@@ -604,32 +702,44 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
 /// module using the custom keys parsed.
 fn parse_deflocalkeys(expr: &[SExpr]) -> Result<()> {
     let mut cfg = HashMap::default();
-    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?;
+    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?.peekable();
     clear_custom_str_oscode_mapping();
     // Read k-v pairs from the configuration
     loop {
-        let key = match exprs.next() {
+        let key = match exprs.peek() {
             Some(k) => k
                 .atom()
-                .ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} contains a list; no lists are allowed"))?,
+                .ok_or_else(|| anyhow_expr!(k, "No lists are allowed in {DEF_LOCAL_KEYS}"))?,
             None => {
                 replace_custom_str_oscode_mapping(&cfg);
                 return Ok(());
             }
         };
         if str_to_oscode(key).is_some() {
-            bail!("{key} is a default key name in kanata; it cannot be used in {DEF_LOCAL_KEYS}");
+            bail_expr!(
+                exprs.peek().unwrap(),
+                "Cannot use {key} in {DEF_LOCAL_KEYS} because it is a default key name"
+            );
         } else if cfg.contains_key(key) {
-            bail!(
-                "{key} has been defined more than once in {DEF_LOCAL_KEYS}; no duplicates are allowed"
+            bail_expr!(
+                exprs.peek().unwrap(),
+                "Duplicate {key} found in {DEF_LOCAL_KEYS}"
             );
         }
+        let key_expr = exprs.next().unwrap();
         let osc = match exprs.next() {
-            Some(v) => v.atom()
-                .ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} contains a list; no lists are allowed"))
-                .and_then(|osc| osc.parse::<u16>().map_err(|_| anyhow!("{DEF_LOCAL_KEYS} unknown number {osc}")))
-                .and_then(|osc| OsCode::from_u16(osc).ok_or_else(|| anyhow!("{DEF_LOCAL_KEYS} unknown number {osc}")))?,
-            None => bail!("Incorrect number of elements found in {DEF_LOCAL_KEYS}; they should be pairs of keys and numbers."),
+            Some(v) => v
+                .atom()
+                .ok_or_else(|| anyhow_expr!(v, "No lists are allowed in {DEF_LOCAL_KEYS}"))
+                .and_then(|osc| {
+                    osc.parse::<u16>()
+                        .map_err(|_| anyhow_expr!(v, "Unknown number in {DEF_LOCAL_KEYS}: {osc}"))
+                })
+                .and_then(|osc| {
+                    OsCode::from_u16(osc)
+                        .ok_or_else(|| anyhow_expr!(v, "Unknown number in {DEF_LOCAL_KEYS}: {osc}"))
+                })?,
+            None => bail_expr!(key_expr, "Key without a number in {DEF_LOCAL_KEYS}"),
         };
         log::debug!("custom mapping: {key} {}", osc.as_u16());
         cfg.insert(key.to_owned(), osc);
@@ -649,11 +759,12 @@ fn parse_defsrc(
     for expr in exprs {
         let s = match expr {
             SExpr::Atom(a) => &a.t,
-            _ => bail!("No lists allowed in defsrc"),
+            _ => bail_expr!(expr, "No lists allowed in defsrc"),
         };
-        let oscode = str_to_oscode(s).ok_or_else(|| anyhow!("Unknown key in defsrc: \"{}\"", s))?;
+        let oscode = str_to_oscode(s)
+            .ok_or_else(|| anyhow_expr!(expr, "Unknown key in defsrc: \"{}\"", s))?;
         if mkeys.contains(&oscode) {
-            bail!("Repeat declaration of key in defsrc: \"{}\"", s)
+            bail_expr!(expr, "Repeat declaration of key in defsrc: \"{}\"", s)
         }
         mkeys.insert(oscode);
         ordered_codes.push(oscode.into());
@@ -686,20 +797,29 @@ type Aliases = HashMap<String, &'static KanataAction>;
 
 /// Returns layer names and their indexes into the keyberon layout. This also checks that all
 /// layers have the same number of items as the defsrc.
-fn parse_layer_indexes(exprs: &[Vec<SExpr>], expected_len: usize) -> Result<LayerIndexes> {
+fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
     for (i, expr) in exprs.iter().enumerate() {
-        let mut subexprs = check_first_expr(expr.iter(), "deflayer")?;
+        let mut subexprs = check_first_expr(expr.t.iter(), "deflayer")?.peekable();
         let layer_name = subexprs
-            .next()
-            .ok_or_else(|| anyhow!("deflayer requires a name and keys"))?
+            .peek()
+            .ok_or_else(|| {
+                anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
+            })?
             .atom()
-            .ok_or_else(|| anyhow!("layer name after deflayer must be an atom"))?
+            .ok_or_else(|| {
+                anyhow_expr!(
+                    subexprs.peek().unwrap(),
+                    "layer name after deflayer must be a string"
+                )
+            })?
             .to_owned();
+        subexprs.next();
         let num_actions = subexprs.count();
         if num_actions != expected_len {
-            bail!(
-                "layer {} has {} items, but requires {} to match defsrc",
+            bail_span!(
+                expr,
+                "Layer {} has {} item(s), but requires {} to match defsrc",
                 layer_name,
                 num_actions,
                 expected_len
@@ -721,6 +841,8 @@ struct ParsedState {
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
+    cfg_filename: String,
+    cfg_text: String,
     a: Arc<Allocations>,
 }
 
@@ -735,6 +857,8 @@ impl Default for ParsedState {
             fake_keys: Default::default(),
             chord_groups: Default::default(),
             is_cmd_enabled: false,
+            cfg_filename: Default::default(),
+            cfg_text: Default::default(),
             a: unsafe { Allocations::new() },
         }
     }
@@ -756,18 +880,22 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defalias")?;
         // Read k-v pairs from the configuration
-        while let Some(alias) = subexprs.next() {
+        while let Some(alias_expr) = subexprs.next() {
+            let alias = match alias_expr {
+                SExpr::Atom(a) => &a.t,
+                _ => bail_expr!(
+                    alias_expr,
+                    "Alias names cannot be lists. Invalid alias: {:?}",
+                    alias_expr
+                ),
+            };
             let action = match subexprs.next() {
                 Some(v) => v,
-                None => bail!("Incorrect number of elements found in defalias; they should be pairs of aliases and actions."),
-            };
-            let alias = match alias {
-                SExpr::Atom(a) => &a.t,
-                _ => bail!("Alias keys must be atoms. Invalid alias: {:?}", alias),
+                None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
             };
             let action = parse_action(action, s)?;
             if s.aliases.insert(alias.into(), action).is_some() {
-                bail!("Duplicate alias: {}", alias);
+                bail_expr!(alias_expr, "Duplicate alias: {}", alias);
             }
         }
     }
@@ -780,6 +908,12 @@ fn parse_action(expr: &SExpr, s: &ParsedState) -> Result<&'static KanataAction> 
         SExpr::Atom(a) => parse_action_atom(a, s),
         SExpr::List(l) => parse_action_list(&l.t, s),
     }
+    .map_err(|mut e| {
+        if e.err_span.is_none() {
+            e.err_span = Some(expr_err_span(expr))
+        }
+        e
+    })
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a string.
@@ -908,8 +1042,12 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "tap-hold" => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
         "tap-hold-press" => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
         "tap-hold-release" => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
-        "tap-hold-press-timeout" => parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
-        "tap-hold-release-timeout" => parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold),
+        "tap-hold-press-timeout" => {
+            parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
+        }
+        "tap-hold-release-timeout" => {
+            parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
+        }
         "multi" => parse_multi(&ac[1..], s),
         "macro" => parse_macro(&ac[1..], s),
         "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], s),
@@ -941,10 +1079,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "arbitrary-code" => parse_arbitrary_code(&ac[1..], s),
         "cmd" => parse_cmd(&ac[1..], s, CmdType::Standard),
         "cmd-output-keys" => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
-        _ => bail!(
-            "Unknown action type: {}. Valid types:\n\tlayer-switch\n\tlayer-toggle | layer-while-held\n\ttap-hold | tap-hold-press | tap-hold-release\n\tmulti\n\tmacro\n\tunicode\n\tone-shot\n\ttap-dance\n\trelease-key | release-layer\n\tmwheel-up | mwheel-down | mwheel-left | mwheel-right\n\ton-press-fakekey | on-release-fakekey\n\ton-press-fakekey-delay | on-release-fakekey-delay\n\tcmd",
-            ac_type
-        ),
+        _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
 
@@ -985,10 +1120,9 @@ fn parse_tap_hold(
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!(
-            r"tap-hold expects 4 items after it:
-    <tap-timeout> <hold-timeout> <tap-action> <hold-action>
-    got {}:
-    {ac_params:?}",
+            r"tap-hold expects 4 items after it, got {}.
+Params in order:
+<tap-timeout> <hold-timeout> <tap-action> <hold-action>",
             ac_params.len(),
         )
     }
@@ -1018,10 +1152,9 @@ fn parse_tap_hold_timeout(
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
-            r"tap-hold-(press|release)-timeout expects 5 items after it:
-    <tap-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action>,
-    got {}:
-    {ac_params:?}",
+            r"tap-hold-(press|release)-timeout expects 5 items after it, got {}.
+Params in order:
+<tap-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action>",
             ac_params.len(),
         )
     }
@@ -1047,7 +1180,10 @@ fn parse_tap_hold_timeout(
 
 fn parse_timeout(a: &SExpr) -> Result<u16> {
     match a {
-        SExpr::Atom(a) => a.t.parse().map_err(|e| anyhow!("expected integer: {}", e)),
+        SExpr::Atom(a) => {
+            a.t.parse()
+                .map_err(|e| anyhow!("expected integer: {}", e).into())
+        }
         _ => bail!("expected atom, not list for integer"),
     }
 }
@@ -1102,7 +1238,7 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
         .count()
         > 1
     {
-        bail!("cannot combine multiple tap-hold/tap-dance/chord: {ac_params:?}");
+        bail!("cannot combine multiple tap-hold/tap-dance/chord");
     }
 
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(actions)))))
@@ -1365,22 +1501,19 @@ fn parse_cmd(
 }
 
 fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "one-shot expects a timeout (number) followed by an action";
+    const ERR_MSG: &str = "one-shot expects a timeout followed by a key or action";
     if ac_params.len() != 2 {
         bail!(ERR_MSG);
     }
 
-    use std::str::FromStr;
-    let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(&s.t) {
-            Ok(t) => t,
-            Err(e) => {
-                log::error!("{}", e);
-                bail!(ERR_MSG);
-            }
-        },
-        _ => bail!(ERR_MSG),
-    };
+    let timeout = ac_params[0]
+        .atom()
+        .map(str::parse::<u16>)
+        .and_then(|i| match i {
+            Err(_) | Ok(0) => None,
+            Ok(itv) => Some(itv),
+        })
+        .ok_or_else(|| anyhow!("{ERR_MSG}:\nThe timeout should be 1-65535"))?;
 
     let action = parse_action(&ac_params[1], s)?;
     if !matches!(
@@ -1514,21 +1647,21 @@ fn parse_defsrc_layer(
     layer
 }
 
-fn parse_chord_groups(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
-    const MSG: &str = "Incorrect number of elements found in defchords; should be group name, followed by timeout, followed by keys-action pairs.";
+fn parse_chord_groups(exprs: &[&Spanned<Vec<SExpr>>], s: &mut ParsedState) -> Result<()> {
+    const MSG: &str = "Incorrect number of elements found in defchords.\nThere should be the group name, followed by timeout, followed by keys-action pairs";
     for expr in exprs {
-        let mut subexprs = check_first_expr(expr.iter(), "defchords")?;
+        let mut subexprs = check_first_expr(expr.t.iter(), "defchords")?;
         let name = match subexprs.next() {
             Some(SExpr::Atom(a)) => &a.t,
-            _ => bail!(MSG),
+            _ => bail_span!(expr, "{MSG}"),
         };
         let timeout = match subexprs.next() {
             Some(e) => parse_timeout(e)?,
-            None => bail!(MSG),
+            None => bail_span!(expr, "{MSG}"),
         };
         let id = match s.chord_groups.len().try_into() {
             Ok(id) => id,
-            Err(_) => bail!("Maximum number of chord groups exceeded."),
+            Err(_) => bail_span!(expr, "Maximum number of chord groups exceeded."),
         };
         let mut group = ChordGroup {
             id,
@@ -1542,17 +1675,21 @@ fn parse_chord_groups(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> 
         while let Some(keys_expr) = subexprs.next() {
             let action = match subexprs.next() {
                 Some(v) => v,
-                None => bail!(MSG),
+                None => bail_expr!(
+                    keys_expr,
+                    "Key list found without action - add an action for this chord"
+                ),
             };
             let mut keys = match keys_expr {
                 SExpr::List(keys) => keys.t.iter().map(|key| match key {
                     SExpr::Atom(a) => Ok(&a.t),
-                    _ => bail!("Chord keys must be atoms. Invalid key name: {:?}", key),
+                    _ => bail_expr!(
+                        key,
+                        "Chord keys cannot be lists. Invalid key name: {:?}",
+                        key
+                    ),
                 }),
-                _ => bail!(
-                    "Chord must be a list/set of keys, not a single atom: {:?}",
-                    keys_expr
-                ),
+                _ => bail_expr!(keys_expr, "Chord must be a list/set of keys",),
             };
             let mask = keys.try_fold(0, |mask, key| {
                 let key = key?;
@@ -1560,8 +1697,8 @@ fn parse_chord_groups(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> 
                     Some(i) => i,
                     None => {
                         let i = group.keys.len();
-                        if i + 1 >= MAX_CHORD_KEYS {
-                            bail!("Maximum number of keys in a chords group ({MAX_CHORD_KEYS}) exceeded.");
+                        if i + 1 > MAX_CHORD_KEYS {
+                            bail_expr!(keys_expr, "Maximum number of keys in a chords group ({MAX_CHORD_KEYS}) exceeded - found {}", i + 1);
                         }
                         group.keys.push(key.to_owned());
                         i
@@ -1570,11 +1707,11 @@ fn parse_chord_groups(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> 
                 Ok(mask | (1 << index))
             })?;
             if group.chords.insert(mask, action.clone()).is_some() {
-                bail!("Duplicate chord in group {}: {:?}", name, keys_expr);
+                bail_expr!(keys_expr, "Duplicate chord in group {name}");
             }
         }
         if s.chord_groups.insert(name.to_owned(), group).is_some() {
-            bail!("Duplicate chords group: {}", name);
+            bail_span!(expr, "Duplicate chords group: {}", name);
         }
     }
     Ok(())
@@ -1597,7 +1734,7 @@ fn resolve_chord_groups(layers: &mut KanataLayers, s: &ParsedState) -> Result<()
         for (key_index, key) in group.keys.iter().enumerate() {
             let key_mask = 1 << key_index;
             if !group.coords.iter().any(|(_, keys)| keys & key_mask != 0) {
-                bail!("Coord group `{0}` defines unused key `{1}`. Did you forget to bind `(chord {0} {1})`?", group.name, key)
+                bail!("coord group `{0}` defines unused key `{1}`, did you forget to bind `(chord {0} {1})`?", group.name, key)
             }
         }
 
@@ -1749,23 +1886,23 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "deffakekeys")?;
         // Read k-v pairs from the configuration
-        while let Some(key_name) = subexprs.next() {
+        while let Some(key_name_expr) = subexprs.next() {
+            let key_name = match key_name_expr {
+                SExpr::Atom(a) => &a.t,
+                _ => bail_expr!(key_name_expr, "Fake key name must not be a list."),
+            };
             let action = match subexprs.next() {
                 Some(v) => v,
-                None => bail!("Incorrect number of elements found in deffakekeys; they should be pairs of key-names and actions."),
-            };
-            let key_name = match key_name {
-                SExpr::Atom(a) => &a.t,
-                _ => bail!(
-                    "fake key names must be atoms. Invalid key name: {:?}",
-                    key_name
+                None => bail_expr!(
+                    key_name_expr,
+                    "Fake key name has no action - you should add an action."
                 ),
             };
             let action = parse_action(action, s)?;
             let idx = s.fake_keys.len();
             log::trace!("inserting {key_name}->{idx}:{action:?}");
             if s.fake_keys.insert(key_name.into(), (idx, action)).is_some() {
-                bail!("Duplicate fake key: {}", key_name);
+                bail_expr!(key_name_expr, "Duplicate fake key: {}", key_name);
             }
         }
     }
@@ -1799,30 +1936,34 @@ fn parse_fake_key_op_coord_action(
     ac_params: &[SExpr],
     s: &ParsedState,
 ) -> Result<(Coord, FakeKeyAction)> {
-    const ERR_MSG: &str = "fake-key-op expects two parameters: <fake key name> <operation>\n\tvalid operations: tap, press, release";
+    const ERR_MSG: &str =
+        "on-(press|release)-fakekey expects two parameters: <fake key name> <(tap|press|release)>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
     let y = match s.fake_keys.get(match &ac_params[0] {
         SExpr::Atom(fake_key_name) => &fake_key_name.t,
-        _ => bail!(
-            "{ERR_MSG}\n\tinvalid first parameter (list): {:?}",
-            &ac_params[0]
+        _ => bail_expr!(
+            &ac_params[0],
+            "{ERR_MSG}\nA list is not allowed for a fake key name",
         ),
     }) {
         Some((y, _)) => *y as u8, // cast should be safe; checked in `parse_fake_keys`
-        None => bail!("unknown fake key name {:?}", &ac_params[0]),
+        None => bail_expr!(&ac_params[0], "unknown fake key name {:?}", &ac_params[0]),
     };
     let action = match &ac_params[1] {
         SExpr::Atom(op) => match op.t.as_str() {
             "tap" => FakeKeyAction::Tap,
             "press" => FakeKeyAction::Press,
             "release" => FakeKeyAction::Release,
-            _ => bail!("{ERR_MSG}\n\tinvalid second parameter: {:?}", op),
+            _ => bail_expr!(
+                &ac_params[1],
+                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
+            ),
         },
-        _ => bail!(
-            "{ERR_MSG}\n\tinvalid second parameter (list): {:?}",
-            ac_params[1]
+        _ => bail_expr!(
+            &ac_params[1],
+            "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
         ),
     };
     let (x, y) = get_fake_key_coords(y);
@@ -1970,9 +2111,7 @@ fn parse_move_mouse_accel(
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: max_distance should be 1-30000"))?;
     if min_distance > max_distance {
-        return Err(anyhow!(
-            "{ERR_MSG}: min_distance should be less than max_distance"
-        ));
+        bail!("{ERR_MSG}: min_distance should be less than max_distance")
     }
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MoveMouseAccel {
@@ -2061,38 +2200,48 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
 
-        while subexprs.peek().is_some() {
-            let fake_key = subexprs
-                .next()
-                .ok_or_else(|| anyhow!(ERR_MSG))?
-                .atom()
-                .ok_or_else(|| anyhow!("{ERR_MSG}: got a list for fake_key_name"))?;
+        while let Some(fake_key_expr) = subexprs.next() {
+            let fake_key = fake_key_expr.atom().ok_or_else(|| {
+                anyhow_expr!(fake_key_expr, "{ERR_MSG}\nGot a list for fake_key_name")
+            })?;
             if !s.fake_keys.contains_key(fake_key) {
-                bail!("{ERR_MSG}: {fake_key} is not the name of a fake key");
+                bail_expr!(
+                    fake_key_expr,
+                    "{ERR_MSG}\nThe referenced key does not exist: {fake_key}"
+                );
             }
-            let key_seq = subexprs
-                .next()
-                .ok_or_else(|| anyhow!("{ERR_MSG}: missing key_list for {fake_key}"))?
-                .list()
-                .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for key_list"))?;
+            let key_seq_expr = subexprs.next().ok_or_else(|| {
+                anyhow_expr!(fake_key_expr, "{ERR_MSG}\nMissing key_list for {fake_key}")
+            })?;
+            let key_seq = key_seq_expr.list().ok_or_else(|| {
+                anyhow_expr!(key_seq_expr, "{ERR_MSG}\nGot a non-list for key_list")
+            })?;
+            if key_seq.is_empty() {
+                bail_expr!(key_seq_expr, "Key list in defseq cannot be empty");
+            }
             let keycode_seq =
                 key_seq
                     .iter()
                     .try_fold::<_, _, Result<Vec<_>>>(vec![], |mut keys, key| {
                         keys.push(
                             str_to_oscode(key.atom().ok_or_else(|| {
-                                anyhow!("{ERR_MSG}: invalid key in key_list {key:?}")
+                                anyhow_expr!(key, "{ERR_MSG}\nInvalid key in key_list: {key:?}")
                             })?)
                             .map(u16::from) // u16 is sufficient for all keys in the keyberon array
-                            .ok_or_else(|| anyhow!("{ERR_MSG}: invalid key in key_list {key:?}"))?,
+                            .ok_or_else(|| {
+                                anyhow_expr!(key, "{ERR_MSG}\nInvalid key in key_list: {key:?}")
+                            })?,
                         );
                         Ok(keys)
                     })?;
             if sequences.get_ancestor(&keycode_seq).is_some() {
-                bail!("defseq {fake_key} {key_seq:?} has a conflict: its sequence contains an earlier defined sequence");
+                bail_expr!(
+                    key_seq_expr,
+                    "Sequence has a conflict: its sequence contains an earlier defined sequence"
+                );
             }
             if sequences.get_raw_descendant(&keycode_seq).is_some() {
-                bail!("defseq {fake_key} {key_seq:?} has a conflict: its sequence is contained within an earlier defined seqence");
+                bail_expr!(key_seq_expr, "Sequence has a conflict: its sequence is contained within an earlier defined seqence");
             }
             sequences.insert(
                 keycode_seq,

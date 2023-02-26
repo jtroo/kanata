@@ -185,7 +185,10 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
             }
         },
         Err(e) => {
-            log::warn!("{LP} could not parse an S-expression from cmd:\n{stdout}\n{e}");
+            log::warn!(
+                "{LP} could not parse an S-expression from cmd:\n{stdout}\n{}",
+                e.0
+            );
             empty()
         }
     }

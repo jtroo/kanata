@@ -1,9 +1,6 @@
-use std::fmt::Write;
 use std::ops::Index;
 use std::str::Bytes;
 use std::{cmp, iter};
-
-use anyhow::anyhow;
 
 type ParseError = Spanned<String>;
 
@@ -11,19 +8,8 @@ type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
-    start: usize,
-    end: usize,
-}
-
-pub struct LineCol {
-    pub line: u32,
-    pub col: u32,
-}
-
-impl LineCol {
-    pub fn new(line: u32, col: u32) -> LineCol {
-        LineCol { line, col }
-    }
+    pub start: usize,
+    pub end: usize,
 }
 
 impl Span {
@@ -93,6 +79,13 @@ impl SExpr {
         match self {
             SExpr::List(l) => Some(&l.t),
             _ => None,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            SExpr::Atom(a) => a.span,
+            SExpr::List(l) => l.span,
         }
     }
 }
@@ -169,7 +162,9 @@ impl<'a> Lexer<'a> {
             }
         }
         if !found_comment_end {
-            return Some(Err("Unterminated multiline comment".to_string()));
+            return Some(Err(
+                "Unterminated multiline comment. Add |# after the end of your comment.".to_string(),
+            ));
         }
         self.bytes.next();
         None
@@ -237,8 +232,8 @@ impl<'a> Lexer<'a> {
 
 type TopLevel = Spanned<Vec<SExpr>>;
 
-pub fn parse(s: &str) -> anyhow::Result<Vec<TopLevel>> {
-    parse_(s).map_err(|e| anyhow!(pretty_errors(s, vec![e])))
+pub fn parse(cfg: &str) -> Result<Vec<TopLevel>, (String, usize, usize)> {
+    parse_(cfg).map_err(transform_error)
 }
 
 fn parse_(s: &str) -> ParseResult<Vec<TopLevel>> {
@@ -279,81 +274,46 @@ fn parse_with(
             },
         }
     }
-    let Spanned { t: exprs, .. } = stack.pop().unwrap();
+    let Spanned { t: exprs, span: sp } = stack.pop().unwrap();
     if !stack.is_empty() {
-        return Err(Spanned::new(
-            format!("{} Unclosed parentheses", stack.len()),
-            Span::new(s.len().saturating_sub(1), s.len()),
-        ));
-        // bail!("Unclosed parens");
+        return Err(Spanned::new("Unclosed parenthesis".to_string(), sp));
     }
     let exprs = exprs
         .into_iter()
         .map(|expr| match expr {
             SExpr::List(es) => Ok(es),
-            SExpr::Atom(s) => Err(Spanned::new("Top level must be lists".to_string(), s.span)),
+            SExpr::Atom(s) => Err(Spanned::new(
+                "Everything must be in a list".to_string(),
+                s.span,
+            )),
         })
         .collect::<ParseResult<_>>()?;
     Ok(exprs)
 }
 
-struct LineIndex {
-    newlines: Vec<usize>,
+use miette::{Diagnostic, SourceSpan};
+use thiserror::Error;
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Error in configuration file syntax")]
+#[diagnostic()]
+pub struct LexError {
+    // Snippets and highlights can be included in the diagnostic!
+    #[label("Here")]
+    pub err_span: SourceSpan,
+    #[help]
+    pub help_msg: String,
 }
 
-impl LineIndex {
-    pub fn new(s: &str) -> LineIndex {
-        let mut newlines = vec![0];
-        let mut curr_row = 0;
-        for c in s.chars() {
-            let c_len = c.len_utf8();
-            curr_row += c_len;
-            if c == '\n' {
-                newlines.push(curr_row);
-            }
-        }
-
-        LineIndex { newlines }
-    }
-
-    pub fn line_col(&self, offset: usize) -> LineCol {
-        let line = self.newlines.partition_point(|&it| it <= offset) - 1;
-        let line_start_offset = self.newlines[line];
-        let col = offset - line_start_offset;
-        LineCol::new(line as u32, col as u32)
-    }
-
-    pub fn get_line<'a>(&self, s: &'a str, line: usize) -> Option<&'a str> {
-        let &off = self.newlines.get(line)?;
-        Some(
-            self.newlines
-                .get(line + 1)
-                .map(|off2| &s[off..off2 - 1])
-                .unwrap_or_else(|| &s[off..]),
-        )
-    }
-}
-
-fn pretty_error(line_index: &LineIndex, s: &str, e: ParseError) -> String {
-    let line_col_start = line_index.line_col(e.span.start());
-    let line_col_end = line_index.line_col(e.span.end());
-    let padding = line_col_end.line.to_string().len();
-    let mut res = format!("error:\n{}\n", e.t);
-    for line_num in line_col_start.line..line_col_end.line {
-        let line = line_index.get_line(s, line_num as usize).unwrap();
-        let padding = " ".repeat(padding - line_num.to_string().len());
-        write!(res, "{line_num}{padding} | {line}").unwrap();
-    }
-    res
-}
-
-pub fn pretty_errors(s: &str, mut errors: Vec<ParseError>) -> String {
-    let line_index = LineIndex::new(s);
-    errors.sort_by_key(|t| t.span);
-    errors
-        .into_iter()
-        .map(|e| format!("{}\n\n", pretty_error(&line_index, s, e)))
-        .collect()
+/// Returns the error message, start and length.
+fn transform_error(e: ParseError) -> (String, usize, usize) {
+    let start = e.span.start();
+    let end = e.span.end();
+    let mut len = end - start;
+    if e.t.contains("Unterminated multiline comment") {
+        len = 2;
+    };
+    (e.t, start, len)
 }
 
 #[test]

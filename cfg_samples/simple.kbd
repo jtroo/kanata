@@ -73,6 +73,7 @@
 
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
+  bad (tap-hold 200 200 caps lctl)
 )
 
 ;; The `lrld` action stands for "live reload". This will re-parse everything

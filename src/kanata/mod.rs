@@ -182,7 +182,13 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
 impl Kanata {
     /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        let cfg = cfg::new_from_file(&args.paths[0])?;
+        let cfg = match cfg::new_from_file(&args.paths[0]) {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("{e:?}");
+                bail!("failed to parse file");
+            }
+        };
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let intercept_mouse_hwid = cfg
@@ -292,7 +298,13 @@ impl Kanata {
     }
 
     fn do_live_reload(&mut self) -> Result<()> {
-        let cfg = cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx])?;
+        let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("{e:?}");
+                bail!("failed to parse config ffile");
+            }
+        };
         update_kbd_out(&cfg.items, &self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg
