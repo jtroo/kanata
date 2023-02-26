@@ -15,11 +15,11 @@ pub type KanataLayers = Layers<
     KEYS_IN_ROW,
     LAYER_COLUMNS,
     ACTUAL_NUM_LAYERS,
-    &'static [&'static CustomAction],
+    &'static &'static [&'static CustomAction],
 >;
 
-type Row =
-    [kanata_keyberon::action::Action<'static, &'static [&'static CustomAction]>; KEYS_IN_ROW];
+type Row = [kanata_keyberon::action::Action<'static, &'static &'static [&'static CustomAction]>;
+    KEYS_IN_ROW];
 
 pub fn new_layers() -> Box<KanataLayers> {
     let boxed_slice: Box<[[Row; LAYER_COLUMNS]]> = {

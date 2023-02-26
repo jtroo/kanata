@@ -64,10 +64,11 @@ use sexpr::SExpr;
 
 use self::sexpr::Spanned;
 
-pub type KanataAction = Action<'static, &'static [&'static CustomAction]>;
-type KLayout = Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static [&'static CustomAction]>;
+pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction]>;
+type KLayout =
+    Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
 pub type BorrowedKLayout<'a> =
-    Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a [&'a CustomAction]>;
+    Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
 
 pub struct KanataLayout {
@@ -788,83 +789,83 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
         "_" => return Ok(s.a.sref(Action::Trans)),
         "XX" => return Ok(s.a.sref(Action::NoOp)),
         "lrld" => {
-            return Ok(s
-                .a
-                .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReload))))
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::LiveReload)),
+            )))
         }
         "lrld-next" | "lrnx" => {
-            return Ok(s
-                .a
-                .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReloadNext))))
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNext)),
+            )))
         }
         "lrld-prev" | "lrpv" => {
-            return Ok(s
-                .a
-                .sref(Action::Custom(s.a.sref_slice(CustomAction::LiveReloadPrev))))
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::LiveReloadPrev)),
+            )))
         }
         "sldr" => {
-            return Ok(s
-                .a
-                .sref(Action::Custom(s.a.sref_slice(CustomAction::SequenceLeader))))
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader)),
+            )))
         }
         "mlft" | "mouseleft" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::Mouse(Btn::Left)),
+                s.a.sref(s.a.sref_slice(CustomAction::Mouse(Btn::Left))),
             )))
         }
         "mrgt" | "mouseright" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::Mouse(Btn::Right)),
+                s.a.sref(s.a.sref_slice(CustomAction::Mouse(Btn::Right))),
             )))
         }
         "mmid" | "mousemid" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::Mouse(Btn::Mid)),
+                s.a.sref(s.a.sref_slice(CustomAction::Mouse(Btn::Mid))),
             )))
         }
         "mfwd" | "mouseforward" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::Mouse(Btn::Forward)),
+                s.a.sref(s.a.sref_slice(CustomAction::Mouse(Btn::Forward))),
             )))
         }
         "mbck" | "mousebackward" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::Mouse(Btn::Backward)),
+                s.a.sref(s.a.sref_slice(CustomAction::Mouse(Btn::Backward))),
             )))
         }
         "mltp" | "mousetapleft" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::MouseTap(Btn::Left)),
+                s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Left))),
             )))
         }
         "mrtp" | "mousetapright" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::MouseTap(Btn::Right)),
+                s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Right))),
             )))
         }
         "mmtp" | "mousetapmid" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::MouseTap(Btn::Mid)),
+                s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Mid))),
             )))
         }
         "mftp" | "mousetapforward" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::MouseTap(Btn::Forward)),
+                s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Forward))),
             )))
         }
         "mbtp" | "mousetapbackward" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::MouseTap(Btn::Backward)),
+                s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Backward))),
             )))
         }
         "rpt" | "repeat" => {
-            return Ok(s
-                .a
-                .sref(Action::Custom(s.a.sref_slice(CustomAction::Repeat))))
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::Repeat)),
+            )))
         }
         "dynamic-macro-record-stop" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref_slice(CustomAction::DynamicMacroRecordStop),
+                s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecordStop)),
             )))
         }
         _ => {}
@@ -889,7 +890,7 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
             .ok_or_else(|| anyhow!("Could not parse: {ac:?}"))?
             .into(),
     );
-    Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref_vec(keys))))
+    Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref(s.a.sref_vec(keys)))))
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a `SExpr::List`.
@@ -1083,7 +1084,7 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
     }
 
     if !custom_actions.is_empty() {
-        actions.push(Action::Custom(s.a.sref_vec(custom_actions)));
+        actions.push(Action::Custom(s.a.sref(s.a.sref_vec(custom_actions))));
     }
 
     if actions
@@ -1104,7 +1105,7 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
         bail!("cannot combine multiple tap-hold/tap-dance/chord: {ac_params:?}");
     }
 
-    Ok(s.a.sref(Action::MultipleActions(s.a.sref_vec(actions))))
+    Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(actions)))))
 }
 
 #[test]
@@ -1139,7 +1140,7 @@ fn recursive_multi_is_flattened() {
         assert_eq!(
             parsed_multi[3],
             Action::Custom(
-                &[
+                &&[
                     &CustomAction::MouseTap(Btn::Mid),
                     &CustomAction::MouseTap(Btn::Left),
                     &CustomAction::MouseTap(Btn::Right),
@@ -1167,7 +1168,7 @@ fn parse_macro(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
     }
     all_events.shrink_to_fit();
     Ok(s.a.sref(Action::Sequence {
-        events: s.a.sref_vec(all_events),
+        events: s.a.sref(s.a.sref(s.a.sref_vec(all_events))),
     }))
 }
 
@@ -1176,10 +1177,10 @@ fn parse_macro_release_cancel(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     let macro_action = parse_macro(ac_params, s)?;
-    Ok(s.a.sref(Action::MultipleActions(s.a.sref_vec(vec![
+    Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
         *macro_action,
-        Action::Custom(s.a.sref_slice(CustomAction::CancelMacroOnRelease)),
-    ]))))
+        Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnRelease))),
+    ])))))
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -1187,7 +1188,7 @@ fn parse_macro_item<'a>(
     acs: &'a [SExpr],
     s: &ParsedState,
 ) -> Result<(
-    Vec<SequenceEvent<'static, &'static [&'static CustomAction]>>,
+    Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
     &'a [SExpr],
 )> {
     if let Ok(duration) = parse_timeout(&acs[0]) {
@@ -1323,9 +1324,9 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kanata
             if a.t.chars().count() != 1 {
                 bail!(ERR_STR)
             }
-            Ok(s.a.sref(Action::Custom(
+            Ok(s.a.sref(Action::Custom(s.a.sref(
                 s.a.sref_slice(CustomAction::Unicode(a.t.chars().next().unwrap())),
-            )))
+            ))))
         }
         _ => bail!(ERR_STR),
     }
@@ -1356,10 +1357,11 @@ fn parse_cmd(
             bail!("{}, found a list", ERR_STR);
         }
     })?;
-    Ok(s.a.sref(Action::Custom(s.a.sref_slice(match cmd_type {
-        CmdType::Standard => CustomAction::Cmd(cmd),
-        CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
-    }))))
+    Ok(s.a
+        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
+            CmdType::Standard => CustomAction::Cmd(cmd),
+            CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
+        })))))
 }
 
 fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
@@ -1662,7 +1664,7 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
 }
 
 fn fill_chords(
-    chord_groups: &[&'static ChordsGroup<&[&CustomAction]>],
+    chord_groups: &[&'static ChordsGroup<&&[&CustomAction]>],
     action: &KanataAction,
     s: &ParsedState,
 ) -> Option<KanataAction> {
@@ -1713,10 +1715,10 @@ fn fill_chords(
             if new_actions.iter().any(|it| it.is_some()) {
                 let new_actions = new_actions
                     .iter()
-                    .zip(*actions)
+                    .zip(**actions)
                     .map(|(new_ac, ac)| new_ac.unwrap_or(*ac))
                     .collect::<Vec<_>>();
-                Some(Action::MultipleActions(s.a.sref_vec(new_actions)))
+                Some(Action::MultipleActions(s.a.sref(s.a.sref_vec(new_actions))))
             } else {
                 None
             }
@@ -1779,7 +1781,7 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
 fn parse_fake_key_op(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s)?;
     Ok(s.a.sref(Action::Custom(
-        s.a.sref_slice(CustomAction::FakeKey { coord, action }),
+        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
     )))
 }
 
@@ -1788,9 +1790,9 @@ fn parse_on_release_fake_key_op(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s)?;
-    Ok(s.a.sref(Action::Custom(
+    Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
-    )))
+    ))))
 }
 
 fn parse_fake_key_op_coord_action(
@@ -1854,10 +1856,11 @@ fn parse_delay(
         .map(str::parse::<u16>)
         .ok_or_else(|| anyhow!("{ERR_MSG}"))?
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
-    Ok(s.a.sref(Action::Custom(s.a.sref_slice(match is_release {
-        false => CustomAction::Delay(delay),
-        true => CustomAction::DelayOnRelease(delay),
-    }))))
+    Ok(s.a
+        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match is_release {
+            false => CustomAction::Delay(delay),
+            true => CustomAction::DelayOnRelease(delay),
+        })))))
 }
 
 fn parse_mwheel(
@@ -1885,12 +1888,13 @@ fn parse_mwheel(
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref_slice(CustomAction::MWheel {
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::MWheel {
             direction,
             interval,
             distance,
-        }))))
+        },
+    )))))
 }
 
 fn parse_move_mouse(
@@ -1918,12 +1922,13 @@ fn parse_move_mouse(
             _ => None,
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref_slice(CustomAction::MoveMouse {
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::MoveMouse {
             direction,
             interval,
             distance,
-        }))))
+        },
+    )))))
 }
 
 fn parse_move_mouse_accel(
@@ -1969,7 +1974,7 @@ fn parse_move_mouse_accel(
             "{ERR_MSG}: min_distance should be less than max_distance"
         ));
     }
-    Ok(s.a.sref(Action::Custom(s.a.sref_slice(
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MoveMouseAccel {
             direction,
             interval,
@@ -1977,7 +1982,7 @@ fn parse_move_mouse_accel(
             min_distance,
             max_distance,
         },
-    ))))
+    )))))
 }
 
 fn parse_dynamic_macro_record(
@@ -1994,7 +1999,7 @@ fn parse_dynamic_macro_record(
         .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     return Ok(s.a.sref(Action::Custom(
-        s.a.sref_slice(CustomAction::DynamicMacroRecord(key)),
+        s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecord(key))),
     )));
 }
 
@@ -2009,7 +2014,7 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
         .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
     return Ok(s.a.sref(Action::Custom(
-        s.a.sref_slice(CustomAction::DynamicMacroPlay(key)),
+        s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroPlay(key))),
     )));
 }
 
@@ -2115,7 +2120,7 @@ fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
         })
         .ok_or_else(|| anyhow!("{ERR_MSG}: got {:?}", ac_params[0]))?;
     Ok(s.a.sref(Action::Custom(
-        s.a.sref_slice(CustomAction::SendArbitraryCode(code)),
+        s.a.sref(s.a.sref_slice(CustomAction::SendArbitraryCode(code))),
     )))
 }
 

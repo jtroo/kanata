@@ -46,7 +46,7 @@ pub fn set_win_altgr_behaviour(cfg: &cfg::Cfg) -> Result<()> {
     Ok(())
 }
 
-fn state_filter(v: &State<'_, &[&CustomAction]>) -> Option<State<'static, ()>> {
+fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
     match v {
         State::NormalKey { keycode, coord } => Some(State::NormalKey::<()> {
             keycode: *keycode,

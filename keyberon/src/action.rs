@@ -311,9 +311,9 @@ where
     /// Multiple key codes sent at the same time, as if these keys
     /// were pressed at the same time. Useful to send a shifted key,
     /// or complex shortcuts like Ctrl+Alt+Del in a single key press.
-    MultipleKeyCodes(&'a [KeyCode]),
+    MultipleKeyCodes(&'a &'a [KeyCode]),
     /// Multiple actions sent at the same time.
-    MultipleActions(&'a [Action<'a, T>]),
+    MultipleActions(&'a &'a [Action<'a, T>]),
     /// While pressed, change the current layer. That's the classic
     /// Fn key. If several layer actions are hold at the same time,
     /// the last pressed defines the current layer.
@@ -324,7 +324,7 @@ where
     /// A sequence of SequenceEvents
     Sequence {
         /// An array of SequenceEvents that will be triggered (in order)
-        events: &'a [SequenceEvent<'a, T>],
+        events: &'a &'a [SequenceEvent<'a, T>],
     },
     /// Cancels any running sequences
     CancelSequences,
@@ -403,10 +403,4 @@ pub const fn l<T>(layer: usize) -> Action<'static, T> {
 /// layout.
 pub const fn d<T>(layer: usize) -> Action<'static, T> {
     Action::DefaultLayer(layer)
-}
-
-/// A shortcut to create a `Action::MultipleKeyCodes`, useful to
-/// create compact layout.
-pub const fn m<T>(kcs: &[KeyCode]) -> Action<T> {
-    Action::MultipleKeyCodes(kcs)
 }
