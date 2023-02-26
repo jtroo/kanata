@@ -1091,10 +1091,9 @@ impl Kanata {
         }
     }
 
+    /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
+    /// all connected clients.
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
-        if tx.is_none() {
-            return;
-        }
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
