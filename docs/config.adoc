@@ -48,21 +48,6 @@ a multi-line comment block
 [[required-configuration-entries]]
 == Required configuration entries
 
-[[defcfg]]
-=== defcfg
-<<table-of-contents,Back to ToC>>
-
-Your configuration file must have a `defcfg` entry.
-
-It can be empty but there are options that can change kanata's behaviour that
-will be described later.
-
-Example:
-
-----
-(defcfg)
-----
-
 [[defsrc]]
 === defsrc
 <<table-of-contents,Back to ToC>>
@@ -142,15 +127,12 @@ would be:
 
 If you're reading in order, you have now seen all of the required entries:
 
-* `+defcfg+`
 * `+defsrc+`
 * `+deflayer+`
 
 An example minimal configuration is:
 
 ----
-(defcfg)
-
 (defsrc a b c)
 
 (deflayer start 1 2 3)
@@ -225,8 +207,20 @@ users can have an easier time 🙂.
 [[optional-defcfg-entries]]
 == Optional defcfg entries
 
-There are a few `defcfg` entries that are used to customize various kanata
-behaviours.
+[[defcfg]]
+=== defcfg
+<<table-of-contents,Back to ToC>>
+
+Your configuration file may include a single `defcfg` entry.
+
+It can be empty but there are options that can change kanata's behaviour that
+will be described in this section.
+
+Example:
+
+----
+(defcfg)
+----
 
 [[process-unmapped-keys]]
 === process-unmapped-keys

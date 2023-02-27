@@ -392,10 +392,12 @@ fn parse_cfg_raw(
 
     error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
 
-    let cfg_expr = root_exprs
+    let cfg = root_exprs
         .iter()
         .find(gen_first_atom_filter("defcfg"))
-        .ok_or_else(|| anyhow!("Exactly one defcfg must exist, found none"))?;
+        .map(|cfg| parse_defcfg(cfg))
+        .transpose()?
+        .unwrap_or_default();
     if let Some(spanned) = spanned_root_exprs
         .iter()
         .filter(gen_first_atom_filter_spanned("defcfg"))
@@ -406,7 +408,6 @@ fn parse_cfg_raw(
             "Only one defcfg is allowed, found more. Delete the extras."
         )
     }
-    let cfg = parse_defcfg(cfg_expr)?;
 
     if let Some(result) = root_exprs
         .iter()
@@ -686,7 +687,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         let val = match exprs.next() {
             Some(v) => v,
-            None => bail_expr!(key, "Found a defcfg key with missing value"),
+            None => bail_expr!(key, "Found a defcfg key missing a value"),
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
@@ -2212,13 +2213,13 @@ fn parse_overrides(exprs: &[SExpr]) -> Result<Overrides> {
     while let Some(in_keys_expr) = subexprs.next() {
         let in_keys = in_keys_expr
             .list()
-            .ok_or_else(|| anyhow_expr!(in_keys_expr, "input keys must be a list"))?;
+            .ok_or_else(|| anyhow_expr!(in_keys_expr, "Input keys must be a list"))?;
         let out_keys_expr = subexprs
             .next()
-            .ok_or_else(|| anyhow_expr!(in_keys_expr, "missing output keys for input keys"))?;
+            .ok_or_else(|| anyhow_expr!(in_keys_expr, "Missing output keys for input keys"))?;
         let out_keys = out_keys_expr
             .list()
-            .ok_or_else(|| anyhow_expr!(out_keys_expr, "output keys must be a list"))?;
+            .ok_or_else(|| anyhow_expr!(out_keys_expr, "Output keys must be a list"))?;
         let in_keys =
             in_keys
                 .iter()
