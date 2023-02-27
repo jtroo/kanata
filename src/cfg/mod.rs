@@ -401,7 +401,10 @@ fn parse_cfg_raw(
         .filter(gen_first_atom_filter_spanned("defcfg"))
         .nth(1)
     {
-        bail_span!(spanned, "Exactly one defcfg must exist, found more")
+        bail_span!(
+            spanned,
+            "Only one defcfg is allowed, found more. Delete the extras."
+        )
     }
     let cfg = parse_defcfg(cfg_expr)?;
 
@@ -417,7 +420,10 @@ fn parse_cfg_raw(
         .filter(gen_first_atom_filter_spanned(DEF_LOCAL_KEYS))
         .nth(1)
     {
-        bail_span!(spanned, "Only one {DEF_LOCAL_KEYS} is allowed, found more")
+        bail_span!(
+            spanned,
+            "Only one {DEF_LOCAL_KEYS} is allowed, found more. Delete the extras."
+        )
     }
 
     let src_expr = root_exprs
@@ -429,7 +435,10 @@ fn parse_cfg_raw(
         .filter(gen_first_atom_filter_spanned("defsrc"))
         .nth(1)
     {
-        bail_span!(spanned, "Exactly one defsrc is allowed, found more")
+        bail_span!(
+            spanned,
+            "Exactly one defsrc is allowed, found more. Delete the extras."
+        )
     }
     let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
@@ -569,7 +578,10 @@ fn parse_cfg_raw(
                 .filter(gen_first_atom_filter_spanned("defoverrides"))
                 .nth(1)
                 .unwrap();
-            bail_span!(spanned, "Only one defoverrides allowed, found a 2nd")
+            bail_span!(
+                spanned,
+                "Only one defoverrides allowed, found more. Delete the extras."
+            )
         }
     };
 
@@ -702,31 +714,21 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
 /// module using the custom keys parsed.
 fn parse_deflocalkeys(expr: &[SExpr]) -> Result<()> {
     let mut cfg = HashMap::default();
-    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?.peekable();
+    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?;
     clear_custom_str_oscode_mapping();
     // Read k-v pairs from the configuration
-    loop {
-        let key = match exprs.peek() {
-            Some(k) => k
-                .atom()
-                .ok_or_else(|| anyhow_expr!(k, "No lists are allowed in {DEF_LOCAL_KEYS}"))?,
-            None => {
-                replace_custom_str_oscode_mapping(&cfg);
-                return Ok(());
-            }
-        };
+    while let Some(key_expr) = exprs.next() {
+        let key = key_expr
+            .atom()
+            .ok_or_else(|| anyhow_expr!(key_expr, "No lists are allowed in {DEF_LOCAL_KEYS}"))?;
         if str_to_oscode(key).is_some() {
             bail_expr!(
-                exprs.peek().unwrap(),
+                key_expr,
                 "Cannot use {key} in {DEF_LOCAL_KEYS} because it is a default key name"
             );
         } else if cfg.contains_key(key) {
-            bail_expr!(
-                exprs.peek().unwrap(),
-                "Duplicate {key} found in {DEF_LOCAL_KEYS}"
-            );
+            bail_expr!(key_expr, "Duplicate {key} found in {DEF_LOCAL_KEYS}");
         }
-        let key_expr = exprs.next().unwrap();
         let osc = match exprs.next() {
             Some(v) => v
                 .atom()
@@ -744,6 +746,8 @@ fn parse_deflocalkeys(expr: &[SExpr]) -> Result<()> {
         log::debug!("custom mapping: {key} {}", osc.as_u16());
         cfg.insert(key.to_owned(), osc);
     }
+    replace_custom_str_oscode_mapping(&cfg);
+    Ok(())
 }
 
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
@@ -800,21 +804,14 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
     for (i, expr) in exprs.iter().enumerate() {
-        let mut subexprs = check_first_expr(expr.t.iter(), "deflayer")?.peekable();
-        let layer_name = subexprs
-            .peek()
-            .ok_or_else(|| {
-                anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
-            })?
+        let mut subexprs = check_first_expr(expr.t.iter(), "deflayer")?;
+        let layer_expr = subexprs.next().ok_or_else(|| {
+            anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
+        })?;
+        let layer_name = layer_expr
             .atom()
-            .ok_or_else(|| {
-                anyhow_expr!(
-                    subexprs.peek().unwrap(),
-                    "layer name after deflayer must be a string"
-                )
-            })?
+            .ok_or_else(|| anyhow_expr!(layer_expr, "layer name after deflayer must be a string"))?
             .to_owned();
-        subexprs.next();
         let num_actions = subexprs.count();
         if num_actions != expected_len {
             bail_span!(
@@ -1021,7 +1018,7 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
     let (mut keys, unparsed_str) = parse_mod_prefix(ac)?;
     keys.push(
         str_to_oscode(unparsed_str)
-            .ok_or_else(|| anyhow!("Could not parse: {ac:?}"))?
+            .ok_or_else(|| anyhow!("Unknown key/action: {ac:?}"))?
             .into(),
     );
     Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref(s.a.sref_vec(keys)))))
@@ -1096,20 +1093,20 @@ fn parse_layer_toggle(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static K
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
     if ac_params.len() != 1 {
         bail!(
-            "layer actions expect one atom: the layer name. Incorrect value: {:?}",
-            ac_params
+            "Layer actions expect one item: the layer name, found {} items",
+            ac_params.len()
         )
     }
     let layer_name = match &ac_params[0] {
         SExpr::Atom(ln) => &ln.t,
-        _ => bail!(
-            "layer name should be an atom, not a list: {:?}",
-            ac_params[0]
-        ),
+        _ => bail_expr!(&ac_params[0], "layer name should be a string not a list",),
     };
     match layers.get(layer_name) {
         Some(i) => Ok(*i),
-        None => bail!("layer name {} is not declared in any deflayer", layer_name),
+        None => bail_expr!(
+            &ac_params[0],
+            "layer name is not declared in any deflayer: {layer_name}"
+        ),
     }
 }
 
@@ -1126,10 +1123,8 @@ Params in order:
             ac_params.len(),
         )
     }
-    let tap_timeout =
-        parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
-    let hold_timeout =
-        parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let tap_timeout = parse_non_zero_u16(&ac_params[0], "tap timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
     if matches!(tap_action, Action::HoldTap { .. }) {
@@ -1158,10 +1153,8 @@ Params in order:
             ac_params.len(),
         )
     }
-    let tap_timeout =
-        parse_timeout(&ac_params[0]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
-    let hold_timeout =
-        parse_timeout(&ac_params[1]).map_err(|e| anyhow!("invalid tap-timeout: {}", e))?;
+    let tap_timeout = parse_non_zero_u16(&ac_params[0], "tap timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
     let timeout_action = parse_action(&ac_params[4], s)?;
@@ -1178,19 +1171,26 @@ Params in order:
     }))))
 }
 
-fn parse_timeout(a: &SExpr) -> Result<u16> {
-    match a {
-        SExpr::Atom(a) => {
-            a.t.parse()
-                .map_err(|e| anyhow!("expected integer: {}", e).into())
-        }
-        _ => bail!("expected atom, not list for integer"),
-    }
+fn parse_u16(expr: &SExpr, label: &str) -> Result<u16> {
+    expr.atom()
+        .map(str::parse::<u16>)
+        .and_then(|u| u.ok())
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be 0-65535"))
+}
+
+fn parse_non_zero_u16(expr: &SExpr, label: &str) -> Result<u16> {
+    expr.atom()
+        .map(str::parse::<u16>)
+        .and_then(|u| match u {
+            Ok(u @ 1..) => Some(u),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-65535"))
 }
 
 fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
-        bail!("multi expects at least one atom after it")
+        bail!("multi expects at least one item after it")
     }
     let mut actions = Vec::new();
     let mut custom_actions: Vec<&'static CustomAction> = Vec::new();
@@ -1293,7 +1293,7 @@ const MACRO_ERR: &str =
 
 fn parse_macro(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
-        bail!("macro expects at least one atom after it")
+        bail!("macro expects at least one item after it")
     }
     let mut all_events = Vec::with_capacity(256);
     let mut params_remainder = ac_params;
@@ -1327,7 +1327,7 @@ fn parse_macro_item<'a>(
     Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
     &'a [SExpr],
 )> {
-    if let Ok(duration) = parse_timeout(&acs[0]) {
+    if let Ok(duration) = parse_non_zero_u16(&acs[0], "delay") {
         let duration = u32::from(duration);
         return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
     }
@@ -1358,7 +1358,7 @@ fn parse_macro_item<'a>(
         _ => {
             // Try to parse a chorded sub-macro, e.g. S-(tab tab tab)
             if acs.len() < 2 {
-                bail!("{MACRO_ERR}. Invalid value {acs:?}");
+                bail_expr!(&acs[0], "Expected a list after modifier prefix");
             }
             let held_mods = parse_mods_held_for_submacro(&acs[0])?;
             let mut all_events = vec![];
@@ -1371,7 +1371,7 @@ fn parse_macro_item<'a>(
             // Do the submacro
             let submacro = acs[1]
                 .list()
-                .ok_or_else(|| anyhow!("{MACRO_ERR}. Invalid value: {acs:?}"))?;
+                .ok_or_else(|| anyhow_expr!(&acs[1], "{MACRO_ERR}. Invalid value: {acs:?}"))?;
             let mut submacro_remainder = submacro;
             let mut events;
             while !submacro_remainder.is_empty() {
@@ -1393,10 +1393,13 @@ fn parse_macro_item<'a>(
 fn parse_mods_held_for_submacro(held_mods: &SExpr) -> Result<Vec<KeyCode>> {
     let mods = held_mods
         .atom()
-        .ok_or_else(|| anyhow!("{MACRO_ERR}. Invalid value: {held_mods:?}"))?;
+        .ok_or_else(|| anyhow_expr!(held_mods, "{MACRO_ERR}. Invalid value: {held_mods:?}"))?;
     let (mod_keys, unparsed_str) = parse_mod_prefix(mods)?;
     if !unparsed_str.is_empty() {
-        bail!("{MACRO_ERR}. Invalid value: {held_mods:?}");
+        bail_expr!(
+            held_mods,
+            "Invalid value for modifier prefix: {held_mods:?}"
+        );
     }
     Ok(mod_keys)
 }
@@ -1490,7 +1493,7 @@ fn parse_cmd(
             v.push(a.t.trim_matches('"').to_owned());
             Ok(v)
         } else {
-            bail!("{}, found a list", ERR_STR);
+            bail_expr!(p, "{}, this list is not allowed", ERR_STR);
         }
     })?;
     Ok(s.a
@@ -1506,15 +1509,7 @@ fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kanat
         bail!(ERR_MSG);
     }
 
-    let timeout = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|i| match i {
-            Err(_) | Ok(0) => None,
-            Ok(itv) => Some(itv),
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}:\nThe timeout should be 1-65535"))?;
-
+    let timeout = parse_non_zero_u16(&ac_params[0], "timeout")?;
     let action = parse_action(&ac_params[1], s)?;
     if !matches!(
         action,
@@ -1541,17 +1536,7 @@ fn parse_tap_dance(
         bail!(ERR_MSG);
     }
 
-    use std::str::FromStr;
-    let timeout = match &ac_params[0] {
-        SExpr::Atom(s) => match u16::from_str(&s.t) {
-            Ok(t) => t,
-            Err(e) => {
-                log::error!("{}", e);
-                bail!(ERR_MSG);
-            }
-        },
-        _ => bail!(ERR_MSG),
-    };
+    let timeout = parse_non_zero_u16(&ac_params[0], "timeout")?;
     let actions = match &ac_params[1] {
         SExpr::List(tap_dance_actions) => {
             let mut actions = Vec::new();
@@ -1583,13 +1568,14 @@ fn parse_chord(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
     };
     let group = match s.chord_groups.get(name) {
         Some(t) => t,
-        None => bail!("Referenced unknown chord group `{}`.", name),
+        None => bail_expr!(&ac_params[0], "Referenced unknown chord group: {}.", name),
     };
     let chord_key_index = match &ac_params[1] {
         SExpr::Atom(s) => match group.keys.iter().position(|e| e == &s.t) {
             Some(i) => i,
-            None => bail!(
-                "Identifier `{}` is not used in chord group `{}`.",
+            None => bail_expr!(
+                &ac_params[1],
+                r#"Identifier "{}" is not used in chord group "{}"."#,
                 &s.t,
                 name,
             ),
@@ -1611,22 +1597,18 @@ fn parse_chord(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
 fn parse_release_key(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "release-key expects exactly one keycode (e.g. lalt)";
     if ac_params.len() != 1 {
-        bail!(ERR_MSG);
+        bail!("{ERR_MSG}: found {} items", ac_params.len());
     }
     let ac = parse_action(&ac_params[0], s)?;
     match ac {
         Action::KeyCode(kc) => {
             Ok(s.a.sref(Action::ReleaseState(ReleasableState::KeyCode(*kc))))
         }
-        _ => bail!("{}, got {:?}", ERR_MSG, ac),
+        _ => bail_expr!(&ac_params[0], "{}", ERR_MSG),
     }
 }
 
 fn parse_release_layer(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "release-key expects exactly one layer name (e.g. arrows)";
-    if ac_params.len() != 1 {
-        bail!(ERR_MSG);
-    }
     Ok(s.a.sref(Action::ReleaseState(ReleasableState::Layer(
         layer_idx(ac_params, &s.layer_idxs)? * 2 + 1,
     ))))
@@ -1656,7 +1638,7 @@ fn parse_chord_groups(exprs: &[&Spanned<Vec<SExpr>>], s: &mut ParsedState) -> Re
             _ => bail_span!(expr, "{MSG}"),
         };
         let timeout = match subexprs.next() {
-            Some(e) => parse_timeout(e)?,
+            Some(e) => parse_non_zero_u16(e, "timeout")?,
             None => bail_span!(expr, "{MSG}"),
         };
         let id = match s.chord_groups.len().try_into() {
@@ -2004,31 +1986,27 @@ fn parse_delay(
         })))))
 }
 
-fn parse_mwheel(
-    ac_params: &[SExpr],
-    direction: MWheelDirection,
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "mwheel expects two parameters: <interval (ms)> <distance>";
-    if ac_params.len() != 2 {
-        bail!("{ERR_MSG}");
-    }
-    let interval = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|i| match i {
-            Err(_) | Ok(0) => None,
-            Ok(itv) => Some(itv),
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
-    let distance = ac_params[1]
-        .atom()
+fn parse_distance(expr: &SExpr, label: &str) -> Result<u16> {
+    expr.atom()
         .map(str::parse::<u16>)
         .and_then(|d| match d {
             Ok(dist @ 1..=30000) => Some(dist),
             _ => None,
         })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-30000"))
+}
+
+fn parse_mwheel(
+    ac_params: &[SExpr],
+    direction: MWheelDirection,
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "mwheel expects 2 parameters: <interval (ms)> <distance>";
+    if ac_params.len() != 2 {
+        bail!("{ERR_MSG}, found {}", ac_params.len());
+    }
+    let interval = parse_non_zero_u16(&ac_params[0], "interval")?;
+    let distance = parse_distance(&ac_params[1], "distance")?;
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MWheel {
             direction,
@@ -2043,26 +2021,12 @@ fn parse_move_mouse(
     direction: MoveDirection,
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "movemouse expects two parameters: <interval (ms)> <distance (px)>";
+    const ERR_MSG: &str = "movemouse expects 2 parameters: <interval (ms)> <distance (px)>";
     if ac_params.len() != 2 {
-        bail!("{ERR_MSG}");
+        bail!("{ERR_MSG}, found {}", ac_params.len());
     }
-    let interval = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|i| match i {
-            Err(_) | Ok(0) => None,
-            Ok(itv) => Some(itv),
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
-    let distance = ac_params[1]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|d| match d {
-            Ok(dist @ 1..=30000) => Some(dist),
-            _ => None,
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: distance should be 1-30000"))?;
+    let interval = parse_non_zero_u16(&ac_params[0], "interval")?;
+    let distance = parse_distance(&ac_params[1], "distance")?;
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MoveMouse {
             direction,
@@ -2077,41 +2041,15 @@ fn parse_move_mouse_accel(
     direction: MoveDirection,
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "movemouse-accel expects four parameters: <interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>";
     if ac_params.len() != 4 {
-        bail!("{ERR_MSG}");
+        bail!("movemouse-accel expects four parameters, found {}\n<interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>", ac_params.len());
     }
-    let interval = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|i| match i {
-            Err(_) | Ok(0) => None,
-            Ok(itv) => Some(itv),
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: interval should be 1-65535"))?;
-    let accel_time = ac_params[1]
-        .atom()
-        .map(str::parse::<u16>)
-        .ok_or_else(|| anyhow!("{ERR_MSG}: acceleration time should be 0-65535"))?
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
-    let min_distance = ac_params[2]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|d| match d {
-            Ok(dist @ 1..=30000) => Some(dist),
-            _ => None,
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: min_distance should be 1-30000"))?;
-    let max_distance = ac_params[3]
-        .atom()
-        .map(str::parse::<u16>)
-        .and_then(|d| match d {
-            Ok(dist @ 1..=30000) => Some(dist),
-            _ => None,
-        })
-        .ok_or_else(|| anyhow!("{ERR_MSG}: max_distance should be 1-30000"))?;
+    let interval = parse_non_zero_u16(&ac_params[0], "interval")?;
+    let accel_time = parse_non_zero_u16(&ac_params[1], "acceleration time")?;
+    let min_distance = parse_distance(&ac_params[2], "min distance")?;
+    let max_distance = parse_distance(&ac_params[3], "max distance")?;
     if min_distance > max_distance {
-        bail!("{ERR_MSG}: min_distance should be less than max_distance")
+        bail!("min distance should be less than max distance")
     }
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MoveMouseAccel {
@@ -2128,15 +2066,11 @@ fn parse_dynamic_macro_record(
     ac_params: &[SExpr],
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "dynamic-macro-record expects 1 parameter: <macro ID (number 0-65535)>";
+    const ERR_MSG: &str = "dynamic-macro-record expects 1 parameter: <macro ID (0-65535)>";
     if ac_params.len() != 1 {
-        bail!("{ERR_MSG}");
+        bail!("{ERR_MSG}, found {}", ac_params.len());
     }
-    let key = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
+    let key = parse_u16(&ac_params[0], "macro ID")?;
     return Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecord(key))),
     )));
@@ -2145,13 +2079,9 @@ fn parse_dynamic_macro_record(
 fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "dynamic-macro-play expects 1 parameter: <macro ID (number 0-65535)>";
     if ac_params.len() != 1 {
-        bail!("{ERR_MSG}");
+        bail!("{ERR_MSG}, found {}", ac_params.len());
     }
-    let key = ac_params[0]
-        .atom()
-        .map(str::parse::<u16>)
-        .ok_or_else(|| anyhow!("{ERR_MSG}: macro ID should be 1-65535"))?
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
+    let key = parse_u16(&ac_params[0], "macro ID")?;
     return Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroPlay(key))),
     )));
@@ -2276,38 +2206,36 @@ fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
 fn parse_overrides(exprs: &[SExpr]) -> Result<Overrides> {
     const ERR_MSG: &str =
         "defoverrides expects pairs of parameters: <input key list> <output key list>";
-    let mut subexprs = check_first_expr(exprs.iter(), "defoverrides")?.peekable();
+    let mut subexprs = check_first_expr(exprs.iter(), "defoverrides")?;
 
     let mut overrides = Vec::<Override>::new();
-    while subexprs.peek().is_some() {
-        let in_keys = subexprs
-            .next()
-            .ok_or_else(|| anyhow!(ERR_MSG))?
+    while let Some(in_keys_expr) = subexprs.next() {
+        let in_keys = in_keys_expr
             .list()
-            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for input keys"))?;
-        let out_keys = subexprs
+            .ok_or_else(|| anyhow_expr!(in_keys_expr, "input keys must be a list"))?;
+        let out_keys_expr = subexprs
             .next()
-            .ok_or_else(|| anyhow!("{ERR_MSG}: missing output keys for {in_keys:?}"))?
+            .ok_or_else(|| anyhow_expr!(in_keys_expr, "missing output keys for input keys"))?;
+        let out_keys = out_keys_expr
             .list()
-            .ok_or_else(|| anyhow!("{ERR_MSG}: got a non-list for output keys"))?;
-        let in_keys = in_keys
-            .iter()
-            .try_fold(vec![], |mut keys, key| -> Result<Vec<OsCode>> {
-                let key = key
-                    .atom()
-                    .and_then(str_to_oscode)
-                    .ok_or_else(|| anyhow!("{ERR_MSG}: {key:?} is not a known key"))?;
-                keys.push(key);
-                Ok(keys)
-            })?;
+            .ok_or_else(|| anyhow_expr!(out_keys_expr, "output keys must be a list"))?;
+        let in_keys =
+            in_keys
+                .iter()
+                .try_fold(vec![], |mut keys, key_expr| -> Result<Vec<OsCode>> {
+                    let key = key_expr.atom().and_then(str_to_oscode).ok_or_else(|| {
+                        anyhow_expr!(key_expr, "Unknown input key name, must use known keys")
+                    })?;
+                    keys.push(key);
+                    Ok(keys)
+                })?;
         let out_keys =
             out_keys
                 .iter()
-                .try_fold(vec![], |mut keys, key| -> Result<Vec<OsCode>> {
-                    let key = key
-                        .atom()
-                        .and_then(str_to_oscode)
-                        .ok_or_else(|| anyhow!("{ERR_MSG}: {key:?} is not a known key"))?;
+                .try_fold(vec![], |mut keys, key_expr| -> Result<Vec<OsCode>> {
+                    let key = key_expr.atom().and_then(str_to_oscode).ok_or_else(|| {
+                        anyhow_expr!(key_expr, "Unknown output key name, must use known keys")
+                    })?;
                     keys.push(key);
                     Ok(keys)
                 })?;
