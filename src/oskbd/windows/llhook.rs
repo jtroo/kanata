@@ -12,9 +12,8 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
+use crate::custom_action::*;
 use crate::keys::*;
-
-use super::*;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 
@@ -195,7 +194,7 @@ impl KbdOut {
     }
 
     pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
-        super::move_mouse(direction, distance);
+        move_mouse(direction, distance);
         Ok(())
     }
 }
@@ -263,4 +262,36 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
         *inputs[0].u.mi_mut() = m_input;
         SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
     }
+}
+
+fn move_mouse(direction: MoveDirection, distance: u16) {
+    log::debug!("move mouse: {direction:?} {distance:?}");
+    match direction {
+        MoveDirection::Up => move_mouse_xy(0, -i32::from(distance)),
+        MoveDirection::Down => move_mouse_xy(0, i32::from(distance)),
+        MoveDirection::Left => move_mouse_xy(-i32::from(distance), 0),
+        MoveDirection::Right => move_mouse_xy(i32::from(distance), 0),
+    }
+}
+
+fn move_mouse_xy(x: i32, y: i32) {
+    mouse_event(MOUSEEVENTF_MOVE, 0, x, y);
+}
+
+// Taken from Enigo: https://github.com/enigo-rs/enigo
+fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
+    let mut input = INPUT {
+        type_: INPUT_MOUSE,
+        u: unsafe {
+            mem::transmute(MOUSEINPUT {
+                dx,
+                dy,
+                mouseData: data,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            })
+        },
+    };
+    unsafe { SendInput(1, &mut input as LPINPUT, mem::size_of::<INPUT>() as c_int) };
 }
