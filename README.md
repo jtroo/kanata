@@ -133,9 +133,12 @@ otherwise.
 
 - Try it out and let me know what you think. Feel free to file an issue or
   start a discussion.
-- Browse the open issues and help out if you are able and/or would like to.
+- Usability issues and unhelpful error messages are considered bugs that should
+  be fixed. If you encounter any, I would be thankful if you file an issue.
+- Browse the open issues and help out if you are able and/or would like to. If
+  you want to try contributing, feel free to ping jtroo for some pointers.
 - If you know anything about writing a keyboard driver for Windows, starting an
-  open-source alternative to the Interception driver would be lovely
+  open-source alternative to the Interception driver would be lovely.
 
 ## What does the name mean?
 
@@ -146,6 +149,11 @@ the origin of Canada's name.
 There's also PPT✧.
 
 ## Motivation
+
+TLDR: QMK features but for any keyboard, not just fancy mechanical ones.
+
+<details>
+  <summary>Long version</summary>
 
 I have a few keyboards that run [QMK](https://docs.qmk.fm/#/). QMK allows the
 user to customize the functionality of their keyboard to their heart's content.
@@ -176,12 +184,12 @@ in the past.
 
 However, QMK doesn't run everywhere. In fact, it doesn't run on **most**
 hardware you can get. You can't get it to run on a laptop keyboard or any
-mainstream office keyboard out there. I believe that the comfort and
-empowerment QMK provides should be available to anyone with a computer on
-their existing hardware, instead of having to purchase an enthusiast mechanical
-keyboard. (which are admittedly very nice — I own a few — but can be costly)
+mainstream office keyboard. I believe that the comfort and empowerment QMK
+provides should be available to anyone with a computer on their existing
+hardware, instead of having to purchase an enthusiast mechanical keyboard
+(which are admittedly very nice — I own a few — but can be costly).
 
-The best alternative solution that I've found for keyboards that don't run QMK is
+The best alternative solution that I found for keyboards that don't run QMK was
 [kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
 and I recommend it if you want to try something similar.
 
@@ -194,6 +202,7 @@ at the time of writing that make kmonad suboptimal for my personal workflows.
 This project is written in Rust because Rust is my favourite programming
 language and the prior work of the awesome [keyberon crate](https://github.com/TeXitoi/keyberon)
 exists.
+</details>
 
 ## Similar Projects
 
