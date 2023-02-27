@@ -1,8 +1,3 @@
-(defcfg
-  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
-  "pointless cfg entry" "helloworld"
-)
-
 (defsrc
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \

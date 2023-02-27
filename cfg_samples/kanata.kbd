@@ -30,7 +30,8 @@ also hopefully have helpful error messages in case something goes wrong.
 If you need help, you are welcome to ask.
 |#
 
-;; Exactly one defcfg entry is required. This is used for configuration key-pairs.
+;; One defcfg entry may be added if desired. This is used for configuration
+;; key-value pairs that change kanata's behaviour at a global level.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,

@@ -9,24 +9,21 @@ This text between the two pipe+octothorpe sequences is a multi-line comment.
 ;; Double-semicolons are single-line comments.
 
 #|
-Exactly one defcfg entry is required. This is used for configuration key-pairs.
-These configurations change kanata's behaviour at a more global level than the
-other configuration entries.
+One defcfg entry may be added, which is used for configuration key-pairs. These
+configurations change kanata's behaviour at a more global level than the other
+configuration entries.
 |#
 
 (defcfg
   #|
-  Your keyboard device will likely differ from this. If you omit linux-dev on
-  Linux, kanata will try to discover all keyboard-like devices and try to
-  intercept them.
+  This configuration will process all keys pressed inside of kanata, even if
+  they are not mapped in defsrc. This is so that certain actions can activate
+  at the right time for certain input sequences. By default, unmapped keys are
+  not processed through kanata due to a Windows issue related to AltGr. If you
+  use AltGr in your keyboard, you will likely want to follow the simple.kbd
+  file while unmapping lctl and ralt from defsrc.
   |#
-  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
-
-  #|
-  Windows doesn't need any input/output configuration entries; however, there
-  must still be a defcfg entry. You can keep the linux-dev entry or delete
-  it and leave it empty.
-  |#
+  process-unmapped-keys yes
 )
 
 
@@ -38,8 +35,7 @@ are ignored — defsrc and deflayer are treated as lists of keys/actions that ar
 separated by 1 or more whitespace characters.
 
 The reason for mapping the Shift keys is so that they get processed correctly
-by kanata for tap-hold keys. By default, unmapped keys are not processed
-through kanata due to a Windows issue related to AltGr. However, you can add
+by kanata for tap-hold keys.  However, you can add
 the line below to defcfg above to tell kanata to process all keys:
 
   process-unmapped-keys yes

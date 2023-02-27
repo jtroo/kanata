@@ -9,17 +9,6 @@
 ;; also hopefully have helpful error messages in case something goes wrong.
 ;; If you need help, you are welcome to ask.
 
-(defcfg
-  ;; If you are using Windows, you do not need the linux-dev line below, but
-  ;; you still need a defcfg entry. You can leave the linux-dev entry and it
-  ;; will be ignored or you can delete it if desired.
-  ;;
-  ;; Your keyboard device may differ from this. I believe /dev/input/by-id/
-  ;; is preferable; I recall reading that it's less likely to change names on you,
-  ;; but I didn't find any keyboard device in there in my VM.
-  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
-)
-
 ;; Only one defsrc is allowed.
 ;;
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the
