@@ -91,6 +91,10 @@ fn cli_init() -> Result<ValidatedArgs> {
     )])
     .expect("logger can init");
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    log::info!("using LLHOOK+SendInput for keyboard IO");
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    log::info!("using the Interception driver for keyboard IO");
 
     if !cfg_paths[0].exists() {
         bail!(
