@@ -1249,8 +1249,8 @@ a GitHub issue or as a pull request!
 
 WARNING: This is not cross platform!
 
-NOTE: This is currently not supported with Windows when using the interception
-driver.
+WARNING: When using the Interception driver, this action is still sent over
+SendInput.
 
 ----
 (defalias
