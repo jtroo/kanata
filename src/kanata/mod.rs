@@ -78,6 +78,7 @@ pub struct Kanata {
     continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
+    log_layer_changes: bool,
 }
 
 pub struct ScrollState {
@@ -252,6 +253,11 @@ impl Kanata {
             .get(SEQ_INPUT_MODE_CFG_NAME)
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
             .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
+        let log_layer_changes = cfg
+            .items
+            .get("log-layer-changes")
+            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .unwrap_or(true);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
@@ -289,6 +295,7 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
+            log_layer_changes,
         })
     }
 
@@ -320,11 +327,17 @@ impl Kanata {
             .get(SEQ_INPUT_MODE_CFG_NAME)
             .map(|s| SequenceInputMode::try_from_str(s.as_str()))
             .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
+        let log_layer_changes = cfg
+            .items
+            .get("log-layer-changes")
+            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .unwrap_or(true);
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
+        self.log_layer_changes = log_layer_changes;
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         log::info!("Live reload successful");
         Ok(())
@@ -1124,7 +1137,9 @@ impl Kanata {
     }
 
     fn print_layer(&self, layer: usize) {
-        log::info!("Entered layer:\n\n{}", self.layer_info[layer].cfg_text);
+        if self.log_layer_changes {
+            log::info!("Entered layer:\n\n{}", self.layer_info[layer].cfg_text);
+        }
     }
 
     pub fn start_notification_loop(
