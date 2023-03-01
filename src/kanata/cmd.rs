@@ -176,7 +176,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
                 log::warn!("{LP} got zero top-level S-expression from cmd, expected 1:\n{stdout}");
                 empty()
             }
-            1 => from_sexpr(lists.into_iter().next().unwrap().t),
+            1 => from_sexpr(lists.into_iter().next().expect("len 1").t),
             _ => {
                 log::warn!(
                     "{LP} got multiple top-level S-expression from cmd, expected 1:\n{stdout}"

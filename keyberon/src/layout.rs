@@ -877,14 +877,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                             false,
                         );
                         // unwrap is here because tde cannot be ref mut
-                        self.tap_dance_eager.as_mut().unwrap().incr_taps();
+                        self.tap_dance_eager.as_mut().expect("some").incr_taps();
                         custom
 
                     // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
                     // interrupt tap-dance-eager if real key.
                     } else if i == 0 {
                         // unwrap is here because tde cannot be ref mut
-                        self.tap_dance_eager.as_mut().unwrap().set_expired();
+                        self.tap_dance_eager.as_mut().expect("some").set_expired();
                         let action = self.press_as_action((i, j), self.current_layer());
                         self.do_action(action, (i, j), stacked.since, false)
                     } else {

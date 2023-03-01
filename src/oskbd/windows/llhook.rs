@@ -110,8 +110,8 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
         // To access the closure we move it out of the cell and put it back
         // after it returned. For this to work we need to prevent recursion by
         // dropping injected events. Otherwise we would try to take the closure
-        // twice and the `unwrap()` call would fail the second time.
-        let mut hook = state.take().unwrap();
+        // twice and the call would fail the second time.
+        let mut hook = state.take().expect("no recurse");
         handled = hook(key_event);
         state.set(Some(hook));
     });

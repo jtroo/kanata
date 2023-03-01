@@ -35,7 +35,7 @@ fn main() {
     log::info!("successfully connected");
     let writer_stream = kanata_conn
         .try_clone()
-        .unwrap();
+        .expect("clone writer");
     let reader_stream = kanata_conn;
     std::thread::spawn(move || write_to_kanata(writer_stream));
     read_from_kanata(reader_stream);
@@ -57,7 +57,7 @@ fn init_logger(args: &Args) {
         TerminalMode::Mixed,
         ColorChoice::AlwaysAnsi,
     )])
-    .unwrap();
+    .expect("init logger");
     log::info!(
         "kanata_example_tcp_client v{} starting",
         env!("CARGO_PKG_VERSION")

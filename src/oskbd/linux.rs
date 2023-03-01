@@ -41,7 +41,10 @@ impl KbdIn {
         let mut missing_device_paths = None;
         let devices = if !dev_paths.is_empty() {
             missing_device_paths = Some(vec![]);
-            devices_from_input_paths(dev_paths, missing_device_paths.as_mut().unwrap())
+            devices_from_input_paths(
+                dev_paths,
+                missing_device_paths.as_mut().expect("initialized"),
+            )
         } else {
             discover_devices()?
         };
@@ -230,12 +233,15 @@ pub fn is_input_device(device: &Device) -> bool {
             } else {
                 "Mouse"
             },
-            device.name().unwrap(),
+            device.name().unwrap_or("unknown device name"),
             device.physical_path()
         );
         true
     } else {
-        log::trace!("Detected other device: {}", device.name().unwrap());
+        log::trace!(
+            "Detected other device: {}",
+            device.name().unwrap_or("unknown device name")
+        );
         false
     }
 }
@@ -595,12 +601,13 @@ impl Symlink {
 
     fn clean_when_killed(symlink: Self) {
         thread::spawn(|| {
-            let mut signals = Signals::new([SIGINT, SIGTERM]).unwrap();
+            let mut signals = Signals::new([SIGINT, SIGTERM]).expect("signals register");
             for signal in &mut signals {
                 match signal {
                     SIGINT | SIGTERM => {
                         drop(symlink);
-                        signal_hook::low_level::emulate_default_handler(signal).unwrap();
+                        signal_hook::low_level::emulate_default_handler(signal)
+                            .expect("run original sighandlers");
                         unreachable!();
                     }
                     _ => unreachable!(),

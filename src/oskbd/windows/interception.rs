@@ -59,10 +59,11 @@ impl InputEvent {
             },
             flags: MouseFlags::empty(),
             rolling: match direction {
-                // note: unwraps are fine based on checked value of 30000 in cfg.rs
-                MWheelDirection::Up | MWheelDirection::Right => distance.try_into().unwrap(),
+                MWheelDirection::Up | MWheelDirection::Right => {
+                    distance.try_into().expect("checked bound of 30000 in cfg")
+                }
                 MWheelDirection::Down | MWheelDirection::Left => {
-                    -(i16::try_from(distance).unwrap())
+                    -(i16::try_from(distance).expect("checked bound of 30000 in cfg"))
                 }
             },
             x: 0,
