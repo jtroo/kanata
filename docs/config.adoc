@@ -349,6 +349,21 @@ its file name, you must escape those colons with backslashes:
 )
 ----
 
+[[log-layer-changes]]
+=== log-layer-changes
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will log layer changes. However, logging has some processing
+overhead. If you do not care for the logging, you can choose to disable it.
+
+Example:
+
+----
+(defcfg
+  log-layer-changes no
+)
+----
+
 [[linux-only-linux-continue-if-no-devs-found]]
 === Linux only: linux-continue-if-no-devs-found
 <<table-of-contents,Back to ToC>>
@@ -484,6 +499,7 @@ a non-applicable operating system.
   danger-enable-cmd yes
   sequence-timeout 2000
   sequence-input-mode visible-backspaced
+  log-layer-changes no
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-continue-if-no-dev-found yes
   linux-unicode-u-code v
