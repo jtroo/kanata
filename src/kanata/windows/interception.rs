@@ -111,7 +111,7 @@ impl Kanata {
                         }
                         _ => {}
                     }
-                    tx.send(key_event).unwrap();
+                    tx.send(key_event)?;
                 }
             }
         }

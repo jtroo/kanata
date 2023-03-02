@@ -1019,9 +1019,10 @@ impl Kanata {
                             pbtn
                         }
                         CustomAction::SendArbitraryCode(code) => {
-                            self.kbd_out
-                                .write_code(*code as u32, KeyValue::Release)
-                                .unwrap();
+                            if let Err(e) = self.kbd_out.write_code(*code as u32, KeyValue::Release)
+                            {
+                                log::error!("failed to send arbitrary code {e:?}");
+                            }
                             pbtn
                         }
                         _ => pbtn,
@@ -1208,7 +1209,7 @@ impl Kanata {
                             let mut k = kanata.lock();
                             k.last_tick = time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
-                                .unwrap();
+                                .expect("subtract 1ms from current time");
 
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
@@ -1360,7 +1361,7 @@ fn check_for_exit(event: &KeyEvent) {
         #[cfg(target_os = "linux")]
         {
             log::info!("{EXIT_MSG}");
-            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
         }
     }
 }

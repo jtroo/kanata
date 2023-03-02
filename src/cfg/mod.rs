@@ -67,6 +67,11 @@ use sexpr::SExpr;
 
 use self::sexpr::Spanned;
 
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+pub use sexpr::parse;
+
 macro_rules! bail {
     ($err:expr $(,)?) => {
         return Err(CfgError::from(anyhow!($err)))
@@ -186,146 +191,6 @@ pub type MappedKeys = HashSet<OsCode>;
 // chords like `S-b`, we want to ensure that `b` is checked first because key repeat for `b` is
 // useful while it is not useful for shift. The outputs should be iterated over in reverse order.
 pub type KeyOutputs = Vec<HashMap<OsCode, Vec<OsCode>>>;
-
-#[cfg(test)]
-use serial_test::serial;
-
-#[test]
-#[serial]
-fn parse_simple() {
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
-}
-
-#[test]
-#[serial]
-fn parse_minimal() {
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
-}
-
-#[test]
-#[serial]
-fn parse_default() {
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
-}
-
-#[test]
-#[serial]
-fn parse_jtroo() {
-    let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
-    assert_eq!(cfg.layer_info.len(), 16);
-}
-
-#[test]
-#[serial]
-fn parse_f13_f24() {
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
-}
-
-#[test]
-#[serial]
-fn parse_transparent_default() {
-    let mut s = ParsedState::default();
-    let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
-        &std::path::PathBuf::from("./cfg_samples/transparent_default.kbd"),
-        &mut s,
-    )
-    .unwrap();
-
-    assert_eq!(layer_strings.len(), 4);
-
-    assert_eq!(
-        layers[0][0][usize::from(OsCode::KEY_F13)],
-        Action::KeyCode(KeyCode::F13)
-    );
-    assert_eq!(
-        layers[0][0][usize::from(OsCode::KEY_F14)],
-        Action::DefaultLayer(2)
-    );
-    assert_eq!(layers[0][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
-    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F13)], Action::Trans);
-    assert_eq!(
-        layers[1][0][usize::from(OsCode::KEY_F14)],
-        Action::DefaultLayer(2)
-    );
-    assert_eq!(layers[1][0][usize::from(OsCode::KEY_F15)], Action::Layer(3));
-    assert_eq!(
-        layers[2][0][usize::from(OsCode::KEY_F13)],
-        Action::DefaultLayer(0)
-    );
-    assert_eq!(layers[2][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
-    assert_eq!(
-        layers[2][0][usize::from(OsCode::KEY_F15)],
-        Action::KeyCode(KeyCode::F15)
-    );
-    assert_eq!(
-        layers[3][0][usize::from(OsCode::KEY_F13)],
-        Action::DefaultLayer(0)
-    );
-    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
-    assert_eq!(layers[3][0][usize::from(OsCode::KEY_F15)], Action::Trans);
-}
-
-#[test]
-#[serial]
-fn parse_all_keys() {
-    new_from_file(&std::path::PathBuf::from(
-        "./cfg_samples/all_keys_in_defsrc.kbd",
-    ))
-    .unwrap();
-}
-
-#[test]
-#[serial]
-fn parse_multiline_comment() {
-    new_from_file(&std::path::PathBuf::from(
-        "./test_cfgs/multiline_comment.kbd",
-    ))
-    .unwrap();
-}
-
-#[test]
-#[serial]
-fn disallow_nested_tap_hold() {
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
-        .map_err(|e| format!("{e:?}"))
-    {
-        Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
-        Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
-    }
-}
-
-#[test]
-#[serial]
-fn disallow_ancestor_seq() {
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
-        .map_err(|e| format!("{e:?}"))
-    {
-        Ok(_) => panic!("invalid ancestor seq was Ok'd"),
-        Err(e) => assert!(e.contains("is contained")),
-    }
-}
-
-#[test]
-#[serial]
-fn disallow_descendent_seq() {
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
-        .map_err(|e| format!("{e:?}"))
-    {
-        Ok(_) => panic!("invalid descendant seq was Ok'd"),
-        Err(e) => assert!(e.contains("contains")),
-    }
-}
-
-#[test]
-#[serial]
-fn disallow_multiple_waiting_actions() {
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
-        .map_err(|e| format!("{e:?}"))
-    {
-        Ok(_) => panic!("invalid multiple waiting actions Ok'd"),
-        Err(e) => assert!(e.contains("cannot combine multiple")),
-    }
-}
 
 #[derive(Debug)]
 pub struct LayerInfo {
@@ -457,7 +322,7 @@ fn parse_cfg_raw(
             .iter()
             .filter(gen_first_atom_filter_spanned("deflayer"))
             .nth(MAX_LAYERS)
-            .unwrap();
+            .expect(">25 layers");
         bail_span!(
             spanned,
             "Exceeded the maximum number of layers ({MAX_LAYERS}), the layer shown is #{}",
@@ -578,7 +443,7 @@ fn parse_cfg_raw(
                 .iter()
                 .filter(gen_first_atom_filter_spanned("defoverrides"))
                 .nth(1)
-                .unwrap();
+                .expect("> 2 overrides");
             bail_span!(
                 spanned,
                 "Only one defoverrides allowed, found more. Delete the extras."
@@ -596,7 +461,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
             .ok_or_else(|| {
                 anyhow_span!(
                     expr,
-                    "Found empty list as configuration item, you should delete this"
+                    "Found empty list as a configuration item, you should delete this"
                 )
             })?
             .atom()
@@ -616,7 +481,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
             })
             .ok_or_else(|| {
                 anyhow_expr!(
-                    expr.t.first().unwrap(),
+                    expr.t.first().expect("not empty"),
                     "Invalid: found list as first item in a configuration item"
                 )
             })??;
@@ -1245,50 +1110,6 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(actions)))))
 }
 
-#[test]
-fn recursive_multi_is_flattened() {
-    macro_rules! atom {
-        ($e:expr) => {
-            SExpr::Atom(Spanned::new($e.into(), Span::default()))
-        };
-    }
-    macro_rules! list {
-        ($e:tt) => {
-            SExpr::List(Spanned::new(vec! $e, Span::default()))
-        };
-    }
-    use sexpr::*;
-    let params = [
-        atom!("a"),
-        atom!("mmtp"),
-        list!([
-            atom!("multi"),
-            atom!("b"),
-            atom!("mltp"),
-            list!([atom!("multi"), atom!("c"), atom!("mrtp"),])
-        ]),
-    ];
-    let s = ParsedState::default();
-    if let KanataAction::MultipleActions(parsed_multi) = parse_multi(&params, &s).unwrap() {
-        assert_eq!(parsed_multi.len(), 4);
-        assert_eq!(parsed_multi[0], Action::KeyCode(KeyCode::A));
-        assert_eq!(parsed_multi[1], Action::KeyCode(KeyCode::B));
-        assert_eq!(parsed_multi[2], Action::KeyCode(KeyCode::C));
-        assert_eq!(
-            parsed_multi[3],
-            Action::Custom(
-                &&[
-                    &CustomAction::MouseTap(Btn::Mid),
-                    &CustomAction::MouseTap(Btn::Left),
-                    &CustomAction::MouseTap(Btn::Right),
-                ][..]
-            )
-        );
-    } else {
-        panic!("multi did not parse into multi");
-    }
-}
-
 const MACRO_ERR: &str =
     "Action \"macro\" only accepts delays, keys, chords, and chorded sub-macros";
 
@@ -1464,9 +1285,9 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kanata
             if a.t.chars().count() != 1 {
                 bail!(ERR_STR)
             }
-            Ok(s.a.sref(Action::Custom(s.a.sref(
-                s.a.sref_slice(CustomAction::Unicode(a.t.chars().next().unwrap())),
-            ))))
+            Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::Unicode(a.t.chars().next().expect("1 char")),
+            )))))
         }
         _ => bail!(ERR_STR),
     }
@@ -1624,7 +1445,7 @@ fn parse_defsrc_layer(
 
     // These can be default (empty) since the defsrc layer definitely won't use it.
     for (i, ac) in defsrc.iter().skip(1).enumerate() {
-        let ac = parse_action(ac, s).unwrap();
+        let ac = parse_action(ac, s).expect("prechecked valid key names");
         layer[mapping_order[i]] = *ac;
     }
     layer
@@ -2179,7 +2000,7 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
                 s.fake_keys
                     .get(fake_key)
                     .map(|(y, _)| get_fake_key_coords(*y))
-                    .unwrap(),
+                    .expect("fk exists, checked earlier"),
             );
         }
     }

@@ -99,8 +99,8 @@ impl std::fmt::Debug for SExpr {
                 for i in 0..l.t.len() - 1 {
                     write!(f, "{:?} ", &l.t[i])?;
                 }
-                if !l.t.is_empty() {
-                    write!(f, "{:?}", &l.t.last().unwrap())?;
+                if let Some(last) = &l.t.last() {
+                    write!(f, "{last:?}")?;
                 }
                 write!(f, ")")?;
                 Ok(())
@@ -143,7 +143,8 @@ impl<'a> Lexer<'a> {
     fn next_while(&mut self, f: impl Fn(u8) -> bool) {
         for b in self.bytes.clone() {
             if f(b) {
-                self.bytes.next().unwrap();
+                // Iterating over a clone of this iterator - this is guaranteed to be Some
+                self.bytes.next().expect("iter lag");
             } else {
                 break;
             }
@@ -155,7 +156,9 @@ impl<'a> Lexer<'a> {
     fn read_until_multiline_comment_end(&mut self) -> Option<TokenRes> {
         let mut found_comment_end = false;
         for b2 in self.bytes.clone().skip(1) {
-            let b1 = self.bytes.next().unwrap();
+            // Iterating over a clone of this iterator that's 1 item ahead - this is guaranteed to
+            // be Some.
+            let b1 = self.bytes.next().expect("iter lag");
             if b1 == b'|' && b2 == b'#' {
                 found_comment_end = true;
                 break;
@@ -256,7 +259,9 @@ fn parse_with(
                     let Spanned {
                         t: exprs,
                         span: stack_span,
-                    } = stack.pop().unwrap();
+                        // There is a placeholder at the bottom of the stack to allow this unwrap;
+                        // if the stack is ever empty, return an error.
+                    } = stack.pop().expect("placeholder unpopped");
                     let expr = List(Spanned::new(exprs, stack_span.cover(span)));
                     if stack.is_empty() {
                         return Err(Spanned::new(
@@ -264,19 +269,24 @@ fn parse_with(
                             span,
                         ));
                     }
-                    stack.last_mut().unwrap().t.push(expr);
+                    stack.last_mut().expect("not empty").t.push(expr);
                 }
                 StringTok => stack
                     .last_mut()
-                    .unwrap()
+                    .expect("not empty")
                     .t
                     .push(Atom(Spanned::new(s[span].to_string(), span))),
             },
         }
     }
-    let Spanned { t: exprs, span: sp } = stack.pop().unwrap();
+    // There is a placeholder at the bottom of the stack to allow this unwrap; if the stack is ever
+    // empty, return an error.
+    let Spanned { t: exprs, span: sp } = stack.pop().expect("placeholder unpopped");
     if !stack.is_empty() {
-        return Err(Spanned::new("Unclosed parenthesis".to_string(), sp));
+        return Err(Spanned::new(
+            "Unexpected closing parenthesis".to_string(),
+            sp,
+        ));
     }
     let exprs = exprs
         .into_iter()
@@ -314,15 +324,4 @@ fn transform_error(e: ParseError) -> (String, usize, usize) {
         len = 2;
     };
     (e.t, start, len)
-}
-
-#[test]
-fn span_works() {
-    let s = "(hello world my oyster)\n(row two)";
-    let tlevel = parse(s).unwrap();
-    assert_eq!(
-        &s[tlevel[0].span.start..tlevel[0].span.end],
-        "(hello world my oyster)"
-    );
-    assert_eq!(&s[tlevel[1].span.start..tlevel[1].span.end], "(row two)");
 }

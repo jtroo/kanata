@@ -191,7 +191,7 @@ impl Override {
     fn get_mod_mask(&self) -> u8 {
         let mut mask = 0;
         for osc in self.in_mod_oscs.iter().copied() {
-            mask |= mask_for_key(osc).unwrap();
+            mask |= mask_for_key(osc).expect("mod only");
         }
         mask
     }

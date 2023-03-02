@@ -15,15 +15,16 @@
 use std::io::Read;
 
 fn main() {
-    let mut f = std::fs::File::open(std::env::args().nth(1).unwrap()).unwrap();
+    let mut f = std::fs::File::open(std::env::args().nth(1).expect("filename parameter"))
+        .expect("file open");
     let mut s = String::new();
-    f.read_to_string(&mut s).unwrap();
+    f.read_to_string(&mut s).expect("read file");
     let mut keys = s
         .lines()
         .map(|l| {
             let mut segments = l.trim_end_matches(',').trim().split(" = ");
-            let key = segments.next().unwrap();
-            let num: u16 = str::parse(segments.next().unwrap()).unwrap();
+            let key = segments.next().expect("a string");
+            let num: u16 = str::parse(segments.next().expect("string after =")).expect("u16");
             (key.to_owned(), num)
         })
         .collect::<Vec<_>>();
@@ -33,7 +34,7 @@ fn main() {
     let mut prev_key = keys.iter();
     cur_key.next();
     for cur in cur_key {
-        let prev = prev_key.next().unwrap();
+        let prev = prev_key.next().expect("lagging iterator is valid");
         for missing in prev.1 + 1..cur.1 {
             keys_to_add.push((format!("KEY_{missing}"), missing));
         }
