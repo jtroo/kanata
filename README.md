@@ -58,6 +58,13 @@ Rust toolchain using `rustup`, e.g. by using the instructions from the
 [official website](https://www.rust-lang.org/learn/get-started),
 you can get the latest stable toolchain with `rustup update stable`.
 
+Running kanata currently does not start it in a background process. You will
+need to keep the window it is running in open to keep it running. Some tips for
+running kanata in the background:
+
+- Windows: https://github.com/jtroo/kanata/discussions/193
+- Linux: https://github.com/jtroo/kanata/discussions/130
+
 Using `cargo install`:
 
     cargo install kanata
@@ -76,7 +83,7 @@ Build and run yourself in Linux:
     # https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux
     sudo target/debug/kanata --cfg <your_configuration_file>
 
-Build and run yourself in Windows:
+Build and run yourself in Windows.
 
     git clone https://github.com/jtroo/kanata; cd kanata
     cargo build   # --release optional, not really perf sensitive

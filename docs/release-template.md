@@ -8,7 +8,7 @@ The attached `kanata.kbd` file is tested to work with the current version. The o
 
 ## Windows
 
-Download `kanata.exe`. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the `exe` to start kanata.
+Download `kanata.exe`. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the `exe` to start kanata. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/193) for tips to run kanata in the background.
 
 You need to run `kanata.exe` via `cmd` or `powershell` to use a different configuration file:
 
@@ -20,7 +20,7 @@ You can also set up a [toolbar shortcut](https://github.com/jtroo/kanata/wiki/To
 
 Download `kanata`.
 
-Run it in a terminal and point it to a valid configuration file:
+Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
 
 ```
 chmod +x kanata   # may be downloaded without executable permissions
