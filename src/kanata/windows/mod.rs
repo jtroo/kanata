@@ -22,6 +22,8 @@ pub enum AltGrBehaviour {
     AddLctlRelease,
 }
 
+static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
+
 pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
     Lazy::new(|| Mutex::new(AltGrBehaviour::DoNothing));
 
@@ -102,6 +104,8 @@ impl Kanata {
                     | State::FakeKey { keycode: cur_kc } => cur_kc != keycode,
                     _ => true,
                 });
+                log::debug!("releasing {keycode:?} from pressed keys");
+                PRESSED_KEYS.lock().remove(&keycode.into());
                 if let Err(e) = self.kbd_out.release_key(keycode.into()) {
                     bail!("failed to release key: {:?}", e);
                 }

@@ -4,11 +4,8 @@ use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time;
 
+use super::PRESSED_KEYS;
 use crate::kanata::*;
-
-type HashSet<T> = rustc_hash::FxHashSet<T>;
-
-static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events

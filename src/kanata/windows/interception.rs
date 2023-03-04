@@ -4,10 +4,10 @@ use parking_lot::Mutex;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
+use super::PRESSED_KEYS;
 use crate::kanata::*;
 use crate::keys::{KeyValue, OsCode};
 
-static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 const HWID_ARR_SZ: usize = 128;
 
 impl Kanata {
