@@ -1,7 +1,7 @@
 //! The different actions that can be executed via any given key.
 
 use crate::key_code::KeyCode;
-use crate::layout::{StackedIter, WaitingAction};
+use crate::layout::{QueuedIter, WaitingAction};
 use core::fmt::Debug;
 
 /// The different types of actions we support for key sequences/macros
@@ -94,7 +94,7 @@ pub enum HoldTapConfig {
     /// value will cause a fallback to the timeout-based approach. If the
     /// timeout is not triggered, the next tick will call the custom handler
     /// again.
-    Custom(fn(StackedIter) -> Option<WaitingAction>),
+    Custom(fn(QueuedIter) -> Option<WaitingAction>),
 }
 
 impl Debug for HoldTapConfig {
@@ -105,7 +105,7 @@ impl Debug for HoldTapConfig {
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(func) => f
                 .debug_tuple("Custom")
-                .field(&(*func as fn(StackedIter<'static>) -> Option<WaitingAction>) as &dyn Debug)
+                .field(&(*func as fn(QueuedIter<'static>) -> Option<WaitingAction>) as &dyn Debug)
                 .finish(),
         }
     }
@@ -118,7 +118,7 @@ impl PartialEq for HoldTapConfig {
             | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
             | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
             (HoldTapConfig::Custom(self_func), HoldTapConfig::Custom(other_func)) => {
-                *self_func as fn(StackedIter<'static>) -> Option<WaitingAction> == *other_func
+                *self_func as fn(QueuedIter<'static>) -> Option<WaitingAction> == *other_func
             }
             _ => false,
         }

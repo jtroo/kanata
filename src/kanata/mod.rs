@@ -1299,7 +1299,7 @@ impl Kanata {
     }
 
     pub fn can_block(&self) -> bool {
-        self.layout.b().stacked.is_empty()
+        self.layout.b().queue.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
             && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
