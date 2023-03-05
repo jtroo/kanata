@@ -283,10 +283,7 @@ fn parse_with(
     // empty, return an error.
     let Spanned { t: exprs, span: sp } = stack.pop().expect("placeholder unpopped");
     if !stack.is_empty() {
-        return Err(Spanned::new(
-            "Unclosed opening parenthesis".to_string(),
-            sp,
-        ));
+        return Err(Spanned::new("Unclosed opening parenthesis".to_string(), sp));
     }
     let exprs = exprs
         .into_iter()
