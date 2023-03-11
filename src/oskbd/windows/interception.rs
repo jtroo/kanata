@@ -2,7 +2,8 @@
 
 use std::io;
 
-use interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
+use interception::{scancode::ScanCode, KeyState, MouseFlags, MouseState, Stroke};
+use std::sync::mpsc::Sender;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -92,43 +93,38 @@ impl InputEvent {
     }
 }
 
-thread_local! {
-    static INTRCPTN: Interception = Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
-}
-
 /// Handle for writing keys to the OS.
-pub struct KbdOut {}
-
-fn write_interception(event: InputEvent) {
-    let strokes = [event.0];
-    log::debug!("kanata sending {:?} to driver", strokes[0]);
-    INTRCPTN.with(|ic| {
-        match strokes[0] {
-            // Note regarding device numbers:
-            // Keyboard devices are 1-10 and mouse devices are 11-20. Source:
-            // https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
-            Stroke::Keyboard { .. } => {
-                ic.send(1, &strokes[0..1]);
-            }
-            Stroke::Mouse { .. } => {
-                ic.send(11, &strokes[0..1]);
-            }
-        }
-    })
+pub struct KbdOut {
+    // The bool is used to tell the interception reading loop that it can block.
+    keys_tx: Sender<(bool, InputEvent)>,
 }
 
 impl KbdOut {
-    pub fn new() -> Result<Self, io::Error> {
-        Ok(Self {})
+    pub fn new(keys_tx: Sender<(bool, InputEvent)>) -> Result<Self, io::Error> {
+        Ok(Self { keys_tx })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        write_interception(event);
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
         super::write_code(code as u16, value)
+    }
+
+    pub fn notify_can_block(&mut self) -> Result<(), io::Error> {
+        self.keys_tx
+            .send((
+                true,
+                InputEvent(Stroke::Keyboard {
+                    code: ScanCode::Esc,
+                    state: KeyState::empty(),
+                    information: 0,
+                }),
+            ))
+            .unwrap();
+        Ok(())
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
@@ -145,20 +141,22 @@ impl KbdOut {
 
     pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
         log::debug!("click btn: {:?}", btn);
-        write_interception(InputEvent::from_mouse_btn(btn, false));
+        let event = InputEvent::from_mouse_btn(btn, false);
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
     pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
         log::debug!("release btn: {:?}", btn);
         let event = InputEvent::from_mouse_btn(btn, true);
-        write_interception(event);
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
-        write_interception(InputEvent::from_mouse_scroll(direction, distance));
+        let event = InputEvent::from_mouse_scroll(direction, distance);
+        self.keys_tx.send((false, event)).unwrap();
         Ok(())
     }
 
@@ -170,7 +168,9 @@ impl KbdOut {
     }
 
     pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
-        write_interception(InputEvent::from_mouse_move(direction, distance));
+        self.keys_tx
+            .send((false, InputEvent::from_mouse_move(direction, distance)))
+            .unwrap();
         Ok(())
     }
 }

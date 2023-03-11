@@ -77,6 +77,8 @@ pub struct Kanata {
     #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    kbd_out_rx: Option<Receiver<(bool, InputEvent)>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
     log_layer_changes: bool,
 }
@@ -192,6 +194,8 @@ impl Kanata {
         };
 
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+        let (kbd_out_tx, kbd_out_rx) = std::sync::mpsc::channel();
+        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         let intercept_mouse_hwid = cfg
             .items
             .get("windows-interception-mouse-hwid")
@@ -211,6 +215,8 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            kbd_out_tx,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -290,6 +296,9 @@ impl Kanata {
                 .get("linux-continue-if-no-devs-found")
                 .map(|s| matches!(s.to_lowercase().as_str(), "yes" | "true"))
                 .unwrap_or_default(),
+
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            kbd_out_rx: Some(kbd_out_rx),
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid,
             dynamic_macro_replay_state: None,
@@ -1204,6 +1213,8 @@ impl Kanata {
             let err = loop {
                 if kanata.lock().can_block() {
                     log::trace!("blocking on channel");
+                    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+                    kanata.lock().kbd_out.notify_can_block().unwrap();
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
