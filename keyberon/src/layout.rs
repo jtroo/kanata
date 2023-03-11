@@ -266,7 +266,7 @@ impl<'a, T> TapDanceEagerState<'a, T> {
 
 #[derive(Debug)]
 enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
-    HoldTap(HoldTapConfig),
+    HoldTap(HoldTapConfig<'a>),
     TapDance(TapDanceState<'a, T>),
     Chord(&'a ChordsGroup<'a, T>),
 }
@@ -347,11 +347,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 }
             }
             HoldTapConfig::PermissiveHold => {
-                for (x, s) in queued.iter().enumerate() {
-                    if s.event.is_press() {
-                        let (i, j) = s.event.coord();
+                let mut queued = queued.iter();
+                while let Some(q) = queued.next() {
+                    if q.event.is_press() {
+                        let (i, j) = q.event.coord();
                         let target = Event::Release(i, j);
-                        if queued.iter().skip(x + 1).any(|s| s.event == target) {
+                        if queued.clone().any(|q| q.event == target) {
                             return Some(WaitingAction::Hold);
                         }
                     }
@@ -702,6 +703,7 @@ impl OneShotState {
 /// An iterator over the currently queued events.
 ///
 /// Events can be retrieved by iterating over this struct and calling [Queued::event].
+#[derive(Clone)]
 pub struct QueuedIter<'a>(arraydeque::Iter<'a, Queued>);
 
 impl<'a> Iterator for QueuedIter<'a> {
@@ -715,7 +717,7 @@ impl<'a> Iterator for QueuedIter<'a> {
 }
 
 /// An event, waiting in a queue to be processed.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Queued {
     event: Event,
     since: u16,
@@ -1642,7 +1644,7 @@ mod test {
                 hold: k(Kb1),
                 timeout_action: k(Kb1),
                 tap: k(Kb0),
-                config: HoldTapConfig::Custom(always_tap),
+                config: HoldTapConfig::Custom(&always_tap),
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
@@ -1650,7 +1652,7 @@ mod test {
                 hold: k(Kb3),
                 timeout_action: k(Kb3),
                 tap: k(Kb2),
-                config: HoldTapConfig::Custom(always_hold),
+                config: HoldTapConfig::Custom(&always_hold),
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
@@ -1658,7 +1660,7 @@ mod test {
                 hold: k(Kb5),
                 timeout_action: k(Kb5),
                 tap: k(Kb4),
-                config: HoldTapConfig::Custom(always_nop),
+                config: HoldTapConfig::Custom(&always_nop),
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
@@ -1666,7 +1668,7 @@ mod test {
                 hold: k(Kb7),
                 timeout_action: k(Kb7),
                 tap: k(Kb6),
-                config: HoldTapConfig::Custom(always_none),
+                config: HoldTapConfig::Custom(&always_none),
                 tap_hold_interval: 0,
             }),
         ]]];

@@ -45,6 +45,9 @@ use alloc::*;
 mod key_override;
 pub use key_override::*;
 
+mod custom_tap_hold;
+use custom_tap_hold::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -911,6 +914,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "tap-hold-release-timeout" => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
+        "tap-hold-release-keys" => parse_tap_hold_release_keys(&ac[1..], s),
         "multi" => parse_multi(&ac[1..], s),
         "macro" => parse_macro(&ac[1..], s),
         "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], s),
@@ -979,7 +983,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
 fn parse_tap_hold(
     ac_params: &[SExpr],
     s: &ParsedState,
-    config: HoldTapConfig,
+    config: HoldTapConfig<'static>,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
         bail!(
@@ -1009,7 +1013,7 @@ Params in order:
 fn parse_tap_hold_timeout(
     ac_params: &[SExpr],
     s: &ParsedState,
-    config: HoldTapConfig,
+    config: HoldTapConfig<'static>,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
@@ -1037,6 +1041,36 @@ Params in order:
     }))))
 }
 
+fn parse_tap_hold_release_keys(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    if ac_params.len() != 5 {
+        bail!(
+            r"tap-hold-release-keys expects 5 items after it, got {}.
+Params in order:
+<tap-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys>",
+            ac_params.len(),
+        )
+    }
+    let tap_timeout = parse_non_zero_u16(&ac_params[0], "tap timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], "hold timeout")?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    let tap_trigger_keys = parse_key_list(&ac_params[4], "tap-trigger-keys")?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Custom(custom_tap_hold_release(&tap_trigger_keys, &s.a)),
+        tap_hold_interval: tap_timeout,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *hold_action,
+    }))))
+}
+
 fn parse_u16(expr: &SExpr, label: &str) -> Result<u16> {
     expr.atom()
         .map(str::parse::<u16>)
@@ -1052,6 +1086,26 @@ fn parse_non_zero_u16(expr: &SExpr, label: &str) -> Result<u16> {
             _ => None,
         })
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-65535"))
+}
+
+fn parse_key_list(expr: &SExpr, label: &str) -> Result<Vec<OsCode>> {
+    expr.list()
+        .map(|keys| {
+            keys.iter().try_fold(vec![], |mut keys, key| {
+                match key {
+                    SExpr::Atom(a) => {
+                        keys.push(str_to_oscode(&a.t).ok_or_else(|| {
+                            anyhow_expr!(key, "string of a known key is expected")
+                        })?);
+                    }
+                    SExpr::List(_) => {
+                        bail_expr!(key, "string of a known key is expected, found list instead")
+                    }
+                };
+                Ok(keys)
+            })
+        })
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be a list of keys"))?
 }
 
 fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {

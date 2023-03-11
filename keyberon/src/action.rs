@@ -60,7 +60,7 @@ impl<'a, T> Debug for SequenceEvent<'a, T> {
 /// Behavior configuration of HoldTap.
 #[non_exhaustive]
 #[derive(Clone, Copy)]
-pub enum HoldTapConfig {
+pub enum HoldTapConfig<'a> {
     /// Only the timeout will determine between hold and tap action.
     ///
     /// This is a sane default.
@@ -94,38 +94,31 @@ pub enum HoldTapConfig {
     /// value will cause a fallback to the timeout-based approach. If the
     /// timeout is not triggered, the next tick will call the custom handler
     /// again.
-    Custom(fn(QueuedIter) -> Option<WaitingAction>),
+    Custom(&'a (dyn Fn(QueuedIter) -> Option<WaitingAction> + Send + Sync)),
 }
 
-impl Debug for HoldTapConfig {
+impl<'a> Debug for HoldTapConfig<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
             HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
-            HoldTapConfig::Custom(func) => f
-                .debug_tuple("Custom")
-                .field(&(*func as fn(QueuedIter<'static>) -> Option<WaitingAction>) as &dyn Debug)
-                .finish(),
+            HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
     }
 }
 
-impl PartialEq for HoldTapConfig {
+impl<'a> PartialEq for HoldTapConfig<'a> {
     fn eq(&self, other: &Self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match (self, other) {
             (HoldTapConfig::Default, HoldTapConfig::Default)
             | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
             | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
-            (HoldTapConfig::Custom(self_func), HoldTapConfig::Custom(other_func)) => {
-                *self_func as fn(QueuedIter<'static>) -> Option<WaitingAction> == *other_func
-            }
             _ => false,
         }
     }
 }
-
-impl Eq for HoldTapConfig {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// A state that that can be released from the active states via the ReleaseState action.
@@ -149,7 +142,7 @@ pub enum ReleasableState {
 /// but whatever the configuration is, if the key is pressed more
 /// than `timeout`, the hold action is activated (if no other
 /// action was determined before).
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HoldTapAction<'a, T>
 where
     T: 'a,
@@ -164,7 +157,7 @@ where
     /// The timeout action
     pub timeout_action: Action<'a, T>,
     /// Behavior configuration.
-    pub config: HoldTapConfig,
+    pub config: HoldTapConfig<'a>,
     /// Configuration of the tap and hold holds the tap action.
     ///
     /// If you press and release the key in such a way that the tap
@@ -184,7 +177,7 @@ where
 }
 
 /// Define one shot key behaviour.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OneShot<'a, T = core::convert::Infallible>
 where
     T: 'a,
@@ -214,7 +207,7 @@ pub enum OneShotEndConfig {
 pub const ONE_SHOT_MAX_ACTIVE: usize = 8;
 
 /// Define tap dance behaviour.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TapDance<'a, T = core::convert::Infallible>
 where
     T: 'a,
@@ -240,7 +233,7 @@ pub enum TapDanceConfig {
 }
 
 /// A group of chords (actions mapped to a combination of multiple physical keys pressed together).
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChordsGroup<'a, T = core::convert::Infallible>
 where
     T: 'a,
@@ -296,7 +289,7 @@ pub type ChordKeys = u32;
 pub const MAX_CHORD_KEYS: usize = ChordKeys::BITS as usize;
 
 /// The different actions that can be done.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Action<'a, T = core::convert::Infallible>
 where
     T: 'a,
