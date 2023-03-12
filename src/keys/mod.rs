@@ -244,11 +244,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "calc" => OsCode::KEY_CALC,
 
         // NOTE: these are linux-only right now due to missing the mappings in windows.rs
-        #[cfg(tagret_os = "linux")]
+        #[cfg(target_os = "linux")]
         "plyr" | "player" => OsCode::KEY_PLAYER,
-        #[cfg(tagret_os = "linux")]
+        #[cfg(target_os = "linux")]
         "powr" | "power" => OsCode::KEY_POWER,
-        #[cfg(tagret_os = "linux")]
+        #[cfg(target_os = "linux")]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
 
         _ => {
