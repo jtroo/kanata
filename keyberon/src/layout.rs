@@ -42,7 +42,7 @@ pub type Layers<'a, const C: usize, const R: usize, const L: usize, T = core::co
 /// The current event queue.
 ///
 /// Events can be retrieved by iterating over this struct and calling [Queued::event].
-type Queue = ArrayDeque<[Queued; 16], arraydeque::behavior::Wrapping>;
+type Queue = ArrayDeque<[Queued; 32], arraydeque::behavior::Wrapping>;
 
 /// The queue is currently only used for chord decomposition when a longer chord does not result in
 /// an action, but splitting it into smaller chords would. The buffer size of 8 should be more than
