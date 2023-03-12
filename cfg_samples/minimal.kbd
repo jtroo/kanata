@@ -26,21 +26,6 @@ configuration entries.
   process-unmapped-keys yes
 )
 
-
-#|
-The defsrc entry below chooses which keys are remappable by kanata. The
-deflayer entries that follow change the behaviour of the corresponding keys in
-the order that they appear in defsrc. Note that any extra spaces or newlines
-are ignored — defsrc and deflayer are treated as lists of keys/actions that are
-separated by 1 or more whitespace characters.
-
-The reason for mapping the Shift keys is so that they get processed correctly
-by kanata for tap-hold keys.  However, you can add
-the line below to defcfg above to tell kanata to process all keys:
-
-  process-unmapped-keys yes
-|#
-
 (defsrc
   caps grv         i
               j    k    l

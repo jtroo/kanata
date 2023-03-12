@@ -1090,6 +1090,12 @@ variants. The 5th parameter is another action, which will activate if the hold
 timeout expires as opposed to being triggered by other key actions, whereas the
 non `-timeout` variants will activate the hold action in both cases.
 
+- `tap-hold-release-keys`
+
+This variant takes a 5th parameter which is a list of keys that trigger an
+early tap when they are pressed while the `tap-hold-release-keys` action is
+waiting.
+
 Example:
 
 ----
@@ -1098,6 +1104,8 @@ Example:
   oat (tap-hold-press-timeout   200 200 o @arr bspc)
   ;; tap: e    hold: chords layer    timeout: esc
   ect (tap-hold-release-timeout 200 200 e @chr esc)
+  ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed
+  umk (tap-hold-release-keys 200 200 u @msc (a o e))
 )
 ----
 
