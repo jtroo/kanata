@@ -14,6 +14,7 @@ on:
     paths:
       - Cargo.*
       - src/**/*
+      - keyberon/**/*
       - cfg_samples/**/*
       - test_cfgs/**/*
       - .github/workflows/**/*
