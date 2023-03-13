@@ -1,6 +1,11 @@
-## Changelog (since <previous_version_here>)
+## Changelog (since <TODO: previous_version_here>)
 
-- <fill this out>
+<details>
+<summary>Change log</summary>
+
+- TODO: fill this out
+
+</details>
 
 ## Sample configuration file
 
@@ -14,14 +19,11 @@ You need to run `kanata.exe` via `cmd` or `powershell` to use a different config
 
 `kanata.exe --cfg <cfg_file>`
 
-You can also set up a [toolbar shortcut](https://github.com/jtroo/kanata/wiki/Toolbar-shortcut-for-Windows-10).
-
 ## Linux
 
 Download `kanata`.
 
-Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
-
+Run it in a terminal and point it to a valid configuration file.  Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
 ```
 chmod +x kanata   # may be downloaded without executable permissions
 sudo ./kanata --cfg <cfg_file>`
@@ -31,11 +33,19 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtr
 
 ## cmd_allowed variants
 
+<details>
+<summary>Explanation</summary>
+
 The binaries with the name `cmd_allowed` are conditionally compiled with the `cmd` action enabled.
 
 Using the regular binaries, there is no way to get the `cmd` action to work. This action is restricted behind conditional compilation because I consider the action to be a security risk that should be explicitly opted into and completely forbidden by default.
 
+</details>
+
 ## wintercept variants
+
+<details>
+<summary>Explanation and instructions</summary>
 
 ### Warning: known issue
 
@@ -67,8 +77,15 @@ C:\Users\my_user\Documents\
     interception.dll
 ```
 
+</details>
+
 ## sha256 checksums
 
+<details>
+<summary>sums</summary>
+
 ```
-<fill this out>
+TODO: fill this out
 ```
+
+</details>

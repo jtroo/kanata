@@ -47,9 +47,18 @@ to suit your exact needs and workflows.
 
 ## Usage
 
+Running kanata currently does not start it in a background process.
+You will need to keep the window that starts kanata running to keep kanata active.
+Some tips for running kanata in the background:
+
+- Windows: https://github.com/jtroo/kanata/discussions/193
+- Linux: https://github.com/jtroo/kanata/discussions/130
+
 ### Pre-built executables
 
-See the [releases page](https://github.com/jtroo/kanata/releases) for executables.
+See the
+[releases page](https://github.com/jtroo/kanata/releases)
+for executables and instructions.
 
 ### Build it yourself
 
@@ -58,12 +67,8 @@ Rust toolchain using `rustup`, e.g. by using the instructions from the
 [official website](https://www.rust-lang.org/learn/get-started),
 you can get the latest stable toolchain with `rustup update stable`.
 
-Running kanata currently does not start it in a background process. You will
-need to keep the window it is running in open to keep it running. Some tips for
-running kanata in the background:
-
-- Windows: https://github.com/jtroo/kanata/discussions/193
-- Linux: https://github.com/jtroo/kanata/discussions/130
+<details>
+<summary>Instructions</summary>
 
 Using `cargo install`:
 
@@ -99,11 +104,52 @@ release assets also have a `kanata.kbd` file that is tested to work with that
 release. All key names can be found in the [keys module](./src/keys/mod.rs),
 and you can also define your own key names.
 
+</details>
+
+### Feature flags
+
+When either building yourself or using `cargo install`,
+you can add feature flags that
+enable functionality that is turned-off by default.
+
+<details>
+<summary>Instructions</summary>
+
+If you want to enable the `cmd` actions,
+add the flag `--features cmd`.
+For example:
+
+```
+cargo build --release --features cmd
+cargo install --features cmd
+```
+
+On Windows,
+if you want to compile a binary that uses the Interception driver,
+you should add the flag `--features interception_driver`.
+For example:
+
+```
+cargo build --release --features interception_driver
+cargo install --features interception_driver
+```
+
+To combine multiple flags,
+use a single `--features` flag
+and use a comma to separate the features.
+For example:
+
+```
+cargo build --release --features cmd,interception_driver
+cargo install --features cmd,interception_driver
+```
+</details>
+
 ## Other installation methods
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/kanata.svg)](https://repology.org/project/kanata/versions)
 
-## Features
+## Notable features
 
 - Human readable configuration file.
   - [Minimal example](./cfg_samples/minimal.kbd)
@@ -135,6 +181,11 @@ otherwise.
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
 [*]: https://www.gnu.org/licenses/identify-licenses-clearly.html
+
+If you want to test changes in the keyberon library code,
+you should change the top-level `Cargo.toml` file.
+Look at the comments around the `kanata-keyberon` dependency
+to understand what changes to make.
 
 ## How you can help
 
