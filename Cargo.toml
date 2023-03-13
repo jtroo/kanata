@@ -26,7 +26,9 @@ miette = { version = "5.5.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
 kanata-keyberon = "0.13.0"
-# Uncomment below and comment out above for testing local keyberon changes
+# Uncomment below and comment out above for testing local keyberon changes.
+# Otherwise any changes to the local files will not reflect in the compiled
+# binary.
 # kanata-keyberon = { path = "keyberon" }
 
 [dev-dependencies]

@@ -6,7 +6,7 @@ act as backtick/grave on quick tap, but change ijkl keys to arrow keys on hold.
 This text between the two pipe+octothorpe sequences is a multi-line comment.
 |#
 
-;; Double-semicolons are single-line comments.
+;; Text after double-semicolons are single-line comments.
 
 #|
 One defcfg entry may be added, which is used for configuration key-pairs. These
