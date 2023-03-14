@@ -110,7 +110,7 @@ and you can also define your own key names.
 
 When either building yourself or using `cargo install`,
 you can add feature flags that
-enable functionality that is turned-off by default.
+enable functionality that is turned off by default.
 
 <details>
 <summary>Instructions</summary>
