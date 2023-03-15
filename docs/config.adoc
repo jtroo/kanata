@@ -509,11 +509,17 @@ a non-applicable operating system.
 )
 ----
 
-[[aliases]]
-== Aliases
+[[aliases-and-vars]]
+== Aliases and variables
 <<table-of-contents,Back to ToC>>
 
-Before learning about actions, it will be useful to first learn about aliases.
+Before learning about actions,
+it will be useful to first learn about aliases and variables.
+
+[[aliases]]
+=== Aliases
+<<table-of-contents,Back to ToC>>
+
 Using the `defalias` configuration entry, you can introduce a shortcut label
 for an action.
 
@@ -572,6 +578,50 @@ Example:
 (deflayer example
   ;; this is equivalent to the previous deflayer example
   (tap-hold 200 200 caps lctl) a s d f
+)
+----
+
+[[variables]]
+=== Variables
+<<table-of-contents,Back to ToC>>
+
+Using the `defvar` configuration entry,
+you can introduce a shortcut label for an arbitrary string or list.
+Unlike an alias, a variable does not need to be a valid standalone action.
+In other words,
+a variable can be used as components of actions.
+
+The most common use case is to define common number strings
+for actions such as `tap-hold`, `tap-dance`, and `one-shot`.
+
+Similar to how `defalias` works,
+`defvar` reads pairs of items in a sequence
+where the first item in the pair is the variable name
+and the second item is a string or list.
+Variables are allowed to refer to previously defined variables.
+
+Variables can be used to substitute most values.
+Some notable exceptions are:
+
+- variables cannot be used in `defcfg`, `defsrc`, or `deflocalkeys`
+- variables cannot be used to substitute a layer name
+- variables cannot be used to substitute an action name
+
+Variables are referred to by prefixing their name with `$`.
+
+Example:
+
+----
+(defvar
+  tap-timeout   100
+  hold-timeout  200
+  tt $tap-timeout
+  ht $hold-timeout
+)
+
+(defalias
+  th1 (tap-hold $tt $ht caps lctl)
+  th2 (tap-hold $tt $ht spc  lsft)
 )
 ----
 
@@ -1510,6 +1560,8 @@ not exposed. Using this behaviour, one can be very particular about when and how
 tap vs. hold will activate by using extra information. The available
 information that can be used is exactly which keys have been pressed or
 released as well as the timing in milliseconds of those key presses.
+The action `+tap-hold-release-keys+` makes use of some of this capability, but
+doesn't make full use of the power of this functionality.
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behaviour].
