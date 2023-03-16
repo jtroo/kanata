@@ -1061,7 +1061,7 @@ In the example below, repeated taps will, in order:
 
 The `+one-shot+` action is similar to "sticky keys", if you know what that is.
 This activates an action or key until either the timeout expires or a different
-key is pressed. The `+one-shot+` action must be followed by a timeout (unit:
+key is used. The `+one-shot+` action must be followed by a timeout (unit:
 ms) and another key or action.
 
 Some of the intended use cases are:
@@ -1077,14 +1077,39 @@ Pressing multiple `+one-shot+` keys in a row within the timeout will combine
 the actions of those keys and reset the timeout to the value of the most
 recently pressed `+one-shot+` key.
 
+There are four variants of the `+one-shot+` action:
+
+- `+one-shot-press+`:
+  end on the first press of another key
+- `+one-shot-release+`:
+  end on the first release of another key
+- `+one-shot-press-pcancel+`:
+  end on the first press of another key
+  or on re-press of another active one-shot key
+- `+one-shot-release-pcancel+`:
+  end on the first release of another key
+  or on re-press of another active one-shot key
+
+It is important to note that the first activation of a one-shot key
+determines the behaviour with regards to the 4 variants
+for all subsequent one-shot key activations,
+even if a following one-shot key has a different configuration
+than the initial key pressed.
+
+The default name `+one-shot+` corresponds to `+one-shot-press+`.
+
 Example:
 
 ----
 (defalias
-  os1 (one-shot 500 lsft)
-  os2 (one-shot 2000 (layer-while-held another-layer))
+  os1 (one-shot 500 (layer-while-held another-layer))
+  os2 (one-shot-press 2000 lsft)
+  os3 (one-shot-release 2000 lctl)
+  os4 (one-shot-press-pcancel 2000 lalt)
+  os5 (one-shot-release-pcancel 2000 lmet)
 )
 ----
+
 
 [[tap-hold]]
 === tap-hold

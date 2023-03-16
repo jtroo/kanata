@@ -367,8 +367,6 @@ dependencies = [
 [[package]]
 name = "kanata-keyberon"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd9a678edc2af364cdb0af2da84a8ed1c6a2c9f71ef9702e048f60f4fb46d751"
 dependencies = [
  "arraydeque",
  "heapless",
