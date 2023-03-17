@@ -188,6 +188,19 @@ If you need help, you are welcome to ask.
   lctl lmet lalt           spc           @ralt rmet @rcl
 )
 
+;; defvar can be used to declare commonly-used values
+(defvar
+  tap-timeout   100
+  hold-timeout  200
+  tt $tap-timeout
+  ht $hold-timeout
+)
+
+(defalias
+  th1 (tap-hold $tt $ht caps lctl)
+  th2 (tap-hold $tt $ht spc lsft)
+)
+
 ;; defalias is used to declare a shortcut for a more complicated action to keep
 ;; the deflayer declarations clean and aligned. The alignment in deflayers is not
 ;; necessary, but is strongly recommended for ease of understanding visually.

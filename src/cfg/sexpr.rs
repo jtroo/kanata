@@ -3,6 +3,7 @@ use std::str::Bytes;
 use std::{cmp, iter};
 
 type ParseError = Spanned<String>;
+type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 type ParseResult<T> = Result<T, ParseError>;
 
@@ -68,17 +69,32 @@ pub enum SExpr {
 }
 
 impl SExpr {
-    pub fn atom(&self) -> Option<&str> {
+    pub fn atom<'a>(&'a self, vars: Option<&'a HashMap<String, SExpr>>) -> Option<&'a str> {
         match self {
-            SExpr::Atom(a) => Some(a.t.as_str()),
+            SExpr::Atom(a) => {
+                let s = a.t.as_str();
+                match (s.strip_prefix('$'), vars) {
+                    (Some(varname), Some(vars)) => match vars.get(varname) {
+                        Some(var) => var.atom(Some(vars)),
+                        None => Some(s),
+                    },
+                    _ => Some(s),
+                }
+            }
             _ => None,
         }
     }
 
-    pub fn list(&self) -> Option<&[SExpr]> {
+    pub fn list<'a>(&'a self, vars: Option<&'a HashMap<String, SExpr>>) -> Option<&'a [SExpr]> {
         match self {
             SExpr::List(l) => Some(&l.t),
-            _ => None,
+            SExpr::Atom(a) => match (a.t.strip_prefix('$'), vars) {
+                (Some(varname), Some(vars)) => match vars.get(varname) {
+                    Some(var) => var.list(Some(vars)),
+                    None => None,
+                },
+                _ => None,
+            },
         }
     }
 

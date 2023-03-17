@@ -45,6 +45,76 @@ fn parse_f13_f24() {
 
 #[test]
 #[serial]
+fn parse_action_vars() {
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar
+  one 1
+  two 2
+  a a
+  base base
+  three ($a b c)
+  chr C-S-v
+  td ($a b $chr)
+  four (lctl d)
+)
+(defvar
+  five (lsft e)
+  rel release
+  e  example
+  e2 example2
+  chord1 (chord $e $one)
+  chord2 (chord $e2 $one)
+  1 (1)
+  full-action (tap-dance $one $three)
+)
+(defalias
+  tdl (tap-dance $two $td)
+  tde (tap-dance-eager $two $td)
+  unc (unicode $one)
+  rlk (release-key $one)
+  mul (multi $two $one)
+  mwu (mwheel-up $one $two)
+  mmu (movemouse-up $one $two)
+  mau (movemouse-accel-up $one $two $one $two)
+  ons (one-shot $one $two)
+  thd (tap-hold $one $two $chr $two)
+  tht (tap-hold-release-timeout $one $two $chr $two $one)
+  thk (tap-hold-release-keys $one $two $chr $two $three)
+  mac (macro $one $two $one $two $chr C-S-$three $one)
+  dr1 (dynamic-macro-record $one)
+  dp1 (dynamic-macro-play $one)
+  abc (arbitrary-code $one)
+  opf (on-press-fakekey $one $rel)
+  orf (on-release-fakekey $one $rel)
+  fla $full-action
+)
+(defsrc a b c d)
+(deflayer base $chord1 $chord2 $chr @tdl)
+(defoverrides
+  ($two) ($one)
+  ($one) $four
+  $five ($two)
+  $four $five
+)
+(deffakekeys
+  $one $two
+)
+(defseq $one $three)
+(defchords $e $one $1 $two)
+(defchords $e2 $one ($one) $two)
+"#;
+    s.cfg_text = source.into();
+    parse_cfg_raw_string(source.into(), &mut s)
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e.into(), &s));
+            ""
+        })
+        .unwrap();
+}
+
+#[test]
+#[serial]
 fn parse_transparent_default() {
     let mut s = ParsedState::default();
     let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
@@ -145,7 +215,7 @@ fn disallow_multiple_waiting_actions() {
         .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid multiple waiting actions Ok'd"),
-        Err(e) => assert!(e.contains("cannot combine multiple")),
+        Err(e) => assert!(e.contains("Cannot combine multiple")),
     }
 }
 
