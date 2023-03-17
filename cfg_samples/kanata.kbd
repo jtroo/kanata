@@ -420,6 +420,23 @@ If you need help, you are welcome to ask.
   os2 (one-shot 500 C-S-lalt)
   os3 (one-shot 500 (layer-toggle misc))
 
+  ;; Another name for one-shot is one-shot-press, since it ends on the first
+  ;; press of another key.
+  ;;
+  ;; There is another variant one-shot-release which ends on the first release
+  ;; of another key.
+  ;;
+  ;; There are further variants of both of these:
+  ;; - one-shot-press-pcancel
+  ;; - one-shot-release-pcancel
+  ;;
+  ;; These will cancel the one-shot action and all other active one-shot actions
+  ;; if a one-shot key is repressed while already active.
+  osp (one-shot-press 500 lsft)
+  osr (one-shot-release 500 lsft)
+  opp (one-shot-press-pcancel 500 lsft)
+  orp (one-shot-release-pcancel 500 lsft)
+
   ;; Alias for tap-dance which will activate one of the actions in the action
   ;; list depending on how many taps were done. Tapping once will output the
   ;; first action and tapping N times will output the N'th action.

@@ -199,12 +199,18 @@ where
 pub enum OneShotEndConfig {
     /// End one shot activation on first non-one-shot key press.
     EndOnFirstPress,
+    /// End one shot activation on first non-one-shot key press or a repress of an already-pressed
+    /// one-shot key.
+    EndOnFirstPressOrRepress,
     /// End one shot activation on first non-one-shot key release.
     EndOnFirstRelease,
+    /// End one shot activation on first non-one-shot key release or a repress of an already-pressed
+    /// one-shot key.
+    EndOnFirstReleaseOrRepress,
 }
 
 /// Defines the maximum number of one shot keys that can be combined.
-pub const ONE_SHOT_MAX_ACTIVE: usize = 8;
+pub const ONE_SHOT_MAX_ACTIVE: usize = 16;
 
 /// Define tap dance behaviour.
 #[derive(Debug, Clone, Copy, PartialEq)]

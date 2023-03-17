@@ -634,6 +634,8 @@ pub struct OneShotState {
     pub keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
     /// Coordinates of one shot keys that have been released
     pub released_keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
+    /// Used to keep track of already-pressed keys for the release variants.
+    pub other_pressed_keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
     /// Timeout (ms) after which all one shot keys expire
     pub timeout: u16,
     /// Contains the end config of the most recently pressed one shot key
@@ -645,7 +647,7 @@ pub struct OneShotState {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum OneShotHandlePressKey {
     OneShotKey((u8, u16)),
-    Other,
+    Other((u8, u16)),
 }
 
 impl OneShotState {
@@ -658,6 +660,7 @@ impl OneShotState {
             self.release_on_next_tick = false;
             self.timeout = 0;
             self.keys.clear();
+            self.other_pressed_keys.clear();
             Some(self.released_keys.drain(..).collect())
         } else {
             None
@@ -670,12 +673,24 @@ impl OneShotState {
         }
         match key {
             OneShotHandlePressKey::OneShotKey(pressed_coord) => {
-                // Release the one-shot key if it's re-pressed
+                if matches!(
+                    self.end_config,
+                    OneShotEndConfig::EndOnFirstReleaseOrRepress
+                        | OneShotEndConfig::EndOnFirstPressOrRepress
+                ) && self.keys.contains(&pressed_coord)
+                {
+                    self.release_on_next_tick = true;
+                }
                 self.released_keys.retain(|coord| *coord != pressed_coord);
             }
-            OneShotHandlePressKey::Other => {
-                if self.end_config == OneShotEndConfig::EndOnFirstPress {
+            OneShotHandlePressKey::Other(pressed_coord) => {
+                if matches!(
+                    self.end_config,
+                    OneShotEndConfig::EndOnFirstPress | OneShotEndConfig::EndOnFirstPressOrRepress
+                ) {
                     self.release_on_next_tick = true;
+                } else {
+                    let _ = self.other_pressed_keys.push_back(pressed_coord);
                 }
             }
         }
@@ -689,7 +704,11 @@ impl OneShotState {
             return (true, None);
         }
         if !self.keys.contains(&(i, j)) {
-            if self.end_config == OneShotEndConfig::EndOnFirstRelease {
+            if matches!(
+                self.end_config,
+                OneShotEndConfig::EndOnFirstRelease | OneShotEndConfig::EndOnFirstReleaseOrRepress
+            ) && self.other_pressed_keys.contains(&(i, j))
+            {
                 self.release_on_next_tick = true;
             }
             (true, None)
@@ -767,6 +786,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 end_config: OneShotEndConfig::EndOnFirstPress,
                 keys: ArrayDeque::new(),
                 released_keys: ArrayDeque::new(),
+                other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
             },
             last_press_tracker: Default::default(),
@@ -914,21 +934,21 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         Some(SequenceEvent::Press(keycode)) => {
                             // Start tracking this fake key Press() event
                             let _ = self.states.push(FakeKey { keycode });
-
-                            // Coord here doesn't matter; only matters if 2nd param is true. Need
-                            // to fake the coord anyway; sequence events don't have associated
-                            // coordinates.
-                            self.oneshot.handle_press(OneShotHandlePressKey::Other);
+                            // Fine to fake (0, 0). This is sequences anyway. In Kanata, nothing
+                            // valid should be at (0, 0) that this would interfere with.
+                            self.oneshot
+                                .handle_press(OneShotHandlePressKey::Other((0, 0)));
                         }
                         Some(SequenceEvent::Tap(keycode)) => {
                             // Same as Press() except we track it for one tick via seq.tapped:
                             let _ = self.states.push(FakeKey { keycode });
-                            self.oneshot.handle_press(OneShotHandlePressKey::Other);
-
+                            self.oneshot
+                                .handle_press(OneShotHandlePressKey::Other((0, 0)));
                             seq.tapped = Some(keycode);
                         }
                         Some(SequenceEvent::Release(keycode)) => {
-                            // Clear out the Press() matching this Release's keycode
+                            // Nothing valid should be at (0, 0). It's fine to fake this.
+                            self.oneshot.handle_release((0, 0));
                             self.states.retain(|s| s.seq_release(keycode).is_some());
                         }
                         Some(SequenceEvent::Delay { duration }) => {
@@ -1172,7 +1192,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 self.last_press_tracker.coord = coord;
                 let _ = self.states.push(NormalKey { coord, keycode });
                 if !is_oneshot {
-                    self.oneshot.handle_press(OneShotHandlePressKey::Other);
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
                 }
             }
             &MultipleKeyCodes(v) => {
@@ -1181,7 +1202,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     let _ = self.states.push(NormalKey { coord, keycode });
                 }
                 if !is_oneshot {
-                    self.oneshot.handle_press(OneShotHandlePressKey::Other);
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
                 }
             }
             &MultipleActions(v) => {
@@ -2112,12 +2134,141 @@ mod test {
         layout.event(Release(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn one_shot_end_press_or_repress() {
+        static LAYERS: Layers<3, 1, 1> = [[[
+            OneShot(&crate::action::OneShot {
+                timeout: 100,
+                action: &k(LShift),
+                end_config: OneShotEndConfig::EndOnFirstPressOrRepress,
+            }),
+            k(A),
+            k(B),
+        ]]];
+        let mut layout = Layout::new(&LAYERS);
+
+        // Test:
+        // 1. press one-shot
+        // 2. release one-shot
+        // 3. press A within timeout
+        // 4. press B within timeout
+        // 5. release A, B
+        layout.event(Press(0, 0));
+        for _ in 0..25 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        layout.event(Release(0, 0));
+        for _ in 0..25 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        layout.event(Press(0, 1));
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A, LShift], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A, B], layout.keycodes());
+        layout.event(Release(0, 1));
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test:
+        // 1. press one-shot
+        // 2. release one-shot
+        // 3. press A after timeout
+        // 4. release A
+        layout.event(Press(0, 0));
+        for _ in 0..25 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        layout.event(Release(0, 0));
+        for _ in 0..75 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test:
+        // 1. press one-shot
+        // 2. press A
+        // 3. release A
+        // 4. release one-shot
+        layout.event(Press(0, 0));
+        for _ in 0..25 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift, A], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test:
+        // 1. press one-shot
+        // 2. press A after timeout
+        // 3. release A
+        // 4. release one-shot
+        layout.event(Press(0, 0));
+        for _ in 0..200 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[LShift], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift, A], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
 
         // Test:
         // 1. press one-shot
         // 2. release one-shot
         // 3. press one-shot within timeout
-        // 4. release one-shot
+        // 4. release one-shot quickly - should end
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Test:
+        // 1. press one-shot
+        // 2. release one-shot
+        // 3. press one-shot within timeout
+        // 4. release one-shot after timeout
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LShift], layout.keycodes());
@@ -2249,26 +2400,36 @@ mod test {
         assert_keys(&[], layout.keycodes());
 
         // Test:
+        // 3. press A
         // 1. press one-shot
         // 2. release one-shot
-        // 3. press one-shot within timeout
-        // 4. release one-shot
+        // 3. release A
+        // 4. press B within timeout
+        // 5. release B
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
         layout.event(Press(0, 0));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LShift], layout.keycodes());
-        layout.event(Release(0, 0));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LShift], layout.keycodes());
-        layout.event(Press(0, 0));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LShift], layout.keycodes());
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LShift], layout.keycodes());
-        for _ in 0..200 {
+        for _ in 0..25 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
-            assert_keys(&[LShift], layout.keycodes());
+            assert_keys(&[A, LShift], layout.keycodes());
         }
         layout.event(Release(0, 0));
+        for _ in 0..25 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[A, LShift], layout.keycodes());
+        }
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B, LShift], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }

@@ -976,7 +976,16 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "macro" => parse_macro(&ac[1..], s),
         "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], s),
         "unicode" => parse_unicode(&ac[1..], s),
-        "one-shot" => parse_one_shot(&ac[1..], s),
+        "one-shot" | "one-shot-press" => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
+        }
+        "one-shot-release" => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease),
+        "one-shot-press-pcancel" => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)
+        }
+        "one-shot-release-pcancel" => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
+        }
         "tap-dance" => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
         "tap-dance-eager" => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
         "chord" => parse_chord(&ac[1..], s),
@@ -1439,7 +1448,11 @@ fn parse_cmd(
         })))))
 }
 
-fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+fn parse_one_shot(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+    end_config: OneShotEndConfig,
+) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "one-shot expects a timeout followed by a key or action";
     if ac_params.len() != 2 {
         bail!(ERR_MSG);
@@ -1454,7 +1467,6 @@ fn parse_one_shot(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kanat
         bail!("one-shot is only allowed to contain layer-toggle, a keycode, or a chord");
     }
 
-    let end_config = OneShotEndConfig::EndOnFirstPress;
     Ok(s.a.sref(Action::OneShot(s.a.sref(OneShot {
         timeout,
         action,
