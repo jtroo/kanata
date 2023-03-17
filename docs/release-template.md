@@ -13,13 +13,21 @@ The attached `kanata.kbd` file is tested to work with the current version. The o
 
 ## Windows
 
+<details>
+<summary>Instructions</summary>
+
 Download `kanata.exe`. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the `exe` to start kanata. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/193) for tips to run kanata in the background.
 
 You need to run `kanata.exe` via `cmd` or `powershell` to use a different configuration file:
 
 `kanata.exe --cfg <cfg_file>`
 
+</details>
+
 ## Linux
+
+<details>
+<summary>Instructions</summary>
 
 Download `kanata`.
 
@@ -30,6 +38,8 @@ sudo ./kanata --cfg <cfg_file>`
 ```
 
 To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux).
+
+</details>
 
 ## cmd_allowed variants
 
@@ -82,7 +92,7 @@ C:\Users\my_user\Documents\
 ## sha256 checksums
 
 <details>
-<summary>sums</summary>
+<summary>Sums</summary>
 
 ```
 TODO: fill this out
