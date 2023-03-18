@@ -129,9 +129,10 @@ impl Event {
 }
 
 /// Event from custom action.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum CustomEvent<'a, T: 'a> {
     /// No custom action.
+    #[default]
     NoEvent,
     /// The given custom action key is pressed.
     Press(&'a T),
@@ -150,11 +151,6 @@ impl<'a, T> CustomEvent<'a, T> {
             (Press(_), NoEvent) => *self = e,
             _ => (),
         }
-    }
-}
-impl<'a, T> Default for CustomEvent<'a, T> {
-    fn default() -> Self {
-        CustomEvent::NoEvent
     }
 }
 
@@ -1247,6 +1243,17 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             ReleaseState(rs) => {
                 self.states.retain(|s| s.release_state(*rs).is_some());
+            }
+            Fork(fcfg) => {
+                return match self.states.iter().any(|s| match s {
+                    NormalKey { keycode, .. } | FakeKey { keycode } => {
+                        fcfg.right_triggers.contains(keycode)
+                    }
+                    _ => false,
+                }) {
+                    false => self.do_action(&fcfg.left, coord, delay, false),
+                    true => self.do_action(&fcfg.right, coord, delay, false),
+                };
             }
         }
         CustomEvent::NoEvent
@@ -2944,6 +2951,39 @@ mod test {
         assert_keys(&[Kb3], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[Kb3, Kb6], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_fork() {
+        static LAYERS: Layers<2, 1, 1> = [[[
+            Fork(&ForkConfig {
+                left: k(Kb1),
+                right: k(Kb2),
+                right_triggers: &[Space],
+            }),
+            k(Space),
+        ]]];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 1));
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space, Kb2], layout.keycodes());
+        layout.event(Release(0, 1));
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb2], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
