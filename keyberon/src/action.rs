@@ -294,6 +294,16 @@ pub type ChordKeys = u32;
 /// Defines the maximum number of (virtual) keys that can be used in a single chords group.
 pub const MAX_CHORD_KEYS: usize = ChordKeys::BITS as usize;
 
+/// An action that can do one of two actions. The `left` action is the default. The `right` action
+/// will trigger if any of the key codes in `right_triggers` are active in the current layout
+/// state.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ForkConfig<'a, T> {
+    pub left: Action<'a, T>,
+    pub right: Action<'a, T>,
+    pub right_triggers: &'a [KeyCode],
+}
+
 /// The different actions that can be done.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Action<'a, T = core::convert::Infallible>
@@ -366,6 +376,9 @@ where
     /// the timeout expires, or when the pressed chord uniquely identifies an action (i.e. there are
     /// no more keys you could press to change the result).
     Chords(&'a ChordsGroup<'a, T>),
+    /// Fork action that can activate one of two potential actions depending on what keys are
+    /// currently active.
+    Fork(&'a ForkConfig<'a, T>),
 }
 
 impl<'a, T> Action<'a, T> {

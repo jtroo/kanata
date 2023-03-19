@@ -361,6 +361,11 @@ If you need help, you are welcome to ask.
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
   🙁 (unicode 🙁)
 
+  ;; fork accepts two actions and a key list. The first (left) action will
+  ;; activate by default. The second (right) action will activate if any of
+  ;; the keys in the third parameter (right-trigger-keys) are currently active.
+  frk (fork @🙃 @🙁 (lsft rsft))
+
   ;; Having a cmd action in your configuration without explicitly enabling
   ;; `danger-enable-cmd` **and** using the cmd-enabled executable will make
   ;; kanata refuse to load your configuration. The aliases below are commented

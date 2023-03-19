@@ -1012,6 +1012,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "arbitrary-code" => parse_arbitrary_code(&ac[1..], s),
         "cmd" => parse_cmd(&ac[1..], s, CmdType::Standard),
         "cmd-output-keys" => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
+        "fork" => parse_fork(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -1730,6 +1731,10 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
                 find_chords_coords(chord_groups, coord, ac);
             }
         }
+        Action::Fork(ForkConfig { left, right, .. }) => {
+            find_chords_coords(chord_groups, coord, left);
+            find_chords_coords(chord_groups, coord, right);
+        }
     }
 }
 
@@ -1807,6 +1812,19 @@ fn fill_chords(
                 Some(Action::TapDance(s.a.sref(TapDance {
                     actions: s.a.sref_vec(new_actions),
                     ..td
+                })))
+            } else {
+                None
+            }
+        }
+        Action::Fork(&fcfg @ ForkConfig { left, right, .. }) => {
+            let new_left = fill_chords(chord_groups, &left, s);
+            let new_right = fill_chords(chord_groups, &right, s);
+            if new_left.is_some() || new_right.is_some() {
+                Some(Action::Fork(s.a.sref(ForkConfig {
+                    left: new_left.unwrap_or(left),
+                    right: new_right.unwrap_or(right),
+                    ..fcfg
                 })))
             } else {
                 None
@@ -2026,9 +2044,9 @@ fn parse_dynamic_macro_record(
         bail!("{ERR_MSG}, found {}", ac_params.len());
     }
     let key = parse_u16(&ac_params[0], s, "macro ID")?;
-    return Ok(s.a.sref(Action::Custom(
+    Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecord(key))),
-    )));
+    )))
 }
 
 fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
@@ -2037,9 +2055,9 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
         bail!("{ERR_MSG}, found {}", ac_params.len());
     }
     let key = parse_u16(&ac_params[0], s, "macro ID")?;
-    return Ok(s.a.sref(Action::Custom(
+    Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroPlay(key))),
-    )));
+    )))
 }
 
 /// Mutates `layers::LAYERS` using the inputs.
@@ -2207,6 +2225,27 @@ fn parse_overrides(exprs: &[SExpr], s: &ParsedState) -> Result<Overrides> {
     Ok(Overrides::new(&overrides))
 }
 
+fn parse_fork(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_STR: &str =
+        "fork expects 3 params: <left-action> <right-action> <right-trigger-keys>";
+    if ac_params.len() != 3 {
+        bail!("{ERR_STR}\nFound {} params instead of 3", ac_params.len());
+    }
+    let left = *parse_action(&ac_params[0], s)?;
+    let right = *parse_action(&ac_params[1], s)?;
+    let right_triggers = s.a.sref_vec(
+        parse_key_list(&ac_params[2], s, "right-trigger-keys")?
+            .into_iter()
+            .map(KeyCode::from)
+            .collect::<Vec<_>>(),
+    );
+    Ok(s.a.sref(Action::Fork(s.a.sref(ForkConfig {
+        left,
+        right,
+        right_triggers,
+    }))))
+}
+
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
 fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutputs {
     let mut outs = KeyOutputs::new();
@@ -2268,6 +2307,10 @@ fn add_key_output_from_action_to_key_pos(
             for ac in actions.iter() {
                 add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
             }
+        }
+        Action::Fork(ForkConfig { left, right, .. }) => {
+            add_key_output_from_action_to_key_pos(osc_slot, left, outputs, overrides);
+            add_key_output_from_action_to_key_pos(osc_slot, right, outputs, overrides);
         }
         Action::Chords(ChordsGroup { chords, .. }) => {
             for (_, ac) in chords.iter() {

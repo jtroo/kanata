@@ -88,6 +88,7 @@ fn parse_action_vars() {
   opf (on-press-fakekey $one $rel)
   orf (on-release-fakekey $one $rel)
   fla $full-action
+  frk (fork $one $two $five)
 )
 (defsrc a b c d)
 (deflayer base $chord1 $chord2 $chr @tdl)

@@ -1296,6 +1296,22 @@ Example:
 )
 ----
 
+[[fork]]
+=== fork
+<<table-of-contents,Back to ToC>>
+
+The fork action accepts two actions and a key list.
+The first (left) action will activate by default.
+The second (right) action will activate
+if any of the keys in the third parameter (right-trigger-keys) are currently active.
+
+Example:
+----
+(defalias
+  frk (fork k @special (lalt ralt))
+)
+----
+
 [[cmd]]
 === cmd
 <<table-of-contents,Back to ToC>>
