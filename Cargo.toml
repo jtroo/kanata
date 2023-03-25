@@ -1,6 +1,6 @@
 [package]
 name = "kanata"
-version = "1.3.0-prerelease-3"
+version = "1.3.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
@@ -25,11 +25,11 @@ rustc-hash = "1.1.0"
 miette = { version = "5.5.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
-# kanata-keyberon = "0.14.0"
+kanata-keyberon = "0.15.0"
 # Uncomment below and comment out above for testing local keyberon changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-kanata-keyberon = { path = "keyberon" }
+# kanata-keyberon = { path = "keyberon" }
 
 [dev-dependencies]
 serial_test = { version = "1", default_features = false }
