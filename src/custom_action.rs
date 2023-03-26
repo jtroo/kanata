@@ -1,3 +1,5 @@
+use kanata_keyberon::key_code::KeyCode;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
@@ -42,6 +44,7 @@ pub enum CustomAction {
     DynamicMacroRecordStop,
     DynamicMacroPlay(u16),
     SendArbitraryCode(u16),
+    CapsWord(CapsWordCfg),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,4 +83,11 @@ pub enum MoveDirection {
     Down,
     Left,
     Right,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CapsWordCfg {
+    pub keys_to_capitalize: &'static [KeyCode],
+    pub keys_nonterminal: &'static [KeyCode],
+    pub timeout: u16,
 }

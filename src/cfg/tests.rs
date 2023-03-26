@@ -2,6 +2,14 @@ use super::*;
 use serial_test::serial;
 
 #[test]
+fn sizeof_action_is_two_usizes() {
+    assert_eq!(
+        std::mem::size_of::<KanataAction>(),
+        std::mem::size_of::<usize>() * 2
+    );
+}
+
+#[test]
 fn span_works() {
     let s = "(hello world my oyster)\n(row two)";
     let tlevel = parse(s).unwrap();

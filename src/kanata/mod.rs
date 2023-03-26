@@ -38,6 +38,9 @@ mod linux;
 #[cfg(target_os = "linux")]
 pub use linux::*;
 
+mod caps_word;
+pub use caps_word::*;
+
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -79,6 +82,7 @@ pub struct Kanata {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
     log_layer_changes: bool,
+    pub caps_word: Option<CapsWordState>,
 }
 
 pub struct ScrollState {
@@ -296,6 +300,7 @@ impl Kanata {
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
             log_layer_changes,
+            caps_word: None,
         })
     }
 
@@ -533,6 +538,11 @@ impl Kanata {
         cur_keys.extend(layout.keycodes());
         self.overrides
             .override_keys(cur_keys, &mut self.override_states);
+        if let Some(caps_word) = &mut self.caps_word {
+            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+                self.caps_word = None;
+            }
+        }
 
         // Release keys that do not exist in the current state but exist in the previous state.
         // This used to use a HashSet but it was changed to a Vec because the order of operations
@@ -625,6 +635,7 @@ impl Kanata {
         // it to now be here.
         match custom_event {
             CustomEvent::Press(custacts) => {
+                #[cfg(feature = "cmd")]
                 let mut cmds = vec![];
                 let mut prev_mouse_btn = None;
                 for custact in custacts.iter() {
@@ -767,8 +778,9 @@ impl Kanata {
                                 }
                             }
                         }
-                        CustomAction::Cmd(cmd) => {
-                            cmds.push(cmd.clone());
+                        CustomAction::Cmd(_cmd) => {
+                            #[cfg(feature = "cmd")]
+                            cmds.push(_cmd.clone());
                         }
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
@@ -915,9 +927,15 @@ impl Kanata {
                         CustomAction::SendArbitraryCode(code) => {
                             self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
                         }
-                        _ => {}
+                        CustomAction::CapsWord(cfg) => {
+                            self.caps_word = Some(CapsWordState::new(cfg));
+                        }
+                        CustomAction::FakeKeyOnRelease { .. }
+                        | CustomAction::DelayOnRelease(_)
+                        | CustomAction::CancelMacroOnRelease => {}
                     }
                 }
+                #[cfg(feature = "cmd")]
                 run_multi_cmd(cmds);
             }
 
@@ -1311,6 +1329,7 @@ impl Kanata {
             && self.move_mouse_state_vertical.is_none()
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
+            && self.caps_word.is_none()
     }
 }
 
@@ -1330,9 +1349,6 @@ fn run_multi_cmd(cmds: Vec<Vec<String>>) {
         }
     });
 }
-
-#[cfg(not(feature = "cmd"))]
-fn run_multi_cmd(_cmds: Vec<Vec<String>>) {}
 
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
