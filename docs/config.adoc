@@ -1322,9 +1322,10 @@ when a set of specific keys are active.
 The keys are: `a-z` and `-`, which will be outputted as `A-Z` and `_`
 respectively when using the US layout.
 
-The `caps-word` state ends when there are no active keys
-within the timeout period, or a terminating key is pressed.
-Terminating keys are every key
+The `caps-word` state ends when the keyboard is idle
+for the duration of the defined timeout (1st parameter),
+or a terminating key is pressed.
+Every key is a terminating key
 except the keys which get capitalized
 and the extra keys in this list:
 
@@ -1334,7 +1335,7 @@ and the extra keys in this list:
 - `up down left rght`
 
 You can use `caps-word-custom` instead of `caps-word`
-if you want to define which keys are capitalized (2nd parameter)
+if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
 ----
