@@ -1312,6 +1312,46 @@ Example:
 )
 ----
 
+[[caps-word]]
+=== caps-word
+<<table-of-contents,Back to ToC>>
+
+The `caps-word` action triggers a state where the `lsft` key
+will be added to the active key list
+when a set of specific keys are active.
+The keys are: `a-z` and `-`, which will be outputted as `A-Z` and `_`
+respectively when using the US layout.
+
+The `caps-word` state ends when the keyboard is idle
+for the duration of the defined timeout (1st parameter),
+or a terminating key is pressed.
+Every key is a terminating key
+except the keys which get capitalized
+and the extra keys in this list:
+
+- `0-9`
+- `kp0-kp9`
+- `bspc del`
+- `up down left rght`
+
+You can use `caps-word-custom` instead of `caps-word`
+if you want to manually define which keys are capitalized (2nd parameter)
+and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
+
+----
+(defalias
+  cw (caps-word 2000)
+
+  ;; This example is similar to the default caps-word behaviour but it moves the
+  ;; 0-9 keys to the capitalized key list from the extra non-terminating key list.
+  cwc (caps-word-custom
+    2000
+    (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+    (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+  )
+)
+----
+
 [[cmd]]
 === cmd
 <<table-of-contents,Back to ToC>>

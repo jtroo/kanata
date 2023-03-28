@@ -473,6 +473,33 @@ If you need help, you are welcome to ask.
   ab1 (arbitrary-code 700)
 )
 
+(defalias
+  ;; caps-word will add an lsft to the active key list for all alphanumeric keys
+  ;; a-z, and the US layout minus key; meaning it will be converted to an
+  ;; underscore.
+  ;;
+  ;; The caps-word state will also be cleared if any key that doesn't get auto-
+  ;; capitalized and also doesn't belong in this list is pressed:
+  ;; - 0-9
+  ;; - kp0-kp9
+  ;; - bspc, del
+  ;; - up, down, left, rght
+  ;;
+  ;; The single parameter is a timeout in milliseconds after which the caps-word
+  ;; state will be cleared and lsft will not be added anymore. The timer is reset
+  ;; any time a capitalizable or extra non-terminating key is active.
+  cw (caps-word 2000)
+
+  ;; Like caps-word, but you get to choose the key lists where lsft gets added.
+  ;; This example is similar to the default caps-word behaviour but it moves the
+  ;; 0-9 keys to capitalized key list from the extra non-terminating key list.
+  cwc (caps-word-custom
+        2000
+        (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+	(kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+      )
+)
+
 ;; Can see a new action `rpt` in this layer. This repeats the most recently
 ;; pressed key. Holding down the `rpt` key will not repeatedly send the key.
 ;; The intended use case is to be able to use a different finger to repeat a
@@ -480,8 +507,8 @@ If you need help, you are welcome to ask.
 (deflayer misc
   _    _    _    _    _    _    _    _    _    @é   @è   _    ì #|random custom key for testing|#   _
   _    _    @ab1 _    _    _    ins  @{   @}   [    ]    _    _    +
-  _    _    _    _    C-u  _    del  bspc esc  ret  _    _    _
-  _    C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
+  @cw  _    _    _    C-u  _    del  bspc esc  ret  _    _    _
+  @cwc C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
   rpt  _    _              _              _    _    _
 )
 
