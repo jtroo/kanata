@@ -100,6 +100,7 @@ fn parse_action_vars() {
   orf (on-release-fakekey $one $rel)
   fla $full-action
   frk (fork $one $two $five)
+  cpw (caps-word-custom $one $three $four)
 )
 (defsrc a b c d)
 (deflayer base $chord1 $chord2 $chr @tdl)
