@@ -1,5 +1,8 @@
 use super::*;
-use serial_test::serial;
+
+use std::sync::Mutex;
+
+static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn sizeof_action_is_two_usizes() {
@@ -21,39 +24,39 @@ fn span_works() {
 }
 
 #[test]
-#[serial]
 fn parse_simple() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
 }
 
 #[test]
-#[serial]
 fn parse_minimal() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
 }
 
 #[test]
-#[serial]
 fn parse_default() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
 }
 
 #[test]
-#[serial]
 fn parse_jtroo() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
     assert_eq!(cfg.layer_info.len(), 16);
 }
 
 #[test]
-#[serial]
 fn parse_f13_f24() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
 }
 
 #[test]
-#[serial]
 fn parse_action_vars() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     let mut s = ParsedState::default();
     let source = r#"
 (defvar
@@ -123,8 +126,8 @@ fn parse_action_vars() {
 }
 
 #[test]
-#[serial]
 fn parse_transparent_default() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     let mut s = ParsedState::default();
     let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
         &std::path::PathBuf::from("./cfg_samples/transparent_default.kbd"),
@@ -167,8 +170,8 @@ fn parse_transparent_default() {
 }
 
 #[test]
-#[serial]
 fn parse_all_keys() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from(
         "./cfg_samples/all_keys_in_defsrc.kbd",
     ))
@@ -176,8 +179,8 @@ fn parse_all_keys() {
 }
 
 #[test]
-#[serial]
 fn parse_multiline_comment() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/multiline_comment.kbd",
     ))
@@ -185,8 +188,8 @@ fn parse_multiline_comment() {
 }
 
 #[test]
-#[serial]
 fn disallow_nested_tap_hold() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| format!("{e:?}"))
     {
@@ -196,8 +199,8 @@ fn disallow_nested_tap_hold() {
 }
 
 #[test]
-#[serial]
 fn disallow_ancestor_seq() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
         .map_err(|e| format!("{e:?}"))
     {
@@ -207,8 +210,8 @@ fn disallow_ancestor_seq() {
 }
 
 #[test]
-#[serial]
 fn disallow_descendent_seq() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
         .map_err(|e| format!("{e:?}"))
     {
@@ -218,8 +221,8 @@ fn disallow_descendent_seq() {
 }
 
 #[test]
-#[serial]
 fn disallow_multiple_waiting_actions() {
+    let _lk = CFG_PARSE_LOCK.lock().unwrap();
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
         .map_err(|e| format!("{e:?}"))
     {

@@ -31,9 +31,6 @@ kanata-keyberon = "0.15.0"
 # binary.
 # kanata-keyberon = { path = "keyberon" }
 
-[dev-dependencies]
-serial_test = { version = "1", default_features = false }
-
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "0.12.0"
 signal-hook = "0.3.14"
