@@ -1272,6 +1272,11 @@ the current recording will end and be saved, then a new recording with the new
 ID will begin.
 
 The action `dynamic-macro-record-stop` will stop and save any active recording.
+There is a variant of this:
+`dynamic-macro-record-stop-truncate`
+This is a list action that takes a single parameter:
+the number of key actions to remove at the end of a dynamic macro.
+This variant is useful if the macro stop button is on a different layer.
 
 The action `dynamic-macro-play` accepts one number (0-65535), which represents
 the macro ID. Activating this action will play the saved recording of physical
@@ -1293,6 +1298,7 @@ Example:
   dp1 (dynamic-macro-play 1)
   dp2 (dynamic-macro-play 2)
   dms dynamic-macro-record-stop
+  dst (dynamic-macro-record-stop-truncate 1)
 )
 ----
 
