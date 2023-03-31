@@ -1322,6 +1322,17 @@ when a set of specific keys are active.
 The keys are: `a-z` and `-`, which will be outputted as `A-Z` and `_`
 respectively when using the US layout.
 
+Examples where this is helpful
+is capitalizing a single important word
+like in `IMPORTANT!`
+or defining a constant in code
+like `const P99_99_VALUE: ...`.
+This has an advantage over the regular caps lock
+because it automatically ends
+so it doesn't need to be toggled off manually,
+and it also shifts `-` to `_`
+which caps lock does not do.
+
 The `caps-word` state ends when the keyboard is idle
 for the duration of the defined timeout (1st parameter),
 or a terminating key is pressed.
