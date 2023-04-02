@@ -1254,6 +1254,19 @@ and the rest of the macro does not run.
 )
 ----
 
+There are further variants of the two `macro` actions which repeat while held.
+The repeat will only occur once all macros have completed,
+including the held macro key.
+If multiple repeating macros are being held simulaneously,
+only the most recently pressed macro will be repeated.
+
+----
+(defalias
+  mr1 (macro-repeat mltp)
+  mr2 (macro-repeat-release-cancel mltp)
+)
+----
+
 [[dynamic-macro]]
 === dynamic-macro
 <<table-of-contents,Back to ToC>>
