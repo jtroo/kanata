@@ -922,7 +922,7 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
         }
         "dynamic-macro-record-stop" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecordStop)),
+                s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecordStop(0))),
             )))
         }
         _ => {}
@@ -1017,6 +1017,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "fork" => parse_fork(&ac[1..], s),
         "caps-word" => parse_caps_word(&ac[1..], s),
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
+        "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -2339,7 +2340,7 @@ fn parse_caps_word(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Kana
 fn parse_caps_word_custom(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "caps-word-custom expects 3 param: <timeout> <keys-to-capitalize> <extra-non-terminal-keys>";
     if ac_params.len() != 3 {
-        bail!("{ERR_STR}\nFound {} params instead of 1", ac_params.len());
+        bail!("{ERR_STR}\nFound {} params instead of 3", ac_params.len());
     }
     let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
     Ok(s.a.sref(Action::Custom(
@@ -2361,6 +2362,21 @@ fn parse_caps_word_custom(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stat
             })),
         ),
     )))
+}
+
+fn parse_macro_record_stop_truncate(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_STR: &str =
+        "dynamic-macro-record-stop-truncate expects 1 param: <num-keys-to-truncate>";
+    if ac_params.len() != 1 {
+        bail!("{ERR_STR}\nFound {} params instead of 1", ac_params.len());
+    }
+    let num_to_truncate = parse_u16(&ac_params[0], s, "num-keys-to-truncate")?;
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::DynamicMacroRecordStop(num_to_truncate)),
+    ))))
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.

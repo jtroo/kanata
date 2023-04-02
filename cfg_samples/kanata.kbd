@@ -354,6 +354,7 @@ If you need help, you are welcome to ask.
   ;; Kanata also supports dynamic macros. Dynamic macros can be nested, but
   ;; cannot recurse.
   dms dynamic-macro-record-stop
+  dst (dynamic-macro-record-stop-truncate 3)
   dr0 (dynamic-macro-record 0)
   dr1 (dynamic-macro-record 1)
   dr2 (dynamic-macro-record 2)

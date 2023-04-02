@@ -886,14 +886,21 @@ impl Kanata {
                                 });
                             }
                         }
-                        CustomAction::DynamicMacroRecordStop => {
+                        CustomAction::DynamicMacroRecordStop(num_actions_to_remove) => {
                             if let Some(state) = &mut self.dynamic_macro_record_state {
-                                // remove the last item, since it's almost certainly a "macro
-                                // record stop" key press action which we don't want to keep.
+                                // remove the last item independently of `num_actions_to_remove`
+                                // since it's almost certainly a "macro record stop" key press
+                                // action which we don't want to keep.
                                 state.macro_items.remove(state.macro_items.len() - 1);
                                 log::info!(
-                                    "saving and stopping dynamic macro {} recording",
-                                    state.starting_macro_id
+                                    "saving and stopping dynamic macro {} recording with {num_actions_to_remove} actions at the end removed",
+                                    state.starting_macro_id,
+                                );
+                                state.macro_items.truncate(
+                                    state
+                                        .macro_items
+                                        .len()
+                                        .saturating_sub(*num_actions_to_remove as usize),
                                 );
                                 state.add_release_for_all_unreleased_presses();
                                 self.dynamic_macros

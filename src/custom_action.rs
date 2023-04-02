@@ -41,7 +41,7 @@ pub enum CustomAction {
     Repeat,
     CancelMacroOnRelease,
     DynamicMacroRecord(u16),
-    DynamicMacroRecordStop,
+    DynamicMacroRecordStop(u16),
     DynamicMacroPlay(u16),
     SendArbitraryCode(u16),
     CapsWord(CapsWordCfg),
