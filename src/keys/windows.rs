@@ -205,6 +205,7 @@ mod keys {
     pub const VK_NONAME: u16 = 0xFC;
     pub const VK_PA1: u16 = 0xFD;
     pub const VK_OEM_CLEAR: u16 = 0xFE;
+    pub const VK_KPENTER_FAKE: u16 = 0xFF;
 }
 pub use keys::*;
 
@@ -297,6 +298,7 @@ impl OsCode {
             VK_SUBTRACT => Some(OsCode::KEY_KPMINUS),
             VK_ADD => Some(OsCode::KEY_KPPLUS),
             VK_DECIMAL => Some(OsCode::KEY_KPDOT),
+            VK_KPENTER_FAKE => Some(OsCode::KEY_KPENTER),
             VK_RCONTROL => Some(OsCode::KEY_RIGHTCTRL),
             VK_DIVIDE => Some(OsCode::KEY_KPSLASH),
             VK_RMENU => Some(OsCode::KEY_RIGHTALT),
@@ -931,6 +933,7 @@ impl OsCode {
             OsCode::KEY_KPMINUS => VK_SUBTRACT,
             OsCode::KEY_KPPLUS => VK_ADD,
             OsCode::KEY_KPDOT => VK_DECIMAL,
+            OsCode::KEY_KPENTER => VK_KPENTER_FAKE,
             OsCode::KEY_RIGHTCTRL => VK_RCONTROL,
             OsCode::KEY_KPSLASH => VK_DIVIDE,
             OsCode::KEY_RIGHTALT => VK_RMENU,
