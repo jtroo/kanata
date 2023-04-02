@@ -847,7 +847,7 @@ impl Kanata {
                             let mut new_recording = None;
                             match &mut self.dynamic_macro_record_state {
                                 None => {
-                                    log::debug!("starting dynamic macro {macro_id} recording");
+                                    log::info!("starting dynamic macro {macro_id} recording");
                                     self.dynamic_macro_record_state =
                                         Some(DynamicMacroRecordState {
                                             starting_macro_id: *macro_id,
