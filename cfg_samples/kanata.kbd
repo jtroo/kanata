@@ -346,6 +346,11 @@ If you need help, you are welcome to ask.
 
   rls (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
 
+  ;; repeat variants will repeat while held, once ALL macros have ended,
+  ;; including the held macro.
+  mr1 (macro-repeat mltp)
+  mr2 (macro-repeat-release-cancel mltp)
+
   ;; Kanata also supports dynamic macros. Dynamic macros can be nested, but
   ;; cannot recurse.
   dms dynamic-macro-record-stop

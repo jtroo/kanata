@@ -156,10 +156,25 @@ impl<'a, T> CustomEvent<'a, T> {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum State<'a, T: 'a> {
-    NormalKey { keycode: KeyCode, coord: (u8, u16) },
-    LayerModifier { value: usize, coord: (u8, u16) },
-    Custom { value: &'a T, coord: (u8, u16) },
-    FakeKey { keycode: KeyCode }, // Fake key event for sequences
+    NormalKey {
+        keycode: KeyCode,
+        coord: (u8, u16),
+    },
+    LayerModifier {
+        value: usize,
+        coord: (u8, u16),
+    },
+    Custom {
+        value: &'a T,
+        coord: (u8, u16),
+    },
+    FakeKey {
+        keycode: KeyCode,
+    }, // Fake key event for sequences
+    RepeatingSequence {
+        sequence: &'a &'a [SequenceEvent<'a, T>],
+        coord: (u8, u16),
+    },
     SeqCustomPending(&'a T),
     SeqCustomActive(&'a T),
     Tombstone,
@@ -184,7 +199,13 @@ impl<'a, T: 'a> State<'a, T> {
     /// Returns None if the key has been released and Some otherwise.
     pub fn release(&self, c: (u8, u16), custom: &mut CustomEvent<'a, T>) -> Option<Self> {
         match *self {
-            NormalKey { coord, .. } | LayerModifier { coord, .. } if coord == c => None,
+            NormalKey { coord, .. }
+            | LayerModifier { coord, .. }
+            | RepeatingSequence { coord, .. }
+                if coord == c =>
+            {
+                None
+            }
             Custom { value, coord } if coord == c => {
                 custom.update(CustomEvent::Release(value));
                 None
@@ -966,6 +987,22 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 }
             }
         }
+        if self.active_sequences.is_empty() {
+            // Push only the latest pressed repeating macro.
+            if let Some(State::RepeatingSequence { sequence, .. }) = self
+                .states
+                .iter()
+                .rev()
+                .find(|s| matches!(s, State::RepeatingSequence { .. }))
+            {
+                self.active_sequences.push_back(SequenceState {
+                    cur_event: None,
+                    delay: 0,
+                    tapped: None,
+                    remaining_events: sequence,
+                });
+            }
+        }
     }
     fn process_sequence_custom(
         &mut self,
@@ -1216,6 +1253,18 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     delay: 0,
                     tapped: None,
                     remaining_events: events,
+                });
+            }
+            RepeatableSequence { events } => {
+                self.active_sequences.push_back(SequenceState {
+                    cur_event: None,
+                    delay: 0,
+                    tapped: None,
+                    remaining_events: events,
+                });
+                let _ = self.states.push(RepeatingSequence {
+                    sequence: events,
+                    coord,
                 });
             }
             CancelSequences => {

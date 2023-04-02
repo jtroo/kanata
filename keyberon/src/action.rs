@@ -335,6 +335,11 @@ where
         /// An array of SequenceEvents that will be triggered (in order)
         events: &'a &'a [SequenceEvent<'a, T>],
     },
+    /// A sequence of SequenceEvents, which will be repeated so long as the key is held.
+    RepeatableSequence {
+        /// An array of SequenceEvents that will be triggered (in order)
+        events: &'a &'a [SequenceEvent<'a, T>],
+    },
     /// Cancels any running sequences
     CancelSequences,
     /// Action to release either a keycode state or a layer state.
