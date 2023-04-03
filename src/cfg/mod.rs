@@ -1257,6 +1257,7 @@ fn parse_macro(
         (events, params_remainder) = parse_macro_item(params_remainder, s)?;
         all_events.append(&mut events);
     }
+    all_events.push(SequenceEvent::Complete);
     all_events.shrink_to_fit();
     match repeat {
         RepeatMacro::No => Ok(s.a.sref(Action::Sequence {
@@ -1288,9 +1289,18 @@ fn parse_macro_item<'a>(
     Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
     &'a [SExpr],
 )> {
-    if let Ok(duration) = parse_non_zero_u16(&acs[0], s, "delay") {
-        let duration = u32::from(duration);
-        return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
+    if let Some(a) = acs[0].atom(s.vars()) {
+        match parse_non_zero_u16(&acs[0], s, "delay") {
+            Ok(duration) => {
+                let duration = u32::from(duration);
+                return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
+            }
+            Err(e) => {
+                if a.chars().all(|c| c.is_ascii_digit()) {
+                    return Err(e);
+                }
+            }
+        }
     }
     match parse_action(&acs[0], s) {
         Ok(Action::KeyCode(kc)) => {
@@ -1366,6 +1376,9 @@ fn parse_mods_held_for_submacro<'a>(
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(held_mods, "{MACRO_ERR}"))?;
     let (mod_keys, unparsed_str) = parse_mod_prefix(mods)?;
+    if mod_keys.is_empty() {
+        bail_expr!(held_mods, "{MACRO_ERR}");
+    }
     Ok((mod_keys, unparsed_str))
 }
 
