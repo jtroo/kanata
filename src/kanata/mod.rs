@@ -837,10 +837,25 @@ impl Kanata {
                         CustomAction::Repeat => {
                             let key = OsCode::from(LAST_PRESSED_KEY.load(SeqCst));
                             log::debug!("repeating a keypress {key:?}");
+                            let mut do_caps_word = false;
+                            if !cur_keys.contains(&KeyCode::LShift) {
+                                if let Some(ref mut cw) = self.caps_word {
+                                    cur_keys.push(key.into());
+                                    let prev_len = cur_keys.len();
+                                    cw.maybe_add_lsft(cur_keys);
+                                    if cur_keys.len() > prev_len {
+                                        do_caps_word = true;
+                                        self.kbd_out.press_key(OsCode::KEY_LEFTSHIFT)?;
+                                    }
+                                }
+                            }
                             // Release key in case the most recently pressed key is still pressed.
                             self.kbd_out.release_key(key)?;
                             self.kbd_out.press_key(key)?;
                             self.kbd_out.release_key(key)?;
+                            if do_caps_word {
+                                self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                            }
                         }
                         CustomAction::DynamicMacroRecord(macro_id) => {
                             let mut stop_record = false;
