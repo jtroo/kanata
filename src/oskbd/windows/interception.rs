@@ -2,7 +2,7 @@
 
 use std::io;
 
-use interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
+use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
 
 use crate::custom_action::*;
 use crate::keys::*;

@@ -1,0 +1,14 @@
+[package]
+name = "kanata-interception"
+description = "Safe wrapper for Interception. Forked for use with kanata."
+version = "0.2.0"
+authors = ["Joe Kaushal <joe.kaushal@gmail.com>"]
+edition = "2018"
+repository = "https://github.com/jtroo/kanata"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+interception-sys = "0.1.3"
+bitflags = "1.2.1"
+num_enum = "0.6.0"
+serde = { version = "1.0.114", features = ["derive"] }

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use interception as ic;
+use kanata_interception as ic;
 use parking_lot::Mutex;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;

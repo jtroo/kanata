@@ -185,7 +185,7 @@ enum Scancode {
 */
 
 use crate::keys::OsCode;
-use interception::*;
+use kanata_interception::*;
 
 impl TryFrom<Stroke> for OsCode {
     type Error = ();
