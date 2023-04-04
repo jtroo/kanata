@@ -12,6 +12,6 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-kanata-keyberon-macros = { version = "0.1.0" }
+kanata-keyberon-macros = { version = "0.2.0" }
 heapless = "0.7.16"
 arraydeque = { version = "0.4.5", default-features = false }

@@ -1,10 +1,7 @@
 extern crate proc_macro;
 use proc_macro2::{Delimiter, Group, Literal, Punct, Spacing, TokenStream, TokenTree};
-use proc_macro_error::proc_macro_error;
-use proc_macro_error::{abort, emit_error};
 use quote::quote;
 
-#[proc_macro_error]
 #[proc_macro]
 pub fn layout(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
@@ -21,7 +18,7 @@ pub fn layout(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     [#layer],
                 });
             }
-            _ => abort!(t, "Invalid token, expected layer: {{ ... }}"),
+            _ => panic!("{}", "Invalid token, expected layer: {{ ... }}"),
         }
     }
 
@@ -42,7 +39,7 @@ fn parse_layer(input: TokenStream) -> TokenStream {
                 });
             }
             TokenTree::Punct(p) if p.as_char() == ',' => (),
-            _ => abort!(t, "Invalid token, expected row: [ ... ]"),
+            _ => panic!("Invalid token, expected row: [ ... ]"),
         }
     }
     out
@@ -71,13 +68,13 @@ fn parse_group(g: &Group, out: &mut TokenStream) {
     match g.delimiter() {
         // Handle empty groups
         Delimiter::Parenthesis if g.stream().is_empty() => {
-            emit_error!(g, "Expected a layer number in layer switch"; help = "To create a parenthesis keycode, enclose it in apostrophes: '('")
+            eprintln!("Expected a layer number in layer switch");
         }
         Delimiter::Brace if g.stream().is_empty() => {
-            emit_error!(g, "Expected an action - group cannot be empty"; help = "To create a brace keycode, enclose it in apostrophes: '{'")
+            eprintln!("Expected an action - group cannot be empty");
         }
         Delimiter::Bracket if g.stream().is_empty() => {
-            emit_error!(g, "Expected keycodes - keycode group cannot be empty"; help = "To create a bracket keycode, enclose it in apostrophes: '['")
+            eprintln!("Expected keycodes - keycode group cannot be empty");
         }
 
         // Momentary layer switch (Action::Layer)
@@ -93,7 +90,7 @@ fn parse_group(g: &Group, out: &mut TokenStream) {
         Delimiter::Bracket => parse_keycode_group(g.stream(), out),
 
         // Is this reachable?
-        Delimiter::None => emit_error!(g, "Unexpected group"),
+        Delimiter::None => eprintln!("Unexpected group"),
     }
 }
 
@@ -139,7 +136,7 @@ fn punctuation_to_keycode(p: &Punct, out: &mut TokenStream) {
         '>' => out.extend(quote! { keyberon::action::Action::MultipleKeyCodes(&[keyberon::key_code::KeyCode::LShift, keyberon::key_code::KeyCode::Dot].as_slice()), }),
         '?' => out.extend(quote! { keyberon::action::Action::MultipleKeyCodes(&[keyberon::key_code::KeyCode::LShift, keyberon::key_code::KeyCode::Slash].as_slice()), }),
         // Is this reachable?
-        _ => emit_error!(p, "Punctuation could not be parsed as a keycode")
+        _ => eprintln!("Punctuation could not be parsed as a keycode")
     }
 }
 
@@ -171,15 +168,11 @@ fn literal_to_keycode(l: &Literal, out: &mut TokenStream) {
         "'}'" => out.extend(quote! { keyberon::action::Action::MultipleKeyCodes(&[keyberon::key_code::KeyCode::LShift, keyberon::key_code::KeyCode::RBracket].as_slice()), }),
         "'_'" => out.extend(quote! { keyberon::action::Action::MultipleKeyCodes(&[keyberon::key_code::KeyCode::LShift, keyberon::key_code::KeyCode::Minus].as_slice()), }),
 
-        s if s.starts_with('\'') => emit_error!(l, "Literal could not be parsed as a keycode"; help = "Maybe try without quotes?"),
+        s if s.starts_with('\'') => eprintln!("Literal could not be parsed as a keycode"),
 
         s if s.starts_with('\"')  => {
-            if s.len() == 3 {
-                emit_error!(l, "Typing strings on key press is not yet supported"; help = "Did you mean to use apostrophes instead of quotes?");
-            } else {
-                emit_error!(l, "Typing strings on key press is not yet supported");
-            }
+            eprintln!("Typing strings on key press is not yet supported")
         }
-        _ => emit_error!(l, "Literal could not be parsed as a keycode")
+        _ => eprintln!("Literal could not be parsed as a keycode")
     }
 }

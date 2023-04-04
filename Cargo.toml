@@ -22,14 +22,14 @@ serde = { version = "1", features = ["alloc", "derive"], default_features = fals
 serde_json = { version = "1", features = ["alloc"], default_features = false }
 radix_trie = "0.2"
 rustc-hash = "1.1.0"
-miette = { version = "5.5.0", features = ["fancy"] }
+miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
-kanata-keyberon = "0.16.0"
+# kanata-keyberon = "0.16.0"
 # Uncomment below and comment out above for testing local keyberon changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-# kanata-keyberon = { path = "keyberon" }
+kanata-keyberon = { path = "keyberon" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "0.12.0"
@@ -47,12 +47,12 @@ winapi = { version = "0.3.9", features = [
     "mmsystem",
 ] }
 native-windows-gui = { version = "1.0.12", default_features = false }
-interception = { version = "0.1.2", optional = true }
+kanata-interception = { version = "0.2.0", optional = true }
 
 [features]
 cmd = []
 perf_logging = []
-interception_driver = ["interception"]
+interception_driver = ["kanata-interception"]
 
 [profile.release]
 opt-level = "z"
