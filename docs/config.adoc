@@ -977,6 +977,24 @@ takes (unit: ms) to linearly ramp up from the minimum distance to the maximum
 distance. The third and fourth numbers are the minimum and maximum distances
 (unit: pixels) of each movement.
 
+[[set-mouse]]
+==== Set absolute mouse position
+<<table-of-contents,Back to ToC>>
+
+The action `setmouse` sets the absolute mouse position.
+
+WARNING: This is only supported in Windows right now
+
+This list action takes two parameters which are `x` and `y' positions
+of the absolute movement.
+The values go from 0,0 which is the upper-left corner of the screen
+to 65535,65535 which is the lower-right corner of the screen.
+If you have multiple monitors,
+`setmouse` treats them all as a single large screen.
+This can make it a little confusing for how to set the `x, y` values
+to get the positions that you want.
+Experimentation will be needed.
+
 [[mouse-all-actions-example]]
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
@@ -997,6 +1015,8 @@ distance. The third and fourth numbers are the minimum and maximum distances
   ma← (movemouse-accel-left 1 1000 1 5)
   ma↓ (movemouse-accel-down 1 1000 1 5)
   ma→ (movemouse-accel-right 1 1000 1 5)
+
+  sm (setmouse 32228 32228)
 )
 
 (deflayer mouse

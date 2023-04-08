@@ -90,6 +90,17 @@ impl InputEvent {
             information: 0,
         })
     }
+
+    fn from_mouse_set(x: u16, y: u16) -> Self {
+        Self(Stroke::Mouse {
+            state: MouseState::MOVE,
+            flags: MouseFlags::MOVE_ABSOLUTE | MouseFlags::VIRTUAL_DESKTOP,
+            rolling: 0,
+            x: i32::from(x),
+            y: i32::from(y),
+            information: 0,
+        })
+    }
 }
 
 thread_local! {
@@ -171,6 +182,11 @@ impl KbdOut {
 
     pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
         write_interception(InputEvent::from_mouse_move(direction, distance));
+        Ok(())
+    }
+
+    pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
+        write_interception(InputEvent::from_mouse_set(x, y));
         Ok(())
     }
 }

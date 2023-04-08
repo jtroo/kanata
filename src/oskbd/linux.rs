@@ -481,6 +481,11 @@ impl KbdOut {
         self.write(InputEvent::new(EventType::RELATIVE, axis.0, distance))
     }
 
+    pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
+        log::warn!("setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd");
+        Ok(())
+    }
+
     fn do_scroll(
         &mut self,
         direction: MWheelDirection,

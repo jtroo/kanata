@@ -604,6 +604,14 @@ If you need help, you are welcome to ask.
   ma← (movemouse-accel-left 1 1000 1 5)
   ma↓ (movemouse-accel-down 1 1000 1 5)
   ma→ (movemouse-accel-right 1 1000 1 5)
+
+  ;; setmouse places the cursor at a specific pixel x-y position. This
+  ;; example puts it in the middle of the screen. The coordinates go from 0,0
+  ;; which is the upper-left corner of the screen to 65535,65535 which is the
+  ;; lower-right corner of the screen. If you have multiple monitors, they are
+  ;; treated as one giant screen, which may make it a bit confusing for how to
+  ;; set up the pixels. You will need to experiment.
+  sm (setmouse 32228 32228)
 )
 
 (defalias
