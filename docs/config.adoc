@@ -985,7 +985,7 @@ The action `setmouse` sets the absolute mouse position.
 
 WARNING: This is only supported in Windows right now
 
-This list action takes two parameters which are `x` and `y' positions
+This list action takes two parameters which are `x` and `y` positions
 of the absolute movement.
 The values go from 0,0 which is the upper-left corner of the screen
 to 65535,65535 which is the lower-right corner of the screen.
