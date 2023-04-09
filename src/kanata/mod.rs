@@ -314,7 +314,7 @@ impl Kanata {
             Ok(c) => c,
             Err(e) => {
                 log::error!("{e:?}");
-                bail!("failed to parse config ffile");
+                bail!("failed to parse config file");
             }
         };
         update_kbd_out(&cfg.items, &self.kbd_out)?;

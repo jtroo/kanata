@@ -31,7 +31,6 @@ semicolons. E.g:
 [source]
 ----
 ;; This is a comment in a kanata configuration file.
-;; There is no special syntax for multi-line comments at this time.
 ;; Comments will be ignored and are intended for you to help understand your
 ;; own configuration when reading it later.
 ----
@@ -41,8 +40,7 @@ You can begin a multi-line comment block with `+#|+` and end it with `+|#+`:
 [source]
 ----
 #|
-This
-is
+This is
 a multi-line comment block
 |#
 ----
