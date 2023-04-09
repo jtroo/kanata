@@ -28,6 +28,7 @@ toc::[]
 You can add comments to your configuration file. Comments are prefixed with two
 semicolons. E.g:
 
+[source]
 ----
 ;; This is a comment in a kanata configuration file.
 ;; There is no special syntax for multi-line comments at this time.
@@ -37,6 +38,7 @@ semicolons. E.g:
 
 You can begin a multi-line comment block with `+#|+` and end it with `+|#+`:
 
+[source]
 ----
 #|
 This
@@ -71,6 +73,7 @@ to find the key you're looking for.
 An example `defsrc` containing the US QWERTY keyboard keys as an
 approximately 60% keyboard layout:
 
+[source]
 ----
 (defsrc
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
@@ -103,6 +106,7 @@ using actions. There is currently a maximum of 25 layers allowed.
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
 
+[source]
 ----
 (defsrc
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
@@ -132,6 +136,7 @@ If you're reading in order, you have now seen all of the required entries:
 
 An example minimal configuration is:
 
+[source]
 ----
 (defsrc a b c)
 
@@ -166,8 +171,8 @@ document]. If you do not see your keyboard there and are not confident in using
 the available tools, please feel welcome to ask for help in a discussion or issue.
 Please contribute to the document if you are able!
 
-Example:
-
+.Example:
+[source]
 ----
 (deflocalkeys-win
   ì 187
@@ -216,8 +221,8 @@ Your configuration file may include a single `defcfg` entry.
 It can be empty but there are options that can change kanata's behaviour that
 will be described in this section.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg)
 ----
@@ -237,8 +242,8 @@ This is disabled by default. The reason this is not enabled by default is
 because some keys may not work correctly if they are intercepted. For example,
 see the <<windows-only-windows-altgr>> option below.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   process-unmapped-keys yes
@@ -260,8 +265,8 @@ configuration from the internet.
 This configuration is disabled by default and can be enabled by giving it the
 value `yes`.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   danger-enable-cmd yes
@@ -275,8 +280,8 @@ Example:
 This option customizes the key sequence timeout (unit: ms). Its default value
 is 1000. The purpose of this item is explained in <<sequences>>.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   sequence-timeout 2000
@@ -307,8 +312,8 @@ reset the key sequence.
 
 See <<sequences>> for more about sequences.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   sequence-input-mode visible-backspaced
@@ -323,8 +328,8 @@ By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices from the
 `/dev/input` directories using the `linux-dev` configuration.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
@@ -332,8 +337,10 @@ Example:
 ----
 
 If you want to specify multiple keyboards, you can separate the paths with a
-colon `+:+`. Example:
+colon `+:+`.
 
+.Example:
+[source]
 ----
 (defcfg
   linux-dev /dev/input/dev1:/dev/input/dev2
@@ -343,6 +350,7 @@ colon `+:+`. Example:
 Due to using the colon to separate devices, if you have a device with colons in
 its file name, you must escape those colons with backslashes:
 
+[source]
 ----
 (defcfg
   linux-dev /dev/input/path-to\:device
@@ -356,8 +364,8 @@ its file name, you must escape those colons with backslashes:
 By default, kanata will log layer changes. However, logging has some processing
 overhead. If you do not care for the logging, you can choose to disable it.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   log-layer-changes no
@@ -371,8 +379,8 @@ Example:
 By default, kanata will crash if no input devices are found. You can change
 this behaviour by setting `linux-continue-if-no-devs-found`.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   linux-continue-if-no-devs-found yes
@@ -395,8 +403,8 @@ You can use `evtest` or `kanata --debug`, set your userspace key remapping,
 then press the key that outputs the keysym "u" to see which underlying keycode
 is sent. Then you can use this configuration to change kanata's behaviour.
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   linux-unicode-u-code v
@@ -415,6 +423,7 @@ some applications. The termination is configurable with the following options:
 - `enter-space`
 - `space-enter`
 
+[source]
 ----
 (defcfg
   linux-unicode-termination space
@@ -435,8 +444,8 @@ with the key:
 * `add-lctl-release`
 ** This adds an `lctl` release when `ralt` is released
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   windows-altgr add-lctl-release
@@ -468,8 +477,8 @@ defined, the log will not print.
 
 https://github.com/jtroo/kanata/issues/108[Relevant issue].
 
-Example:
-
+.Example:
+[source]
 ----
 (defcfg
   windows-interception-mouse-hwid "70, 0, 60, 0"
@@ -482,6 +491,7 @@ Example:
 
 The `defcfg` entry is treated as a list with pairs of strings. For example:
 
+[source]
 ----
 (defcfg a 1 b 2)
 ----
@@ -493,6 +503,7 @@ An example defcfg containing all of the options is shown below. It should be
 noted options that are Linux-only or Windows-only will be ignored when used on
 a non-applicable operating system.
 
+[source]
 ----
 (defcfg
   process-unmapped-keys yes
@@ -533,8 +544,8 @@ A list is a sequence of strings separated by whitespace, surrounded by
 parentheses. All of the configuration entries we've looked at so far are lists;
 `defalias` is where we'll first see nested lists in this guide.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   ;; tap for caps lock, hold for left control
@@ -546,6 +557,7 @@ This alias can be used in `deflayer` as a substitute for the long action. The
 alias name is prefixed with `@` to signify that it's an alias as opposed to a
 normal key.
 
+[source]
 ----
 (deflayer example
   @cap a s d f
@@ -556,8 +568,8 @@ You may have multiple `defalias` entries and multiple aliases within a single
 `defalias`. Aliases may also refer to other aliases that were defined earlier
 in the configuration file.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias one (tap-hold 200 200 caps lctl))
 (defalias two (tap-hold 200 200 esc lctl))
@@ -572,8 +584,8 @@ However, for long actions it is recommended not to do so to keep a nice visual
 alignment. Visually aligning your `deflayer` entries will hopefully make your
 configuration file easier to read.
 
-Example:
-
+.Example:
+[source]
 ----
 (deflayer example
   ;; this is equivalent to the previous deflayer example
@@ -609,8 +621,8 @@ Some notable exceptions are:
 
 Variables are referred to by prefixing their name with `$`.
 
-Example:
-
+.Example:
+[source]
 ----
 (defvar
   tap-timeout   100
@@ -639,8 +651,8 @@ You can put the `+lrld+` action onto a key to live-reload your configuration
 file. If kanata can't parse the file, it will continue using the previous
 configuration.
 
-Example:
-
+.Example:
+[source]
 ----
 (deflayer has-live-reload
   lrld a s d f
@@ -653,8 +665,8 @@ The first configuration file specified will be the one loaded on startup.
 The prev/next variants can be used with shortened names of `lrpv` and `lrnx` as
 well.
 
-Example:
-
+.Example:
+[source]
 ----
 (deflayer has-live-reloads
   lrld lrpv lrnx
@@ -663,6 +675,7 @@ Example:
 
 Example specifying multiple config files in the command line:
 
+[source]
 ----
 kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
 ----
@@ -676,8 +689,8 @@ will not repeatedly send the key. The intended use case is to be able to use a
 different finger or even thumb key to repeat a typed key, as opposed to
 double-tapping a key.
 
-Example:
-
+.Example:
+[source]
 ----
 (deflayer has-repeat
   rpt a s d f
@@ -695,8 +708,8 @@ layer makes more sense when looking at the next action: `layer-while-held`.
 This action accepts a single subsequent string which must be a layer name
 defined in a `deflayer` entry.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias dvk (layer-switch dvorak))
 ----
@@ -712,8 +725,8 @@ remains held. When the key is released, you go back to the currently active
 This action accepts a single subsequent string which must be a layer name
 defined in a `deflayer` entry.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias nav (layer-while-held navigation))
 ----
@@ -732,8 +745,8 @@ while-held layer. When `+_+` is pressed on the active base layer, the key will
 default to the corresponding `defsrc` key. If `+_+` is pressed on the active
 while-held layer, the base layer's behaviour will activate.
 
-Example:
-
+.Example:
+[source]
 ----
 (defsrc
   a b c
@@ -753,8 +766,8 @@ will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
 will do nothing as opposed to typing a letter.
 
-Example:
-
+.Example:
+[source]
 ----
 (deflayer contains-no-op
   XX a s d f
@@ -776,6 +789,7 @@ application.
 NOTE: If using Linux, make sure to look at the
 <<linux-only-linux-unicode-u-code,unicode behaviour customization>> in defcfg.
 
+[source]
 ----
 (defalias
   sml (unicode 😀)
@@ -802,8 +816,8 @@ normal key name with one or more of:
 
 These modifiers may be combined together if desired.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   ;; Ctrl+C: send SIGINT to a Linux terminal program
@@ -857,6 +871,7 @@ fulfilling the "Alt" key role for some button presses (e.g. Tab), but also as a
 new layer for keys that aren't typically used with "Alt" to have added useful
 functionality.
 
+[source]
 ----
 (defalias
   atl (multi alt (layer-while-held alted-with-exceptions))
@@ -983,7 +998,10 @@ distance. The third and fourth numbers are the minimum and maximum distances
 
 The action `setmouse` sets the absolute mouse position.
 
-WARNING: This is only supported in Windows right now
+WARNING: This is only supported in Windows right now.
+For an interesting keyboard-centric mouse solution in Linux,
+try looking at
+https://github.com/rvaiya/warpd[warpd].
 
 This list action takes two parameters which are `x` and `y` positions
 of the absolute movement.
@@ -999,6 +1017,7 @@ Experimentation will be needed.
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
 
+[source]
 ----
 (defalias
   mwu (mwheel-up 50 120)
@@ -1043,8 +1062,8 @@ action will be chosen if one of the following events occur:
 
 You may put normal keys or other actions in `+tap-dance+`.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   ;; 1 tap : "A" key
@@ -1065,6 +1084,7 @@ In the example below, repeated taps will, in order:
 2. erase the `a` and type `bb`
 3. erase the `bb` and type `ccc`
 
+[source]
 ----
 (defalias
   td2 (tap-dance-eager 500 (
@@ -1118,8 +1138,8 @@ than the initial key pressed.
 
 The default name `+one-shot+` corresponds to `+one-shot-press+`.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   os1 (one-shot 500 (layer-while-held another-layer))
@@ -1165,8 +1185,8 @@ even if the hold timeout hasn't expired yet
 These variants may be useful if you want more responsive tap-hold keys,
 but you should be wary of activating the hold action unintentionally.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   anm (tap-hold         200 200 a @num) ;; tap: a      hold: numbers layer
@@ -1191,8 +1211,8 @@ This variant takes a 5th parameter which is a list of keys that trigger an
 early tap when they are pressed while the `tap-hold-release-keys` action is
 waiting.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   ;; tap: o    hold: arrows layer    timeout: backspace
@@ -1232,8 +1252,8 @@ The actions supported in `+macro+` are:
 * <<fake-keys,fake keys>>
 * <<sequences,sequence leader>>
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   : S-;
@@ -1264,6 +1284,7 @@ replaced by `!` after 500ms, and finally that is replaced by `@` after another
 500ms. However, if the key is released, the last character typed will remain
 and the rest of the macro does not run.
 
+[source]
 ----
 (defalias
   1 1
@@ -1280,6 +1301,7 @@ including the held macro key.
 If multiple repeating macros are being held simulaneously,
 only the most recently pressed macro will be repeated.
 
+[source]
 ----
 (defalias
   mr1 (macro-repeat mltp)
@@ -1320,8 +1342,8 @@ One can nest dynamic macros within each other, e.g. activate
 However, dynamic macros cannot recurse; e.g. activating `(dynamic-macro-play 0)`
 while recording with `(dynamic-macro-record 0)` will be ignored.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   dr0 (dynamic-macro-record 0)
@@ -1344,7 +1366,8 @@ The first (left) action will activate by default.
 The second (right) action will activate
 if any of the keys in the third parameter (right-trigger-keys) are currently active.
 
-Example:
+.Example:
+[source]
 ----
 (defalias
   frk (fork k @special (lalt ralt))
@@ -1388,6 +1411,7 @@ You can use `caps-word-custom` instead of `caps-word`
 if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
+[source]
 ----
 (defalias
   cw (caps-word 2000)
@@ -1415,8 +1439,8 @@ NOTE: The command is executed directly and not via a shell, so you cannot make
 use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not be
 substituted with your home directory.
 
-Example:
-
+.Example:
+[source]
 ----
 (defalias
   cm1 (cmd rm -fr /tmp/testing)
@@ -1432,6 +1456,7 @@ of the executed program and reads it as an S-expression, similarly to the
 <<macro, macro action>>. However — unlike macro — only keys, chords, and
 chorded lists are supported. Delays and other actions are not supported.
 
+[source]
 ----
 (defalias
   ;; bash: type date-time as YYYY-MM-DD HH:MM
@@ -1457,6 +1482,7 @@ WARNING: This is not cross platform!
 WARNING: When using the Interception driver, this action is still sent over
 SendInput.
 
+[source]
 ----
 (defalias
   ab1 (arbitrary-code 700)
@@ -1479,8 +1505,8 @@ and exactly 1 non-modifier key (e.g. 1, bspc).
 
 Only zero or one `defoverrides` is allowed in a configuration file.
 
-Example:
-
+.Example:
+[source]
 ----
 ;; Swap numbers and their symbols with respect to shift
 (defoverrides
@@ -1521,8 +1547,8 @@ The aforementioned `+<key action>+` can be one of three values:
 * `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
 
-Example:
-
+.Example:
+[source]
 ----
 (deffakekeys
   ctl lctl
@@ -1574,6 +1600,7 @@ complete, so use with care.
 NOTE: You will likely want to use `+macro+` instead of fake keys with delays now
 that `+macro+` supports more actions.
 
+[source]
 ----
 (defalias
   stm (multi ;; Shift -> middle mouse with a delay
@@ -1614,8 +1641,8 @@ precisely, the action triggered is:
 
 `+(on-press-fakekey <fake key name> tap)+`
 
-Example:
-
+.Example:
+[source]
 ----
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
@@ -1640,6 +1667,7 @@ at the beginning of each `+defchords+` group: the name of the group and a
 timeout value after which a chord triggers if it isn't triggered by a key release
 or press of a non-chord key before the timeout expires.
 
+[source]
 ----
 (defsrc a b c)
 (deflayer default
