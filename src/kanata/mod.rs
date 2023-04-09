@@ -962,6 +962,9 @@ impl Kanata {
                         CustomAction::CapsWord(cfg) => {
                             self.caps_word = Some(CapsWordState::new(cfg));
                         }
+                        CustomAction::SetMouse { x, y } => {
+                            self.kbd_out.set_mouse(*x, *y)?;
+                        }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::CancelMacroOnRelease => {}

@@ -197,6 +197,12 @@ impl KbdOut {
         move_mouse(direction, distance);
         Ok(())
     }
+
+    pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
+        log::info!("setting mouse {x} {y}");
+        set_mouse_xy(i32::from(x), i32::from(y));
+        Ok(())
+    }
 }
 
 fn send_btn(flag: u32) {
@@ -276,6 +282,15 @@ fn move_mouse(direction: MoveDirection, distance: u16) {
 
 fn move_mouse_xy(x: i32, y: i32) {
     mouse_event(MOUSEEVENTF_MOVE, 0, x, y);
+}
+
+fn set_mouse_xy(x: i32, y: i32) {
+    mouse_event(
+        MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK,
+        0,
+        x,
+        y,
+    );
 }
 
 // Taken from Enigo: https://github.com/enigo-rs/enigo

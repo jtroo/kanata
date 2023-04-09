@@ -103,6 +103,7 @@ fn parse_action_vars() {
   frk (fork $one $two $five)
   cpw (caps-word-custom $one $three $four)
   rst (dynamic-macro-record-stop-truncate $one)
+  stm (setmouse $one $two)
 )
 (defsrc a b c d)
 (deflayer base $chord1 $chord2 $chr @tdl)

@@ -45,6 +45,10 @@ pub enum CustomAction {
     DynamicMacroPlay(u16),
     SendArbitraryCode(u16),
     CapsWord(CapsWordCfg),
+    SetMouse {
+        x: u16,
+        y: u16,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
