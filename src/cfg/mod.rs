@@ -822,7 +822,7 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     Ok(())
 }
 
-fn handle_standard_defalias(expr: &Vec<SExpr>, s: &mut ParsedState) -> Result<()> {
+fn handle_standard_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
     let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
         Ok(s) => s,
         Err(_) => return Ok(()),
@@ -849,7 +849,7 @@ fn handle_standard_defalias(expr: &Vec<SExpr>, s: &mut ParsedState) -> Result<()
     Ok(())
 }
 
-fn handle_envcond_defalias(expr: &Vec<SExpr>, s: &mut ParsedState) -> Result<()> {
+fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
     let mut subexprs = match check_first_expr(expr.iter(), "defaliasenvcond") {
         Ok(s) => s,
         Err(_) => return Ok(()),
