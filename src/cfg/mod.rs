@@ -447,7 +447,7 @@ fn parse_cfg_raw_string(
 
     let alias_exprs = root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defalias"))
+        .filter(gen_first_atom_start_filter("defalias"))
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s)?;
 
@@ -492,6 +492,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
             .map(|a| match a {
                 "defcfg"
                 | "defalias"
+                | "defaliasenvcond"
                 | "defsrc"
                 | "deflayer"
                 | "defoverrides"
@@ -525,6 +526,23 @@ fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
         }
         if let SExpr::Atom(atom) = &expr[0] {
             atom.t == a
+        } else {
+            false
+        }
+    }
+}
+
+/// Return a closure that filters a root expression by the content of the first element. The
+/// closure returns true if the first element is an atom that starts with the input `a` and false
+/// otherwise.
+fn gen_first_atom_start_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
+    let a = a.to_owned();
+    move |expr| {
+        if expr.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &expr[0] {
+            atom.t.starts_with(&a)
         } else {
             false
         }
@@ -798,25 +816,61 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
 /// Mutates the input `s` by storing aliases inside.
 fn parse_aliases(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     for expr in exprs {
-        let mut subexprs = check_first_expr(expr.iter(), "defalias")?;
-        // Read k-v pairs from the configuration
-        while let Some(alias_expr) = subexprs.next() {
-            let alias = match alias_expr {
-                SExpr::Atom(a) => &a.t,
-                _ => bail_expr!(
-                    alias_expr,
-                    "Alias names cannot be lists. Invalid alias: {:?}",
-                    alias_expr
+        handle_standard_defalias(expr, s)?;
+        handle_envcond_defalias(expr, s)?;
+    }
+    Ok(())
+}
+
+fn handle_standard_defalias(expr: &Vec<SExpr>, s: &mut ParsedState) -> Result<()> {
+    let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
+        Ok(s) => s,
+        Err(_) => return Ok(()),
+    };
+    // Read k-v pairs from the configuration
+    while let Some(alias_expr) = subexprs.next() {
+        let alias = match alias_expr {
+            SExpr::Atom(a) => &a.t,
+            _ => bail_expr!(
+                alias_expr,
+                "Alias names cannot be lists. Invalid alias: {:?}",
+                alias_expr
                 ),
-            };
-            let action = match subexprs.next() {
-                Some(v) => v,
-                None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
-            };
-            let action = parse_action(action, s)?;
-            if s.aliases.insert(alias.into(), action).is_some() {
-                bail_expr!(alias_expr, "Duplicate alias: {}", alias);
-            }
+        };
+        let action = match subexprs.next() {
+            Some(v) => v,
+            None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
+        };
+        let action = parse_action(action, s)?;
+        if s.aliases.insert(alias.into(), action).is_some() {
+            bail_expr!(alias_expr, "Duplicate alias: {}", alias);
+        }
+    }
+    Ok(())
+}
+
+fn handle_envcond_defalias(expr: &Vec<SExpr>, s: &mut ParsedState) -> Result<()> {
+    let mut subexprs = match check_first_expr(expr.iter(), "defaliasenvcond") {
+        Ok(s) => s,
+        Err(_) => return Ok(()),
+    };
+    // Read k-v pairs from the configuration
+    while let Some(alias_expr) = subexprs.next() {
+        let alias = match alias_expr {
+            SExpr::Atom(a) => &a.t,
+            _ => bail_expr!(
+                alias_expr,
+                "Alias names cannot be lists. Invalid alias: {:?}",
+                alias_expr
+                ),
+        };
+        let action = match subexprs.next() {
+            Some(v) => v,
+            None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
+        };
+        let action = parse_action(action, s)?;
+        if s.aliases.insert(alias.into(), action).is_some() {
+            bail_expr!(alias_expr, "Duplicate alias: {}", alias);
         }
     }
     Ok(())
