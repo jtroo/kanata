@@ -835,7 +835,7 @@ fn handle_standard_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
                 alias_expr,
                 "Alias names cannot be lists. Invalid alias: {:?}",
                 alias_expr
-                ),
+            ),
         };
         let action = match subexprs.next() {
             Some(v) => v,
@@ -851,9 +851,39 @@ fn handle_standard_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
 
 fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
     let mut subexprs = match check_first_expr(expr.iter(), "defaliasenvcond") {
-        Ok(s) => s,
+        Ok(exprs) => exprs,
         Err(_) => return Ok(()),
     };
+
+    let conderr = "defaliasenvcond must have a list with 2 strings as the first parameter:\n\
+            (<env var name> <env var value>)";
+
+    // Check that there is a list containing the environment variable name and value that
+    // determines if this defalias entry should be used.
+    match subexprs.next() {
+        Some(expr) => {
+            let envcond = expr.list(s.vars()).ok_or_else(|| {
+                anyhow_expr!(expr, "Found a string, but expected a list.\n{conderr}")
+            })?;
+            if envcond.len() != 2 {
+                bail_expr!(expr, "List has the incorrect number of items.\n{conderr}");
+            }
+            let env_var_name = envcond[0].atom(s.vars()).ok_or_else(|| {
+                anyhow_expr!(
+                    expr,
+                    "Environment variable name should be a string, not a list.\n{conderr}"
+                )
+            })?;
+            let env_var_value = envcond[0].atom(s.vars()).ok_or_else(|| {
+                anyhow_expr!(
+                    expr,
+                    "Environment variable value be a string, not a list.\n{conderr}"
+                )
+            })?;
+        }
+        None => bail_expr!(&expr[0], "Missing a list item.\n{conderr}"),
+    };
+
     // Read k-v pairs from the configuration
     while let Some(alias_expr) = subexprs.next() {
         let alias = match alias_expr {
@@ -862,7 +892,7 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
                 alias_expr,
                 "Alias names cannot be lists. Invalid alias: {:?}",
                 alias_expr
-                ),
+            ),
         };
         let action = match subexprs.next() {
             Some(v) => v,
