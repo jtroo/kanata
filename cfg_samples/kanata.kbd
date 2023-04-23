@@ -294,6 +294,20 @@ If you need help, you are welcome to ask.
   ralt (multi ralt (layer-toggle ralted))
 )
 
+;; The defaliasenvcond variant of defalias is parsed similarly, but there must
+;; be a list parameter first. The list must contain two strings. In order,
+;; these strings are: an environment variable name, and the environment
+;; variable value. When the environment variable defined by name has the
+;; corresponding value when running kanata, the aliases within will be active.
+;; Otherwise, the aliases will be skipped.
+(defaliasenvcond (LAPTOP lp1)
+  met @lp1met
+)
+
+(defaliasenvcond (LAPTOP lp2)
+  met @lp2met
+)
+
 (defalias
   ;; shifted keys
   { S-[
