@@ -855,7 +855,7 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
                     "Environment variable name must be a string, not a list.\n{conderr}"
                 )
             })?;
-            let env_var_value = envcond[0].atom(s.vars()).ok_or_else(|| {
+            let env_var_value = envcond[1].atom(s.vars()).ok_or_else(|| {
                 anyhow_expr!(
                     expr,
                     "Environment variable value must be a string, not a list.\n{conderr}"
@@ -863,10 +863,10 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
             })?;
             if !std::env::vars().any(|(name, value)| name == env_var_name && value == env_var_value)
             {
-                log::info!("Did not find env var {env_var_name}={env_var_value}, skipping associated aliases");
+                log::info!("Did not find env var ({env_var_name} {env_var_value}), skipping associated aliases");
                 return Ok(());
             }
-            log::info!("Found env var {env_var_name}={env_var_value}, using associated aliases");
+            log::info!("Found env var ({env_var_name} {env_var_value}), using associated aliases");
         }
         None => bail_expr!(&expr[0], "Missing a list item.\n{conderr}"),
     };

@@ -1707,6 +1707,54 @@ and it maps to a tap-hold with a chord as the hold action within, that chord
 key will immediately activate instead of the key needing to be held for the
 timeout period.
 
+[[defaliasenvcond]]
+=== defaliasenvcond
+<<table-of-contents,Back to ToC>>
+
+There is a variant of `defalias`: `defaliasenvcond`.
+This variant is parsed similarly,
+but there must be an extra list parameter
+that comes before all of the name-action pairs.
+
+The list must contain two strings.
+In order, these strings are:
+an environment variable name,
+and the environment variable value.
+When the environment variable defined by name
+has the corresponding value when running kanata,
+the aliases within will be active.
+Otherwise, the aliases will be skipped.
+
+A use case for `defaliasenvcond` is if one has multiple devices
+which vary in the number and layout of keys,
+e.g. different special keys on the bottom row.
+Using environment variables, one can use the same kanata
+configuration across those multiple devices
+while changing key behaviours to keep consistent behaviour
+across them.
+
+.Example:
+[source]
+----
+(defaliasenvcond (LAPTOP lp1)
+  met @lp1met
+)
+
+(defaliasenvcond (LAPTOP lp2)
+  met @lp2met
+)
+----
+
+.Set environment variables in the current terminal process:
+[source]
+----
+# powershell
+$env:VAR_NAME = "var_value"
+
+# bash
+VAR_NAME=var_value
+----
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
