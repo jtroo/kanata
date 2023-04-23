@@ -1720,18 +1720,21 @@ The list must contain two strings.
 In order, these strings are:
 an environment variable name,
 and the environment variable value.
-When the environment variable defined by name
-has the corresponding value when running kanata,
+When the environment variable defined by the name
+has the corresponding value when starting kanata,
 the aliases within will be active.
 Otherwise, the aliases will be skipped.
 
-A use case for `defaliasenvcond` is if one has multiple devices
-which vary in the number and layout of keys,
+A use case for `defaliasenvcond` is when one has multiple devices
+which vary in layout of keys,
 e.g. different special keys on the bottom row.
 Using environment variables, one can use the same kanata
 configuration across those multiple devices
 while changing key behaviours to keep consistent behaviour
-across them.
+of specific key positions across the multiple devices,
+when the hardware keys at those physical key positions are not
+the same.
+
 
 .Example:
 [source]
