@@ -823,30 +823,11 @@ fn parse_aliases(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
 }
 
 fn handle_standard_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
-    let mut subexprs = match check_first_expr(expr.iter(), "defalias") {
+    let subexprs = match check_first_expr(expr.iter(), "defalias") {
         Ok(s) => s,
         Err(_) => return Ok(()),
     };
-    // Read k-v pairs from the configuration
-    while let Some(alias_expr) = subexprs.next() {
-        let alias = match alias_expr {
-            SExpr::Atom(a) => &a.t,
-            _ => bail_expr!(
-                alias_expr,
-                "Alias names cannot be lists. Invalid alias: {:?}",
-                alias_expr
-            ),
-        };
-        let action = match subexprs.next() {
-            Some(v) => v,
-            None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
-        };
-        let action = parse_action(action, s)?;
-        if s.aliases.insert(alias.into(), action).is_some() {
-            bail_expr!(alias_expr, "Duplicate alias: {}", alias);
-        }
-    }
-    Ok(())
+    read_alias_name_action_pairs(subexprs, s)
 }
 
 fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
@@ -859,7 +840,7 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
             (<env var name> <env var value>)";
 
     // Check that there is a list containing the environment variable name and value that
-    // determines if this defalias entry should be used.
+    // determines if this defalias entry should be used. If there is no match, return early.
     match subexprs.next() {
         Some(expr) => {
             let envcond = expr.list(s.vars()).ok_or_else(|| {
@@ -871,21 +852,31 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
             let env_var_name = envcond[0].atom(s.vars()).ok_or_else(|| {
                 anyhow_expr!(
                     expr,
-                    "Environment variable name should be a string, not a list.\n{conderr}"
+                    "Environment variable name must be a string, not a list.\n{conderr}"
                 )
             })?;
             let env_var_value = envcond[0].atom(s.vars()).ok_or_else(|| {
                 anyhow_expr!(
                     expr,
-                    "Environment variable value be a string, not a list.\n{conderr}"
+                    "Environment variable value must be a string, not a list.\n{conderr}"
                 )
             })?;
+            if !std::env::vars().any(|(name, value)| name == env_var_name && value == env_var_value)
+            {
+                return Ok(());
+            }
         }
         None => bail_expr!(&expr[0], "Missing a list item.\n{conderr}"),
     };
+    read_alias_name_action_pairs(subexprs, s)
+}
 
+fn read_alias_name_action_pairs<'a>(
+    mut exprs: impl Iterator<Item = &'a SExpr>,
+    s: &mut ParsedState,
+) -> Result<()> {
     // Read k-v pairs from the configuration
-    while let Some(alias_expr) = subexprs.next() {
+    while let Some(alias_expr) = exprs.next() {
         let alias = match alias_expr {
             SExpr::Atom(a) => &a.t,
             _ => bail_expr!(
@@ -894,7 +885,7 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
                 alias_expr
             ),
         };
-        let action = match subexprs.next() {
+        let action = match exprs.next() {
             Some(v) => v,
             None => bail_expr!(alias_expr, "Found alias without an action - add an action"),
         };
