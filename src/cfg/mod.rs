@@ -863,8 +863,10 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParsedState) -> Result<()> {
             })?;
             if !std::env::vars().any(|(name, value)| name == env_var_name && value == env_var_value)
             {
+                log::info!("Did not find env var {env_var_name}={env_var_value}, skipping associated aliases");
                 return Ok(());
             }
+            log::info!("Found env var {env_var_name}={env_var_value}, using associated aliases");
         }
         None => bail_expr!(&expr[0], "Missing a list item.\n{conderr}"),
     };
