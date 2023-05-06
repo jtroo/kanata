@@ -678,23 +678,6 @@ Example specifying multiple config files in the command line:
 kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
 ----
 
-[[repeat-key]]
-=== Repeat key
-<<table-of-contents,Back to ToC>>
-
-The action `+rpt+` repeats the most recently typed key. Holding down this key
-will not repeatedly send the key. The intended use case is to be able to use a
-different finger or even thumb key to repeat a typed key, as opposed to
-double-tapping a key.
-
-.Example:
-[source]
-----
-(deflayer has-repeat
-  rpt a s d f
-)
-----
-
 [[layer-switch]]
 === layer-switch
 <<table-of-contents,Back to ToC>>
@@ -825,6 +808,38 @@ These modifiers may be combined together if desired.
   ;; Ctrl+Shift+(C|V): copy or paste from certain terminal programs
   cpy C-S-c
   pst C-S-v
+)
+----
+
+[[repeat-key]]
+=== Repeat key
+<<table-of-contents,Back to ToC>>
+
+The action `+rpt+` repeats the most recently typed key. Holding down this key
+will not repeatedly send the key. The intended use case is to be able to use a
+different finger or even thumb key to repeat a typed key, as opposed to
+double-tapping a key.
+
+.Example:
+[source]
+----
+(deflayer has-repeat
+  rpt a s d f
+)
+----
+
+The `rpt` action only repeats the last key output.
+For example, it won't output a chord like `ctrl+c`
+if the previous key pressed was `C-c`.
+The `rpt` action will only output `c` in this case.
+
+There is a variant `rpt-any`
+which will repeat any previous action
+and would output `ctrl+c` in the example case.
+
+----
+(deflayer has-repeat-any
+  rpt-any a s d f
 )
 ----
 

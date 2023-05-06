@@ -992,11 +992,12 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
                 s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Backward))),
             )))
         }
-        "rpt" | "repeat" => {
+        "rpt" | "repeat" | "rpt-key" => {
             return Ok(s.a.sref(Action::Custom(
                 s.a.sref(s.a.sref_slice(CustomAction::Repeat)),
             )))
         }
+        "rpt-any" => return Ok(s.a.sref(Action::Repeat)),
         "dynamic-macro-record-stop" => {
             return Ok(s.a.sref(Action::Custom(
                 s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecordStop(0))),
@@ -1816,6 +1817,7 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
         }
         Action::NoOp
         | Action::Trans
+        | Action::Repeat
         | Action::KeyCode(_)
         | Action::MultipleKeyCodes(_)
         | Action::Layer(_)
@@ -1864,6 +1866,7 @@ fn fill_chords(
         }
         Action::NoOp
         | Action::Trans
+        | Action::Repeat
         | Action::KeyCode(_)
         | Action::MultipleKeyCodes(_)
         | Action::Layer(_)
@@ -2557,6 +2560,7 @@ fn add_key_output_from_action_to_key_pos(
         }
         Action::NoOp
         | Action::Trans
+        | Action::Repeat
         | Action::Layer(_)
         | Action::DefaultLayer(_)
         | Action::Sequence { .. }

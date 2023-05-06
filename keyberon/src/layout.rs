@@ -68,6 +68,7 @@ where
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<[SequenceState<'a, T>; 4], arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
+    pub prev_action: Option<&'a Action<'a, T>>,
 }
 
 /// An event on the key matrix.
@@ -809,6 +810,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
+            prev_action: None,
         }
     }
     /// Iterates on the key codes of the current state.
@@ -1115,8 +1117,16 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
+        if !matches!(action, Action::Repeat) {
+            self.prev_action = Some(action);
+        }
         match action {
             NoOp | Trans => (),
+            Repeat => {
+                if let Some(ac) = self.prev_action {
+                    self.do_action(ac, coord, delay, is_oneshot);
+                }
+            }
             HoldTap(HoldTapAction {
                 timeout,
                 hold,
