@@ -169,6 +169,11 @@ impl From<KeyCode> for OsCode {
             KeyCode::K0xAC => OsCode::KEY_PLAYER,
             KeyCode::K0xAD => OsCode::KEY_HOMEPAGE,
             KeyCode::K0xAE => OsCode::KEY_MAIL,
+            KeyCode::K0xAF => OsCode::KEY_MUHENKAN,
+            KeyCode::K0xB0 => OsCode::KEY_HENKAN,
+            KeyCode::K0xB1 => OsCode::KEY_KATAKANA,
+            KeyCode::K0xB2 => OsCode::KEY_KATAKANAHIRAGANA,
+            KeyCode::K0xB3 => OsCode::KEY_HIRAGANA,
             _ => haphazard_kc_to_osc_mappings(item),
         }
     }
@@ -342,6 +347,11 @@ impl From<OsCode> for KeyCode {
             OsCode::KEY_PLAYER => KeyCode::K0xAC,
             OsCode::KEY_HOMEPAGE => KeyCode::K0xAD,
             OsCode::KEY_MAIL => KeyCode::K0xAE,
+            OsCode::KEY_MUHENKAN => KeyCode::K0xAF,
+            OsCode::KEY_HENKAN => KeyCode::K0xB0,
+            OsCode::KEY_KATAKANA => KeyCode::K0xB1,
+            OsCode::KEY_KATAKANAHIRAGANA => KeyCode::K0xB2,
+            OsCode::KEY_HIRAGANA => KeyCode::K0xB3,
             _ => haphazard_osc_to_kc_mappings(item),
         }
     }
