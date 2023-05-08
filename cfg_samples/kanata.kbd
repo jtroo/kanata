@@ -587,10 +587,8 @@ If you need help, you are welcome to ask.
   ;;
   ;; In both Windows and Linux, 120 distance units is equivalent to a single
   ;; notch movement on a physical wheel. In Linux, not all desktop environments
-  ;; support the REL_WHEEL_HI_RES event so kanata just doesn't use it; instead a
-  ;; scroll happens if 120 or more distance units are accumulated. This may result
-  ;; in poor scrolling experience so in Linux it is recommended to use a distance
-  ;; value that is a multiple of 120.
+  ;; support the REL_WHEEL_HI_RES event so if you experience issues with `mwheel`
+  ;; actions in Linux, using a distance value that is multiple of 120 may help.
   mwu (mwheel-up 50 120)
   mwd (mwheel-down 50 120)
 
