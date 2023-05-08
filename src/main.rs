@@ -24,6 +24,24 @@ pub struct ValidatedArgs {
     symlink_path: Option<String>,
 }
 
+fn default_cfg() -> Vec<PathBuf> {
+    let mut cfgs = Vec::new();
+
+    let default = PathBuf::from("kanata.kbd");
+    if default.is_file() {
+        cfgs.push(default);
+    }
+
+    if let Some(config_dir) = dirs::config_dir() {
+        let fallback = config_dir.join("kanata").join("kanata.kbd");
+        if fallback.is_file() {
+            cfgs.push(fallback);
+        }
+    }
+
+    cfgs
+}
+
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
 /// kanata: an advanced software key remapper
@@ -40,9 +58,9 @@ pub struct ValidatedArgs {
 ///     https://github.com/jtroo/kanata
 struct Args {
     /// Configuration file(s) to use with kanata. If not specified, defaults to
-    /// kanata.kbd in the current working directory.
-    #[arg(short, long, default_value = "kanata.kbd", verbatim_doc_comment)]
-    cfg: Vec<String>,
+    /// kanata.kbd in the current working directory and <config_dir>/kanata/kanata.kbd.
+    #[arg(short, long, verbatim_doc_comment)]
+    cfg: Option<Vec<PathBuf>>,
 
     /// Port to run the optional TCP server on. If blank, no TCP port will be
     /// listened on.
@@ -68,7 +86,7 @@ struct Args {
 fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
 
-    let cfg_paths = args.cfg.iter().map(PathBuf::from).collect::<Vec<_>>();
+    let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
     let log_lvl = match (args.debug, args.trace) {
         (_, true) => LevelFilter::Trace,
@@ -93,11 +111,15 @@ fn cli_init() -> Result<ValidatedArgs> {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     log::info!("using the Interception driver for keyboard IO");
 
-    if !cfg_paths[0].exists() {
-        bail!(
-            "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-            cfg_paths[0].to_str().unwrap_or("?")
-        )
+    if let Some(config_file) = cfg_paths.first() {
+        if !config_file.exists() {
+            bail!(
+                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                cfg_paths[0].to_str().unwrap_or("?")
+            )
+        }
+    } else {
+        bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
 
     Ok(ValidatedArgs {

@@ -24,6 +24,7 @@ radix_trie = "0.2"
 rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
+dirs = "5.0.1"
 
 # kanata-keyberon = "0.16.0"
 # Uncomment below and comment out above for testing local keyberon changes.
