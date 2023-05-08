@@ -457,13 +457,13 @@ impl KbdOut {
         match direction {
             MWheelDirection::Up | MWheelDirection::Down => {
                 self.accumulated_scroll += leftover_hi_res_distance;
-                lo_res_distance += self.accumulated_scroll % HI_RES_SCROLL_UNITS_IN_LO_RES;
-                self.accumulated_scroll /= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                lo_res_distance += self.accumulated_scroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.accumulated_scroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
             MWheelDirection::Left | MWheelDirection::Right => {
                 self.accumulated_hscroll += leftover_hi_res_distance;
-                lo_res_distance += self.accumulated_hscroll % HI_RES_SCROLL_UNITS_IN_LO_RES;
-                self.accumulated_hscroll /= HI_RES_SCROLL_UNITS_IN_LO_RES;
+                lo_res_distance += self.accumulated_hscroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.accumulated_hscroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
         }
 
