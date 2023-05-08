@@ -68,10 +68,7 @@ struct Args {
 fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
 
-    let mut cfg_paths = args.cfg.iter().map(PathBuf::from).collect::<Vec<_>>();
-    if cfg_paths.is_empty() {
-        cfg_paths.push(PathBuf::from("kanata.kbd"));
-    }
+    let cfg_paths = args.cfg.iter().map(PathBuf::from).collect::<Vec<_>>();
 
     let log_lvl = match (args.debug, args.trace) {
         (_, true) => LevelFilter::Trace,
