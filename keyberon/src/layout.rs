@@ -1255,6 +1255,15 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 for action in *v {
                     custom.update(self.do_action(action, coord, delay, is_oneshot));
                 }
+                // Multi is probably the one action where it is desirable to repeat the top-level
+                // action instead of the final action. The final action meaning a hold action in
+                // `tap-hold` or the 3rd tap of a `tap-dance`.
+                //
+                // Set the prev_action again since it was probably overwritten by the
+                // `do_action` recursion.
+                if !matches!(action, Action::Repeat) {
+                    self.prev_action = Some(action);
+                }
                 return custom;
             }
             Sequence { events } => {
@@ -3049,8 +3058,8 @@ mod test {
 
     #[test]
     fn test_repeat() {
-        static LAYERS: Layers<3, 1, 1> =
-            [[[k(A), MultipleKeyCodes(&[LShift, B].as_slice()), Repeat]]];
+        static LAYERS: Layers<4, 1, 1> =
+            [[[k(A), MultipleKeyCodes(&[LShift, B].as_slice()), Repeat, MultipleActions(&[k(C), k(D)].as_slice())]]];
         let mut layout = Layout::new(&LAYERS);
 
         layout.event(Press(0, 0));
@@ -3078,6 +3087,13 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LShift, B], layout.keycodes());
         layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[C, D], layout.keycodes());
+        layout.event(Release(0, 3));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
