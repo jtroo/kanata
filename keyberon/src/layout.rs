@@ -3058,8 +3058,12 @@ mod test {
 
     #[test]
     fn test_repeat() {
-        static LAYERS: Layers<4, 1, 1> =
-            [[[k(A), MultipleKeyCodes(&[LShift, B].as_slice()), Repeat, MultipleActions(&[k(C), k(D)].as_slice())]]];
+        static LAYERS: Layers<4, 1, 1> = [[[
+            k(A),
+            MultipleKeyCodes(&[LShift, B].as_slice()),
+            Repeat,
+            MultipleActions(&[k(C), k(D)].as_slice()),
+        ]]];
         let mut layout = Layout::new(&LAYERS);
 
         layout.event(Press(0, 0));
