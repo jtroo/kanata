@@ -58,7 +58,7 @@ fn default_cfg() -> Vec<PathBuf> {
 ///     https://github.com/jtroo/kanata
 struct Args {
     /// Configuration file(s) to use with kanata. If not specified, defaults to
-    /// kanata.kbd in the current working directory and <config_dir>/kanata/kanata.kbd.
+    /// kanata.kbd in the current working directory and $XDG_CONFIG_HOME/kanata/kanata.kbd.
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
