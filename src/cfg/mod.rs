@@ -709,7 +709,7 @@ type LayerIndexes = HashMap<String, usize>;
 type Aliases = HashMap<String, &'static KanataAction>;
 
 /// Returns layer names and their indexes into the keyberon layout. This also checks that all
-/// layers have the same number of items as the defsrc.
+/// layers have the same number of items as the defsrc. Also ensures that there are no duplicate layer names.
 fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
     for (i, expr) in exprs.iter().enumerate() {
@@ -721,6 +721,9 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
             .atom(None)
             .ok_or_else(|| anyhow_expr!(layer_expr, "layer name after deflayer must be a string"))?
             .to_owned();
+        if layer_indexes.get(&layer_name).is_some() {
+            bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
+        }
         let num_actions = subexprs.count();
         if num_actions != expected_len {
             bail_span!(
