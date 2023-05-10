@@ -955,11 +955,9 @@ All of these actions accept two number strings. The first is the interval
 to a notch movement on a physical wheel. You can play with the parameters to
 see what feels correct to you. Both numbers must be in the range [1,65535].
 
-NOTE: In Linux, not all desktop
-environments support the `REL_WHEEL_HI_RES` event, so kanata just doesn't use
-it. Instead, a scroll happens when 120 or more distance units are accumulated.
-This may result in poor scrolling experience so in Linux it is recommended to
-use a distance value that is a multiple of 120.
+NOTE: In Linux, not all desktop environments support the `REL_WHEEL_HI_RES` event.
+If this is the case for yours,
+it will likely be a better experience to use a distance value that is a multiple of 120.
 
 [[mouse-movement]]
 ==== Mouse movement
