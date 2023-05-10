@@ -57,8 +57,25 @@ fn default_cfg() -> Vec<PathBuf> {
 ///
 ///     https://github.com/jtroo/kanata
 struct Args {
-    /// Configuration file(s) to use with kanata. If not specified, defaults to
-    /// kanata.kbd in the current working directory and $XDG_CONFIG_HOME/kanata/kanata.kbd.
+    // Display different platform specific paths based on the target OS
+    #[cfg_attr(
+        target_os = "windows",
+        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'"
+    )]
+    #[cfg_attr(
+        target_os = "macos",
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$HOME/Library/Application Support/kanata/kanata.kbd.'"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "macos", target_os = "windows")),
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$XDG_CONFIG_HOME/kanata/kanata.kbd'"
+    )]
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
