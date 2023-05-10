@@ -363,6 +363,15 @@ impl KbdOut {
         Ok(())
     }
 
+    pub fn write_many(&mut self, events: &[InputEvent]) -> Result<(), io::Error> {
+        if !self.raw_buf.is_empty() {
+            self.device.emit(&self.raw_buf)?;
+            self.raw_buf.clear();
+        }
+        self.device.emit(events)?;
+        Ok(())
+    }
+
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
@@ -435,40 +444,67 @@ impl KbdOut {
         self.release_key(btn.into())
     }
 
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
-        log::debug!("scroll: {direction:?} {distance:?}");
+    pub fn scroll(
+        &mut self,
+        direction: MWheelDirection,
+        hi_res_distance: u16,
+    ) -> Result<(), io::Error> {
+        log::debug!("scroll: {direction:?} {hi_res_distance:?}");
+
+        let mut lo_res_distance = hi_res_distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+        let leftover_hi_res_distance = hi_res_distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+
         match direction {
             MWheelDirection::Up | MWheelDirection::Down => {
-                let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
-                if lo_res_distance > 0 {
-                    self.do_scroll(direction, lo_res_distance)?;
-                }
-                let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
-                if leftover_scroll > 0 {
-                    self.accumulated_scroll += leftover_scroll;
-                    if self.accumulated_scroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
-                        self.accumulated_scroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
-                        self.do_scroll(direction, 1)?;
-                    }
-                }
+                self.accumulated_scroll += leftover_hi_res_distance;
+                lo_res_distance += self.accumulated_scroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.accumulated_scroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
             MWheelDirection::Left | MWheelDirection::Right => {
-                let lo_res_distance = distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
-                if lo_res_distance > 0 {
-                    self.do_hscroll(direction, lo_res_distance)?;
-                }
-                let leftover_scroll = distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
-                if leftover_scroll > 0 {
-                    self.accumulated_hscroll += leftover_scroll;
-                    if self.accumulated_hscroll >= HI_RES_SCROLL_UNITS_IN_LO_RES {
-                        self.accumulated_hscroll -= HI_RES_SCROLL_UNITS_IN_LO_RES;
-                        self.do_hscroll(direction, 1)?;
-                    }
-                }
+                self.accumulated_hscroll += leftover_hi_res_distance;
+                lo_res_distance += self.accumulated_hscroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                self.accumulated_hscroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
         }
 
-        Ok(())
+        let hi_res_scroll_event = InputEvent::new(
+            EventType::RELATIVE,
+            match direction {
+                MWheelDirection::Up | MWheelDirection::Down => RelativeAxisType::REL_WHEEL_HI_RES.0,
+                MWheelDirection::Left | MWheelDirection::Right => {
+                    RelativeAxisType::REL_HWHEEL_HI_RES.0
+                }
+            },
+            match direction {
+                MWheelDirection::Up | MWheelDirection::Right => i32::from(hi_res_distance),
+                MWheelDirection::Down | MWheelDirection::Left => -i32::from(hi_res_distance),
+            },
+        );
+
+        if lo_res_distance > 0 {
+            self.write_many(&[
+                hi_res_scroll_event,
+                InputEvent::new(
+                    EventType::RELATIVE,
+                    match direction {
+                        MWheelDirection::Up | MWheelDirection::Down => {
+                            RelativeAxisType::REL_WHEEL.0
+                        }
+                        MWheelDirection::Left | MWheelDirection::Right => {
+                            RelativeAxisType::REL_HWHEEL.0
+                        }
+                    },
+                    match direction {
+                        MWheelDirection::Up | MWheelDirection::Right => i32::from(lo_res_distance),
+                        MWheelDirection::Down | MWheelDirection::Left => {
+                            -i32::from(lo_res_distance)
+                        }
+                    },
+                ),
+            ])
+        } else {
+            self.write(hi_res_scroll_event)
+        }
     }
 
     pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
@@ -484,40 +520,6 @@ impl KbdOut {
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
         log::warn!("setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd");
         Ok(())
-    }
-
-    fn do_scroll(
-        &mut self,
-        direction: MWheelDirection,
-        lo_res_distance: u16,
-    ) -> Result<(), io::Error> {
-        let ev = InputEvent::new(
-            EventType::RELATIVE,
-            RelativeAxisType::REL_WHEEL.0,
-            match direction {
-                MWheelDirection::Up => i32::from(lo_res_distance),
-                MWheelDirection::Down => -i32::from(lo_res_distance),
-                _ => unreachable!(), // unreachable based on pub fn scroll
-            },
-        );
-        self.write(ev)
-    }
-
-    fn do_hscroll(
-        &mut self,
-        direction: MWheelDirection,
-        lo_res_distance: u16,
-    ) -> Result<(), io::Error> {
-        let ev = InputEvent::new(
-            EventType::RELATIVE,
-            RelativeAxisType::REL_HWHEEL.0,
-            match direction {
-                MWheelDirection::Right => i32::from(lo_res_distance),
-                MWheelDirection::Left => -i32::from(lo_res_distance),
-                _ => unreachable!(), // unreachable based on pub fn scroll
-            },
-        );
-        self.write(ev)
     }
 }
 
