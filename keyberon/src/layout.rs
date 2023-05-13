@@ -1117,7 +1117,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
-        if !matches!(action, Action::Repeat) {
+        if !matches!(action, Repeat | Layer(..) | DefaultLayer(..)) {
             self.prev_action = Some(action);
         }
         match action {
