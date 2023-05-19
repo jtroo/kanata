@@ -9,13 +9,6 @@ The kmonad project is the closest alternative for this project.
 
 ## Why I built and use kanata
 
-Limitations that don't affect me:
-
-- I only use Windows and Linux (PRs for MacOS support are welcome though!)
-- I compile kanata myself
-
-Why I couldn't use kmonad:
-
 - [Double-tapping a tap-hold key](https://github.com/kmonad/kmonad/issues/163) did not behave
   [how I want it to](https://docs.qmk.fm/#/tap_hold?id=tapping-force-hold)
 - Some key sequences with tap-hold keys [didn't behave how I want](https://github.com/kmonad/kmonad/issues/466):
