@@ -1728,6 +1728,41 @@ and it maps to a tap-hold with a chord as the hold action within, that chord
 key will immediately activate instead of the key needing to be held for the
 timeout period.
 
+**Release behaviour**
+
+For single key actions and output chords — like `lctl` or `S-tab` —,
+as well as for `layer-while-held`,
+an input chord will release the action only when all keys that are part of
+the input chord have been released.
+In other words, if even one key is held for the input chord
+then the output action will be continued to be held,
+but only for the mentioned action categories.
+
+An exception to the behaviour described above
+for the action categories that would normally apply
+is if a chord decomposition occurs.
+A chord decomposition occurs when you input a chord
+that does not correspond to any action.
+When this happens, kanata splits up the key presses to activate
+other actions from the components of the input chord.
+In this scenario, the behaviour described in the next paragraph will occur.
+
+For all other action categories,
+the release behaviour is a little more confusing:
+the output action will end when any key is released during the timeout,
+or if the timeout expires, the output action ends when the **first** key
+that was pressed in the chord gets released.
+This is a limitation of the current implementation.
+It will probably be difficult to know which key was pressed first.
+In these scenarios, to keep the behaviour from being confusing,
+you should hold down all keys if you want to keep holding,
+and release all keys if you want to do a release.
+
+If you want to ignore the behaviour of keys being held
+as described in the first paragraph of this section,
+you could change the input chord's action to be a macro instead,
+which will guarantee a rapid press+release of all keys being outputted.
+
 [[defaliasenvcond]]
 === defaliasenvcond
 <<table-of-contents,Back to ToC>>

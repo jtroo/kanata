@@ -1579,7 +1579,7 @@ fn parse_one_shot(
         action,
         Action::Layer(..) | Action::KeyCode(..) | Action::MultipleKeyCodes(..)
     ) {
-        bail!("one-shot is only allowed to contain layer-toggle, a keycode, or a chord");
+        bail!("one-shot is only allowed to contain layer-while-held, a keycode, or a chord");
     }
 
     Ok(s.a.sref(Action::OneShot(s.a.sref(OneShot {
