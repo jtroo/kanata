@@ -865,10 +865,6 @@ There is currently no known practical use case for
 The `+multi+` action executes multiple keys or actions in order but also
 simultaneously. It accepts one or more actions.
 
-This action may result in unexpected or incorrect behaviour when creating a
-complicated combination of actions. If you find incorrect behaviour, please
-feel free to file an issue.
-
 An example use case is to press the "Alt" key while also activating another
 layer.
 
@@ -904,6 +900,16 @@ functionality.
   _    _    _    @lft @rgt
 )
 ----
+
+WARNING: This action can sometimes behave in surprising ways
+with regards to simultaneity and order of actions.
+For example, an action like `(multi sldr ')` will not behave as expected.
+Due to implementation details, `sldr` will activate after the `'`
+even though it is listed before.
+This example could instead be written as `(macro sldr 10 ')`,
+and that would work as intended.
+It is recommended to avoid `multi` if it can be replaced
+with a different action like `macro` or an output chord.
 
 [[mouse-actions]]
 === Mouse actions
@@ -1262,6 +1268,8 @@ The actions supported in `+macro+` are:
 * <<live-reload,live reload>>
 * <<fake-keys,fake keys>>
 * <<sequences,sequence leader>>
+* <<arbitrary-code,arbitrary keycode>>
+* <<dynamic-macro,dynamic macro>>
 
 .Example:
 [source]

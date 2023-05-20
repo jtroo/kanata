@@ -1,3 +1,8 @@
+//! This module contains the "Custom" actions that are used with the keyberon layout.
+//!
+//! When adding a new custom action, the macro section of the config.adoc documentation may need to
+//! be updated, to include the new action to the documented list of supported actions in macro.
+
 use kanata_keyberon::key_code::KeyCode;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
