@@ -3058,14 +3058,25 @@ mod test {
 
     #[test]
     fn test_repeat() {
-        static LAYERS: Layers<4, 1, 1> = [[[
-            k(A),
-            MultipleKeyCodes(&[LShift, B].as_slice()),
-            Repeat,
-            MultipleActions(&[k(C), k(D)].as_slice()),
-        ]]];
+        static LAYERS: Layers<5, 1, 2> = [
+            [[
+                k(A),
+                MultipleKeyCodes(&[LShift, B].as_slice()),
+                Repeat,
+                MultipleActions(&[k(C), k(D)].as_slice()),
+                Layer(1),
+            ]],
+            [[
+                k(E),
+                MultipleKeyCodes(&[LShift, F].as_slice()),
+                Repeat,
+                MultipleActions(&[k(G), k(H)].as_slice()),
+                Layer(1),
+            ]],
+        ];
         let mut layout = Layout::new(&LAYERS);
 
+        // Press a key
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[A], layout.keycodes());
@@ -3073,6 +3084,7 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
+        // Repeat it, should be the same
         layout.event(Press(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[A], layout.keycodes());
@@ -3080,6 +3092,7 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
+        // Press a chord
         layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LShift, B], layout.keycodes());
@@ -3087,6 +3100,7 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
+        // Repeat it, should be the same
         layout.event(Press(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LShift, B], layout.keycodes());
@@ -3094,10 +3108,55 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
+        // Press a multiple action
         layout.event(Press(0, 3));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[C, D], layout.keycodes());
         layout.event(Release(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Repeat it, should be the same
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[C, D], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Go to a different layer and press a key
+        layout.event(Press(0, 4));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[E], layout.keycodes());
+        layout.event(Release(0, 4));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[E], layout.keycodes());
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Repeat, should be the same as the other layer
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[E], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // Activate the layer action and press repeat there, should still be the same action
+        layout.event(Press(0, 4));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[E], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Release(0, 4));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
