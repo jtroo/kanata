@@ -22,6 +22,7 @@ pub struct ValidatedArgs {
     port: Option<i32>,
     #[cfg(target_os = "linux")]
     symlink_path: Option<String>,
+    nodelay: bool,
 }
 
 fn default_cfg() -> Vec<PathBuf> {
@@ -97,6 +98,11 @@ kanata.kbd in the current working directory and
     /// Enable trace logging; implies --debug as well.
     #[arg(short, long)]
     trace: bool,
+
+    /// Remove the startup delay on kanata. In some cases, removing the delay may cause keyboard
+    /// issues on startup.
+    #[arg(short, long)]
+    nodelay: bool,
 }
 
 /// Parse CLI arguments and initialize logging.
@@ -144,6 +150,7 @@ fn cli_init() -> Result<ValidatedArgs> {
         port: args.port,
         #[cfg(target_os = "linux")]
         symlink_path: args.symlink_path,
+        nodelay: args.nodelay,
     })
 }
 
@@ -151,8 +158,10 @@ fn main_impl() -> Result<()> {
     let args = cli_init()?;
     let kanata_arc = Kanata::new_arc(&args)?;
 
-    info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    if !args.nodelay {
+        info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 
     // Start a processing loop in another thread and run the event loop in this thread.
     //
@@ -170,7 +179,7 @@ fn main_impl() -> Result<()> {
     };
 
     let (tx, rx) = std::sync::mpsc::channel();
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx);
+    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         Kanata::start_notification_loop(nrx, server.connections);

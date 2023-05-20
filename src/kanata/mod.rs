@@ -1238,19 +1238,22 @@ impl Kanata {
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
         tx: Option<Sender<ServerMessage>>,
+        nodelay: bool,
     ) {
         info!("entering the processing loop");
         std::thread::spawn(move || {
-            info!("Init: catching only releases and sending immediately");
-            for _ in 0..500 {
-                if let Ok(kev) = rx.try_recv() {
-                    if kev.value == KeyValue::Release {
-                        let mut k = kanata.lock();
-                        info!("Init: releasing {:?}", kev.code);
-                        k.kbd_out.release_key(kev.code).expect("key released");
+            if !nodelay {
+                info!("Init: catching only releases and sending immediately");
+                for _ in 0..500 {
+                    if let Ok(kev) = rx.try_recv() {
+                        if kev.value == KeyValue::Release {
+                            let mut k = kanata.lock();
+                            info!("Init: releasing {:?}", kev.code);
+                            k.kbd_out.release_key(kev.code).expect("key released");
+                        }
                     }
+                    std::thread::sleep(time::Duration::from_millis(1));
                 }
-                std::thread::sleep(time::Duration::from_millis(1));
             }
 
             info!("Starting kanata proper");
