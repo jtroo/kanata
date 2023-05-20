@@ -381,6 +381,8 @@ where
     /// the timeout expires, or when the pressed chord uniquely identifies an action (i.e. there are
     /// no more keys you could press to change the result).
     Chords(&'a ChordsGroup<'a, T>),
+    /// Repeat the previous action.
+    Repeat,
     /// Fork action that can activate one of two potential actions depending on what keys are
     /// currently active.
     Fork(&'a ForkConfig<'a, T>),
