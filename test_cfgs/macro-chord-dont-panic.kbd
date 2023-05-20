@@ -1,0 +1,2 @@
+(defsrc a)
+(deflayer test (macro @ch|bas))
