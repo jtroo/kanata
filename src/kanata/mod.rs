@@ -350,6 +350,7 @@ impl Kanata {
 
     /// Update keyberon layout state for press/release, handle repeat separately
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
+        log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
         let kbrn_ev = match event.value {
             KeyValue::Press => {

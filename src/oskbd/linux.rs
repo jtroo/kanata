@@ -375,7 +375,7 @@ impl KbdOut {
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
-        log::debug!("input ev: {:?}", input_ev);
+        log::debug!("send to uinput: {:?}", input_ev);
         self.device.emit(&[input_ev])?;
         Ok(())
     }
