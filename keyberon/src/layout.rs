@@ -3024,6 +3024,49 @@ mod test {
     }
 
     #[test]
+    fn test_chord_normalkey_order() {
+        const GROUP: ChordsGroup<core::convert::Infallible> = ChordsGroup {
+            coords: &[((0, 2), 1), ((0, 3), 2), ((0, 4), 4), ((0, 5), 8)],
+            chords: &[
+                (1, &KeyCode(Kb1)),
+                (2, &KeyCode(Kb2)),
+                (4, &KeyCode(Kb3)),
+                (8, &KeyCode(Kb4)),
+                (3, &KeyCode(Kb5)),
+                (11, &KeyCode(Kb6)),
+            ],
+            timeout: 100,
+        };
+        static LAYERS: Layers<6, 1, 1> = [[[
+            NoOp,
+            k(A),
+            Chords(&GROUP),
+            Chords(&GROUP),
+            Chords(&GROUP),
+            Chords(&GROUP),
+        ]]];
+
+        let mut layout = Layout::new(&LAYERS);
+        layout.event(Press(0, 2));
+        // timeout on non-terminal chord
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1, A], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb1], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
     fn test_fork() {
         static LAYERS: Layers<2, 1, 1> = [[[
             Fork(&ForkConfig {
