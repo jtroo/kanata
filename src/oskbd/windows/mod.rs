@@ -21,6 +21,7 @@ pub use self::interception::*;
 pub use interception_convert::*;
 
 fn send_uc(c: char, up: bool) {
+    log::debug!("sending unicode {c}");
     let mut inputs: [INPUT; 2] = unsafe { mem::zeroed() };
 
     let n_inputs = inputs

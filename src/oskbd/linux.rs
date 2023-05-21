@@ -396,6 +396,7 @@ impl KbdOut {
 
     /// Send using C-S-u + <unicode hex number> + spc
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
+        log::debug!("sending unicode {c}");
         let hex = format!("{:x}", c as u32);
         self.press_key(OsCode::KEY_LEFTCTRL)?;
         self.press_key(OsCode::KEY_LEFTSHIFT)?;
