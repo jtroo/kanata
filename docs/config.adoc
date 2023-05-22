@@ -1730,8 +1730,8 @@ timeout period.
 
 **Release behaviour**
 
-For single key actions and output chords — like `lctl` or `S-tab` —,
-as well as for `layer-while-held`,
+For single key actions and output chords — like `lctl` or `S-tab` —
+and for `layer-while-held`,
 an input chord will release the action only when all keys that are part of
 the input chord have been released.
 In other words, if even one key is held for the input chord
@@ -1747,21 +1747,21 @@ When this happens, kanata splits up the key presses to activate
 other actions from the components of the input chord.
 In this scenario, the behaviour described in the next paragraph will occur.
 
-For all other action categories,
-the release behaviour is a little more confusing:
+For chord decompositions and all other action categories,
+the release behaviour is more confusing:
 the output action will end when any key is released during the timeout,
-or if the timeout expires, the output action ends when the **first** key
+or if the timeout expires, the output action ends when the *first* key
 that was pressed in the chord gets released.
-This is a limitation of the current implementation.
-It will probably be difficult to know which key was pressed first.
-In these scenarios, to keep the behaviour from being confusing,
-you should hold down all keys if you want to keep holding,
-and release all keys if you want to do a release.
+This inconsistency is a limitation of the current implementation.
+In these scenarios it is recommended
+to hold down all keys if you want to keep holding
+and to release all keys if you want to do a release.
+This is because it will probably be difficult
+to know which key was pressed first.
 
-If you want to ignore the behaviour of keys being held
-as described in the first paragraph of this section,
-you could change the input chord's action to be a macro instead,
-which will guarantee a rapid press+release of all keys being outputted.
+If you want to bypass the behaviour of keys being held for chord outputs,
+you could change the chord output actions to be <<macro,macros>> instead.
+Using a macro will guarantee a rapid press+release for the output keys.
 
 [[defaliasenvcond]]
 === defaliasenvcond
