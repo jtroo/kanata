@@ -610,12 +610,12 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         let val = match exprs.next() {
             Some(v) => v,
-            None => bail_expr!(key, "Found a defcfg key missing a value"),
+            None => bail_expr!(key, "Found a defcfg option missing a value"),
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
                 if !valid_cfg_keys.iter().any(|valid_key| &k.t == valid_key) {
-                    bail_expr!(key, "Unknown defcfg entry {}", k.t);
+                    bail_expr!(key, "Unknown defcfg option {}", k.t);
                 }
                 if cfg
                     .insert(
@@ -624,7 +624,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                     )
                     .is_some()
                 {
-                    bail_expr!(key, "Duplicate defcfg entry {}", k.t);
+                    bail_expr!(key, "Duplicate defcfg option {}", k.t);
                 }
             }
             (SExpr::List(_), _) => {
