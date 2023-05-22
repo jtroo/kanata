@@ -29,13 +29,20 @@ pub struct KbdIn {
     token_counter: usize,
     /// stored to prevent dropping
     _inotify: Inotify,
+    include_names: Option<Vec<String>>,
+    exclude_names: Option<Vec<String>>,
 }
 
 const INOTIFY_TOKEN_VALUE: usize = 0;
 const INOTIFY_TOKEN: Token = Token(INOTIFY_TOKEN_VALUE);
 
 impl KbdIn {
-    pub fn new(dev_paths: &[String], continue_if_no_devices: bool) -> Result<Self, io::Error> {
+    pub fn new(
+        dev_paths: &[String],
+        continue_if_no_devices: bool,
+        include_names: Option<Vec<String>>,
+        exclude_names: Option<Vec<String>>,
+    ) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
 
         let mut missing_device_paths = None;
@@ -46,7 +53,7 @@ impl KbdIn {
                 missing_device_paths.as_mut().expect("initialized"),
             )
         } else {
-            discover_devices()?
+            discover_devices(include_names.as_deref(), exclude_names.as_deref())?
         };
         if devices.is_empty() {
             if continue_if_no_devices {
@@ -75,6 +82,8 @@ impl KbdIn {
             events: Events::with_capacity(32),
             devices: HashMap::default(),
             token_counter: INOTIFY_TOKEN_VALUE + 1,
+            include_names,
+            exclude_names,
         };
 
         for (device, dev_path) in devices.into_iter() {
@@ -90,7 +99,7 @@ impl KbdIn {
     }
 
     fn register_device(&mut self, mut dev: Device, path: String) -> Result<(), io::Error> {
-        log::info!("registering {path}");
+        log::info!("registering {path}: {:?}", dev.name().unwrap_or(""));
         wait_for_all_keys_unpressed(&dev)?;
         // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
         // trackpad not working. No idea why this works.
@@ -194,7 +203,7 @@ impl KbdIn {
         if let Some(ref mut missing) = self.missing_device_paths {
             missing.retain(|path| !paths_registered.contains(path));
         } else {
-            discover_devices()?
+            discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())?
                 .into_iter()
                 .try_for_each(|(dev, path)| {
                     if !self
@@ -542,7 +551,10 @@ fn devices_from_input_paths(
         .collect()
 }
 
-fn discover_devices() -> Result<Vec<(Device, String)>, io::Error> {
+fn discover_devices(
+    include_names: Option<&[String]>,
+    exclude_names: Option<&[String]>,
+) -> Result<Vec<(Device, String)>, io::Error> {
     log::info!("looking for devices in /dev/input");
     let devices: Vec<_> = evdev::enumerate()
         .map(|(path, device)| {
@@ -553,7 +565,34 @@ fn discover_devices() -> Result<Vec<(Device, String)>, io::Error> {
                     .to_owned(),
             )
         })
-        .filter(|pd| is_input_device(&pd.0))
+        .filter(|pd| {
+            is_input_device(&pd.0)
+                && match include_names {
+                    None => true,
+                    Some(include_names) => {
+                        let name = pd.0.name().unwrap_or("");
+                        if include_names.iter().any(|include| name == include) {
+                            log::info!("device [{}:{name}] is included", &pd.1);
+                            true
+                        } else {
+                            log::info!("device [{}:{name}] is ignored", &pd.1);
+                            false
+                        }
+                    }
+                }
+                && match exclude_names {
+                    None => true,
+                    Some(exclude_names) => {
+                        let name = pd.0.name().unwrap_or("");
+                        if exclude_names.iter().any(|exclude| name == exclude) {
+                            log::info!("device [{}:{name}] is excluded", &pd.1);
+                            false
+                        } else {
+                            true
+                        }
+                    }
+                }
+        })
         .collect();
     if devices.is_empty() {
         return Err(io::Error::new(
@@ -625,7 +664,7 @@ impl Symlink {
     }
 }
 
-pub fn parse_dev_paths(paths: &str) -> Vec<String> {
+pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     let mut all_paths = vec![];
     let mut full_dev_path = String::new();
     let mut dev_path_iter = paths.split(':').peekable();
@@ -640,6 +679,7 @@ pub fn parse_dev_paths(paths: &str) -> Vec<String> {
         all_paths.push(full_dev_path.clone());
         full_dev_path.clear();
     }
+    all_paths.shrink_to_fit();
     all_paths
 }
 
@@ -670,9 +710,9 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
 
 #[test]
 fn test_parse_dev_paths() {
-    assert_eq!(parse_dev_paths("h:w"), ["h", "w"]);
-    assert_eq!(parse_dev_paths("h\\:w"), ["h:w"]);
-    assert_eq!(parse_dev_paths("h\\:w\\"), ["h:w\\"]);
+    assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
 }
 
 impl Drop for Symlink {

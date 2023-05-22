@@ -47,6 +47,18 @@ If you need help, you are welcome to ask.
   ;; kanata does not parse it as multiple devices.
   ;; linux-dev /dev/input/path-to\:device
 
+  ;; The linux-dev-names-include entry is parsed identically to linux-dev. It
+  ;; defines a list of device names that should be included. This is only
+  ;; used if linux-dev is omitted.
+  ;; linux-dev-names-include device-1-name:device\:2\:name
+
+  ;; The linux-dev-names-exclude entry is parsed identically to linux-dev. It
+  ;; defines a list of device names that should be excluded. This is only
+  ;; used if linux-dev is omitted. This and linux-dev-names-include are not
+  ;; mutually exclusive but in practice it probably makes sense to only use
+  ;; one of them.
+  ;; linux-dev-names-exclude device-1-name:device\:2\:name
+
   ;; By default, kanata will crash if no input devices are found. You can change
   ;; this behaviour by setting `linux-continue-if-no-devs-found`.
   ;;

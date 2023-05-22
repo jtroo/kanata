@@ -14,7 +14,12 @@ impl Kanata {
         info!("entering the event loop");
 
         let k = kanata.lock();
-        let mut kbd_in = match KbdIn::new(&k.kbd_in_paths, k.continue_if_no_devices) {
+        let mut kbd_in = match KbdIn::new(
+            &k.kbd_in_paths,
+            k.continue_if_no_devices,
+            k.include_names.clone(),
+            k.exclude_names.clone(),
+        ) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {
                 bail!("failed to open keyboard device(s): {}", e)
