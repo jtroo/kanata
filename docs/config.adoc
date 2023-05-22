@@ -1546,7 +1546,7 @@ Only zero or one `defoverrides` is allowed in a configuration file.
 === Fake keys
 <<table-of-contents,Back to ToC>>
 
-You can define up to 256 fake keys. These keys are not directly mapped to any
+You can define up to 767 fake keys. These keys are not directly mapped to any
 physical key presses and can only be activated via these actions:
 
 * `+(on-press-fakekey <fake key name> <key action>)+`: Activate a fake key
