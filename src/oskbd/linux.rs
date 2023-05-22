@@ -203,6 +203,8 @@ impl KbdIn {
         if let Some(ref mut missing) = self.missing_device_paths {
             missing.retain(|path| !paths_registered.contains(path));
         } else {
+            log::info!("sleeping for a moment to let devices become ready");
+            std::thread::sleep(std::time::Duration::from_millis(200));
             discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())?
                 .into_iter()
                 .try_for_each(|(dev, path)| {
