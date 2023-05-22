@@ -48,19 +48,20 @@ pub fn set_win_altgr_behaviour(cfg: &cfg::Cfg) -> Result<()> {
     Ok(())
 }
 
-fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
-    match v {
-        State::NormalKey { keycode, coord } => Some(State::NormalKey::<()> {
-            keycode: *keycode,
-            coord: *coord,
-        }),
-        State::FakeKey { keycode } => Some(State::FakeKey::<()> { keycode: *keycode }),
-        _ => None,
-    }
-}
-
 impl Kanata {
+    #[cfg(not(feature = "interception_driver"))]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
+        fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
+            match v {
+                State::NormalKey { keycode, coord } => Some(State::NormalKey::<()> {
+                    keycode: *keycode,
+                    coord: *coord,
+                }),
+                State::FakeKey { keycode } => Some(State::FakeKey::<()> { keycode: *keycode }),
+                _ => None,
+            }
+        }
+
         static PREV_STATES: Lazy<Mutex<Vec<State<'static, ()>>>> = Lazy::new(|| Mutex::new(vec![]));
         let mut prev_states = PREV_STATES.lock();
 
@@ -96,12 +97,14 @@ impl Kanata {
                 {
                     continue;
                 }
-                log::debug!("releasing all {keycode:?}");
+                log::debug!(
+                    "lsft-arrowkey workaround: releasing {keycode:?} at its typical coordinate"
+                );
                 self.layout.bm().states.retain(|s| match s {
                     State::NormalKey {
-                        keycode: cur_kc, ..
-                    }
-                    | State::FakeKey { keycode: cur_kc } => cur_kc != keycode,
+                        keycode: cur_kc,
+                        coord: cur_coord,
+                    } => cur_kc != keycode && *cur_coord != (0, u16::from(OsCode::from(keycode))),
                     _ => true,
                 });
                 log::debug!("releasing {keycode:?} from pressed keys");
@@ -114,6 +117,11 @@ impl Kanata {
 
         prev_states.clear();
         prev_states.extend(self.layout.bm().states.iter().filter_map(state_filter));
+        Ok(())
+    }
+
+    #[cfg(feature = "interception_driver")]
+    pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         Ok(())
     }
 }
