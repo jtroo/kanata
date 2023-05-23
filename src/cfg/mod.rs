@@ -585,6 +585,21 @@ fn check_first_expr<'a>(
 
 /// Parse configuration entries from an expression starting with defcfg.
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
+    let valid_cfg_keys = &[
+        "process-unmapped-keys",
+        "danger-enable-cmd",
+        "sequence-timeout",
+        "sequence-input-mode",
+        "log-layer-changes",
+        "linux-dev",
+        "linux-dev-names-include",
+        "linux-dev-names-exclude",
+        "linux-continue-if-no-devs-found",
+        "linux-unicode-u-code",
+        "linux-unicode-termination",
+        "windows-altgr",
+        "windows-interception-mouse-hwid",
+    ];
     let mut cfg = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
     // Read k-v pairs from the configuration
@@ -595,10 +610,13 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         let val = match exprs.next() {
             Some(v) => v,
-            None => bail_expr!(key, "Found a defcfg key missing a value"),
+            None => bail_expr!(key, "Found a defcfg option missing a value"),
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
+                if !valid_cfg_keys.iter().any(|valid_key| &k.t == valid_key) {
+                    bail_expr!(key, "Unknown defcfg option {}", k.t);
+                }
                 if cfg
                     .insert(
                         k.t.trim_matches('"').to_owned(),
@@ -606,7 +624,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                     )
                     .is_some()
                 {
-                    bail_expr!(key, "Duplicate defcfg entry {}", k.t);
+                    bail_expr!(key, "Duplicate defcfg option {}", k.t);
                 }
             }
             (SExpr::List(_), _) => {

@@ -288,6 +288,19 @@ fn chord_in_macro_dont_panic() {
 }
 
 #[test]
+fn unknown_defcfg_item_fails() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/unknown_defcfg_opt.kbd",
+    ))
+    .map(|_| ())
+    .expect_err("graceful failure, no panic, also no success");
+}
+
+#[test]
 fn recursive_multi_is_flattened() {
     macro_rules! atom {
         ($e:expr) => {
