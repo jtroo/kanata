@@ -53,7 +53,7 @@ impl KbdIn {
                 missing_device_paths.as_mut().expect("initialized"),
             )
         } else {
-            discover_devices(include_names.as_deref(), exclude_names.as_deref())?
+            discover_devices(include_names.as_deref(), exclude_names.as_deref())
         };
         if devices.is_empty() {
             if continue_if_no_devices {
@@ -205,7 +205,7 @@ impl KbdIn {
         } else {
             log::info!("sleeping for a moment to let devices become ready");
             std::thread::sleep(std::time::Duration::from_millis(200));
-            discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())?
+            discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())
                 .into_iter()
                 .try_for_each(|(dev, path)| {
                     if !self
@@ -556,7 +556,7 @@ fn devices_from_input_paths(
 fn discover_devices(
     include_names: Option<&[String]>,
     exclude_names: Option<&[String]>,
-) -> Result<Vec<(Device, String)>, io::Error> {
+) -> Vec<(Device, String)> {
     log::info!("looking for devices in /dev/input");
     let devices: Vec<_> = evdev::enumerate()
         .map(|(path, device)| {
@@ -596,13 +596,7 @@ fn discover_devices(
                 }
         })
         .collect();
-    if devices.is_empty() {
-        return Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            "Could not auto detect any keyboard devices",
-        ));
-    }
-    Ok(devices)
+    devices
 }
 
 fn watch_devinput() -> Result<Inotify, io::Error> {
