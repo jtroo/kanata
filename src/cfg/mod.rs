@@ -590,6 +590,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "danger-enable-cmd",
         "sequence-timeout",
         "sequence-input-mode",
+        "sequence-backtrack-modcancel",
         "log-layer-changes",
         "linux-dev",
         "linux-dev-names-include",
@@ -2247,46 +2248,33 @@ fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
     Ok(layers_cfg)
 }
 
+const SEQ_ERR: &str = "defseq expects pairs of parameters: <fake_key_name> <key_list>";
+
 fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFKeys> {
-    const ERR_MSG: &str = "defseq expects pairs of parameters: <fake_key_name> <key_list>";
     let mut sequences = Trie::new();
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
 
         while let Some(fake_key_expr) = subexprs.next() {
             let fake_key = fake_key_expr.atom(s.vars()).ok_or_else(|| {
-                anyhow_expr!(fake_key_expr, "{ERR_MSG}\nGot a list for fake_key_name")
+                anyhow_expr!(fake_key_expr, "{SEQ_ERR}\nGot a list for fake_key_name")
             })?;
             if !s.fake_keys.contains_key(fake_key) {
                 bail_expr!(
                     fake_key_expr,
-                    "{ERR_MSG}\nThe referenced key does not exist: {fake_key}"
+                    "{SEQ_ERR}\nThe referenced key does not exist: {fake_key}"
                 );
             }
             let key_seq_expr = subexprs.next().ok_or_else(|| {
-                anyhow_expr!(fake_key_expr, "{ERR_MSG}\nMissing key_list for {fake_key}")
+                anyhow_expr!(fake_key_expr, "{SEQ_ERR}\nMissing key_list for {fake_key}")
             })?;
             let key_seq = key_seq_expr.list(s.vars()).ok_or_else(|| {
-                anyhow_expr!(key_seq_expr, "{ERR_MSG}\nGot a non-list for key_list")
+                anyhow_expr!(key_seq_expr, "{SEQ_ERR}\nGot a non-list for key_list")
             })?;
             if key_seq.is_empty() {
-                bail_expr!(key_seq_expr, "Key list in defseq cannot be empty");
+                bail_expr!(key_seq_expr, "{SEQ_ERR}\nkey_list cannot be empty");
             }
-            let keycode_seq =
-                key_seq
-                    .iter()
-                    .try_fold::<_, _, Result<Vec<_>>>(vec![], |mut keys, key| {
-                        keys.push(
-                            str_to_oscode(key.atom(s.vars()).ok_or_else(|| {
-                                anyhow_expr!(key, "{ERR_MSG}\nInvalid key in key_list: {key:?}")
-                            })?)
-                            .map(u16::from) // u16 is sufficient for all keys in the keyberon array
-                            .ok_or_else(|| {
-                                anyhow_expr!(key, "{ERR_MSG}\nInvalid key in key_list: {key:?}")
-                            })?,
-                        );
-                        Ok(keys)
-                    })?;
+            let keycode_seq = parse_sequence_keys(key_seq, s)?;
             if sequences.get_ancestor(&keycode_seq).is_some() {
                 bail_expr!(
                     key_seq_expr,
@@ -2306,6 +2294,94 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
         }
     }
     Ok(sequences)
+}
+
+fn parse_sequence_keys(exprs: &[SExpr], s: &ParsedState) -> Result<Vec<u16>> {
+    use crate::sequences::*;
+    use SequenceEvent::*;
+
+    // Reuse macro parsing but do some other processing since sequences don't support everything
+    // that can go in a macro, and also change error messages of course.
+    let mut exprs_remaining = exprs;
+    let mut all_keys = Vec::new();
+    while !exprs_remaining.is_empty() {
+        let (mut keys, exprs_remaining_tmp) = match parse_macro_item(exprs_remaining, s) {
+            Ok(res) => {
+                if res.0.iter().any(|k| !matches!(k, Press(..) | Release(..))) {
+                    // Determine the bad expression depending on how many expressions were consumed
+                    // by parse_macro_item.
+                    let bad_expr = if exprs_remaining.len() - res.1.len() == 1 {
+                        &exprs_remaining[0]
+                    } else {
+                        // This error message will have an imprecise span since it will take the
+                        // whole chorded list instead of the single element inside that's not a
+                        // standard key. Oh well, should still be helpful. I'm too lazy to write
+                        // the code to find the exact expr to use right now.
+                        &exprs_remaining[1]
+                    };
+                    bail_expr!(bad_expr, "{SEQ_ERR}\nFound invalid key/chord in key_list");
+                }
+
+                // The keys are currenty in the form of SequenceEvent::{Press, Release}. This is
+                // not what we want.
+                //
+                // The trivial and incorrect way to parse this would be to just take all of the
+                // presses. However, we need to transform chorded keys/lists like S-a or S-(a b) to
+                // have the upper bits set, to be able to differentiate (S-a b) from (S-(a b)).
+                //
+                // The order of presses and releases reveals whether or not a key is chorded with
+                // some modifier. When a chord starts, there are multiple presses in a row, whereas
+                // non-chords will always be a press followed by a release. Likewise, a chord
+                // ending is marked by multiple releases in a row.
+                //
+                // Test cases: (a b)
+                //           : (S-a b)
+                //           : (AG-A-M-C-S-(a b) c)
+                //           : (S-(a b C-c) d)
+                //           : (S-(a C-b c) d)
+                let mut mods_currently_held = vec![];
+                let mut key_actions = res.0.iter().peekable();
+                let mut seq = vec![];
+                let mut do_release_mod = false;
+                while let Some(action) = key_actions.next() {
+                    match action {
+                        Press(pressed) => {
+                            if matches!(key_actions.peek(), Some(Press(..))) {
+                                // press->press: current press is mod
+                                mods_currently_held.push(*pressed);
+                            }
+                            let mut seq_num = u16::from(OsCode::from(pressed));
+                            for modk in mods_currently_held.iter().copied() {
+                                seq_num |= mod_mask_for_keycode(modk);
+                            }
+                            seq.push(seq_num);
+                        }
+                        Release(released) => {
+                            if do_release_mod {
+                                mods_currently_held.remove(
+                                    mods_currently_held
+                                        .iter()
+                                        .position(|modk| modk == released)
+                                        .expect("had to be pressed to be released"),
+                                );
+                            }
+                            do_release_mod = matches!(key_actions.peek(), Some(Release(..)));
+                        }
+                        _ => unreachable!("should be filtered out"),
+                    }
+                }
+
+                (seq, res.1)
+            }
+            Err(mut e) => {
+                e.help_msg = format!("{SEQ_ERR}\nFound invalid key/chord in key_list");
+                return Err(e);
+            }
+        };
+        all_keys.append(&mut keys);
+        exprs_remaining = exprs_remaining_tmp;
+    }
+    Ok(all_keys)
 }
 
 fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {

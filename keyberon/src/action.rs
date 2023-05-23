@@ -21,14 +21,6 @@ pub enum SequenceEvent<'a, T: 'a> {
         /// How long (in ticks) this Delay will last
         duration: u32, // NOTE: This isn't a u16 because that's only max ~65 seconds (assuming 1000 ticks/sec)
     },
-    /// A marker that indicates there's more of the macro than would fit
-    /// in the 'sequenced' ArrayDeque
-    Continue {
-        /// The current chunk
-        index: usize,
-        /// The full list of Sequence Events (that aren't Continue())
-        events: &'a [SequenceEvent<'a, T>],
-    },
     /// Custom event in sequence.
     Custom(&'a T),
     /// Cancels the running sequence and can be used to mark the end of a sequence
@@ -46,11 +38,6 @@ impl<'a, T> Debug for SequenceEvent<'a, T> {
             Self::Delay { duration } => {
                 f.debug_struct("Delay").field("duration", duration).finish()
             }
-            Self::Continue { index, events } => f
-                .debug_struct("Continue")
-                .field("index", index)
-                .field("events", events)
-                .finish(),
             Self::Custom(_) => write!(f, "Custom"),
             Self::Complete => write!(f, "Complete"),
         }

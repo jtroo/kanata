@@ -1,4 +1,5 @@
 use super::*;
+use crate::cfg::sexpr::parse;
 
 use std::sync::Mutex;
 
@@ -342,4 +343,92 @@ fn recursive_multi_is_flattened() {
     } else {
         panic!("multi did not parse into multi");
     }
+}
+
+#[test]
+fn test_parse_sequence_a_b() {
+    let seq = parse_sequence_keys(
+        &parse("(a b)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 2);
+    assert_eq!(&seq[0], &u16::from(OsCode::KEY_A));
+    assert_eq!(&seq[1], &u16::from(OsCode::KEY_B));
+}
+
+#[test]
+fn test_parse_sequence_sa_b() {
+    let seq = parse_sequence_keys(
+        &parse("(S-a b)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 3);
+    assert_eq!(&seq[0], &(u16::from(OsCode::KEY_LEFTSHIFT) | 0x8000));
+    assert_eq!(&seq[1], &(u16::from(OsCode::KEY_A) | 0x8000));
+    assert_eq!(&seq[2], &u16::from(OsCode::KEY_B));
+}
+
+#[test]
+fn test_parse_sequence_sab() {
+    let seq = parse_sequence_keys(
+        &parse("(S-(a b))").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 3);
+    assert_eq!(&seq[0], &(u16::from(OsCode::KEY_LEFTSHIFT) | 0x8000));
+    assert_eq!(&seq[1], &(u16::from(OsCode::KEY_A) | 0x8000));
+    assert_eq!(&seq[2], &(u16::from(OsCode::KEY_B) | 0x8000));
+}
+
+#[test]
+fn test_parse_sequence_bigchord() {
+    let seq = parse_sequence_keys(
+        &parse("(AG-A-M-C-S-(a b) c)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 8);
+    assert_eq!(&seq[0], &(u16::from(OsCode::KEY_RIGHTALT) | 0x1000));
+    assert_eq!(&seq[1], &(u16::from(OsCode::KEY_LEFTALT) | 0x3000));
+    assert_eq!(&seq[2], &(u16::from(OsCode::KEY_LEFTMETA) | 0x3800));
+    assert_eq!(&seq[3], &(u16::from(OsCode::KEY_LEFTCTRL) | 0x7800));
+    assert_eq!(&seq[4], &(u16::from(OsCode::KEY_LEFTSHIFT) | 0xF800));
+    assert_eq!(&seq[5], &(u16::from(OsCode::KEY_A) | 0xF800));
+    assert_eq!(&seq[6], &(u16::from(OsCode::KEY_B) | 0xF800));
+    assert_eq!(&seq[7], &(u16::from(OsCode::KEY_C)));
+}
+
+#[test]
+fn test_parse_sequence_inner_chord() {
+    let seq = parse_sequence_keys(
+        &parse("(S-(a b C-c) d)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 6);
+    assert_eq!(&seq[0], &(u16::from(OsCode::KEY_LEFTSHIFT) | 0x8000));
+    assert_eq!(&seq[1], &(u16::from(OsCode::KEY_A) | 0x8000));
+    assert_eq!(&seq[2], &(u16::from(OsCode::KEY_B) | 0x8000));
+    assert_eq!(&seq[3], &(u16::from(OsCode::KEY_LEFTCTRL) | 0xC000));
+    assert_eq!(&seq[4], &(u16::from(OsCode::KEY_C) | 0xC000));
+    assert_eq!(&seq[5], &(u16::from(OsCode::KEY_D)));
+}
+
+#[test]
+fn test_parse_sequence_earlier_inner_chord() {
+    let seq = parse_sequence_keys(
+        &parse("(S-(a C-b c) d)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 6);
+    assert_eq!(&seq[0], &(u16::from(OsCode::KEY_LEFTSHIFT) | 0x8000));
+    assert_eq!(&seq[1], &(u16::from(OsCode::KEY_A) | 0x8000));
+    assert_eq!(&seq[2], &(u16::from(OsCode::KEY_LEFTCTRL) | 0xC000));
+    assert_eq!(&seq[3], &(u16::from(OsCode::KEY_B) | 0xC000));
+    assert_eq!(&seq[4], &(u16::from(OsCode::KEY_C) | 0x8000));
+    assert_eq!(&seq[5], &(u16::from(OsCode::KEY_D)));
 }
