@@ -1,6 +1,6 @@
 [package]
 name = "kanata"
-version = "1.4.0-prerelease-1"
+version = "1.4.0-prerelease-2"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
@@ -26,11 +26,11 @@ miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
 dirs = "5.0.1"
 
-# kanata-keyberon = "0.16.0"
+kanata-keyberon = "0.17.0"
 # Uncomment below and comment out above for testing local keyberon changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-kanata-keyberon = { path = "keyberon" }
+# kanata-keyberon = { path = "keyberon" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "0.12.0"
