@@ -355,6 +355,50 @@ its file name, you must escape those colons with backslashes:
 )
 ----
 
+[[linux-only-linux-dev-names-include]]
+=== Linux only: linux-dev-names-include
+<<table-of-contents,Back to ToC>>
+
+In the case that `linux-dev` is omitted,
+this option defines a list of device names that should be included.
+Device names that do not exist in the list will be ignored.
+This option is parsed identically to `linux-dev`.
+
+Kanata will print device names on startup with log lines that look like below:
+
+----
+registering /dev/input/eventX: "Name goes here"
+----
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-names-include "Device 1 name:Device \:2\: Name"
+)
+----
+
+[[linux-only-linux-dev-names-exclude]]
+=== Linux only: linux-dev-names-exclude
+<<table-of-contents,Back to ToC>>
+
+In the case that `linux-dev` is omitted,
+this option defines a list of device names that should be excluded.
+This option is parsed identically to `linux-dev`.
+
+The `linux-dev-names-include and `linux-dev-names-exclude` options
+are not mutually exclusive
+but in practice it probably only makes sense to use one and not both.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-names-exclude "Device 1 name:Device \:2\: Name"
+)
+----
+
+
 [[log-layer-changes]]
 === log-layer-changes
 <<table-of-contents,Back to ToC>>
@@ -510,6 +554,8 @@ a non-applicable operating system.
   sequence-input-mode visible-backspaced
   log-layer-changes no
   linux-dev /dev/input/dev1:/dev/input/dev2
+  linux-dev-names-include "Name 1:Name 2"
+  linux-dev-names-exclude "Name 3:Name 4"
   linux-continue-if-no-dev-found yes
   linux-unicode-u-code v
   linux-unicode-termination space

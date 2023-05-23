@@ -52,7 +52,6 @@ pub enum DynamicMacroItem {
 }
 
 pub struct Kanata {
-    pub kbd_in_paths: Vec<String>,
     pub kbd_out: KbdOut,
     pub cfg_paths: Vec<PathBuf>,
     pub cur_cfg_idx: usize,
@@ -78,7 +77,13 @@ pub struct Kanata {
     last_tick: time::Instant,
     live_reload_requested: bool,
     #[cfg(target_os = "linux")]
+    pub kbd_in_paths: Vec<String>,
+    #[cfg(target_os = "linux")]
     continue_if_no_devices: bool,
+    #[cfg(target_os = "linux")]
+    pub include_names: Option<Vec<String>>,
+    #[cfg(target_os = "linux")]
+    pub exclude_names: Option<Vec<String>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     intercept_mouse_hwid: Option<Vec<u8>>,
     log_layer_changes: bool,
@@ -228,10 +233,20 @@ impl Kanata {
             .items
             .get("linux-dev")
             .cloned()
-            .map(|paths| parse_dev_paths(&paths))
+            .map(|paths| parse_colon_separated_text(&paths))
             .unwrap_or_default();
-        #[cfg(not(target_os = "linux"))]
-        let kbd_in_paths = vec![];
+        #[cfg(target_os = "linux")]
+        let include_names = cfg
+            .items
+            .get("linux-dev-names-include")
+            .cloned()
+            .map(|paths| parse_colon_separated_text(&paths));
+        #[cfg(target_os = "linux")]
+        let exclude_names = cfg
+            .items
+            .get("linux-dev-names-exclude")
+            .cloned()
+            .map(|paths| parse_colon_separated_text(&paths));
 
         #[cfg(target_os = "windows")]
         unsafe {
@@ -266,7 +281,6 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
         Ok(Self {
-            kbd_in_paths,
             kbd_out,
             cfg_paths: args.paths.clone(),
             cur_cfg_idx: 0,
@@ -289,11 +303,17 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "linux")]
+            kbd_in_paths,
+            #[cfg(target_os = "linux")]
             continue_if_no_devices: cfg
                 .items
                 .get("linux-continue-if-no-devs-found")
                 .map(|s| matches!(s.to_lowercase().as_str(), "yes" | "true"))
                 .unwrap_or_default(),
+            #[cfg(target_os = "linux")]
+            include_names,
+            #[cfg(target_os = "linux")]
+            exclude_names,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid,
             dynamic_macro_replay_state: None,
