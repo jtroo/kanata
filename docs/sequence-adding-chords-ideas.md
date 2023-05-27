@@ -1,5 +1,16 @@
 # Sequence improvement: sequence chords
 
+## Preface
+
+This document is a record of designing/braindumping
+for the improvement to the sequences feature to add chord support.
+It is left in an informal and disorganized state 
+— as opposed to a being presentable design doc — out of laziness.
+Apologies ahead of time if you read this and it's hard to follow,
+feel free to contribute a PR to create a new and more polished doc.
+
+## Motivation
+
 The desire is to be able to add output chords to a sequence.
 The effect of this is that: `(S-(a b))` can be differentiated from `(S-a b)`.
 Today, chords are not supported at all.
@@ -7,7 +18,7 @@ The two sequences above could be written as `(lsft a b)`;
 however, the code today has no way to decide the difference
 between `lsft` being applied to only `a` or to both `a` and `b`.
 
-The feature will codenamed "seqchords" for now.
+The feature will codenamed "seqchords" for brevity in this document.
 
 ## An exploration of an idea: track releases?
 
