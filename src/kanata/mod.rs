@@ -692,18 +692,21 @@ impl Kanata {
                             SequenceInputMode::VisibleBackspaced => {
                                 for k in state.sequence.iter() {
                                     // Check for pressed modifiers and don't input backspaces for
-                                    // those since they don't type characters that can be
+                                    // those since they don't output characters that can be
                                     // backspaced.
                                     let kc = OsCode::from(*k & MASK_KEYCODES);
                                     if matches!(
                                         kc,
-                                        // Known bug: many non-typing characters are not listed.
-                                        // I'm too lazy to list them all. Just use typing
-                                        // characters in sequences please! Or switch to a different
-                                        // input mode? It doesn't really make sense to use
-                                        // non-typing characters other than modifiers does it?
-                                        // Since those would probably be further away from the home
-                                        // row, so why use them?
+                                        // Known bug: most non-characters-outputting keys are not
+                                        // listed. I'm too lazy to list them all. Just use
+                                        // character-outputting keys (and modifiers) in sequences
+                                        // please! Or switch to a different input mode? It doesn't
+                                        // really make sense to use non-typing characters other
+                                        // than modifiers does it? Since those would probably be
+                                        // further away from the home row, so why use them? If one
+                                        // desired to fix this, a shorter list of keys would
+                                        // probably be the list of keys that **do** output
+                                        // characters than those that don't.
                                         OsCode::KEY_LEFTSHIFT
                                             | OsCode::KEY_RIGHTSHIFT
                                             | OsCode::KEY_LEFTMETA
