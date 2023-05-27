@@ -2333,12 +2333,6 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParsedState) -> Result<Vec<u16>> {
                 // some modifier. When a chord starts, there are multiple presses in a row, whereas
                 // non-chords will always be a press followed by a release. Likewise, a chord
                 // ending is marked by multiple releases in a row.
-                //
-                // Test cases: (a b)
-                //           : (S-a b)
-                //           : (AG-A-M-C-S-(a b) c)
-                //           : (S-(a b C-c) d)
-                //           : (S-(a C-b c) d)
                 let mut mods_currently_held = vec![];
                 let mut key_actions = res.0.iter().peekable();
                 let mut seq = vec![];

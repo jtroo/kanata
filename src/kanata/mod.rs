@@ -646,7 +646,7 @@ impl Kanata {
 
                     use crate::sequences::*;
 
-                    // Check for invalid termination
+                    // Check for and handle invalid termination
                     if self.sequences.get_raw_descendant(&state.sequence).is_none() {
                         let is_invalid_termination = if self.sequence_backtrack_modcancel
                             && (pushed_into_seq & MASK_MODDED > 0)
@@ -683,7 +683,7 @@ impl Kanata {
                         }
                     }
 
-                    // Check for valid termination.
+                    // Check for and handle valid termination.
                     if let Some((i, j)) = self.sequences.get(&state.sequence) {
                         log::debug!("sequence complete; tapping fake key");
                         match self.sequence_input_mode {
@@ -691,16 +691,19 @@ impl Kanata {
                             | SequenceInputMode::HiddenDelayType => {}
                             SequenceInputMode::VisibleBackspaced => {
                                 for k in state.sequence.iter() {
+                                    // Check for pressed modifiers and don't input backspaces for
+                                    // those since they don't type characters that can be
+                                    // backspaced.
                                     let kc = OsCode::from(*k & MASK_KEYCODES);
                                     if matches!(
                                         kc,
-                                        // Bug: many non-typing characters are not listed. I'm too
-                                        // lazy to list them all... just use typing characters in
-                                        // sequences please! Or switch to a different input mode?
-                                        // It doesn't really make sense to use non-typing
-                                        // characters other than modifiers does it? Since those
-                                        // would probably be further away from the home row... so
-                                        // why use them?
+                                        // Known bug: many non-typing characters are not listed.
+                                        // I'm too lazy to list them all. Just use typing
+                                        // characters in sequences please! Or switch to a different
+                                        // input mode? It doesn't really make sense to use
+                                        // non-typing characters other than modifiers does it?
+                                        // Since those would probably be further away from the home
+                                        // row, so why use them?
                                         OsCode::KEY_LEFTSHIFT
                                             | OsCode::KEY_RIGHTSHIFT
                                             | OsCode::KEY_LEFTMETA
@@ -718,6 +721,7 @@ impl Kanata {
                                 }
                             }
                         }
+
                         // Make sure to unpress any keys that were pressed as part of the sequence
                         // so that the keyberon internal sequence mechanism can do press+unpress of
                         // them.
