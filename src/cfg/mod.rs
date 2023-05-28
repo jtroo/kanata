@@ -2359,6 +2359,7 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParsedState) -> Result<Vec<u16>> {
                                         .expect("had to be pressed to be released"),
                                 );
                             }
+                            // release->release: next release is mod
                             do_release_mod = matches!(key_actions.peek(), Some(Release(..)));
                         }
                         _ => unreachable!("should be filtered out"),
