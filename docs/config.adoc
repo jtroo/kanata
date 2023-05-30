@@ -318,6 +318,53 @@ See <<sequences>> for more about sequences.
 )
 ----
 
+
+[[sequence-backtrack-modcancel]]
+=== sequence-backtrack-modcancel
+<<table-of-contents,Back to ToC>>
+
+This option customizes the behaviour of key sequences
+when modifiers are used.
+The default is `yes` and can be overridden to `no` if desired.
+
+Setting it to `yes` allows both `fk1` and `fk2` to be activated
+in the following configuration, but with `no`,
+`fk1` will be impossible to activate
+
+----
+(defseq
+  fk1 (lsft a b)
+  fk2 (S-(c d))
+)
+----
+
+See <<sequences>> for more about sequences and
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[this document]
+for more context about this specific configuration.
+
+.Example:
+[source]
+----
+(defcfg
+  sequence-backtrack-modcancel no
+)
+----
+
+[[log-layer-changes]]
+=== log-layer-changes
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will log layer changes. However, logging has some processing
+overhead. If you do not care for the logging, you can choose to disable it.
+
+.Example:
+[source]
+----
+(defcfg
+  log-layer-changes no
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -395,22 +442,6 @@ but in practice it probably only makes sense to use one and not both.
 ----
 (defcfg
   linux-dev-names-exclude "Device 1 name:Device \:2\: Name"
-)
-----
-
-
-[[log-layer-changes]]
-=== log-layer-changes
-<<table-of-contents,Back to ToC>>
-
-By default, kanata will log layer changes. However, logging has some processing
-overhead. If you do not care for the logging, you can choose to disable it.
-
-.Example:
-[source]
-----
-(defcfg
-  log-layer-changes no
 )
 ----
 
@@ -547,11 +578,14 @@ a non-applicable operating system.
 
 [source]
 ----
+;; Don't actually use this exact configuration,
+;; it's almost certainly not what you want.
 (defcfg
   process-unmapped-keys yes
   danger-enable-cmd yes
   sequence-timeout 2000
   sequence-input-mode visible-backspaced
+  sequence-backtrack-modcancel no
   log-layer-changes no
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
@@ -1693,8 +1727,9 @@ notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
 
 The `+sldr+` action makes kanata go into "sequence" mode. The action name is
 short for "sequence leader". This comes from Vim which has the concept of a configurable
-sequence leader key. When in sequence mode, keys are not typed but are saved
-until one of the following happens:
+sequence leader key. When in sequence mode, keys are not typed
+(<<sequence-input-mode,by default>>)
+but are saved until one of the following happens:
 
 * A key is typed that does not match any sequence
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
@@ -1716,6 +1751,10 @@ precisely, the action triggered is:
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
+You may also be interested in
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[
+the document describing chords is sequences]
+to read about how chords in sequences behave.
 
 [[input-chords]]
 === Input chords

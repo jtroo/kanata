@@ -9,6 +9,7 @@ mod kanata;
 mod keys;
 mod layers;
 mod oskbd;
+mod sequences;
 mod tcp_server;
 
 use clap::Parser;

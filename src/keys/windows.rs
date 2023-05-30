@@ -210,7 +210,7 @@ mod keys {
 pub use keys::*;
 
 impl OsCode {
-    pub fn from_u16(code: u16) -> Option<Self> {
+    pub const fn from_u16(code: u16) -> Option<Self> {
         match code {
             0x30 => Some(OsCode::KEY_0),
             0x31 => Some(OsCode::KEY_1),
@@ -845,7 +845,7 @@ impl OsCode {
         }
     }
 
-    pub fn as_u16(self) -> u16 {
+    pub const fn as_u16(self) -> u16 {
         match self {
             OsCode::KEY_0 => 0x30,
             OsCode::KEY_1 => 0x31,

@@ -6,11 +6,11 @@ use std::convert::TryFrom;
 use super::{KeyEvent, KeyValue, OsCode};
 
 impl OsCode {
-    pub fn as_u16(self) -> u16 {
+    pub const fn as_u16(self) -> u16 {
         self as u16
     }
 
-    pub fn from_u16(code: u16) -> Option<Self> {
+    pub const fn from_u16(code: u16) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),
             1 => Some(OsCode::KEY_ESC),

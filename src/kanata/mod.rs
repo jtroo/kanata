@@ -66,6 +66,7 @@ pub struct Kanata {
     pub move_mouse_state_vertical: Option<MoveMouseState>,
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
     pub sequence_timeout: u16,
+    pub sequence_backtrack_modcancel: bool,
     pub sequence_state: Option<SequenceState>,
     pub sequences: cfg::KeySeqsToFKeys,
     pub sequence_input_mode: SequenceInputMode,
@@ -267,6 +268,11 @@ impl Kanata {
                 Ok(t) => Ok(t),
             })
             .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
+        let sequence_backtrack_modcancel = cfg
+            .items
+            .get("sequence-backtrack-modcancel")
+            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .unwrap_or(true);
         let sequence_input_mode = cfg
             .items
             .get(SEQ_INPUT_MODE_CFG_NAME)
@@ -295,6 +301,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             sequence_timeout,
+            sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
             sequence_input_mode,
@@ -606,8 +613,28 @@ impl Kanata {
                 }
                 Some(state) => {
                     state.ticks_until_timeout = self.sequence_timeout;
-                    let osc = OsCode::from(*k);
-                    state.sequence.push(u16::from(osc));
+
+                    // Transform to OsCode and convert modifiers other than altgr/ralt (same key
+                    // different names) to the left version, since that's how chords get
+                    // transformed when building up sequences.
+                    let osc = match OsCode::from(*k) {
+                        OsCode::KEY_RIGHTSHIFT => OsCode::KEY_LEFTSHIFT,
+                        OsCode::KEY_RIGHTMETA => OsCode::KEY_LEFTMETA,
+                        OsCode::KEY_RIGHTCTRL => OsCode::KEY_LEFTCTRL,
+                        osc => osc,
+                    };
+
+                    // Modify the upper unused bits of the u16 to signify that the key is activated
+                    // alongside a modifier.
+                    let pushed_into_seq = {
+                        let mut base = u16::from(osc);
+                        for k in cur_keys.iter().copied() {
+                            base |= mod_mask_for_keycode(k);
+                        }
+                        base
+                    };
+
+                    state.sequence.push(pushed_into_seq);
                     match self.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
                             self.kbd_out.press_key(osc)?;
@@ -616,46 +643,100 @@ impl Kanata {
                         | SequenceInputMode::HiddenDelayType => {}
                     }
                     log::debug!("sequence got {k:?}");
-                    if let Some((x, y)) = self.sequences.get(&state.sequence) {
+
+                    use crate::sequences::*;
+
+                    // Check for and handle invalid termination
+                    if self.sequences.get_raw_descendant(&state.sequence).is_none() {
+                        let is_invalid_termination = if self.sequence_backtrack_modcancel
+                            && (pushed_into_seq & MASK_MODDED > 0)
+                        {
+                            let mut no_valid_seqs = true;
+                            // If applicable, check again with modifier bits unset.
+                            for i in (0..state.sequence.len()).rev() {
+                                // Safety: proper bounds are above.
+                                *unsafe { state.sequence.get_unchecked_mut(i) } &= MASK_KEYCODES;
+                                if self.sequences.get_raw_descendant(&state.sequence).is_some() {
+                                    no_valid_seqs = false;
+                                }
+                            }
+                            no_valid_seqs
+                        } else {
+                            true
+                        };
+                        if is_invalid_termination {
+                            log::debug!("got invalid sequence; exiting sequence mode");
+                            match self.sequence_input_mode {
+                                SequenceInputMode::HiddenDelayType => {
+                                    for code in state.sequence.iter().copied() {
+                                        if let Some(osc) = OsCode::from_u16(code) {
+                                            self.kbd_out.press_key(osc)?;
+                                            self.kbd_out.release_key(osc)?;
+                                        }
+                                    }
+                                }
+                                SequenceInputMode::HiddenSuppressed
+                                | SequenceInputMode::VisibleBackspaced => {}
+                            }
+                            self.sequence_state = None;
+                            continue;
+                        }
+                    }
+
+                    // Check for and handle valid termination.
+                    if let Some((i, j)) = self.sequences.get(&state.sequence) {
                         log::debug!("sequence complete; tapping fake key");
                         match self.sequence_input_mode {
                             SequenceInputMode::HiddenSuppressed
                             | SequenceInputMode::HiddenDelayType => {}
                             SequenceInputMode::VisibleBackspaced => {
-                                for _ in state.sequence.iter() {
+                                for k in state.sequence.iter() {
+                                    // Check for pressed modifiers and don't input backspaces for
+                                    // those since they don't output characters that can be
+                                    // backspaced.
+                                    let kc = OsCode::from(*k & MASK_KEYCODES);
+                                    if matches!(
+                                        kc,
+                                        // Known bug: most non-characters-outputting keys are not
+                                        // listed. I'm too lazy to list them all. Just use
+                                        // character-outputting keys (and modifiers) in sequences
+                                        // please! Or switch to a different input mode? It doesn't
+                                        // really make sense to use non-typing characters other
+                                        // than modifiers does it? Since those would probably be
+                                        // further away from the home row, so why use them? If one
+                                        // desired to fix this, a shorter list of keys would
+                                        // probably be the list of keys that **do** output
+                                        // characters than those that don't.
+                                        OsCode::KEY_LEFTSHIFT
+                                            | OsCode::KEY_RIGHTSHIFT
+                                            | OsCode::KEY_LEFTMETA
+                                            | OsCode::KEY_RIGHTMETA
+                                            | OsCode::KEY_LEFTCTRL
+                                            | OsCode::KEY_RIGHTCTRL
+                                            | OsCode::KEY_LEFTALT
+                                            | OsCode::KEY_RIGHTALT
+                                    ) {
+                                        continue;
+                                    }
+
                                     self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
                                     self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
                                 }
                             }
                         }
+
                         // Make sure to unpress any keys that were pressed as part of the sequence
                         // so that the keyberon internal sequence mechanism can do press+unpress of
                         // them.
                         for k in state.sequence.iter() {
+                            let kc = KeyCode::from(OsCode::from(*k & MASK_KEYCODES));
                             layout.states.retain(|s| match s {
-                                State::NormalKey { keycode, .. } => {
-                                    KeyCode::from(OsCode::from(*k as u32)) != *keycode
-                                }
+                                State::NormalKey { keycode, .. } => kc != *keycode,
                                 _ => true,
                             });
                         }
-                        self.sequence_state = None;
-                        layout.event(Event::Press(*x, *y));
-                        layout.event(Event::Release(*x, *y));
-                    } else if self.sequences.get_raw_descendant(&state.sequence).is_none() {
-                        log::debug!("got invalid sequence; exiting sequence mode");
-                        match self.sequence_input_mode {
-                            SequenceInputMode::HiddenDelayType => {
-                                for code in state.sequence.iter().copied() {
-                                    if let Some(osc) = OsCode::from_u16(code) {
-                                        self.kbd_out.press_key(osc)?;
-                                        self.kbd_out.release_key(osc)?;
-                                    }
-                                }
-                            }
-                            SequenceInputMode::HiddenSuppressed
-                            | SequenceInputMode::VisibleBackspaced => {}
-                        }
+                        layout.event(Event::Press(*i, *j));
+                        layout.event(Event::Release(*i, *j));
                         self.sequence_state = None;
                     }
                 }
