@@ -1382,6 +1382,12 @@ fn parse_macro_release_cancel(
     ])))))
 }
 
+#[derive(PartialEq)]
+enum MacroNumberParseMode {
+    Delay,
+    Action,
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_macro_item<'a>(
     acs: &'a [SExpr],
@@ -1390,15 +1396,29 @@ fn parse_macro_item<'a>(
     Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
     &'a [SExpr],
 )> {
-    if let Some(a) = acs[0].atom(s.vars()) {
-        match parse_non_zero_u16(&acs[0], s, "delay") {
-            Ok(duration) => {
-                let duration = u32::from(duration);
-                return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
-            }
-            Err(e) => {
-                if a.chars().all(|c| c.is_ascii_digit()) {
-                    return Err(e);
+    parse_macro_item_impl(acs, s, MacroNumberParseMode::Delay)
+}
+
+#[allow(clippy::type_complexity)] // return type is not pub
+fn parse_macro_item_impl<'a>(
+    acs: &'a [SExpr],
+    s: &ParsedState,
+    num_parse_mode: MacroNumberParseMode,
+) -> Result<(
+    Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
+    &'a [SExpr],
+)> {
+    if num_parse_mode == MacroNumberParseMode::Delay {
+        if let Some(a) = acs[0].atom(s.vars()) {
+            match parse_non_zero_u16(&acs[0], s, "delay") {
+                Ok(duration) => {
+                    let duration = u32::from(duration);
+                    return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
+                }
+                Err(e) => {
+                    if a.chars().all(|c| c.is_ascii_digit()) {
+                        return Err(e);
+                    }
                 }
             }
         }
@@ -2305,74 +2325,75 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParsedState) -> Result<Vec<u16>> {
     let mut exprs_remaining = exprs;
     let mut all_keys = Vec::new();
     while !exprs_remaining.is_empty() {
-        let (mut keys, exprs_remaining_tmp) = match parse_macro_item(exprs_remaining, s) {
-            Ok(res) => {
-                if res.0.iter().any(|k| !matches!(k, Press(..) | Release(..))) {
-                    // Determine the bad expression depending on how many expressions were consumed
-                    // by parse_macro_item.
-                    let bad_expr = if exprs_remaining.len() - res.1.len() == 1 {
-                        &exprs_remaining[0]
-                    } else {
-                        // This error message will have an imprecise span since it will take the
-                        // whole chorded list instead of the single element inside that's not a
-                        // standard key. Oh well, should still be helpful. I'm too lazy to write
-                        // the code to find the exact expr to use right now.
-                        &exprs_remaining[1]
-                    };
-                    bail_expr!(bad_expr, "{SEQ_ERR}\nFound invalid key/chord in key_list");
-                }
-
-                // The keys are currenty in the form of SequenceEvent::{Press, Release}. This is
-                // not what we want.
-                //
-                // The trivial and incorrect way to parse this would be to just take all of the
-                // presses. However, we need to transform chorded keys/lists like S-a or S-(a b) to
-                // have the upper bits set, to be able to differentiate (S-a b) from (S-(a b)).
-                //
-                // The order of presses and releases reveals whether or not a key is chorded with
-                // some modifier. When a chord starts, there are multiple presses in a row, whereas
-                // non-chords will always be a press followed by a release. Likewise, a chord
-                // ending is marked by multiple releases in a row.
-                let mut mods_currently_held = vec![];
-                let mut key_actions = res.0.iter().peekable();
-                let mut seq = vec![];
-                let mut do_release_mod = false;
-                while let Some(action) = key_actions.next() {
-                    match action {
-                        Press(pressed) => {
-                            if matches!(key_actions.peek(), Some(Press(..))) {
-                                // press->press: current press is mod
-                                mods_currently_held.push(*pressed);
-                            }
-                            let mut seq_num = u16::from(OsCode::from(pressed));
-                            for modk in mods_currently_held.iter().copied() {
-                                seq_num |= mod_mask_for_keycode(modk);
-                            }
-                            seq.push(seq_num);
-                        }
-                        Release(released) => {
-                            if do_release_mod {
-                                mods_currently_held.remove(
-                                    mods_currently_held
-                                        .iter()
-                                        .position(|modk| modk == released)
-                                        .expect("had to be pressed to be released"),
-                                );
-                            }
-                            // release->release: next release is mod
-                            do_release_mod = matches!(key_actions.peek(), Some(Release(..)));
-                        }
-                        _ => unreachable!("should be filtered out"),
+        let (mut keys, exprs_remaining_tmp) =
+            match parse_macro_item_impl(exprs_remaining, s, MacroNumberParseMode::Action) {
+                Ok(res) => {
+                    if res.0.iter().any(|k| !matches!(k, Press(..) | Release(..))) {
+                        // Determine the bad expression depending on how many expressions were consumed
+                        // by parse_macro_item_impl.
+                        let bad_expr = if exprs_remaining.len() - res.1.len() == 1 {
+                            &exprs_remaining[0]
+                        } else {
+                            // This error message will have an imprecise span since it will take the
+                            // whole chorded list instead of the single element inside that's not a
+                            // standard key. Oh well, should still be helpful. I'm too lazy to write
+                            // the code to find the exact expr to use right now.
+                            &exprs_remaining[1]
+                        };
+                        bail_expr!(bad_expr, "{SEQ_ERR}\nFound invalid key/chord in key_list");
                     }
-                }
 
-                (seq, res.1)
-            }
-            Err(mut e) => {
-                e.help_msg = format!("{SEQ_ERR}\nFound invalid key/chord in key_list");
-                return Err(e);
-            }
-        };
+                    // The keys are currenty in the form of SequenceEvent::{Press, Release}. This is
+                    // not what we want.
+                    //
+                    // The trivial and incorrect way to parse this would be to just take all of the
+                    // presses. However, we need to transform chorded keys/lists like S-a or S-(a b) to
+                    // have the upper bits set, to be able to differentiate (S-a b) from (S-(a b)).
+                    //
+                    // The order of presses and releases reveals whether or not a key is chorded with
+                    // some modifier. When a chord starts, there are multiple presses in a row, whereas
+                    // non-chords will always be a press followed by a release. Likewise, a chord
+                    // ending is marked by multiple releases in a row.
+                    let mut mods_currently_held = vec![];
+                    let mut key_actions = res.0.iter().peekable();
+                    let mut seq = vec![];
+                    let mut do_release_mod = false;
+                    while let Some(action) = key_actions.next() {
+                        match action {
+                            Press(pressed) => {
+                                if matches!(key_actions.peek(), Some(Press(..))) {
+                                    // press->press: current press is mod
+                                    mods_currently_held.push(*pressed);
+                                }
+                                let mut seq_num = u16::from(OsCode::from(pressed));
+                                for modk in mods_currently_held.iter().copied() {
+                                    seq_num |= mod_mask_for_keycode(modk);
+                                }
+                                seq.push(seq_num);
+                            }
+                            Release(released) => {
+                                if do_release_mod {
+                                    mods_currently_held.remove(
+                                        mods_currently_held
+                                            .iter()
+                                            .position(|modk| modk == released)
+                                            .expect("had to be pressed to be released"),
+                                    );
+                                }
+                                // release->release: next release is mod
+                                do_release_mod = matches!(key_actions.peek(), Some(Release(..)));
+                            }
+                            _ => unreachable!("should be filtered out"),
+                        }
+                    }
+
+                    (seq, res.1)
+                }
+                Err(mut e) => {
+                    e.help_msg = format!("{SEQ_ERR}\nFound invalid key/chord in key_list");
+                    return Err(e);
+                }
+            };
         all_keys.append(&mut keys);
         exprs_remaining = exprs_remaining_tmp;
     }

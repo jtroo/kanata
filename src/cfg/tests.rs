@@ -432,3 +432,45 @@ fn test_parse_sequence_earlier_inner_chord() {
     assert_eq!(&seq[4], &(u16::from(OsCode::KEY_C) | 0x8000));
     assert_eq!(&seq[5], &(u16::from(OsCode::KEY_D)));
 }
+
+#[test]
+fn test_parse_sequence_numbers() {
+    let seq = parse_sequence_keys(
+        &parse("(0 1 2 3 4 5 6 7 8 9)").expect("parses")[0].t,
+        &ParsedState::default(),
+    )
+    .expect("parses");
+    assert_eq!(seq.len(), 10);
+    assert_eq!(&seq[0], &u16::from(OsCode::KEY_0));
+    assert_eq!(&seq[1], &u16::from(OsCode::KEY_1));
+    assert_eq!(&seq[2], &u16::from(OsCode::KEY_2));
+    assert_eq!(&seq[3], &u16::from(OsCode::KEY_3));
+    assert_eq!(&seq[4], &u16::from(OsCode::KEY_4));
+    assert_eq!(&seq[5], &u16::from(OsCode::KEY_5));
+    assert_eq!(&seq[6], &u16::from(OsCode::KEY_6));
+    assert_eq!(&seq[7], &u16::from(OsCode::KEY_7));
+    assert_eq!(&seq[8], &u16::from(OsCode::KEY_8));
+    assert_eq!(&seq[9], &u16::from(OsCode::KEY_9));
+}
+
+#[test]
+fn test_parse_macro_numbers() {
+    // Note, can't test zero in this way because a delay of 0 isn't allowed by the parsing.
+    let exprs = parse("(1 2 3 4 5 6 7 8 9)").expect("parses")[0].t.clone();
+    let mut expr_rem = exprs.as_slice();
+    let mut i = 1;
+    while expr_rem.len() > 0 {
+        let (macro_events, expr_rem_tmp) =
+            parse_macro_item(expr_rem, &ParsedState::default()).expect("parses");
+        expr_rem = expr_rem_tmp;
+        assert_eq!(macro_events.len(), 1);
+        match &macro_events[0] {
+            SequenceEvent::Delay { duration } => assert_eq!(duration, &i),
+            ev => panic!("expected delay, {ev:?}"),
+        }
+        i += 1;
+    }
+
+    let exprs = parse("(0)").expect("parses")[0].t.clone();
+    parse_macro_item(exprs.as_slice(), &ParsedState::default()).expect_err("errors");
+}
