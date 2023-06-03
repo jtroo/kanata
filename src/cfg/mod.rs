@@ -55,8 +55,8 @@ use crate::layers::*;
 mod error;
 use error::*;
 
+use crate::trie::Trie;
 use anyhow::anyhow;
-use radix_trie::Trie;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
@@ -126,7 +126,7 @@ type KLayout =
 
 pub type BorrowedKLayout<'a> =
     Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
-pub type KeySeqsToFKeys = Trie<Vec<u16>, (u8, u16)>;
+pub type KeySeqsToFKeys = Trie;
 
 pub struct KanataLayout {
     layout: KLayout,
@@ -2295,13 +2295,13 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
                 bail_expr!(key_seq_expr, "{SEQ_ERR}\nkey_list cannot be empty");
             }
             let keycode_seq = parse_sequence_keys(key_seq, s)?;
-            if sequences.get_ancestor(&keycode_seq).is_some() {
+            if sequences.ancestor_exists(&keycode_seq) {
                 bail_expr!(
                     key_seq_expr,
                     "Sequence has a conflict: its sequence contains an earlier defined sequence"
                 );
             }
-            if sequences.get_raw_descendant(&keycode_seq).is_some() {
+            if sequences.descendant_exists(&keycode_seq) {
                 bail_expr!(key_seq_expr, "Sequence has a conflict: its sequence is contained within an earlier defined seqence");
             }
             sequences.insert(

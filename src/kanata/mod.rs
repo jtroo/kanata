@@ -364,6 +364,11 @@ impl Kanata {
             .get("log-layer-changes")
             .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
             .unwrap_or(true);
+        self.sequence_backtrack_modcancel = cfg
+            .items
+            .get("sequence-backtrack-modcancel")
+            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .unwrap_or(true);
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
@@ -645,19 +650,24 @@ impl Kanata {
                     log::debug!("sequence got {k:?}");
 
                     use crate::sequences::*;
+                    use crate::trie::GetOrDescendentExistsResult::*;
 
-                    // Check for and handle invalid termination
-                    if self.sequences.get_raw_descendant(&state.sequence).is_none() {
+                    // Check for invalid sequence termination.
+                    let mut res = self.sequences.get_or_descendant_exists(&state.sequence);
+                    if res == NotInTrie {
                         let is_invalid_termination = if self.sequence_backtrack_modcancel
                             && (pushed_into_seq & MASK_MODDED > 0)
                         {
                             let mut no_valid_seqs = true;
                             // If applicable, check again with modifier bits unset.
                             for i in (0..state.sequence.len()).rev() {
-                                // Safety: proper bounds are above.
+                                // Safety: proper bounds are immediately above.
+                                // Note - can't use iter_mut due to borrowing issues.
                                 *unsafe { state.sequence.get_unchecked_mut(i) } &= MASK_KEYCODES;
-                                if self.sequences.get_raw_descendant(&state.sequence).is_some() {
+                                res = self.sequences.get_or_descendant_exists(&state.sequence);
+                                if res != NotInTrie {
                                     no_valid_seqs = false;
+                                    break;
                                 }
                             }
                             no_valid_seqs
@@ -684,7 +694,7 @@ impl Kanata {
                     }
 
                     // Check for and handle valid termination.
-                    if let Some((i, j)) = self.sequences.get(&state.sequence) {
+                    if let HasValue((i, j)) = res {
                         log::debug!("sequence complete; tapping fake key");
                         match self.sequence_input_mode {
                             SequenceInputMode::HiddenSuppressed
@@ -735,8 +745,8 @@ impl Kanata {
                                 _ => true,
                             });
                         }
-                        layout.event(Event::Press(*i, *j));
-                        layout.event(Event::Release(*i, *j));
+                        layout.event(Event::Press(i, j));
+                        layout.event(Event::Release(i, j));
                         self.sequence_state = None;
                     }
                 }
