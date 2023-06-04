@@ -598,11 +598,20 @@ impl Kanata {
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
         for k in cur_keys.iter() {
+            log::debug!("{cur_keys:?}");
             log::trace!("{k:?} is pressed");
             if self.prev_keys.contains(k) {
-                log::trace!("{k:?} is contained");
+                log::trace!("{k:?} is old press");
                 continue;
             }
+            // Note - keyberon can return duplicates of a key in the keycodes()
+            // iterator. Instead of trying to fix it in the keyberon library, It
+            // seems better to fix it in the kanata logic. Keyberon iterates over
+            // its internal state array with very simple filtering logic when
+            // calling keycodes(). It would be troublesome to add deduplication
+            // logic there and is easier to add here since we already have
+            // allocations and logic here to handle other cases.
+            self.prev_keys.push(*k);
             LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
             match &mut self.sequence_state {
                 None => {
