@@ -610,7 +610,7 @@ impl Kanata {
             // its internal state array with very simple filtering logic when
             // calling keycodes(). It would be troublesome to add deduplication
             // logic there and is easier to add here since we already have
-            // allocations and logic here to handle other cases.
+            // allocations and logic.
             self.prev_keys.push(*k);
             LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
             match &mut self.sequence_state {
