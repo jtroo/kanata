@@ -76,6 +76,7 @@ pub struct Kanata {
     pub overrides: Overrides,
     pub override_states: OverrideStates,
     last_tick: time::Instant,
+    time_remainder: u128,
     live_reload_requested: bool,
     #[cfg(target_os = "linux")]
     pub kbd_in_paths: Vec<String>,
@@ -306,6 +307,7 @@ impl Kanata {
             sequences: cfg.sequences,
             sequence_input_mode,
             last_tick: time::Instant::now(),
+            time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
@@ -410,8 +412,12 @@ impl Kanata {
 
     /// Advance keyberon layout state and send events based on changes to its state.
     fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        const NS_IN_MS: u128 = 1_000_000;
         let now = time::Instant::now();
-        let ms_elapsed = now.duration_since(self.last_tick).as_millis();
+        let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
+        let time_remainder = ns_elapsed % NS_IN_MS + self.time_remainder;
+        let ms_elapsed = (ns_elapsed + time_remainder) / NS_IN_MS;
+        self.time_remainder = time_remainder % NS_IN_MS;
 
         for _ in 0..ms_elapsed {
             self.live_reload_requested |= self.handle_keystate_changes()?;
@@ -439,8 +445,8 @@ impl Kanata {
                 // failing to catch up, reset last_tick to the "actual now" instead the "past now"
                 // even though that means ticks will be missed - meaning there will be fewer than
                 // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
-                // ticks in 1ms to the expensive operations, this just avoids having tens to
-                // thousands of ticks all happening as soon as the expensive operation ends.
+                // ticks in 1ms when running expensive operations, this just avoids having tens to
+                // thousands of ticks all happening as soon as the expensive operations end.
                 _ => time::Instant::now(),
             };
 
