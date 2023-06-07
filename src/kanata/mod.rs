@@ -258,6 +258,15 @@ impl Kanata {
             }
         }
 
+        #[cfg(target_os = "windows")]
+        unsafe {
+            log::info!("Asking Windows to increase process priority");
+            winapi::um::processthreadsapi::SetPriorityClass(
+                winapi::um::processthreadsapi::GetCurrentProcess(),
+                winapi::um::winbase::HIGH_PRIORITY_CLASS,
+            );
+        }
+
         update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
