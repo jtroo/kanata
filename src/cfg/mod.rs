@@ -1166,7 +1166,7 @@ Params in order:
             ac_params.len(),
         )
     }
-    let tap_timeout = parse_non_zero_u16(&ac_params[0], s, "tap timeout")?;
+    let tap_timeout = parse_u16(&ac_params[0], s, "tap timeout")?;
     let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
@@ -1196,7 +1196,7 @@ Params in order:
             ac_params.len(),
         )
     }
-    let tap_timeout = parse_non_zero_u16(&ac_params[0], s, "tap timeout")?;
+    let tap_timeout = parse_u16(&ac_params[0], s, "tap timeout")?;
     let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
@@ -1226,7 +1226,7 @@ Params in order:
             ac_params.len(),
         )
     }
-    let tap_timeout = parse_non_zero_u16(&ac_params[0], s, "tap timeout")?;
+    let tap_timeout = parse_u16(&ac_params[0], s, "tap timeout")?;
     let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
