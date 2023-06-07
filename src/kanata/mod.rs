@@ -415,9 +415,9 @@ impl Kanata {
         const NS_IN_MS: u128 = 1_000_000;
         let now = time::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
-        let time_remainder = ns_elapsed % NS_IN_MS + self.time_remainder;
-        let ms_elapsed = (ns_elapsed + time_remainder) / NS_IN_MS;
-        self.time_remainder = time_remainder % NS_IN_MS;
+        let ns_elapsed_with_rem = ns_elapsed + self.time_remainder;
+        let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
+        self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
         for _ in 0..ms_elapsed {
             self.live_reload_requested |= self.handle_keystate_changes()?;
