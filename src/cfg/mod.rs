@@ -2231,7 +2231,6 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
     )))
 }
 
-/// Mutates `layers::LAYERS` using the inputs.
 fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
     let mut layers_cfg = new_layers();
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
@@ -2249,8 +2248,6 @@ fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
             }
-            // If key is unmapped in defsrc as well, default it to the OsCode for that index if the
-            // configuration says to do so.
             if *layer_action == Action::Trans {
                 *layer_action = OsCode::from_u16(i as u16)
                     .and_then(|osc| match KeyCode::from(osc) {
