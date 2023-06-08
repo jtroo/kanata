@@ -605,6 +605,7 @@ impl Kanata {
         // Release keys that do not exist in the current state but exist in the previous state.
         // This used to use a HashSet but it was changed to a Vec because the order of operations
         // matters.
+        log::trace!("{:?}", &self.prev_keys);
         for k in &self.prev_keys {
             if cur_keys.contains(k) {
                 continue;
@@ -617,9 +618,8 @@ impl Kanata {
 
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
+        log::trace!("{cur_keys:?}");
         for k in cur_keys.iter() {
-            log::debug!("{cur_keys:?}");
-            log::trace!("{k:?} is pressed");
             if self.prev_keys.contains(k) {
                 log::trace!("{k:?} is old press");
                 continue;
