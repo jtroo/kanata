@@ -680,6 +680,8 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
 }
 
 // Note for allow: the ioctl_read_buf triggers this clippy lint.
+// Note: CI does not yet support this lint, so also allowing unknown lints.
+#[allow(unknown_lints)]
 #[allow(clippy::manual_slice_size_calculation)]
 fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
     let mut pending_release = false;

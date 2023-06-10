@@ -598,6 +598,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "linux-continue-if-no-devs-found",
         "linux-unicode-u-code",
         "linux-unicode-termination",
+        "linux-x11-repeat-delay-rate",
         "windows-altgr",
         "windows-interception-mouse-hwid",
     ];
