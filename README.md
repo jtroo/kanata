@@ -27,6 +27,8 @@ To see all of the features, see the [configuration guide](./docs/config.adoc).
 The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
 
+You can see a [list of known issues here](./docs/platform-known-issues.adoc).
+
 ### Demo video
 
 [Showcase of multi-layer functionality (30s, 1.7 MB)](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
