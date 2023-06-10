@@ -52,43 +52,91 @@ pub enum DynamicMacroItem {
 }
 
 pub struct Kanata {
+    /// Handle to some OS keyboard output mechanism.
     pub kbd_out: KbdOut,
+    /// Paths to one or more configuration files that define kanata's behaviour.
     pub cfg_paths: Vec<PathBuf>,
+    /// Index into `cfg_paths`, used to know which file to live reload. Changes when cycling
+    /// through the configuration files.
     pub cur_cfg_idx: usize,
+    /// The potential key outputs of every key input. Used for managing key repeat.
     pub key_outputs: cfg::KeyOutputs,
+    /// Handle to the keyberon library layout.
     pub layout: cfg::KanataLayout,
+    /// Reusable vec (to save on allocations) that stores the currently active output keys.
     pub cur_keys: Vec<KeyCode>,
+    /// Reusable vec (to save on allocations) that stores the active output keys from the previous
+    /// tick.
     pub prev_keys: Vec<KeyCode>,
+    /// Used for printing layer info to the info log when changing layers.
     pub layer_info: Vec<LayerInfo>,
+    /// Used to track when a layer change occurs.
     pub prev_layer: usize,
+    /// Vertical scrolling state tracker. Is Some(...) when a vertical scrolling action is active
+    /// and None otherwise.
     pub scroll_state: Option<ScrollState>,
+    /// Horizontal scrolling state. Is Some(...) when a horizontal scrolling action is active and
+    /// None otherwise.
     pub hscroll_state: Option<ScrollState>,
+    /// Vertical mouse movement state. Is Some(...) when vertical mouse movement is active and None
+    /// otherwise.
     pub move_mouse_state_vertical: Option<MoveMouseState>,
+    /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
+    /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
+    /// The number of ticks defined in the user configuration for sequence timeout.
     pub sequence_timeout: u16,
+    /// The user configuration for backtracking to find valid sequences. See
+    /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
+    /// Tracks sequence progress. Is Some(...) when in sequence mode and None otherwise.
     pub sequence_state: Option<SequenceState>,
+    /// Valid sequences defined in the user configuration.
     pub sequences: cfg::KeySeqsToFKeys,
+    /// Stores the user configuration for the sequence input mode.
     pub sequence_input_mode: SequenceInputMode,
+    /// Stores the user recored dynamic macros.
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
+    /// Tracks the progress of an active dynamic macro. Is Some(...) when a dynamic macro is being
+    /// replayed and None otherwise.
     pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
+    /// Tracks the the inputs for a dynamic macro recording. Is Some(...) when a dynamic macro is
+    /// being recorded and None otherwise.
     pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
+    /// Global overrides defined in the user configuration.
     pub overrides: Overrides,
+    /// Reusable allocations to help with computing whether overrides are active based on key
+    /// outputs.
     pub override_states: OverrideStates,
+    /// Time of the last tick to know how many tick iterations to run, to achieve a 1ms tick
+    /// interval more closely.
     last_tick: time::Instant,
+    /// Tracks the non-whole-millisecond gaps between ticks to know when to do another tick
+    /// iteration without sleeping, to achive a 1ms tick interval more closely.
     time_remainder: u128,
+    /// Is true if a live reload was requested by the user and false otherwise.
     live_reload_requested: bool,
     #[cfg(target_os = "linux")]
+    /// Linux input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
     #[cfg(target_os = "linux")]
+    /// Tracks the Linux user configuration to continue or abort if no devices are found.
     continue_if_no_devices: bool,
     #[cfg(target_os = "linux")]
+    /// Tracks the Linux user configuration for device names (instead of paths) that should be
+    /// included for interception and processing by kanata.
     pub include_names: Option<Vec<String>>,
     #[cfg(target_os = "linux")]
+    /// Tracks the Linux user configuration for device names (instead of paths) that should be
+    /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which input device to treat as a mouse for intercepting and processing inputs
+    /// by kanata.
     intercept_mouse_hwid: Option<Vec<u8>>,
+    /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
+    /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
     pub caps_word: Option<CapsWordState>,
 }
 
