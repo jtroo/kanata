@@ -679,6 +679,8 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     all_paths
 }
 
+// Note for allow: the ioctl_read_buf triggers this clippy lint.
+#[allow(clippy::manual_slice_size_calculation)]
 fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
     let mut pending_release = false;
     const KEY_MAX: usize = OsCode::KEY_MAX as usize;
