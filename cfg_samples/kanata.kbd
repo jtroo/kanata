@@ -32,6 +32,7 @@ If you need help, you are welcome to ask.
 
 ;; One defcfg entry may be added if desired. This is used for configuration
 ;; key-value pairs that change kanata's behaviour at a global level.
+;; All configuration items are optional.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
@@ -80,7 +81,7 @@ If you need help, you are welcome to ask.
   ;; not work too well with other applications that use WH_KEYBOARD_LL.
   ;; Known applications with issues: GWSL/VcXsrv
 
-  ;; Optional configuration: enable kanata to execute commands.
+  ;; Enable kanata to execute commands.
   ;;
   ;; I consider this feature a hazard so it is conditionally compiled out of
   ;; the default binary.
@@ -91,7 +92,7 @@ If you need help, you are welcome to ask.
   ;;
   ;; danger-enable-cmd yes
 
-  ;; Optional configuration: enable processing of keys that are not in defsrc.
+  ;; Enable processing of keys that are not in defsrc.
   ;; This is useful if you are only mapping a few keys in defsrc instead of
   ;; most of the keys on your keyboard. Without this, the tap-hold-release and
   ;; tap-hold-press actions will not activate for keys that are not in defsrc.
@@ -102,7 +103,7 @@ If you need help, you are welcome to ask.
   ;;
   ;; process-unmapped-keys yes
 
-  ;; Optional configuration: intercept mouse buttons for a specific mouse device.
+  ;; Intercept mouse buttons for a specific mouse device.
   ;; The intended use case for this is for laptops such as a Thinkpad, which have
   ;; mouse buttons that may be useful to activate kanata actions with. This only
   ;; works with the Interception driver.
@@ -114,6 +115,13 @@ If you need help, you are welcome to ask.
   ;; entry. If this defcfg item is not defined, the log will not print.
   ;;
   ;; windows-interception-mouse-hwid "70, 0, 90, 0, 20"
+
+  ;; Transparent keys on layers will delegate to the corresponding defsrc key
+  ;; when found on a layer activated by `layer-switch`. This config entry
+  ;; changes the behaviour to delegate to the action of the first layer,
+  ;; which is the layer active upon startup, that is in the same position.
+  ;;
+  ;; delegate-to-first-layer yes
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

@@ -418,6 +418,14 @@ fn parse_cfg_raw_string(
                 false
             }
         },
+        delegate_to_first_layer: cfg.get("delegate-to-first-layer").map_or(false, |s| {
+            if s == "yes" {
+                log::info!("delegating transparent keys on other layers to first defined layer");
+                true
+            } else {
+                false
+            }
+        }),
         ..Default::default()
     };
 
@@ -592,6 +600,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "sequence-input-mode",
         "sequence-backtrack-modcancel",
         "log-layer-changes",
+        "delegate-to-first-layer",
         "linux-dev",
         "linux-dev-names-include",
         "linux-dev-names-exclude",
@@ -769,6 +778,7 @@ struct ParsedState {
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
+    delegate_to_first_layer: bool,
     cfg_filename: String,
     cfg_text: String,
     vars: HashMap<String, SExpr>,
@@ -792,6 +802,7 @@ impl Default for ParsedState {
             fake_keys: Default::default(),
             chord_groups: Default::default(),
             is_cmd_enabled: false,
+            delegate_to_first_layer: false,
             cfg_filename: Default::default(),
             cfg_text: Default::default(),
             vars: Default::default(),
@@ -2231,11 +2242,14 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
     )))
 }
 
-fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
+fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
+    // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
+    // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers();
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
-        // skip deflayer and name
+        // The skip is done to skip the the `deflayer` and layer name tokens.
         for (i, ac) in layer.iter().skip(2).enumerate() {
+            // Parse actions in the layer and place them appropriately.
             let ac = parse_action(ac, s)?;
             layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *ac;
             layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *ac;
@@ -2245,9 +2259,13 @@ fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
             .zip(s.defsrc_layer)
             .enumerate()
         {
+            // Set transparent actions in the "layer-switch" version of the layer according to
+            // defsrc action.
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
             }
+            // If there is no corresponding action in defsrc, default to the OsCode at the
+            // position. This is done so that `process-unmapped-keys` works correctly.
             if *layer_action == Action::Trans {
                 *layer_action = OsCode::from_u16(i as u16)
                     .and_then(|osc| match KeyCode::from(osc) {
@@ -2257,9 +2275,19 @@ fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
                     .unwrap_or(Action::Trans);
             }
         }
+        // Set fake keys on the `layer-switch` version of each layer.
         for (y, action) in s.fake_keys.values() {
             let (x, y) = get_fake_key_coords(*y);
             layers_cfg[layer_level * 2][x as usize][y as usize] = **action;
+        }
+
+        // If the user has configured delegation to the first (default) layer for transparent keys,
+        // (as opposed to delegation to defsrc), replace the defsrc actions with the actions from
+        // the first layer.
+        if layer_level == 0 && s.delegate_to_first_layer {
+            for (defsrc_ac, default_layer_ac) in s.defsrc_layer.iter_mut().zip(layers_cfg[0][0]) {
+                *defsrc_ac = default_layer_ac;
+            }
         }
     }
     Ok(layers_cfg)
