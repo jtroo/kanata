@@ -343,6 +343,9 @@ impl OsCode {
             VK_F24 => Some(OsCode::KEY_F24),
             VK_HANGEUL => Some(OsCode::KEY_HANGEUL),
             VK_HANJA => Some(OsCode::KEY_HANJA),
+            // KEY_252 is nonsensical, but just use it anyway. No idea what Linux OsCode this is.
+            // As long as it's not an existing key and the mapping round-trips, this works fine.
+            VK_OEM_8 => Some(OsCode::KEY_252),
             VK_OEM_102 => Some(OsCode::KEY_102ND),
             VK_PLAY => Some(OsCode::KEY_PLAY),
             VK_SNAPSHOT => Some(OsCode::KEY_PRINT),
@@ -978,6 +981,7 @@ impl OsCode {
             OsCode::KEY_F24 => VK_F24,
             OsCode::KEY_HANGEUL => VK_HANGEUL,
             OsCode::KEY_HANJA => VK_HANJA,
+            OsCode::KEY_252 => VK_OEM_8,
             OsCode::KEY_102ND => VK_OEM_102,
             OsCode::KEY_PLAY => VK_PLAY,
             OsCode::KEY_PRINT => VK_SNAPSHOT,
