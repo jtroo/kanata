@@ -365,6 +365,29 @@ overhead. If you do not care for the logging, you can choose to disable it.
 )
 ----
 
+[[delegate-to-first-layer]]
+== delegate-to-first-layer
+<<table-of-contents,Back to ToC>>
+
+
+By default, transparent keys on layers
+will delegate to the corresponding defsrc key
+when found on a layer activated by `layer-switch`.
+
+This config entry changes the behaviour
+to delegate to the action in the same position on the first layer defined
+in the configuration, which is the active layer on startup.
+
+For more context, see https://github.com/jtroo/kanata/issues/435.
+
+.Example:
+[source]
+----
+(defcfg
+  delegate-to-first-layer yes
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -609,6 +632,7 @@ a non-applicable operating system.
   sequence-input-mode visible-backspaced
   sequence-backtrack-modcancel no
   log-layer-changes no
+  delegate-to-first-layer yes
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
   linux-dev-names-exclude "Name 3:Name 4"

@@ -149,6 +149,84 @@ fn parse_action_vars() {
 }
 
 #[test]
+fn parse_delegate_to_default_layer_yes() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defcfg delegate-to-first-layer yes)
+(defsrc a)
+(deflayer base b)
+(deflayer other _)
+"#;
+    s.cfg_text = source.into();
+    let res = parse_cfg_raw_string(source.into(), &mut s)
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e.into(), &s));
+            ""
+        })
+        .unwrap();
+    assert_eq!(
+        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        Action::KeyCode(KeyCode::B),
+    );
+}
+
+#[test]
+fn parse_delegate_to_default_layer_yes_but_base_transparent() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defcfg delegate-to-first-layer yes)
+(defsrc a)
+(deflayer base _)
+(deflayer other _)
+"#;
+    s.cfg_text = source.into();
+    let res = parse_cfg_raw_string(source.into(), &mut s)
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e.into(), &s));
+            ""
+        })
+        .unwrap();
+    assert_eq!(
+        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        Action::KeyCode(KeyCode::A),
+    );
+}
+
+#[test]
+fn parse_delegate_to_default_layer_no() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defcfg delegate-to-first-layer no)
+(defsrc a)
+(deflayer base b)
+(deflayer other _)
+"#;
+    s.cfg_text = source.into();
+    let res = parse_cfg_raw_string(source.into(), &mut s)
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e.into(), &s));
+            ""
+        })
+        .unwrap();
+    assert_eq!(
+        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        Action::KeyCode(KeyCode::A),
+    );
+}
+
+#[test]
 fn parse_transparent_default() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
