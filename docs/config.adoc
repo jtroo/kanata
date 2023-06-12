@@ -496,10 +496,32 @@ some applications. The termination is configurable with the following options:
 - `enter-space`
 - `space-enter`
 
+.Example:
 [source]
 ----
 (defcfg
   linux-unicode-termination space
+)
+----
+
+[[linux-only-x11-repeat-rate]]
+=== Linux only: linux-x11-repeat-delay-rate
+<<table-of-contents,Back to ToC>>
+
+On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
+on startup and on live reload
+via the configuration item `linux-only-x11-repeat-rate`.
+This takes two numbers separated by a comma.
+The first number is the delay in ms
+and the second number is the repeat rate in repeats/second.
+
+This configuration item does not affect Wayland or no-desktop environments.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-x11-repeat-delay-rate 400,50
 )
 ----
 
@@ -593,6 +615,7 @@ a non-applicable operating system.
   linux-continue-if-no-dev-found yes
   linux-unicode-u-code v
   linux-unicode-termination space
+  linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
 )

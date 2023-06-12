@@ -124,4 +124,9 @@ impl Kanata {
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         Ok(())
     }
+
+    pub fn set_repeat_rate(_cfg_items: &HashMap<String, String>) -> Result<()> {
+        // TODO: no-op right now
+        Ok(())
+    }
 }
