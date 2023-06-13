@@ -177,7 +177,7 @@ under the LGPL-3.0-only[*] license.
 
 The exception to this is the code under the [keyberon](./keyberon) directory,
 which is licensed under the MIT license, and likewise, contributions to code
-in this directory will made under the MIT license unless explicitly stated
+in this directory will be made under the MIT license unless explicitly stated
 otherwise.
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
