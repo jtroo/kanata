@@ -15,36 +15,37 @@ which map to the binaries
 == Windows 11 LLHOOK
 
 - The emoji picker does not work properly
-  - https://github.com/jtroo/kanata/issues/240
+-- https://github.com/jtroo/kanata/issues/240
 
 == Windows 10+11 LLHOOK
 
 - Mouse inputs cannot be used for processing or remapping
-  - https://github.com/jtroo/kanata/issues/108
-  - https://github.com/jtroo/kanata/issues/170
+-- https://github.com/jtroo/kanata/issues/108
+-- https://github.com/jtroo/kanata/issues/170
 - Some input key combinations (e.g. Win+L) cannot be intercepted before
   running their default action
-  - https://github.com/jtroo/kanata/issues/192
+-- https://github.com/jtroo/kanata/issues/192
+-- https://github.com/jtroo/kanata/discussions/428
 - OS-level key remapping behaves differently vs. Linux or Interception
-  - https://github.com/jtroo/kanata/issues/152
+-- https://github.com/jtroo/kanata/issues/152
 - Certain applications that also use the LLHOOK mechanism may not behave correctly
-  - https://github.com/jtroo/kanata/issues/55
-  - https://github.com/jtroo/kanata/issues/250
-  - https://github.com/jtroo/kanata/issues/430
-  - https://github.com/espanso/espanso/issues/1488
+-- https://github.com/jtroo/kanata/issues/55
+-- https://github.com/jtroo/kanata/issues/250
+-- https://github.com/jtroo/kanata/issues/430
+-- https://github.com/espanso/espanso/issues/1488
 - AltGr can misbehave
-  - https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
+-- https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
 
 == Windows Interception
 
 - Sleeping your system or unplugging/replugging devices enough times causes
   inputs to stop working
-  - https://github.com/oblitum/Interception/issues/25
+-- https://github.com/oblitum/Interception/issues/25
 - Some less-frequently used keys are not supported or handled correctly
-  - https://github.com/jtroo/kanata/issues/164
-  - https://github.com/jtroo/kanata/issues/425
+-- https://github.com/jtroo/kanata/issues/164
+-- https://github.com/jtroo/kanata/issues/425
 
 == Linux
 
 - Key repeats can occur when they normally wouldn't in some cases
-  - https://github.com/jtroo/kanata/discussions/422
+-- https://github.com/jtroo/kanata/discussions/422
