@@ -49,3 +49,4 @@ which map to the binaries
 
 * Key repeats can occur when they normally wouldn't in some cases
 ** https://github.com/jtroo/kanata/discussions/422
+** https://github.com/jtroo/kanata/issues/450
