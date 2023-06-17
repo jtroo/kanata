@@ -297,7 +297,6 @@ impl Kanata {
             .get("linux-dev-names-exclude")
             .cloned()
             .map(|paths| parse_colon_separated_text(&paths));
-        #[cfg(target_os = "linux")]
         Kanata::set_repeat_rate(&cfg.items)?;
 
         #[cfg(target_os = "windows")]
