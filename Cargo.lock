@@ -233,9 +233,9 @@ dependencies = [
 
 [[package]]
 name = "evdev"
-version = "0.12.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bed59fcc8cfd6b190814a509018388462d3b203cf6dd10db5c00087e72a83f3"
+checksum = "e78122445d7c3ce840f1a4f31eb7cee198b9004d03bfc161762d9b4a959d757c"
 dependencies = [
  "bitvec",
  "cfg-if",

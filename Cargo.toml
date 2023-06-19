@@ -33,7 +33,7 @@ dirs = "5.0.1"
 kanata-keyberon = { path = "keyberon" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-evdev = "0.12.0"
+evdev = "=0.12.0"
 signal-hook = "0.3.14"
 inotify = { version = "0.10.0", default_features = false }
 mio = { version = "0.8.4", features = ["os-poll", "os-ext"] }
