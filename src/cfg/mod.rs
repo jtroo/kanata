@@ -60,6 +60,7 @@ use anyhow::anyhow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::sync::Arc;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
@@ -272,7 +273,7 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let text = parse_includes(text)?;
+    let text = parse_includes(text, s)?;
 
     let spanned_root_exprs = sexpr::parse(&text).map_err(|(help_msg, start, len)| CfgError {
         err_span: Some(span_start_len(start, len)),
@@ -855,12 +856,20 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     Ok(())
 }
 
-fn parse_includes(text: String) -> Result<String> {
+fn parse_includes(text: String, s: &mut ParsedState) -> Result<String> {
+    let base_path = Path::new(&s.cfg_filename).parent().unwrap();
     let pattern = r"\(include\s+([^)]+)\)";
     let re = Regex::new(pattern).expect("Failed to compile regex");
+
     let result = re.replace_all(&text, |caps: &Captures| {
-        let path = &caps[1];
-        let mut file = File::open(path).expect(format!("Failed to open file: {}", path.to_string()).as_str());
+        let path = Path::new(&caps[1]);
+        let absolute_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            base_path.join(path)
+        };
+
+        let mut file = File::open(&absolute_path).expect(format!("Failed to open file: {}", absolute_path.to_string_lossy()).as_str());
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Failed to read file");
         contents
