@@ -31,6 +31,7 @@ dirs = "5.0.1"
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
 kanata-keyberon = { path = "keyberon" }
+regex = "1.8.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "=0.12.0"

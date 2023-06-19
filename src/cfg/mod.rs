@@ -58,6 +58,8 @@ use error::*;
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::collections::hash_map::Entry;
+use std::fs::File;
+use std::io::Read;
 use std::sync::Arc;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
@@ -66,6 +68,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
+use regex::{Captures, Regex};
 use sexpr::SExpr;
 
 use self::sexpr::Spanned;
@@ -269,6 +272,8 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
+    let text = parse_includes(text)?;
+
     let spanned_root_exprs = sexpr::parse(&text).map_err(|(help_msg, start, len)| CfgError {
         err_span: Some(span_start_len(start, len)),
         help_msg,
@@ -501,7 +506,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
             })?
             .atom(None)
             .map(|a| match a {
-                "defcfg"
+                "include"
+                | "defcfg"
                 | "defalias"
                 | "defaliasenvcond"
                 | "defsrc"
@@ -847,6 +853,19 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn parse_includes(text: String) -> Result<String> {
+    let pattern = r"\(include\s+([^)]+)\)";
+    let re = Regex::new(pattern).expect("Failed to compile regex");
+    let result = re.replace_all(&text, |caps: &Captures| {
+        let path = &caps[1];
+        let mut file = File::open(path).expect(format!("Failed to open file: {}", path.to_string()).as_str());
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Failed to read file");
+        contents
+    });
+    Ok(result.to_string())
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
