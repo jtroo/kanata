@@ -53,7 +53,9 @@ impl Trie {
                         }
                     }
                     None => {
-                        unreachable!("subtrie should have a key")
+                        // Note: None happens if there are multiple children. The sequence is still
+                        // in the trie.
+                        InTrie
                     }
                 }
             }
