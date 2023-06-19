@@ -330,7 +330,7 @@ impl Kanata {
         let sequence_backtrack_modcancel = cfg
             .items
             .get("sequence-backtrack-modcancel")
-            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
         let sequence_input_mode = cfg
             .items
@@ -340,7 +340,7 @@ impl Kanata {
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
-            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
@@ -375,7 +375,7 @@ impl Kanata {
             continue_if_no_devices: cfg
                 .items
                 .get("linux-continue-if-no-devs-found")
-                .map(|s| matches!(s.to_lowercase().as_str(), "yes" | "true"))
+                .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
                 .unwrap_or_default(),
             #[cfg(target_os = "linux")]
             include_names,
@@ -422,12 +422,12 @@ impl Kanata {
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
-            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
         self.sequence_backtrack_modcancel = cfg
             .items
             .get("sequence-backtrack-modcancel")
-            .map(|s| !matches!(s.to_lowercase().as_str(), "no" | "false" | "0"))
+            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;

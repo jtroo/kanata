@@ -229,6 +229,9 @@ fn parse_cfg(
     ))
 }
 
+pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
+pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
+
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -404,7 +407,7 @@ fn parse_cfg_raw_string(
             #[cfg(feature = "cmd")]
             {
                 cfg.get("danger-enable-cmd").map_or(false, |s| {
-                    if s == "yes" {
+                    if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
                         log::warn!("DANGER! cmd action is enabled.");
                         true
                     } else {
@@ -419,7 +422,7 @@ fn parse_cfg_raw_string(
             }
         },
         delegate_to_first_layer: cfg.get("delegate-to-first-layer").map_or(false, |s| {
-            if s == "yes" {
+            if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
                 log::info!("delegating transparent keys on other layers to first defined layer");
                 true
             } else {
@@ -714,7 +717,7 @@ fn parse_defsrc(
 
     let process_unmapped_keys = defcfg
         .get("process-unmapped-keys")
-        .map(|text| matches!(text.to_lowercase().as_str(), "true" | "yes"))
+        .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
         .unwrap_or(false);
     log::info!("process unmapped keys: {process_unmapped_keys}");
     if process_unmapped_keys {
