@@ -300,7 +300,7 @@ fn disallow_nested_tap_hold() {
         Err(poisoned) => poisoned.into_inner(),
     };
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
-        .map_err(|e| format!("{e:?}"))
+        .map_err(|e| format!("{}", e.help().unwrap()))
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
         Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
@@ -342,7 +342,7 @@ fn disallow_multiple_waiting_actions() {
         Err(poisoned) => poisoned.into_inner(),
     };
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
-        .map_err(|e| format!("{e:?}"))
+        .map_err(|e| format!("{}", e.help().unwrap()))
     {
         Ok(_) => panic!("invalid multiple waiting actions Ok'd"),
         Err(e) => assert!(e.contains("Cannot combine multiple")),
