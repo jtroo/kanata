@@ -141,7 +141,7 @@ fn parse_action_vars() {
 "#;
     parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e, source));
+            eprintln!("{:?}", error_with_source(e));
             ""
         })
         .unwrap();
@@ -162,7 +162,7 @@ fn parse_delegate_to_default_layer_yes() {
 "#;
     let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e, source));
+            eprintln!("{:?}", error_with_source(e));
             ""
         })
         .unwrap();
@@ -187,7 +187,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
 "#;
     let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e, source));
+            eprintln!("{:?}", error_with_source(e));
             ""
         })
         .unwrap();
@@ -212,7 +212,7 @@ fn parse_delegate_to_default_layer_no() {
 "#;
     let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e, source));
+            eprintln!("{:?}", error_with_source(e));
             ""
         })
         .unwrap();

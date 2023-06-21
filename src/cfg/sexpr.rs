@@ -15,6 +15,7 @@ pub struct Span {
     pub start: usize,
     pub end: usize,
     pub file_name: Rc<str>,
+    pub file_content: Rc<str>,
 }
 
 impl Default for Span {
@@ -23,17 +24,19 @@ impl Default for Span {
             start: 0,
             end: 0,
             file_name: Rc::from(""),
+            file_content: Rc::from(""),
         }
     }
 }
 
 impl Span {
-    fn new(start: usize, end: usize, file_name: Rc<str>) -> Span {
+    fn new(start: usize, end: usize, file_name: Rc<str>, file_content: Rc<str>) -> Span {
         assert!(start <= end);
         Span {
             start,
             end,
             file_name,
+            file_content,
         }
     }
 
@@ -54,11 +57,15 @@ impl Span {
         if self.file_name != other.file_name {
             panic!("Can't create span across different files.");
         }
-        Span::new(start, end, self.file_name)
+        Span::new(start, end, self.file_name, self.file_content)
     }
 
-    pub fn file(&self) -> String {
+    pub fn file_name(&self) -> String {
         self.file_name.clone().to_string()
+    }
+
+    pub fn file_content(&self) -> String {
+        self.file_content.clone().to_string()
     }
 }
 
@@ -174,16 +181,20 @@ impl<'a> Lexer<'a> {
     #[allow(clippy::new_ret_no_self)]
     /// `file_name` is used only for indicating a file, where
     /// a fragment of `source` that caused parsing error came from.
-    fn new(source: &'a str, file_name: &str) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
+    fn new(source: &'a str, file_name: &'a str) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
         let mut lexer = Lexer {
             s: source,
             bytes: source.bytes(),
         };
-        let file: Rc<str> = Rc::from(file_name);
+        let file_name: Rc<str> = Rc::from(file_name);
+        let file_content: Rc<str> = Rc::from(source);
         iter::from_fn(move || {
-            lexer
-                .next_token()
-                .map(|(start, t)| Spanned::new(t, Span::new(start, lexer.pos(), file.clone())))
+            lexer.next_token().map(|(start, t)| {
+                Spanned::new(
+                    t,
+                    Span::new(start, lexer.pos(), file_name.clone(), file_content.clone()),
+                )
+            })
         })
     }
 
@@ -373,6 +384,7 @@ pub fn transform_error(e: ParseError) -> CfgError {
     CfgError {
         err_span: Some(span_start_len(start, len)),
         help_msg: e.t,
-        file: e.span.file(),
+        file_name: e.span.file_name(),
+        file_content: e.span.file_content(),
     }
 }

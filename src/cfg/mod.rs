@@ -250,7 +250,7 @@ fn parse_cfg_raw(
 )> {
     let text = std::fs::read_to_string(p).map_err(|e| miette::miette!("{e}"))?;
     let cfg_filename = p.to_string_lossy().to_string();
-    parse_cfg_raw_string(&text, s, &cfg_filename).map_err(|e| error_with_source(e, &text))
+    parse_cfg_raw_string(&text, s, &cfg_filename).map_err(error_with_source)
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
