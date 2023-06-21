@@ -16,7 +16,7 @@ fn sizeof_action_is_two_usizes() {
 #[test]
 fn span_works() {
     let s = "(hello world my oyster)\n(row two)";
-    let tlevel = parse(s).unwrap();
+    let tlevel = parse(s, "test").unwrap();
     assert_eq!(
         &s[tlevel[0].span.start..tlevel[0].span.end],
         "(hello world my oyster)"
@@ -139,10 +139,9 @@ fn parse_action_vars() {
 (defchords $e $one $1 $two)
 (defchords $e2 $one ($one) $two)
 "#;
-    s.cfg_text = source.into();
-    parse_cfg_raw_string(source.into(), &mut s)
+    parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e.into(), &s));
+            eprintln!("{:?}", error_with_source(e, source));
             ""
         })
         .unwrap();
@@ -161,10 +160,9 @@ fn parse_delegate_to_default_layer_yes() {
 (deflayer base b)
 (deflayer other _)
 "#;
-    s.cfg_text = source.into();
-    let res = parse_cfg_raw_string(source.into(), &mut s)
+    let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e.into(), &s));
+            eprintln!("{:?}", error_with_source(e, source));
             ""
         })
         .unwrap();
@@ -187,10 +185,9 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
 (deflayer base _)
 (deflayer other _)
 "#;
-    s.cfg_text = source.into();
-    let res = parse_cfg_raw_string(source.into(), &mut s)
+    let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e.into(), &s));
+            eprintln!("{:?}", error_with_source(e, source));
             ""
         })
         .unwrap();
@@ -213,10 +210,9 @@ fn parse_delegate_to_default_layer_no() {
 (deflayer base b)
 (deflayer other _)
 "#;
-    s.cfg_text = source.into();
-    let res = parse_cfg_raw_string(source.into(), &mut s)
+    let res = parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e.into(), &s));
+            eprintln!("{:?}", error_with_source(e, source));
             ""
         })
         .unwrap();
@@ -426,7 +422,7 @@ fn recursive_multi_is_flattened() {
 #[test]
 fn test_parse_sequence_a_b() {
     let seq = parse_sequence_keys(
-        &parse("(a b)").expect("parses")[0].t,
+        &parse("(a b)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -438,7 +434,7 @@ fn test_parse_sequence_a_b() {
 #[test]
 fn test_parse_sequence_sa_b() {
     let seq = parse_sequence_keys(
-        &parse("(S-a b)").expect("parses")[0].t,
+        &parse("(S-a b)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -451,7 +447,7 @@ fn test_parse_sequence_sa_b() {
 #[test]
 fn test_parse_sequence_sab() {
     let seq = parse_sequence_keys(
-        &parse("(S-(a b))").expect("parses")[0].t,
+        &parse("(S-(a b))", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -464,7 +460,7 @@ fn test_parse_sequence_sab() {
 #[test]
 fn test_parse_sequence_bigchord() {
     let seq = parse_sequence_keys(
-        &parse("(AG-A-M-C-S-(a b) c)").expect("parses")[0].t,
+        &parse("(AG-A-M-C-S-(a b) c)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -482,7 +478,7 @@ fn test_parse_sequence_bigchord() {
 #[test]
 fn test_parse_sequence_inner_chord() {
     let seq = parse_sequence_keys(
-        &parse("(S-(a b C-c) d)").expect("parses")[0].t,
+        &parse("(S-(a b C-c) d)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -498,7 +494,7 @@ fn test_parse_sequence_inner_chord() {
 #[test]
 fn test_parse_sequence_earlier_inner_chord() {
     let seq = parse_sequence_keys(
-        &parse("(S-(a C-b c) d)").expect("parses")[0].t,
+        &parse("(S-(a C-b c) d)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -514,7 +510,7 @@ fn test_parse_sequence_earlier_inner_chord() {
 #[test]
 fn test_parse_sequence_numbers() {
     let seq = parse_sequence_keys(
-        &parse("(0 1 2 3 4 5 6 7 8 9)").expect("parses")[0].t,
+        &parse("(0 1 2 3 4 5 6 7 8 9)", "test").expect("parses")[0].t,
         &ParsedState::default(),
     )
     .expect("parses");
@@ -534,10 +530,12 @@ fn test_parse_sequence_numbers() {
 #[test]
 fn test_parse_macro_numbers() {
     // Note, can't test zero in this way because a delay of 0 isn't allowed by the parsing.
-    let exprs = parse("(1 2 3 4 5 6 7 8 9)").expect("parses")[0].t.clone();
+    let exprs = parse("(1 2 3 4 5 6 7 8 9)", "test").expect("parses")[0]
+        .t
+        .clone();
     let mut expr_rem = exprs.as_slice();
     let mut i = 1;
-    while expr_rem.len() > 0 {
+    while !expr_rem.is_empty() {
         let (macro_events, expr_rem_tmp) =
             parse_macro_item(expr_rem, &ParsedState::default()).expect("parses");
         expr_rem = expr_rem_tmp;
@@ -549,6 +547,6 @@ fn test_parse_macro_numbers() {
         i += 1;
     }
 
-    let exprs = parse("(0)").expect("parses")[0].t.clone();
+    let exprs = parse("(0)", "test").expect("parses")[0].t.clone();
     parse_macro_item(exprs.as_slice(), &ParsedState::default()).expect_err("errors");
 }

@@ -214,10 +214,7 @@ fn parse_cfg(
     Overrides,
 )> {
     let mut s = ParsedState::default();
-    let (cfg, src, layer_info, klayers, seqs, overrides) = match parse_cfg_raw(p, &mut s) {
-        Ok(v) => v,
-        Err(e) => return Err(error_with_source(e.into(), &s)),
-    };
+    let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
     Ok((
         cfg,
         src,
@@ -243,7 +240,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 fn parse_cfg_raw(
     p: &std::path::Path,
     s: &mut ParsedState,
-) -> Result<(
+) -> MResult<(
     HashMap<String, String>,
     MappedKeys,
     Vec<LayerInfo>,
@@ -251,16 +248,16 @@ fn parse_cfg_raw(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let text = std::fs::read_to_string(p).map_err(|e| anyhow!("{e}"))?;
-    s.cfg_filename = p.to_string_lossy().to_string();
-    s.cfg_text = text.clone();
-    parse_cfg_raw_string(text, s)
+    let text = std::fs::read_to_string(p).map_err(|e| miette::miette!("{e}"))?;
+    let cfg_filename = p.to_string_lossy().to_string();
+    parse_cfg_raw_string(&text, s, &cfg_filename).map_err(|e| error_with_source(e, &text))
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw_string(
-    text: String,
+    text: &str,
     s: &mut ParsedState,
+    cfg_filename: &str,
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
@@ -269,10 +266,9 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let spanned_root_exprs = sexpr::parse(&text).map_err(|(help_msg, start, len)| CfgError {
-        err_span: Some(span_start_len(start, len)),
-        help_msg,
-    })?;
+    let spanned_root_exprs = sexpr::parse(text, cfg_filename)
+        // .and_then(expand_includes) // TODO
+        ?;
 
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
@@ -373,7 +369,7 @@ fn parse_cfg_raw_string(
     let layer_strings = spanned_root_exprs
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
-        .map(|expr| text[expr.span].to_string())
+        .map(|expr| text[expr.span.clone()].to_string())
         .flat_map(|s| {
             // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
             // two versions of each layer.
@@ -401,8 +397,6 @@ fn parse_cfg_raw_string(
         layer_idxs,
         mapping_order,
         defsrc_layer,
-        cfg_filename: s.cfg_filename.clone(),
-        cfg_text: s.cfg_text.clone(),
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
@@ -783,8 +777,6 @@ struct ParsedState {
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
-    cfg_filename: String,
-    cfg_text: String,
     vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
@@ -807,8 +799,6 @@ impl Default for ParsedState {
             chord_groups: Default::default(),
             is_cmd_enabled: false,
             delegate_to_first_layer: false,
-            cfg_filename: Default::default(),
-            cfg_text: Default::default(),
             vars: Default::default(),
             a: unsafe { Allocations::new() },
         }

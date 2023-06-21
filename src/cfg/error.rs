@@ -6,7 +6,7 @@ use super::*;
 pub type MResult<T> = miette::Result<T>;
 pub type Result<T> = std::result::Result<T, CfgError>;
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, Diagnostic, Clone)]
 #[error("Error in configuration file")]
 #[diagnostic()]
 pub struct CfgError {
@@ -15,6 +15,7 @@ pub struct CfgError {
     pub err_span: Option<SourceSpan>,
     #[help]
     pub help_msg: String,
+    pub file: String,
 }
 
 pub(super) fn help(err_msg: impl AsRef<str>) -> String {
@@ -32,6 +33,7 @@ pub(super) fn error_expr(expr: &sexpr::SExpr, err_msg: impl AsRef<str>) -> CfgEr
     CfgError {
         err_span: Some(expr_err_span(expr)),
         help_msg: help(err_msg),
+        file: expr.span().file(),
     }
 }
 
@@ -39,6 +41,7 @@ pub(super) fn error_spanned<T>(expr: &Spanned<T>, err_msg: impl AsRef<str>) -> C
     CfgError {
         err_span: Some(spanned_err_span(expr)),
         help_msg: help(err_msg),
+        file: expr.span.file(),
     }
 }
 
@@ -52,15 +55,14 @@ pub(super) fn expr_err_span(expr: &sexpr::SExpr) -> SourceSpan {
 }
 
 pub(super) fn spanned_err_span<T>(spanned: &Spanned<T>) -> SourceSpan {
-    let span = spanned.span;
+    let span = spanned.span.clone();
     SourceSpan::new(span.start.into(), (span.end - span.start).into())
 }
 
-pub(super) fn error_with_source(e: miette::Error, ps: &ParsedState) -> miette::Error {
-    e.with_source_code(NamedSource::new(
-        ps.cfg_filename.clone(),
-        ps.cfg_text.clone(),
-    ))
+pub(super) fn error_with_source(e: CfgError, source: &str) -> miette::Error {
+    let cfg_file = e.file.clone();
+    let e2: miette::Error = e.into();
+    e2.with_source_code(NamedSource::new(cfg_file, source.to_owned()))
 }
 
 impl From<anyhow::Error> for CfgError {
@@ -68,6 +70,7 @@ impl From<anyhow::Error> for CfgError {
         Self {
             err_span: None,
             help_msg: help(value.to_string()),
+            file: Default::default(),
         }
     }
 }
