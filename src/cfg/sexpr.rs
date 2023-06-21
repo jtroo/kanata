@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-type TopLevel = Spanned<Vec<SExpr>>;
+pub type TopLevel = Spanned<Vec<SExpr>>;
 
 pub fn parse(cfg: &str, file_name: &str) -> Result<Vec<TopLevel>, CfgError> {
     parse_(cfg, file_name).map_err(transform_error)

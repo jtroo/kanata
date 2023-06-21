@@ -58,6 +58,7 @@ use error::*;
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::collections::hash_map::Entry;
+use std::path::Path;
 use std::sync::Arc;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
@@ -69,6 +70,7 @@ use kanata_keyberon::layout::*;
 use sexpr::SExpr;
 
 use self::sexpr::Spanned;
+use self::sexpr::TopLevel;
 
 #[cfg(test)]
 mod tests;
@@ -253,6 +255,57 @@ fn parse_cfg_raw(
     parse_cfg_raw_string(&text, s, &cfg_filename).map_err(error_with_source)
 }
 
+fn expand_includes(xs: Vec<TopLevel>, main_config_filepath: &str) -> Result<Vec<TopLevel>> {
+    let include_is_first_atom = gen_first_atom_filter("include");
+    xs.iter().try_fold(Vec::new(), |mut acc, spanned_exprs| {
+        if include_is_first_atom(&&spanned_exprs.t) {
+            let mut exprs =
+                check_first_expr(spanned_exprs.t.iter(), "include").expect("can't fail");
+
+            let expr = exprs.next().ok_or(anyhow_span!(
+                spanned_exprs,
+                "Every include block must contain exactly one filepath"
+            ))?;
+
+            let spanned_filepath = match expr {
+                SExpr::Atom(filepath) => filepath,
+                SExpr::List(_) => {
+                    bail_expr!(expr, "Filepath cannot be a list")
+                }
+            };
+
+            if let Some(expr) = exprs.next() {
+                bail_expr!(
+                    expr,
+                    "Multiple filepaths are not allowed in include blocks. If you want to include multiple files, create a new include block for each of them."
+                )
+            };
+
+            let original_include_filepath = Path::new(spanned_filepath.t.trim_matches('"'));
+
+            // Make the include_filepath relative to main config file instead of kanata executable.
+            let final_include_filepath = if original_include_filepath.is_absolute() {
+                original_include_filepath.to_str().ok_or_else(|| anyhow_span!(spanned_filepath, "The provided path is not valid"))?.to_owned()
+            } else {
+                let parent = Path::new(main_config_filepath).parent().expect("should be validated before");
+                let a = parent.join(original_include_filepath);
+                a.to_string_lossy().into_owned()
+            };
+
+            let file_content = std::fs::read_to_string(&final_include_filepath).map_err(|e|
+                anyhow_span!(spanned_filepath, "Failed to include file: {e}")
+            )?;
+            let tree = sexpr::parse(&file_content, &final_include_filepath)?;
+            acc.extend(tree);
+
+            Ok(acc)
+        } else {
+            acc.push(spanned_exprs.clone());
+            Ok(acc)
+        }
+    })
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw_string(
     text: &str,
@@ -266,9 +319,17 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let spanned_root_exprs = sexpr::parse(text, cfg_filename)
-        // .and_then(expand_includes) // TODO
-        ?;
+    let spanned_root_exprs =
+        sexpr::parse(text, cfg_filename).and_then(|xs| expand_includes(xs, cfg_filename))?;
+
+    // NOTE: If nested included were to be allowed in the future,
+    // a mechanism preventing circular includes should be incorporated.
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .find(gen_first_atom_filter_spanned("include"))
+    {
+        bail_span!(spanned, "Nested includes are not allowed.")
+    }
 
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
