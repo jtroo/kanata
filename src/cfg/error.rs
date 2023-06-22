@@ -15,8 +15,8 @@ pub struct CfgError {
     pub err_span: Option<SourceSpan>,
     #[help]
     pub help_msg: String,
-    pub file_name: String,
-    pub file_content: String,
+    pub file_name: Option<String>,
+    pub file_content: Option<String>,
 }
 
 pub(super) fn help(err_msg: impl AsRef<str>) -> String {
@@ -34,8 +34,8 @@ pub(super) fn error_expr(expr: &sexpr::SExpr, err_msg: impl AsRef<str>) -> CfgEr
     CfgError {
         err_span: Some(expr_err_span(expr)),
         help_msg: help(err_msg),
-        file_name: expr.span().file_name(),
-        file_content: expr.span().file_content(),
+        file_name: Some(expr.span().file_name()),
+        file_content: Some(expr.span().file_content()),
     }
 }
 
@@ -43,8 +43,8 @@ pub(super) fn error_spanned<T>(expr: &Spanned<T>, err_msg: impl AsRef<str>) -> C
     CfgError {
         err_span: Some(spanned_err_span(expr)),
         help_msg: help(err_msg),
-        file_name: expr.span.file_name(),
-        file_content: expr.span.file_content(),
+        file_name: Some(expr.span.file_name()),
+        file_content: Some(expr.span.file_content()),
     }
 }
 
@@ -66,7 +66,11 @@ pub(super) fn error_with_source(e: CfgError) -> miette::Error {
     let filename = e.file_name.clone();
     let source = e.file_content.clone();
     let e2: miette::Error = e.into();
-    e2.with_source_code(NamedSource::new(filename, source))
+    if let (Some(f), Some(s)) = (filename, source) {
+        e2.with_source_code(NamedSource::new(f, s))
+    } else {
+        e2
+    }
 }
 
 impl From<anyhow::Error> for CfgError {
@@ -74,8 +78,8 @@ impl From<anyhow::Error> for CfgError {
         Self {
             err_span: None,
             help_msg: help(value.to_string()),
-            file_name: Default::default(),
-            file_content: Default::default(),
+            file_name: None,
+            file_content: None,
         }
     }
 }

@@ -384,7 +384,7 @@ pub fn transform_error(e: ParseError) -> CfgError {
     CfgError {
         err_span: Some(span_start_len(start, len)),
         help_msg: e.t,
-        file_name: e.span.file_name(),
-        file_content: e.span.file_content(),
+        file_name: Some(e.span.file_name()),
+        file_content: Some(e.span.file_content()),
     }
 }

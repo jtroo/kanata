@@ -998,7 +998,9 @@ fn parse_action(expr: &SExpr, s: &ParsedState) -> Result<&'static KanataAction> 
         })
         .map_err(|mut e| {
             if e.err_span.is_none() {
-                e.err_span = Some(expr_err_span(expr))
+                e.err_span = Some(expr_err_span(expr));
+                e.file_name = Some(expr.span().file_name());
+                e.file_content = Some(expr.span().file_content());
             }
             e
         })
