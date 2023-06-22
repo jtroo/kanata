@@ -430,7 +430,7 @@ fn parse_cfg_raw_string(
     let layer_strings = spanned_root_exprs
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
-        .map(|expr| text[expr.span.clone()].to_string())
+        .map(|expr| expr.span.file_content()[expr.span.clone()].to_string())
         .flat_map(|s| {
             // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
             // two versions of each layer.
