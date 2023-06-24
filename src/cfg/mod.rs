@@ -58,6 +58,7 @@ use error::*;
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::collections::hash_map::Entry;
+use std::path::Path;
 use std::sync::Arc;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
@@ -69,6 +70,7 @@ use kanata_keyberon::layout::*;
 use sexpr::SExpr;
 
 use self::sexpr::Spanned;
+use self::sexpr::TopLevel;
 
 #[cfg(test)]
 mod tests;
@@ -214,10 +216,7 @@ fn parse_cfg(
     Overrides,
 )> {
     let mut s = ParsedState::default();
-    let (cfg, src, layer_info, klayers, seqs, overrides) = match parse_cfg_raw(p, &mut s) {
-        Ok(v) => v,
-        Err(e) => return Err(error_with_source(e.into(), &s)),
-    };
+    let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
     Ok((
         cfg,
         src,
@@ -243,7 +242,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 fn parse_cfg_raw(
     p: &std::path::Path,
     s: &mut ParsedState,
-) -> Result<(
+) -> MResult<(
     HashMap<String, String>,
     MappedKeys,
     Vec<LayerInfo>,
@@ -251,16 +250,67 @@ fn parse_cfg_raw(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let text = std::fs::read_to_string(p).map_err(|e| anyhow!("{e}"))?;
-    s.cfg_filename = p.to_string_lossy().to_string();
-    s.cfg_text = text.clone();
-    parse_cfg_raw_string(text, s)
+    let text = std::fs::read_to_string(p).map_err(|e| miette::miette!("{e}"))?;
+    let cfg_filename = p.to_string_lossy().to_string();
+    parse_cfg_raw_string(&text, s, &cfg_filename).map_err(error_with_source)
+}
+
+fn expand_includes(xs: Vec<TopLevel>, main_config_filepath: &str) -> Result<Vec<TopLevel>> {
+    let include_is_first_atom = gen_first_atom_filter("include");
+    xs.iter().try_fold(Vec::new(), |mut acc, spanned_exprs| {
+        if include_is_first_atom(&&spanned_exprs.t) {
+            let mut exprs =
+                check_first_expr(spanned_exprs.t.iter(), "include").expect("can't fail");
+
+            let expr = exprs.next().ok_or(anyhow_span!(
+                spanned_exprs,
+                "Every include block must contain exactly one filepath"
+            ))?;
+
+            let spanned_filepath = match expr {
+                SExpr::Atom(filepath) => filepath,
+                SExpr::List(_) => {
+                    bail_expr!(expr, "Filepath cannot be a list")
+                }
+            };
+
+            if let Some(expr) = exprs.next() {
+                bail_expr!(
+                    expr,
+                    "Multiple filepaths are not allowed in include blocks. If you want to include multiple files, create a new include block for each of them."
+                )
+            };
+
+            let original_include_filepath = Path::new(spanned_filepath.t.trim_matches('"'));
+
+            // Make the include_filepath relative to main config file instead of kanata executable.
+            let final_include_filepath = if original_include_filepath.is_absolute() {
+                original_include_filepath.to_str().ok_or_else(|| anyhow_span!(spanned_filepath, "The provided path is not valid"))?.to_owned()
+            } else {
+                let parent = Path::new(main_config_filepath).parent().expect("should be validated before");
+                let a = parent.join(original_include_filepath);
+                a.to_string_lossy().into_owned()
+            };
+
+            let file_content = std::fs::read_to_string(&final_include_filepath).map_err(|e|
+                anyhow_span!(spanned_filepath, "Failed to include file: {e}")
+            )?;
+            let tree = sexpr::parse(&file_content, &final_include_filepath)?;
+            acc.extend(tree);
+
+            Ok(acc)
+        } else {
+            acc.push(spanned_exprs.clone());
+            Ok(acc)
+        }
+    })
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw_string(
-    text: String,
+    text: &str,
     s: &mut ParsedState,
+    cfg_filename: &str,
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
@@ -269,10 +319,17 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let spanned_root_exprs = sexpr::parse(&text).map_err(|(help_msg, start, len)| CfgError {
-        err_span: Some(span_start_len(start, len)),
-        help_msg,
-    })?;
+    let spanned_root_exprs =
+        sexpr::parse(text, cfg_filename).and_then(|xs| expand_includes(xs, cfg_filename))?;
+
+    // NOTE: If nested included were to be allowed in the future,
+    // a mechanism preventing circular includes should be incorporated.
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .find(gen_first_atom_filter_spanned("include"))
+    {
+        bail_span!(spanned, "Nested includes are not allowed.")
+    }
 
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
@@ -373,7 +430,7 @@ fn parse_cfg_raw_string(
     let layer_strings = spanned_root_exprs
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
-        .map(|expr| text[expr.span].to_string())
+        .map(|expr| expr.span.file_content()[expr.span.clone()].to_string())
         .flat_map(|s| {
             // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
             // two versions of each layer.
@@ -401,8 +458,6 @@ fn parse_cfg_raw_string(
         layer_idxs,
         mapping_order,
         defsrc_layer,
-        cfg_filename: s.cfg_filename.clone(),
-        cfg_text: s.cfg_text.clone(),
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
@@ -783,8 +838,6 @@ struct ParsedState {
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
-    cfg_filename: String,
-    cfg_text: String,
     vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
@@ -807,8 +860,6 @@ impl Default for ParsedState {
             chord_groups: Default::default(),
             is_cmd_enabled: false,
             delegate_to_first_layer: false,
-            cfg_filename: Default::default(),
-            cfg_text: Default::default(),
             vars: Default::default(),
             a: unsafe { Allocations::new() },
         }
@@ -947,7 +998,9 @@ fn parse_action(expr: &SExpr, s: &ParsedState) -> Result<&'static KanataAction> 
         })
         .map_err(|mut e| {
             if e.err_span.is_none() {
-                e.err_span = Some(expr_err_span(expr))
+                e.err_span = Some(expr_err_span(expr));
+                e.file_name = Some(expr.span().file_name());
+                e.file_content = Some(expr.span().file_content());
             }
             e
         })

@@ -1,4 +1,5 @@
 use std::ops::Index;
+use std::rc::Rc;
 use std::str::Bytes;
 use std::{cmp, iter};
 
@@ -7,16 +8,36 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 type ParseResult<T> = Result<T, ParseError>;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+use super::error::{span_start_len, CfgError};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
+    pub file_name: Rc<str>,
+    pub file_content: Rc<str>,
+}
+
+impl Default for Span {
+    fn default() -> Self {
+        Self {
+            start: 0,
+            end: 0,
+            file_name: Rc::from(""),
+            file_content: Rc::from(""),
+        }
+    }
 }
 
 impl Span {
-    fn new(start: usize, end: usize) -> Span {
+    fn new(start: usize, end: usize, file_name: Rc<str>, file_content: Rc<str>) -> Span {
         assert!(start <= end);
-        Span { start, end }
+        Span {
+            start,
+            end,
+            file_name,
+            file_content,
+        }
     }
 
     pub fn start(&self) -> usize {
@@ -27,10 +48,24 @@ impl Span {
         self.end
     }
 
+    /// # Panics
+    ///
+    /// Panics if `other` has a different `file_name`
     pub fn cover(self, other: Span) -> Span {
         let start = cmp::min(self.start(), other.start());
         let end = cmp::max(self.end(), other.end());
-        Span::new(start, end)
+        if self.file_name != other.file_name {
+            panic!("Can't create span across different files.");
+        }
+        Span::new(start, end, self.file_name, self.file_content)
+    }
+
+    pub fn file_name(&self) -> String {
+        self.file_name.clone().to_string()
+    }
+
+    pub fn file_content(&self) -> String {
+        self.file_content.clone().to_string()
     }
 }
 
@@ -48,7 +83,7 @@ impl Index<Span> for String {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Spanned<T> {
     pub t: T,
     pub span: Span,
@@ -100,8 +135,8 @@ impl SExpr {
 
     pub fn span(&self) -> Span {
         match self {
-            SExpr::Atom(a) => a.span,
-            SExpr::List(l) => l.span,
+            SExpr::Atom(a) => a.span.clone(),
+            SExpr::List(l) => l.span.clone(),
         }
     }
 }
@@ -144,15 +179,22 @@ type TokenRes = Result<Token, String>;
 
 impl<'a> Lexer<'a> {
     #[allow(clippy::new_ret_no_self)]
-    fn new(s: &str) -> impl Iterator<Item = Spanned<TokenRes>> + '_ {
+    /// `file_name` is used only for indicating a file, where
+    /// a fragment of `source` that caused parsing error came from.
+    fn new(source: &'a str, file_name: &'a str) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
         let mut lexer = Lexer {
-            s,
-            bytes: s.bytes(),
+            s: source,
+            bytes: source.bytes(),
         };
+        let file_name: Rc<str> = Rc::from(file_name);
+        let file_content: Rc<str> = Rc::from(source);
         iter::from_fn(move || {
-            lexer
-                .next_token()
-                .map(|(start, t)| Spanned::new(t, Span::new(start, lexer.pos())))
+            lexer.next_token().map(|(start, t)| {
+                Spanned::new(
+                    t,
+                    Span::new(start, lexer.pos(), file_name.clone(), file_content.clone()),
+                )
+            })
         })
     }
 
@@ -249,14 +291,14 @@ impl<'a> Lexer<'a> {
     }
 }
 
-type TopLevel = Spanned<Vec<SExpr>>;
+pub type TopLevel = Spanned<Vec<SExpr>>;
 
-pub fn parse(cfg: &str) -> Result<Vec<TopLevel>, (String, usize, usize)> {
-    parse_(cfg).map_err(transform_error)
+pub fn parse(cfg: &str, file_name: &str) -> Result<Vec<TopLevel>, CfgError> {
+    parse_(cfg, file_name).map_err(transform_error)
 }
 
-fn parse_(s: &str) -> ParseResult<Vec<TopLevel>> {
-    parse_with(s, Lexer::new(s))
+pub fn parse_(cfg: &str, file_name: &str) -> ParseResult<Vec<TopLevel>> {
+    parse_with(cfg, Lexer::new(cfg, file_name))
 }
 
 fn parse_with(
@@ -265,12 +307,12 @@ fn parse_with(
 ) -> ParseResult<Vec<TopLevel>> {
     use SExpr::*;
     use Token::*;
-    let mut stack = vec![Spanned::new(vec![], Span::new(0, 0))];
+    let mut stack = vec![Spanned::new(vec![], Span::default())];
     loop {
         match tokens.next() {
             None => break,
-            Some(Spanned { t, span }) => match t.map_err(|s| Spanned::new(s, span))? {
-                Open => stack.push(Spanned::new(vec![], span)),
+            Some(Spanned { t, span }) => match t.map_err(|s| Spanned::new(s, span.clone()))? {
+                Open => stack.push(Spanned::new(vec![], span.clone())),
                 Close => {
                     let Spanned {
                         t: exprs,
@@ -278,20 +320,23 @@ fn parse_with(
                         // There is a placeholder at the bottom of the stack to allow this unwrap;
                         // if the stack is ever empty, return an error.
                     } = stack.pop().expect("placeholder unpopped");
-                    let expr = List(Spanned::new(exprs, stack_span.cover(span)));
                     if stack.is_empty() {
                         return Err(Spanned::new(
                             "Unexpected closing parenthesis".to_string(),
                             span,
                         ));
                     }
+                    let expr = List(Spanned::new(exprs, stack_span.cover(span.clone())));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
                 StringTok => stack
                     .last_mut()
                     .expect("not empty")
                     .t
-                    .push(Atom(Spanned::new(s[span].to_string(), span))),
+                    .push(Atom(Spanned::new(
+                        s[span.clone()].to_string(),
+                        span.clone(),
+                    ))),
             },
         }
     }
@@ -328,13 +373,18 @@ pub struct LexError {
     pub help_msg: String,
 }
 
-/// Returns the error message, start and length.
-fn transform_error(e: ParseError) -> (String, usize, usize) {
+pub fn transform_error(e: ParseError) -> CfgError {
     let start = e.span.start();
     let end = e.span.end();
     let mut len = end - start;
     if e.t.contains("Unterminated multiline comment") {
         len = 2;
     };
-    (e.t, start, len)
+
+    CfgError {
+        err_span: Some(span_start_len(start, len)),
+        help_msg: e.t,
+        file_name: Some(e.span.file_name()),
+        file_content: Some(e.span.file_content()),
+    }
 }

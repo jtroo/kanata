@@ -170,7 +170,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
     };
     log::debug!("{LP} stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    match parse(&stdout) {
+    match parse(&stdout, "cmd") {
         Ok(lists) => match lists.len() {
             0 => {
                 log::warn!("{LP} got zero top-level S-expression from cmd, expected 1:\n{stdout}");
@@ -187,7 +187,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
         Err(e) => {
             log::warn!(
                 "{LP} could not parse an S-expression from cmd:\n{stdout}\n{}",
-                e.0
+                e.help_msg
             );
             empty()
         }
