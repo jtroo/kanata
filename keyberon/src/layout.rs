@@ -1166,7 +1166,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.prev_action = Some(action);
         }
         match action {
-            NoOp | Trans => (),
+            NoOp | Trans => {
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
+            }
             Repeat => {
                 if let Some(ac) = self.prev_action {
                     self.do_action(ac, coord, delay, is_oneshot);
@@ -1318,6 +1323,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     tapped: None,
                     remaining_events: events,
                 });
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             RepeatableSequence { events } => {
                 self.active_sequences.push_back(SequenceState {
@@ -1330,6 +1339,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     sequence: events,
                     coord,
                 });
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             CancelSequences => {
                 // Clear any and all running sequences then clean up any leftover FakeKey events
@@ -1339,23 +1352,43 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         self.states.retain(|s| s.seq_release(keycode).is_some());
                     }
                 }
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             &Layer(value) => {
                 self.last_press_tracker.coord = coord;
                 let _ = self.states.push(LayerModifier { value, coord });
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             DefaultLayer(value) => {
                 self.last_press_tracker.coord = coord;
                 self.set_default_layer(*value);
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             Custom(value) => {
                 self.last_press_tracker.coord = coord;
                 if self.states.push(State::Custom { value, coord }).is_ok() {
                     return CustomEvent::Press(value);
                 }
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             ReleaseState(rs) => {
                 self.states.retain(|s| s.release_state(*rs).is_some());
+                if !is_oneshot {
+                    self.oneshot
+                        .handle_press(OneShotHandlePressKey::Other(coord));
+                }
             }
             Fork(fcfg) => {
                 return match self.states.iter().any(|s| match s {
