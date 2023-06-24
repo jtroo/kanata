@@ -550,3 +550,64 @@ fn test_parse_macro_numbers() {
     let exprs = parse("(0)", "test").expect("parses")[0].t.clone();
     parse_macro_item(exprs.as_slice(), &ParsedState::default()).expect_err("errors");
 }
+
+#[test]
+fn test_include_good() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/include-good.kbd")).unwrap();
+}
+
+#[test]
+fn test_include_bad_has_filename_included() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let err = format!(
+        "{:?}",
+        new_from_file(
+            &std::path::Path::new(".")
+                .join("test_cfgs")
+                .join("include-bad.kbd")
+        )
+        .map(|_| ())
+        .unwrap_err()
+    );
+    assert!(err.contains(&format!(
+        "test_cfgs{}included-bad.kbd",
+        std::path::MAIN_SEPARATOR
+    )));
+    assert!(!err.contains(&format!(
+        "test_cfgs{}include-bad.kbd",
+        std::path::MAIN_SEPARATOR
+    )));
+}
+
+#[test]
+fn test_include_bad2_has_original_filename() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let err = format!(
+        "{:?}",
+        new_from_file(
+            &std::path::Path::new(".")
+                .join("test_cfgs")
+                .join("include-bad2.kbd")
+        )
+        .map(|_| ())
+        .unwrap_err()
+    );
+    assert!(!err.contains(&format!(
+        "test_cfgs{}included-bad2.kbd",
+        std::path::MAIN_SEPARATOR
+    )));
+    assert!(err.contains(&format!(
+        "test_cfgs{}include-bad2.kbd",
+        std::path::MAIN_SEPARATOR
+    )));
+}
