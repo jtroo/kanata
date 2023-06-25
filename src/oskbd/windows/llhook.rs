@@ -85,6 +85,28 @@ impl InputEvent {
     }
 }
 
+impl TryFrom<InputEvent> for KeyEvent {
+    type Error = ();
+    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        Ok(Self {
+            code: OsCode::from_u16(item.code as u16).ok_or(())?,
+            value: match item.up {
+                true => KeyValue::Release,
+                false => KeyValue::Press,
+            },
+        })
+    }
+}
+
+impl From<KeyEvent> for InputEvent {
+    fn from(item: KeyEvent) -> Self {
+        Self {
+            code: item.code.into(),
+            up: item.value.into(),
+        }
+    }
+}
+
 /// The actual WinAPI compatible callback.
 unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
