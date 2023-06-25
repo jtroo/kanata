@@ -184,16 +184,19 @@ enum Scancode {
 }
 */
 
-use crate::keys::OsCode;
 use kanata_interception::*;
+use kanata_parser::keys::OsCode;
 
-impl TryFrom<Stroke> for OsCode {
+// We need to wrap OsCode to impl TryFrom<..> for it, because it's in external crate.
+pub struct OsCodeWrapper(pub OsCode);
+
+impl TryFrom<Stroke> for OsCodeWrapper {
     type Error = ();
 
     fn try_from(item: Stroke) -> Result<Self, Self::Error> {
         Ok(match item {
             Stroke::Keyboard { code, state, .. } => {
-                match (state.contains(KeyState::E0), state.contains(KeyState::E1)) {
+                let code = match (state.contains(KeyState::E0), state.contains(KeyState::E1)) {
                     (false, false) => {
                         match code {
                             ScanCode::Esc => OsCode::KEY_ESC,
@@ -361,18 +364,19 @@ impl TryFrom<Stroke> for OsCode {
                     }
 
                     _ => return Err(()),
-                }
+                };
+                OsCodeWrapper(code)
             }
             _ => return Err(()),
         })
     }
 }
 
-impl TryFrom<OsCode> for Stroke {
+impl TryFrom<OsCodeWrapper> for Stroke {
     type Error = ();
 
-    fn try_from(item: OsCode) -> Result<Self, Self::Error> {
-        let (code, state) = match item {
+    fn try_from(item: OsCodeWrapper) -> Result<Self, Self::Error> {
+        let (code, state) = match item.0 {
             OsCode::KEY_ESC => (ScanCode::Esc, KeyState::empty()),
             OsCode::KEY_1 => (ScanCode::Num1, KeyState::empty()),
             OsCode::KEY_2 => (ScanCode::Num2, KeyState::empty()),

@@ -1,7 +1,7 @@
 use kanata_keyberon::key_code::KeyCode;
 use rustc_hash::FxHashSet as HashSet;
 
-use crate::custom_action::CapsWordCfg;
+use kanata_parser::custom_action::CapsWordCfg;
 
 #[derive(Debug)]
 pub struct CapsWordState {

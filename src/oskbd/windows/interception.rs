@@ -4,8 +4,10 @@ use std::io;
 
 use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
 
-use crate::custom_action::*;
-use crate::keys::*;
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::*;
+
+use super::OsCodeWrapper;
 
 /// Key event received by the low level keyboard hook.
 #[derive(Debug, Clone, Copy)]
@@ -13,7 +15,8 @@ pub struct InputEvent(pub Stroke);
 
 impl InputEvent {
     fn from_oscode(code: OsCode, val: KeyValue) -> Self {
-        let mut stroke = Stroke::try_from(code).expect("kanata only sends mapped `OsCode`s");
+        let mut stroke =
+            Stroke::try_from(OsCodeWrapper(code)).expect("kanata only sends mapped `OsCode`s");
         match &mut stroke {
             Stroke::Keyboard { state, .. } => {
                 state.set(

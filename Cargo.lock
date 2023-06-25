@@ -393,6 +393,7 @@ dependencies = [
  "inotify",
  "kanata-interception",
  "kanata-keyberon",
+ "kanata-parser",
  "log",
  "miette",
  "mio",
@@ -407,7 +408,6 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "simplelog",
- "thiserror",
  "winapi",
 ]
 
@@ -440,6 +440,22 @@ checksum = "73f6f83f03390a5c13bbf68abea76a2b9527e197f5c00026805fd7af62a34752"
 dependencies = [
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "kanata-parser"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "evdev",
+ "kanata-keyberon",
+ "log",
+ "miette",
+ "once_cell",
+ "parking_lot",
+ "radix_trie",
+ "rustc-hash",
+ "thiserror",
 ]
 
 [[package]]

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
-use crate::keys::{KeyValue, OsCode};
+use kanata_parser::keys::{KeyValue, OsCode};
 
 const HWID_ARR_SZ: usize = 128;
 
@@ -55,8 +55,8 @@ impl Kanata {
                     let mut key_event = match strokes[i] {
                         ic::Stroke::Keyboard { state, .. } => {
                             log::debug!("got stroke {:?}", strokes[i]);
-                            let code = match OsCode::try_from(strokes[i]) {
-                                Ok(c) => c,
+                            let code = match OsCodeWrapper::try_from(strokes[i]) {
+                                Ok(c) => c.0,
                                 _ => {
                                     log::debug!("could not map code to oscode");
                                     intrcptn.send(dev, &strokes[i..i + 1]);

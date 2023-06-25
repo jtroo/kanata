@@ -781,3 +781,16 @@ impl From<KeyEvent> for InputEvent {
         InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
     }
 }
+
+use crate::custom_action::Btn;
+impl From<Btn> for OsCode {
+    fn from(btn: Btn) -> Self {
+        match btn {
+            Btn::Left => OsCode::BTN_LEFT,
+            Btn::Right => OsCode::BTN_RIGHT,
+            Btn::Mid => OsCode::BTN_MIDDLE,
+            Btn::Forward => OsCode::BTN_EXTRA,
+            Btn::Backward => OsCode::BTN_SIDE,
+        }
+    }
+}
