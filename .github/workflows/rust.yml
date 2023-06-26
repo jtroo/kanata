@@ -6,7 +6,9 @@ on:
     paths:
       - Cargo.*
       - src/**/*
+      - keyberon/**/*
       - cfg_samples/**/*
+      - parser/**/*
       - test_cfgs/**/*
       - .github/workflows/**/*
   pull_request:
@@ -15,6 +17,7 @@ on:
       - Cargo.*
       - src/**/*
       - keyberon/**/*
+      - parser/**/*
       - cfg_samples/**/*
       - test_cfgs/**/*
       - .github/workflows/**/*
@@ -42,13 +45,13 @@ jobs:
         workspaces: ./
     - run: rustup component add clippy
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon
     - name: Run tests all features
-      run: cargo test --all-features --verbose
+      run: cargo test --all-features --verbose -p kanata -p kanata-parser -p kanata-keyberon
     - name: Run clippy no features
-      run: cargo clippy -- -D warnings
+      run: cargo clippy --all -- -D warnings
     - name: Run clippy all features
-      run: cargo clippy --all-features -- -D warnings
+      run: cargo clippy --all --all-features -- -D warnings
 
   build-test-clippy-windows:
     runs-on: windows-latest
@@ -64,10 +67,10 @@ jobs:
         workspaces: ./
     - run: rustup component add clippy
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon
     - name: Run tests all features
-      run: cargo test --all-features --verbose
+      run: cargo test --all-features --verbose -p kanata -p kanata-parser -p kanata-keyberon
     - name: Run clippy no features
-      run: cargo clippy
+      run: cargo clippy --all -- -D warnings
     - name: Run clippy all features
-      run: cargo clippy --all-features
+      run: cargo clippy --all --all-features -- -D warnings
