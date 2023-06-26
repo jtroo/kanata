@@ -16,9 +16,9 @@ use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
-use crate::custom_action::*;
-use crate::keys::KeyEvent;
-use crate::keys::*;
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::KeyEvent;
+use kanata_parser::keys::*;
 
 pub struct KbdIn {
     devices: HashMap<Token, (Device, String)>,
@@ -603,18 +603,6 @@ fn watch_devinput() -> Result<Inotify, io::Error> {
     let mut inotify = Inotify::init().expect("Failed to initialize inotify");
     inotify.add_watch("/dev/input", WatchMask::CREATE)?;
     Ok(inotify)
-}
-
-impl From<Btn> for OsCode {
-    fn from(btn: Btn) -> Self {
-        match btn {
-            Btn::Left => OsCode::BTN_LEFT,
-            Btn::Right => OsCode::BTN_RIGHT,
-            Btn::Mid => OsCode::BTN_MIDDLE,
-            Btn::Forward => OsCode::BTN_EXTRA,
-            Btn::Backward => OsCode::BTN_SIDE,
-        }
-    }
 }
 
 #[derive(Clone)]

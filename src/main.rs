@@ -3,15 +3,9 @@ use log::info;
 use simplelog::*;
 use std::path::PathBuf;
 
-mod cfg;
-mod custom_action;
 mod kanata;
-mod keys;
-mod layers;
 mod oskbd;
-mod sequences;
 mod tcp_server;
-mod trie;
 
 use clap::Parser;
 use kanata::Kanata;

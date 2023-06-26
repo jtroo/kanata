@@ -16,12 +16,13 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
-use crate::cfg::*;
-use crate::custom_action::*;
-use crate::keys::*;
 use crate::oskbd::*;
 use crate::tcp_server::ServerMessage;
-use crate::{cfg, ValidatedArgs};
+use crate::ValidatedArgs;
+use kanata_parser::cfg;
+use kanata_parser::cfg::*;
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::*;
 
 #[cfg(feature = "cmd")]
 mod cmd;
@@ -723,8 +724,8 @@ impl Kanata {
                     }
                     log::debug!("sequence got {k:?}");
 
-                    use crate::sequences::*;
-                    use crate::trie::GetOrDescendentExistsResult::*;
+                    use kanata_parser::sequences::*;
+                    use kanata_parser::trie::GetOrDescendentExistsResult::*;
 
                     // Check for invalid sequence termination.
                     let mut res = self.sequences.get_or_descendant_exists(&state.sequence);

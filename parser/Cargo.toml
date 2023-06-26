@@ -1,0 +1,32 @@
+[package]
+name = "kanata-parser"
+version = "0.1.0"
+authors = ["jtroo <j.andreitabs@gmail.com>"]
+description = "A parser for configuration language of kanata, a keyboard remapper."
+keywords = ["kanata", "parser"]
+homepage = "https://github.com/jtroo/kanata"
+repository = "https://github.com/jtroo/kanata"
+readme = "README.md"
+license = "LGPL-3.0"
+edition = "2021"
+
+[dependencies]
+log = { version = "0.4.8", default_features = false }
+anyhow = "1"
+parking_lot = "0.12"
+once_cell = "1"
+radix_trie = "0.2"
+rustc-hash = "1.1.0"
+miette = { version = "5.7.0", features = ["fancy"] }
+thiserror = "1.0.38"
+
+kanata-keyberon = { path = "../keyberon" }
+
+[features]
+cmd = []
+interception_driver = []
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "=0.12.0"
+
+[target.'cfg(target_os = "windows")'.dependencies]

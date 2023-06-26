@@ -2,8 +2,8 @@ use anyhow::{bail, Result};
 
 use parking_lot::Mutex;
 
-use crate::cfg;
 use crate::kanata::*;
+use kanata_parser::cfg;
 
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;

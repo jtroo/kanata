@@ -12,8 +12,8 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
-use crate::custom_action::*;
-use crate::keys::*;
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::*;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 

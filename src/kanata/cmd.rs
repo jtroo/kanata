@@ -1,6 +1,6 @@
-use crate::cfg::parse_mod_prefix;
-use crate::cfg::sexpr::*;
-use crate::keys::*;
+use kanata_parser::cfg::parse_mod_prefix;
+use kanata_parser::cfg::sexpr::*;
+use kanata_parser::keys::*;
 
 // local log prefix
 const LP: &str = "cmd-out:";
