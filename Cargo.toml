@@ -52,9 +52,9 @@ native-windows-gui = { version = "1.0.12", default_features = false }
 kanata-interception = { version = "0.2.0", optional = true }
 
 [features]
-cmd = []
+cmd = ["kanata-parser/cmd"]
 perf_logging = []
-interception_driver = ["kanata-interception"]
+interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 
 [profile.release]
 opt-level = "z"
