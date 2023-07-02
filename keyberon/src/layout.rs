@@ -1375,12 +1375,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             Custom(value) => {
                 self.last_press_tracker.coord = coord;
-                if self.states.push(State::Custom { value, coord }).is_ok() {
-                    return CustomEvent::Press(value);
-                }
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                }
+                if self.states.push(State::Custom { value, coord }).is_ok() {
+                    return CustomEvent::Press(value);
                 }
             }
             ReleaseState(rs) => {
