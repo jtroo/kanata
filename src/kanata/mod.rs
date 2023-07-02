@@ -139,6 +139,9 @@ pub struct Kanata {
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
     pub caps_word: Option<CapsWordState>,
+    /// Config items from `defcfg`.
+    #[cfg(target_os = "linux")]
+    pub defcfg_items: HashMap<String, String>,
 }
 
 pub struct ScrollState {
@@ -298,7 +301,6 @@ impl Kanata {
             .get("linux-dev-names-exclude")
             .cloned()
             .map(|paths| parse_colon_separated_text(&paths));
-        Kanata::set_repeat_rate(&cfg.items)?;
 
         #[cfg(target_os = "windows")]
         unsafe {
@@ -389,6 +391,8 @@ impl Kanata {
             dynamic_macros: Default::default(),
             log_layer_changes,
             caps_word: None,
+            #[cfg(target_os = "linux")]
+            defcfg_items: cfg.items,
         })
     }
 

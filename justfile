@@ -16,3 +16,10 @@ build_release_windows output_dir:
 sha256sums output_dir:
   rm -f {{output_dir}}/sha256sums
   cd {{output_dir}}; sha256sum * > sha256sums
+
+test:
+  cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon -- --nocapture
+  cargo clippy --all
+
+fmt:
+  cargo fmt --all

@@ -25,6 +25,10 @@ impl Kanata {
                 bail!("failed to open keyboard device(s): {}", e)
             }
         };
+
+        // In some environments, this needs to be done after the input device grab otherwise it
+        // does not work on kanata startup.
+        Kanata::set_repeat_rate(&k.defcfg_items)?;
         drop(k);
 
         loop {
