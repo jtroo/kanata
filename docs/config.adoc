@@ -1666,6 +1666,36 @@ Only zero or one `defoverrides` is allowed in a configuration file.
 )
 ----
 
+[[include]]
+== Include other files
+<<table-of-contents,Back to ToC>>
+
+The `include` optional configuration item
+allows you to include other files into the configuration.
+This configuration accepts a single string which is a file path.
+The file path can be an absolute path or a relative path.
+The path will be relative to the defined configuration file.
+
+At the time of writing, includes can only be placed at the top level.
+The included files also cannot contain includes themselves.
+
+.Example:
+----
+;; This is in the file initially read by kanata, e.g. kanata.kbd
+(include other-file.kbd)
+
+;; This is in the other file
+(defalias
+  included-alias XX
+  ;; ...
+)
+
+;; This is in the other file
+(deflayer included-layer
+  ;; ...
+)
+----
+
 [[advanced-weird-features]]
 == Advanced/weird features
 
