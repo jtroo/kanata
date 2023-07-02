@@ -871,9 +871,15 @@ If you need help, you are welcome to ask.
   (  2 4 8) (multi 1 4)
   (1 2 4 8) (multi 1 5)
 )
+
 (defalias
   ch1 (chord binary 1)
   ch2 (chord binary 2)
   ch4 (chord binary 4)
   ch8 (chord binary 8)
 )
+
+;; The top-level action `include` will read a configuration from a new file.
+;; At the time of writing, includes can only be placed at the top level. The
+;; included files also cannot contain includes themselves.
+(include included-file.kbd)
