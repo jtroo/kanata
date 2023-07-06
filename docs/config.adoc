@@ -64,7 +64,7 @@ spaces, tabs, or newlines however you like to visually format `defsrc` to your
 liking.
 
 The the primary source of all key names is the
-https://github.com/jtroo/kanata/blob/main/src/keys/mod.rs[str_to_oscode]
+https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode]
 function in the source code. Please feel free to file an issue if you're unable
 to find the key you're looking for.
 
