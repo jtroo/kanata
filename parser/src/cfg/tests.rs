@@ -25,52 +25,6 @@ fn span_works() {
 }
 
 #[test]
-fn parse_simple() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from("../cfg_samples/simple.kbd")).unwrap();
-}
-
-#[test]
-fn parse_minimal() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from("../cfg_samples/minimal.kbd")).unwrap();
-}
-
-#[test]
-fn parse_default() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from("../cfg_samples/kanata.kbd")).unwrap();
-}
-
-#[test]
-fn parse_jtroo() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    let cfg = new_from_file(&std::path::PathBuf::from("../cfg_samples/jtroo.kbd")).unwrap();
-    assert_eq!(cfg.layer_info.len(), 16);
-}
-
-#[test]
-fn parse_f13_f24() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from("../cfg_samples/f13_f24.kbd")).unwrap();
-}
-
-#[test]
 fn parse_action_vars() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
@@ -230,7 +184,7 @@ fn parse_transparent_default() {
     };
     let mut s = ParsedState::default();
     let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
-        &std::path::PathBuf::from("../cfg_samples/transparent_default.kbd"),
+        &std::path::PathBuf::from("./test_cfgs/transparent_default.kbd"),
         &mut s,
     )
     .unwrap();
@@ -267,18 +221,6 @@ fn parse_transparent_default() {
     );
     assert_eq!(layers[3][0][usize::from(OsCode::KEY_F14)], Action::Layer(1));
     assert_eq!(layers[3][0][usize::from(OsCode::KEY_F15)], Action::Trans);
-}
-
-#[test]
-fn parse_all_keys() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from(
-        "../cfg_samples/all_keys_in_defsrc.kbd",
-    ))
-    .unwrap();
 }
 
 #[test]

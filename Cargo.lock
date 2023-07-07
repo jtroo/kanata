@@ -383,7 +383,7 @@ checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
 name = "kanata"
-version = "1.4.0-prerelease-2"
+version = "1.4.0-prerelease-3"
 dependencies = [
  "anyhow",
  "clap",
@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "arraydeque",
  "heapless",
@@ -444,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-parser"
-version = "0.1.0"
+version = "0.19.0"
 dependencies = [
  "anyhow",
  "evdev",
