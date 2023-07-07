@@ -7,6 +7,9 @@ mod kanata;
 mod oskbd;
 mod tcp_server;
 
+#[cfg(test)]
+mod tests;
+
 use clap::Parser;
 use kanata::Kanata;
 use tcp_server::TcpServer;
