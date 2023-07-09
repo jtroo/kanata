@@ -23,7 +23,7 @@ pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 /// - the action to evaluate if the expression evaluates to true
 /// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
-    pub(crate) cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+    pub cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
 }
 
 impl<'a, T> Switch<'a, T> {

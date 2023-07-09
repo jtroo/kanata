@@ -5,7 +5,7 @@ use crate::layout::{QueuedIter, WaitingAction};
 use core::fmt::Debug;
 
 pub mod switch;
-use switch::*;
+pub use switch::*;
 
 /// The different types of actions we support for key sequences/macros
 #[non_exhaustive]

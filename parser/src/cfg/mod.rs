@@ -1958,6 +1958,11 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
             find_chords_coords(chord_groups, coord, left);
             find_chords_coords(chord_groups, coord, right);
         }
+        Action::Switch(Switch { cases }) => {
+            for case in cases.iter() {
+                find_chords_coords(chord_groups, coord, case.1);
+            }
+        }
     }
 }
 
@@ -2054,6 +2059,21 @@ fn fill_chords(
             } else {
                 None
             }
+        }
+        Action::Switch(Switch { cases }) => {
+            let mut new_cases = vec![];
+            for case in cases.iter() {
+                new_cases.push((
+                    case.0,
+                    fill_chords(chord_groups, &case.1, s)
+                        .map(|ac| s.a.sref(ac))
+                        .unwrap_or(case.1),
+                    case.2,
+                ));
+            }
+            Some(Action::Switch(s.a.sref(Switch {
+                cases: s.a.sref_vec(new_cases),
+            })))
         }
     }
 }
@@ -2751,6 +2771,11 @@ fn add_key_output_from_action_to_key_pos(
         Action::Chords(ChordsGroup { chords, .. }) => {
             for (_, ac) in chords.iter() {
                 add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+            }
+        }
+        Action::Switch(Switch { cases }) => {
+            for case in cases.iter() {
+                add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
             }
         }
         Action::NoOp
