@@ -230,6 +230,7 @@ fn parse_cfg(
 
 pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
 pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
+pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
@@ -651,23 +652,25 @@ fn check_first_expr<'a>(
 
 /// Parse configuration entries from an expression starting with defcfg.
 fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
-    let valid_cfg_keys = &[
-        "process-unmapped-keys",
-        "danger-enable-cmd",
+    let non_bool_cfg_keys = &[
         "sequence-timeout",
         "sequence-input-mode",
-        "sequence-backtrack-modcancel",
-        "log-layer-changes",
-        "delegate-to-first-layer",
         "linux-dev",
         "linux-dev-names-include",
         "linux-dev-names-exclude",
-        "linux-continue-if-no-devs-found",
         "linux-unicode-u-code",
         "linux-unicode-termination",
         "linux-x11-repeat-delay-rate",
         "windows-altgr",
         "windows-interception-mouse-hwid",
+    ];
+    let bool_cfg_keys = &[
+        "process-unmapped-keys",
+        "danger-enable-cmd",
+        "sequence-backtrack-modcancel",
+        "log-layer-changes",
+        "delegate-to-first-layer",
+        "linux-continue-if-no-devs-found",
     ];
     let mut cfg = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
@@ -683,7 +686,18 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if !valid_cfg_keys.iter().any(|valid_key| &k.t == valid_key) {
+                if non_bool_cfg_keys.contains(&&*k.t) {
+                    // nothing to do
+                } else if bool_cfg_keys.contains(&&*k.t) {
+                    if !BOOLEAN_VALUES.contains(&&*v.t) {
+                        bail_expr!(
+                            val,
+                            "The value for {} must be one of: {}",
+                            k.t,
+                            BOOLEAN_VALUES.join(", ")
+                        );
+                    }
+                } else {
                     bail_expr!(key, "Unknown defcfg option {}", k.t);
                 }
                 if cfg
