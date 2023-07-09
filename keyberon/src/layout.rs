@@ -840,7 +840,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         }
     }
     /// Iterates on the key codes of the current state.
-    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + '_ {
+    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
         self.states.iter().filter_map(State::keycode)
     }
     fn waiting_into_hold(&mut self) -> CustomEvent<'a, T> {

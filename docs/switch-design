@@ -160,11 +160,12 @@ index: 1
 ----
 
 
-.real code:
+.pseudo code again:
+----
 let mut value = true
 let mut current_index = 1
 let mut current_end_index = first_opcode - end_index
-let mut current_op = first_opcode - op
+let mut current_op = OR
 while current_index < slice_length {
   if index >= current_end_index:
     if stack is empty:
@@ -188,3 +189,4 @@ while current_index < slice_length {
   current_index++;
 }
 return value
+----

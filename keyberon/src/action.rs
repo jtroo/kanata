@@ -4,6 +4,8 @@ use crate::key_code::KeyCode;
 use crate::layout::{QueuedIter, WaitingAction};
 use core::fmt::Debug;
 
+pub mod switch;
+
 /// The different types of actions we support for key sequences/macros
 #[non_exhaustive]
 #[derive(Clone, Copy, Eq, PartialEq)]
