@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
-use crate::oskbd::*;
+use crate::oskbd::{KeyEvent, *};
 use crate::tcp_server::ServerMessage;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;

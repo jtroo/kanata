@@ -12,6 +12,7 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
+use crate::oskbd::{KeyEvent, KeyValue};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
