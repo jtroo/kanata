@@ -11,9 +11,10 @@ use BreakOrFallthrough::*;
 pub const MAX_OPCODE_LEN: usize = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 
+#[derive(Debug, Clone)]
 /// Behaviour of a switch action.
 pub struct Switch<'a, T: 'a> {
-    pub cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+    pub(crate) cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
 }
 
 impl<'a, T> Switch<'a, T> {
@@ -70,20 +71,44 @@ pub enum BreakOrFallthrough {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// Operator for the opcode, inluding its end index.
-/// The maximum end index is 0x0FFF, or 4095.
+/// Boolean operator. Notably missing today is Not.
 pub enum BooleanOperator {
     Or,
     And,
 }
 
+const OR_VAL: u16 = 0x1000;
+const AND_VAL: u16 = 0x2000;
+
+impl BooleanOperator {
+    fn to_u16(self) -> u16 {
+        match self {
+            Or => OR_VAL,
+            And => AND_VAL,
+        }
+    }
+}
+
 use BooleanOperator::*;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// OpCode for a switch case boolean expression.
 pub struct OpCode(u16);
 
 impl OpCode {
+    /// Return a new OpCode for a key.
+    pub fn new_key(kc: KeyCode) -> Self {
+        Self(kc as u16)
+    }
+
+    /// Return a new OpCode for a boolean operation.
+    pub fn new_bool_op(op: BooleanOperator, end_idx: u16) -> Self {
+        Self(
+            end_idx & (MAX_OPCODE_LEN as u16) + op.to_u16()
+        )
+    }
     /// Return the interpretation of this `OpCode`.
-    pub fn opcode_type(self) -> OpCodeType {
+    fn opcode_type(self) -> OpCodeType {
         if self.0 < (MAX_OPCODE_LEN as u16) {
             OpCodeType::KeyCode(self.0)
         } else {
@@ -93,14 +118,15 @@ impl OpCode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// Interpretion of an OpCode.
-pub enum OpCodeType {
+/// The more useful interpretion of an OpCode.
+enum OpCodeType {
     BooleanOp(OperatorAndEndIndex),
     KeyCode(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct OperatorAndEndIndex {
+/// The operation type and the opcode index at which evaluating this type ends.
+struct OperatorAndEndIndex {
     pub op: BooleanOperator,
     pub idx: usize,
 }
@@ -109,9 +135,9 @@ impl From<u16> for OperatorAndEndIndex {
     fn from(value: u16) -> Self {
         Self {
             op: match value & 0xF000 {
-                0x2000 => And,
-                0x1000 => Or,
-                _ => unreachable!("invalid opcode: {}", value),
+                OR_VAL => Or,
+                AND_VAL => And,
+                _ => unreachable!("public interface should protect from this"),
             },
             idx: usize::from(value & (MAX_OPCODE_LEN as u16)),
         }
@@ -119,7 +145,7 @@ impl From<u16> for OperatorAndEndIndex {
 }
 
 /// Evaluate the return value of an expression evaluated on the given key codes.
-pub fn evaluate_boolean(
+fn evaluate_boolean(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,
 ) -> bool {
