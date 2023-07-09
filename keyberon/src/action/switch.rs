@@ -119,9 +119,7 @@ impl OpCode {
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
     /// index.
     pub fn new_bool(op: BooleanOperator, end_idx: u16) -> Self {
-        Self(
-            (end_idx & (MAX_OPCODE_LEN as u16)) + op.to_u16()
-        )
+        Self((end_idx & (MAX_OPCODE_LEN as u16)) + op.to_u16())
     }
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self) -> OpCodeType {
@@ -199,7 +197,11 @@ fn evaluate_boolean(
                     op: current_op,
                     idx: current_end_index,
                 });
-                assert!(res.is_ok(), "exceeded boolean op depth {}", MAX_BOOL_EXPR_DEPTH);
+                assert!(
+                    res.is_ok(),
+                    "exceeded boolean op depth {}",
+                    MAX_BOOL_EXPR_DEPTH
+                );
                 (current_op, current_end_index) = (operator.op, operator.idx);
             }
         };
@@ -221,12 +223,7 @@ fn bool_evaluation_test_0() {
         OpCode::new_key(KeyCode::E),
         OpCode::new_key(KeyCode::F),
     ];
-    let keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::D,
-        KeyCode::F,
-    ];
+    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
     assert_eq!(
         evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
         true
@@ -458,9 +455,9 @@ fn bool_evaluation_test_more_than_max_depth_panics() {
 fn switch_fallthrough() {
     let sw = Switch {
         cases: &[
-            (&[],&Action::<()>::KeyCode(KeyCode::A),Fallthrough),
-            (&[],&Action::<()>::KeyCode(KeyCode::B),Fallthrough),
-        ]
+            (&[], &Action::<()>::KeyCode(KeyCode::A), Fallthrough),
+            (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
+        ],
     };
     let mut actions = sw.actions([].iter().copied());
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
@@ -472,9 +469,9 @@ fn switch_fallthrough() {
 fn switch_break() {
     let sw = Switch {
         cases: &[
-            (&[],&Action::<()>::KeyCode(KeyCode::A),Break),
-            (&[],&Action::<()>::KeyCode(KeyCode::B),Break),
-        ]
+            (&[], &Action::<()>::KeyCode(KeyCode::A), Break),
+            (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
+        ],
     };
     let mut actions = sw.actions([].iter().copied());
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
@@ -485,9 +482,17 @@ fn switch_break() {
 fn switch_no_actions() {
     let sw = Switch {
         cases: &[
-            (&[OpCode::new_key(KeyCode::A)],&Action::<()>::KeyCode(KeyCode::A),Break),
-            (&[OpCode::new_key(KeyCode::A)],&Action::<()>::KeyCode(KeyCode::B),Break),
-        ]
+            (
+                &[OpCode::new_key(KeyCode::A)],
+                &Action::<()>::KeyCode(KeyCode::A),
+                Break,
+            ),
+            (
+                &[OpCode::new_key(KeyCode::A)],
+                &Action::<()>::KeyCode(KeyCode::B),
+                Break,
+            ),
+        ],
     };
     let mut actions = sw.actions([].iter().copied());
     assert_eq!(actions.next(), None);
