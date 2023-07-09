@@ -1,10 +1,6 @@
 // This file is taken from the original ktrl project's keys.rs file with modifications.
 
-use evdev::{EventType, InputEvent};
-use std::convert::TryFrom;
-
-use super::{KeyEvent, KeyValue, OsCode};
-
+use super::OsCode;
 impl OsCode {
     pub const fn as_u16(self) -> u16 {
         self as u16
@@ -760,25 +756,6 @@ impl OsCode {
             767 => Some(OsCode::KEY_MAX),
             _ => None,
         }
-    }
-}
-
-impl TryFrom<InputEvent> for KeyEvent {
-    type Error = ();
-    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        match item.kind() {
-            evdev::InputEventKind::Key(k) => Ok(Self {
-                code: OsCode::from_u16(k.0).ok_or(())?,
-                value: KeyValue::from(item.value()),
-            }),
-            _ => Err(()),
-        }
-    }
-}
-
-impl From<KeyEvent> for InputEvent {
-    fn from(item: KeyEvent) -> Self {
-        InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
     }
 }
 

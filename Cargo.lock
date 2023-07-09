@@ -447,7 +447,6 @@ name = "kanata-parser"
 version = "0.19.0"
 dependencies = [
  "anyhow",
- "evdev",
  "kanata-keyberon",
  "log",
  "miette",
