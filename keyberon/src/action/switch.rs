@@ -4,10 +4,70 @@
 //! - Maximum opcode length: 4095
 //! - Maximum boolean expression depth: 8
 
+use super::*;
 use crate::key_code::*;
+use BreakOrFallthrough::*;
 
 pub const MAX_OPCODE_LEN: usize = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
+
+/// Behaviour of a switch action.
+pub struct Switch<'a, T: 'a> {
+    pub cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+}
+
+impl<'a, T> Switch<'a, T> {
+    pub fn actions<T2>(&self, key_codes: T2) -> SwitchActions<'a, T, T2>
+    where
+        T2: Iterator<Item = KeyCode> + Clone,
+    {
+        SwitchActions {
+            cases: self.cases,
+            key_codes,
+            case_index: 0,
+        }
+    }
+}
+
+/// Iterator over SwitchActions.
+pub struct SwitchActions<'a, T, T2>
+where
+    T2: Iterator<Item = KeyCode> + Clone,
+{
+    cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+    key_codes: T2,
+    case_index: usize,
+}
+
+impl<'a, T, T2> Iterator for SwitchActions<'a, T, T2>
+where
+    T2: Iterator<Item = KeyCode> + Clone,
+{
+    type Item = &'a Action<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.case_index < self.cases.len() {
+            let case = &self.cases[self.case_index];
+            if evaluate_boolean(case.0, self.key_codes.clone()) {
+                let ret_ac = case.1;
+                match case.2 {
+                    Break => self.case_index = self.cases.len(),
+                    Fallthrough => self.case_index += 1,
+                }
+                return Some(ret_ac);
+            }
+        }
+        None
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+/// Whether or not a case should break out of the switch if it evaluates to true or fallthrough to
+/// the next case.
+pub enum BreakOrFallthrough {
+    Break,
+    Fallthrough,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// Operator for the opcode, inluding its end index.
@@ -109,77 +169,181 @@ pub fn evaluate_boolean(
 
 #[test]
 fn bool_evaluation_test_1() {
-    let opcodes = [OpCode(0x2009), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(0x1006), OpCode(KeyCode::C as u16), OpCode(KeyCode::D as u16), OpCode(0x1009), OpCode(KeyCode::E as u16), OpCode(KeyCode::F as u16)];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    let opcodes = [
+        OpCode(0x2009),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(0x1006),
+        OpCode(KeyCode::C as u16),
+        OpCode(KeyCode::D as u16),
+        OpCode(0x1009),
+        OpCode(KeyCode::E as u16),
+        OpCode(KeyCode::F as u16),
+    ];
+    let keycodes = [
+        KeyCode::A,
+        KeyCode::B,
+        KeyCode::C,
+        KeyCode::D,
+        KeyCode::E,
+        KeyCode::F,
+    ];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
 
 #[test]
 fn bool_evaluation_test_2() {
-    let opcodes = [OpCode(0x2009), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(0x1006), OpCode(KeyCode::C as u16), OpCode(KeyCode::D as u16), OpCode(0x1009), OpCode(KeyCode::E as u16), OpCode(KeyCode::F as u16)];
+    let opcodes = [
+        OpCode(0x2009),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(0x1006),
+        OpCode(KeyCode::C as u16),
+        OpCode(KeyCode::D as u16),
+        OpCode(0x1009),
+        OpCode(KeyCode::E as u16),
+        OpCode(KeyCode::F as u16),
+    ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), false);
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        false
+    );
 }
 
 #[test]
 fn bool_evaluation_test_3() {
-    let opcodes = [OpCode(0x2009), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(0x1006), OpCode(KeyCode::C as u16), OpCode(KeyCode::D as u16), OpCode(0x1009), OpCode(KeyCode::E as u16), OpCode(KeyCode::F as u16)];
+    let opcodes = [
+        OpCode(0x2009),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(0x1006),
+        OpCode(KeyCode::C as u16),
+        OpCode(KeyCode::D as u16),
+        OpCode(0x1009),
+        OpCode(KeyCode::E as u16),
+        OpCode(KeyCode::F as u16),
+    ];
     let keycodes = [KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), false);
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        false
+    );
 }
 
 #[test]
 fn bool_evaluation_test_4() {
     let opcodes = [];
     let keycodes = [];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
 
 #[test]
 fn bool_evaluation_test_5() {
     let opcodes = [];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    let keycodes = [
+        KeyCode::A,
+        KeyCode::B,
+        KeyCode::C,
+        KeyCode::D,
+        KeyCode::E,
+        KeyCode::F,
+    ];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
 
 #[test]
 fn bool_evaluation_test_6() {
-    let opcodes = [ OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    let opcodes = [OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
+    let keycodes = [
+        KeyCode::A,
+        KeyCode::B,
+        KeyCode::C,
+        KeyCode::D,
+        KeyCode::E,
+        KeyCode::F,
+    ];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
 
 #[test]
 fn bool_evaluation_test_7() {
-    let opcodes = [ OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
-    let keycodes = [ KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), false);
+    let opcodes = [OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
+    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        false
+    );
 }
 
 #[test]
 fn bool_evaluation_test_9() {
-    let opcodes = [ OpCode(0x2003), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(KeyCode::C as u16)];
-    let keycodes = [ KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    let opcodes = [
+        OpCode(0x2003),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(KeyCode::C as u16),
+    ];
+    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
 
 #[test]
 fn bool_evaluation_test_10() {
-    let opcodes = [ OpCode(0x2004), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(KeyCode::C as u16)];
-    let keycodes = [ KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), false);
+    let opcodes = [
+        OpCode(0x2004),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(KeyCode::C as u16),
+    ];
+    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        false
+    );
 }
 
 #[test]
 fn bool_evaluation_test_11() {
-    let opcodes = [ OpCode(0x1003), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
-    let keycodes = [ KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), false);
+    let opcodes = [
+        OpCode(0x1003),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+    ];
+    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        false
+    );
 }
 
 #[test]
 fn bool_evaluation_test_12() {
-    let opcodes = [ OpCode(0x1005), OpCode(0x2004), OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16), OpCode(KeyCode::C as u16)];
-    let keycodes = [ KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert_eq!(evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()), true);
+    let opcodes = [
+        OpCode(0x1005),
+        OpCode(0x2004),
+        OpCode(KeyCode::A as u16),
+        OpCode(KeyCode::B as u16),
+        OpCode(KeyCode::C as u16),
+    ];
+    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
 }
