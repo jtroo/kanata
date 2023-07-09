@@ -110,15 +110,17 @@ use BooleanOperator::*;
 pub struct OpCode(u16);
 
 impl OpCode {
-    /// Return a new OpCode for a key.
+    /// Return a new OpCode that checks if the key active or not.
     pub fn new_key(kc: KeyCode) -> Self {
-        Self(kc as u16)
+        assert!((kc as u16) <= (MAX_OPCODE_LEN as u16));
+        Self(kc as u16 & (MAX_OPCODE_LEN as u16))
     }
 
-    /// Return a new OpCode for a boolean operation.
-    pub fn new_bool_op(op: BooleanOperator, end_idx: u16) -> Self {
+    /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
+    /// index.
+    pub fn new_bool(op: BooleanOperator, end_idx: u16) -> Self {
         Self(
-            end_idx & (MAX_OPCODE_LEN as u16) + op.to_u16()
+            (end_idx & (MAX_OPCODE_LEN as u16)) + op.to_u16()
         )
     }
     /// Return the interpretation of this `OpCode`.
@@ -193,12 +195,11 @@ fn evaluate_boolean(
                 }
             }
             OpCodeType::BooleanOp(operator) => {
-                if let Err(_) = stack.push_back(OperatorAndEndIndex {
+                let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
                     idx: current_end_index,
-                }) {
-                    panic!("exceeded boolean op depth {}", MAX_BOOL_EXPR_DEPTH);
-                }
+                });
+                assert!(res.is_ok(), "exceeded boolean op depth {}", MAX_BOOL_EXPR_DEPTH);
                 (current_op, current_end_index) = (operator.op, operator.idx);
             }
         };
@@ -208,17 +209,42 @@ fn evaluate_boolean(
 }
 
 #[test]
+fn bool_evaluation_test_0() {
+    let opcodes = [
+        OpCode::new_bool(And, 9),
+        OpCode::new_key(KeyCode::A),
+        OpCode::new_key(KeyCode::B),
+        OpCode::new_bool(Or, 6),
+        OpCode::new_key(KeyCode::C),
+        OpCode::new_key(KeyCode::D),
+        OpCode::new_bool(Or, 9),
+        OpCode::new_key(KeyCode::E),
+        OpCode::new_key(KeyCode::F),
+    ];
+    let keycodes = [
+        KeyCode::A,
+        KeyCode::B,
+        KeyCode::D,
+        KeyCode::F,
+    ];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
+}
+
+#[test]
 fn bool_evaluation_test_1() {
     let opcodes = [
-        OpCode(0x2009),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(0x1006),
-        OpCode(KeyCode::C as u16),
-        OpCode(KeyCode::D as u16),
-        OpCode(0x1009),
-        OpCode(KeyCode::E as u16),
-        OpCode(KeyCode::F as u16),
+        OpCode::new_bool(And, 9),
+        OpCode::new_key(KeyCode::A),
+        OpCode::new_key(KeyCode::B),
+        OpCode::new_bool(Or, 6),
+        OpCode::new_key(KeyCode::C),
+        OpCode::new_key(KeyCode::D),
+        OpCode::new_bool(Or, 9),
+        OpCode::new_key(KeyCode::E),
+        OpCode::new_key(KeyCode::F),
     ];
     let keycodes = [
         KeyCode::A,
