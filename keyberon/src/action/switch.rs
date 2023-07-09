@@ -16,7 +16,7 @@ use BreakOrFallthrough::*;
 pub const MAX_OPCODE_LEN: usize = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 /// Behaviour of a switch action. Each case is a 3-tuple of:
 ///
 /// - the boolean expression (array of opcodes)
@@ -76,7 +76,7 @@ where
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 /// Whether or not a case should break out of the switch if it evaluates to true or fallthrough to
 /// the next case.
 pub enum BreakOrFallthrough {

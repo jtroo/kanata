@@ -1401,6 +1401,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     true => self.do_action(&fcfg.right, coord, delay, false),
                 };
             }
+            Switch(sw) => {
+                // add to action queue
+                sw.actions(self.keycodes()).
+            }
         }
         CustomEvent::NoEvent
     }
