@@ -3,6 +3,11 @@
 //! Limitations:
 //! - Maximum opcode length: 4095
 //! - Maximum boolean expression depth: 8
+//!
+//! The intended use is to build up a `Switch` struct and use that in the `Layout`.
+//!
+//! The `Layout` will use `Switch::actions` to iterate over the actions that should be activated
+//! when the corresponding key is pressed.
 
 use super::*;
 use crate::key_code::*;
@@ -12,31 +17,38 @@ pub const MAX_OPCODE_LEN: usize = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 
 #[derive(Debug, Clone)]
-/// Behaviour of a switch action.
+/// Behaviour of a switch action. Each case is a 3-tuple of:
+///
+/// - the boolean expression (array of opcodes)
+/// - the action to evaluate if the expression evaluates to true
+/// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
     pub(crate) cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
 }
 
 impl<'a, T> Switch<'a, T> {
-    pub fn actions<T2>(&self, key_codes: T2) -> SwitchActions<'a, T, T2>
+    /// Iterates over the actions (if any) that are activated in the `Switch` based on its cases
+    /// and the currently active keys.
+    pub fn actions<T2>(&self, active_keys: T2) -> SwitchActions<'a, T, T2>
     where
         T2: Iterator<Item = KeyCode> + Clone,
     {
         SwitchActions {
             cases: self.cases,
-            key_codes,
+            active_keys,
             case_index: 0,
         }
     }
 }
 
-/// Iterator over SwitchActions.
+#[derive(Debug, Clone)]
+/// Iterator returned by `Switch::actions`.
 pub struct SwitchActions<'a, T, T2>
 where
     T2: Iterator<Item = KeyCode> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
-    key_codes: T2,
+    active_keys: T2,
     case_index: usize,
 }
 
@@ -49,13 +61,15 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         while self.case_index < self.cases.len() {
             let case = &self.cases[self.case_index];
-            if evaluate_boolean(case.0, self.key_codes.clone()) {
+            if evaluate_boolean(case.0, self.active_keys.clone()) {
                 let ret_ac = case.1;
                 match case.2 {
                     Break => self.case_index = self.cases.len(),
                     Fallthrough => self.case_index += 1,
                 }
                 return Some(ret_ac);
+            } else {
+                self.case_index += 1;
             }
         }
         None
@@ -372,4 +386,83 @@ fn bool_evaluation_test_12() {
         evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
         true
     );
+}
+
+#[test]
+fn bool_evaluation_test_max_depth_does_not_panic() {
+    let opcodes = [
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+        OpCode(0x1008),
+    ];
+    let keycodes = [];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
+}
+
+#[test]
+#[should_panic]
+fn bool_evaluation_test_more_than_max_depth_panics() {
+    let opcodes = [
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+        OpCode(0x1009),
+    ];
+    let keycodes = [];
+    assert_eq!(
+        evaluate_boolean(opcodes.as_slice(), keycodes.iter().copied()),
+        true
+    );
+}
+
+#[test]
+fn switch_fallthrough() {
+    let sw = Switch {
+        cases: &[
+            (&[],&Action::<()>::KeyCode(KeyCode::A),Fallthrough),
+            (&[],&Action::<()>::KeyCode(KeyCode::B),Fallthrough),
+        ]
+    };
+    let mut actions = sw.actions([].iter().copied());
+    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
+    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
+    assert_eq!(actions.next(), None);
+}
+
+#[test]
+fn switch_break() {
+    let sw = Switch {
+        cases: &[
+            (&[],&Action::<()>::KeyCode(KeyCode::A),Break),
+            (&[],&Action::<()>::KeyCode(KeyCode::B),Break),
+        ]
+    };
+    let mut actions = sw.actions([].iter().copied());
+    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
+    assert_eq!(actions.next(), None);
+}
+
+#[test]
+fn switch_no_actions() {
+    let sw = Switch {
+        cases: &[
+            (&[OpCode::new_key(KeyCode::A)],&Action::<()>::KeyCode(KeyCode::A),Break),
+            (&[OpCode::new_key(KeyCode::A)],&Action::<()>::KeyCode(KeyCode::B),Break),
+        ]
+    };
+    let mut actions = sw.actions([].iter().copied());
+    assert_eq!(actions.next(), None);
 }
