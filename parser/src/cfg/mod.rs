@@ -2743,7 +2743,7 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
                 "{ERR_STR}\nthis must be either \"break\" or \"fallthrough\""
             ),
         };
-        cases.push(([].as_slice(), action, break_or_fallthrough));
+        cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
     }
     Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
         cases: s.a.sref_vec(cases),
@@ -2789,11 +2789,12 @@ fn parse_switch_case_bool(
         // insert a placeholder for now, don't know the end index yet.
         let placeholder_index = current_index;
         ops.push(OpCode::new_bool(op, placeholder_index));
+        current_index += 1;
         for op in l.iter().skip(1) {
             current_index = parse_switch_case_bool(current_index, op, ops, s)?;
         }
         ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
-        Ok(current_index + 1)
+        Ok(current_index)
     }
 }
 
