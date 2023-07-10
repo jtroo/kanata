@@ -1,3 +1,8 @@
+# Preface:
+
+This document is a scratch space for the design of the switch action.
+It may be out of date and is kept around for posterity.
+
 .syntax:
 ----
 (switch
@@ -179,7 +184,8 @@ while current_index < slice_length {
           value=false: skip to current_end_index; continue
   switch
     opcode:
-      push
+      push (current_end_index,current_op)
+      update (current_end_index,current_op) with opcode
     key(OR):
       value=true: skip to current_end_index; continue
       value=false

@@ -10,11 +10,15 @@
 //! when the corresponding key is pressed.
 
 use super::*;
+
 use crate::key_code::*;
+
+use BooleanOperator::*;
 use BreakOrFallthrough::*;
 
 pub const MAX_OPCODE_LEN: u16 = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
+
 pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +29,42 @@ pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 /// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
     pub cases: &'a [Case<'a, T>],
+}
+
+const OR_VAL: u16 = 0x1000;
+const AND_VAL: u16 = 0x2000;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// Boolean operator. Notably missing today is Not.
+pub enum BooleanOperator {
+    Or,
+    And,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// OpCode for a switch case boolean expression.
+pub struct OpCode(u16);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// The more useful interpretion of an OpCode.
+enum OpCodeType {
+    BooleanOp(OperatorAndEndIndex),
+    KeyCode(u16),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// The operation type and the opcode index at which evaluating this type ends.
+struct OperatorAndEndIndex {
+    pub op: BooleanOperator,
+    pub idx: usize,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+/// Whether or not a case should break out of the switch if it evaluates to true or fallthrough to
+/// the next case.
+pub enum BreakOrFallthrough {
+    Break,
+    Fallthrough,
 }
 
 impl<'a, T> Switch<'a, T> {
@@ -77,24 +117,6 @@ where
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-/// Whether or not a case should break out of the switch if it evaluates to true or fallthrough to
-/// the next case.
-pub enum BreakOrFallthrough {
-    Break,
-    Fallthrough,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// Boolean operator. Notably missing today is Not.
-pub enum BooleanOperator {
-    Or,
-    And,
-}
-
-const OR_VAL: u16 = 0x1000;
-const AND_VAL: u16 = 0x2000;
-
 impl BooleanOperator {
     fn to_u16(self) -> u16 {
         match self {
@@ -103,12 +125,6 @@ impl BooleanOperator {
         }
     }
 }
-
-use BooleanOperator::*;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-/// OpCode for a switch case boolean expression.
-pub struct OpCode(u16);
 
 impl OpCode {
     /// Return a new OpCode that checks if the key active or not.
@@ -130,20 +146,6 @@ impl OpCode {
             OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0))
         }
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// The more useful interpretion of an OpCode.
-enum OpCodeType {
-    BooleanOp(OperatorAndEndIndex),
-    KeyCode(u16),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// The operation type and the opcode index at which evaluating this type ends.
-struct OperatorAndEndIndex {
-    pub op: BooleanOperator,
-    pub idx: usize,
 }
 
 impl From<u16> for OperatorAndEndIndex {

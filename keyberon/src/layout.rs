@@ -1407,7 +1407,6 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 };
             }
             Switch(sw) => {
-                // add to action queue
                 let kcs = self.states.iter().filter_map(State::keycode);
                 let action_queue = &mut self.action_queue;
                 for ac in sw.actions(kcs.clone()) {
