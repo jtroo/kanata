@@ -1187,6 +1187,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "caps-word" => parse_caps_word(&ac[1..], s),
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
         "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
+        "switch" => parse_switch(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -2700,6 +2701,100 @@ fn parse_macro_record_stop_truncate(
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::DynamicMacroRecordStop(num_to_truncate)),
     ))))
+}
+
+fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_STR: &str =
+        "switch expects triplets of params: <key match> <action> <break|fallthrough>";
+
+    let mut cases = vec![];
+
+    let mut params = ac_params.iter();
+    loop {
+        let Some(key_match) = params.next() else {
+            break;
+        };
+        let Some(action) = params.next() else {
+            bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triplet");
+        };
+        let Some(break_or_fallthrough_expr) = params.next() else {
+            bail!("{ERR_STR}\nMissing and <break|fallthrough> for the final triplet");
+        };
+
+        let Some(key_match) = key_match.list(s.vars()) else {
+            bail_expr!(key_match, "{ERR_STR}\n<key match> must be a list")
+        };
+        let mut ops = vec![];
+        let mut current_index = 0;
+        for op in key_match.iter() {
+            current_index = parse_switch_case_bool(current_index, op, &mut ops, s)?;
+        }
+
+        let action = parse_action(action, s)?;
+
+        let Some(break_or_fallthrough) = break_or_fallthrough_expr.atom(s.vars()) else {
+            bail_expr!(break_or_fallthrough_expr, "{ERR_STR}\nthis must be either \"break\" or \"fallthrough\"");
+        };
+        let break_or_fallthrough = match break_or_fallthrough {
+            "break" => BreakOrFallthrough::Break,
+            "fallthrough" => BreakOrFallthrough::Fallthrough,
+            _ => bail_expr!(
+                break_or_fallthrough_expr,
+                "{ERR_STR}\nthis must be either \"break\" or \"fallthrough\""
+            ),
+        };
+        cases.push(([].as_slice(), action, break_or_fallthrough));
+    }
+    Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
+        cases: s.a.sref_vec(cases),
+    }))))
+}
+
+fn parse_switch_case_bool(
+    mut current_index: u16,
+    op_expr: &SExpr,
+    ops: &mut Vec<OpCode>,
+    s: &ParsedState,
+) -> Result<u16> {
+    if current_index > MAX_OPCODE_LEN {
+        bail_expr!(
+            op_expr,
+            "maximum key match size of {MAX_OPCODE_LEN} items is exceeded"
+        );
+    }
+    if let Some(a) = op_expr.atom(s.vars()) {
+        let osc = str_to_oscode(a).ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
+        ops.push(OpCode::new_key(osc.into()));
+        Ok(current_index + 1)
+    } else {
+        let l = op_expr
+            .list(s.vars())
+            .expect("must be a list, checked atom");
+        if l.len() < 1 {
+            bail_expr!(op_expr, "key match cannot contain empty lists inside");
+        }
+        let op = l[0]
+            .atom(s.vars())
+            .and_then(|s| match s {
+                "or" => Some(BooleanOperator::Or),
+                "and" => Some(BooleanOperator::And),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                anyhow_expr!(
+                    op_expr,
+                    "lists inside key match must begin with one of: or, and"
+                )
+            })?;
+        // insert a placeholder for now, don't know the end index yet.
+        let placeholder_index = current_index;
+        ops.push(OpCode::new_bool(op, placeholder_index));
+        for op in l.iter().skip(1) {
+            current_index = parse_switch_case_bool(current_index, op, ops, s)?;
+        }
+        ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
+        Ok(current_index + 1)
+    }
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.

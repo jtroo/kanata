@@ -13,8 +13,9 @@ use super::*;
 use crate::key_code::*;
 use BreakOrFallthrough::*;
 
-pub const MAX_OPCODE_LEN: usize = 0x0FFF;
+pub const MAX_OPCODE_LEN: u16 = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
+pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Behaviour of a switch action. Each case is a 3-tuple of:
@@ -23,7 +24,7 @@ pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 /// - the action to evaluate if the expression evaluates to true
 /// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
-    pub cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+    pub cases: &'a [Case<'a, T>],
 }
 
 impl<'a, T> Switch<'a, T> {
@@ -112,18 +113,18 @@ pub struct OpCode(u16);
 impl OpCode {
     /// Return a new OpCode that checks if the key active or not.
     pub fn new_key(kc: KeyCode) -> Self {
-        assert!((kc as u16) <= (MAX_OPCODE_LEN as u16));
-        Self(kc as u16 & (MAX_OPCODE_LEN as u16))
+        assert!((kc as u16) <= MAX_OPCODE_LEN);
+        Self(kc as u16 & MAX_OPCODE_LEN)
     }
 
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
     /// index.
     pub fn new_bool(op: BooleanOperator, end_idx: u16) -> Self {
-        Self((end_idx & (MAX_OPCODE_LEN as u16)) + op.to_u16())
+        Self((end_idx & MAX_OPCODE_LEN) + op.to_u16())
     }
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self) -> OpCodeType {
-        if self.0 < (MAX_OPCODE_LEN as u16) {
+        if self.0 < MAX_OPCODE_LEN {
             OpCodeType::KeyCode(self.0)
         } else {
             OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0))
@@ -153,7 +154,7 @@ impl From<u16> for OperatorAndEndIndex {
                 AND_VAL => And,
                 _ => unreachable!("public interface should protect from this"),
             },
-            idx: usize::from(value & (MAX_OPCODE_LEN as u16)),
+            idx: usize::from(value & MAX_OPCODE_LEN),
         }
     }
 }
