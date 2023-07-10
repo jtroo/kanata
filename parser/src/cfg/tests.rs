@@ -563,12 +563,14 @@ fn parse_switch() {
     };
     let mut s = ParsedState::default();
     let source = r#"
+(defvar var1 a)
 (defsrc a)
 (deflayer base
   (switch
     ((and a b (or c d) (or e f))) XX break
     () _ fallthrough
-    (a b c) a fallthrough
+    (a b c) $var1 fallthrough
+    ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
   )
 )
 "#;
@@ -607,7 +609,44 @@ fn parse_switch() {
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Fallthrough
                 ),
+                (
+                    &[
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
             ]
         })
     );
+}
+
+#[test]
+fn parse_switch_exceed_depth() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(deflayer base
+  (switch
+    ((or (or (or (or (or (or (or (or (or)))))))))) XX break
+  )
+)
+"#;
+    parse_cfg_raw_string(source, &mut s, "test")
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e));
+            ""
+        })
+        .unwrap_err();
 }

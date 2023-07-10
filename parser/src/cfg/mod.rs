@@ -2705,7 +2705,7 @@ fn parse_macro_record_stop_truncate(
 
 fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
-        "switch expects triplets of params: <key match> <action> <break|fallthrough>";
+        "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
     let mut cases = vec![];
 
@@ -2715,10 +2715,10 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
             break;
         };
         let Some(action) = params.next() else {
-            bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triplet");
+            bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triple");
         };
         let Some(break_or_fallthrough_expr) = params.next() else {
-            bail!("{ERR_STR}\nMissing and <break|fallthrough> for the final triplet");
+            bail!("{ERR_STR}\nMissing <break|fallthrough> for the final triple");
         };
 
         let Some(key_match) = key_match.list(s.vars()) else {
@@ -2727,20 +2727,20 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
         let mut ops = vec![];
         let mut current_index = 0;
         for op in key_match.iter() {
-            current_index = parse_switch_case_bool(current_index, op, &mut ops, s)?;
+            current_index = parse_switch_case_bool(current_index, 1, op, &mut ops, s)?;
         }
 
         let action = parse_action(action, s)?;
 
         let Some(break_or_fallthrough) = break_or_fallthrough_expr.atom(s.vars()) else {
-            bail_expr!(break_or_fallthrough_expr, "{ERR_STR}\nthis must be either \"break\" or \"fallthrough\"");
+            bail_expr!(break_or_fallthrough_expr, "{ERR_STR}\nthis must be one of: break, fallthrough");
         };
         let break_or_fallthrough = match break_or_fallthrough {
             "break" => BreakOrFallthrough::Break,
             "fallthrough" => BreakOrFallthrough::Fallthrough,
             _ => bail_expr!(
                 break_or_fallthrough_expr,
-                "{ERR_STR}\nthis must be either \"break\" or \"fallthrough\""
+                "{ERR_STR}\nthis must be one of: break, fallthrough"
             ),
         };
         cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
@@ -2752,6 +2752,7 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
 
 fn parse_switch_case_bool(
     mut current_index: u16,
+    depth: u8,
     op_expr: &SExpr,
     ops: &mut Vec<OpCode>,
     s: &ParsedState,
@@ -2760,6 +2761,12 @@ fn parse_switch_case_bool(
         bail_expr!(
             op_expr,
             "maximum key match size of {MAX_OPCODE_LEN} items is exceeded"
+        );
+    }
+    if usize::from(depth) > MAX_BOOL_EXPR_DEPTH {
+        bail_expr!(
+            op_expr,
+            "maximum key match expression depth {MAX_BOOL_EXPR_DEPTH} is exceeded"
         );
     }
     if let Some(a) = op_expr.atom(s.vars()) {
@@ -2791,7 +2798,7 @@ fn parse_switch_case_bool(
         ops.push(OpCode::new_bool(op, placeholder_index));
         current_index += 1;
         for op in l.iter().skip(1) {
-            current_index = parse_switch_case_bool(current_index, op, ops, s)?;
+            current_index = parse_switch_case_bool(current_index, depth + 1, op, ops, s)?;
         }
         ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
         Ok(current_index)
