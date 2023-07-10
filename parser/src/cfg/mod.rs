@@ -236,7 +236,7 @@ pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
 #[allow(clippy::type_complexity)] // return type is not pub
