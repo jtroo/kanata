@@ -10,14 +10,16 @@ use signal_hook::{
     iterator::Signals,
 };
 
+use std::convert::TryFrom;
 use std::fs;
 use std::io;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
+use super::*;
+use crate::oskbd::KeyEvent;
 use kanata_parser::custom_action::*;
-use kanata_parser::keys::KeyEvent;
 use kanata_parser::keys::*;
 
 pub struct KbdIn {
@@ -254,6 +256,25 @@ pub fn is_input_device(device: &Device) -> bool {
             device.name().unwrap_or("unknown device name")
         );
         false
+    }
+}
+
+impl TryFrom<InputEvent> for KeyEvent {
+    type Error = ();
+    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        match item.kind() {
+            evdev::InputEventKind::Key(k) => Ok(Self {
+                code: OsCode::from_u16(k.0).ok_or(())?,
+                value: KeyValue::from(item.value()),
+            }),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<KeyEvent> for InputEvent {
+    fn from(item: KeyEvent) -> Self {
+        InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
     }
 }
 

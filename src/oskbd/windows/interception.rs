@@ -4,10 +4,10 @@ use std::io;
 
 use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
 
+use super::OsCodeWrapper;
+use crate::oskbd::KeyValue;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-
-use super::OsCodeWrapper;
 
 /// Key event received by the low level keyboard hook.
 #[derive(Debug, Clone, Copy)]

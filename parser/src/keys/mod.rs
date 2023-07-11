@@ -5,9 +5,9 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 mod linux;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 pub use linux::*;
 
 #[cfg(target_os = "windows")]
@@ -216,17 +216,17 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f24" => OsCode::KEY_F24,
         #[cfg(target_os = "windows")]
         "kana" | "katakana" | "katakanahiragana" => OsCode::KEY_HANGEUL,
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "kana" | "katakanahiragana" => OsCode::KEY_KATAKANAHIRAGANA,
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "hiragana" => OsCode::KEY_HIRAGANA,
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "katakana" => OsCode::KEY_KATAKANA,
         "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
         "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,
         "ro" => OsCode::KEY_RO,
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "prtsc" | "prnt" => OsCode::KEY_SYSRQ,
         #[cfg(target_os = "windows")]
         "prtsc" | "prnt" => OsCode::KEY_PRINT,
@@ -244,11 +244,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "calc" => OsCode::KEY_CALC,
 
         // NOTE: these are linux-only right now due to missing the mappings in windows.rs
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "plyr" | "player" => OsCode::KEY_PLAYER,
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "powr" | "power" => OsCode::KEY_POWER,
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
 
         _ => {
@@ -1064,52 +1064,5 @@ impl From<&OsCode> for KeyCode {
 impl From<&KeyCode> for OsCode {
     fn from(item: &KeyCode) -> Self {
         (*item).into()
-    }
-}
-
-// ------------------ KeyValue --------------------
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum KeyValue {
-    Release = 0,
-    Press = 1,
-    Repeat = 2,
-}
-
-impl From<i32> for KeyValue {
-    fn from(item: i32) -> Self {
-        match item {
-            0 => Self::Release,
-            1 => Self::Press,
-            2 => Self::Repeat,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<bool> for KeyValue {
-    fn from(up: bool) -> Self {
-        match up {
-            true => Self::Release,
-            false => Self::Press,
-        }
-    }
-}
-
-impl From<KeyValue> for bool {
-    fn from(val: KeyValue) -> Self {
-        matches!(val, KeyValue::Release)
-    }
-}
-#[derive(Debug, Clone, Copy)]
-pub struct KeyEvent {
-    pub code: OsCode,
-    pub value: KeyValue,
-}
-
-#[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
-impl KeyEvent {
-    pub fn new(code: OsCode, value: KeyValue) -> Self {
-        Self { code, value }
     }
 }

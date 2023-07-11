@@ -6,7 +6,8 @@ use std::sync::Arc;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
-use kanata_parser::keys::{KeyValue, OsCode};
+use crate::oskbd::KeyValue;
+use kanata_parser::keys::OsCode;
 
 const HWID_ARR_SZ: usize = 128;
 
