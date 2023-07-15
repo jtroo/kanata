@@ -1157,7 +1157,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         delay: u16,
         is_oneshot: bool,
     ) -> CustomEvent<'a, T> {
-        assert!(self.waiting.is_none() || matches!(action, Action::Custom(..)));
+        self.clear_and_handle_waiting(action);
         if self.last_press_tracker.coord != coord {
             self.last_press_tracker.tap_hold_timeout = 0;
         }
@@ -1403,6 +1403,41 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
         }
         CustomEvent::NoEvent
+    }
+
+    /// Clear the waiting state if it is about to be overwritten by a new waiting state.
+    ///
+    /// If something is waiting **and** another waiting action is currently being activated, that
+    /// probably means that there were multiple actions in the action queue caused by a single
+    /// terminal state. In this scenario, do some sensible default for the waiting state and end it
+    /// early, since a new action should interrupt the waiting action anyway.
+    ///
+    /// Another potential concern is if there is some processing in the event queue that needs to
+    /// happen as part of the cleanup, i.e. the code runs in `handle_tap_dance`, `handle_chord`
+    /// where some queued events are consumed. I'm fairly sure that there is no extra processing
+    /// that needs to happen. Actions in the action queue should be activated on subsequent ticks
+    /// with no room for key events to be a factor when handling this case.
+    fn clear_and_handle_waiting(&mut self, action: &'a Action<'a, T>) {
+        if !matches!(
+            action,
+            Action::HoldTap(_) | Action::TapDance(_) | Action::Chords(_)
+        ) {
+            return;
+        }
+        let mut waiting_action = None;
+        if let Some(waiting) = &self.waiting {
+            waiting_action = match waiting.config {
+                WaitingConfig::HoldTap(_) => Some((waiting.tap, waiting.coord, waiting.delay)),
+                WaitingConfig::TapDance(tdc) => {
+                    Some((tdc.actions[0], waiting.coord, waiting.delay))
+                }
+                WaitingConfig::Chord(_) => None,
+            };
+            self.waiting = None;
+        };
+        if let Some((action, coord, delay)) = waiting_action {
+            self.do_action(action, coord, delay, false);
+        };
     }
 
     /// Obtain the index of the current active layer
