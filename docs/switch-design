@@ -1,0 +1,198 @@
+# Preface:
+
+This document is a scratch space for the design of the switch action.
+It may be out of date and is kept around for posterity.
+
+.syntax:
+----
+(switch
+  (or a b c) (cmd <cmd1>) break
+  (and a b (or c d)) (cmd <cmd2>) fallthrough
+  (and a b (or c d) (or e f)) fallthrough
+  ()
+)
+----
+
+
+.opcode format examples:
+----
+(or a b c)
+OR-4 a b c
+
+(and a b (or c d))
+AND-6 a b OR-6 c d
+
+(and a b (or c d) (or e f))
+AND-9 a b OR-6 c d OR-9 e f
+----
+
+.opcodes:
+----
+key: all values < 1024
+OR/AND: OP & 0xF000
+  OR : 0x1000
+  AND: 0x2000
+  length: OP & 0x0FFF
+----
+
+.Rough algorithm for opcodes:
+----
+value=true
+push first opcode
+WHILE stack is not empty
+  WHILE index <= ending_index
+    switch
+      opcode:
+        push, continue
+      key(OR):
+        value=true: skip to index, pop
+        value=false: continue
+      key(AND):
+        value=true: continue
+        value=false: skip to index, pop
+  pop
+  switch
+    current_value(OR):
+      value=true: skip to index, pop
+      value=false: continue
+    current_value(AND):
+      value=true: continue
+      value=false: skip to index, pop
+return value
+----
+
+.statestruct:
+----
+  value
+  current_index
+  current_end_index
+  current_op
+  stack (op, ending_index)
+----
+
+.rough sequence 1:
+----
+pressed:       y y      y y      y y
+opcodes: AND-9 a b OR-6 c d OR-9 e f
+
+index: 0
+  push: AND-9
+  stack: AND-9
+
+index: 1
+  val: true
+
+index: 2
+  val: true
+
+index: 3
+  push: OR-6
+  stack: AND-9 OR-6
+
+index: 4
+  val: true
+  skip to 6
+  pop
+  stack: AND-9
+
+index: 6
+  push: OR-9
+  stack: AND-9 OR-9
+
+index: 7
+  val: true
+  skip to 9
+  pop
+  stack: AND-9-true
+
+index 9:
+  pop
+  stack: empty
+  return val: true
+----
+
+.rough sequence 2:
+----
+pressed:       y y      n n      y y
+opcodes: AND-9 a b OR-6 c d OR-9 e f
+
+index: 0
+  push: AND-9
+  stack: AND-9
+
+index: 1
+  val: true
+
+index: 2
+  val: true
+
+index: 3
+  push: OR-6
+  stack: AND-9 OR-6
+  val: true
+
+index: 4
+  val: false
+
+index: 5
+  val: false
+
+index: 6
+  val: false
+  pop
+  stack: AND-9
+  skip to 9
+  pop
+  stack: empty
+  return val: false
+----
+
+.rough sequence 3:
+----
+pressed:       n y      n n      y y
+opcodes: AND-9 a b OR-6 c d OR-9 e f
+
+index: 0
+  push: AND-9
+  stack: AND-9
+
+index: 1
+  val: false
+  skip to 9
+  pop
+  stack: empty
+  return val: false
+----
+
+
+.pseudo code again:
+----
+let mut value = true
+let mut current_index = 1
+let mut current_end_index = first_opcode - end_index
+let mut current_op = OR
+while current_index < slice_length {
+  if index >= current_end_index:
+    if stack is empty:
+      break
+    else:
+      pop stack to current_op and current_end_index
+      switch
+        current_value(OR):
+          value=true: skip to current_end_index; continue
+        current_value(AND):
+          value=false: skip to current_end_index; continue
+  switch
+    opcode:
+      push (current_end_index,current_op)
+      update (current_end_index,current_op) with opcode
+    key(OR):
+      value=true: skip to current_end_index; continue
+      value=false
+    key(AND):
+      value=true
+      value=false: skip to current_end_index; continue
+  current_index++;
+}
+return value
+----

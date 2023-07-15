@@ -4,6 +4,9 @@ use crate::key_code::KeyCode;
 use crate::layout::{QueuedIter, WaitingAction};
 use core::fmt::Debug;
 
+pub mod switch;
+pub use switch::*;
+
 /// The different types of actions we support for key sequences/macros
 #[non_exhaustive]
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -373,6 +376,12 @@ where
     /// Fork action that can activate one of two potential actions depending on what keys are
     /// currently active.
     Fork(&'a ForkConfig<'a, T>),
+    /// Action that can activate 0 to N actions based on what keys are currently
+    /// active and the boolean logic of each case.
+    ///
+    /// The maximum number of actions that can activate the same time is governed by
+    /// `ACTION_QUEUE_LEN`.
+    Switch(&'a Switch<'a, T>),
 }
 
 impl<'a, T> Action<'a, T> {

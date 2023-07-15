@@ -53,11 +53,16 @@ type Queue = ArrayDeque<[Queued; QUEUE_SIZE], arraydeque::behavior::Wrapping>;
 /// that occur during a Waiting event.
 type PressedQueue = ArrayDeque<[KCoord; QUEUE_SIZE]>;
 
+/// The maximum number of actions that can be activated concurrently via chord decomposition or
+/// activation of multiple switch cases using fallthrough.
+pub const ACTION_QUEUE_LEN: usize = 8;
+
 /// The queue is currently only used for chord decomposition when a longer chord does not result in
 /// an action, but splitting it into smaller chords would. The buffer size of 8 should be more than
 /// enough for real world usage, but if one wanted to be extra safe, this should be ChordKeys::BITS
 /// since that should guarantee that all potentially queueable actions can fit.
-type ActionQueue<'a, T> = ArrayDeque<[QueuedAction<'a, T>; 8], arraydeque::behavior::Wrapping>;
+type ActionQueue<'a, T> =
+    ArrayDeque<[QueuedAction<'a, T>; ACTION_QUEUE_LEN], arraydeque::behavior::Wrapping>;
 type QueuedAction<'a, T> = Option<(KCoord, &'a Action<'a, T>)>;
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
@@ -840,7 +845,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         }
     }
     /// Iterates on the key codes of the current state.
-    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + '_ {
+    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
         self.states.iter().filter_map(State::keycode)
     }
     fn waiting_into_hold(&mut self) -> CustomEvent<'a, T> {
@@ -1400,6 +1405,13 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     false => self.do_action(&fcfg.left, coord, delay, false),
                     true => self.do_action(&fcfg.right, coord, delay, false),
                 };
+            }
+            Switch(sw) => {
+                let kcs = self.states.iter().filter_map(State::keycode);
+                let action_queue = &mut self.action_queue;
+                for ac in sw.actions(kcs.clone()) {
+                    action_queue.push_back(Some((coord, ac)));
+                }
             }
         }
         CustomEvent::NoEvent

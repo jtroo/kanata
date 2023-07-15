@@ -5,6 +5,7 @@ use radix_trie::TrieCommon;
 pub type TrieKey = Vec<u16>;
 pub type TrieVal = (u8, u16);
 
+#[derive(Debug, Clone)]
 pub struct Trie {
     inner: radix_trie::Trie<TrieKey, TrieVal>,
 }

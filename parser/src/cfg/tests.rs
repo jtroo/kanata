@@ -1,5 +1,6 @@
 use super::*;
 use crate::cfg::sexpr::parse;
+use kanata_keyberon::action::BooleanOperator::*;
 
 use std::sync::Mutex;
 
@@ -552,4 +553,100 @@ fn test_include_bad2_has_original_filename() {
         "test_cfgs{}include-bad2.kbd",
         std::path::MAIN_SEPARATOR
     )));
+}
+
+#[test]
+fn parse_switch() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deflayer base
+  (switch
+    ((and a b (or c d) (or e f))) XX break
+    () _ fallthrough
+    (a b c) $var1 fallthrough
+    ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
+  )
+)
+"#;
+    let res = parse_cfg_raw_string(source, &mut s, "test")
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e));
+            ""
+        })
+        .unwrap();
+    assert_eq!(
+        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        Action::Switch(&Switch {
+            cases: &[
+                (
+                    &[
+                        OpCode::new_bool(And, 9),
+                        OpCode::new_key(KeyCode::A),
+                        OpCode::new_key(KeyCode::B),
+                        OpCode::new_bool(Or, 6),
+                        OpCode::new_key(KeyCode::C),
+                        OpCode::new_key(KeyCode::D),
+                        OpCode::new_bool(Or, 9),
+                        OpCode::new_key(KeyCode::E),
+                        OpCode::new_key(KeyCode::F),
+                    ],
+                    &Action::NoOp,
+                    BreakOrFallthrough::Break
+                ),
+                (&[], &Action::Trans, BreakOrFallthrough::Fallthrough),
+                (
+                    &[
+                        OpCode::new_key(KeyCode::A),
+                        OpCode::new_key(KeyCode::B),
+                        OpCode::new_key(KeyCode::C),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
+                (
+                    &[
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                        OpCode::new_bool(Or, 8),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
+            ]
+        })
+    );
+}
+
+#[test]
+fn parse_switch_exceed_depth() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(deflayer base
+  (switch
+    ((or (or (or (or (or (or (or (or (or)))))))))) XX break
+  )
+)
+"#;
+    parse_cfg_raw_string(source, &mut s, "test")
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e));
+            ""
+        })
+        .unwrap_err();
 }

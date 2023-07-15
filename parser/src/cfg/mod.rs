@@ -1201,6 +1201,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "caps-word" => parse_caps_word(&ac[1..], s),
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
         "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
+        "switch" => parse_switch(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -1972,6 +1973,11 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
             find_chords_coords(chord_groups, coord, left);
             find_chords_coords(chord_groups, coord, right);
         }
+        Action::Switch(Switch { cases }) => {
+            for case in cases.iter() {
+                find_chords_coords(chord_groups, coord, case.1);
+            }
+        }
     }
 }
 
@@ -2068,6 +2074,21 @@ fn fill_chords(
             } else {
                 None
             }
+        }
+        Action::Switch(Switch { cases }) => {
+            let mut new_cases = vec![];
+            for case in cases.iter() {
+                new_cases.push((
+                    case.0,
+                    fill_chords(chord_groups, &case.1, s)
+                        .map(|ac| s.a.sref(ac))
+                        .unwrap_or(case.1),
+                    case.2,
+                ));
+            }
+            Some(Action::Switch(s.a.sref(Switch {
+                cases: s.a.sref_vec(new_cases),
+            })))
         }
     }
 }
@@ -2696,6 +2717,108 @@ fn parse_macro_record_stop_truncate(
     ))))
 }
 
+fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_STR: &str =
+        "switch expects triples of params: <key match> <action> <break|fallthrough>";
+
+    let mut cases = vec![];
+
+    let mut params = ac_params.iter();
+    loop {
+        let Some(key_match) = params.next() else {
+            break;
+        };
+        let Some(action) = params.next() else {
+            bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triple");
+        };
+        let Some(break_or_fallthrough_expr) = params.next() else {
+            bail!("{ERR_STR}\nMissing <break|fallthrough> for the final triple");
+        };
+
+        let Some(key_match) = key_match.list(s.vars()) else {
+            bail_expr!(key_match, "{ERR_STR}\n<key match> must be a list")
+        };
+        let mut ops = vec![];
+        let mut current_index = 0;
+        for op in key_match.iter() {
+            current_index = parse_switch_case_bool(current_index, 1, op, &mut ops, s)?;
+        }
+
+        let action = parse_action(action, s)?;
+
+        let Some(break_or_fallthrough) = break_or_fallthrough_expr.atom(s.vars()) else {
+            bail_expr!(break_or_fallthrough_expr, "{ERR_STR}\nthis must be one of: break, fallthrough");
+        };
+        let break_or_fallthrough = match break_or_fallthrough {
+            "break" => BreakOrFallthrough::Break,
+            "fallthrough" => BreakOrFallthrough::Fallthrough,
+            _ => bail_expr!(
+                break_or_fallthrough_expr,
+                "{ERR_STR}\nthis must be one of: break, fallthrough"
+            ),
+        };
+        cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
+    }
+    Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
+        cases: s.a.sref_vec(cases),
+    }))))
+}
+
+fn parse_switch_case_bool(
+    mut current_index: u16,
+    depth: u8,
+    op_expr: &SExpr,
+    ops: &mut Vec<OpCode>,
+    s: &ParsedState,
+) -> Result<u16> {
+    if current_index > MAX_OPCODE_LEN {
+        bail_expr!(
+            op_expr,
+            "maximum key match size of {MAX_OPCODE_LEN} items is exceeded"
+        );
+    }
+    if usize::from(depth) > MAX_BOOL_EXPR_DEPTH {
+        bail_expr!(
+            op_expr,
+            "maximum key match expression depth {MAX_BOOL_EXPR_DEPTH} is exceeded"
+        );
+    }
+    if let Some(a) = op_expr.atom(s.vars()) {
+        let osc = str_to_oscode(a).ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
+        ops.push(OpCode::new_key(osc.into()));
+        Ok(current_index + 1)
+    } else {
+        let l = op_expr
+            .list(s.vars())
+            .expect("must be a list, checked atom");
+        if l.len() < 1 {
+            bail_expr!(op_expr, "key match cannot contain empty lists inside");
+        }
+        let op = l[0]
+            .atom(s.vars())
+            .and_then(|s| match s {
+                "or" => Some(BooleanOperator::Or),
+                "and" => Some(BooleanOperator::And),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                anyhow_expr!(
+                    op_expr,
+                    "lists inside key match must begin with one of: or, and"
+                )
+            })?;
+        // insert a placeholder for now, don't know the end index yet.
+        let placeholder_index = current_index;
+        ops.push(OpCode::new_bool(op, placeholder_index));
+        current_index += 1;
+        for op in l.iter().skip(1) {
+            current_index = parse_switch_case_bool(current_index, depth + 1, op, ops, s)?;
+        }
+        ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
+        Ok(current_index)
+    }
+}
+
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
 fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutputs {
     let mut outs = KeyOutputs::new();
@@ -2765,6 +2888,11 @@ fn add_key_output_from_action_to_key_pos(
         Action::Chords(ChordsGroup { chords, .. }) => {
             for (_, ac) in chords.iter() {
                 add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+            }
+        }
+        Action::Switch(Switch { cases }) => {
+            for case in cases.iter() {
+                add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
             }
         }
         Action::NoOp
