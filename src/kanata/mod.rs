@@ -85,6 +85,8 @@ pub struct Kanata {
     /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
     /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
+    /// Speed multiplier for all mouse emulation movements.
+    pub move_mouse_multiplier: u16,
     /// The number of ticks defined in the user configuration for sequence timeout.
     pub sequence_timeout: u16,
     /// The user configuration for backtracking to find valid sequences. See
@@ -362,6 +364,7 @@ impl Kanata {
             hscroll_state: None,
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
+            move_mouse_multiplier: 1,
             sequence_timeout,
             sequence_backtrack_modcancel,
             sequence_state: None,
@@ -921,7 +924,7 @@ impl Kanata {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: *interval,
+                                    interval: *interval / self.move_mouse_multiplier,
                                     move_mouse_accel_state: None,
                                 })
                             }
@@ -930,7 +933,7 @@ impl Kanata {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: *interval,
+                                    interval: *interval / self.move_mouse_multiplier,
                                     move_mouse_accel_state: None,
                                 })
                             }
@@ -952,7 +955,7 @@ impl Kanata {
                                         direction: *direction,
                                         distance: *min_distance,
                                         ticks_until_move: 0,
-                                        interval: *interval,
+                                        interval: *interval / self.move_mouse_multiplier,
                                         move_mouse_accel_state: Some(MoveMouseAccelState {
                                             accel_ticks_from_min: 0,
                                             accel_ticks_until_max: *accel_time,
@@ -967,7 +970,7 @@ impl Kanata {
                                         direction: *direction,
                                         distance: *min_distance,
                                         ticks_until_move: 0,
-                                        interval: *interval,
+                                        interval: *interval / self.move_mouse_multiplier,
                                         move_mouse_accel_state: Some(MoveMouseAccelState {
                                             accel_ticks_from_min: 0,
                                             accel_ticks_until_max: *accel_time,
@@ -977,6 +980,17 @@ impl Kanata {
                                         }),
                                     })
                                 }
+                            }
+                        }
+                        CustomAction::MoveMouseMultiplier { multiplier } => {
+                            log::debug!("move_mouse_multiplier = {}", multiplier);
+                            self.move_mouse_multiplier = *multiplier;
+                            // Make changes take effect instantly
+                            if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
+                                mmsh.interval = mmsh.interval / self.move_mouse_multiplier;
+                            }
+                            if let Some(mmsv) = &mut self.move_mouse_state_vertical {
+                                mmsv.interval = mmsv.interval / self.move_mouse_multiplier;
                             }
                         }
                         CustomAction::Cmd(_cmd) => {
@@ -1234,6 +1248,18 @@ impl Kanata {
                                     }
                                 }
                             }
+                            pbtn
+                        }
+                        CustomAction::MoveMouseMultiplier { .. } => {
+                            log::debug!("resetting move_mouse_multiplier");
+                            // Revert the intervals to their old values
+                            if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
+                                mmsh.interval = mmsh.interval * self.move_mouse_multiplier;
+                            }
+                            if let Some(mmsv) = &mut self.move_mouse_state_vertical {
+                                mmsv.interval = mmsv.interval * self.move_mouse_multiplier;
+                            }
+                            self.move_mouse_multiplier = 1;
                             pbtn
                         }
                         CustomAction::Delay(delay) => {

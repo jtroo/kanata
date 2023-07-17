@@ -39,6 +39,9 @@ pub enum CustomAction {
         min_distance: u16,
         max_distance: u16,
     },
+    MoveMouseMultiplier {
+        multiplier: u16,
+    },
     SequenceLeader,
     LiveReload,
     LiveReloadNext,

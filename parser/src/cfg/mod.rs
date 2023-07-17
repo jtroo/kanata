@@ -1191,6 +1191,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "movemouse-accel-down" => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
         "movemouse-accel-left" => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
         "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
+        "movemouse-multiplier" => parse_move_mouse_multiplier(&ac[1..], s),
         "setmouse" => parse_set_mouse(&ac[1..], s),
         "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
         "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
@@ -2291,6 +2292,21 @@ fn parse_move_mouse_accel(
             accel_time,
             min_distance,
             max_distance,
+        },
+    )))))
+}
+
+fn parse_move_mouse_multiplier(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    if ac_params.len() != 1 {
+        bail!("movemouse-multiplier expects one parameter, found {}\n<multiplier (0-65535)>", ac_params.len());
+    }
+    let multiplier = parse_u16(&ac_params[0], s, "multiplier")?;
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::MoveMouseMultiplier {
+            multiplier,
         },
     )))))
 }
