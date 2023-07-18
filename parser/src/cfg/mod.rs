@@ -2301,9 +2301,9 @@ fn parse_move_mouse_speed(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 1 {
-        bail!("movemouse-speed expects one parameter, found {}\n<speed (0-65535)%>", ac_params.len());
+        bail!("movemouse-speed expects one parameter, found {}\n<speed (1-65535)>", ac_params.len());
     }
-    let speed = parse_u16(&ac_params[0], s, "speed")?;
+    let speed = parse_non_zero_u16(&ac_params[0], s, "speed")?;
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::MoveMouseSpeed {
             speed
