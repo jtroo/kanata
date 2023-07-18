@@ -924,7 +924,7 @@ impl Kanata {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: *interval * self.move_mouse_speed / 100,
+                                    interval: 100 * *interval / self.move_mouse_speed,
                                     move_mouse_accel_state: None,
                                 })
                             }
@@ -933,7 +933,7 @@ impl Kanata {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: *interval * self.move_mouse_speed / 100,
+                                    interval: 100 * *interval / self.move_mouse_speed,
                                     move_mouse_accel_state: None,
                                 })
                             }
