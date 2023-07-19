@@ -1014,14 +1014,34 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
-                        CustomAction::SequenceLeader => {
+                        CustomAction::SequenceCancel => {
+                            if !self.sequence_state.is_none() 
+                            {
+                                log::debug!("restarting sequence");
+                                let state = self.sequence_state.as_ref().unwrap();
+                                match self.sequence_input_mode {
+                                    SequenceInputMode::HiddenDelayType => {
+                                        for code in state.sequence.iter().copied() {
+                                            if let Some(osc) = OsCode::from_u16(code) {
+                                                self.kbd_out.press_key(osc)?;
+                                                self.kbd_out.release_key(osc)?;
+                                            }
+                                        }
+                                    }
+                                    SequenceInputMode::HiddenSuppressed
+                                    | SequenceInputMode::VisibleBackspaced => {}
+                                }
+                                self.sequence_state = None;
+                            }
+                        }
+                        CustomAction::SequenceLeader(timeout) => {
                             if self.sequence_state.is_none()
                                 || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
-                                    ticks_until_timeout: self.sequence_timeout,
+                                    ticks_until_timeout: *timeout,
                                 });
                             }
                         }

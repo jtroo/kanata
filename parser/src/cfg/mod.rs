@@ -1041,9 +1041,9 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
                 s.a.sref(s.a.sref_slice(CustomAction::LiveReloadPrev)),
             )))
         }
-        "sldr" => {
+        "scnl" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader)),
+                s.a.sref(s.a.sref_slice(CustomAction::SequenceCancel)),
             )))
         }
         "mlft" | "mouseleft" => {
@@ -1202,6 +1202,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
         "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
         "switch" => parse_switch(&ac[1..], s),
+        "sldr" => parse_sldr(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -2715,6 +2716,15 @@ fn parse_macro_record_stop_truncate(
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::DynamicMacroRecordStop(num_to_truncate)),
     ))))
+}
+
+fn parse_sldr(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "sldr expects exactly one number as an argument";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}: found {} items", ac_params.len());
+    }
+    let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader(timeout))))))
 }
 
 fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
