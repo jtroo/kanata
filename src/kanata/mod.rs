@@ -560,8 +560,10 @@ impl Kanata {
                     mmsv.distance = mmas.max_distance;
                 }
                 for &modifier in &self.move_mouse_speed_modifiers {
-                    mmsv.distance =
-                        (mmsv.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16;
+                    mmsv.distance = u16::max(
+                        (mmsv.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
+                        1,
+                    );
                 }
                 log::debug!("handle_move_mouse: scaled vdistance: {}", mmsv.distance);
             }
@@ -584,8 +586,10 @@ impl Kanata {
                     mmsh.distance = mmas.max_distance;
                 }
                 for &modifier in &self.move_mouse_speed_modifiers {
-                    mmsh.distance =
-                        (mmsh.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16;
+                    mmsh.distance = u16::max(
+                        (mmsh.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
+                        1,
+                    );
                 }
                 log::debug!("handle_move_mouse: scaled hdistance: {}", mmsh.distance);
             }
