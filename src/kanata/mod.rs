@@ -85,8 +85,8 @@ pub struct Kanata {
     /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
     /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
-    /// Speed in percentage for mouse emulation movements.
-    pub move_mouse_speed: u16,
+    /// A list of mouse speed modifiers in percentages by which mouse travel distance is scaled.
+    pub move_mouse_speed_modifiers: Vec<u16>,
     /// The number of ticks defined in the user configuration for sequence timeout.
     pub sequence_timeout: u16,
     /// The user configuration for backtracking to find valid sequences. See
@@ -364,7 +364,7 @@ impl Kanata {
             hscroll_state: None,
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
-            move_mouse_speed: 100,
+            move_mouse_speed_modifiers: Vec::new(),
             sequence_timeout,
             sequence_backtrack_modcancel,
             sequence_state: None,
@@ -559,6 +559,11 @@ impl Kanata {
                 } else {
                     mmsv.distance = mmas.max_distance;
                 }
+                for &modifier in &self.move_mouse_speed_modifiers {
+                    mmsv.distance =
+                        (mmsv.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16;
+                }
+                log::debug!("handle_move_mouse: scaled vdistance: {}", mmsv.distance);
             }
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
@@ -578,6 +583,11 @@ impl Kanata {
                 } else {
                     mmsh.distance = mmas.max_distance;
                 }
+                for &modifier in &self.move_mouse_speed_modifiers {
+                    mmsh.distance =
+                        (mmsh.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16;
+                }
+                log::debug!("handle_move_mouse: scaled hdistance: {}", mmsh.distance);
             }
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
@@ -920,26 +930,20 @@ impl Kanata {
                             distance,
                         } => match direction {
                             MoveDirection::Up | MoveDirection::Down => {
-                                let big_scaled_interval: u64 =
-                                    100 * *interval as u64 / self.move_mouse_speed as u64;
-                                let scaled_interval = big_scaled_interval.min(u16::MAX as _) as u16;
                                 self.move_mouse_state_vertical = Some(MoveMouseState {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: scaled_interval,
+                                    interval: *interval,
                                     move_mouse_accel_state: None,
                                 })
                             }
                             MoveDirection::Left | MoveDirection::Right => {
-                                let big_scaled_interval: u64 =
-                                    100 * *interval as u64 / self.move_mouse_speed as u64;
-                                let scaled_interval = big_scaled_interval.min(u16::MAX as _) as u16;
                                 self.move_mouse_state_horizontal = Some(MoveMouseState {
                                     direction: *direction,
                                     distance: *distance,
                                     ticks_until_move: 0,
-                                    interval: scaled_interval,
+                                    interval: *interval,
                                     move_mouse_accel_state: None,
                                 })
                             }
@@ -955,16 +959,13 @@ impl Kanata {
                             let f_min_distance: f64 = *min_distance as f64;
                             let f_accel_time: f64 = *accel_time as f64;
                             let increment = (f_max_distance - f_min_distance) / f_accel_time;
-                            let big_scaled_interval: u64 =
-                                100 * *interval as u64 / self.move_mouse_speed as u64;
-                            let scaled_interval = big_scaled_interval.min(u16::MAX as _) as u16;
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
                                     self.move_mouse_state_vertical = Some(MoveMouseState {
                                         direction: *direction,
                                         distance: *min_distance,
                                         ticks_until_move: 0,
-                                        interval: scaled_interval,
+                                        interval: *interval,
                                         move_mouse_accel_state: Some(MoveMouseAccelState {
                                             accel_ticks_from_min: 0,
                                             accel_ticks_until_max: *accel_time,
@@ -979,7 +980,7 @@ impl Kanata {
                                         direction: *direction,
                                         distance: *min_distance,
                                         ticks_until_move: 0,
-                                        interval: scaled_interval,
+                                        interval: *interval,
                                         move_mouse_accel_state: Some(MoveMouseAccelState {
                                             accel_ticks_from_min: 0,
                                             accel_ticks_until_max: *accel_time,
@@ -992,21 +993,11 @@ impl Kanata {
                             }
                         }
                         CustomAction::MoveMouseSpeed { speed } => {
-                            log::debug!("move_mouse_speed = {}", speed);
-                            self.move_mouse_speed = *speed;
-                            // Make changes take effect instantly
-                            if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
-                                let big_scaled_interval: u64 =
-                                    100 * mmsh.interval as u64 / self.move_mouse_speed as u64;
-
-                                mmsh.interval = big_scaled_interval.min(u16::MAX as _) as u16;
-                            }
-                            if let Some(mmsv) = &mut self.move_mouse_state_vertical {
-                                let big_scaled_interval: u64 =
-                                    100 * mmsv.interval as u64 / self.move_mouse_speed as u64;
-
-                                mmsv.interval = big_scaled_interval.min(u16::MAX as _) as u16;
-                            }
+                            self.move_mouse_speed_modifiers.push(*speed);
+                            log::debug!(
+                                "movemousespeed modifiers: {:?}",
+                                self.move_mouse_speed_modifiers
+                            );
                         }
                         CustomAction::Cmd(_cmd) => {
                             #[cfg(feature = "cmd")]
@@ -1265,25 +1256,18 @@ impl Kanata {
                             }
                             pbtn
                         }
-                        CustomAction::MoveMouseSpeed {
-                            speed, /* todo: use this somehow */
-                            ..
-                        } => {
-                            log::debug!("resetting move_mouse_speed");
-                            // Revert the intervals to their old values
-                            if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
-                                mmsh.interval = (mmsh.interval as f32
-                                    * self.move_mouse_speed as f32
-                                    / 100 as f32)
-                                    .ceil() as u16;
+                        CustomAction::MoveMouseSpeed { speed, .. } => {
+                            if let Some(idx) = self
+                                .move_mouse_speed_modifiers
+                                .iter()
+                                .position(|s| *s == *speed)
+                            {
+                                self.move_mouse_speed_modifiers.swap_remove(idx);
                             }
-                            if let Some(mmsv) = &mut self.move_mouse_state_vertical {
-                                mmsv.interval = (mmsv.interval as f32
-                                    * self.move_mouse_speed as f32
-                                    / 100 as f32)
-                                    .ceil() as u16;
-                            }
-                            self.move_mouse_speed = 100;
+                            log::debug!(
+                                "movemousespeed modifiers: {:?}",
+                                self.move_mouse_speed_modifiers
+                            );
                             pbtn
                         }
                         CustomAction::Delay(delay) => {
