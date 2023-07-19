@@ -1811,6 +1811,9 @@ but are saved until one of the following happens:
 * A key is typed that does not match any sequence
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
 
+`+sldr+` uses `+sequence-timeout+` for it's timeout, but the action `(sequence <timeout>)` can enter sequence mode 
+with a timeout `+<timeout>+` in milliseconds.
+
 Sequences are configured similarly to `+deffakekeys+`. The first parameter of a
 pair must be a defined fake key name. The second parameter is a list of keys
 that will activate a fake key tap when typed in the defined order. More
@@ -1824,6 +1827,17 @@ precisely, the action triggered is:
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
+
+(defseq 
+	dotcom (. S-3)
+	dotorg (. S-4)
+)
+(deffakekeys 
+	dotcom (macro . c o m)
+	dotorg (macro . c o m)
+)
+;; Enter sequence mode and input .
+(defalias dot-sequence (macro (sequence 250) 10 .))
 ----
 
 For more context, you can read the
