@@ -1015,7 +1015,7 @@ impl Kanata {
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
                         CustomAction::SequenceCancel => {
-                            if !self.sequence_state.is_none() 
+                            if self.sequence_state.is_some() 
                             {
                                 log::debug!("restarting sequence");
                                 let state = self.sequence_state.as_ref().unwrap();
