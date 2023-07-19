@@ -1162,15 +1162,14 @@ Experimentation will be needed.
 <<table-of-contents,Back to ToC>>
 
 The action `movemouse-speed` modifies the speed at which `movemouse` and
-`movemouse-accel` function. It does this by multiplying the interval for the
-corresponding function at runtime.
+`movemouse-accel` function at runtime. It does this by expanding or shrinking
+`min_distance` and `max_distance` while the action key is pressed.
 
 This action accepts one number (unit: percentage, no '%') by which the
 mouse movements will be accelerated.
 
-WARNING: Make sure the interval of your movemouse actions can be split into
-enough equal parts to process the percentage - if your interval is 5, 200% would
-be a valid percentage, but trying to get 50% of 5 would give you 2, not 2.5.
+WARNING: Due to the nature of pixels being whole numbers, some values such as
+33 may not result in an exact third of the distance.
 
 .Example:
 [source]
