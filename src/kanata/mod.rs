@@ -1014,10 +1014,21 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
+                        CustomAction::SequenceLeader => {
+                            if self.sequence_state.is_none()
+                                || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
+                            {
+                                log::debug!("entering sequence mode");
+                                self.sequence_state = Some(SequenceState {
+                                    sequence: vec![],
+                                    ticks_until_timeout: self.sequence_timeout,
+                                });
+                            }
+                        }
                         CustomAction::SequenceCancel => {
                             if self.sequence_state.is_some() 
                             {
-                                log::debug!("restarting sequence");
+                                log::debug!("exiting sequence");
                                 let state = self.sequence_state.as_ref().unwrap();
                                 match self.sequence_input_mode {
                                     SequenceInputMode::HiddenDelayType => {
@@ -1034,7 +1045,7 @@ impl Kanata {
                                 self.sequence_state = None;
                             }
                         }
-                        CustomAction::SequenceLeader(timeout) => {
+                        CustomAction::SequenceStart(timeout) => {
                             if self.sequence_state.is_none()
                                 || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
                             {
