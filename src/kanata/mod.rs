@@ -562,13 +562,8 @@ impl Kanata {
             }
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
-                let mut scaled_distance = mmsv.distance;
-                for &modifier in &self.move_mouse_speed_modifiers {
-                    scaled_distance = u16::max(
-                        (scaled_distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
-                        1,
-                    );
-                }
+                let scaled_distance =
+                    apply_mouse_distance_modifiers(mmsv.distance, &self.move_mouse_speed_modifiers);
                 log::debug!("handle_move_mouse: scaled vdistance: {}", scaled_distance);
                 self.kbd_out.move_mouse(mmsv.direction, scaled_distance)?;
             } else {
@@ -589,13 +584,8 @@ impl Kanata {
             }
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
-                let mut scaled_distance = mmsh.distance;
-                for &modifier in &self.move_mouse_speed_modifiers {
-                    scaled_distance = u16::max(
-                        (scaled_distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
-                        1,
-                    );
-                }
+                let scaled_distance =
+                    apply_mouse_distance_modifiers(mmsh.distance, &self.move_mouse_speed_modifiers);
                 log::debug!("handle_move_mouse: scaled hdistance: {}", scaled_distance);
                 self.kbd_out.move_mouse(mmsh.direction, scaled_distance)?;
             } else {
@@ -1268,7 +1258,7 @@ impl Kanata {
                                 .iter()
                                 .position(|s| *s == *speed)
                             {
-                                self.move_mouse_speed_modifiers.swap_remove(idx);
+                                self.move_mouse_speed_modifiers.remove(idx);
                             }
                             log::debug!(
                                 "movemousespeed modifiers: {:?}",
@@ -1624,6 +1614,50 @@ fn run_multi_cmd(cmds: Vec<Vec<String>>) {
             }
         }
     });
+}
+
+fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {
+    let mut scaled_distance = initial_distance;
+    for &modifier in mods {
+        scaled_distance = u16::max(
+            1,
+            f32::min(
+                scaled_distance as f32 * (modifier as f32 / 100 as f32),
+                u16::MAX as f32,
+            )
+            .round() as u16,
+        );
+    }
+    scaled_distance
+}
+
+#[test]
+fn apply_speed_modifiers() {
+    assert_eq!(apply_mouse_distance_modifiers(15, &vec![]), 15);
+
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![200u16]), 20);
+    assert_eq!(apply_mouse_distance_modifiers(20, &vec![50u16]), 10);
+
+    assert_eq!(apply_mouse_distance_modifiers(5, &vec![33u16]), 2); // 1.65
+    assert_eq!(apply_mouse_distance_modifiers(100, &vec![99u16]), 99);
+
+    // Clamping
+    assert_eq!(
+        apply_mouse_distance_modifiers(65535, &vec![65535u16]),
+        65535
+    );
+    assert_eq!(apply_mouse_distance_modifiers(1, &vec![1u16]), 1);
+
+    // Nice, round calculations equal themselves
+    assert_eq!(
+        apply_mouse_distance_modifiers(10, &vec![50u16, 200u16]),
+        apply_mouse_distance_modifiers(10, &vec![200u16, 50u16])
+    );
+
+    // 33% of 20
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![200u16, 33u16]), 7);
+    // 200% of 3
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![33u16, 200u16]), 6);
 }
 
 /// Checks if kanata should exit based on the fixed key combination of:
