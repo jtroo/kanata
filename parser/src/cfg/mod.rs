@@ -2724,12 +2724,23 @@ fn parse_macro_record_stop_truncate(
 }
 
 fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "sldr expects exactly one number as an argument";
-    if ac_params.len() != 1 {
+    const ERR_MSG: &str = "sldr expects one or two arguments. First one is a number, second is sequence input mode";
+    if ac_params.len() < 1 || ac_params.len() > 2 {
         bail!("{ERR_MSG}: found {} items", ac_params.len());
     }
     let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::SequenceStart(timeout))))))
+    let input_mode = if ac_params.len() > 1 {
+        ac_params[1]
+            .atom(s.vars())
+            .map(|config_str| SequenceInputMode::try_from_str(config_str))
+            .unwrap()
+            .ok()
+    } else {
+        None
+    };
+    Ok(s.a.sref(
+        Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::SequenceStart(timeout, input_mode))))
+    ))
 }
 
 fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
