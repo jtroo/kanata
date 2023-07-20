@@ -559,17 +559,18 @@ impl Kanata {
                 } else {
                     mmsv.distance = mmas.max_distance;
                 }
-                for &modifier in &self.move_mouse_speed_modifiers {
-                    mmsv.distance = u16::max(
-                        (mmsv.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
-                        1,
-                    );
-                }
-                log::debug!("handle_move_mouse: scaled vdistance: {}", mmsv.distance);
             }
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
-                self.kbd_out.move_mouse(mmsv.direction, mmsv.distance)?;
+                let mut scaled_distance = mmsv.distance;
+                for &modifier in &self.move_mouse_speed_modifiers {
+                    scaled_distance = u16::max(
+                        (scaled_distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
+                        1,
+                    );
+                }
+                log::debug!("handle_move_mouse: scaled vdistance: {}", scaled_distance);
+                self.kbd_out.move_mouse(mmsv.direction, scaled_distance)?;
             } else {
                 mmsv.ticks_until_move -= 1;
             }
@@ -585,17 +586,18 @@ impl Kanata {
                 } else {
                     mmsh.distance = mmas.max_distance;
                 }
-                for &modifier in &self.move_mouse_speed_modifiers {
-                    mmsh.distance = u16::max(
-                        (mmsh.distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
-                        1,
-                    );
-                }
-                log::debug!("handle_move_mouse: scaled hdistance: {}", mmsh.distance);
             }
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
-                self.kbd_out.move_mouse(mmsh.direction, mmsh.distance)?;
+                let mut scaled_distance = mmsh.distance;
+                for &modifier in &self.move_mouse_speed_modifiers {
+                    scaled_distance = u16::max(
+                        (scaled_distance as f32 * (modifier as f32 / 100 as f32)).round() as u16,
+                        1,
+                    );
+                }
+                log::debug!("handle_move_mouse: scaled hdistance: {}", scaled_distance);
+                self.kbd_out.move_mouse(mmsh.direction, scaled_distance)?;
             } else {
                 mmsh.ticks_until_move -= 1;
             }
