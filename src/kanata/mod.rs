@@ -85,8 +85,6 @@ pub struct Kanata {
     /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
     /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
-    /// The number of ticks defined in the user configuration for sequence timeout.
-    pub sequence_timeout: u16,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -94,8 +92,6 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     /// Valid sequences defined in the user configuration.
     pub sequences: cfg::KeySeqsToFKeys,
-    /// Stores the user configuration for the sequence input mode.
-    pub sequence_input_mode: SequenceInputMode,
     /// Stores the user recored dynamic macros.
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
     /// Tracks the progress of an active dynamic macro. Is Some(...) when a dynamic macro is being
@@ -169,40 +165,9 @@ pub struct MoveMouseAccelState {
 
 pub struct SequenceState {
     pub sequence: Vec<u16>,
+    pub sequence_input_mode: SequenceInputMode,
     pub ticks_until_timeout: u16,
-}
-
-/// This controls the behaviour of kanata when sequence mode is initiated by the sequence leader
-/// action.
-///
-/// - `HiddenSuppressed` hides the keys typed as part of the sequence and does not output the keys
-///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
-/// - `HiddenDelayType` hides the keys typed as part of the sequence and outputs the keys when an
-///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
-/// - `VisibleBackspaced` will type the keys that are typed as part of the sequence but will
-///   backspace the typed sequence keys before performing the fake key tap when a valid sequence is
-///   the result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SequenceInputMode {
-    HiddenSuppressed,
-    HiddenDelayType,
-    VisibleBackspaced,
-}
-
-const SEQ_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
-const SEQ_VISIBLE_BACKSPACED: &str = "visible-backspaced";
-const SEQ_HIDDEN_SUPPRESSED: &str = "hidden-suppressed";
-const SEQ_HIDDEN_DELAY_TYPE: &str = "hidden-delay-type";
-
-impl SequenceInputMode {
-    fn try_from_str(s: &str) -> Result<Self> {
-        match s {
-            SEQ_VISIBLE_BACKSPACED => Ok(SequenceInputMode::VisibleBackspaced),
-            SEQ_HIDDEN_SUPPRESSED => Ok(SequenceInputMode::HiddenSuppressed),
-            SEQ_HIDDEN_DELAY_TYPE => Ok(SequenceInputMode::HiddenDelayType),
-            _ => Err(anyhow!("{SEQ_INPUT_MODE_CFG_NAME} mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"))
-        }
-    }
+    pub sequence_timeout: u16,
 }
 
 pub struct DynamicMacroReplayState {
@@ -234,9 +199,6 @@ impl DynamicMacroRecordState {
 }
 
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
-
-const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
-const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
 
 use once_cell::sync::Lazy;
 
@@ -322,24 +284,11 @@ impl Kanata {
         update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
-        let sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
         let sequence_backtrack_modcancel = cfg
             .items
             .get("sequence-backtrack-modcancel")
             .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
-        let sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -362,11 +311,9 @@ impl Kanata {
             hscroll_state: None,
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
-            sequence_timeout,
             sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            sequence_input_mode,
             last_tick: time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
@@ -411,19 +358,6 @@ impl Kanata {
         };
         update_kbd_out(&cfg.items, &self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
-        self.sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
-        self.sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -591,17 +525,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                match self.sequence_input_mode {
-                    SequenceInputMode::HiddenDelayType => {
-                        for code in state.sequence.iter().copied() {
-                            if let Some(osc) = OsCode::from_u16(code) {
-                                self.kbd_out.press_key(osc)?;
-                                self.kbd_out.release_key(osc)?;
-                            }
-                        }
-                    }
-                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
-                }
+                cancel_sequence(state, &mut self.kbd_out)?;
                 self.sequence_state = None;
             }
         }
@@ -696,7 +620,7 @@ impl Kanata {
                     }
                 }
                 Some(state) => {
-                    state.ticks_until_timeout = self.sequence_timeout;
+                    state.ticks_until_timeout = state.sequence_timeout;
 
                     // Transform to OsCode and convert modifiers other than altgr/ralt (same key
                     // different names) to the left version, since that's how chords get
@@ -719,7 +643,7 @@ impl Kanata {
                     };
 
                     state.sequence.push(pushed_into_seq);
-                    match self.sequence_input_mode {
+                    match state.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
                             self.kbd_out.press_key(osc)?;
                         }
@@ -755,7 +679,7 @@ impl Kanata {
                         };
                         if is_invalid_termination {
                             log::debug!("got invalid sequence; exiting sequence mode");
-                            match self.sequence_input_mode {
+                            match state.sequence_input_mode {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
                                         if let Some(osc) = OsCode::from_u16(code) {
@@ -775,7 +699,7 @@ impl Kanata {
                     // Check for and handle valid termination.
                     if let HasValue((i, j)) = res {
                         log::debug!("sequence complete; tapping fake key");
-                        match self.sequence_input_mode {
+                        match state.sequence_input_mode {
                             SequenceInputMode::HiddenSuppressed
                             | SequenceInputMode::HiddenDelayType => {}
                             SequenceInputMode::VisibleBackspaced => {
@@ -1014,14 +938,25 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
-                        CustomAction::SequenceLeader => {
+                        CustomAction::SequenceCancel => {
+                            if self.sequence_state.is_some() {
+                                log::debug!("exiting sequence");
+                                let state = self.sequence_state.as_ref().unwrap();
+                                cancel_sequence(state, &mut self.kbd_out)?;
+                                self.sequence_state = None;
+                            }
+                        }
+                        CustomAction::SequenceLeader(timeout, input_mode) => {
                             if self.sequence_state.is_none()
-                                || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
+                                || self.sequence_state.as_ref().unwrap().sequence_input_mode
+                                    == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
-                                    ticks_until_timeout: self.sequence_timeout,
+                                    sequence_input_mode: *input_mode,
+                                    ticks_until_timeout: *timeout,
+                                    sequence_timeout: *timeout,
                                 });
                             }
                         }
@@ -1639,6 +1574,21 @@ fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<(
                 })
                 .unwrap_or(Ok(_kbd_out.unicode_u_code.get()))?,
         );
+    }
+    Ok(())
+}
+
+fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+    match state.sequence_input_mode {
+        SequenceInputMode::HiddenDelayType => {
+            for code in state.sequence.iter().copied() {
+                if let Some(osc) = OsCode::from_u16(code) {
+                    kbd_out.press_key(osc)?;
+                    kbd_out.release_key(osc)?;
+                }
+            }
+        }
+        SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
 }

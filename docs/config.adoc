@@ -1824,6 +1824,15 @@ precisely, the action triggered is:
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
+
+(defseq
+    dotcom (. S-3)
+    dotorg (. S-4)
+)
+(deffakekeys
+    dotcom (macro . c o m)
+    dotorg (macro . c o m)
+)
 ----
 
 For more context, you can read the
@@ -1832,6 +1841,31 @@ You may also be interested in
 https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[
 the document describing chords is sequences]
 to read about how chords in sequences behave.
+
+==== Override the global timeout and input mode
+
+An alternative to using `sldr` is the `sequence` action.
+The syntax is `(sequence <timeout>)`.
+This enters sequence mode with a sequence timeout
+different from the globally configured one.
+
+The `sequence` action can also be called with a second parameter.
+The second parameter is an override for `sequence-input-mode`:
+
+----
+(sequence <timeout> <input-mode>)
+----
+
+
+.Example:
+[source]
+----
+;; Enter sequence mode and input . with a timeout of 250
+(defalias dot-sequence (macro (sequence 250) 10 .))
+
+;; Enter sequence mode and input . with a timeout of 250 and using hidden-delay-type
+(defalias dot-sequence (macro (sequence 250 hidden-delay-type) 10 .))
+----
 
 [[input-chords]]
 === Input chords

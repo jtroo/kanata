@@ -793,6 +793,11 @@ If you need help, you are welcome to ask.
 ;; You can add an entry to defcfg to change the sequence timeout (default is 1000):
 ;;     sequence-timeout <number(ms)>
 ;;
+;; If you want multiple timeouts with different leaders, you can also activate the
+;; sequence action:
+;;     (sequence <timeout>)
+;; This acts like `sldr` but uses a different timeout.
+;;
 ;; There is also an option to customize the key sequence input mode. Its default
 ;; value when not configured is `hidden-suppressed`.
 ;;
@@ -816,6 +821,18 @@ If you need help, you are welcome to ask.
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
+
+(defseq
+    dotcom (. S-3)
+    dotorg (. S-4)
+)
+(deffakekeys
+    dotcom (macro . c o m)
+    dotorg (macro . o r g)
+)
+;; Enter sequence mode and input .
+(defalias dot-sequence (macro (sequence 250) 10 .))
+(defalias dot-sequence-inputmode (macro (sequence 250 hidden-delay-type) 10 .))
 
 ;; Input chording.
 ;;
