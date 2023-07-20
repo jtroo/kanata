@@ -1165,7 +1165,7 @@ The action `movemouse-speed` modifies the speed at which `movemouse` and
 `movemouse-accel` function at runtime. It does this by expanding or shrinking
 `min_distance` and `max_distance` while the action key is pressed.
 
-This action accepts one number (unit: percentage, no '%') by which the
+This action accepts one number (unit: percentage) by which the
 mouse movements will be accelerated.
 
 WARNING: Due to the nature of pixels being whole numbers, some values such as
