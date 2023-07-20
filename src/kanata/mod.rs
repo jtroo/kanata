@@ -169,6 +169,7 @@ pub struct MoveMouseAccelState {
 
 pub struct SequenceState {
     pub sequence: Vec<u16>,
+    pub sequence_input_mode: SequenceInputMode,
     pub ticks_until_timeout: u16,
 }
 
@@ -409,7 +410,7 @@ impl Kanata {
                 bail!("failed to parse config file");
             }
         };
-        update_kbd_out(&cfg.items, &self.kbd_out)?;
+        update_kbd_out(&cfg.items, &mut self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
         self.sequence_timeout = cfg
             .items
@@ -591,17 +592,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                match self.sequence_input_mode {
-                    SequenceInputMode::HiddenDelayType => {
-                        for code in state.sequence.iter().copied() {
-                            if let Some(osc) = OsCode::from_u16(code) {
-                                self.kbd_out.press_key(osc)?;
-                                self.kbd_out.release_key(osc)?;
-                            }
-                        }
-                    }
-                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
-                }
+                cancel_sequence(&state, &mut self.kbd_out)?;
                 self.sequence_state = None;
             }
         }
@@ -1021,6 +1012,7 @@ impl Kanata {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
+                                    sequence_input_mode: self.sequence_input_mode,
                                     ticks_until_timeout: self.sequence_timeout,
                                 });
                             }
@@ -1030,18 +1022,7 @@ impl Kanata {
                             {
                                 log::debug!("exiting sequence");
                                 let state = self.sequence_state.as_ref().unwrap();
-                                match self.sequence_input_mode {
-                                    SequenceInputMode::HiddenDelayType => {
-                                        for code in state.sequence.iter().copied() {
-                                            if let Some(osc) = OsCode::from_u16(code) {
-                                                self.kbd_out.press_key(osc)?;
-                                                self.kbd_out.release_key(osc)?;
-                                            }
-                                        }
-                                    }
-                                    SequenceInputMode::HiddenSuppressed
-                                    | SequenceInputMode::VisibleBackspaced => {}
-                                }
+                                cancel_sequence(&state, &mut self.kbd_out)?;
                                 self.sequence_state = None;
                             }
                         }
@@ -1052,6 +1033,7 @@ impl Kanata {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
+                                    sequence_input_mode: self.sequence_input_mode,
                                     ticks_until_timeout: *timeout,
                                 });
                             }
@@ -1670,6 +1652,22 @@ fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<(
                 })
                 .unwrap_or(Ok(_kbd_out.unicode_u_code.get()))?,
         );
+    }
+    Ok(())
+}
+
+fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+    match state.sequence_input_mode {
+        SequenceInputMode::HiddenDelayType => {
+            for code in state.sequence.iter().copied() {
+                if let Some(osc) = OsCode::from_u16(code) {
+                    kbd_out.press_key(osc)?;
+                    kbd_out.release_key(osc)?;
+                }
+            }
+        }
+        SequenceInputMode::HiddenSuppressed
+        | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
 }
