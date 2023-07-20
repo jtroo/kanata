@@ -85,8 +85,6 @@ pub struct Kanata {
     /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
     /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
-    /// The number of ticks defined in the user configuration for sequence timeout.
-    pub sequence_timeout: u16,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -94,8 +92,6 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     /// Valid sequences defined in the user configuration.
     pub sequences: cfg::KeySeqsToFKeys,
-    /// Stores the user configuration for the sequence input mode.
-    pub sequence_input_mode: SequenceInputMode,
     /// Stores the user recored dynamic macros.
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
     /// Tracks the progress of an active dynamic macro. Is Some(...) when a dynamic macro is being
@@ -171,8 +167,8 @@ pub struct SequenceState {
     pub sequence: Vec<u16>,
     pub sequence_input_mode: SequenceInputMode,
     pub ticks_until_timeout: u16,
+    pub sequence_timeout: u16,
 }
-
 
 pub struct DynamicMacroReplayState {
     pub active_macros: HashSet<u16>,
@@ -203,11 +199,6 @@ impl DynamicMacroRecordState {
 }
 
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
-
-const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
-const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
-
-const SEQ_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
 
 use once_cell::sync::Lazy;
 
@@ -293,24 +284,11 @@ impl Kanata {
         update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
-        let sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
         let sequence_backtrack_modcancel = cfg
             .items
             .get("sequence-backtrack-modcancel")
             .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
-        let sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -333,11 +311,9 @@ impl Kanata {
             hscroll_state: None,
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
-            sequence_timeout,
             sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            sequence_input_mode,
             last_tick: time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
@@ -380,21 +356,8 @@ impl Kanata {
                 bail!("failed to parse config file");
             }
         };
-        update_kbd_out(&cfg.items, &mut self.kbd_out)?;
+        update_kbd_out(&cfg.items, &self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
-        self.sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
-        self.sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -562,7 +525,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                cancel_sequence(&state, &mut self.kbd_out)?;
+                cancel_sequence(state, &mut self.kbd_out)?;
                 self.sequence_state = None;
             }
         }
@@ -657,7 +620,7 @@ impl Kanata {
                     }
                 }
                 Some(state) => {
-                    state.ticks_until_timeout = self.sequence_timeout;
+                    state.ticks_until_timeout = state.sequence_timeout;
 
                     // Transform to OsCode and convert modifiers other than altgr/ralt (same key
                     // different names) to the left version, since that's how chords get
@@ -975,36 +938,25 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
-                        CustomAction::SequenceLeader => {
-                            if self.sequence_state.is_none()
-                                || self.sequence_state.as_ref().unwrap().sequence_input_mode == SequenceInputMode::HiddenSuppressed
-                            {
-                                log::debug!("entering sequence mode");
-                                self.sequence_state = Some(SequenceState {
-                                    sequence: vec![],
-                                    sequence_input_mode: self.sequence_input_mode,
-                                    ticks_until_timeout: self.sequence_timeout,
-                                });
-                            }
-                        }
                         CustomAction::SequenceCancel => {
-                            if self.sequence_state.is_some() 
-                            {
+                            if self.sequence_state.is_some() {
                                 log::debug!("exiting sequence");
                                 let state = self.sequence_state.as_ref().unwrap();
-                                cancel_sequence(&state, &mut self.kbd_out)?;
+                                cancel_sequence(state, &mut self.kbd_out)?;
                                 self.sequence_state = None;
                             }
                         }
-                        CustomAction::SequenceStart(timeout, input_mode) => {
+                        CustomAction::SequenceLeader(timeout, input_mode) => {
                             if self.sequence_state.is_none()
-                                || self.sequence_state.as_ref().unwrap().sequence_input_mode == SequenceInputMode::HiddenSuppressed
+                                || self.sequence_state.as_ref().unwrap().sequence_input_mode
+                                    == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
-                                    sequence_input_mode: input_mode.unwrap_or(self.sequence_input_mode),
+                                    sequence_input_mode: *input_mode,
                                     ticks_until_timeout: *timeout,
+                                    sequence_timeout: *timeout,
                                 });
                             }
                         }
@@ -1636,8 +1588,7 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
                 }
             }
         }
-        SequenceInputMode::HiddenSuppressed
-        | SequenceInputMode::VisibleBackspaced => {}
+        SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
 }

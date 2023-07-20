@@ -485,6 +485,17 @@ fn parse_cfg_raw_string(
                 false
             }
         }),
+        default_sequence_timeout: cfg
+            .get(SEQUENCE_TIMEOUT_CFG_NAME)
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
+            })
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?,
+        default_sequence_input_mode: cfg
+            .get(SEQUENCE_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?,
         ..Default::default()
     };
 
@@ -852,6 +863,8 @@ struct ParsedState {
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
+    default_sequence_timeout: u16,
+    default_sequence_input_mode: SequenceInputMode,
     vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
@@ -861,6 +874,12 @@ impl ParsedState {
         Some(&self.vars)
     }
 }
+
+const SEQUENCE_TIMEOUT_CFG_NAME: &str = "sequence-timeout";
+const SEQUENCE_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
+const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
+const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
+const SEQUENCE_INPUT_MODE_DEFAULT: SequenceInputMode = SequenceInputMode::HiddenSuppressed;
 
 impl Default for ParsedState {
     fn default() -> Self {
@@ -875,6 +894,8 @@ impl Default for ParsedState {
             is_cmd_enabled: false,
             delegate_to_first_layer: false,
             vars: Default::default(),
+            default_sequence_timeout: SEQUENCE_TIMEOUT_DEFAULT,
+            default_sequence_input_mode: SEQUENCE_INPUT_MODE_DEFAULT,
             a: unsafe { Allocations::new() },
         }
     }
@@ -1042,9 +1063,12 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
             )))
         }
         "sldr" => {
-            return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader)),
-            )))
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::SequenceLeader(
+                    s.default_sequence_timeout,
+                    s.default_sequence_input_mode,
+                ),
+            )))))
         }
         "scnl" => {
             return Ok(s.a.sref(Action::Custom(
@@ -2724,23 +2748,27 @@ fn parse_macro_record_stop_truncate(
 }
 
 fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "sldr expects one or two arguments. First one is a number, second is sequence input mode";
-    if ac_params.len() < 1 || ac_params.len() > 2 {
-        bail!("{ERR_MSG}: found {} items", ac_params.len());
+    const ERR_MSG: &str =
+        "sequence expects one or two params: <timeout-override> <?input-mode-override>";
+    if !matches!(ac_params.len(), 1 | 2) {
+        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
     }
-    let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
+    let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout-override")?;
     let input_mode = if ac_params.len() > 1 {
-        ac_params[1]
+        if let Some(Ok(input_mode)) = ac_params[1]
             .atom(s.vars())
             .map(|config_str| SequenceInputMode::try_from_str(config_str))
-            .unwrap()
-            .ok()
+        {
+            input_mode
+        } else {
+            bail_expr!(&ac_params[1], "{ERR_MSG}\n{}", SequenceInputMode::err_msg());
+        }
     } else {
-        None
+        s.default_sequence_input_mode
     };
-    Ok(s.a.sref(
-        Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::SequenceStart(timeout, input_mode))))
-    ))
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
+    ))))
 }
 
 fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
