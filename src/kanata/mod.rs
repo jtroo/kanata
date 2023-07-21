@@ -239,7 +239,7 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!("Failed to open the output uinput device. Make sure you've added kanata to the `uinput` group");
+                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
                 bail!(err)
             }
         };
