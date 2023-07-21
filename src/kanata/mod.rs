@@ -1557,7 +1557,7 @@ fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16
         scaled_distance = u16::max(
             1,
             f32::min(
-                scaled_distance as f32 * (modifier as f32 / 100 as f32),
+                scaled_distance as f32 * (modifier as f32 / 100f32),
                 u16::MAX as f32,
             )
             .round() as u16,
