@@ -1158,7 +1158,7 @@ to get the positions that you want.
 Experimentation will be needed.
 
 [[mouse-speed]]
-==== Set the speed of mouse movements
+==== Modify the speed of mouse movements
 <<table-of-contents,Back to ToC>>
 
 The action `movemouse-speed` modifies the speed at which `movemouse` and
