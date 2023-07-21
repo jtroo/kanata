@@ -485,6 +485,17 @@ fn parse_cfg_raw_string(
                 false
             }
         }),
+        default_sequence_timeout: cfg
+            .get(SEQUENCE_TIMEOUT_CFG_NAME)
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
+            })
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?,
+        default_sequence_input_mode: cfg
+            .get(SEQUENCE_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?,
         ..Default::default()
     };
 
@@ -852,6 +863,8 @@ struct ParsedState {
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
+    default_sequence_timeout: u16,
+    default_sequence_input_mode: SequenceInputMode,
     vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
@@ -861,6 +874,12 @@ impl ParsedState {
         Some(&self.vars)
     }
 }
+
+const SEQUENCE_TIMEOUT_CFG_NAME: &str = "sequence-timeout";
+const SEQUENCE_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
+const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
+const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
+const SEQUENCE_INPUT_MODE_DEFAULT: SequenceInputMode = SequenceInputMode::HiddenSuppressed;
 
 impl Default for ParsedState {
     fn default() -> Self {
@@ -875,6 +894,8 @@ impl Default for ParsedState {
             is_cmd_enabled: false,
             delegate_to_first_layer: false,
             vars: Default::default(),
+            default_sequence_timeout: SEQUENCE_TIMEOUT_DEFAULT,
+            default_sequence_input_mode: SEQUENCE_INPUT_MODE_DEFAULT,
             a: unsafe { Allocations::new() },
         }
     }
@@ -1042,8 +1063,16 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
             )))
         }
         "sldr" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::SequenceLeader(
+                    s.default_sequence_timeout,
+                    s.default_sequence_input_mode,
+                ),
+            )))))
+        }
+        "scnl" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader)),
+                s.a.sref(s.a.sref_slice(CustomAction::SequenceCancel)),
             )))
         }
         "mlft" | "mouseleft" => {
@@ -1203,6 +1232,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
         "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
         "switch" => parse_switch(&ac[1..], s),
+        "sequence" => parse_sequence_start(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -2730,6 +2760,30 @@ fn parse_macro_record_stop_truncate(
     let num_to_truncate = parse_u16(&ac_params[0], s, "num-keys-to-truncate")?;
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::DynamicMacroRecordStop(num_to_truncate)),
+    ))))
+}
+
+fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "sequence expects one or two params: <timeout-override> <?input-mode-override>";
+    if !matches!(ac_params.len(), 1 | 2) {
+        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
+    }
+    let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout-override")?;
+    let input_mode = if ac_params.len() > 1 {
+        if let Some(Ok(input_mode)) = ac_params[1]
+            .atom(s.vars())
+            .map(|config_str| SequenceInputMode::try_from_str(config_str))
+        {
+            input_mode
+        } else {
+            bail_expr!(&ac_params[1], "{ERR_MSG}\n{}", SequenceInputMode::err_msg());
+        }
+    } else {
+        s.default_sequence_input_mode
+    };
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
     ))))
 }
 

@@ -3,6 +3,7 @@
 //! When adding a new custom action, the macro section of the config.adoc documentation may need to
 //! be updated, to include the new action to the documented list of supported actions in macro.
 
+use anyhow::{anyhow, Result};
 use kanata_keyberon::key_code::KeyCode;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -42,7 +43,8 @@ pub enum CustomAction {
     MoveMouseSpeed {
         speed: u16,
     },
-    SequenceLeader,
+    SequenceCancel,
+    SequenceLeader(u16, SequenceInputMode),
     LiveReload,
     LiveReloadNext,
     LiveReloadPrev,
@@ -102,4 +104,40 @@ pub struct CapsWordCfg {
     pub keys_to_capitalize: &'static [KeyCode],
     pub keys_nonterminal: &'static [KeyCode],
     pub timeout: u16,
+}
+
+/// This controls the behaviour of kanata when sequence mode is initiated by the sequence leader
+/// action.
+///
+/// - `HiddenSuppressed` hides the keys typed as part of the sequence and does not output the keys
+///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
+/// - `HiddenDelayType` hides the keys typed as part of the sequence and outputs the keys when an
+///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
+/// - `VisibleBackspaced` will type the keys that are typed as part of the sequence but will
+///   backspace the typed sequence keys before performing the fake key tap when a valid sequence is
+///   the result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SequenceInputMode {
+    HiddenSuppressed,
+    HiddenDelayType,
+    VisibleBackspaced,
+}
+
+const SEQ_VISIBLE_BACKSPACED: &str = "visible-backspaced";
+const SEQ_HIDDEN_SUPPRESSED: &str = "hidden-suppressed";
+const SEQ_HIDDEN_DELAY_TYPE: &str = "hidden-delay-type";
+
+impl SequenceInputMode {
+    pub fn try_from_str(s: &str) -> Result<Self> {
+        match s {
+            SEQ_VISIBLE_BACKSPACED => Ok(SequenceInputMode::VisibleBackspaced),
+            SEQ_HIDDEN_SUPPRESSED => Ok(SequenceInputMode::HiddenSuppressed),
+            SEQ_HIDDEN_DELAY_TYPE => Ok(SequenceInputMode::HiddenDelayType),
+            _ => Err(anyhow!(SequenceInputMode::err_msg())),
+        }
+    }
+
+    pub fn err_msg() -> String {
+        format!("sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}")
+    }
 }
