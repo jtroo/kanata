@@ -40,6 +40,9 @@ pub enum CustomAction {
         min_distance: u16,
         max_distance: u16,
     },
+    MoveMouseSpeed {
+        speed: u16,
+    },
     SequenceCancel,
     SequenceLeader(u16, SequenceInputMode),
     LiveReload,

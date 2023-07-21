@@ -1157,6 +1157,29 @@ This can make it a little confusing for how to set the `x, y` values
 to get the positions that you want.
 Experimentation will be needed.
 
+[[mouse-speed]]
+==== Modify the speed of mouse movements
+<<table-of-contents,Back to ToC>>
+
+The action `movemouse-speed` modifies the speed at which `movemouse` and
+`movemouse-accel` function at runtime. It does this by expanding or shrinking
+`min_distance` and `max_distance` while the action key is pressed.
+
+This action accepts one number (unit: percentage) by which the
+mouse movements will be accelerated.
+
+WARNING: Due to the nature of pixels being whole numbers, some values such as
+33 may not result in an exact third of the distance.
+
+.Example:
+[source]
+----
+(defalias
+  fst (movemouse-speed 200)
+  slw (movemouse-speed 50)
+)
+----
+
 [[mouse-all-actions-example]]
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
@@ -1180,13 +1203,15 @@ Experimentation will be needed.
   ma→ (movemouse-accel-right 1 1000 1 5)
 
   sm (setmouse 32228 32228)
+
+  fst (movemouse-speed 200)
 )
 
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
   _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
   _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _
-  _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
+  @fst _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
 ----

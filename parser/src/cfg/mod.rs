@@ -1220,6 +1220,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "movemouse-accel-down" => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
         "movemouse-accel-left" => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
         "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
+        "movemouse-speed" => parse_move_mouse_speed(&ac[1..], s),
         "setmouse" => parse_set_mouse(&ac[1..], s),
         "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
         "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
@@ -2323,6 +2324,19 @@ fn parse_move_mouse_accel(
             max_distance,
         },
     )))))
+}
+
+fn parse_move_mouse_speed(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    if ac_params.len() != 1 {
+        bail!(
+            "movemouse-speed expects one parameter, found {}\n<speed scaling % (1-65535)>",
+            ac_params.len()
+        );
+    }
+    let speed = parse_non_zero_u16(&ac_params[0], s, "speed scaling %")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::MoveMouseSpeed { speed })),
+    )))
 }
 
 fn parse_set_mouse(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
