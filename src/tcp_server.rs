@@ -1,22 +1,67 @@
-use crate::Kanata;
+suse crate::{Kanata, oskbd};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
+use kanata_parser::keys::OsCode;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum KeyAction {
+    Press,
+    Release,
+    Repeat
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum KeyEventKind {
+    Input,
+    Output
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct KeyEvent {
+    key: String,
+    action: KeyAction,
+    kind: KeyEventKind
+}
+
+impl KeyEvent {
+    pub fn from_input(event: &oskbd::KeyEvent) -> Self {
+        Self {
+            key: format!("{:?}", event.code),
+            action: match event.value {
+                oskbd::KeyValue::Press => KeyAction::Press,
+                oskbd::KeyValue::Release => KeyAction::Release,
+                oskbd::KeyValue::Repeat => KeyAction::Repeat
+            },
+            kind: KeyEventKind::Input
+        }
+    }
+
+    pub fn from_output(code: &OsCode, action: KeyAction) -> Self {
+        Self {
+            key: format!("{:?}", code),
+            action,
+            kind: KeyEventKind::Output
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
-    LayerChange { new: String },
+    LayerChange { new: String, text: String },
+    KeyEvent(KeyEvent)
 }
 
 #[test]
 fn layer_change_serializes() {
     serde_json::to_string(&ServerMessage::LayerChange {
         new: "hello".into(),
+        text: "world".into(),
     })
     .expect("ServerMessage serializes");
 }
@@ -71,9 +116,11 @@ impl TcpServer {
                             log::info!(
                                 "new client connection, sending initial LayerChange event to inform them of current layer"
                             );
+                            let layer_info = &k.layer_info[k.layout.b().current_layer()];
                             if let Err(e) = stream.write(
                                 &ServerMessage::LayerChange {
-                                    new: k.layer_info[k.layout.b().current_layer()].name.clone(),
+                                    new: layer_info.name.clone(),
+                                    text: layer_info.cfg_text.clone(),
                                 }
                                 .as_bytes(),
                             ) {

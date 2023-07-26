@@ -18,7 +18,7 @@ use std::time;
 
 use crate::oskbd::{KeyEvent, *};
 use crate::tcp_server::ServerMessage;
-use crate::ValidatedArgs;
+use crate::{tcp_server, ValidatedArgs};
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
@@ -140,6 +140,7 @@ pub struct Kanata {
     /// Config items from `defcfg`.
     #[cfg(target_os = "linux")]
     pub defcfg_items: HashMap<String, String>,
+    pub ntx: Option<Sender<ServerMessage>>,
 }
 
 pub struct ScrollState {
@@ -343,6 +344,7 @@ impl Kanata {
             caps_word: None,
             #[cfg(target_os = "linux")]
             defcfg_items: cfg.items,
+            ntx: None,
         })
     }
 
@@ -386,6 +388,14 @@ impl Kanata {
     /// Update keyberon layout state for press/release, handle repeat separately
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
+        if let Some(tx) = &self.ntx {
+            let result = tx.send(ServerMessage::KeyEvent(
+                tcp_server::KeyEvent::from_input(event),
+            ));
+            if let Err(e) = result {
+                log::error!("Failed to send key event to server: {e}");
+            }
+        }
         let evc: u16 = event.code.into();
         let kbrn_ev = match event.value {
             KeyValue::Press => {
@@ -412,7 +422,7 @@ impl Kanata {
     }
 
     /// Advance keyberon layout state and send events based on changes to its state.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    fn handle_time_ticks(&mut self) -> Result<()> {
         const NS_IN_MS: u128 = 1_000_000;
         let now = time::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
@@ -453,7 +463,7 @@ impl Kanata {
 
             // Handle layer change outside the loop. I don't see any practical scenario where it
             // would make a difference, so may as well reduce the amount of processing.
-            self.check_handle_layer_change(tx);
+            self.check_handle_layer_change();
         }
 
         Ok(())
@@ -534,7 +544,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                cancel_sequence(state, &mut self.kbd_out)?;
+                cancel_sequence(state, &mut self.kbd_out, &self.ntx)?;
                 self.sequence_state = None;
             }
         }
@@ -599,7 +609,7 @@ impl Kanata {
                 continue;
             }
             log::debug!("key release   {:?}", k);
-            if let Err(e) = self.kbd_out.release_key(k.into()) {
+            if let Err(e) = release_key(k.into(), &mut self.kbd_out, &self.ntx) {
                 bail!("failed to release key: {:?}", e);
             }
         }
@@ -624,7 +634,7 @@ impl Kanata {
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);
-                    if let Err(e) = self.kbd_out.press_key(k.into()) {
+                    if let Err(e) = press_key(k.into(), &mut self.kbd_out, &self.ntx) {
                         bail!("failed to press key: {:?}", e);
                     }
                 }
@@ -654,7 +664,7 @@ impl Kanata {
                     state.sequence.push(pushed_into_seq);
                     match state.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
-                            self.kbd_out.press_key(osc)?;
+                            press_key(osc, &mut self.kbd_out, &self.ntx)?;
                         }
                         SequenceInputMode::HiddenSuppressed
                         | SequenceInputMode::HiddenDelayType => {}
@@ -692,8 +702,8 @@ impl Kanata {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
                                         if let Some(osc) = OsCode::from_u16(code) {
-                                            self.kbd_out.press_key(osc)?;
-                                            self.kbd_out.release_key(osc)?;
+                                            press_key(osc, &mut self.kbd_out, &self.ntx)?;
+                                            release_key(osc, &mut self.kbd_out, &self.ntx)?;
                                         }
                                     }
                                 }
@@ -741,8 +751,8 @@ impl Kanata {
                                         continue;
                                     }
 
-                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
-                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                    press_key(OsCode::KEY_BACKSPACE, &mut self.kbd_out, &self.ntx)?;
+                                    release_key(OsCode::KEY_BACKSPACE, &mut self.kbd_out, &self.ntx)?;
                                 }
                             }
                         }
@@ -770,7 +780,7 @@ impl Kanata {
         match custom_event {
             CustomEvent::Press(custacts) => {
                 #[cfg(feature = "cmd")]
-                let mut cmds = vec![];
+                    let mut cmds = vec![];
                 let mut prev_mouse_btn = None;
                 for custact in custacts.iter() {
                     match custact {
@@ -928,8 +938,8 @@ impl Kanata {
                             {
                                 for (key_action, osc) in keys_for_cmd_output(_cmd) {
                                     match key_action {
-                                        KeyAction::Press => self.kbd_out.press_key(osc)?,
-                                        KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                        KeyAction::Press => press_key(osc, &mut self.kbd_out, &self.ntx)?,
+                                        KeyAction::Release => release_key(osc, &mut self.kbd_out, &self.ntx)?,
                                     }
                                 }
                             }
@@ -958,14 +968,14 @@ impl Kanata {
                             if self.sequence_state.is_some() {
                                 log::debug!("exiting sequence");
                                 let state = self.sequence_state.as_ref().unwrap();
-                                cancel_sequence(state, &mut self.kbd_out)?;
+                                cancel_sequence(state, &mut self.kbd_out, &self.ntx)?;
                                 self.sequence_state = None;
                             }
                         }
                         CustomAction::SequenceLeader(timeout, input_mode) => {
                             if self.sequence_state.is_none()
                                 || self.sequence_state.as_ref().unwrap().sequence_input_mode
-                                    == SequenceInputMode::HiddenSuppressed
+                                == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
@@ -987,16 +997,16 @@ impl Kanata {
                                     cw.maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
                                         do_caps_word = true;
-                                        self.kbd_out.press_key(OsCode::KEY_LEFTSHIFT)?;
+                                        press_key(OsCode::KEY_LEFTSHIFT, &mut self.kbd_out, &self.ntx)?;
                                     }
                                 }
                             }
                             // Release key in case the most recently pressed key is still pressed.
-                            self.kbd_out.release_key(key)?;
-                            self.kbd_out.press_key(key)?;
-                            self.kbd_out.release_key(key)?;
+                            release_key(key, &mut self.kbd_out, &self.ntx)?;
+                            press_key(key, &mut self.kbd_out, &self.ntx)?;
+                            release_key(key, &mut self.kbd_out, &self.ntx)?;
                             if do_caps_word {
-                                self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                                release_key(OsCode::KEY_LEFTSHIFT, &mut self.kbd_out, &self.ntx)?;
                             }
                         }
                         CustomAction::DynamicMacroRecord(macro_id) => {
@@ -1328,15 +1338,15 @@ impl Kanata {
 
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
-    fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
+    fn check_handle_layer_change(&mut self) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
 
-            if let Some(tx) = tx {
-                match tx.send(ServerMessage::LayerChange { new }) {
+            if let Some(tx) = self.ntx.as_ref() {
+                match tx.send(ServerMessage::LayerChange { new, text: self.layer_info[cur_layer].cfg_text.clone() }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);
@@ -1364,7 +1374,8 @@ impl Kanata {
                         panic!("channel disconnected")
                     }
                     Ok(event) => {
-                        let notification = event.as_bytes();
+                        let mut notification = event.as_bytes();
+                        notification.push(b'\n');
                         let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
@@ -1393,7 +1404,6 @@ impl Kanata {
     pub fn start_processing_loop(
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
-        tx: Option<Sender<ServerMessage>>,
         nodelay: bool,
     ) {
         info!("entering the processing loop");
@@ -1405,7 +1415,9 @@ impl Kanata {
                         if kev.value == KeyValue::Release {
                             let mut k = kanata.lock();
                             info!("Init: releasing {:?}", kev.code);
-                            k.kbd_out.release_key(kev.code).expect("key released");
+                            let x = k.ntx.clone();
+                            let out = &mut k.kbd_out;
+                            release_key(kev.code, out, &x).expect("key released");
                         }
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
@@ -1424,7 +1436,7 @@ impl Kanata {
                                 .expect("subtract 1ms from current time");
 
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                                let start = std::time::Instant::now();
 
                             if let Err(e) = k.handle_key_event(&kev) {
                                 break e;
@@ -1436,9 +1448,9 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                                let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
+                            if let Err(e) = k.handle_time_ticks() {
                                 break e;
                             }
 
@@ -1458,7 +1470,7 @@ impl Kanata {
                     match rx.try_recv() {
                         Ok(kev) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                                let start = std::time::Instant::now();
 
                             if let Err(e) = k.handle_key_event(&kev) {
                                 break e;
@@ -1470,9 +1482,9 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                                let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
+                            if let Err(e) = k.handle_time_ticks() {
                                 break e;
                             }
 
@@ -1484,9 +1496,9 @@ impl Kanata {
                         }
                         Err(TryRecvError::Empty) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                                let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
+                            if let Err(e) = k.handle_time_ticks() {
                                 break e;
                             }
 
@@ -1526,12 +1538,35 @@ impl Kanata {
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
             && !self
-                .layout
-                .b()
-                .states
-                .iter()
-                .any(|s| matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_)))
+            .layout
+            .b()
+            .states
+            .iter()
+            .any(|s| matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_)))
     }
+}
+
+fn press_key(key: OsCode, out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -> Result<()> {
+    out.press_key(key)?;
+    if let Some(tx) = x {
+        let err = tx.send(ServerMessage::KeyEvent(tcp_server::KeyEvent::from_output(&key, tcp_server::KeyAction::Press)));
+        if let Err(e) = err {
+            log::error!("could not send event notification: {}", e);
+        }
+    }
+    Ok(())
+}
+
+fn release_key(key: OsCode, out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -> Result<()> {
+    out.release_key(key)?;
+    if let Some(tx) = &x {
+        let err = tx.send(ServerMessage::KeyEvent(tcp_server::KeyEvent::from_output(&key, tcp_server::KeyAction::Release)));
+        if let Err(e) = err {
+            log::error!("could not send event notification: {}", e);
+        }
+    }
+
+    Ok(())
 }
 
 fn set_altgr_behaviour(_cfg: &cfg::Cfg) -> Result<()> {
@@ -1631,7 +1666,7 @@ fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<(
     #[cfg(target_os = "linux")]
     {
         _kbd_out.update_unicode_termination(
-                _cfg.get("linux-unicode-termination").map(|s| {
+            _cfg.get("linux-unicode-termination").map(|s| {
                 match s.as_str() {
                     "enter" => Ok(UnicodeTermination::Enter),
                     "space" => Ok(UnicodeTermination::Space),
@@ -1652,13 +1687,13 @@ fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<(
     Ok(())
 }
 
-fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -> Result<()> {
     match state.sequence_input_mode {
         SequenceInputMode::HiddenDelayType => {
             for code in state.sequence.iter().copied() {
                 if let Some(osc) = OsCode::from_u16(code) {
-                    kbd_out.press_key(osc)?;
-                    kbd_out.release_key(osc)?;
+                    press_key(osc, kbd_out, &x)?;
+                    release_key(osc, kbd_out, &x)?;
                 }
             }
         }

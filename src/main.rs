@@ -179,7 +179,10 @@ fn main_impl() -> Result<()> {
     };
 
     let (tx, rx) = std::sync::mpsc::channel();
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
+
+    kanata_arc.lock().ntx = ntx;
+
+    Kanata::start_processing_loop(kanata_arc.clone(), rx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         Kanata::start_notification_loop(nrx, server.connections);
