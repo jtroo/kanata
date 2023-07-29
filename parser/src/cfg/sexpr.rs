@@ -160,15 +160,28 @@ impl std::fmt::Debug for SExpr {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Complementary to SExpr metadata items.
+pub enum SExprMetaData {
+    LineComment(Spanned<String>),
+    BlockComment(Spanned<String>),
+    Whitespace(Spanned<String>),
+}
+
 #[derive(Debug)]
 enum Token {
     Open,
     Close,
     StringTok,
+    BlockComment,
+    LineComment,
+    Whitespace,
 }
+
 pub struct Lexer<'a> {
     s: &'a str,
     bytes: Bytes<'a>,
+    ignore_whitespace_and_comments: bool,
 }
 
 fn is_start(b: u8) -> bool {
@@ -181,10 +194,15 @@ impl<'a> Lexer<'a> {
     #[allow(clippy::new_ret_no_self)]
     /// `file_name` is used only for indicating a file, where
     /// a fragment of `source` that caused parsing error came from.
-    fn new(source: &'a str, file_name: &'a str) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
+    fn new(
+        source: &'a str,
+        file_name: &'a str,
+        ignore_whitespace_and_comments: bool,
+    ) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
         let mut lexer = Lexer {
             s: source,
             bytes: source.bytes(),
+            ignore_whitespace_and_comments: ignore_whitespace_and_comments,
         };
         let file_name: Rc<str> = Rc::from(file_name);
         let file_content: Rc<str> = Rc::from(source);
@@ -257,7 +275,10 @@ impl<'a> Lexer<'a> {
                                 self.next_while(|b| b != b'\n');
                                 // possibly consume the newline (or EOF handled in next iteration)
                                 let _ = self.bytes.next();
-                                continue;
+                                if self.ignore_whitespace_and_comments {
+                                    continue;
+                                }
+                                Token::LineComment
                             }
                             _ => self.next_string(),
                         },
@@ -268,13 +289,19 @@ impl<'a> Lexer<'a> {
                                 if let Some(e) = self.read_until_multiline_comment_end() {
                                     return Some((start, e));
                                 }
-                                continue;
+                                if self.ignore_whitespace_and_comments {
+                                    continue;
+                                }
+                                Token::BlockComment
                             }
                             _ => self.next_string(),
                         },
                         b if b.is_ascii_whitespace() => {
-                            self.next_while(|b| b.is_ascii_whitespace());
-                            continue;
+                            let tok = self.next_whitespace();
+                            if self.ignore_whitespace_and_comments {
+                                continue;
+                            }
+                            tok
                         }
                         _ => self.next_string(),
                     }),
@@ -289,25 +316,40 @@ impl<'a> Lexer<'a> {
         self.next_while(|b| !is_start(b));
         Token::StringTok
     }
+
+    fn next_whitespace(&mut self) -> Token {
+        self.next_while(|b| b.is_ascii_whitespace());
+        Token::Whitespace
+    }
 }
 
 pub type TopLevel = Spanned<Vec<SExpr>>;
 
 pub fn parse(cfg: &str, file_name: &str) -> Result<Vec<TopLevel>, CfgError> {
-    parse_(cfg, file_name).map_err(transform_error)
+    let ignore_whitespace_and_comments = true;
+    parse_(cfg, file_name, ignore_whitespace_and_comments)
+        .map_err(transform_error)
+        .map(|(x, _)| x)
 }
 
-pub fn parse_(cfg: &str, file_name: &str) -> ParseResult<Vec<TopLevel>> {
-    parse_with(cfg, Lexer::new(cfg, file_name))
+pub fn parse_(
+    cfg: &str,
+    file_name: &str,
+    ignore_whitespace_and_comments: bool,
+) -> ParseResult<(Vec<TopLevel>, Vec<SExprMetaData>)> {
+    parse_with(
+        cfg,
+        Lexer::new(cfg, file_name, ignore_whitespace_and_comments),
+    )
 }
 
 fn parse_with(
     s: &str,
     mut tokens: impl Iterator<Item = Spanned<TokenRes>>,
-) -> ParseResult<Vec<TopLevel>> {
-    use SExpr::*;
+) -> ParseResult<(Vec<TopLevel>, Vec<SExprMetaData>)> {
     use Token::*;
     let mut stack = vec![Spanned::new(vec![], Span::default())];
+    let mut metadata: Vec<SExprMetaData> = vec![];
     loop {
         match tokens.next() {
             None => break,
@@ -326,17 +368,31 @@ fn parse_with(
                             span,
                         ));
                     }
-                    let expr = List(Spanned::new(exprs, stack_span.cover(span.clone())));
+                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(span.clone())));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
-                StringTok => stack
-                    .last_mut()
-                    .expect("not empty")
-                    .t
-                    .push(Atom(Spanned::new(
-                        s[span.clone()].to_string(),
-                        span.clone(),
-                    ))),
+                StringTok => {
+                    stack
+                        .last_mut()
+                        .expect("not empty")
+                        .t
+                        .push(SExpr::Atom(Spanned::new(
+                            s[span.clone()].to_string(),
+                            span.clone(),
+                        )))
+                }
+                BlockComment => metadata.push(SExprMetaData::BlockComment(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span.clone(),
+                ))),
+                LineComment => metadata.push(SExprMetaData::LineComment(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span.clone(),
+                ))),
+                Whitespace => metadata.push(SExprMetaData::Whitespace(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span.clone(),
+                ))),
             },
         }
     }
@@ -356,7 +412,7 @@ fn parse_with(
             )),
         })
         .collect::<ParseResult<_>>()?;
-    Ok(exprs)
+    Ok((exprs, metadata))
 }
 
 use miette::{Diagnostic, SourceSpan};
