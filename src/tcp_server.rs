@@ -89,7 +89,7 @@ impl ServerMessage {
 impl FromStr for ClientMessage {
     type Err = serde_json::Error;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
 }
