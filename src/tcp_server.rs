@@ -1,4 +1,4 @@
-suse crate::{Kanata, oskbd};
+use crate::{Kanata, oskbd};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
@@ -13,57 +13,63 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 pub enum KeyAction {
     Press,
     Release,
-    Repeat
+    Repeat,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum KeyEventKind {
     Input,
-    Output
+    Output,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct KeyEvent {
-    key: String,
-    action: KeyAction,
-    kind: KeyEventKind
+pub struct LayerInfo {
+    pub name: String,
+    pub cfg_text: String,
 }
 
-impl KeyEvent {
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ServerMessage {
+    Startup {
+        layers: Vec<LayerInfo>,
+    },
+    LayerChange { new: String },
+    KeyEvent {
+        key: String,
+        action: KeyAction,
+        kind: KeyEventKind,
+    },
+}
+
+impl ServerMessage {
     pub fn from_input(event: &oskbd::KeyEvent) -> Self {
-        Self {
+        Self::KeyEvent {
             key: format!("{:?}", event.code),
             action: match event.value {
                 oskbd::KeyValue::Press => KeyAction::Press,
                 oskbd::KeyValue::Release => KeyAction::Release,
                 oskbd::KeyValue::Repeat => KeyAction::Repeat
             },
-            kind: KeyEventKind::Input
+            kind: KeyEventKind::Input,
         }
     }
 
     pub fn from_output(code: &OsCode, action: KeyAction) -> Self {
-        Self {
+        Self::KeyEvent {
             key: format!("{:?}", code),
             action,
-            kind: KeyEventKind::Output
+            kind: KeyEventKind::Output,
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ServerMessage {
-    LayerChange { new: String, text: String },
-    KeyEvent(KeyEvent)
 }
 
 #[test]
 fn layer_change_serializes() {
     serde_json::to_string(&ServerMessage::LayerChange {
         new: "hello".into(),
-        text: "world".into(),
     })
-    .expect("ServerMessage serializes");
+        .expect("ServerMessage serializes");
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -114,15 +120,17 @@ impl TcpServer {
                         {
                             let k = kanata.lock();
                             log::info!(
-                                "new client connection, sending initial LayerChange event to inform them of current layer"
+                                "new client connection, sending initial information"
                             );
-                            let layer_info = &k.layer_info[k.layout.b().current_layer()];
+                            let mut buf = ServerMessage::Startup {
+                                layers: k.layer_info.iter().map(|l| LayerInfo {
+                                    name: l.name.clone(),
+                                    cfg_text: l.cfg_text.clone(),
+                                }).collect()
+                            }.as_bytes();
+                            buf.push(b'\n');
                             if let Err(e) = stream.write(
-                                &ServerMessage::LayerChange {
-                                    new: layer_info.name.clone(),
-                                    text: layer_info.cfg_text.clone(),
-                                }
-                                .as_bytes(),
+                                &buf,
                             ) {
                                 log::warn!("failed to write to stream, dropping it: {e:?}");
                                 continue;

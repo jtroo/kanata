@@ -389,9 +389,7 @@ impl Kanata {
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         if let Some(tx) = &self.ntx {
-            let result = tx.send(ServerMessage::KeyEvent(
-                tcp_server::KeyEvent::from_input(event),
-            ));
+            let result = tx.send(ServerMessage::from_input(event));
             if let Err(e) = result {
                 log::error!("Failed to send key event to server: {e}");
             }
@@ -1346,7 +1344,7 @@ impl Kanata {
             self.print_layer(cur_layer);
 
             if let Some(tx) = self.ntx.as_ref() {
-                match tx.send(ServerMessage::LayerChange { new, text: self.layer_info[cur_layer].cfg_text.clone() }) {
+                match tx.send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);
@@ -1549,7 +1547,7 @@ impl Kanata {
 fn press_key(key: OsCode, out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -> Result<()> {
     out.press_key(key)?;
     if let Some(tx) = x {
-        let err = tx.send(ServerMessage::KeyEvent(tcp_server::KeyEvent::from_output(&key, tcp_server::KeyAction::Press)));
+        let err = tx.send(ServerMessage::from_output(&key, tcp_server::KeyAction::Press));
         if let Err(e) = err {
             log::error!("could not send event notification: {}", e);
         }
@@ -1560,7 +1558,7 @@ fn press_key(key: OsCode, out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -
 fn release_key(key: OsCode, out: &mut KbdOut, x: &Option<Sender<ServerMessage>>) -> Result<()> {
     out.release_key(key)?;
     if let Some(tx) = &x {
-        let err = tx.send(ServerMessage::KeyEvent(tcp_server::KeyEvent::from_output(&key, tcp_server::KeyAction::Release)));
+        let err = tx.send(ServerMessage::from_output(&key, tcp_server::KeyAction::Release));
         if let Err(e) = err {
             log::error!("could not send event notification: {}", e);
         }
