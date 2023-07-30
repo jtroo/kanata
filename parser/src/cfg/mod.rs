@@ -53,7 +53,7 @@ use crate::keys::*;
 use crate::layers::*;
 
 mod error;
-use error::*;
+pub use error::*;
 
 use crate::trie::Trie;
 use anyhow::anyhow;

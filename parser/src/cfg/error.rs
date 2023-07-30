@@ -54,12 +54,12 @@ pub(super) fn span_start_len(start: usize, len: usize) -> SourceSpan {
 
 pub(super) fn expr_err_span(expr: &sexpr::SExpr) -> SourceSpan {
     let span = expr.span();
-    SourceSpan::new(span.start.into(), (span.end - span.start).into())
+    SourceSpan::new(span.start().into(), (span.end() - span.start()).into())
 }
 
 pub(super) fn spanned_err_span<T>(spanned: &Spanned<T>) -> SourceSpan {
     let span = spanned.span.clone();
-    SourceSpan::new(span.start.into(), (span.end - span.start).into())
+    SourceSpan::new(span.start().into(), (span.end() - span.start()).into())
 }
 
 pub(super) fn error_with_source(e: CfgError) -> miette::Error {

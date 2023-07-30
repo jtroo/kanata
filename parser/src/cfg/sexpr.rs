@@ -1,7 +1,7 @@
+use std::iter;
 use std::ops::Index;
 use std::rc::Rc;
 use std::str::Bytes;
-use std::{cmp, iter};
 
 type ParseError = Spanned<String>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -10,10 +10,32 @@ type ParseResult<T> = Result<T, ParseError>;
 
 use super::error::{span_start_len, CfgError};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Position {
+    /// The position since the beginning of the file, in bytes.
+    pub absolute: usize,
+    /// The number of newline characters since the beginning of the file.
+    pub line: usize,
+    /// The position since the beginning of line, in bytes, 0-indexed.
+    pub column: usize, // TODO: figure out alternative (because of grapheme clusters vs bytes vs codepoints can produce different column pos)
+}
+
+impl Position {
+    fn new(absolute: usize, line: usize, column: usize) -> Self {
+        assert!(line <= absolute);
+        assert!(column <= absolute);
+        Self {
+            absolute,
+            line,
+            column,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
-    pub start: usize,
-    pub end: usize,
+    pub start: Position,
+    pub end: Position,
     pub file_name: Rc<str>,
     pub file_content: Rc<str>,
 }
@@ -21,8 +43,8 @@ pub struct Span {
 impl Default for Span {
     fn default() -> Self {
         Self {
-            start: 0,
-            end: 0,
+            start: Position::default(),
+            end: Position::default(),
             file_name: Rc::from(""),
             file_content: Rc::from(""),
         }
@@ -30,8 +52,9 @@ impl Default for Span {
 }
 
 impl Span {
-    fn new(start: usize, end: usize, file_name: Rc<str>, file_content: Rc<str>) -> Span {
-        assert!(start <= end);
+    fn new(start: Position, end: Position, file_name: Rc<str>, file_content: Rc<str>) -> Span {
+        assert!(start.absolute <= end.absolute);
+        assert!(start.line <= end.line);
         Span {
             start,
             end,
@@ -40,24 +63,37 @@ impl Span {
         }
     }
 
+    pub fn cover(&self, other: &Span) -> Span {
+        assert!(self.file_name == other.file_name);
+
+        let start: Position;
+        if self.start() <= other.start() {
+            start = self.start.clone();
+        } else {
+            start = other.start.clone();
+        }
+
+        let end: Position;
+        if self.end() >= other.end() {
+            end = self.end.clone();
+        } else {
+            end = other.end.clone();
+        }
+
+        Span::new(
+            start,
+            end,
+            self.file_name.clone(),
+            self.file_content.clone(),
+        )
+    }
+
     pub fn start(&self) -> usize {
-        self.start
+        self.start.absolute
     }
 
     pub fn end(&self) -> usize {
-        self.end
-    }
-
-    /// # Panics
-    ///
-    /// Panics if `other` has a different `file_name`
-    pub fn cover(self, other: Span) -> Span {
-        let start = cmp::min(self.start(), other.start());
-        let end = cmp::max(self.end(), other.end());
-        if self.file_name != other.file_name {
-            panic!("Can't create span across different files.");
-        }
-        Span::new(start, end, self.file_name, self.file_content)
+        self.end.absolute
     }
 
     pub fn file_name(&self) -> String {
@@ -182,6 +218,8 @@ pub struct Lexer<'a> {
     s: &'a str,
     bytes: Bytes<'a>,
     ignore_whitespace_and_comments: bool,
+    line: usize,
+    last_newline_pos: usize,
 }
 
 fn is_start(b: u8) -> bool {
@@ -202,15 +240,23 @@ impl<'a> Lexer<'a> {
         let mut lexer = Lexer {
             s: source,
             bytes: source.bytes(),
-            ignore_whitespace_and_comments: ignore_whitespace_and_comments,
+            ignore_whitespace_and_comments,
+            line: 0,
+            last_newline_pos: 0,
         };
         let file_name: Rc<str> = Rc::from(file_name);
         let file_content: Rc<str> = Rc::from(source);
         iter::from_fn(move || {
             lexer.next_token().map(|(start, t)| {
+                let end = lexer.pos();
+                // log::debug!(
+                //     "TOKEN: {:?}: `{}`",
+                //     t.as_ref().unwrap_or(&Token::Error),
+                //     &file_content[start.absolute..end.absolute]
+                // );
                 Spanned::new(
                     t,
-                    Span::new(start, lexer.pos(), file_name.clone(), file_content.clone()),
+                    Span::new(start, end, file_name.clone(), file_content.clone()),
                 )
             })
         })
@@ -221,45 +267,46 @@ impl<'a> Lexer<'a> {
             if f(b) {
                 // Iterating over a clone of this iterator - this is guaranteed to be Some
                 self.bytes.next().expect("iter lag");
+                if b == b'\n' {
+                    self.last_newline_pos = self.pos().absolute - 1;
+                    self.line += 1;
+                }
             } else {
                 break;
             }
         }
     }
 
-    /// Looks for "|#", consuming bytes until found. If not found, returns Some(Err(...));
-    /// otherwise returns None.
-    fn read_until_multiline_comment_end(&mut self) -> Option<TokenRes> {
-        let mut found_comment_end = false;
+    /// Looks for "|#", consuming bytes until found. If not found, returns Err(...);
+    fn read_until_multiline_comment_end(&mut self) -> TokenRes {
         for b2 in self.bytes.clone().skip(1) {
             // Iterating over a clone of this iterator that's 1 item ahead - this is guaranteed to
             // be Some.
             let b1 = self.bytes.next().expect("iter lag");
+            if b1 == b'\n' {
+                self.last_newline_pos = self.pos().absolute - 1;
+                self.line += 1;
+            }
             if b1 == b'|' && b2 == b'#' {
-                found_comment_end = true;
-                break;
+                self.bytes.next();
+                return Ok(Token::BlockComment);
             }
         }
-        if !found_comment_end {
-            return Some(Err(
-                "Unterminated multiline comment. Add |# after the end of your comment.".to_string(),
-            ));
-        }
-        self.bytes.next();
-        None
+        Err("Unterminated multiline comment. Add |# after the end of your comment.".to_string())
     }
 
-    fn pos(&self) -> usize {
-        self.s.len() - self.bytes.len()
+    fn pos(&self) -> Position {
+        let absolute = self.s.len() - self.bytes.len();
+        Position::new(absolute, self.line, absolute - self.last_newline_pos)
     }
 
-    fn next_token(&mut self) -> Option<(usize, TokenRes)> {
+    fn next_token(&mut self) -> Option<(Position, TokenRes)> {
         use Token::*;
         loop {
             let start = self.pos();
             break match self.bytes.next() {
                 Some(b) => Some((
-                    start,
+                    start.clone(),
                     Ok(match b {
                         b'(' => Open,
                         b')' => Close,
@@ -267,14 +314,24 @@ impl<'a> Lexer<'a> {
                             self.next_while(|b| b != b'"' && b != b'\n');
                             match self.bytes.next() {
                                 Some(b'"') => StringTok,
-                                _ => return Some((start, Err("Unterminated string".to_string()))),
+                                _ => {
+                                    return Some((
+                                        start.clone(),
+                                        Err("Unterminated string".to_string()),
+                                    ))
+                                }
                             }
                         }
                         b';' => match self.bytes.clone().next() {
                             Some(b';') => {
                                 self.next_while(|b| b != b'\n');
                                 // possibly consume the newline (or EOF handled in next iteration)
-                                let _ = self.bytes.next();
+                                if let Some(b2) = self.bytes.next() {
+                                    if b2 == b'\n' {
+                                        self.last_newline_pos = self.pos().absolute - 1;
+                                        self.line += 1;
+                                    }
+                                }
                                 if self.ignore_whitespace_and_comments {
                                     continue;
                                 }
@@ -286,17 +343,22 @@ impl<'a> Lexer<'a> {
                             Some(b'|') => {
                                 // consume the '|'
                                 self.bytes.next();
-                                if let Some(e) = self.read_until_multiline_comment_end() {
-                                    return Some((start, e));
-                                }
+                                let tok: Token = match self.read_until_multiline_comment_end() {
+                                    Ok(t) => t,
+                                    e @ Err(_) => return Some((start.clone(), e)),
+                                };
                                 if self.ignore_whitespace_and_comments {
                                     continue;
                                 }
-                                Token::BlockComment
+                                tok
                             }
                             _ => self.next_string(),
                         },
                         b if b.is_ascii_whitespace() => {
+                            if b == b'\n' {
+                                self.last_newline_pos = self.pos().absolute - 1;
+                                self.line += 1;
+                            }
                             let tok = self.next_whitespace();
                             if self.ignore_whitespace_and_comments {
                                 continue;
@@ -368,7 +430,7 @@ fn parse_with(
                             span,
                         ));
                     }
-                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(span.clone())));
+                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span.clone())));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
                 StringTok => {
