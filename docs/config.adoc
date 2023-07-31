@@ -2039,6 +2039,89 @@ VAR_NAME=var_value
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
 
+The `switch` action accepts multiple cases.
+One case is a triple of:
+
+- keys check
+- action: to activate if keys check succeeds
+- fallthrough|break: stop evaluating cases
+
+The default use of keys check behaves similarly to fork.
+
+For example, the keys check `(a b c)` will activate the corresponding action
+if any of a, b, or c are currently pressed.
+
+The keys check also accepts the boolean operators and|or to allow more
+complex use cases.
+
+The order of cases matters.
+For example, if two different cases match the currently pressed keys,
+the case listed earlier in the configuration will activate first.
+If the early case uses break, the second case will not activate.
+Otherwise if fallthrough is used,
+the second case will activate sequentially after the first case.
+This idea generalizes to more than two cases,
+but the two case example is hopefully simple and effective enough.
+
+.Example:
+[source]
+----
+(defalias
+  swt (switch
+    ;; case 1
+    ((and a b (or c d) (or e f))) @ac1 break
+    ;; case 2
+    (a b c) @ac2 fallthrough
+    ;; case 3
+    () @ac3 break
+  )
+)
+----
+
+Below is a description of how this example behaves.
+
+==== Case 1
+
+----
+((and a b (or c d) (or e f))) a break
+----
+
+Translating case 1's keys check to some other common languages
+might look like:
+
+----
+(a && b && (c || d) && (e || f))
+----
+
+If the keys check passes, the action `@ac1` will activate.
+No other action will activate since `break` is used.
+
+==== Cases 2 and 3
+
+----
+(a b c) c fallthrough
+() b break
+----
+
+Case 2's key check behaves like that of `fork`, i.e.
+
+   (or a b c)
+
+or for some other common languages:
+
+   a || b || c
+
+If this keys check passes and the case 1 does not pass,
+the action `@ac2` will activate first.
+Since the keys check of case 3 always passes, `@ac3` will activate next.
+
+If neither case 1 or case 2 pass their keys checks,
+case 3 will always activate with `@ac3`.
+
+[[custom-tap-hold-behaviour]]
+=== Custom tap-hold behaviour
+<<table-of-contents,Back to ToC>>
+
 This is not currently configurable without modifying the source code, but if
 you're willing and/or capable, there is a tap-hold behaviour that is currently
 not exposed. Using this behaviour, one can be very particular about when and how
