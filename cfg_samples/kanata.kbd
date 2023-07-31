@@ -437,6 +437,38 @@ If you need help, you are welcome to ask.
   ;; the keys in the third parameter (right-trigger-keys) are currently active.
   frk (fork @🙃 @🙁 (lsft rsft))
 
+  ;; switch accepts triples of keys check, action, and fallthrough|break.
+  ;; The default usage of keys check behaves similarly to fork.
+  ;; However, it also accepts boolean operators and|or to allow more
+  ;; complex use cases.
+  ;;
+  ;; The order of cases matters. If two different cases match the
+  ;; currently pressed keys, the case listed earlier in the configuration
+  ;; will activate first. If the early case uses break, the second case will
+  ;; not activate at all. Otherwise if fallthrough is used, the second case
+  ;; will also activate sequentially after the first case.
+  swt (switch
+
+    ;; translating this keys check to some other common languages
+    ;; this might look like:
+    ;;
+    ;;    (a && b && (c || d) && (e || f))
+    ((and a b (or c d) (or e f))) a break
+
+    ;; this case behaves like fork, i.e.
+    ;;
+    ;;    (or a b c)
+    ;;
+    ;; or for some other common languages:
+    ;;
+    ;;    a || b || c
+    (a b c) b fallthrough
+
+    ;; default case, empty list always evaluates to true.
+    ;; break vs. fallthrough doesn't matter here
+    () c break
+  )
+
   ;; Having a cmd action in your configuration without explicitly enabling
   ;; `danger-enable-cmd` **and** using the cmd-enabled executable will make
   ;; kanata refuse to load your configuration. The aliases below are commented
