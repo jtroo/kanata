@@ -2035,8 +2035,8 @@ $env:VAR_NAME = "var_value"
 VAR_NAME=var_value
 ----
 
-[[custom-tap-hold-behaviour]]
-=== Custom tap-hold behaviour
+[[switch]]
+=== switch
 <<table-of-contents,Back to ToC>>
 
 The `switch` action accepts multiple cases.
