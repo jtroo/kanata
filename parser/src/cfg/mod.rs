@@ -59,6 +59,7 @@ use crate::trie::Trie;
 use anyhow::anyhow;
 use std::collections::hash_map::Entry;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
@@ -122,6 +123,25 @@ macro_rules! anyhow_span {
     };
 }
 
+pub struct FileContentProvider<'a> {
+    /// An function to load content of a file from a filepath.
+    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file" from loading twice.
+    get_file_content_fn: &'a mut dyn FnMut(&Path) -> std::result::Result<String, String>,
+}
+
+impl<'a> FileContentProvider<'a> {
+    pub fn new(
+        get_file_content_fn: &'a mut impl FnMut(&Path) -> std::result::Result<String, String>,
+    ) -> Self {
+        Self {
+            get_file_content_fn,
+        }
+    }
+    pub fn get_file_content(&mut self, filename: &Path) -> std::result::Result<String, String> {
+        (self.get_file_content_fn)(filename)
+    }
+}
+
 pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction]>;
 type KLayout =
     Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
@@ -177,7 +197,7 @@ pub struct Cfg {
 }
 
 /// Parse a new configuration from a file.
-pub fn new_from_file(p: &std::path::Path) -> MResult<Cfg> {
+pub fn new_from_file(p: &Path) -> MResult<Cfg> {
     let (items, mapped_keys, layer_info, key_outputs, layout, sequences, overrides) = parse_cfg(p)?;
     log::info!("config parsed");
     Ok(Cfg {
@@ -205,7 +225,7 @@ pub struct LayerInfo {
 
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(
-    p: &std::path::Path,
+    p: &Path,
 ) -> MResult<(
     HashMap<String, String>,
     MappedKeys,
@@ -241,7 +261,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw(
-    p: &std::path::Path,
+    p: &Path,
     s: &mut ParsedState,
 ) -> MResult<(
     HashMap<String, String>,
@@ -251,12 +271,60 @@ fn parse_cfg_raw(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let text = std::fs::read_to_string(p).map_err(|e| miette::miette!("{e}"))?;
-    let cfg_filename = p.to_string_lossy().to_string();
-    parse_cfg_raw_string(&text, s, &cfg_filename).map_err(error_with_source)
+    const INVALID_PATH_ERROR: &str = "The provided config file path is not a valid";
+
+    // IDEA: Maybe store the actual content of the files here
+    // and get rid of `file_content` in [`sexpr::Span`]?
+    let mut loaded_files: HashSet<PathBuf> = HashSet::default();
+
+    let mut get_file_content_fn_impl = |filepath: &Path| {
+        // Make the include paths relative to main config file instead of kanata executable.
+        let filepath_relative_to_loaded_kanata_cfg = if filepath.is_absolute() {
+            filepath.to_owned()
+        } else {
+            let relative_main_cfg_file_dir = p.parent().ok_or(INVALID_PATH_ERROR)?;
+            relative_main_cfg_file_dir.join(filepath)
+        };
+
+        // Forbid loading the same file multiple times.
+        // This prevents a potential recursive infinite loop of includes
+        // (if includes within includes were to be allowed).
+        let abs_filepath: PathBuf = filepath_relative_to_loaded_kanata_cfg
+            .canonicalize()
+            .map_err(|e| {
+                format!(
+                    "Failed to resolve absolute path: {}: {}",
+                    filepath_relative_to_loaded_kanata_cfg.to_string_lossy(),
+                    e.to_string()
+                )
+                .to_string()
+            })?;
+        if !loaded_files.insert(abs_filepath.clone()) {
+            return Err("The provided config file was already included before".to_string());
+        };
+
+        std::fs::read_to_string(&abs_filepath.to_str().ok_or(INVALID_PATH_ERROR)?.to_owned())
+            .map_err(|e| format!("Failed to include file: {e}"))
+    };
+    let mut file_content_provider = FileContentProvider::new(&mut get_file_content_fn_impl);
+
+    // `get_file_content_fn_impl` already uses CWD of the main config path,
+    // so we need to provide only the name, not the whole path.
+    let cfg_file_name: PathBuf = p
+        .file_name()
+        .ok_or_else(|| miette::miette!(INVALID_PATH_ERROR))?
+        .into();
+    let text = &file_content_provider
+        .get_file_content(&cfg_file_name)
+        .map_err(|e| miette::miette!(e))?;
+
+    parse_cfg_raw_string(&text, s, p, &mut file_content_provider).map_err(error_with_source)
 }
 
-fn expand_includes(xs: Vec<TopLevel>, main_config_filepath: &str) -> Result<Vec<TopLevel>> {
+fn expand_includes(
+    xs: Vec<TopLevel>,
+    file_content_provider: &mut FileContentProvider,
+) -> Result<Vec<TopLevel>> {
     let include_is_first_atom = gen_first_atom_filter("include");
     xs.iter().try_fold(Vec::new(), |mut acc, spanned_exprs| {
         if include_is_first_atom(&&spanned_exprs.t) {
@@ -281,22 +349,9 @@ fn expand_includes(xs: Vec<TopLevel>, main_config_filepath: &str) -> Result<Vec<
                     "Multiple filepaths are not allowed in include blocks. If you want to include multiple files, create a new include block for each of them."
                 )
             };
-
-            let original_include_filepath = Path::new(spanned_filepath.t.trim_matches('"'));
-
-            // Make the include_filepath relative to main config file instead of kanata executable.
-            let final_include_filepath = if original_include_filepath.is_absolute() {
-                original_include_filepath.to_str().ok_or_else(|| anyhow_span!(spanned_filepath, "The provided path is not valid"))?.to_owned()
-            } else {
-                let parent = Path::new(main_config_filepath).parent().expect("should be validated before");
-                let a = parent.join(original_include_filepath);
-                a.to_string_lossy().into_owned()
-            };
-
-            let file_content = std::fs::read_to_string(&final_include_filepath).map_err(|e|
-                anyhow_span!(spanned_filepath, "Failed to include file: {e}")
-            )?;
-            let tree = sexpr::parse(&file_content, &final_include_filepath)?;
+            let include_file_path = spanned_filepath.t.trim_matches('"');
+            let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
+            let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
 
             Ok(acc)
@@ -308,10 +363,11 @@ fn expand_includes(xs: Vec<TopLevel>, main_config_filepath: &str) -> Result<Vec<
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
-fn parse_cfg_raw_string(
+pub fn parse_cfg_raw_string(
     text: &str,
     s: &mut ParsedState,
-    cfg_filename: &str,
+    cfg_path: &Path,
+    file_content_provider: &mut FileContentProvider,
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
@@ -320,8 +376,8 @@ fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let spanned_root_exprs =
-        sexpr::parse(text, cfg_filename).and_then(|xs| expand_includes(xs, cfg_filename))?;
+    let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy().to_string())
+        .and_then(|xs| expand_includes(xs, file_content_provider))?;
 
     // NOTE: If nested included were to be allowed in the future,
     // a mechanism preventing circular includes should be incorporated.
@@ -842,7 +898,7 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
 }
 
 #[derive(Debug)]
-struct ParsedState {
+pub struct ParsedState {
     layer_exprs: Vec<Vec<SExpr>>,
     aliases: Aliases,
     layer_idxs: LayerIndexes,
