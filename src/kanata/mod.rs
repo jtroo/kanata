@@ -140,6 +140,10 @@ pub struct Kanata {
     /// Config items from `defcfg`.
     #[cfg(target_os = "linux")]
     pub defcfg_items: HashMap<String, String>,
+    /// Fake key actions that are waiting for a certain duration of keyboard idling.
+    pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
+    /// Number of ticks since kanata was idle.
+    pub ticks_since_idle: u16,
 }
 
 pub struct ScrollState {
@@ -343,6 +347,8 @@ impl Kanata {
             caps_word: None,
             #[cfg(target_os = "linux")]
             defcfg_items: cfg.items,
+            waiting_for_idle: HashSet::default(),
+            ticks_since_idle: 0,
         })
     }
 
@@ -426,6 +432,7 @@ impl Kanata {
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
             self.tick_dynamic_macro_state()?;
+            self.tick_idle_timeout();
 
             if self.live_reload_requested && self.prev_keys.is_empty() && self.cur_keys.is_empty() {
                 self.live_reload_requested = false;
@@ -568,6 +575,30 @@ impl Kanata {
             self.dynamic_macro_replay_state = None;
         }
         Ok(())
+    }
+
+    fn tick_idle_timeout(&mut self) {
+        if self.waiting_for_idle.is_empty() {
+            return;
+        }
+        self.waiting_for_idle.retain(|wfd| {
+            if self.ticks_since_idle >= wfd.idle_duration {
+                // Process this and return false so that it is not retained.
+                let layout = self.layout.bm();
+                let Coord { x, y } = wfd.coord;
+                match wfd.action {
+                    FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+                    FakeKeyAction::Release => layout.event(Event::Release(x, y)),
+                    FakeKeyAction::Tap => {
+                        layout.event(Event::Press(x, y));
+                        layout.event(Event::Release(x, y));
+                    }
+                };
+                false
+            } else {
+                true
+            }
+        })
     }
 
     /// Sends OS key events according to the change in key state between the current and the
@@ -1110,6 +1141,9 @@ impl Kanata {
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::CancelMacroOnRelease => {}
+                        CustomAction::FakeKeyOnIdle(fkd) => {
+                            self.waiting_for_idle.insert(*fkd);
+                        }
                     }
                 }
                 #[cfg(feature = "cmd")]
@@ -1414,7 +1448,21 @@ impl Kanata {
 
             info!("Starting kanata proper");
             let err = loop {
-                if kanata.lock().can_block() {
+                let can_block = {
+                    let mut k = kanata.lock();
+                    let is_idle = k.is_idle();
+                    // Note: checking waiting_for_idle can not be part of the computation for
+                    // is_idle() since incrementing ticks_since_idle is dependent on the return
+                    // value of is_idle().
+                    let counting_idle_ticks = !k.waiting_for_idle.is_empty();
+                    if !is_idle {
+                        k.ticks_since_idle = 0;
+                    } else if is_idle && counting_idle_ticks {
+                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(1);
+                    }
+                    is_idle && !counting_idle_ticks
+                };
+                if can_block {
                     log::trace!("blocking on channel");
                     match rx.recv() {
                         Ok(kev) => {
@@ -1510,7 +1558,7 @@ impl Kanata {
         });
     }
 
-    pub fn can_block(&self) -> bool {
+    pub fn is_idle(&self) -> bool {
         self.layout.b().queue.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
