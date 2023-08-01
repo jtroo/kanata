@@ -762,6 +762,7 @@ fn parse_on_idle_fakekey_errors() {
 #[test]
 fn parse_fake_keys_errors_on_too_many() {
     let mut s = ParsedState::default();
+    let mut checked_for_err = false;
     for n in 0..1000 {
         let exprs = [&vec![
             SExpr::Atom(Spanned {
@@ -786,6 +787,8 @@ fn parse_fake_keys_errors_on_too_many() {
         } else {
             // last iteration, check for error. probably happened before this, but just check here
             let _ = parse_fake_keys(&exprs, &mut s).unwrap_err();
+            checked_for_err = true;
         }
     }
+    assert!(checked_for_err);
 }
