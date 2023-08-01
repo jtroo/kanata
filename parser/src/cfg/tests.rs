@@ -753,8 +753,39 @@ fn parse_on_idle_fakekey_errors() {
     parse_cfg_raw_string(source, &mut s, "test")
         .map_err(|_e| {
             // uncomment to see what this looks like when running test
-            eprintln!("{:?}", error_with_source(_e));
+            // eprintln!("{:?}", error_with_source(_e));
             ""
         })
         .unwrap_err();
+}
+
+#[test]
+fn parse_fake_keys_errors_on_too_many() {
+    let mut s = ParsedState::default();
+    for n in 0..1000 {
+        let exprs = [&vec![
+            SExpr::Atom(Spanned {
+                t: "deffakekeys".to_string(),
+                span: Default::default(),
+            }),
+            SExpr::Atom(Spanned {
+                t: "a".repeat(n),
+                span: Default::default(),
+            }),
+            SExpr::Atom(Spanned {
+                t: "a".to_string(),
+                span: Default::default(),
+            }),
+        ]];
+        if n < 500 {
+            // fill up fake keys, expect first bunch to succeed
+            parse_fake_keys(&exprs, &mut s).unwrap();
+        } else if n < 999 {
+            // at some point they start failing, ignore result
+            let _ = parse_fake_keys(&exprs, &mut s);
+        } else {
+            // last iteration, check for error. probably happened before this, but just check here
+            let _ = parse_fake_keys(&exprs, &mut s).unwrap_err();
+        }
+    }
 }

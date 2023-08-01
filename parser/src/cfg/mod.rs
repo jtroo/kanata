@@ -2193,7 +2193,7 @@ fn parse_fake_key_op_coord_action(
             "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
         )
     })?) {
-        Some((y, _)) => *y as u8, // cast should be safe; checked in `parse_fake_keys`
+        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
         None => bail_expr!(
             &ac_params[0],
             "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
@@ -2902,7 +2902,7 @@ fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
             "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
         )
     })?) {
-        Some((y, _)) => *y as u8, // cast should be safe; checked in `parse_fake_keys`
+        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
         None => bail_expr!(
             &ac_params[0],
             "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
