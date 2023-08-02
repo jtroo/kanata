@@ -249,11 +249,6 @@ impl<'a> Lexer<'a> {
         iter::from_fn(move || {
             lexer.next_token().map(|(start, t)| {
                 let end = lexer.pos();
-                // log::debug!(
-                //     "TOKEN: {:?}: `{}`",
-                //     t.as_ref().unwrap_or(&Token::Error),
-                //     &file_content[start.absolute..end.absolute]
-                // );
                 Spanned::new(
                     t,
                     Span::new(start, end, file_name.clone(), file_content.clone()),

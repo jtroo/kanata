@@ -273,8 +273,6 @@ fn parse_cfg_raw(
 )> {
     const INVALID_PATH_ERROR: &str = "The provided config file path is not valid";
 
-    // IDEA: Maybe store the actual content of the files here
-    // and get rid of `file_content` in [`sexpr::Span`]?
     let mut loaded_files: HashSet<PathBuf> = HashSet::default();
 
     let mut get_file_content_fn_impl = |filepath: &Path| {
@@ -379,8 +377,6 @@ pub fn parse_cfg_raw_string(
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy().to_string())
         .and_then(|xs| expand_includes(xs, file_content_provider))?;
 
-    // NOTE: If nested included were to be allowed in the future,
-    // a mechanism preventing circular includes should be incorporated.
     if let Some(spanned) = spanned_root_exprs
         .iter()
         .find(gen_first_atom_filter_spanned("include"))
