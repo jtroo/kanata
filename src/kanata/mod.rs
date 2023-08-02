@@ -393,6 +393,7 @@ impl Kanata {
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
+        self.ticks_since_idle = 0;
         let kbrn_ev = match event.value {
             KeyValue::Press => {
                 if let Some(state) = &mut self.dynamic_macro_record_state {
@@ -1559,6 +1560,7 @@ impl Kanata {
     }
 
     pub fn is_idle(&self) -> bool {
+        let pressed_keys_means_not_idle = !self.waiting_for_idle.is_empty();
         self.layout.b().queue.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
@@ -1573,12 +1575,10 @@ impl Kanata {
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
-            && !self
-                .layout
-                .b()
-                .states
-                .iter()
-                .any(|s| matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_)))
+            && !self.layout.b().states.iter().any(|s| {
+                matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
+                    || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
+            })
     }
 }
 
