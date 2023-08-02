@@ -1575,9 +1575,15 @@ fn parse_macro_item_impl<'a>(
             let submacro = match maybe_list_var.list(s.vars()) {
                 Some(l) => l,
                 None => {
+                    // Ensure that the unparsed text is empty since otherwise it means there is
+                    // invalid text there
+                    if !unparsed_str.is_empty() {
+                        bail_expr!(&acs[0], "{MACRO_ERR}")
+                    }
+                    // Check for a follow-up list
                     rem_start = 2;
                     if acs.len() < 2 {
-                        bail_expr!(&acs[1], "{MACRO_ERR}")
+                        bail_expr!(&acs[0], "{MACRO_ERR}")
                     }
                     acs[1]
                         .list(s.vars())
