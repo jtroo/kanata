@@ -124,7 +124,7 @@ macro_rules! anyhow_span {
 }
 
 pub struct FileContentProvider<'a> {
-    /// An function to load content of a file from a filepath.
+    /// A function to load content of a file from a filepath.
     /// Optionally, it could implement caching and a mechanism preventing "file" and "./file" from loading twice.
     get_file_content_fn: &'a mut dyn FnMut(&Path) -> std::result::Result<String, String>,
 }
@@ -271,7 +271,7 @@ fn parse_cfg_raw(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    const INVALID_PATH_ERROR: &str = "The provided config file path is not a valid";
+    const INVALID_PATH_ERROR: &str = "The provided config file path is not valid";
 
     // IDEA: Maybe store the actual content of the files here
     // and get rid of `file_content` in [`sexpr::Span`]?
