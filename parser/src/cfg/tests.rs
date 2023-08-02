@@ -19,10 +19,13 @@ fn span_works() {
     let s = "(hello world my oyster)\n(row two)";
     let tlevel = parse(s, "test").unwrap();
     assert_eq!(
-        &s[tlevel[0].span.start..tlevel[0].span.end],
+        &s[tlevel[0].span.start()..tlevel[0].span.end()],
         "(hello world my oyster)"
     );
-    assert_eq!(&s[tlevel[1].span.start..tlevel[1].span.end], "(row two)");
+    assert_eq!(
+        &s[tlevel[1].span.start()..tlevel[1].span.end()],
+        "(row two)"
+    );
 }
 
 #[test]
@@ -94,12 +97,19 @@ fn parse_action_vars() {
 (defchords $e $one $1 $two)
 (defchords $e2 $one ($one) $two)
 "#;
-    parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap();
 }
 
 #[test]
@@ -115,12 +125,19 @@ fn parse_delegate_to_default_layer_yes() {
 (deflayer base b)
 (deflayer other _)
 "#;
-    let res = parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap();
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::B),
@@ -140,12 +157,19 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
 (deflayer base _)
 (deflayer other _)
 "#;
-    let res = parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap();
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
@@ -165,12 +189,19 @@ fn parse_delegate_to_default_layer_no() {
 (deflayer base b)
 (deflayer other _)
 "#;
-    let res = parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap();
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
@@ -574,12 +605,19 @@ fn parse_switch() {
   )
 )
 "#;
-    let res = parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap();
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap();
     assert_eq!(
         res.3[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
@@ -643,10 +681,17 @@ fn parse_switch_exceed_depth() {
   )
 )
 "#;
-    parse_cfg_raw_string(source, &mut s, "test")
-        .map_err(|e| {
-            eprintln!("{:?}", error_with_source(e));
-            ""
-        })
-        .unwrap_err();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", error_with_source(e));
+        ""
+    })
+    .unwrap_err();
 }
