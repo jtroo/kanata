@@ -105,10 +105,7 @@ fn parse_action_vars() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap();
 }
 
@@ -133,10 +130,7 @@ fn parse_delegate_to_default_layer_yes() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -165,10 +159,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -197,10 +188,7 @@ fn parse_delegate_to_default_layer_no() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -613,10 +601,7 @@ fn parse_switch() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[0][0][OsCode::KEY_A.as_u16() as usize],
@@ -689,9 +674,6 @@ fn parse_switch_exceed_depth() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", error_with_source(e));
-        ""
-    })
+    .map_err(|e| ParseError::from(e))
     .unwrap_err();
 }

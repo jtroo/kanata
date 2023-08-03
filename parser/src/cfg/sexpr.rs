@@ -3,12 +3,9 @@ use std::ops::Index;
 use std::rc::Rc;
 use std::str::Bytes;
 
-type ParseError = Spanned<String>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
-type ParseResult<T> = Result<T, ParseError>;
-
-use super::error::{span_start_len, CfgError};
+use super::{ParseError, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Position {
@@ -226,7 +223,7 @@ fn is_start(b: u8) -> bool {
     matches!(b, b'(' | b')' | b'"') || b.is_ascii_whitespace()
 }
 
-type TokenRes = Result<Token, String>;
+type TokenRes = std::result::Result<Token, String>;
 
 impl<'a> Lexer<'a> {
     #[allow(clippy::new_ret_no_self)]
@@ -382,10 +379,23 @@ impl<'a> Lexer<'a> {
 
 pub type TopLevel = Spanned<Vec<SExpr>>;
 
-pub fn parse(cfg: &str, file_name: &str) -> Result<Vec<TopLevel>, CfgError> {
+pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, ParseError> {
     let ignore_whitespace_and_comments = true;
     parse_(cfg, file_name, ignore_whitespace_and_comments)
-        .map_err(transform_error)
+        .map_err(|e| {
+            if e.msg.contains("Unterminated multiline comment") {
+                if let Some(mut span) = e.span.clone() {
+                    span.end = span.start.clone();
+                    span.end.absolute += 2;
+                    span.end.column += 2;
+                    ParseError::new(span, e.msg)
+                } else {
+                    e
+                }
+            } else {
+                e
+            }
+        })
         .map(|(x, _)| x)
 }
 
@@ -393,7 +403,7 @@ pub fn parse_(
     cfg: &str,
     file_name: &str,
     ignore_whitespace_and_comments: bool,
-) -> ParseResult<(Vec<TopLevel>, Vec<SExprMetaData>)> {
+) -> Result<(Vec<TopLevel>, Vec<SExprMetaData>)> {
     parse_with(
         cfg,
         Lexer::new(cfg, file_name, ignore_whitespace_and_comments),
@@ -403,14 +413,14 @@ pub fn parse_(
 fn parse_with(
     s: &str,
     mut tokens: impl Iterator<Item = Spanned<TokenRes>>,
-) -> ParseResult<(Vec<TopLevel>, Vec<SExprMetaData>)> {
+) -> Result<(Vec<TopLevel>, Vec<SExprMetaData>)> {
     use Token::*;
     let mut stack = vec![Spanned::new(vec![], Span::default())];
     let mut metadata: Vec<SExprMetaData> = vec![];
     loop {
         match tokens.next() {
             None => break,
-            Some(Spanned { t, span }) => match t.map_err(|s| Spanned::new(s, span.clone()))? {
+            Some(Spanned { t, span }) => match t.map_err(|s| ParseError::new(span.clone(), s))? {
                 Open => stack.push(Spanned::new(vec![], span.clone())),
                 Close => {
                     let Spanned {
@@ -420,10 +430,7 @@ fn parse_with(
                         // if the stack is ever empty, return an error.
                     } = stack.pop().expect("placeholder unpopped");
                     if stack.is_empty() {
-                        return Err(Spanned::new(
-                            "Unexpected closing parenthesis".to_string(),
-                            span,
-                        ));
+                        return Err(ParseError::new(span, "Unexpected closing parenthesis"));
                     }
                     let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span.clone())));
                     stack.last_mut().expect("not empty").t.push(expr);
@@ -457,18 +464,15 @@ fn parse_with(
     // empty, return an error.
     let Spanned { t: exprs, span: sp } = stack.pop().expect("placeholder unpopped");
     if !stack.is_empty() {
-        return Err(Spanned::new("Unclosed opening parenthesis".to_string(), sp));
+        return Err(ParseError::new(sp, "Unclosed opening parenthesis"));
     }
     let exprs = exprs
         .into_iter()
         .map(|expr| match expr {
             SExpr::List(es) => Ok(es),
-            SExpr::Atom(s) => Err(Spanned::new(
-                "Everything must be in a list".to_string(),
-                s.span,
-            )),
+            SExpr::Atom(s) => Err(ParseError::new(s.span, "Everything must be in a list")),
         })
-        .collect::<ParseResult<_>>()?;
+        .collect::<Result<_>>()?;
     Ok((exprs, metadata))
 }
 
@@ -484,20 +488,4 @@ pub struct LexError {
     pub err_span: SourceSpan,
     #[help]
     pub help_msg: String,
-}
-
-pub fn transform_error(e: ParseError) -> CfgError {
-    let start = e.span.start();
-    let end = e.span.end();
-    let mut len = end - start;
-    if e.t.contains("Unterminated multiline comment") {
-        len = 2;
-    };
-
-    CfgError {
-        err_span: Some(span_start_len(start, len)),
-        help_msg: e.t,
-        file_name: Some(e.span.file_name()),
-        file_content: Some(e.span.file_content()),
-    }
 }

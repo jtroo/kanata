@@ -80,46 +80,46 @@ pub use sexpr::parse;
 
 macro_rules! bail {
     ($err:expr $(,)?) => {
-        return Err(CfgError::from(anyhow!($err)))
+        return Err(ParseError::from(anyhow!($err)))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        return Err(CfgError::from(anyhow!($fmt, $($arg)*)))
+        return Err(ParseError::from(anyhow!($fmt, $($arg)*)))
     };
 }
 
 macro_rules! bail_expr {
     ($expr:expr, $fmt:expr $(,)?) => {
-        return Err(error_expr($expr, format!($fmt)))
+        return Err(ParseError::from_expr($expr, format!($fmt)))
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
-        return Err(error_expr($expr, format!($fmt, $($arg)*)))
+        return Err(ParseError::from_expr($expr, format!($fmt, $($arg)*)))
     };
 }
 
 macro_rules! bail_span {
     ($expr:expr, $fmt:expr $(,)?) => {
-        return Err(error_spanned($expr, format!($fmt)))
+        return Err(ParseError::from_spanned($expr, format!($fmt)))
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
-        return Err(error_spanned($expr, format!($fmt, $($arg)*)))
+        return Err(ParseError::from_spanned($expr, format!($fmt, $($arg)*)))
     };
 }
 
 macro_rules! anyhow_expr {
     ($expr:expr, $fmt:expr $(,)?) => {
-        error_expr($expr, format!($fmt))
+        ParseError::from_expr($expr, format!($fmt))
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
-        error_expr($expr, format!($fmt, $($arg)*))
+        ParseError::from_expr($expr, format!($fmt, $($arg)*))
     };
 }
 
 macro_rules! anyhow_span {
     ($expr:expr, $fmt:expr $(,)?) => {
-        error_spanned($expr, format!($fmt))
+        ParseError::from_spanned($expr, format!($fmt))
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
-        error_spanned($expr, format!($fmt, $($arg)*))
+        ParseError::from_spanned($expr, format!($fmt, $($arg)*))
     };
 }
 
@@ -316,7 +316,7 @@ fn parse_cfg_raw(
         .get_file_content(&cfg_file_name)
         .map_err(|e| miette::miette!(e))?;
 
-    parse_cfg_raw_string(&text, s, p, &mut file_content_provider).map_err(error_with_source)
+    parse_cfg_raw_string(&text, s, p, &mut file_content_provider).map_err(|e| e.into())
 }
 
 fn expand_includes(
@@ -1063,11 +1063,9 @@ fn parse_action(expr: &SExpr, s: &ParsedState) -> Result<&'static KanataAction> 
                 .expect("must be atom or list")
         })
         .map_err(|mut e| {
-            if e.err_span.is_none() {
-                e.err_span = Some(expr_err_span(expr));
-                e.file_name = Some(expr.span().file_name());
-                e.file_content = Some(expr.span().file_content());
-            }
+            if e.span.is_none() {
+                e.span = Some(expr.span())
+            };
             e
         })
 }
@@ -2559,7 +2557,7 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParsedState) -> Result<Vec<u16>> {
                     (seq, res.1)
                 }
                 Err(mut e) => {
-                    e.help_msg = format!("{SEQ_ERR}\nFound invalid key/chord in key_list");
+                    e.msg = format!("{SEQ_ERR}\nFound invalid key/chord in key_list");
                     return Err(e);
                 }
             };
