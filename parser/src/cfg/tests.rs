@@ -556,6 +556,27 @@ fn test_include_bad2_has_original_filename() {
 }
 
 #[test]
+fn parse_submacro() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(deflayer base
+  (macro M-S-())
+)
+"#;
+    parse_cfg_raw_string(source, &mut s, "test")
+        .map_err(|e| {
+            eprintln!("{:?}", error_with_source(e));
+            ""
+        })
+        .unwrap_err();
+}
+
+#[test]
 fn parse_switch() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
