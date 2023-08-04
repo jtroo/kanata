@@ -121,8 +121,8 @@ fn test_span_of_an_unterminated_block_comment_error() {
 
     assert_eq!(&source[span.start()..span.end()], "|#");
 
-    assert_eq!(span.start.line, 1);
-    assert_eq!(span.end.line, 1);
+    assert_eq!(span.start.line, 0);
+    assert_eq!(span.end.line, 0);
 
     assert_eq!(span.start.line_beginning, 0);
     assert_eq!(span.end.line_beginning, 0);
