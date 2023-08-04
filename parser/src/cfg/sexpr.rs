@@ -9,22 +9,22 @@ use super::{ParseError, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Position {
-    /// The position since the beginning of the file, in bytes.
+    /// The position (since the beginning of the file), in bytes.
     pub absolute: usize,
     /// The number of newline characters since the beginning of the file.
     pub line: usize,
-    /// The position since the beginning of line, in bytes, 0-indexed.
-    pub column: usize, // TODO: figure out alternative (because of grapheme clusters vs bytes vs codepoints can produce different column pos)
+    /// The position of beginning of line, in bytes.
+    pub line_beginning: usize,
 }
 
 impl Position {
-    fn new(absolute: usize, line: usize, column: usize) -> Self {
+    fn new(absolute: usize, line: usize, line_beginning: usize) -> Self {
         assert!(line <= absolute);
-        assert!(column <= absolute);
+        assert!(line_beginning <= absolute);
         Self {
             absolute,
             line,
-            column,
+            line_beginning,
         }
     }
 }
@@ -289,7 +289,7 @@ impl<'a> Lexer<'a> {
 
     fn pos(&self) -> Position {
         let absolute = self.s.len() - self.bytes.len();
-        Position::new(absolute, self.line, absolute - self.last_newline_pos)
+        Position::new(absolute, self.line, self.last_newline_pos)
     }
 
     fn next_token(&mut self) -> Option<(Position, TokenRes)> {
@@ -387,7 +387,6 @@ pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, P
                 if let Some(mut span) = e.span.clone() {
                     span.end = span.start.clone();
                     span.end.absolute += 2;
-                    span.end.column += 2;
                     ParseError::new(span, e.msg)
                 } else {
                     e
