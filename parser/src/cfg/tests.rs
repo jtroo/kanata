@@ -15,7 +15,7 @@ fn sizeof_action_is_two_usizes() {
 }
 
 #[test]
-fn span_works() {
+fn test_span_absolute_ranges() {
     let s = "(hello world my oyster)\n(row two)";
     let tlevel = parse(s, "test").unwrap();
     assert_eq!(
@@ -26,6 +26,106 @@ fn span_works() {
         &s[tlevel[1].span.start()..tlevel[1].span.end()],
         "(row two)"
     );
+}
+
+#[test]
+fn span_works_with_unicode_characters() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"(defsrc a) ;; 😊
+(deflayer base @😊)
+"#;
+    let span = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .err()
+    .expect("should be an error because @😊 is not defined")
+    .span
+    .expect("span should be Some");
+
+    assert_eq!(&source[span.start()..span.end()], "@😊");
+
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.end.line, 1);
+
+    assert_eq!("😊".len(), 4);
+    assert_eq!("(defsrc a) ;; 😊\n".len(), 19);
+    assert_eq!(span.start.line_beginning, 19);
+    assert_eq!(span.end.line_beginning, 19);
+}
+
+#[test]
+fn test_multiline_error_span() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"(defsrc a)
+(
+  🍍
+  🍕
+)
+(defalias a b)
+"#;
+    let span = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .err()
+    .expect("should error on unknown top level block")
+    .span
+    .expect("span should be Some");
+
+    assert_eq!(&source[span.start()..span.end()], "(\n  🍍\n  🍕\n)");
+
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.end.line, 4);
+
+    assert_eq!(span.start.line_beginning, "(defsrc a)\n".len());
+    assert_eq!(span.end.line_beginning, "(defsrc a)\n(\n  🍍\n  🍕\n".len());
+}
+
+#[test]
+fn test_span_of_an_unterminated_block_comment_error() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"(defsrc a) |# I'm an unterminated block comment..."#;
+    let span = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .err()
+    .expect("should be an unterminated comment error")
+    .span
+    .expect("span should be Some");
+
+    assert_eq!(&source[span.start()..span.end()], "|#");
+
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.end.line, 1);
+
+    assert_eq!(span.start.line_beginning, 0);
+    assert_eq!(span.end.line_beginning, 0);
 }
 
 #[test]
@@ -105,7 +205,6 @@ fn parse_action_vars() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap();
 }
 
@@ -130,7 +229,6 @@ fn parse_delegate_to_default_layer_yes() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -159,7 +257,6 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -188,7 +285,6 @@ fn parse_delegate_to_default_layer_no() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[2][0][OsCode::KEY_A.as_u16() as usize],
@@ -601,7 +697,6 @@ fn parse_switch() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap();
     assert_eq!(
         res.3[0][0][OsCode::KEY_A.as_u16() as usize],
@@ -674,6 +769,5 @@ fn parse_switch_exceed_depth() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| ParseError::from(e))
     .unwrap_err();
 }
