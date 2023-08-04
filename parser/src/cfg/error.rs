@@ -13,25 +13,25 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub(super) fn new(span: Span, err_msg: impl AsRef<str>) -> Self {
+    pub fn new(span: Span, err_msg: impl AsRef<str>) -> Self {
         Self {
             msg: err_msg.as_ref().to_string(),
             span: Some(span),
         }
     }
 
-    pub(super) fn new_without_span(err_msg: impl AsRef<str>) -> Self {
+    pub fn new_without_span(err_msg: impl AsRef<str>) -> Self {
         Self {
             msg: err_msg.as_ref().to_string(),
             span: None,
         }
     }
 
-    pub(super) fn from_expr(expr: &sexpr::SExpr, err_msg: impl AsRef<str>) -> Self {
+    pub fn from_expr(expr: &sexpr::SExpr, err_msg: impl AsRef<str>) -> Self {
         Self::new(expr.span(), err_msg)
     }
 
-    pub(super) fn from_spanned<T>(spanned: &Spanned<T>, err_msg: impl AsRef<str>) -> Self {
+    pub fn from_spanned<T>(spanned: &Spanned<T>, err_msg: impl AsRef<str>) -> Self {
         Self::new(spanned.span.clone(), err_msg)
     }
 }
