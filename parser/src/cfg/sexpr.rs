@@ -392,7 +392,7 @@ pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, P
     parse_(cfg, file_name, ignore_whitespace_and_comments)
         .map_err(|e| {
             if e.msg.contains("Unterminated multiline comment") {
-                if let Some(mut span) = e.span.clone() {
+                if let Some(mut span) = e.span {
                     span.end = span.start;
                     span.end.absolute += 2;
                     ParseError::new(span, e.msg)
@@ -428,7 +428,7 @@ fn parse_with(
         match tokens.next() {
             None => break,
             Some(Spanned { t, span }) => match t.map_err(|s| ParseError::new(span.clone(), s))? {
-                Open => stack.push(Spanned::new(vec![], span.clone())),
+                Open => stack.push(Spanned::new(vec![], span)),
                 Close => {
                     let Spanned {
                         t: exprs,
@@ -439,30 +439,25 @@ fn parse_with(
                     if stack.is_empty() {
                         return Err(ParseError::new(span, "Unexpected closing parenthesis"));
                     }
-                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span.clone())));
+                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span)));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
-                StringTok => {
-                    stack
-                        .last_mut()
-                        .expect("not empty")
-                        .t
-                        .push(SExpr::Atom(Spanned::new(
-                            s[span.clone()].to_string(),
-                            span.clone(),
-                        )))
-                }
+                StringTok => stack
+                    .last_mut()
+                    .expect("not empty")
+                    .t
+                    .push(SExpr::Atom(Spanned::new(s[span.clone()].to_string(), span))),
                 BlockComment => metadata.push(SExprMetaData::BlockComment(Spanned::new(
                     s[span.clone()].to_string(),
-                    span.clone(),
+                    span,
                 ))),
                 LineComment => metadata.push(SExprMetaData::LineComment(Spanned::new(
                     s[span.clone()].to_string(),
-                    span.clone(),
+                    span,
                 ))),
                 Whitespace => metadata.push(SExprMetaData::Whitespace(Spanned::new(
                     s[span.clone()].to_string(),
-                    span.clone(),
+                    span,
                 ))),
             },
         }
