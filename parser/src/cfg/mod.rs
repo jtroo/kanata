@@ -293,15 +293,14 @@ fn parse_cfg_raw(
                 format!(
                     "Failed to resolve absolute path: {}: {}",
                     filepath_relative_to_loaded_kanata_cfg.to_string_lossy(),
-                    e.to_string()
+                    e
                 )
-                .to_string()
             })?;
         if !loaded_files.insert(abs_filepath.clone()) {
             return Err("The provided config file was already included before".to_string());
         };
 
-        std::fs::read_to_string(&abs_filepath.to_str().ok_or(INVALID_PATH_ERROR)?.to_owned())
+        std::fs::read_to_string(abs_filepath.to_str().ok_or(INVALID_PATH_ERROR)?)
             .map_err(|e| format!("Failed to include file: {e}"))
     };
     let mut file_content_provider = FileContentProvider::new(&mut get_file_content_fn_impl);
@@ -312,7 +311,7 @@ fn parse_cfg_raw(
         .file_name()
         .ok_or_else(|| miette::miette!(INVALID_PATH_ERROR))?
         .into();
-    let text = &file_content_provider
+    let text = file_content_provider
         .get_file_content(&cfg_file_name)
         .map_err(|e| miette::miette!(e))?;
 
@@ -374,7 +373,7 @@ pub fn parse_cfg_raw_string(
     KeySeqsToFKeys,
     Overrides,
 )> {
-    let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy().to_string())
+    let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider))?;
 
     if let Some(spanned) = spanned_root_exprs
@@ -2130,7 +2129,7 @@ fn fill_chords(
             for case in cases.iter() {
                 new_cases.push((
                     case.0,
-                    fill_chords(chord_groups, &case.1, s)
+                    fill_chords(chord_groups, case.1, s)
                         .map(|ac| s.a.sref(ac))
                         .unwrap_or(case.1),
                     case.2,
@@ -2841,7 +2840,7 @@ fn parse_switch_case_bool(
         let l = op_expr
             .list(s.vars())
             .expect("must be a list, checked atom");
-        if l.len() < 1 {
+        if l.is_empty() {
             bail_expr!(op_expr, "key match cannot contain empty lists inside");
         }
         let op = l[0]

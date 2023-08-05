@@ -46,8 +46,7 @@ fn span_works_with_unicode_characters() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .err()
-    .expect("should be an error because @😊 is not defined")
+    .expect_err("should be an error because @😊 is not defined")
     .span
     .expect("span should be Some");
 
@@ -84,8 +83,7 @@ fn test_multiline_error_span() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .err()
-    .expect("should error on unknown top level block")
+    .expect_err("should error on unknown top level block")
     .span
     .expect("span should be Some");
 
@@ -114,8 +112,7 @@ fn test_span_of_an_unterminated_block_comment_error() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .err()
-    .expect("should be an unterminated comment error")
+    .expect_err("should be an unterminated comment error")
     .span
     .expect("span should be Some");
 
