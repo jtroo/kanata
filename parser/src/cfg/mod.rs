@@ -536,6 +536,17 @@ pub fn parse_cfg_raw_string(
                 false
             }
         }),
+        default_sequence_timeout: cfg
+            .get(SEQUENCE_TIMEOUT_CFG_NAME)
+            .map(|s| match str::parse::<u16>(s) {
+                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
+                Ok(t) => Ok(t),
+            })
+            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?,
+        default_sequence_input_mode: cfg
+            .get(SEQUENCE_INPUT_MODE_CFG_NAME)
+            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
+            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?,
         ..Default::default()
     };
 
@@ -903,6 +914,8 @@ pub struct ParsedState {
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
+    default_sequence_timeout: u16,
+    default_sequence_input_mode: SequenceInputMode,
     vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
@@ -912,6 +925,12 @@ impl ParsedState {
         Some(&self.vars)
     }
 }
+
+const SEQUENCE_TIMEOUT_CFG_NAME: &str = "sequence-timeout";
+const SEQUENCE_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
+const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
+const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
+const SEQUENCE_INPUT_MODE_DEFAULT: SequenceInputMode = SequenceInputMode::HiddenSuppressed;
 
 impl Default for ParsedState {
     fn default() -> Self {
@@ -926,6 +945,8 @@ impl Default for ParsedState {
             is_cmd_enabled: false,
             delegate_to_first_layer: false,
             vars: Default::default(),
+            default_sequence_timeout: SEQUENCE_TIMEOUT_DEFAULT,
+            default_sequence_input_mode: SEQUENCE_INPUT_MODE_DEFAULT,
             a: unsafe { Allocations::new() },
         }
     }
@@ -1091,8 +1112,16 @@ fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static K
             )))
         }
         "sldr" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::SequenceLeader(
+                    s.default_sequence_timeout,
+                    s.default_sequence_input_mode,
+                ),
+            )))))
+        }
+        "scnl" => {
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::SequenceLeader)),
+                s.a.sref(s.a.sref_slice(CustomAction::SequenceCancel)),
             )))
         }
         "mlft" | "mouseleft" => {
@@ -1228,6 +1257,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], s),
         "on-press-fakekey-delay" => parse_fake_key_delay(&ac[1..], s),
         "on-release-fakekey-delay" => parse_on_release_fake_key_delay(&ac[1..], s),
+        "on-idle-fakekey" => parse_on_idle_fakekey(&ac[1..], s),
         "mwheel-up" => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
         "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         "mwheel-left" => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
@@ -1240,6 +1270,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "movemouse-accel-down" => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
         "movemouse-accel-left" => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
         "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
+        "movemouse-speed" => parse_move_mouse_speed(&ac[1..], s),
         "setmouse" => parse_set_mouse(&ac[1..], s),
         "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
         "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
@@ -1251,6 +1282,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
         "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
         "switch" => parse_switch(&ac[1..], s),
+        "sequence" => parse_sequence_start(&ac[1..], s),
         _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
     }
 }
@@ -1593,9 +1625,15 @@ fn parse_macro_item_impl<'a>(
             let submacro = match maybe_list_var.list(s.vars()) {
                 Some(l) => l,
                 None => {
+                    // Ensure that the unparsed text is empty since otherwise it means there is
+                    // invalid text there
+                    if !unparsed_str.is_empty() {
+                        bail_expr!(&acs[0], "{MACRO_ERR}")
+                    }
+                    // Check for a follow-up list
                     rem_start = 2;
                     if acs.len() < 2 {
-                        bail_expr!(&acs[1], "{MACRO_ERR}")
+                        bail_expr!(&acs[0], "{MACRO_ERR}")
                     }
                     acs[1]
                         .list(s.vars())
@@ -2207,29 +2245,31 @@ fn parse_fake_key_op_coord_action(
     let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
         anyhow_expr!(
             &ac_params[0],
-            "{ERR_MSG}\nA list is not allowed for a fake key name",
+            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
         )
     })?) {
-        Some((y, _)) => *y as u8, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(&ac_params[0], "unknown fake key name {:?}", &ac_params[0]),
+        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
+        None => bail_expr!(
+            &ac_params[0],
+            "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
+            &ac_params[0]
+        ),
     };
     let action = ac_params[1]
         .atom(s.vars())
         .map(|a| match a {
-            "tap" => Ok(FakeKeyAction::Tap),
-            "press" => Ok(FakeKeyAction::Press),
-            "release" => Ok(FakeKeyAction::Release),
-            _ => bail_expr!(
-                &ac_params[1],
-                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
-            ),
+            "tap" => Some(FakeKeyAction::Tap),
+            "press" => Some(FakeKeyAction::Press),
+            "release" => Some(FakeKeyAction::Release),
+            _ => None,
         })
+        .flatten()
         .ok_or_else(|| {
             anyhow_expr!(
                 &ac_params[1],
                 "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
             )
-        })??;
+        })?;
     let (x, y) = get_fake_key_coords(y);
     Ok((Coord { x, y }, action))
 }
@@ -2342,6 +2382,19 @@ fn parse_move_mouse_accel(
             max_distance,
         },
     )))))
+}
+
+fn parse_move_mouse_speed(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    if ac_params.len() != 1 {
+        bail!(
+            "movemouse-speed expects one parameter, found {}\n<speed scaling % (1-65535)>",
+            ac_params.len()
+        );
+    }
+    let speed = parse_non_zero_u16(&ac_params[0], s, "speed scaling %")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::MoveMouseSpeed { speed })),
+    )))
 }
 
 fn parse_set_mouse(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
@@ -2766,6 +2819,30 @@ fn parse_macro_record_stop_truncate(
     ))))
 }
 
+fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "sequence expects one or two params: <timeout-override> <?input-mode-override>";
+    if !matches!(ac_params.len(), 1 | 2) {
+        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
+    }
+    let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout-override")?;
+    let input_mode = if ac_params.len() > 1 {
+        if let Some(Ok(input_mode)) = ac_params[1]
+            .atom(s.vars())
+            .map(|config_str| SequenceInputMode::try_from_str(config_str))
+        {
+            input_mode
+        } else {
+            bail_expr!(&ac_params[1], "{ERR_MSG}\n{}", SequenceInputMode::err_msg());
+        }
+    } else {
+        s.default_sequence_input_mode
+    };
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
+    ))))
+}
+
 fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
@@ -2866,6 +2943,55 @@ fn parse_switch_case_bool(
         ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
         Ok(current_index)
     }
+}
+
+fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
+    if ac_params.len() != 3 {
+        bail!("{ERR_MSG}");
+    }
+    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
+        anyhow_expr!(
+            &ac_params[0],
+            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
+        )
+    })?) {
+        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
+        None => bail_expr!(
+            &ac_params[0],
+            "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
+            &ac_params[0]
+        ),
+    };
+    let action = ac_params[1]
+        .atom(s.vars())
+        .map(|a| match a {
+            "tap" => Some(FakeKeyAction::Tap),
+            "press" => Some(FakeKeyAction::Press),
+            "release" => Some(FakeKeyAction::Release),
+            _ => None,
+        })
+        .flatten()
+        .ok_or_else(|| {
+            anyhow_expr!(
+                &ac_params[1],
+                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
+            )
+        })?;
+    let idle_duration = parse_u16(&ac_params[2], s, "idle time").map_err(|mut e| {
+        e.msg = format!("{ERR_MSG}\nInvalid third parameter: {}", e.msg);
+        e
+    })?;
+    let (x, y) = get_fake_key_coords(y);
+    let coord = Coord { x, y };
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
+            coord,
+            action,
+            idle_duration,
+        }),
+    )))))
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.

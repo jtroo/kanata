@@ -85,8 +85,8 @@ pub struct Kanata {
     /// Horizontal mouse movement state. Is Some(...) when horizontal mouse movement is active and
     /// None otherwise.
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
-    /// The number of ticks defined in the user configuration for sequence timeout.
-    pub sequence_timeout: u16,
+    /// A list of mouse speed modifiers in percentages by which mouse travel distance is scaled.
+    pub move_mouse_speed_modifiers: Vec<u16>,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -94,8 +94,6 @@ pub struct Kanata {
     pub sequence_state: Option<SequenceState>,
     /// Valid sequences defined in the user configuration.
     pub sequences: cfg::KeySeqsToFKeys,
-    /// Stores the user configuration for the sequence input mode.
-    pub sequence_input_mode: SequenceInputMode,
     /// Stores the user recored dynamic macros.
     pub dynamic_macros: HashMap<u16, Vec<DynamicMacroItem>>,
     /// Tracks the progress of an active dynamic macro. Is Some(...) when a dynamic macro is being
@@ -142,6 +140,10 @@ pub struct Kanata {
     /// Config items from `defcfg`.
     #[cfg(target_os = "linux")]
     pub defcfg_items: HashMap<String, String>,
+    /// Fake key actions that are waiting for a certain duration of keyboard idling.
+    pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
+    /// Number of ticks since kanata was idle.
+    pub ticks_since_idle: u16,
 }
 
 pub struct ScrollState {
@@ -169,40 +171,9 @@ pub struct MoveMouseAccelState {
 
 pub struct SequenceState {
     pub sequence: Vec<u16>,
+    pub sequence_input_mode: SequenceInputMode,
     pub ticks_until_timeout: u16,
-}
-
-/// This controls the behaviour of kanata when sequence mode is initiated by the sequence leader
-/// action.
-///
-/// - `HiddenSuppressed` hides the keys typed as part of the sequence and does not output the keys
-///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
-/// - `HiddenDelayType` hides the keys typed as part of the sequence and outputs the keys when an
-///   typed when an invalid sequence is the result of an invalid sequence character or a timeout.
-/// - `VisibleBackspaced` will type the keys that are typed as part of the sequence but will
-///   backspace the typed sequence keys before performing the fake key tap when a valid sequence is
-///   the result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SequenceInputMode {
-    HiddenSuppressed,
-    HiddenDelayType,
-    VisibleBackspaced,
-}
-
-const SEQ_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
-const SEQ_VISIBLE_BACKSPACED: &str = "visible-backspaced";
-const SEQ_HIDDEN_SUPPRESSED: &str = "hidden-suppressed";
-const SEQ_HIDDEN_DELAY_TYPE: &str = "hidden-delay-type";
-
-impl SequenceInputMode {
-    fn try_from_str(s: &str) -> Result<Self> {
-        match s {
-            SEQ_VISIBLE_BACKSPACED => Ok(SequenceInputMode::VisibleBackspaced),
-            SEQ_HIDDEN_SUPPRESSED => Ok(SequenceInputMode::HiddenSuppressed),
-            SEQ_HIDDEN_DELAY_TYPE => Ok(SequenceInputMode::HiddenDelayType),
-            _ => Err(anyhow!("{SEQ_INPUT_MODE_CFG_NAME} mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"))
-        }
-    }
+    pub sequence_timeout: u16,
 }
 
 pub struct DynamicMacroReplayState {
@@ -234,9 +205,6 @@ impl DynamicMacroRecordState {
 }
 
 static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
-
-const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
-const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
 
 use once_cell::sync::Lazy;
 
@@ -277,7 +245,7 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!("Failed to open the output uinput device. Make sure you've added kanata to the `uinput` group");
+                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
                 bail!(err)
             }
         };
@@ -322,24 +290,11 @@ impl Kanata {
         update_kbd_out(&cfg.items, &kbd_out)?;
         set_altgr_behaviour(&cfg)?;
 
-        let sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
         let sequence_backtrack_modcancel = cfg
             .items
             .get("sequence-backtrack-modcancel")
             .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
-        let sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -362,11 +317,10 @@ impl Kanata {
             hscroll_state: None,
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
-            sequence_timeout,
+            move_mouse_speed_modifiers: Vec::new(),
             sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            sequence_input_mode,
             last_tick: time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
@@ -393,6 +347,8 @@ impl Kanata {
             caps_word: None,
             #[cfg(target_os = "linux")]
             defcfg_items: cfg.items,
+            waiting_for_idle: HashSet::default(),
+            ticks_since_idle: 0,
         })
     }
 
@@ -411,19 +367,6 @@ impl Kanata {
         };
         update_kbd_out(&cfg.items, &self.kbd_out)?;
         set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
-        self.sequence_timeout = cfg
-            .items
-            .get("sequence-timeout")
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?;
-        self.sequence_input_mode = cfg
-            .items
-            .get(SEQ_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?;
         let log_layer_changes = cfg
             .items
             .get("log-layer-changes")
@@ -450,6 +393,7 @@ impl Kanata {
     fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
+        self.ticks_since_idle = 0;
         let kbrn_ev = match event.value {
             KeyValue::Press => {
                 if let Some(state) = &mut self.dynamic_macro_record_state {
@@ -489,6 +433,7 @@ impl Kanata {
             self.handle_move_mouse()?;
             self.tick_sequence_state()?;
             self.tick_dynamic_macro_state()?;
+            self.tick_idle_timeout();
 
             if self.live_reload_requested && self.prev_keys.is_empty() && self.cur_keys.is_empty() {
                 self.live_reload_requested = false;
@@ -559,7 +504,10 @@ impl Kanata {
             }
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
-                self.kbd_out.move_mouse(mmsv.direction, mmsv.distance)?;
+                let scaled_distance =
+                    apply_mouse_distance_modifiers(mmsv.distance, &self.move_mouse_speed_modifiers);
+                log::debug!("handle_move_mouse: scaled vdistance: {}", scaled_distance);
+                self.kbd_out.move_mouse(mmsv.direction, scaled_distance)?;
             } else {
                 mmsv.ticks_until_move -= 1;
             }
@@ -578,7 +526,10 @@ impl Kanata {
             }
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
-                self.kbd_out.move_mouse(mmsh.direction, mmsh.distance)?;
+                let scaled_distance =
+                    apply_mouse_distance_modifiers(mmsh.distance, &self.move_mouse_speed_modifiers);
+                log::debug!("handle_move_mouse: scaled hdistance: {}", scaled_distance);
+                self.kbd_out.move_mouse(mmsh.direction, scaled_distance)?;
             } else {
                 mmsh.ticks_until_move -= 1;
             }
@@ -591,17 +542,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                match self.sequence_input_mode {
-                    SequenceInputMode::HiddenDelayType => {
-                        for code in state.sequence.iter().copied() {
-                            if let Some(osc) = OsCode::from_u16(code) {
-                                self.kbd_out.press_key(osc)?;
-                                self.kbd_out.release_key(osc)?;
-                            }
-                        }
-                    }
-                    SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
-                }
+                cancel_sequence(state, &mut self.kbd_out)?;
                 self.sequence_state = None;
             }
         }
@@ -635,6 +576,30 @@ impl Kanata {
             self.dynamic_macro_replay_state = None;
         }
         Ok(())
+    }
+
+    fn tick_idle_timeout(&mut self) {
+        if self.waiting_for_idle.is_empty() {
+            return;
+        }
+        self.waiting_for_idle.retain(|wfd| {
+            if self.ticks_since_idle >= wfd.idle_duration {
+                // Process this and return false so that it is not retained.
+                let layout = self.layout.bm();
+                let Coord { x, y } = wfd.coord;
+                match wfd.action {
+                    FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+                    FakeKeyAction::Release => layout.event(Event::Release(x, y)),
+                    FakeKeyAction::Tap => {
+                        layout.event(Event::Press(x, y));
+                        layout.event(Event::Release(x, y));
+                    }
+                };
+                false
+            } else {
+                true
+            }
+        })
     }
 
     /// Sends OS key events according to the change in key state between the current and the
@@ -696,7 +661,7 @@ impl Kanata {
                     }
                 }
                 Some(state) => {
-                    state.ticks_until_timeout = self.sequence_timeout;
+                    state.ticks_until_timeout = state.sequence_timeout;
 
                     // Transform to OsCode and convert modifiers other than altgr/ralt (same key
                     // different names) to the left version, since that's how chords get
@@ -719,7 +684,7 @@ impl Kanata {
                     };
 
                     state.sequence.push(pushed_into_seq);
-                    match self.sequence_input_mode {
+                    match state.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
                             self.kbd_out.press_key(osc)?;
                         }
@@ -755,7 +720,7 @@ impl Kanata {
                         };
                         if is_invalid_termination {
                             log::debug!("got invalid sequence; exiting sequence mode");
-                            match self.sequence_input_mode {
+                            match state.sequence_input_mode {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
                                         if let Some(osc) = OsCode::from_u16(code) {
@@ -775,7 +740,7 @@ impl Kanata {
                     // Check for and handle valid termination.
                     if let HasValue((i, j)) = res {
                         log::debug!("sequence complete; tapping fake key");
-                        match self.sequence_input_mode {
+                        match state.sequence_input_mode {
                             SequenceInputMode::HiddenSuppressed
                             | SequenceInputMode::HiddenDelayType => {}
                             SequenceInputMode::VisibleBackspaced => {
@@ -979,6 +944,13 @@ impl Kanata {
                                 }
                             }
                         }
+                        CustomAction::MoveMouseSpeed { speed } => {
+                            self.move_mouse_speed_modifiers.push(*speed);
+                            log::debug!(
+                                "movemousespeed modifiers: {:?}",
+                                self.move_mouse_speed_modifiers
+                            );
+                        }
                         CustomAction::Cmd(_cmd) => {
                             #[cfg(feature = "cmd")]
                             cmds.push(_cmd.clone());
@@ -1014,14 +986,25 @@ impl Kanata {
                             log::debug!("on-press: sleeping for {delay} ms");
                             std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
                         }
-                        CustomAction::SequenceLeader => {
+                        CustomAction::SequenceCancel => {
+                            if self.sequence_state.is_some() {
+                                log::debug!("exiting sequence");
+                                let state = self.sequence_state.as_ref().unwrap();
+                                cancel_sequence(state, &mut self.kbd_out)?;
+                                self.sequence_state = None;
+                            }
+                        }
+                        CustomAction::SequenceLeader(timeout, input_mode) => {
                             if self.sequence_state.is_none()
-                                || self.sequence_input_mode == SequenceInputMode::HiddenSuppressed
+                                || self.sequence_state.as_ref().unwrap().sequence_input_mode
+                                    == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
                                 self.sequence_state = Some(SequenceState {
                                     sequence: vec![],
-                                    ticks_until_timeout: self.sequence_timeout,
+                                    sequence_input_mode: *input_mode,
+                                    ticks_until_timeout: *timeout,
+                                    sequence_timeout: *timeout,
                                 });
                             }
                         }
@@ -1159,6 +1142,9 @@ impl Kanata {
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::CancelMacroOnRelease => {}
+                        CustomAction::FakeKeyOnIdle(fkd) => {
+                            self.waiting_for_idle.insert(*fkd);
+                        }
                     }
                 }
                 #[cfg(feature = "cmd")]
@@ -1234,6 +1220,20 @@ impl Kanata {
                                     }
                                 }
                             }
+                            pbtn
+                        }
+                        CustomAction::MoveMouseSpeed { speed, .. } => {
+                            if let Some(idx) = self
+                                .move_mouse_speed_modifiers
+                                .iter()
+                                .position(|s| *s == *speed)
+                            {
+                                self.move_mouse_speed_modifiers.remove(idx);
+                            }
+                            log::debug!(
+                                "movemousespeed modifiers: {:?}",
+                                self.move_mouse_speed_modifiers
+                            );
                             pbtn
                         }
                         CustomAction::Delay(delay) => {
@@ -1449,7 +1449,21 @@ impl Kanata {
 
             info!("Starting kanata proper");
             let err = loop {
-                if kanata.lock().can_block() {
+                let can_block = {
+                    let mut k = kanata.lock();
+                    let is_idle = k.is_idle();
+                    // Note: checking waiting_for_idle can not be part of the computation for
+                    // is_idle() since incrementing ticks_since_idle is dependent on the return
+                    // value of is_idle().
+                    let counting_idle_ticks = !k.waiting_for_idle.is_empty();
+                    if !is_idle {
+                        k.ticks_since_idle = 0;
+                    } else if is_idle && counting_idle_ticks {
+                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(1);
+                    }
+                    is_idle && !counting_idle_ticks
+                };
+                if can_block {
                     log::trace!("blocking on channel");
                     match rx.recv() {
                         Ok(kev) => {
@@ -1545,7 +1559,8 @@ impl Kanata {
         });
     }
 
-    pub fn can_block(&self) -> bool {
+    pub fn is_idle(&self) -> bool {
+        let pressed_keys_means_not_idle = !self.waiting_for_idle.is_empty();
         self.layout.b().queue.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
@@ -1560,12 +1575,10 @@ impl Kanata {
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
-            && !self
-                .layout
-                .b()
-                .states
-                .iter()
-                .any(|s| matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_)))
+            && !self.layout.b().states.iter().any(|s| {
+                matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
+                    || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
+            })
     }
 }
 
@@ -1584,6 +1597,50 @@ fn run_multi_cmd(cmds: Vec<Vec<String>>) {
             }
         }
     });
+}
+
+fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {
+    let mut scaled_distance = initial_distance;
+    for &modifier in mods {
+        scaled_distance = u16::max(
+            1,
+            f32::min(
+                scaled_distance as f32 * (modifier as f32 / 100f32),
+                u16::MAX as f32,
+            )
+            .round() as u16,
+        );
+    }
+    scaled_distance
+}
+
+#[test]
+fn apply_speed_modifiers() {
+    assert_eq!(apply_mouse_distance_modifiers(15, &vec![]), 15);
+
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![200u16]), 20);
+    assert_eq!(apply_mouse_distance_modifiers(20, &vec![50u16]), 10);
+
+    assert_eq!(apply_mouse_distance_modifiers(5, &vec![33u16]), 2); // 1.65
+    assert_eq!(apply_mouse_distance_modifiers(100, &vec![99u16]), 99);
+
+    // Clamping
+    assert_eq!(
+        apply_mouse_distance_modifiers(65535, &vec![65535u16]),
+        65535
+    );
+    assert_eq!(apply_mouse_distance_modifiers(1, &vec![1u16]), 1);
+
+    // Nice, round calculations equal themselves
+    assert_eq!(
+        apply_mouse_distance_modifiers(10, &vec![50u16, 200u16]),
+        apply_mouse_distance_modifiers(10, &vec![200u16, 50u16])
+    );
+
+    // 33% of 20
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![200u16, 33u16]), 7);
+    // 200% of 3
+    assert_eq!(apply_mouse_distance_modifiers(10, &vec![33u16, 200u16]), 6);
 }
 
 /// Checks if kanata should exit based on the fixed key combination of:
@@ -1639,6 +1696,21 @@ fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<(
                 })
                 .unwrap_or(Ok(_kbd_out.unicode_u_code.get()))?,
         );
+    }
+    Ok(())
+}
+
+fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+    match state.sequence_input_mode {
+        SequenceInputMode::HiddenDelayType => {
+            for code in state.sequence.iter().copied() {
+                if let Some(osc) = OsCode::from_u16(code) {
+                    kbd_out.press_key(osc)?;
+                    kbd_out.release_key(osc)?;
+                }
+            }
+        }
+        SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
 }

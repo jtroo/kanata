@@ -1157,6 +1157,29 @@ This can make it a little confusing for how to set the `x, y` values
 to get the positions that you want.
 Experimentation will be needed.
 
+[[mouse-speed]]
+==== Modify the speed of mouse movements
+<<table-of-contents,Back to ToC>>
+
+The action `movemouse-speed` modifies the speed at which `movemouse` and
+`movemouse-accel` function at runtime. It does this by expanding or shrinking
+`min_distance` and `max_distance` while the action key is pressed.
+
+This action accepts one number (unit: percentage) by which the
+mouse movements will be accelerated.
+
+WARNING: Due to the nature of pixels being whole numbers, some values such as
+33 may not result in an exact third of the distance.
+
+.Example:
+[source]
+----
+(defalias
+  fst (movemouse-speed 200)
+  slw (movemouse-speed 50)
+)
+----
+
 [[mouse-all-actions-example]]
 ==== Mouse all actions example
 <<table-of-contents,Back to ToC>>
@@ -1180,13 +1203,15 @@ Experimentation will be needed.
   ma→ (movemouse-accel-right 1 1000 1 5)
 
   sm (setmouse 32228 32228)
+
+  fst (movemouse-speed 200)
 )
 
 (deflayer mouse
   _    @mwu @mwd @mwl @mwr _    _    _    _    _    @ma↑ _    _    _
   _    pgup bck  _    fwd  _    _    _    _    @ma← @ma↓ @ma→ _    _
   _    pgdn mlft _    mrgt mmid _    mbck mfwd _    @ms↑ _    _
-  _    _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
+  @fst _    mltp _    mrtp mmtp _    mbtp mftp @ms← @ms↓ @ms→
   _    _    _              _              _    _    _
 )
 ----
@@ -1710,6 +1735,9 @@ physical key presses and can only be activated via these actions:
   action when pressing the key mapped to this action.
 * `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
   action when releasing the key mapped to this action.
+* `+(on-idle-fakekey <fake key name> <key action> <idle time>)+`:
+  Activate a fake key action
+  when the keyboard is idle for `idle time` milliseconds
 
 A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
 this entry is similar to `+defalias+`, but you cannot make use of aliases
@@ -1755,10 +1783,11 @@ The aforementioned `+<key action>+` can be one of three values:
 
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
+  rsf (on-idle-fakekey ral tap 1000)
 )
 
 (deflayer use-fake-keys
-  @psf @rsf @pal @ral a s d f
+  @psf @rsf @pal @ral a s d @rsf
 )
 ----
 
@@ -1824,6 +1853,15 @@ precisely, the action triggered is:
 (defseq git-status (g s t))
 (deffakekeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
+
+(defseq
+    dotcom (. S-3)
+    dotorg (. S-4)
+)
+(deffakekeys
+    dotcom (macro . c o m)
+    dotorg (macro . c o m)
+)
 ----
 
 For more context, you can read the
@@ -1832,6 +1870,31 @@ You may also be interested in
 https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[
 the document describing chords is sequences]
 to read about how chords in sequences behave.
+
+==== Override the global timeout and input mode
+
+An alternative to using `sldr` is the `sequence` action.
+The syntax is `(sequence <timeout>)`.
+This enters sequence mode with a sequence timeout
+different from the globally configured one.
+
+The `sequence` action can also be called with a second parameter.
+The second parameter is an override for `sequence-input-mode`:
+
+----
+(sequence <timeout> <input-mode>)
+----
+
+
+.Example:
+[source]
+----
+;; Enter sequence mode and input . with a timeout of 250
+(defalias dot-sequence (macro (sequence 250) 10 .))
+
+;; Enter sequence mode and input . with a timeout of 250 and using hidden-delay-type
+(defalias dot-sequence (macro (sequence 250 hidden-delay-type) 10 .))
+----
 
 [[input-chords]]
 === Input chords
@@ -1975,6 +2038,89 @@ $env:VAR_NAME = "var_value"
 # bash
 VAR_NAME=var_value
 ----
+
+[[switch]]
+=== switch
+<<table-of-contents,Back to ToC>>
+
+The `switch` action accepts multiple cases.
+One case is a triple of:
+
+- keys check
+- action: to activate if keys check succeeds
+- fallthrough|break: stop evaluating cases
+
+The default use of keys check behaves similarly to fork.
+
+For example, the keys check `(a b c)` will activate the corresponding action
+if any of a, b, or c are currently pressed.
+
+The keys check also accepts the boolean operators and|or to allow more
+complex use cases.
+
+The order of cases matters.
+For example, if two different cases match the currently pressed keys,
+the case listed earlier in the configuration will activate first.
+If the early case uses break, the second case will not activate.
+Otherwise if fallthrough is used,
+the second case will activate sequentially after the first case.
+This idea generalizes to more than two cases,
+but the two case example is hopefully simple and effective enough.
+
+.Example:
+[source]
+----
+(defalias
+  swt (switch
+    ;; case 1
+    ((and a b (or c d) (or e f))) @ac1 break
+    ;; case 2
+    (a b c) @ac2 fallthrough
+    ;; case 3
+    () @ac3 break
+  )
+)
+----
+
+Below is a description of how this example behaves.
+
+==== Case 1
+
+----
+((and a b (or c d) (or e f))) a break
+----
+
+Translating case 1's keys check to some other common languages
+might look like:
+
+----
+(a && b && (c || d) && (e || f))
+----
+
+If the keys check passes, the action `@ac1` will activate.
+No other action will activate since `break` is used.
+
+==== Cases 2 and 3
+
+----
+(a b c) c fallthrough
+() b break
+----
+
+Case 2's key check behaves like that of `fork`, i.e.
+
+   (or a b c)
+
+or for some other common languages:
+
+   a || b || c
+
+If this keys check passes and the case 1 does not pass,
+the action `@ac2` will activate first.
+Since the keys check of case 3 always passes, `@ac3` will activate next.
+
+If neither case 1 or case 2 pass their keys checks,
+case 3 will always activate with `@ac3`.
 
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour

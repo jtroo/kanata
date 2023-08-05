@@ -665,6 +665,64 @@ fn test_include_bad2_has_original_filename() {
 }
 
 #[test]
+fn parse_bad_submacro() {
+    // Test exists since it used to crash. It should not crash.
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(deflayer base
+  (macro M-s-())
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", e);
+        ""
+    })
+    .unwrap_err();
+}
+
+#[test]
+fn parse_bad_submacro_2() {
+    // Test exists since it used to crash. It should not crash.
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(deflayer base
+  (macro M-s-g)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", e);
+        ""
+    })
+    .unwrap_err();
+}
+
+#[test]
 fn parse_switch() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
@@ -763,5 +821,186 @@ fn parse_switch_exceed_depth() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
+        ""
+    })
     .unwrap_err();
+}
+
+#[test]
+fn parse_on_idle_fakekey() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deffakekeys hello a)
+(deflayer base
+  (on-idle-fakekey hello tap 200)
+)
+"#;
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        eprintln!("{:?}", _e);
+        ""
+    })
+    .unwrap();
+    assert_eq!(
+        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
+                coord: Coord { x: 1, y: 0 },
+                action: FakeKeyAction::Tap,
+                idle_duration: 200
+            })]
+            .as_ref()
+        ),
+    );
+}
+
+#[test]
+fn parse_on_idle_fakekey_errors() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deffakekeys hello a)
+(deflayer base
+  (on-idle-fakekey hello bap 200)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|_e| {
+        // comment out to see what this looks like when running test
+        // eprintln!("{:?}", _e);
+        ""
+    })
+    .unwrap_err();
+
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deffakekeys hello a)
+(deflayer base
+  (on-idle-fakekey jello tap 200)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
+        ""
+    })
+    .unwrap_err();
+
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deffakekeys hello a)
+(deflayer base
+  (on-idle-fakekey (hello) tap 200)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
+        ""
+    })
+    .unwrap_err();
+
+    let source = r#"
+(defvar var1 a)
+(defsrc a)
+(deffakekeys hello a)
+(deflayer base
+  (on-idle-fakekey hello tap -1)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
+        ""
+    })
+    .unwrap_err();
+}
+
+#[test]
+fn parse_fake_keys_errors_on_too_many() {
+    let mut s = ParsedState::default();
+    let mut checked_for_err = false;
+    for n in 0..1000 {
+        let exprs = [&vec![
+            SExpr::Atom(Spanned {
+                t: "deffakekeys".to_string(),
+                span: Default::default(),
+            }),
+            SExpr::Atom(Spanned {
+                t: "a".repeat(n),
+                span: Default::default(),
+            }),
+            SExpr::Atom(Spanned {
+                t: "a".to_string(),
+                span: Default::default(),
+            }),
+        ]];
+        if n < 500 {
+            // fill up fake keys, expect first bunch to succeed
+            parse_fake_keys(&exprs, &mut s).unwrap();
+        } else if n < 999 {
+            // at some point they start failing, ignore result
+            let _ = parse_fake_keys(&exprs, &mut s);
+        } else {
+            // last iteration, check for error. probably happened before this, but just check here
+            let _ = parse_fake_keys(&exprs, &mut s).unwrap_err();
+            checked_for_err = true;
+        }
+    }
+    assert!(checked_for_err);
 }
