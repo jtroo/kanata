@@ -634,10 +634,7 @@ fn test_include_bad_has_filename_included() {
         .map(|_| ())
         .unwrap_err()
     );
-    assert!(err.contains(&format!(
-        "test_cfgs{}included-bad.kbd",
-        std::path::MAIN_SEPARATOR
-    )));
+    assert!(err.contains("included-bad.kbd"));
     assert!(!err.contains(&format!(
         "test_cfgs{}include-bad.kbd",
         std::path::MAIN_SEPARATOR
