@@ -14,3 +14,9 @@ pub fn mod_mask_for_keycode(kc: KeyCode) -> u16 {
         _ => 0,
     }
 }
+
+#[test]
+fn keys_fit_within_mask() {
+    use crate::keys::OsCode;
+    assert!(MASK_KEYCODES >= u16::from(OsCode::KEY_MAX));
+}

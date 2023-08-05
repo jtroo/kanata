@@ -21,6 +21,7 @@ pub enum CustomAction {
         coord: Coord,
         action: FakeKeyAction,
     },
+    FakeKeyOnIdle(FakeKeyOnIdle),
     Delay(u16),
     DelayOnRelease(u16),
     MWheel {
@@ -81,6 +82,14 @@ pub enum FakeKeyAction {
     Press,
     Release,
     Tap,
+}
+
+/// An active waiting-for-idle state.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FakeKeyOnIdle {
+    pub coord: Coord,
+    pub action: FakeKeyAction,
+    pub idle_duration: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

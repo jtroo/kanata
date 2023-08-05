@@ -1735,6 +1735,9 @@ physical key presses and can only be activated via these actions:
   action when pressing the key mapped to this action.
 * `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
   action when releasing the key mapped to this action.
+* `+(on-idle-fakekey <fake key name> <key action> <idle time>)+`:
+  Activate a fake key action
+  when the keyboard is idle for `idle time` milliseconds
 
 A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
 this entry is similar to `+defalias+`, but you cannot make use of aliases
@@ -1780,10 +1783,11 @@ The aforementioned `+<key action>+` can be one of three values:
 
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
+  rsf (on-idle-fakekey ral tap 1000)
 )
 
 (deflayer use-fake-keys
-  @psf @rsf @pal @ral a s d f
+  @psf @rsf @pal @ral a s d @rsf
 )
 ----
 
