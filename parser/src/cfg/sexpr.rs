@@ -7,7 +7,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 use super::{ParseError, Result};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Position {
     /// The position (since the beginning of the file), in bytes.
     pub absolute: usize,
@@ -65,16 +65,16 @@ impl Span {
 
         let start: Position;
         if self.start() <= other.start() {
-            start = self.start.clone();
+            start = self.start;
         } else {
-            start = other.start.clone();
+            start = other.start;
         }
 
         let end: Position;
         if self.end() >= other.end() {
-            end = self.end.clone();
+            end = self.end;
         } else {
-            end = other.end.clone();
+            end = other.end;
         }
 
         Span::new(
@@ -320,7 +320,7 @@ impl<'a> Lexer<'a> {
             let start = self.bytes.pos();
             break match self.bytes.next() {
                 Some(b) => Some((
-                    start.clone(),
+                    start,
                     Ok(match b {
                         b'(' => Open,
                         b')' => Close,
@@ -328,12 +328,7 @@ impl<'a> Lexer<'a> {
                             self.next_while(|b| b != b'"' && b != b'\n');
                             match self.bytes.next() {
                                 Some(b'"') => StringTok,
-                                _ => {
-                                    return Some((
-                                        start.clone(),
-                                        Err("Unterminated string".to_string()),
-                                    ))
-                                }
+                                _ => return Some((start, Err("Unterminated string".to_string()))),
                             }
                         }
                         b';' => match self.bytes.clone().next() {
@@ -354,7 +349,7 @@ impl<'a> Lexer<'a> {
                                 self.bytes.next();
                                 let tok: Token = match self.read_until_multiline_comment_end() {
                                     Ok(t) => t,
-                                    e @ Err(_) => return Some((start.clone(), e)),
+                                    e @ Err(_) => return Some((start, e)),
                                 };
                                 if self.ignore_whitespace_and_comments {
                                     continue;
@@ -398,7 +393,7 @@ pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, P
         .map_err(|e| {
             if e.msg.contains("Unterminated multiline comment") {
                 if let Some(mut span) = e.span.clone() {
-                    span.end = span.start.clone();
+                    span.end = span.start;
                     span.end.absolute += 2;
                     ParseError::new(span, e.msg)
                 } else {
