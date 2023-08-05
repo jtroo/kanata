@@ -91,7 +91,7 @@ fn try_parse_chord<'a>(chord: &str, exprs: &'a [SExpr], items: &mut Vec<Item>) -
             }
         },
         Err(e) => {
-            log::warn!("{LP} found invalid chord {chord}: {e}");
+            log::warn!("{LP} found invalid chord {chord}: {}", e.msg);
             &exprs[1..]
         }
     }
@@ -187,7 +187,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
         Err(e) => {
             log::warn!(
                 "{LP} could not parse an S-expression from cmd:\n{stdout}\n{}",
-                e.help_msg
+                e.msg
             );
             empty()
         }
