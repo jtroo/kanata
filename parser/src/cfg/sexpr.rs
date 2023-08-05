@@ -211,12 +211,48 @@ enum Token {
     Whitespace,
 }
 
-pub struct Lexer<'a> {
-    s: &'a str,
+#[derive(Clone)]
+/// A wrapper around [`Bytes`] that keeps track of current [`Position`].
+struct PositionCountingBytesIterator<'a> {
     bytes: Bytes<'a>,
-    ignore_whitespace_and_comments: bool,
+    source_length: usize,
     line: usize,
-    last_newline_pos: usize,
+    line_beginning: usize,
+}
+
+impl<'a> PositionCountingBytesIterator<'a> {
+    fn new(s: &'a str) -> Self {
+        Self {
+            bytes: s.bytes(),
+            source_length: s.len(),
+            line: 0,
+            line_beginning: 0,
+        }
+    }
+
+    fn pos(&self) -> Position {
+        let absolute = self.source_length - self.bytes.len();
+        Position::new(absolute, self.line, self.line_beginning)
+    }
+}
+
+impl<'a> Iterator for PositionCountingBytesIterator<'a> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bytes.next().map(|b| {
+            if b == b'\n' {
+                self.line += 1;
+                self.line_beginning = self.source_length - self.bytes.len()
+            }
+            b
+        })
+    }
+}
+
+pub struct Lexer<'a> {
+    bytes: PositionCountingBytesIterator<'a>,
+    ignore_whitespace_and_comments: bool,
 }
 
 fn is_start(b: u8) -> bool {
@@ -234,18 +270,17 @@ impl<'a> Lexer<'a> {
         file_name: &'a str,
         ignore_whitespace_and_comments: bool,
     ) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
+        let _bytes = source.bytes().next();
+
         let mut lexer = Lexer {
-            s: source,
-            bytes: source.bytes(),
+            bytes: PositionCountingBytesIterator::new(source),
             ignore_whitespace_and_comments,
-            line: 0,
-            last_newline_pos: 0,
         };
         let file_name: Rc<str> = Rc::from(file_name);
         let file_content: Rc<str> = Rc::from(source);
         iter::from_fn(move || {
             lexer.next_token().map(|(start, t)| {
-                let end = lexer.pos();
+                let end = lexer.bytes.pos();
                 Spanned::new(
                     t,
                     Span::new(start, end, file_name.clone(), file_content.clone()),
@@ -259,10 +294,6 @@ impl<'a> Lexer<'a> {
             if f(b) {
                 // Iterating over a clone of this iterator - this is guaranteed to be Some
                 self.bytes.next().expect("iter lag");
-                if b == b'\n' {
-                    self.last_newline_pos = self.pos().absolute - 1;
-                    self.line += 1;
-                }
             } else {
                 break;
             }
@@ -275,10 +306,6 @@ impl<'a> Lexer<'a> {
             // Iterating over a clone of this iterator that's 1 item ahead - this is guaranteed to
             // be Some.
             let b1 = self.bytes.next().expect("iter lag");
-            if b1 == b'\n' {
-                self.last_newline_pos = self.pos().absolute - 1;
-                self.line += 1;
-            }
             if b1 == b'|' && b2 == b'#' {
                 self.bytes.next();
                 return Ok(Token::BlockComment);
@@ -287,15 +314,10 @@ impl<'a> Lexer<'a> {
         Err("Unterminated multiline comment. Add |# after the end of your comment.".to_string())
     }
 
-    fn pos(&self) -> Position {
-        let absolute = self.s.len() - self.bytes.len();
-        Position::new(absolute, self.line, self.last_newline_pos)
-    }
-
     fn next_token(&mut self) -> Option<(Position, TokenRes)> {
         use Token::*;
         loop {
-            let start = self.pos();
+            let start = self.bytes.pos();
             break match self.bytes.next() {
                 Some(b) => Some((
                     start.clone(),
@@ -318,12 +340,7 @@ impl<'a> Lexer<'a> {
                             Some(b';') => {
                                 self.next_while(|b| b != b'\n');
                                 // possibly consume the newline (or EOF handled in next iteration)
-                                if let Some(b2) = self.bytes.next() {
-                                    if b2 == b'\n' {
-                                        self.last_newline_pos = self.pos().absolute - 1;
-                                        self.line += 1;
-                                    }
-                                }
+                                self.bytes.next();
                                 if self.ignore_whitespace_and_comments {
                                     continue;
                                 }
@@ -347,10 +364,6 @@ impl<'a> Lexer<'a> {
                             _ => self.next_string(),
                         },
                         b if b.is_ascii_whitespace() => {
-                            if b == b'\n' {
-                                self.last_newline_pos = self.pos().absolute - 1;
-                                self.line += 1;
-                            }
                             let tok = self.next_whitespace();
                             if self.ignore_whitespace_and_comments {
                                 continue;
