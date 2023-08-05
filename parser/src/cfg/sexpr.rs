@@ -63,19 +63,17 @@ impl Span {
     pub fn cover(&self, other: &Span) -> Span {
         assert!(self.file_name == other.file_name);
 
-        let start: Position;
-        if self.start() <= other.start() {
-            start = self.start;
+        let start: Position = if self.start() <= other.start() {
+            self.start
         } else {
-            start = other.start;
-        }
+            other.start
+        };
 
-        let end: Position;
-        if self.end() >= other.end() {
-            end = self.end;
+        let end: Position = if self.end() >= other.end() {
+            self.end
         } else {
-            end = other.end;
-        }
+            other.end
+        };
 
         Span::new(
             start,
