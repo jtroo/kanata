@@ -47,11 +47,11 @@ impl Into<miette::Error> for ParseError {
         let diagnostic = CfgError {
             err_span: self
                 .span
-                .clone()
+                .as_ref()
                 .map(|s| SourceSpan::new(s.start().into(), (s.end() - s.start()).into())),
             help_msg: help(self.msg),
-            file_name: self.span.clone().map(|s| s.file_name()),
-            file_content: self.span.clone().map(|s| s.file_content()),
+            file_name: self.span.as_ref().map(|s| s.file_name()),
+            file_content: self.span.as_ref().map(|s| s.file_content()),
         };
 
         let report: miette::Error = diagnostic.into();
