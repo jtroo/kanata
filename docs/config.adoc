@@ -1798,33 +1798,6 @@ The aforementioned `+<key action>+` can be one of three values:
 )
 ----
 
-If you find that an application isn't registering keypresses correctly with
-`+multi+` because the sequence activates too quickly, you can try using fake
-key actions alongside the delay actions below.
-
-* `+on-press-fakekey-delay+`
-* `+on-release-fakekey-delay+`
-
-Do note that processing a fakekey-delay and even a sequence of delays will
-delay any other inputs from being processed until the fakekey-delays are all
-complete, so use with care.
-
-NOTE: You will likely want to use `+macro+` instead of fake keys with delays now
-that `+macro+` supports more actions.
-
-[source]
-----
-(defalias
-  stm (multi ;; Shift -> middle mouse with a delay
-    (on-press-fakekey lsft press)
-    (on-press-fakekey-delay 200)
-    (on-press-fakekey mmid press)
-    (on-release-fakekey mmid release)
-    (on-release-fakekey-delay 200)
-    (on-release-fakekey lsft release)
-  )
-)
-----
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
@@ -1833,6 +1806,16 @@ Something notable about fake keys is that they don't always interrupt the state
 of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
 key, this won't interrupt a tap dance. However, most other action types,
 notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
+
+==== Aside: broken delay action
+
+The implementation of the following actions are broken in many use cases:
+`on-press-fakekey-delay`, `on-release-fakekey-delay`.
+
+Because these actions exist and might otherwise be discovered anyway,
+it seems better to warn about it here in the documentation.
+You should use the `macro` action instead.
+The `macro` action can operate on fake keys.
 
 [[sequences]]
 === Sequences
