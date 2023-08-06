@@ -366,7 +366,7 @@ overhead. If you do not care for the logging, you can choose to disable it.
 ----
 
 [[delegate-to-first-layer]]
-== delegate-to-first-layer
+=== delegate-to-first-layer
 <<table-of-contents,Back to ToC>>
 
 
@@ -1376,9 +1376,15 @@ non `-timeout` variants will activate the hold action in both cases.
 
 - `tap-hold-release-keys`
 
-This variant takes a 5th parameter which is a list of keys that trigger an
-early tap when they are pressed while the `tap-hold-release-keys` action is
-waiting.
+This variant takes a 5th parameter which is a list of keys
+that trigger an early tap
+when they are pressed while the `tap-hold-release-keys` action is waiting.
+
+The keys in the 5th parameter correspond to the physical input keys,
+or in other words the key that corresponds to `defsrc`.
+This is in contrast to the `fork` and `switch` actions
+which operates on outputted keys, or in other words the outputs
+that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 
 .Example:
 [source]
