@@ -1,2 +1,3 @@
 # Ignore Cargo.lock since this is a library crate
 Cargo.lock
+target

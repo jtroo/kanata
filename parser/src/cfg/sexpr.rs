@@ -1,19 +1,38 @@
+use std::iter;
 use std::ops::Index;
 use std::rc::Rc;
 use std::str::Bytes;
-use std::{cmp, iter};
 
-type ParseError = Spanned<String>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
-type ParseResult<T> = Result<T, ParseError>;
+use super::{ParseError, Result};
 
-use super::error::{span_start_len, CfgError};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Position {
+    /// The position (since the beginning of the file), in bytes.
+    pub absolute: usize,
+    /// The number of newline characters since the beginning of the file.
+    pub line: usize,
+    /// The position of beginning of line, in bytes.
+    pub line_beginning: usize,
+}
+
+impl Position {
+    fn new(absolute: usize, line: usize, line_beginning: usize) -> Self {
+        assert!(line <= absolute);
+        assert!(line_beginning <= absolute);
+        Self {
+            absolute,
+            line,
+            line_beginning,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
-    pub start: usize,
-    pub end: usize,
+    pub start: Position,
+    pub end: Position,
     pub file_name: Rc<str>,
     pub file_content: Rc<str>,
 }
@@ -21,8 +40,8 @@ pub struct Span {
 impl Default for Span {
     fn default() -> Self {
         Self {
-            start: 0,
-            end: 0,
+            start: Position::default(),
+            end: Position::default(),
             file_name: Rc::from(""),
             file_content: Rc::from(""),
         }
@@ -30,8 +49,9 @@ impl Default for Span {
 }
 
 impl Span {
-    fn new(start: usize, end: usize, file_name: Rc<str>, file_content: Rc<str>) -> Span {
-        assert!(start <= end);
+    fn new(start: Position, end: Position, file_name: Rc<str>, file_content: Rc<str>) -> Span {
+        assert!(start.absolute <= end.absolute);
+        assert!(start.line <= end.line);
         Span {
             start,
             end,
@@ -40,24 +60,35 @@ impl Span {
         }
     }
 
+    pub fn cover(&self, other: &Span) -> Span {
+        assert!(self.file_name == other.file_name);
+
+        let start: Position = if self.start() <= other.start() {
+            self.start
+        } else {
+            other.start
+        };
+
+        let end: Position = if self.end() >= other.end() {
+            self.end
+        } else {
+            other.end
+        };
+
+        Span::new(
+            start,
+            end,
+            self.file_name.clone(),
+            self.file_content.clone(),
+        )
+    }
+
     pub fn start(&self) -> usize {
-        self.start
+        self.start.absolute
     }
 
     pub fn end(&self) -> usize {
-        self.end
-    }
-
-    /// # Panics
-    ///
-    /// Panics if `other` has a different `file_name`
-    pub fn cover(self, other: Span) -> Span {
-        let start = cmp::min(self.start(), other.start());
-        let end = cmp::max(self.end(), other.end());
-        if self.file_name != other.file_name {
-            panic!("Can't create span across different files.");
-        }
-        Span::new(start, end, self.file_name, self.file_content)
+        self.end.absolute
     }
 
     pub fn file_name(&self) -> String {
@@ -160,39 +191,97 @@ impl std::fmt::Debug for SExpr {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Complementary to SExpr metadata items.
+pub enum SExprMetaData {
+    LineComment(Spanned<String>),
+    BlockComment(Spanned<String>),
+    Whitespace(Spanned<String>),
+}
+
 #[derive(Debug)]
 enum Token {
     Open,
     Close,
     StringTok,
+    BlockComment,
+    LineComment,
+    Whitespace,
 }
-pub struct Lexer<'a> {
-    s: &'a str,
+
+#[derive(Clone)]
+/// A wrapper around [`Bytes`] that keeps track of current [`Position`].
+struct PositionCountingBytesIterator<'a> {
     bytes: Bytes<'a>,
+    source_length: usize,
+    line: usize,
+    line_beginning: usize,
+}
+
+impl<'a> PositionCountingBytesIterator<'a> {
+    fn new(s: &'a str) -> Self {
+        Self {
+            bytes: s.bytes(),
+            source_length: s.len(),
+            line: 0,
+            line_beginning: 0,
+        }
+    }
+
+    fn pos(&self) -> Position {
+        let absolute = self.source_length - self.bytes.len();
+        Position::new(absolute, self.line, self.line_beginning)
+    }
+}
+
+impl<'a> Iterator for PositionCountingBytesIterator<'a> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bytes.next().map(|b| {
+            if b == b'\n' {
+                self.line += 1;
+                self.line_beginning = self.source_length - self.bytes.len()
+            }
+            b
+        })
+    }
+}
+
+pub struct Lexer<'a> {
+    bytes: PositionCountingBytesIterator<'a>,
+    ignore_whitespace_and_comments: bool,
 }
 
 fn is_start(b: u8) -> bool {
     matches!(b, b'(' | b')' | b'"') || b.is_ascii_whitespace()
 }
 
-type TokenRes = Result<Token, String>;
+type TokenRes = std::result::Result<Token, String>;
 
 impl<'a> Lexer<'a> {
     #[allow(clippy::new_ret_no_self)]
     /// `file_name` is used only for indicating a file, where
     /// a fragment of `source` that caused parsing error came from.
-    fn new(source: &'a str, file_name: &'a str) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
+    fn new(
+        source: &'a str,
+        file_name: &'a str,
+        ignore_whitespace_and_comments: bool,
+    ) -> impl Iterator<Item = Spanned<TokenRes>> + 'a {
+        let _bytes = source.bytes().next();
+
         let mut lexer = Lexer {
-            s: source,
-            bytes: source.bytes(),
+            bytes: PositionCountingBytesIterator::new(source),
+            ignore_whitespace_and_comments,
         };
         let file_name: Rc<str> = Rc::from(file_name);
         let file_content: Rc<str> = Rc::from(source);
         iter::from_fn(move || {
             lexer.next_token().map(|(start, t)| {
+                let end = lexer.bytes.pos();
                 Spanned::new(
                     t,
-                    Span::new(start, lexer.pos(), file_name.clone(), file_content.clone()),
+                    Span::new(start, end, file_name.clone(), file_content.clone()),
                 )
             })
         })
@@ -209,36 +298,24 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Looks for "|#", consuming bytes until found. If not found, returns Some(Err(...));
-    /// otherwise returns None.
-    fn read_until_multiline_comment_end(&mut self) -> Option<TokenRes> {
-        let mut found_comment_end = false;
+    /// Looks for "|#", consuming bytes until found. If not found, returns Err(...);
+    fn read_until_multiline_comment_end(&mut self) -> TokenRes {
         for b2 in self.bytes.clone().skip(1) {
             // Iterating over a clone of this iterator that's 1 item ahead - this is guaranteed to
             // be Some.
             let b1 = self.bytes.next().expect("iter lag");
             if b1 == b'|' && b2 == b'#' {
-                found_comment_end = true;
-                break;
+                self.bytes.next();
+                return Ok(Token::BlockComment);
             }
         }
-        if !found_comment_end {
-            return Some(Err(
-                "Unterminated multiline comment. Add |# after the end of your comment.".to_string(),
-            ));
-        }
-        self.bytes.next();
-        None
+        Err("Unterminated multiline comment. Add |# after the end of your comment.".to_string())
     }
 
-    fn pos(&self) -> usize {
-        self.s.len() - self.bytes.len()
-    }
-
-    fn next_token(&mut self) -> Option<(usize, TokenRes)> {
+    fn next_token(&mut self) -> Option<(Position, TokenRes)> {
         use Token::*;
         loop {
-            let start = self.pos();
+            let start = self.bytes.pos();
             break match self.bytes.next() {
                 Some(b) => Some((
                     start,
@@ -256,8 +333,11 @@ impl<'a> Lexer<'a> {
                             Some(b';') => {
                                 self.next_while(|b| b != b'\n');
                                 // possibly consume the newline (or EOF handled in next iteration)
-                                let _ = self.bytes.next();
-                                continue;
+                                self.bytes.next();
+                                if self.ignore_whitespace_and_comments {
+                                    continue;
+                                }
+                                Token::LineComment
                             }
                             _ => self.next_string(),
                         },
@@ -265,16 +345,23 @@ impl<'a> Lexer<'a> {
                             Some(b'|') => {
                                 // consume the '|'
                                 self.bytes.next();
-                                if let Some(e) = self.read_until_multiline_comment_end() {
-                                    return Some((start, e));
+                                let tok: Token = match self.read_until_multiline_comment_end() {
+                                    Ok(t) => t,
+                                    e @ Err(_) => return Some((start, e)),
+                                };
+                                if self.ignore_whitespace_and_comments {
+                                    continue;
                                 }
-                                continue;
+                                tok
                             }
                             _ => self.next_string(),
                         },
                         b if b.is_ascii_whitespace() => {
-                            self.next_while(|b| b.is_ascii_whitespace());
-                            continue;
+                            let tok = self.next_whitespace();
+                            if self.ignore_whitespace_and_comments {
+                                continue;
+                            }
+                            tok
                         }
                         _ => self.next_string(),
                     }),
@@ -289,30 +376,57 @@ impl<'a> Lexer<'a> {
         self.next_while(|b| !is_start(b));
         Token::StringTok
     }
+
+    fn next_whitespace(&mut self) -> Token {
+        self.next_while(|b| b.is_ascii_whitespace());
+        Token::Whitespace
+    }
 }
 
 pub type TopLevel = Spanned<Vec<SExpr>>;
 
-pub fn parse(cfg: &str, file_name: &str) -> Result<Vec<TopLevel>, CfgError> {
-    parse_(cfg, file_name).map_err(transform_error)
+pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, ParseError> {
+    let ignore_whitespace_and_comments = true;
+    parse_(cfg, file_name, ignore_whitespace_and_comments)
+        .map_err(|e| {
+            if e.msg.contains("Unterminated multiline comment") {
+                if let Some(mut span) = e.span {
+                    span.end = span.start;
+                    span.end.absolute += 2;
+                    ParseError::new(span, e.msg)
+                } else {
+                    e
+                }
+            } else {
+                e
+            }
+        })
+        .map(|(x, _)| x)
 }
 
-pub fn parse_(cfg: &str, file_name: &str) -> ParseResult<Vec<TopLevel>> {
-    parse_with(cfg, Lexer::new(cfg, file_name))
+pub fn parse_(
+    cfg: &str,
+    file_name: &str,
+    ignore_whitespace_and_comments: bool,
+) -> Result<(Vec<TopLevel>, Vec<SExprMetaData>)> {
+    parse_with(
+        cfg,
+        Lexer::new(cfg, file_name, ignore_whitespace_and_comments),
+    )
 }
 
 fn parse_with(
     s: &str,
     mut tokens: impl Iterator<Item = Spanned<TokenRes>>,
-) -> ParseResult<Vec<TopLevel>> {
-    use SExpr::*;
+) -> Result<(Vec<TopLevel>, Vec<SExprMetaData>)> {
     use Token::*;
     let mut stack = vec![Spanned::new(vec![], Span::default())];
+    let mut metadata: Vec<SExprMetaData> = vec![];
     loop {
         match tokens.next() {
             None => break,
-            Some(Spanned { t, span }) => match t.map_err(|s| Spanned::new(s, span.clone()))? {
-                Open => stack.push(Spanned::new(vec![], span.clone())),
+            Some(Spanned { t, span }) => match t.map_err(|s| ParseError::new(span.clone(), s))? {
+                Open => stack.push(Spanned::new(vec![], span)),
                 Close => {
                     let Spanned {
                         t: exprs,
@@ -321,22 +435,28 @@ fn parse_with(
                         // if the stack is ever empty, return an error.
                     } = stack.pop().expect("placeholder unpopped");
                     if stack.is_empty() {
-                        return Err(Spanned::new(
-                            "Unexpected closing parenthesis".to_string(),
-                            span,
-                        ));
+                        return Err(ParseError::new(span, "Unexpected closing parenthesis"));
                     }
-                    let expr = List(Spanned::new(exprs, stack_span.cover(span.clone())));
+                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span)));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
                 StringTok => stack
                     .last_mut()
                     .expect("not empty")
                     .t
-                    .push(Atom(Spanned::new(
-                        s[span.clone()].to_string(),
-                        span.clone(),
-                    ))),
+                    .push(SExpr::Atom(Spanned::new(s[span.clone()].to_string(), span))),
+                BlockComment => metadata.push(SExprMetaData::BlockComment(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span,
+                ))),
+                LineComment => metadata.push(SExprMetaData::LineComment(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span,
+                ))),
+                Whitespace => metadata.push(SExprMetaData::Whitespace(Spanned::new(
+                    s[span.clone()].to_string(),
+                    span,
+                ))),
             },
         }
     }
@@ -344,19 +464,16 @@ fn parse_with(
     // empty, return an error.
     let Spanned { t: exprs, span: sp } = stack.pop().expect("placeholder unpopped");
     if !stack.is_empty() {
-        return Err(Spanned::new("Unclosed opening parenthesis".to_string(), sp));
+        return Err(ParseError::new(sp, "Unclosed opening parenthesis"));
     }
     let exprs = exprs
         .into_iter()
         .map(|expr| match expr {
             SExpr::List(es) => Ok(es),
-            SExpr::Atom(s) => Err(Spanned::new(
-                "Everything must be in a list".to_string(),
-                s.span,
-            )),
+            SExpr::Atom(s) => Err(ParseError::new(s.span, "Everything must be in a list")),
         })
-        .collect::<ParseResult<_>>()?;
-    Ok(exprs)
+        .collect::<Result<_>>()?;
+    Ok((exprs, metadata))
 }
 
 use miette::{Diagnostic, SourceSpan};
@@ -371,20 +488,4 @@ pub struct LexError {
     pub err_span: SourceSpan,
     #[help]
     pub help_msg: String,
-}
-
-pub fn transform_error(e: ParseError) -> CfgError {
-    let start = e.span.start();
-    let end = e.span.end();
-    let mut len = end - start;
-    if e.t.contains("Unterminated multiline comment") {
-        len = 2;
-    };
-
-    CfgError {
-        err_span: Some(span_start_len(start, len)),
-        help_msg: e.t,
-        file_name: Some(e.span.file_name()),
-        file_content: Some(e.span.file_content()),
-    }
 }
