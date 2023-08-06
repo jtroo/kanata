@@ -1366,8 +1366,8 @@ but you should be wary of activating the hold action unintentionally.
 
 There are further additional variants of `tap-hold-press` and `tap-hold-release`:
 
-. `tap-hold-press-timeout`
-. `tap-hold-release-timeout`
+- `tap-hold-press-timeout`
+- `tap-hold-release-timeout`
 
 These variants take a 5th parameter, in addition to the same 4 as the other
 variants. The 5th parameter is another action, which will activate if the hold
@@ -1379,6 +1379,7 @@ non `-timeout` variants will activate the hold action in both cases.
 This variant takes a 5th parameter which is a list of keys
 that trigger an early tap
 when they are pressed while the `tap-hold-release-keys` action is waiting.
+Otherwise this behaves as `tap-hold-release`.
 
 The keys in the 5th parameter correspond to the physical input keys,
 or in other words the key that corresponds to `defsrc`.
