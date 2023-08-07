@@ -1501,7 +1501,7 @@ fn parse_multi(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(actions)))))
 }
 
-const MACRO_ERR: &str = "Action macro only accepts delays, keys, chords, and chorded sub-macros";
+const MACRO_ERR: &str = "Action macro only accepts delays, keys, chords, chorded sub-macros, and a subset of special actions.\nThe macro section of the documentation describes this in more detail:\nhttps://github.com/jtroo/kanata/blob/main/docs/config.adoc#macro";
 enum RepeatMacro {
     Yes,
     No,
@@ -2296,6 +2296,7 @@ fn parse_delay(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
+    log::warn!("The configuration contains a fakekey-delay action. This is broken for many use cases. It is recommended to use macro instead.");
     let delay = ac_params[0]
         .atom(s.vars())
         .map(str::parse::<u16>)
