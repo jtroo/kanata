@@ -82,6 +82,9 @@ approximately 60% keyboard layout:
 )
 ----
 
+Note that some keyboards have a Compose/Menu key instead of a right Meta key.
+In this case you can use `comp` instead of `rmet`.
+
 For non-US keyboards, see <<non-us-keyboards,this section>>.
 
 [[deflayer]]
