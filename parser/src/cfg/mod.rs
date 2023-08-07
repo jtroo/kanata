@@ -2296,7 +2296,7 @@ fn parse_delay(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
-    log::warn!("The configuration has found a fakekey-delay action, which is broken for many use cases. It is recommended to use macro instead.");
+    log::warn!("The configuration contains a fakekey-delay action. This is broken for many use cases. It is recommended to use macro instead.");
     let delay = ac_params[0]
         .atom(s.vars())
         .map(str::parse::<u16>)
