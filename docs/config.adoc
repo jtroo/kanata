@@ -63,10 +63,11 @@ amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
 spaces, tabs, or newlines however you like to visually format `defsrc` to your
 liking.
 
-The the primary source of all key names is the
-https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode]
-function in the source code. Please feel free to file an issue if you're unable
-to find the key you're looking for.
+The the primary source of all key names are the
+`str_to_oscode` and `default_mappings` functions in
+https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[the source].
+Please feel welcome to file an issue
+if you're unable to find the key you're looking for.
 
 An example `defsrc` containing the US QWERTY keyboard keys as an
 approximately 60% keyboard layout:
