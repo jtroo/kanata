@@ -419,7 +419,8 @@ impl Kanata {
     }
 
     /// Advance keyberon layout state and send events based on changes to its state.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    /// Returns the number of ticks that elapsed.
+    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
         let now = time::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
@@ -464,7 +465,12 @@ impl Kanata {
             self.check_handle_layer_change(tx);
         }
 
-        Ok(())
+        #[cfg(feature = "perf_logging")]
+        log::info!("ms elapsed: {ms_elapsed}");
+        // Note regarding `as` casting. It doesn't really matter if the result would truncate and
+        // end up being wrong. Prefer to do the cheaper operation, as compared to doing the min of
+        // u16::MAX and ms_elapsed.
+        Ok(ms_elapsed as u16)
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
@@ -1143,6 +1149,7 @@ impl Kanata {
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::CancelMacroOnRelease => {}
                         CustomAction::FakeKeyOnIdle(fkd) => {
+                            self.ticks_since_idle = 0;
                             self.waiting_for_idle.insert(*fkd);
                         }
                     }
@@ -1446,6 +1453,7 @@ impl Kanata {
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
             }
+            let mut ms_elapsed = 0;
 
             info!("Starting kanata proper");
             let err = loop {
@@ -1459,7 +1467,9 @@ impl Kanata {
                     if !is_idle {
                         k.ticks_since_idle = 0;
                     } else if is_idle && counting_idle_ticks {
-                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(1);
+                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(ms_elapsed);
+                        #[cfg(feature = "perf_logging")]
+                        log::info!("ticks since idle: {}", k.ticks_since_idle);
                     }
                     is_idle && !counting_idle_ticks
                 };
@@ -1487,9 +1497,10 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
-                                break e;
-                            }
+                            match k.handle_time_ticks(&tx) {
+                                Ok(ms) => ms_elapsed = ms,
+                                Err(e) => break e,
+                            };
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
@@ -1521,9 +1532,10 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
-                                break e;
-                            }
+                            match k.handle_time_ticks(&tx) {
+                                Ok(ms) => ms_elapsed = ms,
+                                Err(e) => break e,
+                            };
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
@@ -1535,9 +1547,10 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_time_ticks(&tx) {
-                                break e;
-                            }
+                            match k.handle_time_ticks(&tx) {
+                                Ok(ms) => ms_elapsed = ms,
+                                Err(e) => break e,
+                            };
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(

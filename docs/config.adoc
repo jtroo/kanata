@@ -1747,8 +1747,8 @@ physical key presses and can only be activated via these actions:
 * `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
   action when releasing the key mapped to this action.
 * `+(on-idle-fakekey <fake key name> <key action> <idle time>)+`:
-  Activate a fake key action
-  when the keyboard is idle for `idle time` milliseconds
+  Activate a fake key action when kanata has been idle
+  for at least `idle time` milliseconds.
 
 A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
 this entry is similar to `+defalias+`, but you cannot make use of aliases
@@ -1761,6 +1761,14 @@ The aforementioned `+<key action>+` can be one of three values:
   triggers a release or tap.
 * `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
+
+Expanding on the `on-idle-fakekey` action some more,
+the wording that "kanata" has been idle is important.
+Even if the keyboard is idle, kanata may not yet be idle.
+For example, if a long-running macro is playing,
+or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
+kanata is not yet idle, and the tick count for the `<idle time>` parameter
+will not yet be counting even if you no longer have any keyboard keys pressed.
 
 .Example:
 [source]
@@ -2042,14 +2050,14 @@ One case is a triple of:
 
 - keys check
 - action: to activate if keys check succeeds
-- fallthrough|break: stop evaluating cases
+- `fallthrough|break`: choose to continue vs. stop evaluating cases
 
 The default use of keys check behaves similarly to fork.
 
 For example, the keys check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
-The keys check also accepts the boolean operators and|or to allow more
+The keys check also accepts the boolean operators `and|or` to allow more
 complex use cases.
 
 The order of cases matters.
