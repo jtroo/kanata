@@ -1630,7 +1630,8 @@ impl Kanata {
     }
 
     pub fn is_idle(&self) -> bool {
-        let pressed_keys_means_not_idle = !self.waiting_for_idle.is_empty();
+        let pressed_keys_means_not_idle =
+            !self.waiting_for_idle.is_empty() || self.live_reload_requested;
         self.layout.b().queue.is_empty()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
