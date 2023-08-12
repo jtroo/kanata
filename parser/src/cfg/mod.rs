@@ -2274,9 +2274,12 @@ fn parse_fake_key_op_coord_action(
     Ok((Coord { x, y }, action))
 }
 
+pub const NORMAL_KEY_ROW: u8 = 0;
+pub const FAKE_KEY_ROW: u8 = 1;
+
 fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u16) {
     let y: usize = y.into();
-    (1, y as u16)
+    (FAKE_KEY_ROW, y as u16)
 }
 
 fn parse_fake_key_delay(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {

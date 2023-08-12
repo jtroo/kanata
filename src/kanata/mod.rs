@@ -436,13 +436,6 @@ impl Kanata {
             self.tick_dynamic_macro_state()?;
             self.tick_idle_timeout();
 
-            if self.live_reload_requested && self.prev_keys.is_empty() && self.cur_keys.is_empty() {
-                self.live_reload_requested = false;
-                if let Err(e) = self.do_live_reload() {
-                    log::error!("live reload failed {e}");
-                }
-            }
-
             self.prev_keys.clear();
             self.prev_keys.append(&mut self.cur_keys);
         }
@@ -463,6 +456,25 @@ impl Kanata {
             // Handle layer change outside the loop. I don't see any practical scenario where it
             // would make a difference, so may as well reduce the amount of processing.
             self.check_handle_layer_change(tx);
+        }
+
+        if self.live_reload_requested
+            && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
+                || self.ticks_since_idle > 1000)
+        {
+            // Note regarding the ticks_since_idle check above:
+            // After 1 second if live reload is still not done, there might be a key in a stuck
+            // state. One known instance where this happens is Win+L to lock the screen in
+            // Windows with the LLHOOK mechanism. The release of Win and L keys will not be
+            // caught by the kanata process when on the lock screen. However, the OS knows that
+            // these keys have released - only the kanata state is wrong. And since kanata has
+            // a key in a stuck state, without this 1s fallback, live reload would never
+            // activate. Having this fallback allows live reload to happen which resets the
+            // kanata states.
+            self.live_reload_requested = false;
+            if let Err(e) = self.do_live_reload() {
+                log::error!("live reload failed {e}");
+            }
         }
 
         #[cfg(feature = "perf_logging")]
@@ -1463,7 +1475,8 @@ impl Kanata {
                     // Note: checking waiting_for_idle can not be part of the computation for
                     // is_idle() since incrementing ticks_since_idle is dependent on the return
                     // value of is_idle().
-                    let counting_idle_ticks = !k.waiting_for_idle.is_empty();
+                    let counting_idle_ticks =
+                        !k.waiting_for_idle.is_empty() || k.live_reload_requested;
                     if !is_idle {
                         k.ticks_since_idle = 0;
                     } else if is_idle && counting_idle_ticks {
@@ -1478,9 +1491,53 @@ impl Kanata {
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
-                            k.last_tick = time::Instant::now()
+                            let now = time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
                                 .expect("subtract 1ms from current time");
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                // If kanata has been blocking for long enough, clear all states.
+                                // This won't trigger if there are macros running, or if a key is
+                                // held down for a long time and is sending OS repeats. The reason
+                                // for this code is in case like Win+L which locks the Windows
+                                // desktop. When this happens, the Win key and L key will be stuck
+                                // as pressed in the kanata state because LLHOOK kanata cannot read
+                                // keys in the lock screen or administrator applications. So this
+                                // is heuristic to detect such an issue and clear states assuming
+                                // that's what happened.
+                                //
+                                // Only states in the normal key row are cleared, since those are
+                                // the states that might be stuck. A real use case might be to have
+                                // a fake key pressed for a long period of time, so make sure those
+                                // are not cleared.
+                                if (now - k.last_tick) > time::Duration::from_secs(60) {
+                                    log::debug!(
+                                        "clearing keyberon normal key states due to blocking for a while"
+                                    );
+                                    k.layout.bm().states.retain(|s| {
+                                        !matches!(
+                                            s,
+                                            State::NormalKey {
+                                                coord: (NORMAL_KEY_ROW, _),
+                                                ..
+                                            } | State::LayerModifier {
+                                                coord: (NORMAL_KEY_ROW, _),
+                                                ..
+                                            } | State::Custom {
+                                                coord: (NORMAL_KEY_ROW, _),
+                                                ..
+                                            } | State::RepeatingSequence {
+                                                coord: (NORMAL_KEY_ROW, _),
+                                                ..
+                                            }
+                                        )
+                                    });
+                                }
+                            }
+                            k.last_tick = now;
 
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
