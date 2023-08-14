@@ -1167,15 +1167,13 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
-        if !matches!(action, Repeat | Layer(..) | DefaultLayer(..)) {
-            self.prev_action = Some(action);
-        }
         match action {
             NoOp | Trans => {
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             Repeat => {
                 if let Some(ac) = self.prev_action {
@@ -1218,6 +1216,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &OneShot(oneshot) => {
                 self.last_press_tracker.coord = coord;
                 let custom = self.do_action(oneshot.action, coord, delay, true);
+                // Note - set prev_action after doing the inner oneshot action. This means that the
+                // whole oneshot will be repeated by rpt-any rather than only the inner action.
+                self.prev_action = Some(action);
                 self.oneshot
                     .handle_press(OneShotHandlePressKey::OneShotKey(coord));
                 self.oneshot.timeout = oneshot.timeout;
@@ -1293,6 +1294,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
@@ -1303,6 +1305,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
@@ -1310,15 +1313,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 for action in *v {
                     custom.update(self.do_action(action, coord, delay, is_oneshot));
                 }
-                // Multi is probably the one action where it is desirable to repeat the top-level
-                // action instead of the final action. The final action meaning a hold action in
-                // `tap-hold` or the 3rd tap of a `tap-dance`.
-                //
-                // Set the prev_action again since it was probably overwritten by the
-                // `do_action` recursion.
-                if !matches!(action, Action::Repeat) {
-                    self.prev_action = Some(action);
-                }
+                // Save the whole multi action instead of the final action in multi so that Repeat
+                // repeats all of the actions in this multi.
+                self.prev_action = Some(action);
                 return custom;
             }
             Sequence { events } => {
@@ -1332,6 +1329,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             RepeatableSequence { events } => {
                 self.active_sequences.push_back(SequenceState {
@@ -1348,6 +1346,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             CancelSequences => {
                 // Clear any and all running sequences then clean up any leftover FakeKey events
@@ -1361,6 +1360,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             &Layer(value) => {
                 self.last_press_tracker.coord = coord;
@@ -1369,6 +1369,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                // Notably missing here and below is setting prev_action. This is so that if the
+                // Repeat key is on another layer, it can still be used to repeat the previous
+                // non-layer-changing action.
             }
             DefaultLayer(value) => {
                 self.last_press_tracker.coord = coord;
@@ -1384,6 +1387,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
                 if self.states.push(State::Custom { value, coord }).is_ok() {
                     return CustomEvent::Press(value);
                 }
@@ -1394,9 +1398,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.prev_action = Some(action);
             }
             Fork(fcfg) => {
-                return match self.states.iter().any(|s| match s {
+                let ret = match self.states.iter().any(|s| match s {
                     NormalKey { keycode, .. } | FakeKey { keycode } => {
                         fcfg.right_triggers.contains(keycode)
                     }
@@ -1405,6 +1410,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     false => self.do_action(&fcfg.left, coord, delay, false),
                     true => self.do_action(&fcfg.right, coord, delay, false),
                 };
+                self.prev_action = Some(action);
+                return ret;
             }
             Switch(sw) => {
                 let kcs = self.states.iter().filter_map(State::keycode);
@@ -1412,6 +1419,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 for ac in sw.actions(kcs.clone()) {
                     action_queue.push_back(Some((coord, ac)));
                 }
+                self.prev_action = Some(action);
             }
         }
         CustomEvent::NoEvent
