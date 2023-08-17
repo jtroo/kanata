@@ -82,7 +82,7 @@ where
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<[SequenceState<'a, T>; 4], arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
-    pub prev_action: Option<&'a Action<'a, T>>,
+    pub rpt_action: Option<&'a Action<'a, T>>,
 }
 
 /// An event on the key matrix.
@@ -841,7 +841,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
-            prev_action: None,
+            rpt_action: None,
         }
     }
     /// Iterates on the key codes of the current state.
@@ -1167,18 +1167,30 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
-        if !matches!(action, Repeat | Layer(..) | DefaultLayer(..)) {
-            self.prev_action = Some(action);
-        }
         match action {
             NoOp | Trans => {
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             Repeat => {
-                if let Some(ac) = self.prev_action {
+                // Notes around repeat:
+                //
+                // Though this action seems conceptually simple, in reality there are a lot of
+                // decisions to be made around how exactly actions repeat. For example: in a
+                // tap-dance action, would one expect the tap-dance to be repeated or the inner
+                // action that was most activated within the tap-dance?
+                //
+                // Currently the answer to these questions is: what is easy/possible to do? E.g.
+                // fork and switch are inconsistent with each other even though the actions are
+                // conceptually very similar. This is because switch can potentially activate
+                // multiple actions (but not always), so uses the action queue, while fork does
+                // not. As another example, tap-dance and tap-hold will repeat the inner action and
+                // not the outer (tap-dance|hold) but multi will repeat the entire outer multi
+                // action.
+                if let Some(ac) = self.rpt_action {
                     self.do_action(ac, coord, delay, is_oneshot);
                 }
             }
@@ -1218,6 +1230,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &OneShot(oneshot) => {
                 self.last_press_tracker.coord = coord;
                 let custom = self.do_action(oneshot.action, coord, delay, true);
+                // Note - set rpt_action after doing the inner oneshot action. This means that the
+                // whole oneshot will be repeated by rpt-any rather than only the inner action.
+                self.rpt_action = Some(action);
                 self.oneshot
                     .handle_press(OneShotHandlePressKey::OneShotKey(coord));
                 self.oneshot.timeout = oneshot.timeout;
@@ -1293,6 +1308,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
@@ -1303,6 +1319,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
@@ -1310,15 +1327,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 for action in *v {
                     custom.update(self.do_action(action, coord, delay, is_oneshot));
                 }
-                // Multi is probably the one action where it is desirable to repeat the top-level
-                // action instead of the final action. The final action meaning a hold action in
-                // `tap-hold` or the 3rd tap of a `tap-dance`.
-                //
-                // Set the prev_action again since it was probably overwritten by the
-                // `do_action` recursion.
-                if !matches!(action, Action::Repeat) {
-                    self.prev_action = Some(action);
-                }
+                // Save the whole multi action instead of the final action in multi so that Repeat
+                // repeats all of the actions in this multi.
+                self.rpt_action = Some(action);
                 return custom;
             }
             Sequence { events } => {
@@ -1332,6 +1343,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             RepeatableSequence { events } => {
                 self.active_sequences.push_back(SequenceState {
@@ -1348,6 +1360,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             CancelSequences => {
                 // Clear any and all running sequences then clean up any leftover FakeKey events
@@ -1361,6 +1374,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             &Layer(value) => {
                 self.last_press_tracker.coord = coord;
@@ -1369,6 +1383,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                // Notably missing in Layer and below in DefaultLayer is setting rpt_action. This
+                // is so that if the Repeat key is on a different layer than the base, it can still
+                // be used to repeat the previous non-layer-changing action.
             }
             DefaultLayer(value) => {
                 self.last_press_tracker.coord = coord;
@@ -1384,6 +1401,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
                 if self.states.push(State::Custom { value, coord }).is_ok() {
                     return CustomEvent::Press(value);
                 }
@@ -1394,9 +1412,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                self.rpt_action = Some(action);
             }
             Fork(fcfg) => {
-                return match self.states.iter().any(|s| match s {
+                let ret = match self.states.iter().any(|s| match s {
                     NormalKey { keycode, .. } | FakeKey { keycode } => {
                         fcfg.right_triggers.contains(keycode)
                     }
@@ -1405,6 +1424,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     false => self.do_action(&fcfg.left, coord, delay, false),
                     true => self.do_action(&fcfg.right, coord, delay, false),
                 };
+                // Repeat the fork rather than the terminal action.
+                self.rpt_action = Some(action);
+                return ret;
             }
             Switch(sw) => {
                 let kcs = self.states.iter().filter_map(State::keycode);
@@ -1412,6 +1434,11 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 for ac in sw.actions(kcs.clone()) {
                     action_queue.push_back(Some((coord, ac)));
                 }
+                // Switch is not properly repeatable. This has to use the action queue for the
+                // purpose of proper Custom action handling, because a single switch action can
+                // activate multiple inner actions. But because of the use of the action queue,
+                // switch has no way to set `rpt_action` after the queue is depleted. I suppose
+                // that can be fixable, but for now will keep it as-is.
             }
         }
         CustomEvent::NoEvent
