@@ -36,7 +36,7 @@ which map to the binaries
 * AltGr can misbehave
 ** https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
 
-== Windows Interception
+== Windows 10+11 Interception
 
 * Sleeping your system or unplugging/replugging devices enough times causes
   inputs to stop working
@@ -44,6 +44,7 @@ which map to the binaries
 * Some less-frequently used keys are not supported or handled correctly
 ** https://github.com/jtroo/kanata/issues/164
 ** https://github.com/jtroo/kanata/issues/425
+** https://github.com/jtroo/kanata/issues/532
 
 == Linux
 
