@@ -42,6 +42,7 @@ which map to the binaries
   inputs to stop working
 ** https://github.com/oblitum/Interception/issues/25
 * Some less-frequently used keys are not supported or handled correctly
+** https://github.com/jtroo/kanata/issues/127
 ** https://github.com/jtroo/kanata/issues/164
 ** https://github.com/jtroo/kanata/issues/425
 ** https://github.com/jtroo/kanata/issues/532
