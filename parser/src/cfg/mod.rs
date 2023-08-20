@@ -2238,7 +2238,7 @@ fn parse_fake_key_op_coord_action(
     s: &ParsedState,
 ) -> Result<(Coord, FakeKeyAction)> {
     const ERR_MSG: &str =
-        "on-(press|release)-fakekey expects two parameters: <fake key name> <(tap|press|release)>";
+        "on-(press|release)-fakekey expects two parameters: <fake key name> <(tap|press|release|toggle)>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
