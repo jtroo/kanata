@@ -621,8 +621,8 @@ fn discover_devices(
 }
 
 fn watch_devinput() -> Result<Inotify, io::Error> {
-    let mut inotify = Inotify::init().expect("Failed to initialize inotify");
-    inotify.add_watch("/dev/input", WatchMask::CREATE)?;
+    let inotify = Inotify::init().expect("Failed to initialize inotify");
+    inotify.watches().add("/dev/input", WatchMask::CREATE)?;
     Ok(inotify)
 }
 
