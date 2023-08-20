@@ -605,14 +605,7 @@ impl Kanata {
                 // Process this and return false so that it is not retained.
                 let layout = self.layout.bm();
                 let Coord { x, y } = wfd.coord;
-                match wfd.action {
-                    FakeKeyAction::Press => layout.event(Event::Press(x, y)),
-                    FakeKeyAction::Release => layout.event(Event::Release(x, y)),
-                    FakeKeyAction::Tap => {
-                        layout.event(Event::Press(x, y));
-                        layout.event(Event::Release(x, y));
-                    }
-                };
+                handle_fakekey_action(wfd.action, layout, x, y);
                 false
             } else {
                 true
@@ -991,14 +984,7 @@ impl Kanata {
                                 layout.default_layer,
                                 layout.layers[layout.default_layer][x as usize][y as usize]
                             );
-                            match action {
-                                FakeKeyAction::Press => layout.event(Event::Press(x, y)),
-                                FakeKeyAction::Release => layout.event(Event::Release(x, y)),
-                                FakeKeyAction::Tap => {
-                                    layout.event(Event::Press(x, y));
-                                    layout.event(Event::Release(x, y));
-                                }
-                            }
+                            handle_fakekey_action(*action, layout, x, y);
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
@@ -1263,14 +1249,7 @@ impl Kanata {
                         CustomAction::FakeKeyOnRelease { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
                             log::debug!("fake key on release {action:?} {x:?},{y:?}");
-                            match action {
-                                FakeKeyAction::Press => layout.event(Event::Press(x, y)),
-                                FakeKeyAction::Release => layout.event(Event::Release(x, y)),
-                                FakeKeyAction::Tap => {
-                                    layout.event(Event::Press(x, y));
-                                    layout.event(Event::Release(x, y));
-                                }
-                            }
+                            handle_fakekey_action(*action, layout, x, y);
                             pbtn
                         }
                         CustomAction::CancelMacroOnRelease => {
@@ -1784,4 +1763,38 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
+}
+
+fn handle_fakekey_action<'a, const C: usize, const R: usize, const L: usize, T>(
+    action: FakeKeyAction,
+    layout: &mut Layout<'a, C, R, L, T>,
+    x: u8,
+    y: u16,
+) where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    match action {
+        FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+        FakeKeyAction::Release => layout.event(Event::Release(x, y)),
+        FakeKeyAction::Tap => {
+            layout.event(Event::Press(x, y));
+            layout.event(Event::Release(x, y));
+        }
+        FakeKeyAction::Toggle => {
+            match states_has_coord(&layout.states, x, y) {
+                true => layout.event(Event::Release(x, y)),
+                false => layout.event(Event::Press(x, y)),
+            };
+        }
+    };
+}
+
+fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
+    states.iter().any(|s| match s {
+        State::NormalKey { coord, .. }
+        | State::LayerModifier { coord, .. }
+        | State::Custom { coord, .. }
+        | State::RepeatingSequence { coord, .. } => *coord == (x, y),
+        _ => false,
+    })
 }

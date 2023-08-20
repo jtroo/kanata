@@ -2261,6 +2261,7 @@ fn parse_fake_key_op_coord_action(
             "tap" => Some(FakeKeyAction::Tap),
             "press" => Some(FakeKeyAction::Press),
             "release" => Some(FakeKeyAction::Release),
+            "toggle" => Some(FakeKeyAction::Release),
             _ => None,
         })
         .flatten()
