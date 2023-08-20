@@ -2,14 +2,11 @@
 
 ## Checklist
 
-- Add documentation to docs/config.adoc- 
-  - [ ] Yes
-  - [ ] N/A
+- Add documentation to docs/config.adoc
+  - [ ] Yes or N/A
 - Add example to cfg_samples/kanata.kbd
-  - [ ] Yes
-  - [ ] N/A
+  - [ ] Yes or N/A
 - Update error messages
-  - [ ] Yes
-  - [ ] N/A
+  - [ ] Yes or N/A
 - Added tests, or did manual testing
   - [ ] Yes
