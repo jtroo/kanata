@@ -801,6 +801,7 @@ If you need help, you are welcome to ask.
   fsp (on-release-fakekey sft press)
   fsr (on-release-fakekey sft release)
   fst (on-release-fakekey sft tap)
+  fsg (on-release-fakekey sft toggle)
   fmp (on-press-fakekey met press)
   fap (on-press-fakekey alt press)
   rma (multi

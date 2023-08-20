@@ -1761,6 +1761,7 @@ The aforementioned `+<key action>+` can be one of three values:
   triggers a release or tap.
 * `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
+* `+toggle+`: Press the fake key if not already pressed, otherwise release it.
 
 Expanding on the `on-idle-fakekey` action some more,
 the wording that "kanata" has been idle is important.

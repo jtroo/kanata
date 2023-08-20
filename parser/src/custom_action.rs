@@ -82,6 +82,7 @@ pub enum FakeKeyAction {
     Press,
     Release,
     Tap,
+    Toggle,
 }
 
 /// An active waiting-for-idle state.
