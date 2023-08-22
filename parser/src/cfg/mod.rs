@@ -404,6 +404,7 @@ pub fn parse_cfg_raw_string(
         )
     }
 
+    let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in [
         "deflocalkeys-win",
@@ -417,7 +418,7 @@ pub fn parse_cfg_raw_string(
         {
             let mapping = result?;
             if def_local_keys_variant == DEF_LOCAL_KEYS {
-                replace_custom_str_oscode_mapping(&mapping);
+                local_keys = Some(mapping);
             }
         }
 
@@ -431,6 +432,9 @@ pub fn parse_cfg_raw_string(
                 "Only one {def_local_keys_variant} is allowed, found more. Delete the extras."
             )
         }
+    }
+    if let Some(mapping) = local_keys {
+        replace_custom_str_oscode_mapping(&mapping);
     }
 
     let src_expr = root_exprs
