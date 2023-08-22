@@ -45,6 +45,8 @@ pub fn replace_custom_str_oscode_mapping(mapping: &HashMap<String, OsCode>) {
 pub fn clear_custom_str_oscode_mapping() {
     let mut local_mapping = CUSTOM_STRS_TO_OSCODES.lock();
     local_mapping.clear();
+    add_default_str_osc_mappings(&mut local_mapping);
+    local_mapping.shrink_to_fit();
 }
 
 /// Used for backwards compatibility. If there is hardcoded key name in `str_to_oscode` that would
