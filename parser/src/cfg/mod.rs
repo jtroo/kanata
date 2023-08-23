@@ -404,22 +404,37 @@ pub fn parse_cfg_raw_string(
         )
     }
 
-    if let Some(result) = root_exprs
-        .iter()
-        .find(gen_first_atom_filter(DEF_LOCAL_KEYS))
-        .map(|custom_keys| parse_deflocalkeys(custom_keys))
-    {
-        result?;
+    let mut local_keys: Option<HashMap<String, OsCode>> = None;
+    clear_custom_str_oscode_mapping();
+    for def_local_keys_variant in [
+        "deflocalkeys-win",
+        "deflocalkeys-wintercept",
+        "deflocalkeys-linux",
+    ] {
+        if let Some(result) = root_exprs
+            .iter()
+            .find(gen_first_atom_filter(def_local_keys_variant))
+            .map(|custom_keys| parse_deflocalkeys(def_local_keys_variant, custom_keys))
+        {
+            let mapping = result?;
+            if def_local_keys_variant == DEF_LOCAL_KEYS {
+                local_keys = Some(mapping);
+            }
+        }
+
+        if let Some(spanned) = spanned_root_exprs
+            .iter()
+            .filter(gen_first_atom_filter_spanned(def_local_keys_variant))
+            .nth(1)
+        {
+            bail_span!(
+                spanned,
+                "Only one {def_local_keys_variant} is allowed, found more. Delete the extras."
+            )
+        }
     }
-    if let Some(spanned) = spanned_root_exprs
-        .iter()
-        .filter(gen_first_atom_filter_spanned(DEF_LOCAL_KEYS))
-        .nth(1)
-    {
-        bail_span!(
-            spanned,
-            "Only one {DEF_LOCAL_KEYS} is allowed, found more. Delete the extras."
-        )
+    if let Some(mapping) = local_keys {
+        replace_custom_str_oscode_mapping(&mapping);
     }
 
     let src_expr = root_exprs
@@ -782,44 +797,49 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     }
 }
 
-/// Parse custom keys from an expression starting with deflocalkeys. Statefully updates the `keys`
-/// module using the custom keys parsed.
-fn parse_deflocalkeys(expr: &[SExpr]) -> Result<()> {
+/// Parse custom keys from an expression starting with deflocalkeys.
+fn parse_deflocalkeys(
+    def_local_keys_variant: &str,
+    expr: &[SExpr],
+) -> Result<HashMap<String, OsCode>> {
     let mut cfg = HashMap::default();
-    let mut exprs = check_first_expr(expr.iter(), DEF_LOCAL_KEYS)?;
-    clear_custom_str_oscode_mapping();
+    let mut exprs = check_first_expr(expr.iter(), def_local_keys_variant)?;
     // Read k-v pairs from the configuration
     while let Some(key_expr) = exprs.next() {
-        let key = key_expr
-            .atom(None)
-            .ok_or_else(|| anyhow_expr!(key_expr, "No lists are allowed in {DEF_LOCAL_KEYS}"))?;
+        let key = key_expr.atom(None).ok_or_else(|| {
+            anyhow_expr!(key_expr, "No lists are allowed in {def_local_keys_variant}")
+        })?;
         if str_to_oscode(key).is_some() {
             bail_expr!(
                 key_expr,
-                "Cannot use {key} in {DEF_LOCAL_KEYS} because it is a default key name"
+                "Cannot use {key} in {def_local_keys_variant} because it is a default key name"
             );
         } else if cfg.contains_key(key) {
-            bail_expr!(key_expr, "Duplicate {key} found in {DEF_LOCAL_KEYS}");
+            bail_expr!(
+                key_expr,
+                "Duplicate {key} found in {def_local_keys_variant}"
+            );
         }
         let osc = match exprs.next() {
             Some(v) => v
                 .atom(None)
-                .ok_or_else(|| anyhow_expr!(v, "No lists are allowed in {DEF_LOCAL_KEYS}"))
+                .ok_or_else(|| anyhow_expr!(v, "No lists are allowed in {def_local_keys_variant}"))
                 .and_then(|osc| {
-                    osc.parse::<u16>()
-                        .map_err(|_| anyhow_expr!(v, "Unknown number in {DEF_LOCAL_KEYS}: {osc}"))
+                    osc.parse::<u16>().map_err(|_| {
+                        anyhow_expr!(v, "Unknown number in {def_local_keys_variant}: {osc}")
+                    })
                 })
                 .and_then(|osc| {
-                    OsCode::from_u16(osc)
-                        .ok_or_else(|| anyhow_expr!(v, "Unknown number in {DEF_LOCAL_KEYS}: {osc}"))
+                    OsCode::from_u16(osc).ok_or_else(|| {
+                        anyhow_expr!(v, "Unknown number in {def_local_keys_variant}: {osc}")
+                    })
                 })?,
-            None => bail_expr!(key_expr, "Key without a number in {DEF_LOCAL_KEYS}"),
+            None => bail_expr!(key_expr, "Key without a number in {def_local_keys_variant}"),
         };
         log::debug!("custom mapping: {key} {}", osc.as_u16());
         cfg.insert(key.to_owned(), osc);
     }
-    replace_custom_str_oscode_mapping(&cfg);
-    Ok(())
+    Ok(cfg)
 }
 
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
