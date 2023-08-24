@@ -1803,11 +1803,12 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
 
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
-  rsf (on-idle-fakekey ral tap 1000)
+
+  isf (on-idle-fakekey sft tap 1000)
 )
 
 (deflayer use-fake-keys
-  @psf @rsf @pal @ral a s d @rsf
+  @psf @rsf @pal @ral a s d f @isf
 )
 ----
 
