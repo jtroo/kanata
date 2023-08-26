@@ -1004,3 +1004,101 @@ fn parse_fake_keys_errors_on_too_many() {
     }
     assert!(checked_for_err);
 }
+
+#[test]
+fn parse_deflocalkeys_overridden() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let source = r#"
+(deflocalkeys-win
++   300
+[   301
+]   302
+{   303
+}   304
+/   305
+;   306
+`   307
+=   308
+-   309
+'   310
+,   311
+.   312
+\   313
+yen 314
+¥   315
+)
+(deflocalkeys-wintercept
++   300
+[   301
+]   302
+{   303
+}   304
+/   305
+;   306
+`   307
+=   308
+-   309
+'   310
+,   311
+.   312
+\   313
+yen 314
+¥   315
+)
+(deflocalkeys-linux
++   300
+[   301
+]   302
+{   303
+}   304
+/   305
+;   306
+`   307
+=   308
+-   309
+'   310
+,   311
+.   312
+\   313
+yen 314
+¥   315
+)
+(defsrc + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
+(deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .expect("succeeds");
+}
+
+#[test]
+fn use_default_overridable_mappings() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let source = r#"
+(defsrc + [  ]  a  b  /  ;  `  =  -  '  ,  .  9  yen ¥  )
+(deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .expect("succeeds");
+}
