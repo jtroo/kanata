@@ -1029,6 +1029,7 @@ fn parse_deflocalkeys_overridden() {
 \   313
 yen 314
 ¥   315
+new 316
 )
 (deflocalkeys-wintercept
 +   300
@@ -1047,6 +1048,7 @@ yen 314
 \   313
 yen 314
 ¥   315
+new 316
 )
 (deflocalkeys-linux
 +   300
@@ -1065,9 +1067,10 @@ yen 314
 \   313
 yen 314
 ¥   315
+new 316
 )
-(defsrc + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
-(deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
+(defsrc + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
+(deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
 "#;
     let mut s = ParsedState::default();
     parse_cfg_raw_string(
