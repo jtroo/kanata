@@ -418,6 +418,10 @@ pub fn parse_cfg_raw_string(
         {
             let mapping = result?;
             if def_local_keys_variant == DEF_LOCAL_KEYS {
+                assert!(
+                    local_keys.is_none(),
+                    ">1 mutually exclusive deflocalkeys variants was parsed"
+                );
                 local_keys = Some(mapping);
             }
         }
@@ -433,9 +437,7 @@ pub fn parse_cfg_raw_string(
             )
         }
     }
-    if let Some(mapping) = local_keys {
-        replace_custom_str_oscode_mapping(&mapping);
-    }
+    replace_custom_str_oscode_mapping(&local_keys.unwrap_or_default());
 
     let src_expr = root_exprs
         .iter()
