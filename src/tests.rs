@@ -60,3 +60,15 @@ fn parse_all_keys() {
     ))
     .unwrap();
 }
+
+#[test]
+fn sizeof_state() {
+    assert_eq!(
+        std::mem::size_of::<
+            kanata_keyberon::layout::State<
+                &'static &'static [&'static kanata_parser::custom_action::CustomAction],
+            >,
+        >(),
+        2 * std::mem::size_of::<usize>()
+    );
+}

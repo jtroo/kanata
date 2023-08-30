@@ -2900,7 +2900,10 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
         let action = parse_action(action, s)?;
 
         let Some(break_or_fallthrough) = break_or_fallthrough_expr.atom(s.vars()) else {
-            bail_expr!(break_or_fallthrough_expr, "{ERR_STR}\nthis must be one of: break, fallthrough");
+            bail_expr!(
+                break_or_fallthrough_expr,
+                "{ERR_STR}\nthis must be one of: break, fallthrough"
+            );
         };
         let break_or_fallthrough = match break_or_fallthrough {
             "break" => BreakOrFallthrough::Break,

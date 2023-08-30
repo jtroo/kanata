@@ -53,9 +53,14 @@ impl Kanata {
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
             match v {
-                State::NormalKey { keycode, coord } => Some(State::NormalKey::<()> {
+                State::NormalKey {
+                    keycode,
+                    coord,
+                    flags,
+                } => Some(State::NormalKey::<()> {
                     keycode: *keycode,
                     coord: *coord,
+                    flags: *flags,
                 }),
                 State::FakeKey { keycode } => Some(State::FakeKey::<()> { keycode: *keycode }),
                 _ => None,
@@ -81,7 +86,7 @@ impl Kanata {
         // this should not be a problem. State does not implement Hash so can't use a HashSet. A
         // HashSet might perform worse anyway.
         for prev_state in prev_states.iter() {
-            if let State::NormalKey { keycode, coord } = prev_state {
+            if let State::NormalKey { keycode, coord, .. } = prev_state {
                 if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
                     || (matches!(keycode, KeyCode::LShift)
                         && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT))
@@ -104,6 +109,7 @@ impl Kanata {
                     State::NormalKey {
                         keycode: cur_kc,
                         coord: cur_coord,
+                        ..
                     } => cur_kc != keycode && *cur_coord != (0, u16::from(OsCode::from(keycode))),
                     _ => true,
                 });
