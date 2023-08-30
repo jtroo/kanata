@@ -27,12 +27,12 @@ be able to configure kanata.
 
 If you follow along with the examples, you should be fine. Kanata should
 also hopefully have helpful error messages in case something goes wrong.
-If you need help, you are welcome to ask.
+If you need help, please feel welcome to ask in the GitHub discussions.
 |#
 
 ;; One defcfg entry may be added if desired. This is used for configuration
 ;; key-value pairs that change kanata's behaviour at a global level.
-;; All configuration items are optional.
+;; All defcfg options are optional.
 (defcfg
   ;; Your keyboard device will likely differ from this. I believe /dev/input/by-id/
   ;; is preferable; I recall reading that it's less likely to change names on you,
@@ -383,6 +383,10 @@ If you need help, you are welcome to ask.
   ;; For ralt/altgr, you can use either of: `RA-` or `AG-`. They both work the
   ;; same and only one is allowed in a single chord. This chord can be useful for
   ;; international layouts.
+  ;;
+  ;; A special behaviour of output chords is that if another key is pressed,
+  ;; all of the chord keys will be released. For the explanation about why
+  ;; this is the case, see the configuration guide.
   ;;
   ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)

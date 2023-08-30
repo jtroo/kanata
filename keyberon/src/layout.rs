@@ -169,11 +169,24 @@ impl<'a, T> CustomEvent<'a, T> {
     }
 }
 
+/// Metadata about normal key flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct NormalKeyFlags(u16);
+
+const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u16 = 0x0001;
+
+impl NormalKeyFlags {
+    pub fn clear_on_next_action(self) -> bool {
+        (self.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION) == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum State<'a, T: 'a> {
     NormalKey {
         keycode: KeyCode,
         coord: KCoord,
+        flags: NormalKeyFlags,
     },
     LayerModifier {
         value: usize,
@@ -1167,6 +1180,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
+        self.states.retain(|s| match s {
+            NormalKey { flags, .. } => !flags.clear_on_next_action(),
+            _ => true,
+        });
         match action {
             NoOp | Trans => {
                 if !is_oneshot {
@@ -1303,7 +1320,11 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             &KeyCode(keycode) => {
                 self.last_press_tracker.coord = coord;
-                let _ = self.states.push(NormalKey { coord, keycode });
+                let _ = self.states.push(NormalKey {
+                    coord,
+                    keycode,
+                    flags: NormalKeyFlags(0),
+                });
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
@@ -1313,7 +1334,23 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
                 for &keycode in *v {
-                    let _ = self.states.push(NormalKey { coord, keycode });
+                    let _ = self.states.push(NormalKey {
+                        coord,
+                        keycode,
+                        // In Kanata, this action is only ever used with output chords. Output
+                        // chords within a one-shot are ignored because someone might do something
+                        // like (one-shot C-S-lalt to get 3 modifiers. These are probably intended
+                        // to remain held. However, other output chords are usually used to type
+                        // symbols or accented characters, e.g. S-1 or RA-a. Clearing chord keys on
+                        // the next action allows a subsequent typed key to not have modifiers
+                        // alongside it. But if the symbol or accented character is held down, key
+                        // repeat works just fine.
+                        flags: NormalKeyFlags(if is_oneshot {
+                            0
+                        } else {
+                            NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION
+                        }),
+                    });
                 }
                 if !is_oneshot {
                     self.oneshot
@@ -3356,5 +3393,18 @@ mod test {
         layout.event(Release(0, 4));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_clear_multiple_keycodes() {
+        static LAYERS: Layers<2, 1, 1> = [[[k(A), MultipleKeyCodes(&[LCtrl, Enter].as_slice())]]];
+        let mut layout = Layout::new(&LAYERS);
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LCtrl, Enter], layout.keycodes());
+        // Cancel chord keys on next keypress.
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
     }
 }

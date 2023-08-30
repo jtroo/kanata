@@ -932,6 +932,8 @@ These modifiers may be combined together if desired.
 [source]
 ----
 (defalias
+  ;; Type exclamation mark (US layout)
+  ex! S-1
   ;; Ctrl+C: send SIGINT to a Linux terminal program
   int C-c
   ;; Win+Tab: open Windows' Task View
@@ -941,6 +943,18 @@ These modifiers may be combined together if desired.
   pst C-S-v
 )
 ----
+
+A special behaviour of output chords is that if another key is pressed,
+all of the chord keys will be released
+before the newly pressed key action activates.
+Output chords are typically used do one-off actions such as:
+
+- type a symbol, e.g. `S-1`
+- type a special/accented character, e.g. `RA-a`
+- do a special action like `C-c` to send `SIGTERM` in the terminal
+
+The modifier pressed with these one-off action
+is usually not desired for subsequent actions.
 
 [[repeat-key]]
 === Repeat key
