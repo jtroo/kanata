@@ -4,7 +4,7 @@
 
 - Add documentation to docs/config.adoc
   - [ ] Yes or N/A
-- Add example to cfg_samples/kanata.kbd
+- Add example and basic docs to cfg_samples/kanata.kbd
   - [ ] Yes or N/A
 - Update error messages
   - [ ] Yes or N/A
