@@ -1342,6 +1342,13 @@ The default name `+one-shot+` corresponds to `+one-shot-press+`.
 === tap-hold
 <<table-of-contents,Back to ToC>>
 
+WARNING:
+The `tap-hold` action can behave unexpectedly on Linux.
+The full context is in https://github.com/jtroo/kanata/discussions/422[discussion #422].
+In brief, the workaround is to use `tap-hold` inside of <<multi,multi>>,
+combined with another key action that behaves as a no-op like `f24`.
+Example: `(multi f24 (tap-hold ...))`
+
 The `+tap-hold+` action allows you to have one action/key for a "tap" and a
 different action/key for a "hold". A tap is a rapid press then release of the
 key whereas a hold is a long press.
