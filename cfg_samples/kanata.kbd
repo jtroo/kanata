@@ -277,6 +277,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   fks (layer-while-held fakekeys)
 
   ;; tap-hold aliases with tap for dvorak key, and hold for toggle layers
+  ;; WARNING(Linux only): key repeat with tap-hold can behave unexpectedly.
+  ;; For full context, see https://github.com/jtroo/kanata/discussions/422
   ;;
   ;; tap-hold parameter order:
   ;; 1. tap timeout
