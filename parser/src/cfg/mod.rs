@@ -48,6 +48,9 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
+mod list_actions;
+use list_actions::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -1113,8 +1116,14 @@ fn parse_action(expr: &SExpr, s: &ParsedState) -> Result<&'static KanataAction> 
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a string.
-fn parse_action_atom(ac: &Spanned<String>, s: &ParsedState) -> Result<&'static KanataAction> {
-    let ac = &*ac.t;
+fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'static KanataAction> {
+    let ac = &*ac_span.t;
+    if is_list_action(ac) {
+        bail_span!(
+            ac_span,
+            "This is a list action and must be in parentheses: ({ac} ...)"
+        );
+    }
     match ac {
         "_" => return Ok(s.a.sref(Action::Trans)),
         "XX" => return Ok(s.a.sref(Action::NoOp)),
@@ -1239,73 +1248,74 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
     }
     let ac_type = match &ac[0] {
         SExpr::Atom(a) => &a.t,
-        _ => bail!("Action list must start with an atom"),
+        _ => bail!("All list actions must start with string and not a list"),
     };
+    if !is_list_action(ac_type) {
+        bail_expr!(&ac[0], "Unknown action type: {ac_type}");
+    }
     match ac_type.as_str() {
-        "layer-switch" => parse_layer_base(&ac[1..], s),
-        "layer-toggle" | "layer-while-held" => parse_layer_toggle(&ac[1..], s),
-        "tap-hold" => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
-        "tap-hold-press" => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
-        "tap-hold-release" => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
-        "tap-hold-press-timeout" => {
+        LAYER_SWITCH => parse_layer_base(&ac[1..], s),
+        LAYER_TOGGLE | LAYER_WHILE_HELD => parse_layer_toggle(&ac[1..], s),
+        TAP_HOLD => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
+        TAP_HOLD_PRESS => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
+        TAP_HOLD_RELEASE => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
+        TAP_HOLD_PRESS_TIMEOUT => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
         }
-        "tap-hold-release-timeout" => {
+        TAP_HOLD_RELEASE_TIMEOUT => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        "tap-hold-release-keys" => parse_tap_hold_release_keys(&ac[1..], s),
-        "multi" => parse_multi(&ac[1..], s),
-        "macro" => parse_macro(&ac[1..], s, RepeatMacro::No),
-        "macro-repeat" => parse_macro(&ac[1..], s, RepeatMacro::Yes),
-        "macro-release-cancel" => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No),
-        "macro-repeat-release-cancel" => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes),
-        "unicode" => parse_unicode(&ac[1..], s),
-        "one-shot" | "one-shot-press" => {
-            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
-        }
-        "one-shot-release" => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease),
-        "one-shot-press-pcancel" => {
+        TAP_HOLD_RELEASE_KEYS => parse_tap_hold_release_keys(&ac[1..], s),
+        MULTI => parse_multi(&ac[1..], s),
+        MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
+        MACRO_REPEAT => parse_macro(&ac[1..], s, RepeatMacro::Yes),
+        MACRO_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No),
+        MACRO_REPEAT_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes),
+        UNICODE => parse_unicode(&ac[1..], s),
+        ONE_SHOT | ONE_SHOT_PRESS => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress),
+        ONE_SHOT_RELEASE => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease),
+        ONE_SHOT_PRESS_PCANCEL => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)
         }
-        "one-shot-release-pcancel" => {
+        ONE_SHOT_RELEASE_PCANCEL => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
         }
-        "tap-dance" => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
-        "tap-dance-eager" => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
-        "chord" => parse_chord(&ac[1..], s),
-        "release-key" => parse_release_key(&ac[1..], s),
-        "release-layer" => parse_release_layer(&ac[1..], s),
-        "on-press-fakekey" => parse_fake_key_op(&ac[1..], s),
-        "on-release-fakekey" => parse_on_release_fake_key_op(&ac[1..], s),
-        "on-press-fakekey-delay" => parse_fake_key_delay(&ac[1..], s),
-        "on-release-fakekey-delay" => parse_on_release_fake_key_delay(&ac[1..], s),
-        "on-idle-fakekey" => parse_on_idle_fakekey(&ac[1..], s),
-        "mwheel-up" => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
-        "mwheel-down" => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
-        "mwheel-left" => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
-        "mwheel-right" => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
-        "movemouse-up" => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
-        "movemouse-down" => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
-        "movemouse-left" => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
-        "movemouse-right" => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
-        "movemouse-accel-up" => parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s),
-        "movemouse-accel-down" => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
-        "movemouse-accel-left" => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
-        "movemouse-accel-right" => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
-        "movemouse-speed" => parse_move_mouse_speed(&ac[1..], s),
-        "setmouse" => parse_set_mouse(&ac[1..], s),
-        "dynamic-macro-record" => parse_dynamic_macro_record(&ac[1..], s),
-        "dynamic-macro-play" => parse_dynamic_macro_play(&ac[1..], s),
-        "arbitrary-code" => parse_arbitrary_code(&ac[1..], s),
-        "cmd" => parse_cmd(&ac[1..], s, CmdType::Standard),
-        "cmd-output-keys" => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
-        "fork" => parse_fork(&ac[1..], s),
-        "caps-word" => parse_caps_word(&ac[1..], s),
-        "caps-word-custom" => parse_caps_word_custom(&ac[1..], s),
-        "dynamic-macro-record-stop-truncate" => parse_macro_record_stop_truncate(&ac[1..], s),
-        "switch" => parse_switch(&ac[1..], s),
-        "sequence" => parse_sequence_start(&ac[1..], s),
-        _ => bail_expr!(&ac[0], "Unknown action type: {ac_type}"),
+        TAP_DANCE => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
+        TAP_DANCE_EAGER => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
+        CHORD => parse_chord(&ac[1..], s),
+        RELEASE_KEY => parse_release_key(&ac[1..], s),
+        RELEASE_LAYER => parse_release_layer(&ac[1..], s),
+        ON_PRESS_FAKEKEY => parse_fake_key_op(&ac[1..], s),
+        ON_RELEASE_FAKEKEY => parse_on_release_fake_key_op(&ac[1..], s),
+        ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
+        ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
+        ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),
+        MWHEEL_UP => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
+        MWHEEL_DOWN => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
+        MWHEEL_LEFT => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
+        MWHEEL_RIGHT => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
+        MOVEMOUSE_UP => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
+        MOVEMOUSE_DOWN => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
+        MOVEMOUSE_LEFT => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
+        MOVEMOUSE_RIGHT => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
+        MOVEMOUSE_ACCEL_UP => parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s),
+        MOVEMOUSE_ACCEL_DOWN => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
+        MOVEMOUSE_ACCEL_LEFT => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
+        MOVEMOUSE_ACCEL_RIGHT => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
+        MOVEMOUSE_SPEED => parse_move_mouse_speed(&ac[1..], s),
+        SETMOUSE => parse_set_mouse(&ac[1..], s),
+        DYNAMIC_MACRO_RECORD => parse_dynamic_macro_record(&ac[1..], s),
+        DYNAMIC_MACRO_PLAY => parse_dynamic_macro_play(&ac[1..], s),
+        ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
+        CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
+        CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
+        FORK => parse_fork(&ac[1..], s),
+        CAPS_WORD => parse_caps_word(&ac[1..], s),
+        CAPS_WORD_CUSTOM => parse_caps_word_custom(&ac[1..], s),
+        DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
+        SWITCH => parse_switch(&ac[1..], s),
+        SEQUENCE => parse_sequence_start(&ac[1..], s),
+        _ => unreachable!(),
     }
 }
 

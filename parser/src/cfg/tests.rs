@@ -686,8 +686,9 @@ fn parse_bad_submacro() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", e);
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
         ""
     })
     .unwrap_err();
@@ -715,8 +716,9 @@ fn parse_bad_submacro_2() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
     )
-    .map_err(|e| {
-        eprintln!("{:?}", e);
+    .map_err(|_e| {
+        // uncomment to see what this looks like when running test
+        // eprintln!("{:?}", _e);
         ""
     })
     .unwrap_err();
@@ -1104,4 +1106,35 @@ fn use_default_overridable_mappings() {
         },
     )
     .expect("succeeds");
+}
+
+#[test]
+fn list_action_not_in_list_error_message_is_good() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a)
+(defalias hello
+  one-shot 1 2
+)
+(deflayer base hello)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+    )
+    .map_err(|e| {
+        assert_eq!(
+            e.msg,
+            "This is a list action and must be in parentheses: (one-shot ...)"
+        );
+    })
+    .unwrap_err();
 }
