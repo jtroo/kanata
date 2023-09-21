@@ -392,6 +392,11 @@ impl Kanata {
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
         self.log_layer_changes = log_layer_changes;
+        self.movemouse_inherit_accel_state = cfg
+            .items
+            .get("movemouse-inherit-accel-state")
+            .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
+            .unwrap_or_default();
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         Kanata::set_repeat_rate(&cfg.items)?;
         log::info!("Live reload successful");
