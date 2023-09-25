@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::thread;
 
 use super::*;
-use crate::oskbd::KeyEvent;
+use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
@@ -540,14 +540,28 @@ impl KbdOut {
         }
     }
 
-    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
-        let (axis, distance) = match direction {
-            MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(distance)),
-            MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(distance)),
-            MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(distance)),
-            MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(distance)),
+    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+        let (axis, distance) = match mv.direction {
+            MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(mv.distance)),
+            MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(mv.distance)),
+            MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(mv.distance)),
+            MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(mv.distance)),
         };
         self.write(InputEvent::new(EventType::RELATIVE, axis.0, distance))
+    }
+
+    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+        let mut events = vec![];
+        for mv in moves {
+            let (axis, distance) = match mv.direction {
+                MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(mv.distance)),
+                MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(mv.distance)),
+                MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(mv.distance)),
+                MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(mv.distance)),
+            };
+            events.push(InputEvent::new(EventType::RELATIVE, axis.0, distance));
+        }
+        self.write_many(&events)
     }
 
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {

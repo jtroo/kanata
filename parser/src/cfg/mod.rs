@@ -753,6 +753,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "log-layer-changes",
         "delegate-to-first-layer",
         "linux-continue-if-no-devs-found",
+        "movemouse-smooth-diagonals",
     ];
     let mut cfg = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
