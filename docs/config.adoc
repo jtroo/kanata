@@ -666,6 +666,7 @@ a non-applicable operating system.
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
+  movemouse-inherit-accel-state yes
 )
 ----
 
