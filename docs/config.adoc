@@ -392,6 +392,26 @@ For more context, see https://github.com/jtroo/kanata/issues/435.
 )
 ----
 
+
+[[movemouse-inherit-accel-state]]
+=== movemouse-inherit-accel-state
+<<table-of-contents,Back to ToC>>
+
+By default `movemouse-accel` actions will track the acceleration
+state for vertical and horizontal axes separately.
+
+When this setting is enabled, `movemouse-accel` will behave exactly like mouse movements in https://qmk.fm[QMK],
+i.e. the acceleration state of new mouse
+movement actions will be inherited if others are already being pressed.
+
+.Example:
+[source]
+----
+(defcfg
+  movemouse-inherit-accel-state yes
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -646,6 +666,7 @@ a non-applicable operating system.
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
+  movemouse-inherit-accel-state yes
 )
 ----
 
@@ -1153,6 +1174,8 @@ interval (unit: ms) between movement actions. The second number is the time it
 takes (unit: ms) to linearly ramp up from the minimum distance to the maximum
 distance. The third and fourth numbers are the minimum and maximum distances
 (unit: pixels) of each movement.
+
+There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inherit-accel-state>>. You might want to enable it, especially if you're coming from QMK.
 
 [[set-mouse]]
 ==== Set absolute mouse position

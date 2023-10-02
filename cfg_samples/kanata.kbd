@@ -153,6 +153,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; which is the layer active upon startup, that is in the same position.
   ;;
   ;; delegate-to-first-layer yes
+
+  ;; This config entry alters the behavior of movemouse-accel actions.
+  ;; By default, this setting is disabled - vertical and horizontal
+  ;; acceleration are independent. Enabling this setting will emulate QMK mouse
+  ;; move acceleration behavior, i.e. the acceleration state of new mouse
+  ;; movement actions are inherited if others are already being pressed.
+  ;;
+  ;; movemouse-inherit-accel-state yes
+
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

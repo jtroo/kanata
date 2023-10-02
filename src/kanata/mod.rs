@@ -144,6 +144,9 @@ pub struct Kanata {
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
     /// Number of ticks since kanata was idle.
     pub ticks_since_idle: u16,
+    /// If a mousemove action is active and another mousemove action is activated,
+    /// reuse the acceleration state.
+    movemouse_inherit_accel_state: bool,
     /// Removes jaggedneess of vertical and horizontal mouse movements when used
     /// simultaneously at the cost of increased mousemove actions latency.
     movemouse_smooth_diagonals: bool,
@@ -189,6 +192,7 @@ pub struct MoveMouseState {
     pub move_mouse_accel_state: Option<MoveMouseAccelState>,
 }
 
+#[derive(Clone, Copy)]
 pub struct MoveMouseAccelState {
     pub accel_ticks_from_min: u16,
     pub accel_ticks_until_max: u16,
@@ -378,6 +382,11 @@ impl Kanata {
                 .get("movemouse-smooth-diagonals")
                 .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
                 .unwrap_or_default(),
+            movemouse_inherit_accel_state: cfg
+                .items
+                .get("movemouse-inherit-accel-state")
+                .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
+                .unwrap_or_default(),
             #[cfg(target_os = "linux")]
             defcfg_items: cfg.items,
             waiting_for_idle: HashSet::default(),
@@ -420,6 +429,11 @@ impl Kanata {
         self.movemouse_smooth_diagonals = cfg
             .items
             .get("movemouse-smooth-diagonals")
+            .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
+            .unwrap_or_default();
+        self.movemouse_inherit_accel_state = cfg
+            .items
+            .get("movemouse-inherit-accel-state")
             .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or_default();
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
@@ -1007,10 +1021,44 @@ impl Kanata {
                             min_distance,
                             max_distance,
                         } => {
-                            let f_max_distance: f64 = *max_distance as f64;
-                            let f_min_distance: f64 = *min_distance as f64;
-                            let f_accel_time: f64 = *accel_time as f64;
-                            let increment = (f_max_distance - f_min_distance) / f_accel_time;
+                            let move_mouse_accel_state = match (
+                                self.movemouse_inherit_accel_state,
+                                &self.move_mouse_state_horizontal,
+                                &self.move_mouse_state_vertical,
+                            ) {
+                                (
+                                    true,
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                    _,
+                                )
+                                | (
+                                    true,
+                                    _,
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                ) => *s,
+                                _ => {
+                                    let f_max_distance: f64 = *max_distance as f64;
+                                    let f_min_distance: f64 = *min_distance as f64;
+                                    let f_accel_time: f64 = *accel_time as f64;
+                                    let increment =
+                                        (f_max_distance - f_min_distance) / f_accel_time;
+
+                                    MoveMouseAccelState {
+                                        accel_ticks_from_min: 0,
+                                        accel_ticks_until_max: *accel_time,
+                                        accel_increment: increment,
+                                        min_distance: *min_distance,
+                                        max_distance: *max_distance,
+                                    }
+                                }
+                            };
+
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
                                     self.move_mouse_state_vertical = Some(MoveMouseState {
@@ -1018,13 +1066,7 @@ impl Kanata {
                                         distance: *min_distance,
                                         ticks_until_move: 0,
                                         interval: *interval,
-                                        move_mouse_accel_state: Some(MoveMouseAccelState {
-                                            accel_ticks_from_min: 0,
-                                            accel_ticks_until_max: *accel_time,
-                                            accel_increment: increment,
-                                            min_distance: *min_distance,
-                                            max_distance: *max_distance,
-                                        }),
+                                        move_mouse_accel_state: Some(move_mouse_accel_state),
                                     })
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
@@ -1033,13 +1075,7 @@ impl Kanata {
                                         distance: *min_distance,
                                         ticks_until_move: 0,
                                         interval: *interval,
-                                        move_mouse_accel_state: Some(MoveMouseAccelState {
-                                            accel_ticks_from_min: 0,
-                                            accel_ticks_until_max: *accel_time,
-                                            accel_increment: increment,
-                                            min_distance: *min_distance,
-                                            max_distance: *max_distance,
-                                        }),
+                                        move_mouse_accel_state: Some(move_mouse_accel_state),
                                     })
                                 }
                             }
