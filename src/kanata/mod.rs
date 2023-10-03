@@ -162,9 +162,9 @@ pub enum Axis {
     Horizontal,
 }
 
-impl Into<Axis> for MoveDirection {
-    fn into(self) -> Axis {
-        match self {
+impl From<MoveDirection> for Axis {
+    fn from(val: MoveDirection) -> Axis {
+        match val {
             MoveDirection::Up | MoveDirection::Down => Axis::Vertical,
             MoveDirection::Left | MoveDirection::Right => Axis::Horizontal,
         }
