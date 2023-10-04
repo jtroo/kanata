@@ -45,6 +45,7 @@ fn span_works_with_unicode_characters() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .expect_err("should be an error because @😊 is not defined")
     .span
@@ -82,6 +83,7 @@ fn test_multiline_error_span() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .expect_err("should error on unknown top level block")
     .span
@@ -111,6 +113,7 @@ fn test_span_of_an_unterminated_block_comment_error() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .expect_err("should be an unterminated comment error")
     .span
@@ -201,6 +204,7 @@ fn parse_action_vars() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .unwrap();
 }
@@ -225,6 +229,7 @@ fn parse_delegate_to_default_layer_yes() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .unwrap();
     assert_eq!(
@@ -253,6 +258,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .unwrap();
     assert_eq!(
@@ -281,6 +287,7 @@ fn parse_delegate_to_default_layer_no() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .unwrap();
     assert_eq!(
@@ -685,6 +692,7 @@ fn parse_bad_submacro() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -715,6 +723,7 @@ fn parse_bad_submacro_2() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -750,6 +759,7 @@ fn parse_switch() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .unwrap();
     assert_eq!(
@@ -822,6 +832,7 @@ fn parse_switch_exceed_depth() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -853,6 +864,7 @@ fn parse_on_idle_fakekey() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -895,6 +907,7 @@ fn parse_on_idle_fakekey_errors() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // comment out to see what this looks like when running test
@@ -918,6 +931,7 @@ fn parse_on_idle_fakekey_errors() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -941,6 +955,7 @@ fn parse_on_idle_fakekey_errors() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -964,6 +979,7 @@ fn parse_on_idle_fakekey_errors() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -1082,6 +1098,7 @@ new 316
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .expect("succeeds");
 }
@@ -1104,6 +1121,7 @@ fn use_default_overridable_mappings() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .expect("succeeds");
 }
@@ -1129,6 +1147,7 @@ fn list_action_not_in_list_error_message_is_good() {
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
+        DEF_LOCAL_KEYS,
     )
     .map_err(|e| {
         assert_eq!(
