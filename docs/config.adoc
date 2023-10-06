@@ -933,7 +933,7 @@ NOTE: If using Linux, make sure to look at the
 )
 ----
 
-[[output-chords-combos]]
+[[output-chordscombos]]
 === Output chords/combos
 <<table-of-contents,Back to ToC>>
 
