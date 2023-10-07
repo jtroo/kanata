@@ -755,6 +755,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "log-layer-changes",
         "delegate-to-first-layer",
         "linux-continue-if-no-devs-found",
+        "movemouse-smooth-diagonals",
         "movemouse-inherit-accel-state",
     ];
     let mut cfg = HashMap::default();

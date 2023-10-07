@@ -5,6 +5,7 @@ use std::io;
 use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
 
 use super::OsCodeWrapper;
+use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyValue;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
@@ -90,6 +91,29 @@ impl InputEvent {
                 MoveDirection::Down => i32::from(distance),
                 _ => 0,
             },
+            information: 0,
+        })
+    }
+
+    fn from_mouse_move_many(moves: &[CalculatedMouseMove]) -> Self {
+        let mut x_acc = 0;
+        let mut y_acc = 0;
+        for mov in moves {
+            let acc_change = match mov.direction {
+                MoveDirection::Up => (0, -i32::from(mov.distance)),
+                MoveDirection::Down => (0, i32::from(mov.distance)),
+                MoveDirection::Left => (-i32::from(mov.distance), 0),
+                MoveDirection::Right => (i32::from(mov.distance), 0),
+            };
+            x_acc += acc_change.0;
+            y_acc += acc_change.1;
+        }
+        Self(Stroke::Mouse {
+            state: MouseState::MOVE,
+            flags: MouseFlags::empty(),
+            rolling: 0,
+            x: x_acc,
+            y: y_acc,
             information: 0,
         })
     }
@@ -183,8 +207,13 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
-        write_interception(InputEvent::from_mouse_move(direction, distance));
+    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+        write_interception(InputEvent::from_mouse_move(mv.direction, mv.distance));
+        Ok(())
+    }
+
+    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+        write_interception(InputEvent::from_mouse_move_many(moves));
         Ok(())
     }
 
