@@ -1,6 +1,6 @@
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
 use std::sync::Arc;
 use std::time;
 
@@ -20,7 +20,7 @@ impl Kanata {
         };
         native_windows_gui::init()?;
 
-        let (preprocess_tx, preprocess_rx) = channel();
+        let (preprocess_tx, preprocess_rx) = sync_channel(100);
         start_event_preprocessor(preprocess_rx, tx);
 
         // This callback should return `false` if the input event is **not** handled by the
@@ -73,7 +73,7 @@ impl Kanata {
 }
 
 fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
-    if let Err(e) = tx.send(kev) {
+    if let Err(e) = tx.try_send(kev) {
         panic!("failed to send on channel: {e:?}")
     }
 }

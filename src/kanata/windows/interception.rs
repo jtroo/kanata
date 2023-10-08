@@ -1,7 +1,7 @@
 use anyhow::Result;
 use kanata_interception as ic;
 use parking_lot::Mutex;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
 use super::PRESSED_KEYS;
@@ -112,7 +112,7 @@ impl Kanata {
                         }
                         _ => {}
                     }
-                    tx.send(key_event)?;
+                    tx.try_send(key_event)?;
                 }
             }
         }
