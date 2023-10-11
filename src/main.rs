@@ -172,13 +172,13 @@ fn main_impl() -> Result<()> {
     let (server, ntx, nrx) = if let Some(port) = args.port {
         let mut server = TcpServer::new(port);
         server.start(kanata_arc.clone());
-        let (ntx, nrx) = std::sync::mpsc::channel();
+        let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
         (Some(server), Some(ntx), Some(nrx))
     } else {
         (None, None, None)
     };
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = std::sync::mpsc::sync_channel(100);
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {

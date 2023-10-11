@@ -3,7 +3,7 @@
 use anyhow::{anyhow, bail, Result};
 use log::{error, info};
 use parking_lot::Mutex;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
@@ -1475,7 +1475,7 @@ impl Kanata {
             self.print_layer(cur_layer);
 
             if let Some(tx) = tx {
-                match tx.send(ServerMessage::LayerChange { new }) {
+                match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);
