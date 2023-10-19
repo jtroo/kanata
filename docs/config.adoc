@@ -1928,7 +1928,7 @@ precisely, the action triggered is:
 )
 (deffakekeys
     dotcom (macro . c o m)
-    dotorg (macro . c o m)
+    dotorg (macro . o r g)
 )
 ----
 
