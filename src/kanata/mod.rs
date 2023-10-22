@@ -447,12 +447,10 @@ impl Kanata {
         log::debug!("process recv ev {event:?}");
         self.ticks_since_idle = 0;
 
-        let kbrn_ev;
-
-        match event {
+        let kbrn_ev = match event {
             SupportedInputEvent::KeyEvent(kev) => {
                 let evc: u16 = kev.code.into();
-                kbrn_ev = match kev.value {
+                match kev.value {
                     KeyValue::Press => {
                         if let Some(state) = &mut self.dynamic_macro_record_state {
                             state.macro_items.push(DynamicMacroItem::Press(kev.code));
@@ -469,7 +467,7 @@ impl Kanata {
                         let ret = self.handle_repeat(kev);
                         return ret;
                     }
-                };
+                }
             }
             SupportedInputEvent::ScrollEvent(sev) => {
                 let osc: OsCode = match (*sev).try_into() {
@@ -481,7 +479,7 @@ impl Kanata {
                 self.layout.bm().event(Event::Release(0, evc));
                 return Ok(());
             }
-        }
+        };
 
         self.layout.bm().event(kbrn_ev);
         Ok(())
