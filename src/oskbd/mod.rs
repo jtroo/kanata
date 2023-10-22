@@ -79,14 +79,12 @@ impl TryFrom<ScrollEvent> for OsCode {
     type Error = ();
     fn try_from(value: ScrollEvent) -> Result<Self, Self::Error> {
         match value.kind {
-            ScrollEventKind::Standard => {
-                Ok(match value.direction {
-                    MoveDirection::Up => OsCode::MouseWheelUp,
-                    MoveDirection::Down => OsCode::MouseWheelDown,
-                    MoveDirection::Left => OsCode::MouseWheelLeft,
-                    MoveDirection::Right => OsCode::MouseWheelRight,
-                })
-            }
+            ScrollEventKind::Standard => Ok(match value.direction {
+                MoveDirection::Up => OsCode::MouseWheelUp,
+                MoveDirection::Down => OsCode::MouseWheelDown,
+                MoveDirection::Left => OsCode::MouseWheelLeft,
+                MoveDirection::Right => OsCode::MouseWheelRight,
+            }),
             ScrollEventKind::HiRes => Err(()),
         }
     }
