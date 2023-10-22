@@ -242,6 +242,16 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "mfwd" | "mouseforward" => OsCode::BTN_EXTRA,
         "mbck" | "mousebackward" => OsCode::BTN_SIDE,
 
+        // NOTE: these are linux-only right now due to missing implementation for windows
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        "mwu" | "mousewheelup" => OsCode::MouseWheelUp,
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        "mwd" | "mousewheeldown" => OsCode::MouseWheelDown,
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        "mwl" | "mousewheelleft" => OsCode::MouseWheelLeft,
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        "mwr" | "mousewheelright" => OsCode::MouseWheelRight,
+
         "hmpg" | "homepage" => OsCode::KEY_HOMEPAGE,
         "mdia" | "media" => OsCode::KEY_MEDIA,
         "mail" => OsCode::KEY_MAIL,
@@ -1018,6 +1028,16 @@ pub enum OsCode {
     BTN_TRIGGER_HAPPY39 = 742,
     BTN_TRIGGER_HAPPY40 = 743,
     BTN_MAX = 744,
+
+    // Mouse wheel events are not a part of EV_KEY, so they technically
+    // shouldn't be there, but they're still there, because this way
+    // it's easier to implement allowing to add them to defsrc without
+    // making tons of changes all over the codebase.
+    MouseWheelUp = 745,
+    MouseWheelDown = 746,
+    MouseWheelLeft = 747,
+    MouseWheelRight = 748,
+
     KEY_MAX = 767,
 }
 

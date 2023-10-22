@@ -272,6 +272,62 @@ impl TryFrom<InputEvent> for KeyEvent {
     }
 }
 
+impl TryFrom<InputEvent> for SupportedInputEvent {
+    type Error = ();
+    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        match item.kind() {
+            evdev::InputEventKind::Key(k) => Ok(Self::KeyEvent(KeyEvent {
+                code: OsCode::from_u16(k.0).ok_or(())?,
+                value: KeyValue::from(item.value()),
+            })),
+            evdev::InputEventKind::RelAxis(axis_type) => {
+                let (direction, kind) = match (axis_type, item.value()) {
+                    (RelativeAxisType::REL_WHEEL, dist) => (
+                        if dist > 0 {
+                            MoveDirection::Up
+                        } else {
+                            MoveDirection::Down
+                        },
+                        ScrollEventKind::Standard,
+                    ),
+                    (RelativeAxisType::REL_HWHEEL, dist) => (
+                        if dist > 0 {
+                            MoveDirection::Left
+                        } else {
+                            MoveDirection::Right
+                        },
+                        ScrollEventKind::Standard,
+                    ),
+                    (RelativeAxisType::REL_WHEEL_HI_RES, dist) => (
+                        if dist > 0 {
+                            MoveDirection::Up
+                        } else {
+                            MoveDirection::Down
+                        },
+                        ScrollEventKind::HiRes,
+                    ),
+                    (RelativeAxisType::REL_HWHEEL_HI_RES, dist) => (
+                        if dist > 0 {
+                            MoveDirection::Left
+                        } else {
+                            MoveDirection::Right
+                        },
+                        ScrollEventKind::HiRes,
+                    ),
+                    _ => return Err(()),
+                };
+
+                Ok(Self::ScrollEvent(ScrollEvent {
+                    kind,
+                    direction,
+                    distance: item.value().unsigned_abs(),
+                }))
+            }
+            _ => Err(()),
+        }
+    }
+}
+
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
