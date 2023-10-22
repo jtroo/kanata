@@ -412,6 +412,25 @@ movement actions will be inherited if others are already being pressed.
 )
 ----
 
+[[movemouse-smooth-diagonals]]
+== movemouse-smooth-diagonals
+<<table-of-contents,Back to ToC>>
+
+By default, mouse movements move one direction at a time
+and vertical/horizontal movements are on independent timers.
+
+This can result in non-smooth diagonals when drawing a line in some app.
+This option adds a small imperceptible amount of latency to
+synchronize the mouse movements.
+
+.Example:
+[source]
+----
+(defcfg
+  movemouse-smooth-diagonals yes
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -657,6 +676,8 @@ a non-applicable operating system.
   sequence-backtrack-modcancel no
   log-layer-changes no
   delegate-to-first-layer yes
+  movemouse-inherit-accel-state yes
+  movemouse-smooth-diagonals yes
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
   linux-dev-names-exclude "Name 3:Name 4"
@@ -666,7 +687,6 @@ a non-applicable operating system.
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
-  movemouse-inherit-accel-state yes
 )
 ----
 
@@ -933,7 +953,7 @@ NOTE: If using Linux, make sure to look at the
 )
 ----
 
-[[output-chords-combos]]
+[[output-chordscombos]]
 === Output chords/combos
 <<table-of-contents,Back to ToC>>
 
@@ -1908,7 +1928,7 @@ precisely, the action triggered is:
 )
 (deffakekeys
     dotcom (macro . c o m)
-    dotorg (macro . c o m)
+    dotorg (macro . o r g)
 )
 ----
 

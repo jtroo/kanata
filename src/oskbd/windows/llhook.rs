@@ -12,6 +12,7 @@ use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
+use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::{KeyEvent, KeyValue};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
@@ -216,8 +217,13 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, direction: MoveDirection, distance: u16) -> Result<(), io::Error> {
-        move_mouse(direction, distance);
+    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+        move_mouse(mv.direction, mv.distance);
+        Ok(())
+    }
+
+    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+        move_mouse_many(moves);
         Ok(())
     }
 
@@ -301,6 +307,22 @@ fn move_mouse(direction: MoveDirection, distance: u16) {
         MoveDirection::Left => move_mouse_xy(-i32::from(distance), 0),
         MoveDirection::Right => move_mouse_xy(i32::from(distance), 0),
     }
+}
+
+fn move_mouse_many(moves: &[CalculatedMouseMove]) {
+    let mut x_acc = 0;
+    let mut y_acc = 0;
+    for mov in moves {
+        let acc_change = match mov.direction {
+            MoveDirection::Up => (0, -i32::from(mov.distance)),
+            MoveDirection::Down => (0, i32::from(mov.distance)),
+            MoveDirection::Left => (-i32::from(mov.distance), 0),
+            MoveDirection::Right => (i32::from(mov.distance), 0),
+        };
+        x_acc += acc_change.0;
+        y_acc += acc_change.1;
+    }
+    move_mouse_xy(x_acc, y_acc);
 }
 
 fn move_mouse_xy(x: i32, y: i32) {

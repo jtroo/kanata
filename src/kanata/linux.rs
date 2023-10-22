@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
 use super::*;
@@ -101,7 +101,7 @@ impl Kanata {
                 }
 
                 // Send key events to the processing loop
-                if let Err(e) = tx.send(supported_in_event) {
+                if let Err(e) = tx.try_send(supported_in_event) {
                     bail!("failed to send on channel: {}", e)
                 }
             }

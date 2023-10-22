@@ -318,7 +318,8 @@ fn parse_cfg_raw(
         .get_file_content(&cfg_file_name)
         .map_err(|e| miette::miette!(e))?;
 
-    parse_cfg_raw_string(&text, s, p, &mut file_content_provider).map_err(|e| e.into())
+    parse_cfg_raw_string(&text, s, p, &mut file_content_provider, DEF_LOCAL_KEYS)
+        .map_err(|e| e.into())
 }
 
 fn expand_includes(
@@ -368,6 +369,7 @@ pub fn parse_cfg_raw_string(
     s: &mut ParsedState,
     cfg_path: &Path,
     file_content_provider: &mut FileContentProvider,
+    def_local_keys_variant_to_apply: &str,
 ) -> Result<(
     HashMap<String, String>,
     MappedKeys,
@@ -420,7 +422,7 @@ pub fn parse_cfg_raw_string(
             .map(|custom_keys| parse_deflocalkeys(def_local_keys_variant, custom_keys))
         {
             let mapping = result?;
-            if def_local_keys_variant == DEF_LOCAL_KEYS {
+            if def_local_keys_variant == def_local_keys_variant_to_apply {
                 assert!(
                     local_keys.is_none(),
                     ">1 mutually exclusive deflocalkeys variants was parsed"
@@ -753,6 +755,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         "log-layer-changes",
         "delegate-to-first-layer",
         "linux-continue-if-no-devs-found",
+        "movemouse-smooth-diagonals",
         "movemouse-inherit-accel-state",
     ];
     let mut cfg = HashMap::default();
