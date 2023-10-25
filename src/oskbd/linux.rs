@@ -284,33 +284,33 @@ impl TryFrom<InputEvent> for SupportedInputEvent {
                 let (direction, kind) = match (axis_type, item.value()) {
                     (RelativeAxisType::REL_WHEEL, dist) => (
                         if dist > 0 {
-                            MoveDirection::Up
+                            MWheelDirection::Up
                         } else {
-                            MoveDirection::Down
+                            MWheelDirection::Down
                         },
                         ScrollEventKind::Standard,
                     ),
                     (RelativeAxisType::REL_HWHEEL, dist) => (
                         if dist > 0 {
-                            MoveDirection::Left
+                            MWheelDirection::Left
                         } else {
-                            MoveDirection::Right
+                            MWheelDirection::Right
                         },
                         ScrollEventKind::Standard,
                     ),
                     (RelativeAxisType::REL_WHEEL_HI_RES, dist) => (
                         if dist > 0 {
-                            MoveDirection::Up
+                            MWheelDirection::Up
                         } else {
-                            MoveDirection::Down
+                            MWheelDirection::Down
                         },
                         ScrollEventKind::HiRes,
                     ),
                     (RelativeAxisType::REL_HWHEEL_HI_RES, dist) => (
                         if dist > 0 {
-                            MoveDirection::Left
+                            MWheelDirection::Left
                         } else {
-                            MoveDirection::Right
+                            MWheelDirection::Right
                         },
                         ScrollEventKind::HiRes,
                     ),

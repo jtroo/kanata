@@ -29,6 +29,9 @@ pub enum CustomAction {
         interval: u16,
         distance: u16,
     },
+    MWheelNotch {
+        direction: MWheelDirection,
+    },
     MoveMouse {
         direction: MoveDirection,
         interval: u16,

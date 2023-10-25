@@ -1004,6 +1004,10 @@ impl Kanata {
                                 })
                             }
                         },
+                        CustomAction::MWheelNotch { direction } => {
+                            self.kbd_out
+                                .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
+                        }
                         CustomAction::MoveMouse {
                             direction,
                             interval,

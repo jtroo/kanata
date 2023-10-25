@@ -45,7 +45,7 @@ impl From<KeyValue> for bool {
     }
 }
 
-use kanata_parser::{custom_action::MoveDirection, keys::OsCode};
+use kanata_parser::{custom_action::MWheelDirection, keys::OsCode};
 
 #[derive(Debug, Clone, Copy)]
 pub struct KeyEvent {
@@ -69,7 +69,7 @@ pub enum ScrollEventKind {
 #[derive(Debug, Clone, Copy)]
 pub struct ScrollEvent {
     pub kind: ScrollEventKind,
-    pub direction: MoveDirection,
+    pub direction: MWheelDirection,
     /// Unit: scroll notches if ScrollEventKind::Standard or
     /// scroll notches * 120 if ScrollEventKind::HiRes
     pub distance: u32,
@@ -80,10 +80,10 @@ impl TryFrom<ScrollEvent> for OsCode {
     fn try_from(value: ScrollEvent) -> Result<Self, Self::Error> {
         match value.kind {
             ScrollEventKind::Standard => Ok(match value.direction {
-                MoveDirection::Up => OsCode::MouseWheelUp,
-                MoveDirection::Down => OsCode::MouseWheelDown,
-                MoveDirection::Left => OsCode::MouseWheelLeft,
-                MoveDirection::Right => OsCode::MouseWheelRight,
+                MWheelDirection::Up => OsCode::MouseWheelUp,
+                MWheelDirection::Down => OsCode::MouseWheelDown,
+                MWheelDirection::Left => OsCode::MouseWheelLeft,
+                MWheelDirection::Right => OsCode::MouseWheelRight,
             }),
             ScrollEventKind::HiRes => Err(()),
         }
