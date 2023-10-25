@@ -292,9 +292,9 @@ impl TryFrom<InputEvent> for SupportedInputEvent {
                     ),
                     (RelativeAxisType::REL_HWHEEL, dist) => (
                         if dist > 0 {
-                            MWheelDirection::Left
-                        } else {
                             MWheelDirection::Right
+                        } else {
+                            MWheelDirection::Left
                         },
                         ScrollEventKind::Standard,
                     ),
@@ -308,9 +308,9 @@ impl TryFrom<InputEvent> for SupportedInputEvent {
                     ),
                     (RelativeAxisType::REL_HWHEEL_HI_RES, dist) => (
                         if dist > 0 {
-                            MWheelDirection::Left
-                        } else {
                             MWheelDirection::Right
+                        } else {
+                            MWheelDirection::Left
                         },
                         ScrollEventKind::HiRes,
                     ),
