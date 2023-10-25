@@ -30,13 +30,13 @@ is-terminal = "=0.4.7"
 # Pinned to avoid downloading and running binary blobs on Linux
 serde_derive = "=1.0.171"
 
-# kanata-keyberon = "0.150.2"
-# kanata-parser = "0.150.2"
+kanata-keyberon = "0.150.2"
+kanata-parser = "0.150.2"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-kanata-keyberon = { path = "keyberon" }
-kanata-parser = { path = "parser" }
+# kanata-keyberon = { path = "keyberon" }
+# kanata-parser = { path = "parser" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "=0.12.0"
