@@ -15,10 +15,8 @@ endif::[]
 :toclevels: 3
 
 == ISO German QWERTZ (Windows, non-interception)[[german]]
-<<toc,back to TOC>>
 
 === Using `deflocalkeys-win`:[[german-defwin]]
-<<toc,back to TOC>>
 
 [%collapsible]
 ====
@@ -46,7 +44,6 @@ endif::[]
 ====
 
 === Without using `deflocalkeys`:[[german-nodeflocalkeys]]
-<<toc,back to TOC>>
 
 [%collapsible]
 ====
@@ -62,7 +59,6 @@ endif::[]
 ====
 
 === Example aliases[[german-aliases]]
-<<toc,back to TOC>>
 
 [%collapsible]
 ====
@@ -114,7 +110,6 @@ endif::[]
 ====
 
 == ISO French AZERTY (Windows, non-interception)[[french]]
-<<toc,back to TOC>>
 
 IMPORTANT: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
 
