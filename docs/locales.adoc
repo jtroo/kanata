@@ -1,14 +1,29 @@
+////
+Commented out since it doesn't seem to add anything for now, but maybe in the future
+:sectlinks:
+:sectanchors:
+////
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 = Keyboard locales
+
+////
+Commented out since doc is short enough without a ToC for the time being.
 :toc:
-:toc-placement!:
-:toc-title!:
+:toc-title: pass:[<b>TABLE OF CONTENTS</b>]
+:toclevels: 3
+////
 
-== Table of contents
-toc::[]
+== ISO German QWERTZ (Windows, non-interception)[[german]]
 
-== ISO German QWERTZ - Windows (non-interception)
-
-=== Using `deflocalkeys-win`:
+=== Using `deflocalkeys-win`:[[german-defwin]]
 
 [%collapsible]
 ====
@@ -35,7 +50,7 @@ toc::[]
 ----
 ====
 
-=== Without using `deflocalkeys`:
+=== Without using `deflocalkeys`:[[german-nodeflocalkeys]]
 
 [%collapsible]
 ====
@@ -50,7 +65,7 @@ toc::[]
 ----
 ====
 
-=== Example aliases
+=== Example aliases[[german-aliases]]
 
 [%collapsible]
 ====
@@ -97,6 +112,27 @@ toc::[]
   ² A-C-2
   ³ A-C-3
   µ A-C-m
+)
+----
+====
+
+== ISO French AZERTY (Windows, non-interception)[[french]]
+
+NOTE: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
+
+[%collapsible]
+====
+----
+(deflocalkeys-win
+	k252 223 ;; ref to the key [!] (VK_OEM_8)
+)
+
+(defsrc ;; french
+  '        1     2     3     4     5     6     7     8     9     0      [    eql        bspc
+  tab       a     z     e     r     t     y     u     i     o     p      ]     ;
+  caps       q     s     d     f     g     h     j     k     l     m      `     bksl     ret
+  lsft nubs   w     x     c     v     b     n     comm  .     /     k252                rsft
+  lctl    lmet   lalt           spc                             ralt                    rctl
 )
 ----
 ====
