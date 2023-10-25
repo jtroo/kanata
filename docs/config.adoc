@@ -413,7 +413,7 @@ movement actions will be inherited if others are already being pressed.
 ----
 
 [[movemouse-smooth-diagonals]]
-== movemouse-smooth-diagonals
+=== movemouse-smooth-diagonals
 <<table-of-contents,Back to ToC>>
 
 By default, mouse movements move one direction at a time
