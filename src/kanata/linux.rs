@@ -31,8 +31,7 @@ impl Kanata {
         Kanata::set_repeat_rate(&k.defcfg_items)?;
         drop(k);
 
-        let scroll_wheel_mapped = false
-            || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelUp)
+        let scroll_wheel_mapped = MAPPED_KEYS.lock().contains(&OsCode::MouseWheelUp)
             || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelDown)
             || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelLeft)
             || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelRight);
