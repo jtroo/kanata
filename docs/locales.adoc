@@ -1,5 +1,8 @@
+////
+Commented out since it doesn't seem to add anything for now, but maybe in the future
 :sectlinks:
 :sectanchors:
+////
 
 ifdef::env-github[]
 :tip-caption: :bulb:
@@ -10,9 +13,13 @@ ifdef::env-github[]
 endif::[]
 
 = Keyboard locales
+
+////
+Commented out since doc is short enough without a ToC for the time being.
 :toc:
 :toc-title: pass:[<b>TABLE OF CONTENTS</b>]
 :toclevels: 3
+////
 
 == ISO German QWERTZ (Windows, non-interception)[[german]]
 
@@ -111,7 +118,7 @@ endif::[]
 
 == ISO French AZERTY (Windows, non-interception)[[french]]
 
-IMPORTANT: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
+NOTE: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
 
 [%collapsible]
 ====
