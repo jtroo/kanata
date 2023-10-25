@@ -11,11 +11,12 @@ endif::[]
 
 = Keyboard locales
 :toc:
-:toc-title: pass:[<b>TABLE OF CONTENT</b>]
+:toc-title: pass:[<b>TABLE OF CONTENTS</b>]
 :toclevels: 3
 
-== ISO German QWERTZ - Windows (non-interception)[[german]]
+== ISO German QWERTZ (Windows, non-interception)[[german]]
 <<toc,back to TOC>>
+
 === Using `deflocalkeys-win`:[[german-defwin]]
 <<toc,back to TOC>>
 
@@ -112,7 +113,7 @@ endif::[]
 ----
 ====
 
-== ISO French AZERTY - Windows (non-interception)[[french]]
+== ISO French AZERTY (Windows, non-interception)[[french]]
 <<toc,back to TOC>>
 
 IMPORTANT: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
@@ -121,7 +122,7 @@ IMPORTANT: This source is for ISO105 arrangement of the http://kbdlayout.info/kb
 ====
 ----
 (deflocalkeys-win
-	k252 223 ;; ref to the key [!]
+	k252 223 ;; ref to the key [!] (VK_OEM_8)
 )
 
 (defsrc ;; french
