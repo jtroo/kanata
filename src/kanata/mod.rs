@@ -443,44 +443,35 @@ impl Kanata {
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
-    fn handle_input_event(&mut self, event: &SupportedInputEvent) -> Result<()> {
+    fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
+        let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;
-
-        let kbrn_ev = match event {
-            SupportedInputEvent::KeyEvent(kev) => {
-                let evc: u16 = kev.code.into();
-                match kev.value {
-                    KeyValue::Press => {
-                        if let Some(state) = &mut self.dynamic_macro_record_state {
-                            state.macro_items.push(DynamicMacroItem::Press(kev.code));
-                        }
-                        Event::Press(0, evc)
-                    }
-                    KeyValue::Release => {
-                        if let Some(state) = &mut self.dynamic_macro_record_state {
-                            state.macro_items.push(DynamicMacroItem::Release(kev.code));
-                        }
-                        Event::Release(0, evc)
-                    }
-                    KeyValue::Repeat => {
-                        let ret = self.handle_repeat(kev);
-                        return ret;
-                    }
+        let kbrn_ev = match event.value {
+            KeyValue::Press => {
+                if let Some(state) = &mut self.dynamic_macro_record_state {
+                    state.macro_items.push(DynamicMacroItem::Press(event.code));
                 }
+                Event::Press(0, evc)
             }
-            SupportedInputEvent::ScrollEvent(sev) => {
-                let osc: OsCode = match (*sev).try_into() {
-                    Ok(code) => code,
-                    Err(_) => return Ok(()),
-                };
-                let evc: u16 = osc.into();
+            KeyValue::Release => {
+                if let Some(state) = &mut self.dynamic_macro_record_state {
+                    state
+                        .macro_items
+                        .push(DynamicMacroItem::Release(event.code));
+                }
+                Event::Release(0, evc)
+            }
+            KeyValue::Repeat => {
+                let ret = self.handle_repeat(event);
+                return ret;
+            }
+            KeyValue::Tap => {
                 self.layout.bm().event(Event::Press(0, evc));
                 self.layout.bm().event(Event::Release(0, evc));
                 return Ok(());
             }
         };
-
         self.layout.bm().event(kbrn_ev);
         Ok(())
     }
@@ -1549,7 +1540,7 @@ impl Kanata {
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
     pub fn start_processing_loop(
         kanata: Arc<Mutex<Self>>,
-        rx: Receiver<SupportedInputEvent>,
+        rx: Receiver<KeyEvent>,
         tx: Option<Sender<ServerMessage>>,
         nodelay: bool,
     ) {
@@ -1558,15 +1549,11 @@ impl Kanata {
             if !nodelay {
                 info!("Init: catching only releases and sending immediately");
                 for _ in 0..500 {
-                    if let Ok(SupportedInputEvent::KeyEvent(KeyEvent {
-                        code,
-                        value: KeyValue::Release,
-                    })) = rx.try_recv()
-                    {
-                        {
+                    if let Ok(kev) = rx.try_recv() {
+                        if kev.value == KeyValue::Release {
                             let mut k = kanata.lock();
-                            info!("Init: releasing {:?}", code);
-                            k.kbd_out.release_key(code).expect("key released");
+                            info!("Init: releasing {:?}", kev.code);
+                            k.kbd_out.release_key(kev.code).expect("key released");
                         }
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
@@ -1596,7 +1583,7 @@ impl Kanata {
                 if can_block {
                     log::trace!("blocking on channel");
                     match rx.recv() {
-                        Ok(ev) => {
+                        Ok(kev) => {
                             let mut k = kanata.lock();
                             let now = time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
@@ -1622,8 +1609,8 @@ impl Kanata {
                                 // are not cleared.
                                 if (now - k.last_tick) > time::Duration::from_secs(60) {
                                     log::debug!(
-                                        "clearing keyberon normal key states due to blocking for a while"
-                                    );
+                                    "clearing keyberon normal key states due to blocking for a while"
+                                );
                                     k.layout.bm().states.retain(|s| {
                                         !matches!(
                                             s,
@@ -1649,7 +1636,7 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_input_event(&ev) {
+                            if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
 
@@ -1680,11 +1667,11 @@ impl Kanata {
                 } else {
                     let mut k = kanata.lock();
                     match rx.try_recv() {
-                        Ok(ev) => {
+                        Ok(kev) => {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_input_event(&ev) {
+                            if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
 

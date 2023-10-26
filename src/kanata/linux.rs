@@ -10,7 +10,7 @@ use super::*;
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing
     /// thread.
-    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<SupportedInputEvent>) -> Result<()> {
+    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
         let k = kanata.lock();
@@ -134,7 +134,10 @@ impl Kanata {
                 };
 
                 // Send key events to the processing loop
-                if let Err(e) = tx.try_send(supported_in_event) {
+                if let Err(e) = tx.try_send(supported_in_event.try_into().expect(
+                    "only hi-res scroll can fail this conversion,
+                    but this should be unreachable for it",
+                )) {
                     bail!("failed to send on channel: {}", e)
                 }
             }

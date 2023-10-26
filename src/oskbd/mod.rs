@@ -17,6 +17,7 @@ pub enum KeyValue {
     Release = 0,
     Press = 1,
     Repeat = 2,
+    Tap,
 }
 
 impl From<i32> for KeyValue {
@@ -94,4 +95,17 @@ impl TryFrom<ScrollEvent> for OsCode {
 pub enum SupportedInputEvent {
     KeyEvent(KeyEvent),
     ScrollEvent(ScrollEvent),
+}
+
+impl TryFrom<SupportedInputEvent> for KeyEvent {
+    type Error = ();
+    fn try_from(value: SupportedInputEvent) -> Result<Self, Self::Error> {
+        Ok(match value {
+            SupportedInputEvent::KeyEvent(kev) => kev,
+            SupportedInputEvent::ScrollEvent(sev) => KeyEvent {
+                code: sev.try_into()?,
+                value: KeyValue::Tap,
+            },
+        })
+    }
 }
