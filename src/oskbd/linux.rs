@@ -262,66 +262,49 @@ pub fn is_input_device(device: &Device) -> bool {
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        use OsCode::*;
         match item.kind() {
             evdev::InputEventKind::Key(k) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
             }),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<InputEvent> for SupportedInputEvent {
-    type Error = ();
-    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        match item.kind() {
-            evdev::InputEventKind::Key(k) => Ok(Self::KeyEvent(KeyEvent {
-                code: OsCode::from_u16(k.0).ok_or(())?,
-                value: KeyValue::from(item.value()),
-            })),
             evdev::InputEventKind::RelAxis(axis_type) => {
-                let (direction, kind) = match (axis_type, item.value()) {
-                    (RelativeAxisType::REL_WHEEL, dist) => (
+                let dist = item.value();
+                let code: OsCode = match axis_type {
+                    RelativeAxisType::REL_WHEEL => {
                         if dist > 0 {
-                            MWheelDirection::Up
+                            MouseWheelUp
                         } else {
-                            MWheelDirection::Down
-                        },
-                        ScrollEventKind::Standard,
-                    ),
-                    (RelativeAxisType::REL_HWHEEL, dist) => (
+                            MouseWheelDown
+                        }
+                    }
+                    RelativeAxisType::REL_HWHEEL => {
                         if dist > 0 {
-                            MWheelDirection::Right
+                            MouseWheelRight
                         } else {
-                            MWheelDirection::Left
-                        },
-                        ScrollEventKind::Standard,
-                    ),
-                    (RelativeAxisType::REL_WHEEL_HI_RES, dist) => (
+                            MouseWheelLeft
+                        }
+                    }
+                    RelativeAxisType::REL_WHEEL_HI_RES => {
                         if dist > 0 {
-                            MWheelDirection::Up
+                            MouseWheelUpHiRes
                         } else {
-                            MWheelDirection::Down
-                        },
-                        ScrollEventKind::HiRes,
-                    ),
-                    (RelativeAxisType::REL_HWHEEL_HI_RES, dist) => (
+                            MouseWheelDownHiRes
+                        }
+                    }
+                    RelativeAxisType::REL_HWHEEL_HI_RES => {
                         if dist > 0 {
-                            MWheelDirection::Right
+                            MouseWheelRightHiRes
                         } else {
-                            MWheelDirection::Left
-                        },
-                        ScrollEventKind::HiRes,
-                    ),
+                            MouseWheelLeftHiRes
+                        }
+                    }
                     _ => return Err(()),
                 };
-
-                Ok(Self::ScrollEvent(ScrollEvent {
-                    kind,
-                    direction,
-                    distance: item.value().unsigned_abs(),
-                }))
+                Ok(KeyEvent {
+                    code,
+                    value: KeyValue::Tap,
+                })
             }
             _ => Err(()),
         }

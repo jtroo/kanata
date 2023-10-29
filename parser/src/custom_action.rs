@@ -6,6 +6,8 @@
 use anyhow::{anyhow, Result};
 use kanata_keyberon::key_code::KeyCode;
 
+use crate::keys::OsCode;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
@@ -102,6 +104,20 @@ pub enum MWheelDirection {
     Down,
     Left,
     Right,
+}
+
+impl TryFrom<OsCode> for MWheelDirection {
+    type Error = ();
+    fn try_from(value: OsCode) -> Result<Self, Self::Error> {
+        use OsCode::*;
+        Ok(match value {
+            MouseWheelUp | MouseWheelUpHiRes => MWheelDirection::Up,
+            MouseWheelDown | MouseWheelDownHiRes => MWheelDirection::Down,
+            MouseWheelLeft | MouseWheelLeftHiRes => MWheelDirection::Left,
+            MouseWheelRight | MouseWheelRightHiRes => MWheelDirection::Right,
+            _ => return Err(()),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

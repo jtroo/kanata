@@ -1038,6 +1038,11 @@ pub enum OsCode {
     MouseWheelLeft = 747,
     MouseWheelRight = 748,
 
+    MouseWheelUpHiRes = 749,
+    MouseWheelDownHiRes = 750,
+    MouseWheelLeftHiRes = 751,
+    MouseWheelRightHiRes = 752,
+
     KEY_MAX = 767,
 }
 

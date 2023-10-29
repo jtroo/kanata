@@ -91,21 +91,17 @@ impl TryFrom<ScrollEvent> for OsCode {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum SupportedInputEvent {
-    KeyEvent(KeyEvent),
-    ScrollEvent(ScrollEvent),
-}
-
-impl TryFrom<SupportedInputEvent> for KeyEvent {
+impl TryFrom<OsCode> for ScrollEventKind {
     type Error = ();
-    fn try_from(value: SupportedInputEvent) -> Result<Self, Self::Error> {
+    fn try_from(value: OsCode) -> Result<Self, Self::Error> {
+        use OsCode::*;
         Ok(match value {
-            SupportedInputEvent::KeyEvent(kev) => kev,
-            SupportedInputEvent::ScrollEvent(sev) => KeyEvent {
-                code: sev.try_into()?,
-                value: KeyValue::Tap,
-            },
+            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
+                ScrollEventKind::Standard
+            }
+            MouseWheelUpHiRes | MouseWheelDownHiRes | MouseWheelLeftHiRes
+            | MouseWheelRightHiRes => ScrollEventKind::HiRes,
+            _ => return Err(()),
         })
     }
 }
