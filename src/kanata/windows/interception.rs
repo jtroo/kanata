@@ -70,13 +70,14 @@ impl Kanata {
                             };
                             KeyEvent { code, value }
                         }
-                        ic::Stroke::Mouse { state, .. } => {
+                        ic::Stroke::Mouse { state, rolling, .. } => {
                             if let Some(hwid) = mouse_to_intercept_hwid {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,
                                     &hwid,
                                     state,
+                                    rolling,
                                     &intrcptn,
                                     &mut is_dev_interceptable,
                                 ) {
@@ -123,6 +124,7 @@ fn mouse_state_to_event(
     input_dev: ic::Device,
     allowed_hwid: &[u8; HWID_ARR_SZ],
     state: ic::MouseState,
+    rolling: i16,
     intrcptn: &ic::Interception,
     is_dev_interceptable: &mut HashMap<ic::Device, bool>,
 ) -> Option<KeyEvent> {
@@ -191,6 +193,34 @@ fn mouse_state_to_event(
             code: OsCode::BTN_EXTRA,
             value: KeyValue::Release,
         })
+    } else if state.contains(ic::MouseState::WHEEL) {
+        let osc = if rolling >= 0 {
+            OsCode::MouseWheelUp
+        } else {
+            OsCode::MouseWheelDown
+        };
+        if !MAPPED_KEYS.lock().contains(&osc) {
+            Some(KeyEvent {
+                code: osc,
+                value: KeyValue::Tap,
+            })
+        } else {
+            None
+        }
+    } else if state.contains(ic::MouseState::HWHEEL) {
+        let osc = if rolling >= 0 {
+            OsCode::MouseWheelRight
+        } else {
+            OsCode::MouseWheelLeft
+        };
+        if !MAPPED_KEYS.lock().contains(&osc) {
+            Some(KeyEvent {
+                code: osc,
+                value: KeyValue::Tap,
+            })
+        } else {
+            None
+        }
     } else {
         None
     }

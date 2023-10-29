@@ -24,6 +24,7 @@ impl InputEvent {
                     match val {
                         KeyValue::Press | KeyValue::Repeat => KeyState::DOWN,
                         KeyValue::Release => KeyState::UP,
+                        KeyValue::Tap => panic!("invalid value attempted to be sent"),
                     },
                     true,
                 );
