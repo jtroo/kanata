@@ -31,11 +31,6 @@ impl Kanata {
         Kanata::set_repeat_rate(&k.defcfg_items)?;
         drop(k);
 
-        let scroll_wheel_mapped = MAPPED_KEYS.lock().contains(&OsCode::MouseWheelUp)
-            || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelDown)
-            || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelLeft)
-            || MAPPED_KEYS.lock().contains(&OsCode::MouseWheelRight);
-
         loop {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("{events:?}");
@@ -81,7 +76,7 @@ impl Kanata {
                         let osc: OsCode = sev
                             .try_into()
                             .expect("standard scroll should have OsCode mapping");
-                        if scroll_wheel_mapped {
+                        if kanata.lock().scroll_wheel_mapped {
                             if MAPPED_KEYS.lock().contains(&osc) {
                                 // Send this event to processing loop.
                             } else {
@@ -119,7 +114,7 @@ impl Kanata {
                         ..
                     }) => {
                         // Don't passthrough hi-res mouse wheel events when scroll wheel is remapped,
-                        if scroll_wheel_mapped {
+                        if kanata.lock().scroll_wheel_mapped {
                             continue;
                         }
                         // Passthrough if none of the scroll wheel events are mapped
