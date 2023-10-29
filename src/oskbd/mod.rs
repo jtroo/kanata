@@ -67,30 +67,6 @@ pub enum ScrollEventKind {
     HiRes,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct ScrollEvent {
-    pub kind: ScrollEventKind,
-    pub direction: MWheelDirection,
-    /// Unit: scroll notches if ScrollEventKind::Standard or
-    /// scroll notches * 120 if ScrollEventKind::HiRes
-    pub distance: u32,
-}
-
-impl TryFrom<ScrollEvent> for OsCode {
-    type Error = ();
-    fn try_from(value: ScrollEvent) -> Result<Self, Self::Error> {
-        match value.kind {
-            ScrollEventKind::Standard => Ok(match value.direction {
-                MWheelDirection::Up => OsCode::MouseWheelUp,
-                MWheelDirection::Down => OsCode::MouseWheelDown,
-                MWheelDirection::Left => OsCode::MouseWheelLeft,
-                MWheelDirection::Right => OsCode::MouseWheelRight,
-            }),
-            ScrollEventKind::HiRes => Err(()),
-        }
-    }
-}
-
 impl TryFrom<OsCode> for ScrollEventKind {
     type Error = ();
     fn try_from(value: OsCode) -> Result<Self, Self::Error> {
