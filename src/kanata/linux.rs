@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Result};
+use evdev::{InputEvent, InputEventKind, RelativeAxisType};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -35,7 +36,7 @@ impl Kanata {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("{events:?}");
 
-            for in_event in events.into_iter() {
+            for in_event in events.iter().copied() {
                 let key_event = match KeyEvent::try_from(in_event) {
                     Ok(ev) => ev,
                     _ => {
@@ -51,75 +52,16 @@ impl Kanata {
 
                 check_for_exit(&key_event);
 
-                let KeyEvent { code, value } = key_event;
-
-                if value == KeyValue::Tap {
+                if key_event.value == KeyValue::Tap {
                     // Scroll event for sure. Only scroll events produce Tap.
-
-                    let direction: MWheelDirection = code.try_into().unwrap();
-
-                    match code
-                        .try_into()
-                        .expect("scroll event OsCode should not fail this")
-                    {
-                        ScrollEventKind::Standard => {
-                            if kanata.lock().scroll_wheel_mapped {
-                                if MAPPED_KEYS.lock().contains(&code) {
-                                    // Send this event to processing loop.
-                                } else {
-                                    // We can't simply passthough with `write_raw`, because hi-res events will not
-                                    // be passed-through when scroll_wheel_mapped==true. If we just used
-                                    // `write_raw` here, some of the scrolls issued by kanata would be
-                                    // REL_WHEEL_HI_RES + REL_HWHEEL and some just REL_HWHEEL and an issue
-                                    // like this one would happen: https://github.com/jtroo/kanata/issues/395
-                                    //
-                                    // So to fix this case, we need to use `scroll`
-                                    // which will also send hi-res scrolls along normal scrolls.
-
-                                    let scroll_distance = in_event.value().unsigned_abs() as u16;
-
-                                    let mut kanata = kanata.lock();
-                                    kanata
-                                        .kbd_out
-                                        .scroll(
-                                            direction,
-                                            scroll_distance * HI_RES_SCROLL_UNITS_IN_LO_RES,
-                                        )
-                                        .map_err(|e| anyhow!("failed write: {}", e))?;
-                                    continue;
-                                }
-                            } else {
-                                // Passthrough if none of the scroll wheel events are mapped
-                                // in the configuration.
-                                let mut kanata = kanata.lock();
-                                kanata
-                                    .kbd_out
-                                    .write_raw(in_event)
-                                    .map_err(|e| anyhow!("failed write: {}", e))?;
-                                continue;
-                            }
-                        }
-                        ScrollEventKind::HiRes => {
-                            // Don't passthrough hi-res mouse wheel events when scroll wheel is remapped,
-                            if kanata.lock().scroll_wheel_mapped {
-                                continue;
-                            }
-                            // Passthrough if none of the scroll wheel events are mapped
-                            // in the configuration.
-                            let mut kanata = kanata.lock();
-                            kanata
-                                .kbd_out
-                                .write_raw(in_event)
-                                .map_err(|e| anyhow!("failed write: {}", e))?;
-                            continue;
-                        }
+                    if !handle_scroll(&kanata, in_event, key_event.code, &events)? {
+                        continue;
                     }
                 } else {
                     // Handle normal keypresses.
-
                     // Check if this keycode is mapped in the configuration.
                     // If it hasn't been mapped, send it immediately.
-                    if !MAPPED_KEYS.lock().contains(&code) {
+                    if !MAPPED_KEYS.lock().contains(&key_event.code) {
                         let mut kanata = kanata.lock();
                         kanata
                             .kbd_out
@@ -178,5 +120,68 @@ impl Kanata {
             );
         }
         Ok(())
+    }
+}
+
+/// Returns true if the scroll event should be sent to the processing loop, otherwise returns
+/// false.
+fn handle_scroll(
+    kanata: &Mutex<Kanata>,
+    in_event: InputEvent,
+    code: OsCode,
+    all_events: &[InputEvent],
+) -> Result<bool> {
+    let direction: MWheelDirection = code.try_into().unwrap();
+    let scroll_distance = in_event.value().unsigned_abs() as u16;
+    match in_event.kind() {
+        InputEventKind::RelAxis(axis_type) => {
+            match axis_type {
+                RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_HWHEEL => {
+                    if MAPPED_KEYS.lock().contains(&code) {
+                        return Ok(true);
+                    }
+                    // If we just used `write_raw` here, some of the scrolls issued by kanata would be
+                    // REL_WHEEL_HI_RES + REL_WHEEL and some just REL_WHEEL and an issue like this one
+                    // would happen: https://github.com/jtroo/kanata/issues/395
+                    //
+                    // So to fix this case, we need to use `scroll` which will also send hi-res scrolls
+                    // along normal scrolls.
+                    //
+                    // However, if this is a normal scroll event, it may be sent alongside a
+                    let mut kanata = kanata.lock();
+                    if !all_events.iter().any(|ev| {
+                        matches!(
+                            ev.kind(),
+                            InputEventKind::RelAxis(
+                                RelativeAxisType::REL_WHEEL_HI_RES
+                                    | RelativeAxisType::REL_HWHEEL_HI_RES
+                            )
+                        )
+                    }) {
+                        kanata
+                            .kbd_out
+                            .scroll(direction, scroll_distance * HI_RES_SCROLL_UNITS_IN_LO_RES)
+                            .map_err(|e| anyhow!("failed write: {}", e))?;
+                    }
+                    Ok(false)
+                }
+                RelativeAxisType::REL_WHEEL_HI_RES | RelativeAxisType::REL_HWHEEL_HI_RES => {
+                    if !MAPPED_KEYS.lock().contains(&code) {
+                        // Passthrough if the scroll wheel event is not mapped
+                        // in the configuration.
+                        let mut kanata = kanata.lock();
+                        kanata
+                            .kbd_out
+                            .scroll(direction, scroll_distance)
+                            .map_err(|e| anyhow!("failed write: {}", e))?;
+                    }
+                    // Kanata will not handle high resolution scroll events for now.
+                    // Full notch scrolling only.
+                    Ok(false)
+                }
+                _ => unreachable!("expect to be handling a wheel event"),
+            }
+        }
+        _ => unreachable!("expect to be handling a wheel event"),
     }
 }

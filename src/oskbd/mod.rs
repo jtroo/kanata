@@ -46,7 +46,7 @@ impl From<KeyValue> for bool {
     }
 }
 
-use kanata_parser::{custom_action::MWheelDirection, keys::OsCode};
+use kanata_parser::keys::OsCode;
 
 #[derive(Debug, Clone, Copy)]
 pub struct KeyEvent {
@@ -58,26 +58,5 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ScrollEventKind {
-    Standard,
-    HiRes,
-}
-
-impl TryFrom<OsCode> for ScrollEventKind {
-    type Error = ();
-    fn try_from(value: OsCode) -> Result<Self, Self::Error> {
-        use OsCode::*;
-        Ok(match value {
-            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
-                ScrollEventKind::Standard
-            }
-            MouseWheelUpHiRes | MouseWheelDownHiRes | MouseWheelLeftHiRes
-            | MouseWheelRightHiRes => ScrollEventKind::HiRes,
-            _ => return Err(()),
-        })
     }
 }

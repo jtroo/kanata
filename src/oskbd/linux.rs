@@ -271,32 +271,18 @@ impl TryFrom<InputEvent> for KeyEvent {
             evdev::InputEventKind::RelAxis(axis_type) => {
                 let dist = item.value();
                 let code: OsCode = match axis_type {
-                    RelativeAxisType::REL_WHEEL => {
+                    RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_WHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelUp
                         } else {
                             MouseWheelDown
                         }
                     }
-                    RelativeAxisType::REL_HWHEEL => {
+                    RelativeAxisType::REL_HWHEEL | RelativeAxisType::REL_HWHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelRight
                         } else {
                             MouseWheelLeft
-                        }
-                    }
-                    RelativeAxisType::REL_WHEEL_HI_RES => {
-                        if dist > 0 {
-                            MouseWheelUpHiRes
-                        } else {
-                            MouseWheelDownHiRes
-                        }
-                    }
-                    RelativeAxisType::REL_HWHEEL_HI_RES => {
-                        if dist > 0 {
-                            MouseWheelRightHiRes
-                        } else {
-                            MouseWheelLeftHiRes
                         }
                     }
                     _ => return Err(()),

@@ -154,7 +154,6 @@ pub struct Kanata {
     /// gets stored in this buffer and if the next movemouse action is opposite axis
     /// than the one stored in the buffer, both events are outputted at the same time.
     movemouse_buffer: Option<(Axis, CalculatedMouseMove)>,
-    scroll_wheel_mapped: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -334,11 +333,6 @@ impl Kanata {
             .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or(true);
 
-        let scroll_wheel_mapped = cfg.mapped_keys.contains(&OsCode::MouseWheelUp)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelDown)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelLeft)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelRight);
-
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
         Ok(Self {
@@ -398,7 +392,6 @@ impl Kanata {
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
-            scroll_wheel_mapped,
         })
     }
 
@@ -443,10 +436,6 @@ impl Kanata {
             .get("movemouse-inherit-accel-state")
             .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or_default();
-        self.scroll_wheel_mapped = cfg.mapped_keys.contains(&OsCode::MouseWheelUp)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelDown)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelLeft)
-            || cfg.mapped_keys.contains(&OsCode::MouseWheelRight);
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         Kanata::set_repeat_rate(&cfg.items)?;
         log::info!("Live reload successful");

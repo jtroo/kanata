@@ -111,10 +111,10 @@ impl TryFrom<OsCode> for MWheelDirection {
     fn try_from(value: OsCode) -> Result<Self, Self::Error> {
         use OsCode::*;
         Ok(match value {
-            MouseWheelUp | MouseWheelUpHiRes => MWheelDirection::Up,
-            MouseWheelDown | MouseWheelDownHiRes => MWheelDirection::Down,
-            MouseWheelLeft | MouseWheelLeftHiRes => MWheelDirection::Left,
-            MouseWheelRight | MouseWheelRightHiRes => MWheelDirection::Right,
+            MouseWheelUp => MWheelDirection::Up,
+            MouseWheelDown => MWheelDirection::Down,
+            MouseWheelLeft => MWheelDirection::Left,
+            MouseWheelRight => MWheelDirection::Right,
             _ => return Err(()),
         })
     }
