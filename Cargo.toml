@@ -20,6 +20,8 @@ parking_lot = "0.12"
 once_cell = "1"
 serde = { version = "1", features = ["alloc", "derive"], default_features = false }
 serde_json = { version = "1", features = ["alloc"], default_features = false }
+serde_derive = "1.0"
+
 radix_trie = "0.2"
 rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
@@ -27,8 +29,6 @@ dirs = "5.0.1"
 
 # Pinned to avoid including multiple versions of a dependency
 is-terminal = "=0.4.7"
-# Pinned to avoid downloading and running binary blobs on Linux
-serde_derive = "=1.0.171"
 
 # kanata-keyberon = "0.150.3"
 # kanata-parser = "0.150.3"
