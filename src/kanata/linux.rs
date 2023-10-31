@@ -147,7 +147,9 @@ fn handle_scroll(
                     // So to fix this case, we need to use `scroll` which will also send hi-res scrolls
                     // along normal scrolls.
                     //
-                    // However, if this is a normal scroll event, it may be sent alongside a
+                    // However, if this is a normal scroll event, it may be sent alongside a hi-res
+                    // scroll event. In this scenario, the hi-res event should be used to call
+                    // scroll, and not the normal event. Otherwise, too much scrolling will happen.
                     let mut kanata = kanata.lock();
                     if !all_events.iter().any(|ev| {
                         matches!(
