@@ -486,6 +486,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ;;    a || b || c
     (a b c) b fallthrough
 
+    ;; key-history evaluates to true if the n'th most recent key press,
+    ;; {n | n ∈ [1, 8]}, matches the given key.
+    ((key-history a 1) (key-history b 8)) c break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break

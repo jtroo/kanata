@@ -1472,6 +1472,21 @@ Params in order:
     }))))
 }
 
+fn parse_u8_with_range(expr: &SExpr, s: &ParsedState, label: &str, min: u8, max: u8) -> Result<u8> {
+    expr.atom(s.vars())
+        .map(str::parse::<u8>)
+        .and_then(|u| u.ok())
+        .and_then(|u| {
+            assert!(min <= max);
+            if u >= min && u <= max {
+                Some(u)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be {min}-{max}"))
+}
+
 fn parse_u16(expr: &SExpr, s: &ParsedState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
         .map(str::parse::<u16>)
@@ -2934,9 +2949,8 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
             bail_expr!(key_match, "{ERR_STR}\n<key match> must be a list")
         };
         let mut ops = vec![];
-        let mut current_index = 0;
         for op in key_match.iter() {
-            current_index = parse_switch_case_bool(current_index, 1, op, &mut ops, s)?;
+            parse_switch_case_bool(1, op, &mut ops, s)?;
         }
 
         let action = parse_action(action, s)?;
@@ -2962,14 +2976,14 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
     }))))
 }
 
+/// Returns the
 fn parse_switch_case_bool(
-    mut current_index: u16,
     depth: u8,
     op_expr: &SExpr,
     ops: &mut Vec<OpCode>,
     s: &ParsedState,
-) -> Result<u16> {
-    if current_index > MAX_OPCODE_LEN {
+) -> Result<()> {
+    if ops.len() > MAX_OPCODE_LEN as usize {
         bail_expr!(
             op_expr,
             "maximum key match size of {MAX_OPCODE_LEN} items is exceeded"
@@ -2984,7 +2998,7 @@ fn parse_switch_case_bool(
     if let Some(a) = op_expr.atom(s.vars()) {
         let osc = str_to_oscode(a).ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
         ops.push(OpCode::new_key(osc.into()));
-        Ok(current_index + 1)
+        Ok(())
     } else {
         let l = op_expr
             .list(s.vars())
@@ -2992,28 +3006,58 @@ fn parse_switch_case_bool(
         if l.is_empty() {
             bail_expr!(op_expr, "key match cannot contain empty lists inside");
         }
+        #[derive(PartialEq)]
+        enum AllowedListOps {
+            Or,
+            And,
+            KeyHistory,
+        }
         let op = l[0]
             .atom(s.vars())
             .and_then(|s| match s {
-                "or" => Some(BooleanOperator::Or),
-                "and" => Some(BooleanOperator::And),
+                "or" => Some(AllowedListOps::Or),
+                "and" => Some(AllowedListOps::And),
+                "key-history" => Some(AllowedListOps::KeyHistory),
                 _ => None,
             })
             .ok_or_else(|| {
                 anyhow_expr!(
                     op_expr,
-                    "lists inside key match must begin with one of: or, and"
+                    "lists inside key match must begin with one of: or, and, key-history"
                 )
             })?;
-        // insert a placeholder for now, don't know the end index yet.
-        let placeholder_index = current_index;
-        ops.push(OpCode::new_bool(op, placeholder_index));
-        current_index += 1;
-        for op in l.iter().skip(1) {
-            current_index = parse_switch_case_bool(current_index, depth + 1, op, ops, s)?;
+        match op {
+            AllowedListOps::KeyHistory => {
+                if l.len() != 3 {
+                    bail_expr!(
+                        op_expr,
+                        "key-history must have 2 parameters: key, key-recency"
+                    );
+                }
+                let osc = l[1]
+                    .atom(s.vars())
+                    .and_then(str_to_oscode)
+                    .ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
+                let key_recency = parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
+                ops.push(OpCode::new_key_history(osc.into(), key_recency));
+                Ok(())
+            }
+            AllowedListOps::Or | AllowedListOps::And => {
+                let op = match op {
+                    AllowedListOps::Or => BooleanOperator::Or,
+                    AllowedListOps::And => BooleanOperator::And,
+                    _ => unreachable!(),
+                };
+                // insert a placeholder for now, don't know the end index yet.
+                let placeholder_index = ops.len() as u16;
+                ops.push(OpCode::new_bool(op, placeholder_index));
+                for op in l.iter().skip(1) {
+                    parse_switch_case_bool(depth + 1, op, ops, s)?;
+                }
+                ops[placeholder_index as usize] = OpCode::new_bool(op, ops.len() as u16);
+                Ok(())
+            }
         }
-        ops[placeholder_index as usize] = OpCode::new_bool(op, current_index);
-        Ok(current_index)
     }
 }
 
