@@ -570,8 +570,7 @@ some applications. The termination is configurable with the following options:
 )
 ----
 
-[[linux-only-x11-repeat-rate]]
-=== Linux only: linux-x11-repeat-delay-rate
+=== Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
 <<table-of-contents,Back to ToC>>
 
 On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
@@ -619,8 +618,7 @@ NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may 
 work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv
 
-[[windows-only--windows-interception-mouse-hwid]]
-=== Windows only: windows-interception-mouse-hwid
+=== Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 <<table-of-contents,Back to ToC>>
 
 This defcfg item allows you to intercept mouse buttons for a specific mouse
@@ -690,8 +688,7 @@ a non-applicable operating system.
 )
 ----
 
-[[aliases-and-vars]]
-== Aliases and variables
+== Aliases and variables[[aliases-and-vars]]
 <<table-of-contents,Back to ToC>>
 
 Before learning about actions,
@@ -1777,8 +1774,7 @@ Only zero or one `defoverrides` is allowed in a configuration file.
 )
 ----
 
-[[include]]
-== Include other files
+== Include other files[[include]]
 <<table-of-contents,Back to ToC>>
 
 The `include` optional configuration item
@@ -1807,8 +1803,7 @@ The included files also cannot contain includes themselves.
 )
 ----
 
-[[advanced-weird-features]]
-== Advanced/weird features
+== Advanced/weird features[[advanced-weird-features]]
 
 [[fake-keys]]
 === Fake keys
