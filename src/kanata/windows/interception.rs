@@ -38,12 +38,7 @@ impl Kanata {
         if mouse_to_intercept_hwid.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,
-                ic::Filter::MouseFilter(
-                    ic::MouseState::all()
-                        & (!ic::MouseState::WHEEL)
-                        & (!ic::MouseState::HWHEEL)
-                        & (!ic::MouseState::MOVE),
-                ),
+                ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
             );
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
@@ -199,7 +194,7 @@ fn mouse_state_to_event(
         } else {
             OsCode::MouseWheelDown
         };
-        if !MAPPED_KEYS.lock().contains(&osc) {
+        if MAPPED_KEYS.lock().contains(&osc) {
             Some(KeyEvent {
                 code: osc,
                 value: KeyValue::Tap,
@@ -213,7 +208,7 @@ fn mouse_state_to_event(
         } else {
             OsCode::MouseWheelLeft
         };
-        if !MAPPED_KEYS.lock().contains(&osc) {
+        if MAPPED_KEYS.lock().contains(&osc) {
             Some(KeyEvent {
                 code: osc,
                 value: KeyValue::Tap,
