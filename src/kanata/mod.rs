@@ -863,6 +863,18 @@ impl Kanata {
                             SequenceInputMode::HiddenSuppressed
                             | SequenceInputMode::HiddenDelayType => {}
                             SequenceInputMode::VisibleBackspaced => {
+                                // Release all keys since they might modify the behaviour of
+                                // backspace into an undesirable behaviour, for example deleting
+                                // more characters than it should.
+                                layout.states.retain(|s| match s {
+                                    State::NormalKey { keycode, .. } => {
+                                        // Ignore the error, ugly to return it from retain, and
+                                        // this is very unlikely to happen anyway.
+                                        let _ = self.kbd_out.release_key(keycode.into());
+                                        false
+                                    }
+                                    _ => true,
+                                });
                                 for k in state.sequence.iter() {
                                     // Check for pressed modifiers and don't input backspaces for
                                     // those since they don't output characters that can be
