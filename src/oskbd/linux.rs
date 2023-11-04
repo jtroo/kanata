@@ -262,11 +262,36 @@ pub fn is_input_device(device: &Device) -> bool {
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        use OsCode::*;
         match item.kind() {
             evdev::InputEventKind::Key(k) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
             }),
+            evdev::InputEventKind::RelAxis(axis_type) => {
+                let dist = item.value();
+                let code: OsCode = match axis_type {
+                    RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_WHEEL_HI_RES => {
+                        if dist > 0 {
+                            MouseWheelUp
+                        } else {
+                            MouseWheelDown
+                        }
+                    }
+                    RelativeAxisType::REL_HWHEEL | RelativeAxisType::REL_HWHEEL_HI_RES => {
+                        if dist > 0 {
+                            MouseWheelRight
+                        } else {
+                            MouseWheelLeft
+                        }
+                    }
+                    _ => return Err(()),
+                };
+                Ok(KeyEvent {
+                    code,
+                    value: KeyValue::Tap,
+                })
+            }
             _ => Err(()),
         }
     }

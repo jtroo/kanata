@@ -17,6 +17,7 @@ pub enum KeyValue {
     Release = 0,
     Press = 1,
     Repeat = 2,
+    Tap,
 }
 
 impl From<i32> for KeyValue {

@@ -1209,6 +1209,34 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'sta
                 s.a.sref(s.a.sref_slice(CustomAction::MouseTap(Btn::Backward))),
             )))
         }
+        "mwu" | "mousewheelup" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::MWheelNotch {
+                    direction: MWheelDirection::Up,
+                },
+            )))))
+        }
+        "mwd" | "mousewheeldown" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::MWheelNotch {
+                    direction: MWheelDirection::Down,
+                },
+            )))))
+        }
+        "mwl" | "mousewheelleft" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::MWheelNotch {
+                    direction: MWheelDirection::Left,
+                },
+            )))))
+        }
+        "mwr" | "mousewheelright" => {
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::MWheelNotch {
+                    direction: MWheelDirection::Right,
+                },
+            )))))
+        }
         "rpt" | "repeat" | "rpt-key" => {
             return Ok(s.a.sref(Action::Custom(
                 s.a.sref(s.a.sref_slice(CustomAction::Repeat)),

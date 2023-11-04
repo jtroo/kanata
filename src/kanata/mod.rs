@@ -443,7 +443,7 @@ impl Kanata {
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
-    fn handle_key_event(&mut self, event: &KeyEvent) -> Result<()> {
+    fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;
@@ -465,6 +465,11 @@ impl Kanata {
             KeyValue::Repeat => {
                 let ret = self.handle_repeat(event);
                 return ret;
+            }
+            KeyValue::Tap => {
+                self.layout.bm().event(Event::Press(0, evc));
+                self.layout.bm().event(Event::Release(0, evc));
+                return Ok(());
             }
         };
         self.layout.bm().event(kbrn_ev);
@@ -990,6 +995,10 @@ impl Kanata {
                                 })
                             }
                         },
+                        CustomAction::MWheelNotch { direction } => {
+                            self.kbd_out
+                                .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
+                        }
                         CustomAction::MoveMouse {
                             direction,
                             interval,
@@ -1600,8 +1609,8 @@ impl Kanata {
                                 // are not cleared.
                                 if (now - k.last_tick) > time::Duration::from_secs(60) {
                                     log::debug!(
-                                        "clearing keyberon normal key states due to blocking for a while"
-                                    );
+                                    "clearing keyberon normal key states due to blocking for a while"
+                                );
                                     k.layout.bm().states.retain(|s| {
                                         !matches!(
                                             s,
@@ -1627,7 +1636,7 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_key_event(&kev) {
+                            if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
 
@@ -1662,7 +1671,7 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = std::time::Instant::now();
 
-                            if let Err(e) = k.handle_key_event(&kev) {
+                            if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
 
