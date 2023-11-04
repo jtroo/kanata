@@ -1166,6 +1166,17 @@ NOTE: In Linux, not all desktop environments support the `REL_WHEEL_HI_RES` even
 If this is the case for yours,
 it will likely be a better experience to use a distance value that is a multiple of 120.
 
+On Linux and Interception, you can also choose to read from a mouse device.
+When doing so, using the `mwu`, `mwd`, `mwl`, `mwr` key names in `defsrc`
+allow you to remap the mouse scroll up/down/left/right actions like you would
+with keyboard keys.
+
+NOTE: If you are using a high-resolution mouse in Linux,
+only a full "notch" of the scroll wheel will activate the action.
+
+NOTE: If you are using a high-resolution mouse with Interception,
+you will probably get way more events than you intended.
+
 [[mouse-movement]]
 ==== Mouse movement
 <<table-of-contents,Back to ToC>>
