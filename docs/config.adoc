@@ -21,6 +21,19 @@ part of the project, please be welcome to make a pull request or file an issue.
 == Table of contents
 toc::[]
 
+== Forcefully exit kanata [[force-exit]]
+<<table-of-contents,Back to ToC>>
+
+Though this isn't configuration-related,
+it may be important for you to know that pressing and holding all of the
+three following keys together at the same time will cause kanata to exit:
+
+- Left Control
+- Space
+- Escape
+
+This mechanism works on the key input **before** any remappings done by kanata.
+
 [[comments]]
 == Comments
 <<table-of-contents,Back to ToC>>
