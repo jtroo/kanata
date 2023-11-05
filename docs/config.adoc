@@ -2196,6 +2196,29 @@ Since the keys check of case 3 always passes, `@ac3` will activate next.
 If neither case 1 or case 2 pass their keys checks,
 case 3 will always activate with `@ac3`.
 
+==== key-history
+
+In addition to simple keys,
+you can use the `key-history` list item within a case.
+This accepts, in order, a key and the key recency.
+The key recency must be in the range 1-8,
+where 1 is the most recent key that was pressed
+and 8 is 8th most recent key pressed.
+
+.Example:
+[source]
+----
+(defalias
+  swh (switch
+    ((key-history a 1)) S-a break
+    ((key-history b 1)) S-b break
+    ((key-history c 1)) S-c break
+    ((key-history d 8)) (macro d d d) break
+    () XX break
+  )
+)
+----
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>

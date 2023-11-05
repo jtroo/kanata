@@ -749,6 +749,7 @@ fn parse_switch() {
     () _ fallthrough
     (a b c) $var1 fallthrough
     ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
+    ((key-history a 1) (key-history b 5) (key-history c 8)) $var1 fallthrough
   )
 )
 "#;
@@ -801,6 +802,15 @@ fn parse_switch() {
                         OpCode::new_bool(Or, 8),
                         OpCode::new_bool(Or, 8),
                         OpCode::new_bool(Or, 8),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
+                (
+                    &[
+                        OpCode::new_key_history(KeyCode::A, 0),
+                        OpCode::new_key_history(KeyCode::B, 4),
+                        OpCode::new_key_history(KeyCode::C, 7),
                     ],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Fallthrough

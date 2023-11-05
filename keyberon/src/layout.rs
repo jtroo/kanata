@@ -83,6 +83,7 @@ where
     pub active_sequences: ArrayDeque<[SequenceState<'a, T>; 4], arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
+    pub historical_keys: ArrayDeque<[KeyCode; 8], arraydeque::behavior::Wrapping>,
 }
 
 /// An event on the key matrix.
@@ -855,6 +856,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
             rpt_action: None,
+            historical_keys: ArrayDeque::new(),
         }
     }
     /// Iterates on the key codes of the current state.
@@ -1016,6 +1018,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         Some(SequenceEvent::Press(keycode)) => {
                             // Start tracking this fake key Press() event
                             let _ = self.states.push(FakeKey { keycode });
+                            self.historical_keys.push_front(keycode);
                             // Fine to fake (0, 0). This is sequences anyway. In Kanata, nothing
                             // valid should be at (0, 0) that this would interfere with.
                             self.oneshot
@@ -1024,6 +1027,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         Some(SequenceEvent::Tap(keycode)) => {
                             // Same as Press() except we track it for one tick via seq.tapped:
                             let _ = self.states.push(FakeKey { keycode });
+                            self.historical_keys.push_front(keycode);
                             self.oneshot
                                 .handle_press(OneShotHandlePressKey::Other((0, 0)));
                             seq.tapped = Some(keycode);
@@ -1320,6 +1324,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             &KeyCode(keycode) => {
                 self.last_press_tracker.coord = coord;
+                // Most-recent-first!
+                self.historical_keys.push_front(keycode);
                 let _ = self.states.push(NormalKey {
                     coord,
                     keycode,
@@ -1334,6 +1340,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
                 for &keycode in *v {
+                    self.historical_keys.push_front(keycode);
                     let _ = self.states.push(NormalKey {
                         coord,
                         keycode,
@@ -1466,9 +1473,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 return ret;
             }
             Switch(sw) => {
-                let kcs = self.states.iter().filter_map(State::keycode);
+                let active_keys = self.states.iter().filter_map(State::keycode);
+                let historical_keys = self.historical_keys.iter().copied();
                 let action_queue = &mut self.action_queue;
-                for ac in sw.actions(kcs.clone()) {
+                for ac in sw.actions(active_keys, historical_keys) {
                     action_queue.push_back(Some((coord, ac)));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the
