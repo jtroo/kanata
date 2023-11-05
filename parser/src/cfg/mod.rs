@@ -739,6 +739,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
     let non_bool_cfg_keys = &[
         "sequence-timeout",
         "sequence-input-mode",
+        "dynamic-macro-max-presses",
         "linux-dev",
         "linux-dev-names-include",
         "linux-dev-names-exclude",

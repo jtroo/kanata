@@ -154,6 +154,9 @@ pub struct Kanata {
     /// gets stored in this buffer and if the next movemouse action is opposite axis
     /// than the one stored in the buffer, both events are outputted at the same time.
     movemouse_buffer: Option<(Axis, CalculatedMouseMove)>,
+    /// Configured maximum for dynamic macro recording, to protect users from themselves if they
+    /// have accidentally left it on.
+    dynamic_macro_max_presses: u16,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -387,6 +390,12 @@ impl Kanata {
                 .get("movemouse-inherit-accel-state")
                 .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
                 .unwrap_or_default(),
+            dynamic_macro_max_presses: cfg
+                .items
+                .get("dynamic-macro-max-presses")
+                .map(|s| s.parse::<u16>())
+                .unwrap_or(Ok(128))
+                .map_err(|e| anyhow!("dynamic-macro-max-presses must be 0-65535: {e}"))?,
             #[cfg(target_os = "linux")]
             defcfg_items: cfg.items,
             waiting_for_idle: HashSet::default(),
@@ -436,6 +445,12 @@ impl Kanata {
             .get("movemouse-inherit-accel-state")
             .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
             .unwrap_or_default();
+        self.dynamic_macro_max_presses = cfg
+            .items
+            .get("dynamic-macro-max-presses")
+            .map(|s| s.parse::<u16>())
+            .unwrap_or(Ok(128))
+            .map_err(|_| anyhow!("dynamic-macro-max-presses must be 0-65535"))?;
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         Kanata::set_repeat_rate(&cfg.items)?;
         log::info!("Live reload successful");
@@ -450,7 +465,25 @@ impl Kanata {
         let kbrn_ev = match event.value {
             KeyValue::Press => {
                 if let Some(state) = &mut self.dynamic_macro_record_state {
-                    state.macro_items.push(DynamicMacroItem::Press(event.code));
+                    // This is not 100% accurate since there may be multiple presses before any of
+                    // their relesease are received. But it's probably good enough in practice.
+                    //
+                    // The presses are defined so that a user cares about the number of keys rather
+                    // than events. So rather than the user multiplying by 2 in their config after
+                    // considering the number of keys they want, kanata does the multiplication
+                    // instead.
+                    if state.macro_items.len() > usize::from(self.dynamic_macro_max_presses) * 2 {
+                        log::warn!(
+                            "saving and stopping dynamic macro {} recording due to exceeding limit",
+                            state.starting_macro_id,
+                        );
+                        state.add_release_for_all_unreleased_presses();
+                        self.dynamic_macros
+                            .insert(state.starting_macro_id, state.macro_items.clone());
+                        self.dynamic_macro_record_state = None;
+                    } else {
+                        state.macro_items.push(DynamicMacroItem::Press(event.code));
+                    }
                 }
                 Event::Press(0, evc)
             }
@@ -1239,7 +1272,7 @@ impl Kanata {
                                     state
                                         .macro_items
                                         .len()
-                                        .saturating_sub(*num_actions_to_remove as usize),
+                                        .saturating_sub(usize::from(*num_actions_to_remove)),
                                 );
                                 state.add_release_for_all_unreleased_presses();
                                 self.dynamic_macros
