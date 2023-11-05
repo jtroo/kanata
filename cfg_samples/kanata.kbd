@@ -3,8 +3,15 @@ This is a sample configuration file that showcases every feature in kanata.
 If anything is confusing or hard to discover, please file an issue or
 contribute a pull request to help improve the document.
 
-This sample file has documentation but it is lower effort than the configuration
-guide. The configuration guide can be found at:
+Since it may be important for you to know, pressing and holding all of the
+three following keys together at the same time will cause kanata to exit:
+
+  Left Control, Space, Escape
+
+This is for the physical key input rather than after any remappings
+that are done by kanata.
+
+This mechanism works on the key input*before any remappings done by kanata.
 
 https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 |#
