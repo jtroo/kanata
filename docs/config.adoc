@@ -431,6 +431,20 @@ synchronize the mouse movements.
 )
 ----
 
+=== dynamic-macro-max-presses [[dynamic-macro-max-presses]]
+<<table-of-contents,Back to ToC>>
+
+This configuration allows you to customize the length limit on dynamic macros.
+The default length limit is 128 keys.
+
+.Example:
+[source]
+----
+(defcfg
+  dynamic-macro-max-presses 1000
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -676,6 +690,7 @@ a non-applicable operating system.
   delegate-to-first-layer yes
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes
+  dynamic-macro-max-presses 1000
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
   linux-dev-names-exclude "Name 3:Name 4"
