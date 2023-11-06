@@ -734,6 +734,38 @@ fn parse_bad_submacro_2() {
 }
 
 #[test]
+fn parse_nested_macro() {
+    // Test exists since it used to crash. It should not crash.
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar m1 (a b c))
+(defsrc a b)
+(deflayer base
+  (macro $m1)
+  (macro bspc bspc $m1)
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+        ""
+    })
+    .unwrap();
+}
+
+#[test]
 fn parse_switch() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
@@ -877,7 +909,6 @@ fn parse_on_idle_fakekey() {
         DEF_LOCAL_KEYS,
     )
     .map_err(|_e| {
-        // uncomment to see what this looks like when running test
         eprintln!("{:?}", _e);
         ""
     })
