@@ -1692,6 +1692,19 @@ fn parse_macro_item_impl<'a>(
         }
         Ok(Action::Custom(custom)) => Ok((vec![SequenceEvent::Custom(custom)], &acs[1..])),
         _ => {
+            if let Some(submacro) = acs[0].list(s.vars()) {
+                // If it's just a list that's not parsable as a usable action, try parsing the
+                // content.
+                let mut submacro_remainder = submacro;
+                let mut all_events = vec![];
+                while !submacro_remainder.is_empty() {
+                    let mut events;
+                    (events, submacro_remainder) = parse_macro_item(submacro_remainder, s)?;
+                    all_events.append(&mut events);
+                }
+                return Ok((all_events, &acs[1..]));
+            }
+
             let (held_mods, unparsed_str) = parse_mods_held_for_submacro(&acs[0], s)?;
             let mut all_events = vec![];
 
