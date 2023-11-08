@@ -3,6 +3,7 @@
 //! Limitations:
 //! - Maximum opcode length: 4095
 //! - Maximum boolean expression depth: 8
+//! - Maximum key recency: 7, where 0 is the most recent key press
 //!
 //! The intended use is to build up a `Switch` struct and use that in the `Layout`.
 //!
@@ -18,7 +19,7 @@ use BreakOrFallthrough::*;
 
 pub const MAX_OPCODE_LEN: u16 = 0x0FFF;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
-pub const MAX_KEY_RECENCY: u8 = 8;
+pub const MAX_KEY_RECENCY: u8 = 7;
 
 pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 
