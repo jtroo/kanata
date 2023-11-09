@@ -157,6 +157,8 @@ pub struct Kanata {
     /// Configured maximum for dynamic macro recording, to protect users from themselves if they
     /// have accidentally left it on.
     dynamic_macro_max_presses: u16,
+    /// Keys that should be unmodded. If empty, any modifier should be cleared.
+    unmodded_keys: Vec<KeyCode>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -401,6 +403,7 @@ impl Kanata {
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
+            unmodded_keys: vec![],
         })
     }
 
@@ -772,6 +775,44 @@ impl Kanata {
             if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
                 self.caps_word = None;
             }
+        }
+
+        // Deal with unmodded. Unlike other custom actions, this should come before key presses and
+        // releases. I don't quite remember why custom actions come after the key processing, but I
+        // remember that it is intentional. However, since unmodded needs to modify the key lists,
+        // it should come before.
+        match custom_event {
+            CustomEvent::Press(custacts) => {
+                for custact in custacts.iter() {
+                    if let CustomAction::Unmodded { key } = custact {
+                        self.unmodded_keys.push(*key);
+                    }
+                }
+            }
+            CustomEvent::Release(custacts) => {
+                for custact in custacts.iter() {
+                    if let CustomAction::Unmodded { key } = custact {
+                        self.unmodded_keys.retain(|k| k != key);
+                    }
+                }
+            }
+            _ => {}
+        }
+        if !self.unmodded_keys.is_empty() {
+            cur_keys.retain(|k| {
+                !matches!(
+                    k,
+                    KeyCode::LShift
+                        | KeyCode::RShift
+                        | KeyCode::LGui
+                        | KeyCode::RGui
+                        | KeyCode::LCtrl
+                        | KeyCode::RCtrl
+                        | KeyCode::LAlt
+                        | KeyCode::RAlt
+                )
+            });
+            cur_keys.extend(self.unmodded_keys.iter());
         }
 
         // Release keys that do not exist in the current state but exist in the previous state.
@@ -1322,13 +1363,14 @@ impl Kanata {
                         CustomAction::SetMouse { x, y } => {
                             self.kbd_out.set_mouse(*x, *y)?;
                         }
-                        CustomAction::FakeKeyOnRelease { .. }
-                        | CustomAction::DelayOnRelease(_)
-                        | CustomAction::CancelMacroOnRelease => {}
                         CustomAction::FakeKeyOnIdle(fkd) => {
                             self.ticks_since_idle = 0;
                             self.waiting_for_idle.insert(*fkd);
                         }
+                        CustomAction::FakeKeyOnRelease { .. }
+                        | CustomAction::DelayOnRelease(_)
+                        | CustomAction::Unmodded { .. }
+                        | CustomAction::CancelMacroOnRelease => {}
                     }
                 }
                 #[cfg(feature = "cmd")]

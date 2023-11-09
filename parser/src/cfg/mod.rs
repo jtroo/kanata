@@ -1348,6 +1348,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
         SWITCH => parse_switch(&ac[1..], s),
         SEQUENCE => parse_sequence_start(&ac[1..], s),
+        UNMOD => parse_unmod(&ac[1..], s),
         _ => unreachable!(),
     }
 }
@@ -3122,6 +3123,21 @@ fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
             idle_duration,
         }),
     )))))
+}
+
+fn parse_unmod(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "unmod expects one param: key";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
+    }
+    let key = ac_params[0]
+        .atom(s.vars())
+        .and_then(str_to_oscode)
+        .ok_or_else(|| anyhow_expr!(&ac_params[0], "{ERR_MSG}"))?
+        .into();
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::Unmodded { key })),
+    )))
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
