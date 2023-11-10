@@ -1717,8 +1717,8 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 <<table-of-contents,Back to ToC>>
 
 The `unmod` action will release all modifiers temporarily and send a key.
-After the `unmod` key is released, modifiers will be repressed.
-The modifiers are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
+After the `unmod` key is released, the released modifiers are pressed again.
+The modifiers affected are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
 
 .Example:
 [source]
