@@ -1535,8 +1535,8 @@ The actions supported in `+macro+` are:
 * <<dynamic-macro,dynamic macro>>
 * <<unmod,unmod>>
 
-NOTE: some of these actions may need short delays between.
-For example `(macro a (unmod b) 5 (unmod c) d))`
+NOTE: Some of these actions may need short delays between.
+For example, `(macro a (unmod b) 5 (unmod c) d))`
 needs the delay of `5` to work correctly.
 
 .Example:
