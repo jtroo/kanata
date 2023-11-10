@@ -1533,7 +1533,11 @@ The actions supported in `+macro+` are:
 * <<sequences,sequence leader>>
 * <<arbitrary-code,arbitrary keycode>>
 * <<dynamic-macro,dynamic macro>>
-* TODO: unmod
+* <<unmod,unmod>>
+
+NOTE: some of these actions may need short delays between.
+For example `(macro a (unmod b) 5 (unmod c) d))`
+needs the delay of `5` to work correctly.
 
 .Example:
 [source]
@@ -1707,6 +1711,22 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
     (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
   )
 )
+----
+
+=== unmod[[unmod]]
+<<table-of-contents,Back to ToC>>
+
+The `unmod` action will release all modifiers temporarily and send a key.
+After the `unmod` key is released, modifiers will be repressed.
+The modifiers are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
+
+.Example:
+[source]
+----
+;; holding shift and tapping a @um1 key will still output 1.
+um1 (unmod 1)
+;; dead keys é (as opposed to using AltGr) that outputs É when shifted
+dké (macro (unmod ') e)
 ----
 
 [[cmd]]
