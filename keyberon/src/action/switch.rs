@@ -241,6 +241,10 @@ fn evaluate_boolean(
                     .nth(hkc.how_far_back as usize)
                     .map(|kc| kc as u16 == hkc.key_code)
                     .unwrap_or(false);
+                if matches!((ret, current_op), (true, Or) | (false, And)) {
+                    current_index = current_end_index;
+                    continue;
+                }
             }
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
