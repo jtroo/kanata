@@ -1268,7 +1268,14 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'sta
     let (mut keys, unparsed_str) = parse_mod_prefix(ac)?;
     keys.push(
         str_to_oscode(unparsed_str)
-            .ok_or_else(|| anyhow!("Unknown key/action/variable: {ac:?}"))?
+            .ok_or_else(|| {
+                // check aliases
+                if s.aliases.contains_key(ac) {
+                    anyhow!("Unknown key/action/variable: {ac:?}. If you meant to use an alias, prefix it with '@' symbol: @{ac}")
+                } else {
+                    anyhow!("Unknown key/action/variable: {ac:?}")
+                }
+            })?
             .into(),
     );
     Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref(s.a.sref_vec(keys)))))
