@@ -57,9 +57,10 @@ pub const CAPS_WORD_CUSTOM: &str = "caps-word-custom";
 pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str = "dynamic-macro-record-stop-truncate";
 pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
+pub const UNMOD: &str = "unmod";
 
 pub fn is_list_action(ac: &str) -> bool {
-    const LIST_ACTIONS: [&str; 55] = [
+    const LIST_ACTIONS: [&str; 56] = [
         LAYER_SWITCH,
         LAYER_TOGGLE,
         LAYER_WHILE_HELD,
@@ -115,6 +116,7 @@ pub fn is_list_action(ac: &str) -> bool {
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE,
         SWITCH,
         SEQUENCE,
+        UNMOD,
     ];
     LIST_ACTIONS.contains(&ac)
 }

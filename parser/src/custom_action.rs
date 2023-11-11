@@ -65,6 +65,9 @@ pub enum CustomAction {
         x: u16,
         y: u16,
     },
+    Unmodded {
+        key: KeyCode,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
