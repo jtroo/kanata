@@ -241,6 +241,10 @@ fn evaluate_boolean(
                     .nth(hkc.how_far_back as usize)
                     .map(|kc| kc as u16 == hkc.key_code)
                     .unwrap_or(false);
+                if matches!((ret, current_op), (true, Or) | (false, And)) {
+                    current_index = current_end_index;
+                    continue;
+                }
             }
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
@@ -660,4 +664,67 @@ fn switch_historical_1() {
         ),
         false
     );
+}
+
+#[test]
+fn switch_historical_bools() {
+    let opcodes_true_and = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_key_history(KeyCode::A, 0),
+        OpCode::new_key_history(KeyCode::B, 1),
+    ];
+    let opcodes_false_and1 = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_key_history(KeyCode::A, 0),
+        OpCode::new_key_history(KeyCode::B, 2),
+    ];
+    let opcodes_false_and2 = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_key_history(KeyCode::B, 2),
+        OpCode::new_key_history(KeyCode::A, 0),
+    ];
+    let opcodes_true_or1 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_key_history(KeyCode::A, 0),
+        OpCode::new_key_history(KeyCode::B, 1),
+    ];
+    let opcodes_true_or2 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_key_history(KeyCode::A, 0),
+        OpCode::new_key_history(KeyCode::B, 2),
+    ];
+    let opcodes_true_or3 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_key_history(KeyCode::B, 2),
+        OpCode::new_key_history(KeyCode::A, 0),
+    ];
+    let opcodes_false_or = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_key_history(KeyCode::A, 1),
+        OpCode::new_key_history(KeyCode::B, 2),
+    ];
+    let hist_keycodes = [
+        KeyCode::A,
+        KeyCode::B,
+        KeyCode::C,
+        KeyCode::D,
+        KeyCode::E,
+        KeyCode::F,
+        KeyCode::G,
+        KeyCode::H,
+    ];
+
+    let test = |opcodes: &[OpCode], expectation: bool| {
+        assert_eq!(
+            evaluate_boolean(opcodes, [].iter().copied(), hist_keycodes.iter().copied(),),
+            expectation
+        );
+    };
+    test(&opcodes_true_and, true);
+    test(&opcodes_true_or1, true);
+    test(&opcodes_true_or2, true);
+    test(&opcodes_true_or3, true);
+    test(&opcodes_false_and1, false);
+    test(&opcodes_false_and2, false);
+    test(&opcodes_false_or, false);
 }
