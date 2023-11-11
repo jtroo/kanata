@@ -1271,9 +1271,11 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'sta
             .ok_or_else(|| {
                 // check aliases
                 if s.aliases.contains_key(ac) {
-                    anyhow!("Unknown key/action: {ac:?}. If you meant to use an alias, prefix it with '@' symbol: @{ac}")
+                    anyhow!("Unknown key/action: {ac}. If you meant to use an alias, prefix it with '@' symbol: @{ac}")
+                } else if s.vars.contains_key(ac) {
+                    anyhow!("Unknown key/action: {ac}. If you meant to use a variable, prefix it with '$' symbol: ${ac}")
                 } else {
-                    anyhow!("Unknown key/action: {ac:?}")
+                    anyhow!("Unknown key/action: {ac}")
                 }
             })?
             .into(),
