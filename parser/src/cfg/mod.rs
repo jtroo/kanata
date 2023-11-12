@@ -392,23 +392,6 @@ pub fn parse_cfg_raw_string(
 
     error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
 
-    let cfg = root_exprs
-        .iter()
-        .find(gen_first_atom_filter("defcfg"))
-        .map(|cfg| parse_defcfg(cfg))
-        .transpose()?
-        .unwrap_or_default();
-    if let Some(spanned) = spanned_root_exprs
-        .iter()
-        .filter(gen_first_atom_filter_spanned("defcfg"))
-        .nth(1)
-    {
-        bail_span!(
-            spanned,
-            "Only one defcfg is allowed, found more. Delete the extras."
-        )
-    }
-
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in [
@@ -443,6 +426,23 @@ pub fn parse_cfg_raw_string(
         }
     }
     replace_custom_str_oscode_mapping(&local_keys.unwrap_or_default());
+
+    let cfg = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("defcfg"))
+        .map(|cfg| parse_defcfg(cfg))
+        .transpose()?
+        .unwrap_or_default();
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .filter(gen_first_atom_filter_spanned("defcfg"))
+        .nth(1)
+    {
+        bail_span!(
+            spanned,
+            "Only one defcfg is allowed, found more. Delete the extras."
+        )
+    }
 
     let src_expr = root_exprs
         .iter()
