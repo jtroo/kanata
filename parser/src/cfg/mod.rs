@@ -425,7 +425,7 @@ pub fn parse_cfg_raw_string(
             if def_local_keys_variant == def_local_keys_variant_to_apply {
                 assert!(
                     local_keys.is_none(),
-                    ">1 mutually exclusive deflocalkeys variants was parsed"
+                    ">1 mutually exclusive deflocalkeys variants were parsed"
                 );
                 local_keys = Some(mapping);
             }
@@ -812,7 +812,7 @@ fn parse_deflocalkeys(
     def_local_keys_variant: &str,
     expr: &[SExpr],
 ) -> Result<HashMap<String, OsCode>> {
-    let mut cfg = HashMap::default();
+    let mut localkeys = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), def_local_keys_variant)?;
     // Read k-v pairs from the configuration
     while let Some(key_expr) = exprs.next() {
@@ -824,7 +824,7 @@ fn parse_deflocalkeys(
                 key_expr,
                 "Cannot use {key} in {def_local_keys_variant} because it is a default key name"
             );
-        } else if cfg.contains_key(key) {
+        } else if localkeys.contains_key(key) {
             bail_expr!(
                 key_expr,
                 "Duplicate {key} found in {def_local_keys_variant}"
@@ -847,9 +847,9 @@ fn parse_deflocalkeys(
             None => bail_expr!(key_expr, "Key without a number in {def_local_keys_variant}"),
         };
         log::debug!("custom mapping: {key} {}", osc.as_u16());
-        cfg.insert(key.to_owned(), osc);
+        localkeys.insert(key.to_owned(), osc);
     }
-    Ok(cfg)
+    Ok(localkeys)
 }
 
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
