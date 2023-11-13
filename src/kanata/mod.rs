@@ -1,6 +1,6 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use log::{error, info};
 use parking_lot::Mutex;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};

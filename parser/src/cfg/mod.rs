@@ -825,21 +825,21 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let paths = v.t.trim_matches('"');
-                            cfg.linux_dev = parse_colon_separated_text(&paths);
+                            cfg.linux_dev = parse_colon_separated_text(paths);
                         }
                     }
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let paths = v.t.trim_matches('"');
-                            cfg.linux_dev_names_include = Some(parse_colon_separated_text(&paths));
+                            cfg.linux_dev_names_include = Some(parse_colon_separated_text(paths));
                         }
                     }
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let paths = v.t.trim_matches('"');
-                            cfg.linux_dev_names_exclude = Some(parse_colon_separated_text(&paths));
+                            cfg.linux_dev_names_exclude = Some(parse_colon_separated_text(paths));
                         }
                     }
                     "linux-unicode-u-code" => {
@@ -2534,14 +2534,13 @@ fn parse_fake_key_op_coord_action(
     };
     let action = ac_params[1]
         .atom(s.vars())
-        .map(|a| match a {
+        .and_then(|a| match a {
             "tap" => Some(FakeKeyAction::Tap),
             "press" => Some(FakeKeyAction::Press),
             "release" => Some(FakeKeyAction::Release),
             "toggle" => Some(FakeKeyAction::Toggle),
             _ => None,
         })
-        .flatten()
         .ok_or_else(|| {
             anyhow_expr!(
                 &ac_params[1],
@@ -3111,7 +3110,7 @@ fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
     let input_mode = if ac_params.len() > 1 {
         if let Some(Ok(input_mode)) = ac_params[1]
             .atom(s.vars())
-            .map(|config_str| SequenceInputMode::try_from_str(config_str))
+            .map(SequenceInputMode::try_from_str)
         {
             input_mode
         } else {
@@ -3280,13 +3279,12 @@ fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
     };
     let action = ac_params[1]
         .atom(s.vars())
-        .map(|a| match a {
+        .and_then(|a| match a {
             "tap" => Some(FakeKeyAction::Tap),
             "press" => Some(FakeKeyAction::Press),
             "release" => Some(FakeKeyAction::Release),
             _ => None,
         })
-        .flatten()
         .ok_or_else(|| {
             anyhow_expr!(
                 &ac_params[1],
