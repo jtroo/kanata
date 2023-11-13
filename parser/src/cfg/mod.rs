@@ -808,13 +808,13 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     bail_expr!(key, "Duplicate defcfg option {}", k.t);
                 }
                 match k.t.as_str() {
-                    // todo: should apply v.t.trim_matches('"') to all values
                     k @ "sequence-timeout" => {
                         cfg.sequence_timeout = parse_cfg_val_u16(val, k, true)?;
                     }
                     "sequence-input-mode" => {
-                        cfg.sequence_input_mode = SequenceInputMode::try_from_str(&v.t)
-                            .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
+                        cfg.sequence_input_mode =
+                            SequenceInputMode::try_from_str(&v.t.trim_matches('"'))
+                                .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
                     }
                     k @ "dynamic-macro-max-presses" => {
                         cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, k, false)?;
@@ -868,7 +868,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     _k @ "linux-x11-repeat-delay-rate" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let delay_rate = v.t.split(',').collect::<Vec<_>>();
+                            let delay_rate = v.t.trim_matches('"').split(',').collect::<Vec<_>>();
                             let errmsg = anyhow_span!(v, "Invalid value for {_k}.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
                             if delay_rate.len() != 2 {
                                 bail!("{:?}", errmsg)
@@ -920,28 +920,30 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     })
                                 }).map_err(|_| anyhow_expr!(val, "{_k} format is invalid. It should consist of integers separated by commas"))?;
                             let hwid_slice = hwid_vec.iter().copied().enumerate()
-                                    .fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
-                                        let (i, b) = idx_byte;
-                                        if i > HWID_ARR_SZ {
-                                            bail_expr!(val, "{_k} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
-                                        }
-                                        hwid[i] = b;
-                                        hwid
-                             });
-                            cfg.windows_interception_mouse_hwid = Some(hwid_slice);
+                                .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
+                                    let (i, b) = idx_byte;
+                                    if i > HWID_ARR_SZ {
+                                        bail_expr!(val, "{_k} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
+                                    }
+                                    hwid[i] = b;
+                                    Ok(hwid)
+                            });
+                            cfg.windows_interception_mouse_hwid = Some(hwid_slice?);
                         }
                     }
 
                     "process-unmapped-keys" => {
-                        cfg.process_unmapped_keys = parse_defcfg_pair_bool(k, v)?
+                        cfg.process_unmapped_keys = parse_defcfg_val_bool(val, &k.t)?
                     }
-                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_pair_bool(k, v)?,
+                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, &k.t)?,
                     "sequence-backtrack-modcancel" => {
-                        cfg.sequence_backtrack_modcancel = parse_defcfg_pair_bool(k, v)?
+                        cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, &k.t)?
                     }
-                    "log-layer-changes" => cfg.log_layer_changes = parse_defcfg_pair_bool(k, v)?,
+                    "log-layer-changes" => {
+                        cfg.log_layer_changes = parse_defcfg_val_bool(val, &k.t)?
+                    }
                     "delegate-to-first-layer" => {
-                        cfg.delegate_to_first_layer = parse_defcfg_pair_bool(k, v)?;
+                        cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, &k.t)?;
                         if cfg.delegate_to_first_layer {
                             log::info!("delegating transparent keys on other layers to first defined layer");
                         }
@@ -949,16 +951,16 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-continue-if-no-devs-found" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_continue_if_no_devs_found = parse_defcfg_pair_bool(k, v)?
+                            cfg.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, &k.t)?
                         }
                     }
                     "movemouse-smooth-diagonals" => {
-                        cfg.movemouse_smooth_diagonals = parse_defcfg_pair_bool(k, v)?
+                        cfg.movemouse_smooth_diagonals = parse_defcfg_val_bool(val, &k.t)?
                     }
                     "movemouse-inherit-accel-state" => {
-                        cfg.movemouse_inherit_accel_state = parse_defcfg_pair_bool(k, v)?
+                        cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, &k.t)?
                     }
-                    _ => bail_expr!(key, "Unknown defcfg option {}", k.t),
+                    _ => bail_expr!(key, "Unknown defcfg option {}", &k.t),
                 };
             }
             (SExpr::List(_), _) => {
@@ -975,19 +977,29 @@ pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
 pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
 pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
 
-fn parse_defcfg_pair_bool(k: &Spanned<String>, v: &Spanned<String>) -> Result<bool> {
-    let val = v.t.to_ascii_lowercase();
-    if TRUE_VALUES.contains(&val.as_str()) {
-        Ok(true)
-    } else if FALSE_VALUES.contains(&val.as_str()) {
-        Ok(false)
-    } else {
-        bail_span!(
-            v,
-            "The value for {} must be one of: {}",
-            k.t,
-            BOOLEAN_VALUES.join(", ")
-        );
+fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
+    match &expr {
+        SExpr::Atom(v) => {
+            let val = v.t.trim_matches('"').to_ascii_lowercase();
+            if TRUE_VALUES.contains(&val.as_str()) {
+                Ok(true)
+            } else if FALSE_VALUES.contains(&val.as_str()) {
+                Ok(false)
+            } else {
+                bail_expr!(
+                    expr,
+                    "The value for {label} must be one of: {}",
+                    BOOLEAN_VALUES.join(", ")
+                );
+            }
+        }
+        SExpr::List(_) => {
+            bail_expr!(
+                expr,
+                "The value for {label} cannot be a list, it must be one of: {}",
+                BOOLEAN_VALUES.join(", "),
+            )
+        }
     }
 }
 
