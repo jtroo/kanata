@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use kanata_interception as ic;
 use parking_lot::Mutex;
 use std::sync::mpsc::SyncSender as Sender;
