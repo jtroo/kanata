@@ -809,17 +809,15 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                 }
                 match k.t.as_str() {
                     // todo: should apply v.t.trim_matches('"') to all values
-                    "sequence-timeout" => {
-                        cfg.sequence_timeout =
-                            parse_non_zero_u16(val, &ParsedState::default(), "sequence-timeout")?;
+                    k @ "sequence-timeout" => {
+                        cfg.sequence_timeout = parse_cfg_val_u16(val, k, true)?;
                     }
                     "sequence-input-mode" => {
                         cfg.sequence_input_mode = SequenceInputMode::try_from_str(&v.t)
                             .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
                     }
-                    "dynamic-macro-max-presses" => {
-                        cfg.dynamic_macro_max_presses =
-                            parse_u16(val, &ParsedState::default(), "dynamic-macro-max-presses")?;
+                    k @ "dynamic-macro-max-presses" => {
+                        cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, k, false)?;
                     }
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -990,6 +988,28 @@ fn parse_defcfg_pair_bool(k: &Spanned<String>, v: &Spanned<String>) -> Result<bo
             k.t,
             BOOLEAN_VALUES.join(", ")
         );
+    }
+}
+
+fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u16> {
+    let start = if exclude_zero { 1 } else { 0 };
+    match &expr {
+        SExpr::Atom(v) => Ok(str::parse::<u16>(&v.t.trim_matches('"'))
+            .ok()
+            .and_then(|u| {
+                if exclude_zero && u == 0 {
+                    None
+                } else {
+                    Some(u)
+                }
+            })
+            .ok_or_else(|| anyhow_expr!(expr, "{label} must be {start}-65535"))?),
+        SExpr::List(_) => {
+            bail_expr!(
+                expr,
+                "The value for {label} cannot be a list, it must be a number {start}-65535",
+            )
+        }
     }
 }
 
