@@ -840,20 +840,16 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.linux_dev_names_exclude = Some(parse_colon_separated_text(paths));
                         }
                     }
-                    "linux-unicode-u-code" => {
+                    _k @ "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_unicode_u_code = str_to_oscode(v.t.trim_matches('"'))
                                 .ok_or_else(|| {
-                                    anyhow_expr!(
-                                        val,
-                                        "unknown code for linux-unicode-u-code {}",
-                                        v.t
-                                    )
+                                    anyhow_expr!(val, "unknown code for {_k}: {}", v.t)
                                 })?;
                         }
                     }
-                    "linux-unicode-termination" => {
+                    _k @ "linux-unicode-termination" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_unicode_termination = match v.t.trim_matches('"') {
@@ -861,15 +857,19 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 "space" => UnicodeTermination::Space,
                                 "enter-space" => UnicodeTermination::EnterSpace,
                                 "space-enter" => UnicodeTermination::SpaceEnter,
-                                _ => bail_expr!(val, "linux-unicode-termination got {}. It accepts: enter|space|enter-space|space-enter", v.t),
+                                _ => bail_expr!(
+                                    val,
+                                    "{_k} got {}. It accepts: enter|space|enter-space|space-enter",
+                                    v.t
+                                ),
                             }
                         }
                     }
-                    "linux-x11-repeat-delay-rate" => {
+                    _k @ "linux-x11-repeat-delay-rate" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let delay_rate = v.t.split(',').collect::<Vec<_>>();
-                            let errmsg = anyhow_span!(v, "Invalid value for linux-x11-repeat-delay-rate.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
+                            let errmsg = anyhow_span!(v, "Invalid value for {_k}.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
                             if delay_rate.len() != 2 {
                                 bail!("{:?}", errmsg)
                             }
@@ -885,7 +885,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             });
                         }
                     }
-                    "windows-altgr" => {
+                    _k @ "windows-altgr" => {
                         #[cfg(any(target_os = "windows", target_os = "unknown"))]
                         {
                             const CANCEL: &str = "cancel-lctl-press";
@@ -895,7 +895,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 ADD => AltGrBehaviour::AddLctlRelease,
                                 _ => bail_expr!(
                                     val,
-                                    "Invalid value for windows-altgr: {}. Valid values are {},{}",
+                                    "Invalid value for {_k}: {}. Valid values are {},{}",
                                     v.t,
                                     CANCEL,
                                     ADD
@@ -903,7 +903,7 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             }
                         }
                     }
-                    "windows-interception-mouse-hwid" => {
+                    _k @ "windows-interception-mouse-hwid" => {
                         #[cfg(any(
                             all(feature = "interception_driver", target_os = "windows"),
                             target_os = "unknown"
@@ -918,12 +918,12 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                         hwid_bytes.push(b);
                                         hwid_bytes
                                     })
-                                }).map_err(|_| anyhow_expr!(val, "windows-interception-mouse-hwid format is invalid. It should consist of integers separated by commas"))?;
+                                }).map_err(|_| anyhow_expr!(val, "{_k} format is invalid. It should consist of integers separated by commas"))?;
                             let hwid_slice = hwid_vec.iter().copied().enumerate()
                                     .fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
                                         let (i, b) = idx_byte;
                                         if i > HWID_ARR_SZ {
-                                            panic!("windows-interception-mouse-hwid is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers");
+                                            bail_expr!(val, "{_k} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
                                         }
                                         hwid[i] = b;
                                         hwid
