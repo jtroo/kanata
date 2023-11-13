@@ -190,13 +190,88 @@ pub struct Cfg {
     /// Layer info used for printing to the logs.
     pub layer_info: Vec<LayerInfo>,
     /// Configuration items in `defcfg`.
-    pub items: HashMap<String, String>,
+    pub items: CfgOptions,
     /// The keyberon layout state machine struct.
     pub layout: KanataLayout,
     /// Sequences defined in `defseq`.
     pub sequences: KeySeqsToFKeys,
     /// Overrides defined in `defoverrides`.
     pub overrides: Overrides,
+}
+
+#[derive(Debug)]
+pub struct CfgOptions {
+    pub process_unmapped_keys: bool,
+    pub enable_cmd: bool,
+    pub sequence_timeout: u16,
+    pub sequence_input_mode: SequenceInputMode,
+    pub sequence_backtrack_modcancel: bool,
+    pub log_layer_changes: bool,
+    pub delegate_to_first_layer: bool,
+    pub movemouse_inherit_accel_state: bool,
+    pub movemouse_smooth_diagonals: bool,
+    pub dynamic_macro_max_presses: u16,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev: Vec<String>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_include: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_exclude: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_continue_if_no_devs_found: bool,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_u_code: OsCode,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_termination: UnicodeTermination,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
+    #[cfg(any(target_os = "windows", target_os = "unknown"))]
+    pub windows_altgr: AltGrBehaviour,
+    #[cfg(any(
+        all(feature = "interception_driver", target_os = "windows"),
+        target_os = "unknown"
+    ))]
+    pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+}
+
+impl Default for CfgOptions {
+    fn default() -> Self {
+        Self {
+            process_unmapped_keys: false,
+            enable_cmd: false,
+            sequence_timeout: 1000,
+            sequence_input_mode: SequenceInputMode::HiddenSuppressed,
+            sequence_backtrack_modcancel: true,
+            log_layer_changes: true,
+            delegate_to_first_layer: false,
+            movemouse_inherit_accel_state: false,
+            movemouse_smooth_diagonals: false,
+            dynamic_macro_max_presses: 128,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_dev: vec![],
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_dev_names_include: None,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_dev_names_exclude: None,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_continue_if_no_devs_found: false,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            // historically was the only option, so make KEY_U the default
+            linux_unicode_u_code: OsCode::KEY_U,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            // historically was the only option, so make Enter the default
+            linux_unicode_termination: UnicodeTermination::Enter,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_x11_repeat_delay_rate: None,
+            #[cfg(any(target_os = "windows", target_os = "unknown"))]
+            windows_altgr: AltGrBehaviour::DoNothing,
+            #[cfg(any(
+                all(feature = "interception_driver", target_os = "windows"),
+                target_os = "unknown"
+            ))]
+            windows_interception_mouse_hwid: None,
+        }
+    }
 }
 
 /// Parse a new configuration from a file.
@@ -230,7 +305,7 @@ pub struct LayerInfo {
 fn parse_cfg(
     p: &Path,
 ) -> MResult<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     KeyOutputs,
@@ -251,10 +326,6 @@ fn parse_cfg(
     ))
 }
 
-pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
-pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
-pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
-
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -267,7 +338,7 @@ fn parse_cfg_raw(
     p: &Path,
     s: &mut ParsedState,
 ) -> MResult<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
@@ -371,7 +442,7 @@ pub fn parse_cfg_raw_string(
     file_content_provider: &mut FileContentProvider,
     def_local_keys_variant_to_apply: &str,
 ) -> Result<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
@@ -535,14 +606,12 @@ pub fn parse_cfg_raw_string(
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
-                cfg.get("danger-enable-cmd").map_or(false, |s| {
-                    if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
-                        log::warn!("DANGER! cmd action is enabled.");
-                        true
-                    } else {
-                        false
-                    }
-                })
+                if cfg.enable_cmd {
+                    log::warn!("DANGER! cmd action is enabled.");
+                    true
+                } else {
+                    false
+                }
             }
             #[cfg(not(feature = "cmd"))]
             {
@@ -550,25 +619,9 @@ pub fn parse_cfg_raw_string(
                 false
             }
         },
-        delegate_to_first_layer: cfg.get("delegate-to-first-layer").map_or(false, |s| {
-            if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
-                log::info!("delegating transparent keys on other layers to first defined layer");
-                true
-            } else {
-                false
-            }
-        }),
-        default_sequence_timeout: cfg
-            .get(SEQUENCE_TIMEOUT_CFG_NAME)
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?,
-        default_sequence_input_mode: cfg
-            .get(SEQUENCE_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?,
+        delegate_to_first_layer: cfg.delegate_to_first_layer,
+        default_sequence_timeout: cfg.sequence_timeout,
+        default_sequence_input_mode: cfg.sequence_input_mode,
         ..Default::default()
     };
 
@@ -735,31 +788,9 @@ fn check_first_expr<'a>(
 }
 
 /// Parse configuration entries from an expression starting with defcfg.
-fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
-    let non_bool_cfg_keys = &[
-        "sequence-timeout",
-        "sequence-input-mode",
-        "dynamic-macro-max-presses",
-        "linux-dev",
-        "linux-dev-names-include",
-        "linux-dev-names-exclude",
-        "linux-unicode-u-code",
-        "linux-unicode-termination",
-        "linux-x11-repeat-delay-rate",
-        "windows-altgr",
-        "windows-interception-mouse-hwid",
-    ];
-    let bool_cfg_keys = &[
-        "process-unmapped-keys",
-        "danger-enable-cmd",
-        "sequence-backtrack-modcancel",
-        "log-layer-changes",
-        "delegate-to-first-layer",
-        "linux-continue-if-no-devs-found",
-        "movemouse-smooth-diagonals",
-        "movemouse-inherit-accel-state",
-    ];
-    let mut cfg = HashMap::default();
+fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
+    let mut seen_keys = HashSet::default();
+    let mut cfg = CfgOptions::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
     // Read k-v pairs from the configuration
     loop {
@@ -773,29 +804,164 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
         };
         match (&key, &val) {
             (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if non_bool_cfg_keys.contains(&&*k.t) {
-                    // nothing to do
-                } else if bool_cfg_keys.contains(&&*k.t) {
-                    if !BOOLEAN_VALUES.contains(&&*v.t) {
-                        bail_expr!(
-                            val,
-                            "The value for {} must be one of: {}",
-                            k.t,
-                            BOOLEAN_VALUES.join(", ")
-                        );
-                    }
-                } else {
-                    bail_expr!(key, "Unknown defcfg option {}", k.t);
-                }
-                if cfg
-                    .insert(
-                        k.t.trim_matches('"').to_owned(),
-                        v.t.trim_matches('"').to_owned(),
-                    )
-                    .is_some()
-                {
+                if !seen_keys.insert(&k.t) {
                     bail_expr!(key, "Duplicate defcfg option {}", k.t);
                 }
+                match k.t.as_str() {
+                    // todo: should apply v.t.trim_matches('"') to all values
+                    "sequence-timeout" => {
+                        cfg.sequence_timeout =
+                            parse_non_zero_u16(val, &ParsedState::default(), "sequence-timeout")?;
+                    }
+                    "sequence-input-mode" => {
+                        cfg.sequence_input_mode = SequenceInputMode::try_from_str(&v.t)
+                            .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
+                    }
+                    "dynamic-macro-max-presses" => {
+                        cfg.dynamic_macro_max_presses =
+                            parse_u16(val, &ParsedState::default(), "dynamic-macro-max-presses")?;
+                    }
+                    "linux-dev" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let paths = v.t.trim_matches('"');
+                            cfg.linux_dev = parse_colon_separated_text(&paths);
+                        }
+                    }
+                    "linux-dev-names-include" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let paths = v.t.trim_matches('"');
+                            cfg.linux_dev_names_include = Some(parse_colon_separated_text(&paths));
+                        }
+                    }
+                    "linux-dev-names-exclude" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let paths = v.t.trim_matches('"');
+                            cfg.linux_dev_names_exclude = Some(parse_colon_separated_text(&paths));
+                        }
+                    }
+                    "linux-unicode-u-code" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_unicode_u_code = str_to_oscode(v.t.trim_matches('"'))
+                                .ok_or_else(|| {
+                                    anyhow_expr!(
+                                        val,
+                                        "unknown code for linux-unicode-u-code {}",
+                                        v.t
+                                    )
+                                })?;
+                        }
+                    }
+                    "linux-unicode-termination" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_unicode_termination = match v.t.trim_matches('"') {
+                                "enter" => UnicodeTermination::Enter,
+                                "space" => UnicodeTermination::Space,
+                                "enter-space" => UnicodeTermination::EnterSpace,
+                                "space-enter" => UnicodeTermination::SpaceEnter,
+                                _ => bail_expr!(val, "linux-unicode-termination got {}. It accepts: enter|space|enter-space|space-enter", v.t),
+                            }
+                        }
+                    }
+                    "linux-x11-repeat-delay-rate" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let delay_rate = v.t.split(',').collect::<Vec<_>>();
+                            let errmsg = anyhow_span!(v, "Invalid value for linux-x11-repeat-delay-rate.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
+                            if delay_rate.len() != 2 {
+                                bail!("{:?}", errmsg)
+                            }
+                            cfg.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
+                                delay: match str::parse::<u16>(delay_rate[0]) {
+                                    Ok(delay) => delay,
+                                    Err(_) => bail!("{:?}", errmsg),
+                                },
+                                rate: match str::parse::<u16>(delay_rate[0]) {
+                                    Ok(rate) => rate,
+                                    Err(_) => bail!("{:?}", errmsg),
+                                },
+                            });
+                        }
+                    }
+                    "windows-altgr" => {
+                        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+                        {
+                            const CANCEL: &str = "cancel-lctl-press";
+                            const ADD: &str = "add-lctl-release";
+                            cfg.windows_altgr = match v.t.trim_matches('"') {
+                                CANCEL => AltGrBehaviour::CancelLctlPress,
+                                ADD => AltGrBehaviour::AddLctlRelease,
+                                _ => bail_expr!(
+                                    val,
+                                    "Invalid value for windows-altgr: {}. Valid values are {},{}",
+                                    v.t,
+                                    CANCEL,
+                                    ADD
+                                ),
+                            }
+                        }
+                    }
+                    "windows-interception-mouse-hwid" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            let hwid = v.t.trim_matches('"');
+                            log::trace!("win hwid: {hwid}");
+                            let hwid_vec = hwid
+                                .split_whitespace()
+                                .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
+                                    hwid_byte.trim_matches(',').parse::<u8>().map(|b| {
+                                        hwid_bytes.push(b);
+                                        hwid_bytes
+                                    })
+                                }).map_err(|_| anyhow_expr!(val, "windows-interception-mouse-hwid format is invalid. It should consist of integers separated by commas"))?;
+                            let hwid_slice = hwid_vec.iter().copied().enumerate()
+                                    .fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
+                                        let (i, b) = idx_byte;
+                                        if i > HWID_ARR_SZ {
+                                            panic!("windows-interception-mouse-hwid is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers");
+                                        }
+                                        hwid[i] = b;
+                                        hwid
+                             });
+                            cfg.windows_interception_mouse_hwid = Some(hwid_slice);
+                        }
+                    }
+
+                    "process-unmapped-keys" => {
+                        cfg.process_unmapped_keys = parse_defcfg_pair_bool(k, v)?
+                    }
+                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_pair_bool(k, v)?,
+                    "sequence-backtrack-modcancel" => {
+                        cfg.sequence_backtrack_modcancel = parse_defcfg_pair_bool(k, v)?
+                    }
+                    "log-layer-changes" => cfg.log_layer_changes = parse_defcfg_pair_bool(k, v)?,
+                    "delegate-to-first-layer" => {
+                        cfg.delegate_to_first_layer = parse_defcfg_pair_bool(k, v)?;
+                        if cfg.delegate_to_first_layer {
+                            log::info!("delegating transparent keys on other layers to first defined layer");
+                        }
+                    }
+                    "linux-continue-if-no-devs-found" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_continue_if_no_devs_found = parse_defcfg_pair_bool(k, v)?
+                        }
+                    }
+                    "movemouse-smooth-diagonals" => {
+                        cfg.movemouse_smooth_diagonals = parse_defcfg_pair_bool(k, v)?
+                    }
+                    "movemouse-inherit-accel-state" => {
+                        cfg.movemouse_inherit_accel_state = parse_defcfg_pair_bool(k, v)?
+                    }
+                    _ => bail_expr!(key, "Unknown defcfg option {}", k.t),
+                };
             }
             (SExpr::List(_), _) => {
                 bail_expr!(key, "Lists are not allowed in defcfg");
@@ -804,6 +970,26 @@ fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
                 bail_expr!(val, "Lists are not allowed in defcfg");
             }
         }
+    }
+}
+
+pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
+pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
+pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
+
+fn parse_defcfg_pair_bool(k: &Spanned<String>, v: &Spanned<String>) -> Result<bool> {
+    let val = v.t.to_ascii_lowercase();
+    if TRUE_VALUES.contains(&val.as_str()) {
+        Ok(true)
+    } else if FALSE_VALUES.contains(&val.as_str()) {
+        Ok(false)
+    } else {
+        bail_span!(
+            v,
+            "The value for {} must be one of: {}",
+            k.t,
+            BOOLEAN_VALUES.join(", ")
+        );
     }
 }
 
@@ -855,10 +1041,7 @@ fn parse_deflocalkeys(
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
 /// a vec of the indexes in order. The length of the returned vec should be matched by the length
 /// of all layer declarations.
-fn parse_defsrc(
-    expr: &[SExpr],
-    defcfg: &HashMap<String, String>,
-) -> Result<(MappedKeys, Vec<usize>)> {
+fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = MappedKeys::default();
     let mut ordered_codes = Vec::new();
@@ -876,12 +1059,8 @@ fn parse_defsrc(
         ordered_codes.push(oscode.into());
     }
 
-    let process_unmapped_keys = defcfg
-        .get("process-unmapped-keys")
-        .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-        .unwrap_or(false);
-    log::info!("process unmapped keys: {process_unmapped_keys}");
-    if process_unmapped_keys {
+    log::info!("process unmapped keys: {}", defcfg.process_unmapped_keys);
+    if defcfg.process_unmapped_keys {
         for osc in 0..KEYS_IN_ROW as u16 {
             if let Some(osc) = OsCode::from_u16(osc) {
                 match KeyCode::from(osc) {
@@ -942,11 +1121,11 @@ pub struct ParsedState {
     fake_keys: HashMap<String, (usize, &'static KanataAction)>,
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
+    vars: HashMap<String, SExpr>,
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
     default_sequence_timeout: u16,
     default_sequence_input_mode: SequenceInputMode,
-    vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
 
@@ -956,14 +1135,9 @@ impl ParsedState {
     }
 }
 
-const SEQUENCE_TIMEOUT_CFG_NAME: &str = "sequence-timeout";
-const SEQUENCE_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
-const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
-const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
-const SEQUENCE_INPUT_MODE_DEFAULT: SequenceInputMode = SequenceInputMode::HiddenSuppressed;
-
 impl Default for ParsedState {
     fn default() -> Self {
+        let default_cfg = CfgOptions::default();
         Self {
             layer_exprs: Default::default(),
             aliases: Default::default(),
@@ -972,11 +1146,11 @@ impl Default for ParsedState {
             defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
             fake_keys: Default::default(),
             chord_groups: Default::default(),
-            is_cmd_enabled: false,
-            delegate_to_first_layer: false,
             vars: Default::default(),
-            default_sequence_timeout: SEQUENCE_TIMEOUT_DEFAULT,
-            default_sequence_input_mode: SEQUENCE_INPUT_MODE_DEFAULT,
+            is_cmd_enabled: default_cfg.enable_cmd,
+            delegate_to_first_layer: default_cfg.delegate_to_first_layer,
+            default_sequence_timeout: default_cfg.sequence_timeout,
+            default_sequence_input_mode: default_cfg.sequence_input_mode,
             a: unsafe { Allocations::new() },
         }
     }
@@ -3173,6 +3347,25 @@ fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutput
     outs
 }
 
+pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
+    let mut all_paths = vec![];
+    let mut full_dev_path = String::new();
+    let mut dev_path_iter = paths.split(':').peekable();
+    while let Some(dev_path) = dev_path_iter.next() {
+        if dev_path.ends_with('\\') && dev_path_iter.peek().is_some() {
+            full_dev_path.push_str(dev_path.trim_end_matches('\\'));
+            full_dev_path.push(':');
+            continue;
+        } else {
+            full_dev_path.push_str(dev_path);
+        }
+        all_paths.push(full_dev_path.clone());
+        full_dev_path.clear();
+    }
+    all_paths.shrink_to_fit();
+    all_paths
+}
+
 fn add_key_output_from_action_to_key_pos(
     osc_slot: OsCode,
     action: &KanataAction,
@@ -3266,3 +3459,23 @@ fn add_kc_output(
 fn create_layout(layers: Box<KanataLayers>, a: Arc<Allocations>) -> KanataLayout {
     KanataLayout::new(Layout::new(a.bref(layers)), a)
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct KeyRepeatSettings {
+    pub delay: u16,
+    pub rate: u16,
+}
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AltGrBehaviour {
+    DoNothing,
+    CancelLctlPress,
+    AddLctlRelease,
+}
+
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "unknown"
+))]
+pub const HWID_ARR_SZ: usize = 128;

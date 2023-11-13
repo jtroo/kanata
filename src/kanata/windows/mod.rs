@@ -1,9 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use parking_lot::Mutex;
 
 use crate::kanata::*;
-use kanata_parser::cfg;
 
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;
@@ -15,37 +14,13 @@ mod interception;
 #[cfg(feature = "interception_driver")]
 pub use self::interception::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AltGrBehaviour {
-    DoNothing,
-    CancelLctlPress,
-    AddLctlRelease,
-}
-
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
 pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
-    Lazy::new(|| Mutex::new(AltGrBehaviour::DoNothing));
+    Lazy::new(|| Mutex::new(CfgOptions::default().windows_altgr));
 
-pub fn set_win_altgr_behaviour(cfg: &cfg::Cfg) -> Result<()> {
-    *ALTGR_BEHAVIOUR.lock() = {
-        const CANCEL: &str = "cancel-lctl-press";
-        const ADD: &str = "add-lctl-release";
-        match cfg.items.get("windows-altgr") {
-            None => AltGrBehaviour::DoNothing,
-            Some(cfg_val) => match cfg_val.as_str() {
-                CANCEL => AltGrBehaviour::CancelLctlPress,
-                ADD => AltGrBehaviour::AddLctlRelease,
-                _ => bail!(
-                    "Invalid value for windows-altgr: {}. Valid values are {},{}",
-                    cfg_val,
-                    CANCEL,
-                    ADD
-                ),
-            },
-        }
-    };
-    Ok(())
+pub fn set_win_altgr_behaviour(b: AltGrBehaviour) {
+    *ALTGR_BEHAVIOUR.lock() = b;
 }
 
 impl Kanata {
@@ -128,11 +103,6 @@ impl Kanata {
 
     #[cfg(feature = "interception_driver")]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn set_repeat_rate(_cfg_items: &HashMap<String, String>) -> Result<()> {
-        // TODO: no-op right now
         Ok(())
     }
 }

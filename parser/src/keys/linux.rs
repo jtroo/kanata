@@ -771,3 +771,11 @@ impl From<Btn> for OsCode {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UnicodeTermination {
+    Enter,
+    Space,
+    SpaceEnter,
+    EnterSpace,
+}

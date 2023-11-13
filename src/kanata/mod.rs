@@ -132,14 +132,14 @@ pub struct Kanata {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
-    intercept_mouse_hwid: Option<Vec<u8>>,
+    intercept_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
     pub caps_word: Option<CapsWordState>,
     /// Config items from `defcfg`.
     #[cfg(target_os = "linux")]
-    pub defcfg_items: HashMap<String, String>,
+    pub x11_repeat_rate: Option<KeyRepeatSettings>,
     /// Fake key actions that are waiting for a certain duration of keyboard idling.
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
     /// Number of ticks since kanata was idle.
@@ -259,23 +259,6 @@ impl Kanata {
             }
         };
 
-        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-        let intercept_mouse_hwid = cfg
-            .items
-            .get("windows-interception-mouse-hwid")
-            .map(|hwid: &String| {
-                log::trace!("win hwid: {hwid}");
-                hwid.split_whitespace()
-                    .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
-                        hwid_byte.trim_matches(',').parse::<u8>().map(|b| {
-                            hwid_bytes.push(b);
-                            hwid_bytes
-                        })
-                    })
-                    .ok()
-            })
-            .unwrap_or_default();
-
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
@@ -286,26 +269,6 @@ impl Kanata {
                 bail!(err)
             }
         };
-
-        #[cfg(target_os = "linux")]
-        let kbd_in_paths = cfg
-            .items
-            .get("linux-dev")
-            .cloned()
-            .map(|paths| parse_colon_separated_text(&paths))
-            .unwrap_or_default();
-        #[cfg(target_os = "linux")]
-        let include_names = cfg
-            .items
-            .get("linux-dev-names-include")
-            .cloned()
-            .map(|paths| parse_colon_separated_text(&paths));
-        #[cfg(target_os = "linux")]
-        let exclude_names = cfg
-            .items
-            .get("linux-dev-names-exclude")
-            .cloned()
-            .map(|paths| parse_colon_separated_text(&paths));
 
         #[cfg(target_os = "windows")]
         unsafe {
@@ -325,18 +288,9 @@ impl Kanata {
         }
 
         update_kbd_out(&cfg.items, &kbd_out)?;
-        set_altgr_behaviour(&cfg)?;
 
-        let sequence_backtrack_modcancel = cfg
-            .items
-            .get("sequence-backtrack-modcancel")
-            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or(true);
-        let log_layer_changes = cfg
-            .items
-            .get("log-layer-changes")
-            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or(true);
+        #[cfg(target_os = "windows")]
+        set_win_altgr_behaviour(cfg.items.windows_altgr);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
@@ -355,7 +309,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
-            sequence_backtrack_modcancel,
+            sequence_backtrack_modcancel: cfg.items.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: time::Instant::now(),
@@ -364,42 +318,25 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "linux")]
-            kbd_in_paths,
+            kbd_in_paths: cfg.items.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg
-                .items
-                .get("linux-continue-if-no-devs-found")
-                .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-                .unwrap_or_default(),
+            continue_if_no_devices: cfg.items.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names,
+            include_names: cfg.items.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names,
+            exclude_names: cfg.items.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwid,
+            intercept_mouse_hwid: cfg.items.windows_interception_mouse_hwid,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes,
+            log_layer_changes: cfg.items.log_layer_changes,
             caps_word: None,
-            movemouse_smooth_diagonals: cfg
-                .items
-                .get("movemouse-smooth-diagonals")
-                .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-                .unwrap_or_default(),
-            movemouse_inherit_accel_state: cfg
-                .items
-                .get("movemouse-inherit-accel-state")
-                .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-                .unwrap_or_default(),
-            dynamic_macro_max_presses: cfg
-                .items
-                .get("dynamic-macro-max-presses")
-                .map(|s| s.parse::<u16>())
-                .unwrap_or(Ok(128))
-                .map_err(|e| anyhow!("dynamic-macro-max-presses must be 0-65535: {e}"))?,
+            movemouse_smooth_diagonals: cfg.items.movemouse_smooth_diagonals,
+            movemouse_inherit_accel_state: cfg.items.movemouse_inherit_accel_state,
+            dynamic_macro_max_presses: cfg.items.dynamic_macro_max_presses,
             #[cfg(target_os = "linux")]
-            defcfg_items: cfg.items,
+            x11_repeat_rate: cfg.items.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -421,41 +358,22 @@ impl Kanata {
             }
         };
         update_kbd_out(&cfg.items, &self.kbd_out)?;
-        set_altgr_behaviour(&cfg).map_err(|e| anyhow!("failed to set altgr behaviour {e})"))?;
-        let log_layer_changes = cfg
-            .items
-            .get("log-layer-changes")
-            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or(true);
-        self.sequence_backtrack_modcancel = cfg
-            .items
-            .get("sequence-backtrack-modcancel")
-            .map(|s| !FALSE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or(true);
+        #[cfg(target_os = "windows")]
+        set_win_altgr_behaviour(cfg.items.windows_altgr);
+        self.sequence_backtrack_modcancel = cfg.items.sequence_backtrack_modcancel;
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes = log_layer_changes;
-        self.movemouse_smooth_diagonals = cfg
-            .items
-            .get("movemouse-smooth-diagonals")
-            .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or_default();
-        self.movemouse_inherit_accel_state = cfg
-            .items
-            .get("movemouse-inherit-accel-state")
-            .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-            .unwrap_or_default();
-        self.dynamic_macro_max_presses = cfg
-            .items
-            .get("dynamic-macro-max-presses")
-            .map(|s| s.parse::<u16>())
-            .unwrap_or(Ok(128))
-            .map_err(|_| anyhow!("dynamic-macro-max-presses must be 0-65535"))?;
+        self.log_layer_changes = cfg.items.log_layer_changes;
+        self.movemouse_smooth_diagonals = cfg.items.movemouse_smooth_diagonals;
+        self.movemouse_inherit_accel_state = cfg.items.movemouse_inherit_accel_state;
+        self.dynamic_macro_max_presses = cfg.items.dynamic_macro_max_presses;
+
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
-        Kanata::set_repeat_rate(&cfg.items)?;
+        #[cfg(target_os = "linux")]
+        Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         Ok(())
     }
@@ -1834,12 +1752,6 @@ impl Kanata {
     }
 }
 
-fn set_altgr_behaviour(_cfg: &cfg::Cfg) -> Result<()> {
-    #[cfg(target_os = "windows")]
-    set_win_altgr_behaviour(_cfg)?;
-    Ok(())
-}
-
 #[cfg(feature = "cmd")]
 fn run_multi_cmd(cmds: Vec<Vec<String>>) {
     std::thread::spawn(move || {
@@ -1927,27 +1839,11 @@ fn check_for_exit(event: &KeyEvent) {
     }
 }
 
-fn update_kbd_out(_cfg: &HashMap<String, String>, _kbd_out: &KbdOut) -> Result<()> {
+fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
     #[cfg(target_os = "linux")]
     {
-        _kbd_out.update_unicode_termination(
-                _cfg.get("linux-unicode-termination").map(|s| {
-                match s.as_str() {
-                    "enter" => Ok(UnicodeTermination::Enter),
-                    "space" => Ok(UnicodeTermination::Space),
-                    "enter-space" => Ok(UnicodeTermination::EnterSpace),
-                    "space-enter" => Ok(UnicodeTermination::SpaceEnter),
-                    _ => Err(anyhow!("linux-unicode-termination got {s}. It accepts: enter|space|enter-space|space-enter")),
-                }
-            }).unwrap_or(Ok(_kbd_out.unicode_termination.get()))?);
-        _kbd_out.update_unicode_u_code(
-            _cfg.get("linux-unicode-u-code")
-                .map(|s| {
-                    str_to_oscode(s)
-                        .ok_or_else(|| anyhow!("unknown code for linux-unicode-u-code {s}"))
-                })
-                .unwrap_or(Ok(_kbd_out.unicode_u_code.get()))?,
-        );
+        _kbd_out.update_unicode_termination(_cfg.linux_unicode_termination);
+        _kbd_out.update_unicode_u_code(_cfg.linux_unicode_u_code);
     }
     Ok(())
 }

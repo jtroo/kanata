@@ -29,7 +29,7 @@ impl Kanata {
 
         // In some environments, this needs to be done after the input device grab otherwise it
         // does not work on kanata startup.
-        Kanata::set_repeat_rate(&k.defcfg_items)?;
+        Kanata::set_repeat_rate(k.x11_repeat_rate)?;
         drop(k);
 
         loop {
@@ -83,28 +83,20 @@ impl Kanata {
         Ok(())
     }
 
-    pub fn set_repeat_rate(cfg_items: &HashMap<String, String>) -> Result<()> {
-        if let Some(x11_rpt_str) = cfg_items.get("linux-x11-repeat-delay-rate") {
-            let delay_rate = x11_rpt_str.split(',').collect::<Vec<_>>();
-            let errmsg = format!("Invalid value for linux-x11-repeat-delay-rate: \"{x11_rpt_str}\".\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
-            if delay_rate.len() != 2 {
-                log::error!("{errmsg}");
-            }
-            str::parse::<u16>(delay_rate[0]).map_err(|e| {
-                log::error!("{errmsg}");
-                e
-            })?;
-            str::parse::<u16>(delay_rate[1]).map_err(|e| {
-                log::error!("{errmsg}");
-                e
-            })?;
+    pub fn set_repeat_rate(s: Option<KeyRepeatSettings>) -> Result<()> {
+        if let Some(s) = s {
             log::info!(
                 "Using xset to set X11 repeat delay to {} and repeat rate to {}",
-                delay_rate[0],
-                delay_rate[1]
+                s.delay,
+                s.rate,
             );
             let cmd_output = std::process::Command::new("xset")
-                .args(["r", "rate", delay_rate[0], delay_rate[1]])
+                .args([
+                    "r",
+                    "rate",
+                    s.delay.to_string().as_str(),
+                    s.rate.to_string().as_str(),
+                ])
                 .output()
                 .map_err(|e| {
                     log::error!("failed to run xset: {e:?}");
