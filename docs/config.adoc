@@ -1874,7 +1874,7 @@ this entry is similar to `+defalias+`, but you cannot make use of aliases
 inside of `+deffakekeys+` to shorten an action. You can however refer to
 previously defined fake keys.
 
-The aforementioned `+<key action>+` can be one of three values:
+The aforementioned `+<key action>+` can be one of four values:
 
 * `+press+`: Press the fake key. It will not be released until another action
   triggers a release or tap.
