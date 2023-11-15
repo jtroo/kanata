@@ -3165,9 +3165,3 @@ fn add_kc_output(
 fn create_layout(layers: Box<KanataLayers>, a: Arc<Allocations>) -> KanataLayout {
     KanataLayout::new(Layout::new(a.bref(layers)), a)
 }
-
-#[cfg(any(
-    all(feature = "interception_driver", target_os = "windows"),
-    target_os = "unknown"
-))]
-pub const HWID_ARR_SZ: usize = 128;

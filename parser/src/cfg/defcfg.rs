@@ -1,9 +1,9 @@
 use super::error::*;
 use super::sexpr::SExpr;
 use super::HashSet;
-use crate::cfg::{check_first_expr, HWID_ARR_SZ};
+use crate::cfg::check_first_expr;
 use crate::custom_action::*;
-use crate::keys::{str_to_oscode, OsCode};
+#[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr};
 
 #[derive(Debug)]
@@ -27,7 +27,7 @@ pub struct CfgOptions {
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_continue_if_no_devs_found: bool,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_unicode_u_code: OsCode,
+    pub linux_unicode_u_code: crate::keys::OsCode,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_unicode_termination: UnicodeTermination,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -64,7 +64,7 @@ impl Default for CfgOptions {
             linux_continue_if_no_devs_found: false,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             // historically was the only option, so make KEY_U the default
-            linux_unicode_u_code: OsCode::KEY_U,
+            linux_unicode_u_code: crate::keys::OsCode::KEY_U,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             // historically was the only option, so make Enter the default
             linux_unicode_termination: UnicodeTermination::Enter,
@@ -137,10 +137,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     _k @ "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_unicode_u_code = str_to_oscode(v.t.trim_matches('"'))
-                                .ok_or_else(|| {
-                                    anyhow_expr!(val, "unknown code for {_k}: {}", v.t)
-                                })?;
+                            cfg.linux_unicode_u_code = crate::keys::str_to_oscode(
+                                v.t.trim_matches('"'),
+                            )
+                            .ok_or_else(|| anyhow_expr!(val, "unknown code for {_k}: {}", v.t))?;
                         }
                     }
                     _k @ "linux-unicode-termination" => {
@@ -368,3 +368,9 @@ impl Default for AltGrBehaviour {
         Self::DoNothing
     }
 }
+
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "unknown"
+))]
+pub const HWID_ARR_SZ: usize = 128;
