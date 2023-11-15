@@ -3,9 +3,7 @@ use super::sexpr::SExpr;
 use super::HashSet;
 use crate::cfg::check_first_expr;
 use crate::cfg::parse_colon_separated_text;
-use crate::cfg::KeyRepeatSettings;
 use crate::custom_action::*;
-use crate::keys::*;
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr};
 
 #[derive(Debug)]
@@ -320,3 +318,18 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct KeyRepeatSettings {
+    pub delay: u16,
+    pub rate: u16,
+}
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AltGrBehaviour {
+    DoNothing,
+    CancelLctlPress,
+    AddLctlRelease,
+}
+

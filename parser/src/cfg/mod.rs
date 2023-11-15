@@ -52,7 +52,7 @@ mod list_actions;
 use list_actions::*;
 
 mod defcfg;
-use defcfg::*;
+pub use defcfg::*;
 
 use crate::custom_action::*;
 use crate::keys::*;
@@ -3183,20 +3183,6 @@ fn add_kc_output(
 /// Create a layout from `layers::LAYERS`.
 fn create_layout(layers: Box<KanataLayers>, a: Arc<Allocations>) -> KanataLayout {
     KanataLayout::new(Layout::new(a.bref(layers)), a)
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct KeyRepeatSettings {
-    pub delay: u16,
-    pub rate: u16,
-}
-
-#[cfg(any(target_os = "windows", target_os = "unknown"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AltGrBehaviour {
-    DoNothing,
-    CancelLctlPress,
-    AddLctlRelease,
 }
 
 #[cfg(any(
