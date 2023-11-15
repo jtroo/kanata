@@ -1,9 +1,9 @@
 use super::error::*;
 use super::sexpr::SExpr;
 use super::HashSet;
-use crate::cfg::check_first_expr;
-use crate::cfg::parse_colon_separated_text;
+use crate::cfg::{check_first_expr, HWID_ARR_SZ};
 use crate::custom_action::*;
+use crate::keys::{str_to_oscode, OsCode};
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr};
 
 #[derive(Debug)]
@@ -319,10 +319,39 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
     }
 }
 
+pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
+    let mut all_paths = vec![];
+    let mut full_dev_path = String::new();
+    let mut dev_path_iter = paths.split(':').peekable();
+    while let Some(dev_path) = dev_path_iter.next() {
+        if dev_path.ends_with('\\') && dev_path_iter.peek().is_some() {
+            full_dev_path.push_str(dev_path.trim_end_matches('\\'));
+            full_dev_path.push(':');
+            continue;
+        } else {
+            full_dev_path.push_str(dev_path);
+        }
+        all_paths.push(full_dev_path.clone());
+        full_dev_path.clear();
+    }
+    all_paths.shrink_to_fit();
+    all_paths
+}
+
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct KeyRepeatSettings {
     pub delay: u16,
     pub rate: u16,
+}
+
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UnicodeTermination {
+    Enter,
+    Space,
+    SpaceEnter,
+    EnterSpace,
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
@@ -333,6 +362,7 @@ pub enum AltGrBehaviour {
     AddLctlRelease,
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 impl Default for AltGrBehaviour {
     fn default() -> Self {
         Self::DoNothing

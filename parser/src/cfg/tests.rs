@@ -1198,3 +1198,10 @@ fn list_action_not_in_list_error_message_is_good() {
     })
     .unwrap_err();
 }
+
+#[test]
+fn parse_device_paths() {
+    assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
+}

@@ -19,8 +19,8 @@ use std::thread;
 
 use super::*;
 use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
-use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+use kanata_parser::{cfg::UnicodeTermination, custom_action::*};
 
 pub struct KbdIn {
     devices: HashMap<Token, (Device, String)>,
@@ -727,14 +727,6 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
         std::thread::sleep(std::time::Duration::from_micros(100));
     }
     Ok(())
-}
-
-#[test]
-fn test_parse_dev_paths() {
-    use kanata_parser::cfg::parse_colon_separated_text;
-    assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
-    assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
-    assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
 }
 
 impl Drop for Symlink {

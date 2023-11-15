@@ -3072,25 +3072,6 @@ fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutput
     outs
 }
 
-pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
-    let mut all_paths = vec![];
-    let mut full_dev_path = String::new();
-    let mut dev_path_iter = paths.split(':').peekable();
-    while let Some(dev_path) = dev_path_iter.next() {
-        if dev_path.ends_with('\\') && dev_path_iter.peek().is_some() {
-            full_dev_path.push_str(dev_path.trim_end_matches('\\'));
-            full_dev_path.push(':');
-            continue;
-        } else {
-            full_dev_path.push_str(dev_path);
-        }
-        all_paths.push(full_dev_path.clone());
-        full_dev_path.clear();
-    }
-    all_paths.shrink_to_fit();
-    all_paths
-}
-
 fn add_key_output_from_action_to_key_pos(
     osc_slot: OsCode,
     action: &KanataAction,
