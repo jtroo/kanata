@@ -71,7 +71,7 @@ impl Default for CfgOptions {
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_x11_repeat_delay_rate: None,
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
-            windows_altgr: AltGrBehaviour::DoNothing,
+            windows_altgr: AltGrBehaviour::default(),
             #[cfg(any(
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
@@ -333,3 +333,8 @@ pub enum AltGrBehaviour {
     AddLctlRelease,
 }
 
+impl Default for AltGrBehaviour {
+    fn default() -> Self {
+        Self::DoNothing
+    }
+}

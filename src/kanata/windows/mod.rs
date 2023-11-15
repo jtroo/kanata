@@ -17,7 +17,7 @@ pub use self::interception::*;
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
 pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
-    Lazy::new(|| Mutex::new(CfgOptions::default().windows_altgr));
+    Lazy::new(|| Mutex::new(AltGrBehaviour::default()));
 
 pub fn set_win_altgr_behaviour(b: AltGrBehaviour) {
     *ALTGR_BEHAVIOUR.lock() = b;
