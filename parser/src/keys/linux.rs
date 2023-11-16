@@ -2,11 +2,11 @@
 
 use super::OsCode;
 impl OsCode {
-    pub const fn as_u16_linux(self) -> u16 {
+    pub(super) const fn as_u16_linux(self) -> u16 {
         self as u16
     }
 
-    pub const fn from_u16_linux(code: u16) -> Option<Self> {
+    pub(super) const fn from_u16_linux(code: u16) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),
             1 => Some(OsCode::KEY_ESC),
