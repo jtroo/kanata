@@ -5,7 +5,9 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
 
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 mod linux;
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 mod windows;
 
 mod mappings;
