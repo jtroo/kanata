@@ -15,25 +15,25 @@ pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinH
         for arg in args {
             cmd.arg(arg);
         }
+        let cmd_str = format!(
+            "Program: {:?}, Arguments: {}",
+            cmd.get_program(),
+            cmd.get_args()
+                .map(|arg| format!("{:?}", arg))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        log::info!("Running cmd: {}", cmd_str);
         match cmd.output() {
             Ok(output) => {
                 log::info!(
-                    "Successfully ran cmd {}\nstdout:\n{}\nstderr:\n{}",
-                    {
-                        let mut printable_cmd = Vec::new();
-                        printable_cmd.push(format!("{:?}", cmd.get_program()));
-
-                        let printable_cmd = cmd.get_args().fold(printable_cmd, |mut cmd, arg| {
-                            cmd.push(format!("{arg:?}"));
-                            cmd
-                        });
-                        printable_cmd.join(" ")
-                    },
+                    "Successfully ran cmd: {}\nstdout:\n{}\nstderr:\n{}",
+                    cmd_str,
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
                 );
             }
-            Err(e) => log::error!("Failed to execute cmd: {}", e),
+            Err(e) => log::error!("Failed to execute program {:?}: {}", cmd.get_program(), e),
         };
     })
 }
