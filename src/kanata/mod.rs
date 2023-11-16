@@ -12,7 +12,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
