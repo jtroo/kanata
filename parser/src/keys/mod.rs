@@ -11,42 +11,42 @@ mod windows;
 mod mappings;
 pub use mappings::*;
 
-#[cfg(any(target_os = "unknown"))]
+#[cfg(target_os = "unknown")]
 #[derive(Clone, Copy)]
 pub enum Platform {
     Win,
     Linux,
 }
 
-#[cfg(any(target_os = "unknown"))]
+#[cfg(target_os = "unknown")]
 pub static OSCODE_MAPPING_VARIANT: Mutex<Platform> = Mutex::new(Platform::Linux);
 
 impl OsCode {
     pub fn as_u16(self) -> u16 {
-        #[cfg(any(target_os = "unknown"))]
+        #[cfg(target_os = "unknown")]
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => self.as_u16_windows(),
             Platform::Linux => self.as_u16_linux(),
         };
 
-        #[cfg(any(target_os = "linux"))]
+        #[cfg(target_os = "linux")]
         return self.as_u16_linux();
 
-        #[cfg(any(target_os = "windows"))]
+        #[cfg(target_os = "windows")]
         return self.as_u16_windows();
     }
 
     pub fn from_u16(code: u16) -> Option<Self> {
-        #[cfg(any(target_os = "unknown"))]
+        #[cfg(target_os = "unknown")]
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => OsCode::from_u16_windows(code),
             Platform::Linux => OsCode::from_u16_linux(code),
         };
 
-        #[cfg(any(target_os = "linux"))]
+        #[cfg(target_os = "linux")]
         return OsCode::from_u16_linux(code);
 
-        #[cfg(any(target_os = "windows"))]
+        #[cfg(target_os = "windows")]
         return OsCode::from_u16_windows(code);
     }
 }
