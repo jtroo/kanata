@@ -19,7 +19,7 @@ pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinH
             "Program: {:?}, Arguments: {}",
             cmd.get_program(),
             cmd.get_args()
-                .map(|arg| format!("{:?}", arg))
+                .map(|arg| arg.to_string_lossy())
                 .collect::<Vec<_>>()
                 .join(" ")
         );
