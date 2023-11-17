@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use kanata_parser::cfg::parse_mod_prefix;
 use kanata_parser::cfg::sexpr::*;
 use kanata_parser::keys::*;
@@ -8,32 +10,33 @@ const LP: &str = "cmd-out:";
 pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut args = cmd_and_args.iter();
-        let mut cmd = std::process::Command::new(
-            args.next()
-                .expect("parsing should have forbidden empty cmd"),
-        );
+        let mut printable_cmd = String::new();
+        let executable = args
+            .next()
+            .expect("parsing should have forbidden empty cmd");
+        write!(
+            printable_cmd,
+            "Program: {}, Arguments:",
+            executable.as_str()
+        )
+        .expect("write to string should succeed");
+        let mut cmd = std::process::Command::new(executable);
         for arg in args {
             cmd.arg(arg);
+            printable_cmd.push(' ');
+            printable_cmd.push_str(arg.as_str());
         }
+        log::info!("Running cmd: {}", printable_cmd);
         match cmd.output() {
             Ok(output) => {
                 log::info!(
-                    "Successfully ran cmd {}\nstdout:\n{}\nstderr:\n{}",
-                    {
-                        let mut printable_cmd = Vec::new();
-                        printable_cmd.push(format!("{:?}", cmd.get_program()));
-
-                        let printable_cmd = cmd.get_args().fold(printable_cmd, |mut cmd, arg| {
-                            cmd.push(format!("{arg:?}"));
-                            cmd
-                        });
-                        printable_cmd.join(" ")
-                    },
+                    "Successfully ran cmd: {}\nstdout:\n{}\nstderr:\n{}",
+                    printable_cmd,
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
                 );
             }
-            Err(e) => log::error!("Failed to execute cmd: {}", e),
+            Err(e) => log::error!("Failed to execute program {:?}: {}", cmd.get_program(), e),
         };
     })
 }
