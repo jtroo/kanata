@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use kanata_parser::cfg::parse_mod_prefix;
 use kanata_parser::cfg::sexpr::*;
 use kanata_parser::keys::*;
@@ -8,27 +10,28 @@ const LP: &str = "cmd-out:";
 pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut args = cmd_and_args.iter();
-        let mut cmd = std::process::Command::new(
-            args.next()
-                .expect("parsing should have forbidden empty cmd"),
-        );
+        let mut printable_cmd = String::new();
+        let executable = args
+            .next()
+            .expect("parsing should have forbidden empty cmd");
+        write!(
+            printable_cmd,
+            "Program: {}, Arguments:",
+            executable.as_str()
+        )
+        .expect("write to string should succeed");
+        let mut cmd = std::process::Command::new(executable);
         for arg in args {
             cmd.arg(arg);
+            printable_cmd.push(' ');
+            printable_cmd.push_str(arg.as_str());
         }
-        let cmd_str = format!(
-            "Program: {:?}, Arguments: {}",
-            cmd.get_program(),
-            cmd.get_args()
-                .map(|arg| arg.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join(" ")
-        );
-        log::info!("Running cmd: {}", cmd_str);
+        log::info!("Running cmd: {}", printable_cmd);
         match cmd.output() {
             Ok(output) => {
                 log::info!(
                     "Successfully ran cmd: {}\nstdout:\n{}\nstderr:\n{}",
-                    cmd_str,
+                    printable_cmd,
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
                 );

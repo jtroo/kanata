@@ -693,7 +693,7 @@ impl Symlink {
     fn clean_when_killed(symlink: Self) {
         thread::spawn(|| {
             let mut signals = Signals::new([SIGINT, SIGTERM]).expect("signals register");
-            for signal in &mut signals {
+            if let Some(signal) = (&mut signals).into_iter().next() {
                 match signal {
                     SIGINT | SIGTERM => {
                         drop(symlink);
