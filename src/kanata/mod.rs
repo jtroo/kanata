@@ -12,7 +12,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
@@ -159,6 +159,8 @@ pub struct Kanata {
     dynamic_macro_max_presses: u16,
     /// Keys that should be unmodded. If empty, any modifier should be cleared.
     unmodded_keys: Vec<KeyCode>,
+    /// Keep track of last pressed key for [`CustomAction::Repeat`].
+    last_pressed_key: KeyCode,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -240,8 +242,6 @@ impl DynamicMacroRecordState {
         }
     }
 }
-
-static LAST_PRESSED_KEY: AtomicU32 = AtomicU32::new(0);
 
 use once_cell::sync::Lazy;
 
@@ -404,6 +404,7 @@ impl Kanata {
             ticks_since_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
+            last_pressed_key: KeyCode::No,
         })
     }
 
@@ -845,7 +846,7 @@ impl Kanata {
             // logic there and is easier to add here since we already have
             // allocations and logic.
             self.prev_keys.push(*k);
-            LAST_PRESSED_KEY.store(OsCode::from(k).into(), SeqCst);
+            self.last_pressed_key = *k;
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);
@@ -1233,12 +1234,13 @@ impl Kanata {
                             }
                         }
                         CustomAction::Repeat => {
-                            let key = OsCode::from(LAST_PRESSED_KEY.load(SeqCst));
-                            log::debug!("repeating a keypress {key:?}");
+                            let keycode = self.last_pressed_key;
+                            let osc: OsCode = keycode.into();
+                            log::debug!("repeating a keypress {osc:?}");
                             let mut do_caps_word = false;
                             if !cur_keys.contains(&KeyCode::LShift) {
                                 if let Some(ref mut cw) = self.caps_word {
-                                    cur_keys.push(key.into());
+                                    cur_keys.push(keycode);
                                     let prev_len = cur_keys.len();
                                     cw.maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
@@ -1248,9 +1250,9 @@ impl Kanata {
                                 }
                             }
                             // Release key in case the most recently pressed key is still pressed.
-                            self.kbd_out.release_key(key)?;
-                            self.kbd_out.press_key(key)?;
-                            self.kbd_out.release_key(key)?;
+                            self.kbd_out.release_key(osc)?;
+                            self.kbd_out.press_key(osc)?;
+                            self.kbd_out.release_key(osc)?;
                             if do_caps_word {
                                 self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
                             }
