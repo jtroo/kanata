@@ -206,9 +206,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             let hwid = v.t.trim_matches('"');
                             log::trace!("win hwid: {hwid}");
                             let hwid_vec = hwid
-                                .split_whitespace()
+                                .split(',')
                                 .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
-                                    hwid_byte.trim_matches(',').parse::<u8>().map(|b| {
+                                    hwid_byte.trim_matches(' ').parse::<u8>().map(|b| {
                                         hwid_bytes.push(b);
                                         hwid_bytes
                                     })
