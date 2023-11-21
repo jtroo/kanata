@@ -159,22 +159,22 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             }
                         }
                     }
-                    _k @ "linux-x11-repeat-delay-rate" => {
+                    "linux-x11-repeat-delay-rate" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let delay_rate = v.t.trim_matches('"').split(',').collect::<Vec<_>>();
-                            let errmsg = anyhow_span!(v, "Invalid value for {_k}.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25");
+                            const ERRMSG: &str = "Invalid value for linux-x11-repeat-delay-rate.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25";
                             if delay_rate.len() != 2 {
-                                bail!("{:?}", errmsg)
+                                bail_expr!(val, "{}", ERRMSG)
                             }
                             cfg.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
                                 delay: match str::parse::<u16>(delay_rate[0]) {
                                     Ok(delay) => delay,
-                                    Err(_) => bail!("{:?}", errmsg),
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
                                 },
-                                rate: match str::parse::<u16>(delay_rate[0]) {
+                                rate: match str::parse::<u16>(delay_rate[1]) {
                                     Ok(rate) => rate,
-                                    Err(_) => bail!("{:?}", errmsg),
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
                                 },
                             });
                         }
