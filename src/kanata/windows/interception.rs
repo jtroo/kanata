@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use kanata_interception as ic;
 use parking_lot::Mutex;
 use std::sync::mpsc::SyncSender as Sender;
@@ -8,8 +8,6 @@ use super::PRESSED_KEYS;
 use crate::kanata::*;
 use crate::oskbd::KeyValue;
 use kanata_parser::keys::OsCode;
-
-const HWID_ARR_SZ: usize = 128;
 
 impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
@@ -21,20 +19,7 @@ impl Kanata {
             information: 0,
         }; 32];
 
-        let mouse_to_intercept_hwid: Option<[u8; HWID_ARR_SZ]> = kanata
-            .lock()
-            .intercept_mouse_hwid.as_ref()
-            .map(|hwid| {
-                hwid.iter().copied().enumerate()
-                    .fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
-                        let (i, b) = idx_byte;
-                        if i > HWID_ARR_SZ {
-                            panic!("windows-interception-mouse-hwid is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers");
-                        }
-                        hwid[i] = b;
-                        hwid
-                    })
-            });
+        let mouse_to_intercept_hwid: Option<[u8; HWID_ARR_SZ]> = kanata.lock().intercept_mouse_hwid;
         if mouse_to_intercept_hwid.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,

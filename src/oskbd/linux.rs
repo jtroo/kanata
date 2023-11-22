@@ -19,8 +19,8 @@ use std::thread;
 
 use super::*;
 use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
-use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+use kanata_parser::{cfg::UnicodeTermination, custom_action::*};
 
 pub struct KbdIn {
     devices: HashMap<Token, (Device, String)>,
@@ -301,14 +301,6 @@ impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum UnicodeTermination {
-    Enter,
-    Space,
-    SpaceEnter,
-    EnterSpace,
 }
 
 use std::cell::Cell;
@@ -708,25 +700,6 @@ impl Symlink {
     }
 }
 
-pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
-    let mut all_paths = vec![];
-    let mut full_dev_path = String::new();
-    let mut dev_path_iter = paths.split(':').peekable();
-    while let Some(dev_path) = dev_path_iter.next() {
-        if dev_path.ends_with('\\') && dev_path_iter.peek().is_some() {
-            full_dev_path.push_str(dev_path.trim_end_matches('\\'));
-            full_dev_path.push(':');
-            continue;
-        } else {
-            full_dev_path.push_str(dev_path);
-        }
-        all_paths.push(full_dev_path.clone());
-        full_dev_path.clear();
-    }
-    all_paths.shrink_to_fit();
-    all_paths
-}
-
 // Note for allow: the ioctl_read_buf triggers this clippy lint.
 // Note: CI does not yet support this lint, so also allowing unknown lints.
 #[allow(unknown_lints)]
@@ -754,13 +727,6 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
         std::thread::sleep(std::time::Duration::from_micros(100));
     }
     Ok(())
-}
-
-#[test]
-fn test_parse_dev_paths() {
-    assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
-    assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
-    assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
 }
 
 impl Drop for Symlink {

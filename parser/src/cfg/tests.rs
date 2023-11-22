@@ -1198,3 +1198,54 @@ fn list_action_not_in_list_error_message_is_good() {
     })
     .unwrap_err();
 }
+
+#[test]
+fn parse_device_paths() {
+    assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
+    assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
+}
+
+#[test]
+fn parse_all_defcfg() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let source = r#"
+(defcfg
+  process-unmapped-keys yes
+  danger-enable-cmd yes
+  sequence-timeout 2000
+  sequence-input-mode visible-backspaced
+  sequence-backtrack-modcancel no
+  log-layer-changes no
+  delegate-to-first-layer yes
+  movemouse-inherit-accel-state yes
+  movemouse-smooth-diagonals yes
+  dynamic-macro-max-presses 1000
+  linux-dev /dev/input/dev1:/dev/input/dev2
+  linux-dev-names-include "Name 1:Name 2"
+  linux-dev-names-exclude "Name 3:Name 4"
+  linux-continue-if-no-devs-found yes
+  linux-unicode-u-code v
+  linux-unicode-termination space
+  linux-x11-repeat-delay-rate 400,50
+  windows-altgr add-lctl-release
+  windows-interception-mouse-hwid "70, 0, 60, 0"
+)
+(defsrc a)
+(deflayer base a)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect("succeeds");
+}

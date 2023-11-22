@@ -51,6 +51,9 @@ use custom_tap_hold::*;
 mod list_actions;
 use list_actions::*;
 
+mod defcfg;
+pub use defcfg::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -81,15 +84,17 @@ mod tests;
 #[cfg(test)]
 pub use sexpr::parse;
 
+#[macro_export]
 macro_rules! bail {
     ($err:expr $(,)?) => {
-        return Err(ParseError::from(anyhow!($err)))
+        return Err(ParseError::from(anyhow::anyhow!($err)))
     };
     ($fmt:expr, $($arg:tt)*) => {
-        return Err(ParseError::from(anyhow!($fmt, $($arg)*)))
+        return Err(ParseError::from(anyhow::anyhow!($fmt, $($arg)*)))
     };
 }
 
+#[macro_export]
 macro_rules! bail_expr {
     ($expr:expr, $fmt:expr $(,)?) => {
         return Err(ParseError::from_expr($expr, format!($fmt)))
@@ -99,6 +104,7 @@ macro_rules! bail_expr {
     };
 }
 
+#[macro_export]
 macro_rules! bail_span {
     ($expr:expr, $fmt:expr $(,)?) => {
         return Err(ParseError::from_spanned($expr, format!($fmt)))
@@ -108,6 +114,7 @@ macro_rules! bail_span {
     };
 }
 
+#[macro_export]
 macro_rules! anyhow_expr {
     ($expr:expr, $fmt:expr $(,)?) => {
         ParseError::from_expr($expr, format!($fmt))
@@ -117,6 +124,7 @@ macro_rules! anyhow_expr {
     };
 }
 
+#[macro_export]
 macro_rules! anyhow_span {
     ($expr:expr, $fmt:expr $(,)?) => {
         ParseError::from_spanned($expr, format!($fmt))
@@ -190,7 +198,7 @@ pub struct Cfg {
     /// Layer info used for printing to the logs.
     pub layer_info: Vec<LayerInfo>,
     /// Configuration items in `defcfg`.
-    pub items: HashMap<String, String>,
+    pub items: CfgOptions,
     /// The keyberon layout state machine struct.
     pub layout: KanataLayout,
     /// Sequences defined in `defseq`.
@@ -230,7 +238,7 @@ pub struct LayerInfo {
 fn parse_cfg(
     p: &Path,
 ) -> MResult<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     KeyOutputs,
@@ -251,10 +259,6 @@ fn parse_cfg(
     ))
 }
 
-pub const FALSE_VALUES: [&str; 3] = ["no", "false", "0"];
-pub const TRUE_VALUES: [&str; 3] = ["yes", "true", "1"];
-pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
-
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -267,7 +271,7 @@ fn parse_cfg_raw(
     p: &Path,
     s: &mut ParsedState,
 ) -> MResult<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
@@ -371,7 +375,7 @@ pub fn parse_cfg_raw_string(
     file_content_provider: &mut FileContentProvider,
     def_local_keys_variant_to_apply: &str,
 ) -> Result<(
-    HashMap<String, String>,
+    CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
@@ -392,23 +396,6 @@ pub fn parse_cfg_raw_string(
 
     error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
 
-    let cfg = root_exprs
-        .iter()
-        .find(gen_first_atom_filter("defcfg"))
-        .map(|cfg| parse_defcfg(cfg))
-        .transpose()?
-        .unwrap_or_default();
-    if let Some(spanned) = spanned_root_exprs
-        .iter()
-        .filter(gen_first_atom_filter_spanned("defcfg"))
-        .nth(1)
-    {
-        bail_span!(
-            spanned,
-            "Only one defcfg is allowed, found more. Delete the extras."
-        )
-    }
-
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in [
@@ -425,7 +412,7 @@ pub fn parse_cfg_raw_string(
             if def_local_keys_variant == def_local_keys_variant_to_apply {
                 assert!(
                     local_keys.is_none(),
-                    ">1 mutually exclusive deflocalkeys variants was parsed"
+                    ">1 mutually exclusive deflocalkeys variants were parsed"
                 );
                 local_keys = Some(mapping);
             }
@@ -443,6 +430,23 @@ pub fn parse_cfg_raw_string(
         }
     }
     replace_custom_str_oscode_mapping(&local_keys.unwrap_or_default());
+
+    let cfg = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("defcfg"))
+        .map(|cfg| parse_defcfg(cfg))
+        .transpose()?
+        .unwrap_or_default();
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .filter(gen_first_atom_filter_spanned("defcfg"))
+        .nth(1)
+    {
+        bail_span!(
+            spanned,
+            "Only one defcfg is allowed, found more. Delete the extras."
+        )
+    }
 
     let src_expr = root_exprs
         .iter()
@@ -535,14 +539,12 @@ pub fn parse_cfg_raw_string(
         is_cmd_enabled: {
             #[cfg(feature = "cmd")]
             {
-                cfg.get("danger-enable-cmd").map_or(false, |s| {
-                    if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
-                        log::warn!("DANGER! cmd action is enabled.");
-                        true
-                    } else {
-                        false
-                    }
-                })
+                if cfg.enable_cmd {
+                    log::warn!("DANGER! cmd action is enabled.");
+                    true
+                } else {
+                    false
+                }
             }
             #[cfg(not(feature = "cmd"))]
             {
@@ -550,25 +552,9 @@ pub fn parse_cfg_raw_string(
                 false
             }
         },
-        delegate_to_first_layer: cfg.get("delegate-to-first-layer").map_or(false, |s| {
-            if TRUE_VALUES.contains(&s.to_lowercase().as_str()) {
-                log::info!("delegating transparent keys on other layers to first defined layer");
-                true
-            } else {
-                false
-            }
-        }),
-        default_sequence_timeout: cfg
-            .get(SEQUENCE_TIMEOUT_CFG_NAME)
-            .map(|s| match str::parse::<u16>(s) {
-                Ok(0) | Err(_) => Err(anyhow!("{SEQUENCE_TIMEOUT_ERR}")),
-                Ok(t) => Ok(t),
-            })
-            .unwrap_or(Ok(SEQUENCE_TIMEOUT_DEFAULT))?,
-        default_sequence_input_mode: cfg
-            .get(SEQUENCE_INPUT_MODE_CFG_NAME)
-            .map(|s| SequenceInputMode::try_from_str(s.as_str()))
-            .unwrap_or(Ok(SequenceInputMode::HiddenSuppressed))?,
+        delegate_to_first_layer: cfg.delegate_to_first_layer,
+        default_sequence_timeout: cfg.sequence_timeout,
+        default_sequence_input_mode: cfg.sequence_input_mode,
         ..Default::default()
     };
 
@@ -734,85 +720,12 @@ fn check_first_expr<'a>(
     Ok(exprs)
 }
 
-/// Parse configuration entries from an expression starting with defcfg.
-fn parse_defcfg(expr: &[SExpr]) -> Result<HashMap<String, String>> {
-    let non_bool_cfg_keys = &[
-        "sequence-timeout",
-        "sequence-input-mode",
-        "dynamic-macro-max-presses",
-        "linux-dev",
-        "linux-dev-names-include",
-        "linux-dev-names-exclude",
-        "linux-unicode-u-code",
-        "linux-unicode-termination",
-        "linux-x11-repeat-delay-rate",
-        "windows-altgr",
-        "windows-interception-mouse-hwid",
-    ];
-    let bool_cfg_keys = &[
-        "process-unmapped-keys",
-        "danger-enable-cmd",
-        "sequence-backtrack-modcancel",
-        "log-layer-changes",
-        "delegate-to-first-layer",
-        "linux-continue-if-no-devs-found",
-        "movemouse-smooth-diagonals",
-        "movemouse-inherit-accel-state",
-    ];
-    let mut cfg = HashMap::default();
-    let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
-    // Read k-v pairs from the configuration
-    loop {
-        let key = match exprs.next() {
-            Some(k) => k,
-            None => return Ok(cfg),
-        };
-        let val = match exprs.next() {
-            Some(v) => v,
-            None => bail_expr!(key, "Found a defcfg option missing a value"),
-        };
-        match (&key, &val) {
-            (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if non_bool_cfg_keys.contains(&&*k.t) {
-                    // nothing to do
-                } else if bool_cfg_keys.contains(&&*k.t) {
-                    if !BOOLEAN_VALUES.contains(&&*v.t) {
-                        bail_expr!(
-                            val,
-                            "The value for {} must be one of: {}",
-                            k.t,
-                            BOOLEAN_VALUES.join(", ")
-                        );
-                    }
-                } else {
-                    bail_expr!(key, "Unknown defcfg option {}", k.t);
-                }
-                if cfg
-                    .insert(
-                        k.t.trim_matches('"').to_owned(),
-                        v.t.trim_matches('"').to_owned(),
-                    )
-                    .is_some()
-                {
-                    bail_expr!(key, "Duplicate defcfg option {}", k.t);
-                }
-            }
-            (SExpr::List(_), _) => {
-                bail_expr!(key, "Lists are not allowed in defcfg");
-            }
-            (_, SExpr::List(_)) => {
-                bail_expr!(val, "Lists are not allowed in defcfg");
-            }
-        }
-    }
-}
-
 /// Parse custom keys from an expression starting with deflocalkeys.
 fn parse_deflocalkeys(
     def_local_keys_variant: &str,
     expr: &[SExpr],
 ) -> Result<HashMap<String, OsCode>> {
-    let mut cfg = HashMap::default();
+    let mut localkeys = HashMap::default();
     let mut exprs = check_first_expr(expr.iter(), def_local_keys_variant)?;
     // Read k-v pairs from the configuration
     while let Some(key_expr) = exprs.next() {
@@ -824,7 +737,7 @@ fn parse_deflocalkeys(
                 key_expr,
                 "Cannot use {key} in {def_local_keys_variant} because it is a default key name"
             );
-        } else if cfg.contains_key(key) {
+        } else if localkeys.contains_key(key) {
             bail_expr!(
                 key_expr,
                 "Duplicate {key} found in {def_local_keys_variant}"
@@ -847,18 +760,15 @@ fn parse_deflocalkeys(
             None => bail_expr!(key_expr, "Key without a number in {def_local_keys_variant}"),
         };
         log::debug!("custom mapping: {key} {}", osc.as_u16());
-        cfg.insert(key.to_owned(), osc);
+        localkeys.insert(key.to_owned(), osc);
     }
-    Ok(cfg)
+    Ok(localkeys)
 }
 
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
 /// a vec of the indexes in order. The length of the returned vec should be matched by the length
 /// of all layer declarations.
-fn parse_defsrc(
-    expr: &[SExpr],
-    defcfg: &HashMap<String, String>,
-) -> Result<(MappedKeys, Vec<usize>)> {
+fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = MappedKeys::default();
     let mut ordered_codes = Vec::new();
@@ -876,12 +786,8 @@ fn parse_defsrc(
         ordered_codes.push(oscode.into());
     }
 
-    let process_unmapped_keys = defcfg
-        .get("process-unmapped-keys")
-        .map(|s| TRUE_VALUES.contains(&s.to_lowercase().as_str()))
-        .unwrap_or(false);
-    log::info!("process unmapped keys: {process_unmapped_keys}");
-    if process_unmapped_keys {
+    log::info!("process unmapped keys: {}", defcfg.process_unmapped_keys);
+    if defcfg.process_unmapped_keys {
         for osc in 0..KEYS_IN_ROW as u16 {
             if let Some(osc) = OsCode::from_u16(osc) {
                 match KeyCode::from(osc) {
@@ -942,11 +848,11 @@ pub struct ParsedState {
     fake_keys: HashMap<String, (usize, &'static KanataAction)>,
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
+    vars: HashMap<String, SExpr>,
     is_cmd_enabled: bool,
     delegate_to_first_layer: bool,
     default_sequence_timeout: u16,
     default_sequence_input_mode: SequenceInputMode,
-    vars: HashMap<String, SExpr>,
     a: Arc<Allocations>,
 }
 
@@ -956,14 +862,9 @@ impl ParsedState {
     }
 }
 
-const SEQUENCE_TIMEOUT_CFG_NAME: &str = "sequence-timeout";
-const SEQUENCE_INPUT_MODE_CFG_NAME: &str = "sequence-input-mode";
-const SEQUENCE_TIMEOUT_ERR: &str = "sequence-timeout should be a number (1-65535)";
-const SEQUENCE_TIMEOUT_DEFAULT: u16 = 1000;
-const SEQUENCE_INPUT_MODE_DEFAULT: SequenceInputMode = SequenceInputMode::HiddenSuppressed;
-
 impl Default for ParsedState {
     fn default() -> Self {
+        let default_cfg = CfgOptions::default();
         Self {
             layer_exprs: Default::default(),
             aliases: Default::default(),
@@ -972,11 +873,11 @@ impl Default for ParsedState {
             defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
             fake_keys: Default::default(),
             chord_groups: Default::default(),
-            is_cmd_enabled: false,
-            delegate_to_first_layer: false,
             vars: Default::default(),
-            default_sequence_timeout: SEQUENCE_TIMEOUT_DEFAULT,
-            default_sequence_input_mode: SEQUENCE_INPUT_MODE_DEFAULT,
+            is_cmd_enabled: default_cfg.enable_cmd,
+            delegate_to_first_layer: default_cfg.delegate_to_first_layer,
+            default_sequence_timeout: default_cfg.sequence_timeout,
+            default_sequence_input_mode: default_cfg.sequence_input_mode,
             a: unsafe { Allocations::new() },
         }
     }
@@ -2360,14 +2261,13 @@ fn parse_fake_key_op_coord_action(
     };
     let action = ac_params[1]
         .atom(s.vars())
-        .map(|a| match a {
+        .and_then(|a| match a {
             "tap" => Some(FakeKeyAction::Tap),
             "press" => Some(FakeKeyAction::Press),
             "release" => Some(FakeKeyAction::Release),
             "toggle" => Some(FakeKeyAction::Toggle),
             _ => None,
         })
-        .flatten()
         .ok_or_else(|| {
             anyhow_expr!(
                 &ac_params[1],
@@ -2937,7 +2837,7 @@ fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
     let input_mode = if ac_params.len() > 1 {
         if let Some(Ok(input_mode)) = ac_params[1]
             .atom(s.vars())
-            .map(|config_str| SequenceInputMode::try_from_str(config_str))
+            .map(SequenceInputMode::try_from_str)
         {
             input_mode
         } else {
@@ -3106,13 +3006,12 @@ fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
     };
     let action = ac_params[1]
         .atom(s.vars())
-        .map(|a| match a {
+        .and_then(|a| match a {
             "tap" => Some(FakeKeyAction::Tap),
             "press" => Some(FakeKeyAction::Press),
             "release" => Some(FakeKeyAction::Release),
             _ => None,
         })
-        .flatten()
         .ok_or_else(|| {
             anyhow_expr!(
                 &ac_params[1],
