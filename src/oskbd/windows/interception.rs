@@ -2,7 +2,7 @@
 
 use std::io;
 
-use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, Stroke};
+use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, ScanCode, Stroke};
 
 use super::OsCodeWrapper;
 use crate::kanata::CalculatedMouseMove;
@@ -16,8 +16,14 @@ pub struct InputEvent(pub Stroke);
 
 impl InputEvent {
     fn from_oscode(code: OsCode, val: KeyValue) -> Self {
-        let mut stroke =
-            Stroke::try_from(OsCodeWrapper(code)).expect("kanata only sends mapped `OsCode`s");
+        let mut stroke = Stroke::try_from(OsCodeWrapper(code)).unwrap_or_else(|_| {
+            log::error!("Trying to send unmapped oscode '{code:?}', sending esc instead");
+            Stroke::Keyboard {
+                code: ScanCode::Esc,
+                state: KeyState::empty(),
+                information: 0,
+            }
+        });
         match &mut stroke {
             Stroke::Keyboard { state, .. } => {
                 state.set(
