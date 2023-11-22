@@ -707,7 +707,7 @@ a non-applicable operating system.
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
   linux-dev-names-exclude "Name 3:Name 4"
-  linux-continue-if-no-dev-found yes
+  linux-continue-if-no-devs-found yes
   linux-unicode-u-code v
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
