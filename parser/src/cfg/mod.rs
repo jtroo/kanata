@@ -1258,7 +1258,8 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
         SWITCH => parse_switch(&ac[1..], s),
         SEQUENCE => parse_sequence_start(&ac[1..], s),
-        UNMOD => parse_unmod(&ac[1..], s),
+        UNMOD => parse_unmod(UNMOD, &ac[1..], s),
+        UNSHIFT => parse_unmod(UNSHIFT, &ac[1..], s),
         _ => unreachable!(),
     }
 }
@@ -3033,19 +3034,35 @@ fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
     )))))
 }
 
-fn parse_unmod(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "unmod expects one param: key";
-    if ac_params.len() != 1 {
-        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
+fn parse_unmod(
+    unmod_type: &str,
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects expects at least one key name";
+    if ac_params.len() < 1 {
+        bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
-    let key = ac_params[0]
-        .atom(s.vars())
-        .and_then(str_to_oscode)
-        .ok_or_else(|| anyhow_expr!(&ac_params[0], "{ERR_MSG}"))?
-        .into();
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::Unmodded { key })),
-    )))
+    let mut keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {
+        keys.push(
+            param
+                .atom(s.vars())
+                .and_then(str_to_oscode)
+                .ok_or_else(|| anyhow_expr!(&ac_params[0], "{unmod_type} {ERR_MSG}"))?
+                .into(),
+        );
+        Ok::<_, ParseError>(keys)
+    })?;
+    keys.shrink_to_fit();
+    match unmod_type {
+        UNMOD => Ok(s.a.sref(Action::Custom(
+            s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys })),
+        ))),
+        UNSHIFT => Ok(s.a.sref(Action::Custom(
+            s.a.sref(s.a.sref_slice(CustomAction::Unshifted { keys })),
+        ))),
+        _ => panic!("Unknown unmod type {unmod_type}"),
+    }
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
@@ -3124,6 +3141,18 @@ fn add_key_output_from_action_to_key_pos(
                 add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
             }
         }
+        Action::Custom(cacs) => {
+            for ac in cacs.iter() {
+                match ac {
+                    CustomAction::Unmodded { keys } | CustomAction::Unshifted { keys } => {
+                        for k in keys.iter() {
+                            add_kc_output(osc_slot, k.into(), outputs, overrides);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
         Action::NoOp
         | Action::Trans
         | Action::Repeat
@@ -3132,8 +3161,7 @@ fn add_key_output_from_action_to_key_pos(
         | Action::Sequence { .. }
         | Action::RepeatableSequence { .. }
         | Action::CancelSequences
-        | Action::ReleaseState(_)
-        | Action::Custom(_) => {}
+        | Action::ReleaseState(_) => {}
     };
 }
 

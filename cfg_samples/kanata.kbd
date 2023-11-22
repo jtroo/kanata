@@ -466,6 +466,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; dead keys é (as opposed to using AltGr) that outputs É when shifted
   dké (macro (unmod ') e)
 
+  ;; unshift is like unmod but only releases shifts
+  ;; In ISO German QWERTZ, force unshifted symbols even if shift is held
+  de{ (unshift ralt 7)
+  de[ (unshift ralt 8)
+
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.

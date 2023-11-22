@@ -58,9 +58,10 @@ pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str = "dynamic-macro-record-stop-
 pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
 pub const UNMOD: &str = "unmod";
+pub const UNSHIFT: &str = "unshift";
 
 pub fn is_list_action(ac: &str) -> bool {
-    const LIST_ACTIONS: [&str; 56] = [
+    const LIST_ACTIONS: [&str; 57] = [
         LAYER_SWITCH,
         LAYER_TOGGLE,
         LAYER_WHILE_HELD,
@@ -117,6 +118,7 @@ pub fn is_list_action(ac: &str) -> bool {
         SWITCH,
         SEQUENCE,
         UNMOD,
+        UNSHIFT,
     ];
     LIST_ACTIONS.contains(&ac)
 }
