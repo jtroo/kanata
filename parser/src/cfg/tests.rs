@@ -1249,3 +1249,55 @@ fn parse_all_defcfg() {
     )
     .expect("succeeds");
 }
+
+#[test]
+fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a b)
+(deflayer base ( ))
+"#;
+    let err = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect_err("should err");
+    assert!(err
+        .msg
+        .contains("You can't put parentheses in deflayer directly"));
+}
+
+#[test]
+fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defsrc a b)
+(deflayer base \( \))
+"#;
+    let err = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect_err("should err");
+    assert!(err
+        .msg
+        .contains("Escaping shifted characters with `\\` is currently not supported"));
+}

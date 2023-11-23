@@ -825,19 +825,33 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
         if layer_indexes.get(&layer_name).is_some() {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
-        // Check if user tried to map parentheses by using them directly - `(` and `)`
+        // Check if user tried to use parentheses directly - `(` and `)`
         // or escaped them like in kmonad - `\(` and `\)`.
         for subexpr in subexprs {
-            if subexpr.list(None).is_some_and(|l| {
-                l.is_empty()
-                    || l.len() == 1
-                        && l.first()
-                            .is_some_and(|s| s.atom(None).is_some_and(|atom| atom == "\\"))
-            }) {
-                bail_expr!(subexpr, "If you meant to map keys to `(` and `)`, you have to use `S-0` and `S-9` instead (for US layout).\nSee https://github.com/jtroo/kanata/issues/163 for context.",)
+            if let Some(list) = subexpr.list(None) {
+                if list.is_empty() {
+                    bail_expr!(
+                        subexpr,
+                        "You can't put parentheses in deflayer directly, because they are special characters for delimiting lists.\n\
+                         To get `(` and `)` in US layout, you should use `S-9` and `S-0` respectively.\n\
+                         For more context, see: https://github.com/jtroo/kanata/issues/459"
+                    )
+                }
+                if list.len() == 1
+                    && list
+                        .first()
+                        .is_some_and(|s| s.atom(None).is_some_and(|atom| atom == "\\"))
+                {
+                    bail_expr!(
+                        subexpr,
+                        "Escaping shifted characters with `\\` is currently not supported in kanata.\n\
+                         To get `(` and `)` in US layout, you should use `S-9` and `S-0` respectively.\n\
+                         For more context, see: https://github.com/jtroo/kanata/issues/163"
+                    )
+                }
             }
         }
-        let num_actions = expr.t.len() - 1;
+        let num_actions = expr.t.len() - 2;
         if num_actions != expected_len {
             bail_span!(
                 expr,
