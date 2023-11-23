@@ -1233,7 +1233,7 @@ fn parse_all_defcfg() {
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
-)e
+)
 (defsrc a)
 (deflayer base a)
 "#;
@@ -1252,11 +1252,11 @@ fn parse_all_defcfg() {
 
 #[test]
 fn parse_unmod() {
-      let _lk = match CFG_PARSE_LOCK.lock() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-  
+
     let source = r#"
 (defsrc a b c d)
 (deflayer base
