@@ -264,6 +264,11 @@ language and the prior work of the awesome [keyberon crate](https://github.com/T
 exists.
 </details>
 
+## Community projects related to kanata
+
+- [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
+- [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi)
+
 ## Similar Projects
 
 - [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata (Linux, Windows, Mac)

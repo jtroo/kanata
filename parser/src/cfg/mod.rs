@@ -807,8 +807,10 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
 type LayerIndexes = HashMap<String, usize>;
 type Aliases = HashMap<String, &'static KanataAction>;
 
-/// Returns layer names and their indexes into the keyberon layout. This also checks that all
-/// layers have the same number of items as the defsrc. Also ensures that there are no duplicate layer names.
+/// Returns layer names and their indexes into the keyberon layout. This also checks that:
+/// - All layers have the same number of items as the defsrc,
+/// - There are no duplicate layer names
+/// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
 fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
     for (i, expr) in exprs.iter().enumerate() {
@@ -823,7 +825,33 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
         if layer_indexes.get(&layer_name).is_some() {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
-        let num_actions = subexprs.count();
+        // Check if user tried to use parentheses directly - `(` and `)`
+        // or escaped them like in kmonad - `\(` and `\)`.
+        for subexpr in subexprs {
+            if let Some(list) = subexpr.list(None) {
+                if list.is_empty() {
+                    bail_expr!(
+                        subexpr,
+                        "You can't put parentheses in deflayer directly, because they are special characters for delimiting lists.\n\
+                         To get `(` and `)` in US layout, you should use `S-9` and `S-0` respectively.\n\
+                         For more context, see: https://github.com/jtroo/kanata/issues/459"
+                    )
+                }
+                if list.len() == 1
+                    && list
+                        .first()
+                        .is_some_and(|s| s.atom(None).is_some_and(|atom| atom == "\\"))
+                {
+                    bail_expr!(
+                        subexpr,
+                        "Escaping shifted characters with `\\` is currently not supported in kanata.\n\
+                         To get `(` and `)` in US layout, you should use `S-9` and `S-0` respectively.\n\
+                         For more context, see: https://github.com/jtroo/kanata/issues/163"
+                    )
+                }
+            }
+        }
+        let num_actions = expr.t.len() - 2;
         if num_actions != expected_len {
             bail_span!(
                 expr,
