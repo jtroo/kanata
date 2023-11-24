@@ -1251,6 +1251,35 @@ fn parse_all_defcfg() {
 }
 
 #[test]
+fn parse_unmod() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a b c d)
+(deflayer base
+  (unmod a)
+  (unmod a b)
+  (unshift a)
+  (unshift a b)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect("succeeds");
+}
+
+#[test]
 fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,

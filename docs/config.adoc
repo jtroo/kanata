@@ -1716,17 +1716,28 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 === unmod[[unmod]]
 <<table-of-contents,Back to ToC>>
 
-The `unmod` action will release all modifiers temporarily and send a key.
+The `unmod` action will release all modifiers temporarily
+and send one or more keys.
 After the `unmod` key is released, the released modifiers are pressed again.
 The modifiers affected are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
+
+A variant of `unmod` is `unshift`.
+This action only releases the `lsft,rsft` keys.
+This can be useful for forcing unshifted keys while AltGr is still held.
 
 .Example:
 [source]
 ----
-;; holding shift and tapping a @um1 key will still output 1.
-um1 (unmod 1)
-;; dead keys é (as opposed to using AltGr) that outputs É when shifted
-dké (macro (unmod ') e)
+(defalias
+  ;; holding shift and tapping a @um1 key will still output 1.
+  um1 (unmod 1)
+  ;; dead keys é (as opposed to using AltGr) that outputs É when shifted
+  dké (macro (unmod ') e)
+
+  ;; In ISO German QWERTZ, force unshifted symbols even if shift is held
+  { (unshift ralt 7)
+  [ (unshift ralt 8)
+)
 ----
 
 [[cmd]]

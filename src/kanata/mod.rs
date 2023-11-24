@@ -157,8 +157,10 @@ pub struct Kanata {
     /// Configured maximum for dynamic macro recording, to protect users from themselves if they
     /// have accidentally left it on.
     dynamic_macro_max_presses: u16,
-    /// Keys that should be unmodded. If empty, any modifier should be cleared.
+    /// Keys that should be unmodded. If non-empty, any modifier should be cleared.
     unmodded_keys: Vec<KeyCode>,
+    /// Keys that should be unshifted. If non-empty, left+right shift keys should be cleared.
+    unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
 }
@@ -341,6 +343,7 @@ impl Kanata {
             ticks_since_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
+            unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
         })
     }
@@ -703,15 +706,27 @@ impl Kanata {
         match custom_event {
             CustomEvent::Press(custacts) => {
                 for custact in custacts.iter() {
-                    if let CustomAction::Unmodded { key } = custact {
-                        self.unmodded_keys.push(*key);
+                    match custact {
+                        CustomAction::Unmodded { keys } => {
+                            self.unmodded_keys.extend(keys);
+                        }
+                        CustomAction::Unshifted { keys } => {
+                            self.unshifted_keys.extend(keys);
+                        }
+                        _ => {}
                     }
                 }
             }
             CustomEvent::Release(custacts) => {
                 for custact in custacts.iter() {
-                    if let CustomAction::Unmodded { key } = custact {
-                        self.unmodded_keys.retain(|k| k != key);
+                    match custact {
+                        CustomAction::Unmodded { keys } => {
+                            self.unmodded_keys.retain(|k| !keys.contains(k));
+                        }
+                        CustomAction::Unshifted { keys } => {
+                            self.unshifted_keys.retain(|k| !keys.contains(k));
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -732,6 +747,10 @@ impl Kanata {
                 )
             });
             cur_keys.extend(self.unmodded_keys.iter());
+        }
+        if !self.unshifted_keys.is_empty() {
+            cur_keys.retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
+            cur_keys.extend(self.unshifted_keys.iter());
         }
 
         // Release keys that do not exist in the current state but exist in the previous state.
@@ -1290,6 +1309,7 @@ impl Kanata {
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::Unmodded { .. }
+                        | CustomAction::Unshifted { .. }
                         | CustomAction::CancelMacroOnRelease => {}
                     }
                 }
@@ -1435,10 +1455,14 @@ impl Kanata {
             // Prioritize checking the active layer in case a layer-while-held is active.
             if let Some(outputs_for_key) = self.key_outputs[current_layer].get(&event.code) {
                 log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
-                for kc in outputs_for_key.iter().rev() {
-                    if self.cur_keys.contains(&kc.into()) {
-                        log::debug!("repeat    {:?}", KeyCode::from(*kc));
-                        if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
+                for osc in outputs_for_key.iter().rev().copied() {
+                    let kc = osc.into();
+                    if self.cur_keys.contains(&kc)
+                        || self.unshifted_keys.contains(&kc)
+                        || self.unmodded_keys.contains(&kc)
+                    {
+                        log::debug!("repeat    {:?}", KeyCode::from(osc));
+                        if let Err(e) = self.kbd_out.write_key(osc, KeyValue::Repeat) {
                             bail!("could not write key {:?}", e)
                         }
                         return Ok(());
@@ -1460,10 +1484,14 @@ impl Kanata {
                 Some(v) => v,
             };
         log::debug!("key outs for default layer: {outputs_for_key:?};");
-        for kc in outputs_for_key.iter().rev() {
-            if self.cur_keys.contains(&kc.into()) {
-                log::debug!("repeat    {:?}", KeyCode::from(*kc));
-                if let Err(e) = self.kbd_out.write_key(*kc, KeyValue::Repeat) {
+        for osc in outputs_for_key.iter().rev().copied() {
+            let kc = osc.into();
+            if self.cur_keys.contains(&kc)
+                || self.unshifted_keys.contains(&kc)
+                || self.unmodded_keys.contains(&kc)
+            {
+                log::debug!("repeat    {:?}", KeyCode::from(osc));
+                if let Err(e) = self.kbd_out.write_key(osc, KeyValue::Repeat) {
                     bail!("could not write key {:?}", e)
                 }
                 return Ok(());
