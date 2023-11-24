@@ -22,8 +22,8 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
-use crate::action::*;
 use crate::key_code::KeyCode;
+use crate::{action::*, multikey_buffer::MultiKeyBuffer};
 use arraydeque::ArrayDeque;
 use heapless::Vec;
 
@@ -84,6 +84,7 @@ where
     pub action_queue: ActionQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
     pub historical_keys: ArrayDeque<[KeyCode; 8], arraydeque::behavior::Wrapping>,
+    rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
 }
 
 /// An event on the key matrix.
@@ -219,6 +220,18 @@ impl<'a, T: 'a> State<'a, T> {
         match self {
             NormalKey { keycode, .. } => Some(*keycode),
             FakeKey { keycode } => Some(*keycode),
+            _ => None,
+        }
+    }
+    fn keycode_in_coords(&self, coords: &OneShotCoords) -> Option<KeyCode> {
+        match self {
+            NormalKey { keycode, coord, .. } => {
+                if coords.contains(coord) {
+                    Some(*keycode)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -680,6 +693,8 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     }
 }
 
+type OneShotCoords = ArrayDeque<[KCoord; ONE_SHOT_MAX_ACTIVE], arraydeque::behavior::Wrapping>;
+
 #[derive(Debug, Copy, Clone)]
 pub struct SequenceState<'a, T: 'a> {
     cur_event: Option<SequenceEvent<'a, T>>,
@@ -730,9 +745,10 @@ impl OneShotState {
         }
     }
 
-    fn handle_press(&mut self, key: OneShotHandlePressKey) {
+    fn handle_press(&mut self, key: OneShotHandlePressKey) -> OneShotCoords {
+        let mut oneshot_coords = ArrayDeque::new();
         if self.keys.is_empty() {
-            return;
+            return oneshot_coords;
         }
         match key {
             OneShotHandlePressKey::OneShotKey(pressed_coord) => {
@@ -743,6 +759,7 @@ impl OneShotState {
                 ) && self.keys.contains(&pressed_coord)
                 {
                     self.release_on_next_tick = true;
+                    oneshot_coords.extend(self.keys.iter().copied());
                 }
                 self.released_keys.retain(|coord| *coord != pressed_coord);
             }
@@ -755,8 +772,10 @@ impl OneShotState {
                 } else {
                     let _ = self.other_pressed_keys.push_back(pressed_coord);
                 }
+                oneshot_coords.extend(self.keys.iter().copied());
             }
-        }
+        };
+        oneshot_coords
     }
 
     /// Returns true if the caller should handle the release normally and false otherwise.
@@ -857,6 +876,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             action_queue: ArrayDeque::new(),
             rpt_action: None,
             historical_keys: ArrayDeque::new(),
+            rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
         }
     }
     /// Iterates on the key codes of the current state.
@@ -1331,11 +1351,29 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     keycode,
                     flags: NormalKeyFlags(0),
                 });
+                let mut oneshot_coords = ArrayDeque::new();
                 if !is_oneshot {
-                    self.oneshot
+                    oneshot_coords = self
+                        .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
-                self.rpt_action = Some(action);
+                if oneshot_coords.is_empty() {
+                    self.rpt_action = Some(action);
+                } else {
+                    self.rpt_action = None;
+                    unsafe {
+                        self.rpt_multikey_key_buffer.clear();
+                        for kc in self
+                            .states
+                            .iter()
+                            .filter_map(|kc| State::keycode_in_coords(kc, &oneshot_coords))
+                        {
+                            self.rpt_multikey_key_buffer.push(kc);
+                        }
+                        self.rpt_multikey_key_buffer.push(keycode);
+                        self.rpt_action = Some(self.rpt_multikey_key_buffer.get_ref());
+                    }
+                }
             }
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.coord = coord;
@@ -1359,11 +1397,32 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         }),
                     });
                 }
+
+                let mut oneshot_coords = ArrayDeque::new();
                 if !is_oneshot {
-                    self.oneshot
+                    oneshot_coords = self
+                        .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
-                self.rpt_action = Some(action);
+                if oneshot_coords.is_empty() {
+                    self.rpt_action = Some(action);
+                } else {
+                    self.rpt_action = None;
+                    unsafe {
+                        self.rpt_multikey_key_buffer.clear();
+                        for kc in self
+                            .states
+                            .iter()
+                            .filter_map(|s| s.keycode_in_coords(&oneshot_coords))
+                        {
+                            self.rpt_multikey_key_buffer.push(kc);
+                        }
+                        for &keycode in *v {
+                            self.rpt_multikey_key_buffer.push(keycode);
+                        }
+                        self.rpt_action = Some(&*self.rpt_multikey_key_buffer.get_ref());
+                    }
+                }
             }
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
