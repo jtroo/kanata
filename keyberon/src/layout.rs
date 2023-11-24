@@ -1413,7 +1413,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         for kc in self
                             .states
                             .iter()
-                            .filter_map(|kc| State::keycode_in_coords(kc, &oneshot_coords))
+                            .filter_map(|s| s.keycode_in_coords(&oneshot_coords))
                         {
                             self.rpt_multikey_key_buffer.push(kc);
                         }
