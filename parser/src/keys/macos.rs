@@ -2,11 +2,15 @@
 
 use super::OsCode;
 impl OsCode {
-    pub(super) const fn as_u16_linux(self) -> u16 {
-        self as u16
+
+    // pls also check the windows file
+
+    pub(super) const fn as_u16_macos(self) -> u16 {
+        //self as u16;
+        22
     }
 
-    pub(super) const fn from_u16_linux(code: u16) -> Option<Self> {
+    pub(super) const fn from_u16_macos(code: u16) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),
             1 => Some(OsCode::KEY_ESC),
@@ -755,19 +759,6 @@ impl OsCode {
             744 => Some(OsCode::BTN_MAX),
             767 => Some(OsCode::KEY_MAX),
             _ => None,
-        }
-    }
-}
-
-use crate::custom_action::Btn;
-impl From<Btn> for OsCode {
-    fn from(btn: Btn) -> Self {
-        match btn {
-            Btn::Left => OsCode::BTN_LEFT,
-            Btn::Right => OsCode::BTN_RIGHT,
-            Btn::Mid => OsCode::BTN_MIDDLE,
-            Btn::Forward => OsCode::BTN_EXTRA,
-            Btn::Backward => OsCode::BTN_SIDE,
         }
     }
 }
