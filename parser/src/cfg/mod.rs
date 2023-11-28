@@ -1814,6 +1814,15 @@ fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParsedState)
     }
 }
 
+#[test]
+fn test_collect_strings() {
+    let params = "(gah (squish squash (splish splosh) bah) dah)";
+    let params = sexpr::parse(params, "noexist").unwrap();
+    let mut strings = vec![];
+    collect_strings(&params[0].t, &mut strings, &ParsedState::default());
+    assert_eq!(&strings, &["gah", "squish", "squash", "splish", "splosh", "bah", "dah"]);
+}
+
 fn parse_one_shot(
     ac_params: &[SExpr],
     s: &ParsedState,
