@@ -9,6 +9,8 @@ use rustc_hash::FxHashMap as HashMap;
 mod linux;
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
 mod windows;
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+mod macos;
 
 mod mappings;
 pub use mappings::*;
@@ -18,6 +20,7 @@ pub use mappings::*;
 pub enum Platform {
     Win,
     Linux,
+    Macos,
 }
 
 #[cfg(target_os = "unknown")]
@@ -29,6 +32,7 @@ impl OsCode {
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => self.as_u16_windows(),
             Platform::Linux => self.as_u16_linux(),
+            Platform::Macos => self.as_u16_macos(),
         };
 
         #[cfg(target_os = "linux")]
@@ -36,6 +40,9 @@ impl OsCode {
 
         #[cfg(target_os = "windows")]
         return self.as_u16_windows();
+
+        #[cfg(target_os = "macos")]
+        return self.as_u16_macos();
     }
 
     pub fn from_u16(code: u16) -> Option<Self> {
@@ -43,6 +50,7 @@ impl OsCode {
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => OsCode::from_u16_windows(code),
             Platform::Linux => OsCode::from_u16_linux(code),
+            Platform::Macos => OsCode::from_u16_macos(code),
         };
 
         #[cfg(target_os = "linux")]
@@ -50,6 +58,9 @@ impl OsCode {
 
         #[cfg(target_os = "windows")]
         return OsCode::from_u16_windows(code);
+
+        #[cfg(target_os = "macos")]
+        return OsCode::from_u16_macos(code);
     }
 }
 
