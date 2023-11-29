@@ -1,6 +1,5 @@
 //! Module for `MultiKeyBuffer`.
 
-use std::ptr::null_mut;
 use std::{array, slice};
 
 use crate::action::{Action, ONE_SHOT_MAX_ACTIVE};
@@ -32,7 +31,10 @@ impl<'a, T> MultiKeyBuffer<'a, T> {
         Self {
             buf: array::from_fn(|_| KeyCode::Escape),
             size: 0,
-            ptr: Box::leak(Box::new(slice::from_raw_parts(null_mut(), 0))),
+            ptr: Box::leak(Box::new(slice::from_raw_parts(
+                core::ptr::NonNull::dangling().as_ptr(),
+                0,
+            ))),
             ac: Box::leak(Box::new(Action::NoOp)),
         }
     }
