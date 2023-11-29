@@ -1330,3 +1330,39 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
         .msg
         .contains("Escaping shifted characters with `\\` is currently not supported"));
 }
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(deflayer base a)
+(defvar
+    x blah
+    y (nyoom)
+    z (squish squash (splish splosh))
+)
+(defalias
+    1 (cmd hello world)
+    2 (cmd (hello world))
+    3 (cmd $x $y ($z))
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect("succeeds");
+}

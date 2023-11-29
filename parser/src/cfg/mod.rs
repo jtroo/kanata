@@ -1783,26 +1783,47 @@ fn parse_cmd(
     s: &ParsedState,
     cmd_type: CmdType,
 ) -> Result<&'static KanataAction> {
-    const ERR_STR: &str = "cmd expects one or more strings";
+    const ERR_STR: &str = "cmd expects at least one string";
     if !s.is_cmd_enabled {
-        bail!("cmd is not enabled but cmd action is specified somewhere");
+        bail!("cmd is not enabled, but cmd is in the configuration");
     }
-    if ac_params.is_empty() {
+    let mut cmd = vec![];
+    collect_strings(ac_params, &mut cmd, s);
+    if cmd.is_empty() {
         bail!(ERR_STR);
     }
-    let cmd = ac_params
-        .iter()
-        .try_fold(vec![], |mut v, p| -> Result<Vec<_>> {
-            p.atom(s.vars())
-                .map(|a| v.push(a.trim_matches('"').to_owned()))
-                .ok_or_else(|| anyhow_expr!(p, "{}, lists are not allowed", ERR_STR))?;
-            Ok(v)
-        })?;
     Ok(s.a
         .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
             CmdType::Standard => CustomAction::Cmd(cmd),
             CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
         })))))
+}
+
+/// Recurse through all levels of list nesting and collect into a flat list of strings.
+/// Recursion is DFS, which matches left-to-right reading of the strings as they appear,
+/// if everything was on a single line.
+fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParsedState) {
+    for param in params {
+        if let Some(a) = param.atom(s.vars()) {
+            strings.push(a.into());
+        } else {
+            // unwrap: this must be a list, since it's not an atom.
+            let l = param.list(s.vars()).unwrap();
+            collect_strings(l, strings, s);
+        }
+    }
+}
+
+#[test]
+fn test_collect_strings() {
+    let params = "(gah (squish squash (splish splosh) bah) dah)";
+    let params = sexpr::parse(params, "noexist").unwrap();
+    let mut strings = vec![];
+    collect_strings(&params[0].t, &mut strings, &ParsedState::default());
+    assert_eq!(
+        &strings,
+        &["gah", "squish", "squash", "splish", "splosh", "bah", "dah"]
+    );
 }
 
 fn parse_one_shot(
