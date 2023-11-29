@@ -3089,7 +3089,7 @@ fn parse_unmod(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "expects expects at least one key name";
-    if ac_params.len() < 1 {
+    if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
     let mut keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {

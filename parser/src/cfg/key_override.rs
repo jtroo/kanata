@@ -15,6 +15,12 @@ pub struct OverrideStates {
     oscs_to_add: Vec<OsCode>,
 }
 
+impl Default for OverrideStates {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OverrideStates {
     pub fn new() -> Self {
         Self {
