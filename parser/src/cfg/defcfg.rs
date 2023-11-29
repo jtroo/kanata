@@ -127,7 +127,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-dev-names-exclude" => {
-                        cfg.linux_dev_names_exclude = Some(parse_linux_dev(val)?);
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_dev_names_exclude = Some(parse_linux_dev(val)?);
+                        }
                     }
                     "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
