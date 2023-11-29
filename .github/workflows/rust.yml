@@ -45,9 +45,9 @@ jobs:
         workspaces: ./
     - run: rustup component add clippy
     - name: Run tests
-      run: cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon
+      run: cargo test --all
     - name: Run tests all features
-      run: cargo test --all-features --verbose -p kanata -p kanata-parser -p kanata-keyberon
+      run: cargo test --all --all-features
     - name: Run clippy no features
       run: cargo clippy --all -- -D warnings
     - name: Run clippy all features
@@ -67,9 +67,9 @@ jobs:
         workspaces: ./
     - run: rustup component add clippy
     - name: Run tests
-      run: cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon
+      run: cargo test --all
     - name: Run tests all features
-      run: cargo test --all-features --verbose -p kanata -p kanata-parser -p kanata-keyberon
+      run: cargo test --all --all-features
     - name: Run clippy no features
       run: cargo clippy --all -- -D warnings
     - name: Run clippy all features

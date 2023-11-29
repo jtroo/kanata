@@ -1805,7 +1805,7 @@ fn parse_cmd(
 fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParsedState) {
     for param in params {
         if let Some(a) = param.atom(s.vars()) {
-            strings.push(a.into());
+            strings.push(a.trim_matches('"').to_owned());
         } else {
             // unwrap: this must be a list, since it's not an atom.
             let l = param.list(s.vars()).unwrap();
@@ -1816,13 +1816,13 @@ fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParsedState)
 
 #[test]
 fn test_collect_strings() {
-    let params = "(gah (squish squash (splish splosh) bah) dah)";
+    let params = r#"(gah (squish "squash" (splish splosh) "bah mah") dah)"#;
     let params = sexpr::parse(params, "noexist").unwrap();
     let mut strings = vec![];
     collect_strings(&params[0].t, &mut strings, &ParsedState::default());
     assert_eq!(
         &strings,
-        &["gah", "squish", "squash", "splish", "splosh", "bah", "dah"]
+        &["gah", "squish", "squash", "splish", "splosh", "bah mah", "dah"]
     );
 }
 
@@ -3089,7 +3089,7 @@ fn parse_unmod(
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "expects expects at least one key name";
-    if ac_params.len() < 1 {
+    if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
     let mut keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {

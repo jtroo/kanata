@@ -1420,7 +1420,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         for &keycode in *v {
                             self.rpt_multikey_key_buffer.push(keycode);
                         }
-                        self.rpt_action = Some(&*self.rpt_multikey_key_buffer.get_ref());
+                        self.rpt_action = Some(self.rpt_multikey_key_buffer.get_ref());
                     }
                 }
             }
