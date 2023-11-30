@@ -107,7 +107,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "sequence-input-mode" => {
                         cfg.sequence_input_mode =
-                            SequenceInputMode::try_from_str(&v.t.trim_matches('"'))
+                            SequenceInputMode::try_from_str(v.t.trim_matches('"'))
                                 .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
                     }
                     k @ "dynamic-macro-max-presses" => {
@@ -300,7 +300,7 @@ fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
 fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u16> {
     let start = if exclude_zero { 1 } else { 0 };
     match &expr {
-        SExpr::Atom(v) => Ok(str::parse::<u16>(&v.t.trim_matches('"'))
+        SExpr::Atom(v) => Ok(str::parse::<u16>(v.t.trim_matches('"'))
             .ok()
             .and_then(|u| {
                 if exclude_zero && u == 0 {
