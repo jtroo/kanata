@@ -1,114 +1,88 @@
 //! Contains the input/output code for keyboards on Macos.
 
-use rustc_hash::FxHashMap as HashMap;
+use super::*;
 use crate::kanata::CalculatedMouseMove;
+use crate::oskbd::KeyEvent;
+use anyhow::Error;
+use driverkit::KeyEvent as dKeyEvent;
+use driverkit::{send_key, wait_key};
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::*;
+use rustc_hash::FxHashMap as HashMap;
 use std::convert::TryFrom;
 use std::io;
-use super::*;
-use crate::oskbd::KeyEvent;
-use kanata_parser::keys::*;
-use kanata_parser::custom_action::*;
-
 
 //  see the whole discove devices thing, might be needed here for macos
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
-struct InputEvent {}
 
-
-pub struct KbdIn {
-
-    // devices: HashMap<Token, (Device, String)>,
-    // /// Some(_) if devices are explicitly listed, otherwise None.
-    // missing_device_paths: Option<Vec<String>>,
-    // poll: Poll,
-    // events: Events,
-    // token_counter: usize,
-    // /// stored to prevent dropping
-    // _inotify: Inotify,
-    // include_names: Option<Vec<String>>,
-    // exclude_names: Option<Vec<String>>,
-
+struct InputEvent {
+    value: u64,
+    page: u32,
+    code: u32,
 }
+
+pub struct KbdIn {}
 
 impl KbdIn {
-    pub fn new(
-
-        // dev_paths: &[String],
-        // continue_if_no_devices: bool,
-        // include_names: Option<Vec<String>>,
-        // exclude_names: Option<Vec<String>>,
-
-    ) -> Result<Self, io::Error> {
-        // my understanding is this is our grab
-        // see windows' kbdin::new()
-        todo!();
+    pub fn new() -> Result<Self, io::Error> {
+        Ok(Self {})
     }
 
-    pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
-        // looks like read event
-        todo!();
-    }
+    // pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
+    //     // looks like read event
+    //     let mut event = dKeyEvent { value: 0, page: 0, code: 0, };
+    //     let _key = wait_key(&mut event);
+    //     Ok(InputEvent {
+    //         value: event.value,
+    //         code: (event.page << 8 | event.code) as u16
+    //     })
+    // }
 }
-
-
 
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
+
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        // i think here we convert from dext keyevent to kanata's
-        todo!();
+        if let Some(oscode) = OsCode::from_u16((item.page < 8 | item.code) as u16) {
+            Ok(KeyEvent {
+                code: oscode,
+                value: if item.value == 1 {
+                    KeyValue::Press
+                } else {
+                    KeyValue::Release
+                },
+            })
+        } else {
+            Err(())
+        }
     }
 }
 
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
-        // here from kanata's keyevent to dext's
-        todo!();
+        let val = match item.value {
+            KeyValue::Press => 1,
+            _ => 0,
+        };
+        InputEvent {
+            value: val,
+            code: item.code.as_u16(),
+        }
     }
 }
 
 pub struct KbdOut {
-
-
     // check windows, i dont think anything is needed here
-
-    // device: uinput::VirtualDevice,
-    // accumulated_scroll: u16,
-    // accumulated_hscroll: u16,
-    // #[allow(dead_code)] // stored here for persistence+cleanup on exit
-    // symlink: Option<Symlink>,
-    // raw_buf: Vec<InputEvent>,
-    // pub unicode_termination: Cell<UnicodeTermination>,
-    // pub unicode_u_code: Cell<OsCode>,
-
 }
-
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-
         // i dont think there's much to do!
-        todo!();
-
-        Ok(KbdOut {
-            // device,
-            // accumulated_scroll: 0,
-            // accumulated_hscroll: 0,
-            // symlink,
-            // raw_buf: vec![],
-            //
-            // // historically was the only option, so make Enter the default
-            // unicode_termination: Cell::new(UnicodeTermination::Enter),
-            //
-            // // historically was the only option, so make KEY_U the default
-            // unicode_u_code: Cell::new(OsCode::KEY_U),
-        })
-
+        Ok(KbdOut {})
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        // don't know what is this tbh, maybe reflect input event as is? 
         todo!();
     }
 
@@ -159,5 +133,4 @@ impl KbdOut {
     pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         Ok(())
     }
-
 }

@@ -104,6 +104,7 @@ version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
 dependencies = [
+ "jobserver",
  "libc",
 ]
 
@@ -186,6 +187,13 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys",
+]
+
+[[package]]
+name = "driverkit"
+version = "0.1.0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -364,12 +372,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
+name = "jobserver"
+version = "0.1.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "kanata"
 version = "1.5.0-prerelease-3"
 dependencies = [
  "anyhow",
  "clap",
  "dirs",
+ "driverkit",
  "encode_unicode",
  "evdev",
  "inotify",
