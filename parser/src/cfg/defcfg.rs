@@ -362,7 +362,7 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
 fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
     match expr {
         SExpr::Atom(a) => Ok(a.t.trim_matches('"')),
-        SExpr::List(_) => bail_expr!(expr, "{label} value can't be list"),
+        SExpr::List(_) => bail_expr!(expr, "The value for {label} can't be a list"),
     }
 }
 
