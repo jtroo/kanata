@@ -3,6 +3,7 @@ members = [
     "./",
     "parser",
     "keyberon",
+    "driverkit"
 ]
 
 [package]

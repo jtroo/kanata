@@ -41,6 +41,17 @@ fn parse_jtroo() {
 }
 
 #[test]
+fn parse_psycher() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from("/Users/psycher/scripts/kanata.kbd")).unwrap();
+    //let cfg = new_from_file(&std::path::PathBuf::from("/Users/psycher/scripts/kanata.kbd")).unwrap();
+    //assert_eq!(cfg.layer_info.len(), 16);
+}
+
+#[test]
 fn parse_f13_f24() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,

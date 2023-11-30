@@ -17,33 +17,40 @@ impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
-        let keeb = "Karabiner DriverKit VirtualHIDKeyboard 1.7.0";
-        grab_kb(keeb);
+        let mut kb = match KbdIn::new() {
+            Ok(kbd_in) => kbd_in,
+            Err(e) => bail!("failed to open keyboard device(s): {}", e)
+        };
 
         loop {
-            let mut event = dKeyEvent {
-                value: 0,
-                page: 0,
-                code: 0,
-            };
-            let _key = wait_key(&mut event);
 
-            let mut key_event: KeyEvent = KeyEvent {
-                code: { OsCode::from_u16((event.page << 8 | event.code) as u16).unwrap() },
-                value: {
-                    match event.value {
-                        0 => KeyValue::Release,
-                        1 => KeyValue::Press,
-                        _ => KeyValue::Release,
+            //let mut event = dKeyEvent { value: 0, page: 0, code: 0, };
+            //let _key = wait_key(&mut event);
+
+            let event = kb.read().map_err(|e| anyhow!("failed read: {}", e))?;
+
+            //let mut key_event = KeyEvent::try_from(event).map_err(|e| anyhow!("failed read: {:?}", e))?;
+
+            let mut key_event = match KeyEvent::try_from(event) {
+                    Ok(ev) => ev,
+                    _ => {
+                        // Pass-through non-key and non-scroll events
+                        let mut kanata = kanata.lock();
+                        kanata.kbd_out.write(event.clone()).map_err(|e| anyhow!("failed write: {}", e))?;
+                        continue;
                     }
-                },
-            };
+                };
 
             check_for_exit(&key_event);
 
             if !MAPPED_KEYS.lock().contains(&key_event.code) {
                 log::debug!("{key_event:?} is not mapped");
-                send_key(&mut event);
+                let mut kanata = kanata.lock();
+                kanata
+                    .kbd_out
+                    .write(event.clone())
+                    .map_err(|e| anyhow!("failed write: {}", e))?;
+                //send_key(&mut event.to_driverkit_event()  );
                 continue;
             }
 

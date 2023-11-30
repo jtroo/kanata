@@ -263,10 +263,10 @@ fn parse_cfg(
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
+#[cfg(target_os = "macos")]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
-#[cfg(any(target_os = "macos", target_os = "unknown"))]
-const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
 
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg_raw(
@@ -404,6 +404,7 @@ pub fn parse_cfg_raw_string(
         "deflocalkeys-win",
         "deflocalkeys-wintercept",
         "deflocalkeys-linux",
+        "deflocalkeys-macos",
     ] {
         if let Some(result) = root_exprs
             .iter()
@@ -635,6 +636,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defsrc"
                 | "deflayer"
                 | "defoverrides"
+                | "deflocalkeys-macos"
                 | "deflocalkeys-linux"
                 | "deflocalkeys-win"
                 | "deflocalkeys-wintercept"
