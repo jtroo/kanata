@@ -462,6 +462,11 @@ The default length limit is 128 keys.
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
 
+NOTE: The format for specifying multiple Linux devices has changed in v1.5.0 to a new one, based on lists.
+The old format is no longer presented in this document, but it will still work for compatibility reasons. To see the old specification
+https://github.com/jtroo/kanata/blob/v1.5.0-prerelease-3/docs/config.adoc#linux-only-linux-dev[click here].
+
+
 By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices from the
 `/dev/input` directories using the `linux-dev` configuration.
@@ -474,24 +479,28 @@ to intercept them all. However, you may specify exact keyboard devices from the
 )
 ----
 
-If you want to specify multiple keyboards, you can separate the paths with a
-colon `+:+`.
+If a path contains space characters you should surround it with `"` characters.
+Otherwise it's optional to use them.
 
 .Example:
 [source]
 ----
 (defcfg
-  linux-dev /dev/input/dev1:/dev/input/dev2
+  linux-dev "/dev/input/input device 1"
 )
 ----
 
-Due to using the colon to separate devices, if you have a device with colons in
-its file name, you must escape those colons with backslashes:
+To specify multiple devices, use a list - simply surrond all items between
+`(` and `)`. Each list item should be separated by a space or a newline.
 
+.Example:
 [source]
 ----
 (defcfg
-  linux-dev /dev/input/path-to\:device
+  linux-dev (
+    /dev/input/dev1
+    /dev/input/dev2
+  )
 )
 ----
 
@@ -514,7 +523,10 @@ registering /dev/input/eventX: "Name goes here"
 [source]
 ----
 (defcfg
-  linux-dev-names-include "Device 1 name:Device \:2\: Name"
+  linux-dev-names-include (
+    "Device name 1"
+    "Device name 2"
+  )
 )
 ----
 
@@ -526,7 +538,7 @@ In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be excluded.
 This option is parsed identically to `linux-dev`.
 
-The `linux-dev-names-include and `linux-dev-names-exclude` options
+The `linux-dev-names-include` and `linux-dev-names-exclude` options
 are not mutually exclusive
 but in practice it probably only makes sense to use one and not both.
 
@@ -534,7 +546,10 @@ but in practice it probably only makes sense to use one and not both.
 [source]
 ----
 (defcfg
-  linux-dev-names-exclude "Device 1 name:Device \:2\: Name"
+  linux-dev-names-exclude (
+    "Device Name 1"
+    "Device Name 2"
+  )
 )
 ----
 
@@ -704,9 +719,9 @@ a non-applicable operating system.
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes
   dynamic-macro-max-presses 1000
-  linux-dev /dev/input/dev1:/dev/input/dev2
-  linux-dev-names-include "Name 1:Name 2"
-  linux-dev-names-exclude "Name 3:Name 4"
+  linux-dev (/dev/input/dev1 /dev/input/dev2)
+  linux-dev-names-include ("Name 1" "Name 2")
+  linux-dev-names-exclude ("Name 3" "Name 4")
   linux-continue-if-no-devs-found yes
   linux-unicode-u-code v
   linux-unicode-termination space
