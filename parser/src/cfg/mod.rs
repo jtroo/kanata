@@ -247,6 +247,7 @@ fn parse_cfg(
     Overrides,
 )> {
     let mut s = ParsedState::default();
+    println!("nano here {:?}", p);
     let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
     Ok((
         cfg,
@@ -465,6 +466,8 @@ pub fn parse_cfg_raw_string(
             "Exactly one defsrc is allowed, found more. Delete the extras."
         )
     }
+
+    println!("ATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT");
     let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
     let deflayer_filter = gen_first_atom_filter("deflayer");
@@ -524,6 +527,10 @@ pub fn parse_cfg_raw_string(
         .zip(layer_strings)
         .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
         .collect();
+
+    for i in &layer_info {
+        println!("nano layer name: {}\ntext: {}", i.name, i.cfg_text)
+    }
 
     let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order, s);
 
@@ -788,6 +795,7 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
         }
         mkeys.insert(oscode);
         ordered_codes.push(oscode.into());
+        println!("inserting {:#x} bin: {} for {}", ordered_codes.last().unwrap(), ordered_codes.last().unwrap(), &s);
     }
 
     log::info!("process unmapped keys: {}", defcfg.process_unmapped_keys);
@@ -1953,6 +1961,7 @@ fn parse_defsrc_layer(
     // These can be default (empty) since the defsrc layer definitely won't use it.
     for (i, ac) in defsrc.iter().skip(1).enumerate() {
         let ac = parse_action(ac, s).expect("prechecked valid key names");
+        //println!("nano, layer len: {}\ni: {}\nmorder len: {}\nmorder i: {}", layer.len(), i, mapping_order.len(), mapping_order[i]);
         layer[mapping_order[i]] = *ac;
     }
     layer
