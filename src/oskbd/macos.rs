@@ -1,13 +1,13 @@
 //! Contains the input/output code for keyboards on Macos.
 use super::*;
-use crate::kanata::CalculatedMouseMove;
-use crate::oskbd::KeyEvent;
-use driverkit::KeyEvent as dKeyEvent;
-use driverkit::{grab_kb, send_key, wait_key};
-use kanata_parser::custom_action::*;
-use kanata_parser::keys::*;
-use std::convert::TryFrom;
 use std::io;
+use std::convert::TryFrom;
+use crate::oskbd::KeyEvent;
+use kanata_parser::keys::*;
+use kanata_parser::custom_action::*;
+use driverkit::KeyEvent as dKeyEvent;
+use crate::kanata::CalculatedMouseMove;
+use driverkit::{grab_kb, send_key, wait_key};
 
 //  see the whole discove devices thing, might be needed here for macos
 
@@ -28,11 +28,14 @@ impl InputEvent {
             code: event.code,
         }
     }
-    pub fn to_driverkit_event(self) -> dKeyEvent {
-        dKeyEvent {
-            value: self.value,
-            page: self.page,
-            code: self.code,
+}
+
+impl From<InputEvent> for dKeyEvent {
+    fn from(event: InputEvent) -> Self {
+        Self {
+            value: event.value,
+            page: event.page,
+            code: event.code,
         }
     }
 }
@@ -62,9 +65,6 @@ impl KbdIn {
         };
 
         wait_key(&mut event);
-        // while event.value > 1 || event.code == 0xffffffff || event.code == 0x1 {
-        //     wait_key(&mut event);
-        // }
 
         Ok(InputEvent::new(event))
     }
@@ -84,7 +84,6 @@ impl TryFrom<InputEvent> for KeyEvent {
                     KeyValue::Press
                 } else {
                     KeyValue::Release
-                    // nano: error on other than 1 or 0
                 },
             })
         } else {
@@ -101,7 +100,6 @@ impl TryFrom<KeyEvent> for InputEvent {
             let val = match item.value {
                 KeyValue::Press => 1,
                 _ => 0,
-                // nano what about tap (mouse) and repeat?
             };
             Ok(InputEvent {
                 value: val,
@@ -114,18 +112,15 @@ impl TryFrom<KeyEvent> for InputEvent {
     }
 }
 
-pub struct KbdOut {
-    // check windows, i dont think anything is needed here
-}
+pub struct KbdOut {}
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        // i dont think there's much to do!
         Ok(KbdOut {})
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        let mut devent = event.to_driverkit_event();
+        let mut devent = event.into();
         let _sent = send_key(&mut devent);
 
         log::debug!("Attempting to write {event:?} {devent:?}");
@@ -170,7 +165,6 @@ impl KbdOut {
     /// Send using C-S-u + <unicode hex number> + spc
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
         log::debug!("sending unicode {c}");
-        // used, check windows and linux
         todo!();
     }
 

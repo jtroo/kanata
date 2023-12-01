@@ -2,179 +2,629 @@ use super::OsCode;
 
 // because the parser can't handle oscode u16 values > 767
 // and macos has fucked up key coding (page and code)
-pub struct PageCode{
+pub struct PageCode {
     pub page: u32,
-    pub code: u32
+    pub code: u32,
 }
 
 impl TryFrom<OsCode> for PageCode {
     type Error = &'static str;
     fn try_from(item: OsCode) -> Result<Self, Self::Error> {
         match item {
-            OsCode::KEY_RESERVED => Ok( PageCode { page: 0xFF, code: 0xFF } ),
-            OsCode::KEY_A => Ok( PageCode { page: 0x07, code: 0x04 } ),
-            OsCode::KEY_B => Ok( PageCode { page: 0x07, code: 0x05 } ),
-            OsCode::KEY_C => Ok( PageCode { page: 0x07, code: 0x06 } ),
-            OsCode::KEY_D => Ok( PageCode { page: 0x07, code: 0x07 } ),
-            OsCode::KEY_E => Ok( PageCode { page: 0x07, code: 0x08 } ),
-            OsCode::KEY_F => Ok( PageCode { page: 0x07, code: 0x09 } ),
-            OsCode::KEY_G => Ok( PageCode { page: 0x07, code: 0x0A } ),
-            OsCode::KEY_H => Ok( PageCode { page: 0x07, code: 0x0B } ),
-            OsCode::KEY_I => Ok( PageCode { page: 0x07, code: 0x0C } ),
-            OsCode::KEY_J => Ok( PageCode { page: 0x07, code: 0x0D } ),
-            OsCode::KEY_K => Ok( PageCode { page: 0x07, code: 0x0E } ),
-            OsCode::KEY_L => Ok( PageCode { page: 0x07, code: 0x0F } ),
-            OsCode::KEY_M => Ok( PageCode { page: 0x07, code: 0x10 } ),
-            OsCode::KEY_N => Ok( PageCode { page: 0x07, code: 0x11 } ),
-            OsCode::KEY_O => Ok( PageCode { page: 0x07, code: 0x12 } ),
-            OsCode::KEY_P => Ok( PageCode { page: 0x07, code: 0x13 } ),
-            OsCode::KEY_Q => Ok( PageCode { page: 0x07, code: 0x14 } ),
-            OsCode::KEY_R => Ok( PageCode { page: 0x07, code: 0x15 } ),
-            OsCode::KEY_S => Ok( PageCode { page: 0x07, code: 0x16 } ),
-            OsCode::KEY_T => Ok( PageCode { page: 0x07, code: 0x17 } ),
-            OsCode::KEY_U => Ok( PageCode { page: 0x07, code: 0x18 } ),
-            OsCode::KEY_V => Ok( PageCode { page: 0x07, code: 0x19 } ),
-            OsCode::KEY_W => Ok( PageCode { page: 0x07, code: 0x1A } ),
-            OsCode::KEY_X => Ok( PageCode { page: 0x07, code: 0x1B } ),
-            OsCode::KEY_Y => Ok( PageCode { page: 0x07, code: 0x1C } ),
-            OsCode::KEY_Z => Ok( PageCode { page: 0x07, code: 0x1D } ),
-            OsCode::KEY_1 => Ok( PageCode { page: 0x07, code: 0x1E } ),
-            OsCode::KEY_2 => Ok( PageCode { page: 0x07, code: 0x1F } ),
-            OsCode::KEY_3 => Ok( PageCode { page: 0x07, code: 0x20 } ),
-            OsCode::KEY_4 => Ok( PageCode { page: 0x07, code: 0x21 } ),
-            OsCode::KEY_5 => Ok( PageCode { page: 0x07, code: 0x22 } ),
-            OsCode::KEY_6 => Ok( PageCode { page: 0x07, code: 0x23 } ),
-            OsCode::KEY_7 => Ok( PageCode { page: 0x07, code: 0x24 } ),
-            OsCode::KEY_8 => Ok( PageCode { page: 0x07, code: 0x25 } ),
-            OsCode::KEY_9 => Ok( PageCode { page: 0x07, code: 0x26 } ),
-            OsCode::KEY_0 => Ok( PageCode { page: 0x07, code: 0x27 } ),
-            OsCode::KEY_ENTER => Ok( PageCode { page: 0x07, code: 0x28 } ),
-            OsCode::KEY_ESC => Ok( PageCode { page: 0x07, code: 0x29 } ),
-            OsCode::KEY_BACKSPACE => Ok( PageCode { page: 0x07, code: 0x2A } ),
-            OsCode::KEY_TAB => Ok( PageCode { page: 0x07, code: 0x2B } ),
-            OsCode::KEY_SPACE => Ok( PageCode { page: 0x07, code: 0x2C } ),
-            OsCode::KEY_MINUS => Ok( PageCode { page: 0x07, code: 0x2D } ),
-            OsCode::KEY_EQUAL => Ok( PageCode { page: 0x07, code: 0x2E } ),
-            OsCode::KEY_LEFTBRACE => Ok( PageCode { page: 0x07, code: 0x2F } ),
-            OsCode::KEY_RIGHTBRACE => Ok( PageCode { page: 0x07, code: 0x30 } ),
-            OsCode::KEY_BACKSLASH => Ok( PageCode { page: 0x07, code: 0x31 } ),
+            OsCode::KEY_RESERVED => Ok(PageCode {
+                page: 0xFF,
+                code: 0xFF,
+            }),
+            OsCode::KEY_A => Ok(PageCode {
+                page: 0x07,
+                code: 0x04,
+            }),
+            OsCode::KEY_B => Ok(PageCode {
+                page: 0x07,
+                code: 0x05,
+            }),
+            OsCode::KEY_C => Ok(PageCode {
+                page: 0x07,
+                code: 0x06,
+            }),
+            OsCode::KEY_D => Ok(PageCode {
+                page: 0x07,
+                code: 0x07,
+            }),
+            OsCode::KEY_E => Ok(PageCode {
+                page: 0x07,
+                code: 0x08,
+            }),
+            OsCode::KEY_F => Ok(PageCode {
+                page: 0x07,
+                code: 0x09,
+            }),
+            OsCode::KEY_G => Ok(PageCode {
+                page: 0x07,
+                code: 0x0A,
+            }),
+            OsCode::KEY_H => Ok(PageCode {
+                page: 0x07,
+                code: 0x0B,
+            }),
+            OsCode::KEY_I => Ok(PageCode {
+                page: 0x07,
+                code: 0x0C,
+            }),
+            OsCode::KEY_J => Ok(PageCode {
+                page: 0x07,
+                code: 0x0D,
+            }),
+            OsCode::KEY_K => Ok(PageCode {
+                page: 0x07,
+                code: 0x0E,
+            }),
+            OsCode::KEY_L => Ok(PageCode {
+                page: 0x07,
+                code: 0x0F,
+            }),
+            OsCode::KEY_M => Ok(PageCode {
+                page: 0x07,
+                code: 0x10,
+            }),
+            OsCode::KEY_N => Ok(PageCode {
+                page: 0x07,
+                code: 0x11,
+            }),
+            OsCode::KEY_O => Ok(PageCode {
+                page: 0x07,
+                code: 0x12,
+            }),
+            OsCode::KEY_P => Ok(PageCode {
+                page: 0x07,
+                code: 0x13,
+            }),
+            OsCode::KEY_Q => Ok(PageCode {
+                page: 0x07,
+                code: 0x14,
+            }),
+            OsCode::KEY_R => Ok(PageCode {
+                page: 0x07,
+                code: 0x15,
+            }),
+            OsCode::KEY_S => Ok(PageCode {
+                page: 0x07,
+                code: 0x16,
+            }),
+            OsCode::KEY_T => Ok(PageCode {
+                page: 0x07,
+                code: 0x17,
+            }),
+            OsCode::KEY_U => Ok(PageCode {
+                page: 0x07,
+                code: 0x18,
+            }),
+            OsCode::KEY_V => Ok(PageCode {
+                page: 0x07,
+                code: 0x19,
+            }),
+            OsCode::KEY_W => Ok(PageCode {
+                page: 0x07,
+                code: 0x1A,
+            }),
+            OsCode::KEY_X => Ok(PageCode {
+                page: 0x07,
+                code: 0x1B,
+            }),
+            OsCode::KEY_Y => Ok(PageCode {
+                page: 0x07,
+                code: 0x1C,
+            }),
+            OsCode::KEY_Z => Ok(PageCode {
+                page: 0x07,
+                code: 0x1D,
+            }),
+            OsCode::KEY_1 => Ok(PageCode {
+                page: 0x07,
+                code: 0x1E,
+            }),
+            OsCode::KEY_2 => Ok(PageCode {
+                page: 0x07,
+                code: 0x1F,
+            }),
+            OsCode::KEY_3 => Ok(PageCode {
+                page: 0x07,
+                code: 0x20,
+            }),
+            OsCode::KEY_4 => Ok(PageCode {
+                page: 0x07,
+                code: 0x21,
+            }),
+            OsCode::KEY_5 => Ok(PageCode {
+                page: 0x07,
+                code: 0x22,
+            }),
+            OsCode::KEY_6 => Ok(PageCode {
+                page: 0x07,
+                code: 0x23,
+            }),
+            OsCode::KEY_7 => Ok(PageCode {
+                page: 0x07,
+                code: 0x24,
+            }),
+            OsCode::KEY_8 => Ok(PageCode {
+                page: 0x07,
+                code: 0x25,
+            }),
+            OsCode::KEY_9 => Ok(PageCode {
+                page: 0x07,
+                code: 0x26,
+            }),
+            OsCode::KEY_0 => Ok(PageCode {
+                page: 0x07,
+                code: 0x27,
+            }),
+            OsCode::KEY_ENTER => Ok(PageCode {
+                page: 0x07,
+                code: 0x28,
+            }),
+            OsCode::KEY_ESC => Ok(PageCode {
+                page: 0x07,
+                code: 0x29,
+            }),
+            OsCode::KEY_BACKSPACE => Ok(PageCode {
+                page: 0x07,
+                code: 0x2A,
+            }),
+            OsCode::KEY_TAB => Ok(PageCode {
+                page: 0x07,
+                code: 0x2B,
+            }),
+            OsCode::KEY_SPACE => Ok(PageCode {
+                page: 0x07,
+                code: 0x2C,
+            }),
+            OsCode::KEY_MINUS => Ok(PageCode {
+                page: 0x07,
+                code: 0x2D,
+            }),
+            OsCode::KEY_EQUAL => Ok(PageCode {
+                page: 0x07,
+                code: 0x2E,
+            }),
+            OsCode::KEY_LEFTBRACE => Ok(PageCode {
+                page: 0x07,
+                code: 0x2F,
+            }),
+            OsCode::KEY_RIGHTBRACE => Ok(PageCode {
+                page: 0x07,
+                code: 0x30,
+            }),
+            OsCode::KEY_BACKSLASH => Ok(PageCode {
+                page: 0x07,
+                code: 0x31,
+            }),
             // KeyboardNonUSPound                => 0x0732, todo
-            OsCode::KEY_SEMICOLON => Ok( PageCode { page: 0x07, code: 0x33 } ),
-            OsCode::KEY_APOSTROPHE => Ok( PageCode { page: 0x07, code: 0x34 } ),
-            OsCode::KEY_GRAVE => Ok( PageCode { page: 0x07, code: 0x35 } ),
-            OsCode::KEY_COMMA => Ok( PageCode { page: 0x07, code: 0x36 } ),
-            OsCode::KEY_DOT => Ok( PageCode { page: 0x07, code: 0x37 } ),
-            OsCode::KEY_SLASH => Ok( PageCode { page: 0x07, code: 0x38 } ),
-            OsCode::KEY_CAPSLOCK => Ok( PageCode { page: 0x07, code: 0x39 } ),
-            OsCode::KEY_F1 => Ok( PageCode { page: 0x07, code: 0x3A } ),
-            OsCode::KEY_F2 => Ok( PageCode { page: 0x07, code: 0x3B } ),
-            OsCode::KEY_F3 => Ok( PageCode { page: 0x07, code: 0x3C } ),
-            OsCode::KEY_F4 => Ok( PageCode { page: 0x07, code: 0x3D } ),
-            OsCode::KEY_F5 => Ok( PageCode { page: 0x07, code: 0x3E } ),
-            OsCode::KEY_F6 => Ok( PageCode { page: 0x07, code: 0x3F } ),
-            OsCode::KEY_F7 => Ok( PageCode { page: 0x07, code: 0x40 } ),
-            OsCode::KEY_F8 => Ok( PageCode { page: 0x07, code: 0x41 } ),
-            OsCode::KEY_F9 => Ok( PageCode { page: 0x07, code: 0x42 } ),
-            OsCode::KEY_F10 => Ok( PageCode { page: 0x07, code: 0x43 } ),
-            OsCode::KEY_F11 => Ok( PageCode { page: 0x07, code: 0x44 } ),
-            OsCode::KEY_F12 => Ok( PageCode { page: 0x07, code: 0x45 } ),
-            OsCode::KEY_PRINT => Ok( PageCode { page: 0x07, code: 0x46 } ),
-            OsCode::KEY_SCROLLLOCK => Ok( PageCode { page: 0x07, code: 0x47 } ),
-            OsCode::KEY_PAUSE => Ok( PageCode { page: 0x07, code: 0x48 } ),
-            OsCode::KEY_INSERT => Ok( PageCode { page: 0x07, code: 0x49 } ),
-            OsCode::KEY_HOME => Ok( PageCode { page: 0x07, code: 0x4A } ),
-            OsCode::KEY_PAGEUP => Ok( PageCode { page: 0x07, code: 0x4B } ),
-            OsCode::KEY_DELETE => Ok( PageCode { page: 0x07, code: 0x4C } ),
-            OsCode::KEY_END => Ok( PageCode { page: 0x07, code: 0x4D } ),
-            OsCode::KEY_PAGEDOWN => Ok( PageCode { page: 0x07, code: 0x4E } ),
-            OsCode::KEY_RIGHT => Ok( PageCode { page: 0x07, code: 0x4F } ),
-            OsCode::KEY_LEFT => Ok( PageCode { page: 0x07, code: 0x50 } ),
-            OsCode::KEY_DOWN => Ok( PageCode { page: 0x07, code: 0x51 } ),
-            OsCode::KEY_UP => Ok( PageCode { page: 0x07, code: 0x52 } ),
-            OsCode::KEY_NUMLOCK => Ok( PageCode { page: 0x07, code: 0x53 } ),
-            OsCode::KEY_KPSLASH => Ok( PageCode { page: 0x07, code: 0x54 } ),
-            OsCode::KEY_KPASTERISK => Ok( PageCode { page: 0x07, code: 0x55 } ),
-            OsCode::KEY_KPMINUS => Ok( PageCode { page: 0x07, code: 0x56 } ),
-            OsCode::KEY_KPPLUS => Ok( PageCode { page: 0x07, code: 0x57 } ),
-            OsCode::KEY_KPENTER => Ok( PageCode { page: 0x07, code: 0x58 } ),
-            OsCode::KEY_KP1 => Ok( PageCode { page: 0x07, code: 0x59 } ),
-            OsCode::KEY_KP2 => Ok( PageCode { page: 0x07, code: 0x5A } ),
-            OsCode::KEY_KP3 => Ok( PageCode { page: 0x07, code: 0x5B } ),
-            OsCode::KEY_KP4 => Ok( PageCode { page: 0x07, code: 0x5C } ),
-            OsCode::KEY_KP5 => Ok( PageCode { page: 0x07, code: 0x5D } ),
-            OsCode::KEY_KP6 => Ok( PageCode { page: 0x07, code: 0x5E } ),
-            OsCode::KEY_KP7 => Ok( PageCode { page: 0x07, code: 0x5F } ),
-            OsCode::KEY_KP8 => Ok( PageCode { page: 0x07, code: 0x60 } ),
-            OsCode::KEY_KP9 => Ok( PageCode { page: 0x07, code: 0x61 } ),
-            OsCode::KEY_KP0 => Ok( PageCode { page: 0x07, code: 0x62 } ),
-            OsCode::KEY_KPDOT => Ok( PageCode { page: 0x07, code: 0x63 } ),
-            OsCode::KEY_102ND => Ok( PageCode { page: 0x07, code: 0x64 } ), //KeyboardNonUSBackslash
+            OsCode::KEY_SEMICOLON => Ok(PageCode {
+                page: 0x07,
+                code: 0x33,
+            }),
+            OsCode::KEY_APOSTROPHE => Ok(PageCode {
+                page: 0x07,
+                code: 0x34,
+            }),
+            OsCode::KEY_GRAVE => Ok(PageCode {
+                page: 0x07,
+                code: 0x35,
+            }),
+            OsCode::KEY_COMMA => Ok(PageCode {
+                page: 0x07,
+                code: 0x36,
+            }),
+            OsCode::KEY_DOT => Ok(PageCode {
+                page: 0x07,
+                code: 0x37,
+            }),
+            OsCode::KEY_SLASH => Ok(PageCode {
+                page: 0x07,
+                code: 0x38,
+            }),
+            OsCode::KEY_CAPSLOCK => Ok(PageCode {
+                page: 0x07,
+                code: 0x39,
+            }),
+            OsCode::KEY_F1 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3A,
+            }),
+            OsCode::KEY_F2 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3B,
+            }),
+            OsCode::KEY_F3 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3C,
+            }),
+            OsCode::KEY_F4 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3D,
+            }),
+            OsCode::KEY_F5 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3E,
+            }),
+            OsCode::KEY_F6 => Ok(PageCode {
+                page: 0x07,
+                code: 0x3F,
+            }),
+            OsCode::KEY_F7 => Ok(PageCode {
+                page: 0x07,
+                code: 0x40,
+            }),
+            OsCode::KEY_F8 => Ok(PageCode {
+                page: 0x07,
+                code: 0x41,
+            }),
+            OsCode::KEY_F9 => Ok(PageCode {
+                page: 0x07,
+                code: 0x42,
+            }),
+            OsCode::KEY_F10 => Ok(PageCode {
+                page: 0x07,
+                code: 0x43,
+            }),
+            OsCode::KEY_F11 => Ok(PageCode {
+                page: 0x07,
+                code: 0x44,
+            }),
+            OsCode::KEY_F12 => Ok(PageCode {
+                page: 0x07,
+                code: 0x45,
+            }),
+            OsCode::KEY_PRINT => Ok(PageCode {
+                page: 0x07,
+                code: 0x46,
+            }),
+            OsCode::KEY_SCROLLLOCK => Ok(PageCode {
+                page: 0x07,
+                code: 0x47,
+            }),
+            OsCode::KEY_PAUSE => Ok(PageCode {
+                page: 0x07,
+                code: 0x48,
+            }),
+            OsCode::KEY_INSERT => Ok(PageCode {
+                page: 0x07,
+                code: 0x49,
+            }),
+            OsCode::KEY_HOME => Ok(PageCode {
+                page: 0x07,
+                code: 0x4A,
+            }),
+            OsCode::KEY_PAGEUP => Ok(PageCode {
+                page: 0x07,
+                code: 0x4B,
+            }),
+            OsCode::KEY_DELETE => Ok(PageCode {
+                page: 0x07,
+                code: 0x4C,
+            }),
+            OsCode::KEY_END => Ok(PageCode {
+                page: 0x07,
+                code: 0x4D,
+            }),
+            OsCode::KEY_PAGEDOWN => Ok(PageCode {
+                page: 0x07,
+                code: 0x4E,
+            }),
+            OsCode::KEY_RIGHT => Ok(PageCode {
+                page: 0x07,
+                code: 0x4F,
+            }),
+            OsCode::KEY_LEFT => Ok(PageCode {
+                page: 0x07,
+                code: 0x50,
+            }),
+            OsCode::KEY_DOWN => Ok(PageCode {
+                page: 0x07,
+                code: 0x51,
+            }),
+            OsCode::KEY_UP => Ok(PageCode {
+                page: 0x07,
+                code: 0x52,
+            }),
+            OsCode::KEY_NUMLOCK => Ok(PageCode {
+                page: 0x07,
+                code: 0x53,
+            }),
+            OsCode::KEY_KPSLASH => Ok(PageCode {
+                page: 0x07,
+                code: 0x54,
+            }),
+            OsCode::KEY_KPASTERISK => Ok(PageCode {
+                page: 0x07,
+                code: 0x55,
+            }),
+            OsCode::KEY_KPMINUS => Ok(PageCode {
+                page: 0x07,
+                code: 0x56,
+            }),
+            OsCode::KEY_KPPLUS => Ok(PageCode {
+                page: 0x07,
+                code: 0x57,
+            }),
+            OsCode::KEY_KPENTER => Ok(PageCode {
+                page: 0x07,
+                code: 0x58,
+            }),
+            OsCode::KEY_KP1 => Ok(PageCode {
+                page: 0x07,
+                code: 0x59,
+            }),
+            OsCode::KEY_KP2 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5A,
+            }),
+            OsCode::KEY_KP3 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5B,
+            }),
+            OsCode::KEY_KP4 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5C,
+            }),
+            OsCode::KEY_KP5 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5D,
+            }),
+            OsCode::KEY_KP6 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5E,
+            }),
+            OsCode::KEY_KP7 => Ok(PageCode {
+                page: 0x07,
+                code: 0x5F,
+            }),
+            OsCode::KEY_KP8 => Ok(PageCode {
+                page: 0x07,
+                code: 0x60,
+            }),
+            OsCode::KEY_KP9 => Ok(PageCode {
+                page: 0x07,
+                code: 0x61,
+            }),
+            OsCode::KEY_KP0 => Ok(PageCode {
+                page: 0x07,
+                code: 0x62,
+            }),
+            OsCode::KEY_KPDOT => Ok(PageCode {
+                page: 0x07,
+                code: 0x63,
+            }),
+            OsCode::KEY_102ND => Ok(PageCode {
+                page: 0x07,
+                code: 0x64,
+            }), //KeyboardNonUSBackslash
             // KeyboardApplication               => 0x0765, todo
-            OsCode::KEY_POWER => Ok( PageCode { page: 0x07, code: 0x66 } ),
-            OsCode::KEY_KPEQUAL => Ok( PageCode { page: 0x07, code: 0x67 } ),
-            OsCode::KEY_F13 => Ok( PageCode { page: 0x07, code: 0x68 } ),
-            OsCode::KEY_F14 => Ok( PageCode { page: 0x07, code: 0x69 } ),
-            OsCode::KEY_F15 => Ok( PageCode { page: 0x07, code: 0x6A } ),
-            OsCode::KEY_F16 => Ok( PageCode { page: 0x07, code: 0x6B } ),
-            OsCode::KEY_F17 => Ok( PageCode { page: 0x07, code: 0x6C } ),
-            OsCode::KEY_F18 => Ok( PageCode { page: 0x07, code: 0x6D } ),
-            OsCode::KEY_F19 => Ok( PageCode { page: 0x07, code: 0x6E } ),
-            OsCode::KEY_F20 => Ok( PageCode { page: 0x07, code: 0x6F } ),
-            OsCode::KEY_F21 => Ok( PageCode { page: 0x07, code: 0x70 } ),
-            OsCode::KEY_F22 => Ok( PageCode { page: 0x07, code: 0x71 } ),
-            OsCode::KEY_F23 => Ok( PageCode { page: 0x07, code: 0x72 } ),
-            OsCode::KEY_F24 => Ok( PageCode { page: 0x07, code: 0x73 } ),
+            OsCode::KEY_POWER => Ok(PageCode {
+                page: 0x07,
+                code: 0x66,
+            }),
+            OsCode::KEY_KPEQUAL => Ok(PageCode {
+                page: 0x07,
+                code: 0x67,
+            }),
+            OsCode::KEY_F13 => Ok(PageCode {
+                page: 0x07,
+                code: 0x68,
+            }),
+            OsCode::KEY_F14 => Ok(PageCode {
+                page: 0x07,
+                code: 0x69,
+            }),
+            OsCode::KEY_F15 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6A,
+            }),
+            OsCode::KEY_F16 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6B,
+            }),
+            OsCode::KEY_F17 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6C,
+            }),
+            OsCode::KEY_F18 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6D,
+            }),
+            OsCode::KEY_F19 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6E,
+            }),
+            OsCode::KEY_F20 => Ok(PageCode {
+                page: 0x07,
+                code: 0x6F,
+            }),
+            OsCode::KEY_F21 => Ok(PageCode {
+                page: 0x07,
+                code: 0x70,
+            }),
+            OsCode::KEY_F22 => Ok(PageCode {
+                page: 0x07,
+                code: 0x71,
+            }),
+            OsCode::KEY_F23 => Ok(PageCode {
+                page: 0x07,
+                code: 0x72,
+            }),
+            OsCode::KEY_F24 => Ok(PageCode {
+                page: 0x07,
+                code: 0x73,
+            }),
             // KeyboardExecute                   => 0x0774,  todo
-            OsCode::KEY_HELP => Ok( PageCode { page: 0x07, code: 0x75 } ),
-            OsCode::KEY_MENU => Ok( PageCode { page: 0x07, code: 0x76 } ),
-            OsCode::KEY_SELECT => Ok( PageCode { page: 0x07, code: 0x77 } ),
-            OsCode::KEY_STOP => Ok( PageCode { page: 0x07, code: 0x78 } ),
-            OsCode::KEY_AGAIN => Ok( PageCode { page: 0x07, code: 0x79 } ),
-            OsCode::KEY_UNDO => Ok( PageCode { page: 0x07, code: 0x7A } ),
-            OsCode::KEY_CUT => Ok( PageCode { page: 0x07, code: 0x7B } ),
-            OsCode::KEY_COPY => Ok( PageCode { page: 0x07, code: 0x7C } ),
-            OsCode::KEY_PASTE => Ok( PageCode { page: 0x07, code: 0x7D } ),
-            OsCode::KEY_FIND => Ok( PageCode { page: 0x07, code: 0x7E } ),
-            OsCode::KEY_MUTE => Ok( PageCode { page: 0x0C, code: 0xE2 } ),       // 0x077f
-            OsCode::KEY_VOLUMEUP => Ok( PageCode { page: 0x0C, code: 0xE9 } ),   // 0x0780
-            OsCode::KEY_VOLUMEDOWN => Ok( PageCode { page: 0x0C, code: 0xEA } ), // 0x0781
+            OsCode::KEY_HELP => Ok(PageCode {
+                page: 0x07,
+                code: 0x75,
+            }),
+            OsCode::KEY_MENU => Ok(PageCode {
+                page: 0x07,
+                code: 0x76,
+            }),
+            OsCode::KEY_SELECT => Ok(PageCode {
+                page: 0x07,
+                code: 0x77,
+            }),
+            OsCode::KEY_STOP => Ok(PageCode {
+                page: 0x07,
+                code: 0x78,
+            }),
+            OsCode::KEY_AGAIN => Ok(PageCode {
+                page: 0x07,
+                code: 0x79,
+            }),
+            OsCode::KEY_UNDO => Ok(PageCode {
+                page: 0x07,
+                code: 0x7A,
+            }),
+            OsCode::KEY_CUT => Ok(PageCode {
+                page: 0x07,
+                code: 0x7B,
+            }),
+            OsCode::KEY_COPY => Ok(PageCode {
+                page: 0x07,
+                code: 0x7C,
+            }),
+            OsCode::KEY_PASTE => Ok(PageCode {
+                page: 0x07,
+                code: 0x7D,
+            }),
+            OsCode::KEY_FIND => Ok(PageCode {
+                page: 0x07,
+                code: 0x7E,
+            }),
+            OsCode::KEY_MUTE => Ok(PageCode {
+                page: 0x0C,
+                code: 0xE2,
+            }), // 0x077f
+            OsCode::KEY_VOLUMEUP => Ok(PageCode {
+                page: 0x0C,
+                code: 0xE9,
+            }), // 0x0780
+            OsCode::KEY_VOLUMEDOWN => Ok(PageCode {
+                page: 0x0C,
+                code: 0xEA,
+            }), // 0x0781
             //KeyboardLockingCapsLock   => 82, todo
             //KeyboardLockingNumLock    => 83, todo
             //KeyboardLockingScrollLock => 84, todo
-            OsCode::KEY_KPCOMMA => Ok( PageCode { page: 0x07, code: 0x85 } ),
-            OsCode::KEY_ALTERASE => Ok( PageCode { page: 0x07, code: 0x99 } ),
-            OsCode::KEY_CANCEL => Ok( PageCode { page: 0x07, code: 0x9B } ),
-            OsCode::KEY_CLEAR => Ok( PageCode { page: 0x07, code: 0x9C } ),
-            OsCode::KEY_LEFTCTRL => Ok( PageCode { page: 0x07, code: 0xE0 } ),
-            OsCode::KEY_LEFTSHIFT => Ok( PageCode { page: 0x07, code: 0xE1 } ),
-            OsCode::KEY_LEFTALT => Ok( PageCode { page: 0x07, code: 0xE2 } ),
-            OsCode::KEY_LEFTMETA => Ok( PageCode { page: 0x07, code: 0xE3 } ),
-            OsCode::KEY_RIGHTCTRL => Ok( PageCode { page: 0x07, code: 0xE4 } ),
-            OsCode::KEY_RIGHTSHIFT => Ok( PageCode { page: 0x07, code: 0xE5 } ),
-            OsCode::KEY_RIGHTALT => Ok( PageCode { page: 0x07, code: 0xE6 } ),
-            OsCode::KEY_RIGHTMETA => Ok( PageCode { page: 0x07, code: 0xE7 } ),
+            OsCode::KEY_KPCOMMA => Ok(PageCode {
+                page: 0x07,
+                code: 0x85,
+            }),
+            OsCode::KEY_ALTERASE => Ok(PageCode {
+                page: 0x07,
+                code: 0x99,
+            }),
+            OsCode::KEY_CANCEL => Ok(PageCode {
+                page: 0x07,
+                code: 0x9B,
+            }),
+            OsCode::KEY_CLEAR => Ok(PageCode {
+                page: 0x07,
+                code: 0x9C,
+            }),
+            OsCode::KEY_LEFTCTRL => Ok(PageCode {
+                page: 0x07,
+                code: 0xE0,
+            }),
+            OsCode::KEY_LEFTSHIFT => Ok(PageCode {
+                page: 0x07,
+                code: 0xE1,
+            }),
+            OsCode::KEY_LEFTALT => Ok(PageCode {
+                page: 0x07,
+                code: 0xE2,
+            }),
+            OsCode::KEY_LEFTMETA => Ok(PageCode {
+                page: 0x07,
+                code: 0xE3,
+            }),
+            OsCode::KEY_RIGHTCTRL => Ok(PageCode {
+                page: 0x07,
+                code: 0xE4,
+            }),
+            OsCode::KEY_RIGHTSHIFT => Ok(PageCode {
+                page: 0x07,
+                code: 0xE5,
+            }),
+            OsCode::KEY_RIGHTALT => Ok(PageCode {
+                page: 0x07,
+                code: 0xE6,
+            }),
+            OsCode::KEY_RIGHTMETA => Ok(PageCode {
+                page: 0x07,
+                code: 0xE7,
+            }),
             // ??
             //OsCode::KEY_POWER           => Ok( PageCode { page: 0x0C, code: 0x30 } ),
-            OsCode::KEY_SLEEP => Ok( PageCode { page: 0x0C, code: 0x32 } ),
-            OsCode::KEY_FORWARD => Ok( PageCode { page: 0x0C, code: 0xB3 } ),
-            OsCode::KEY_REWIND => Ok( PageCode { page: 0x0C, code: 0xB4 } ),
-            OsCode::KEY_NEXTSONG => Ok( PageCode { page: 0x0C, code: 0xB5 } ),
-            OsCode::KEY_PREVIOUSSONG => Ok( PageCode { page: 0x0C, code: 0xB6 } ),
-            OsCode::KEY_PLAYPAUSE => Ok( PageCode { page: 0x0C, code: 0xCD } ),
-            OsCode::KEY_FN => Ok( PageCode { page: 0x0C, code: 0x03 } ),
-            OsCode::KEY_BRIGHTNESSUP => Ok( PageCode { page: 0x0C, code: 0x6F } ),
-            OsCode::KEY_BRIGHTNESSDOWN => Ok( PageCode { page: 0x0C, code: 0x70 } ),
+            OsCode::KEY_SLEEP => Ok(PageCode {
+                page: 0x0C,
+                code: 0x32,
+            }),
+            OsCode::KEY_FORWARD => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB3,
+            }),
+            OsCode::KEY_REWIND => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB4,
+            }),
+            OsCode::KEY_NEXTSONG => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB5,
+            }),
+            OsCode::KEY_PREVIOUSSONG => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB6,
+            }),
+            OsCode::KEY_PLAYPAUSE => Ok(PageCode {
+                page: 0x0C,
+                code: 0xCD,
+            }),
+            OsCode::KEY_FN => Ok(PageCode {
+                page: 0x0C,
+                code: 0x03,
+            }),
+            OsCode::KEY_BRIGHTNESSUP => Ok(PageCode {
+                page: 0x0C,
+                code: 0x6F,
+            }),
+            OsCode::KEY_BRIGHTNESSDOWN => Ok(PageCode {
+                page: 0x0C,
+                code: 0x70,
+            }),
             // OsCode::KEY_BRIGHTNESSUP    => Ok( PageCode { page: 0x0C, code: 0x04 } ),
             // OsCode::KEY_BRIGHTNESSDOWN  => Ok( PageCode { page: 0x0C, code: 0x05 } ),
             // OsCode::KEY_KBDILLUMTOGGLE  => Ok( PageCode { page: 0x0C, code: 0x07 } ),
             // OsCode::KEY_KBDILLUMUP      => Ok( PageCode { page: 0x0C, code: 0x08 } ),
             // OsCode::KEY_KBDILLUMDOWN    => Ok( PageCode { page: 0x0C, code: 0x09 } ),
-            OsCode::KEY_KBDILLUMTOGGLE => Ok( PageCode { page: 0xFF, code: 0x07 } ),
-            OsCode::KEY_KBDILLUMUP => Ok( PageCode { page: 0xFF, code: 0x08 } ),
-            OsCode::KEY_KBDILLUMDOWN => Ok( PageCode { page: 0xFF, code: 0x09 } ),
+            OsCode::KEY_KBDILLUMTOGGLE => Ok(PageCode {
+                page: 0xFF,
+                code: 0x07,
+            }),
+            OsCode::KEY_KBDILLUMUP => Ok(PageCode {
+                page: 0xFF,
+                code: 0x08,
+            }),
+            OsCode::KEY_KBDILLUMDOWN => Ok(PageCode {
+                page: 0xFF,
+                code: 0x09,
+            }),
             // ??
-            OsCode::KEY_DASHBOARD => Ok( PageCode { page: 0xFF, code: 0x02 } ),
-            OsCode::KEY_SEARCH => Ok( PageCode { page: 0xFF, code: 0x01 } ),
+            OsCode::KEY_DASHBOARD => Ok(PageCode {
+                page: 0xFF,
+                code: 0x02,
+            }),
+            OsCode::KEY_SEARCH => Ok(PageCode {
+                page: 0xFF,
+                code: 0x01,
+            }),
             // OsCode::KEY_FN_ESC          => 0x07,
             // OsCode::KEY_FN_F1           => 0x07,
             // OsCode::KEY_FN_F2           => 0x07,
@@ -196,7 +646,7 @@ impl TryFrom<OsCode> for PageCode {
             // OsCode::KEY_FN_S            => 0x07,
             // OsCode::KEY_FN_B            => 0x07,
             // osc => Err(&format!("OsCode {} not mapped!", osc.as_u16())),
-            _ => Err("OsCode not mapped!"),
+            _ => Err("OsCode unrecognized!"),
         }
     }
 }
@@ -205,157 +655,607 @@ impl TryFrom<PageCode> for OsCode {
     type Error = &'static str;
     fn try_from(item: PageCode) -> Result<Self, Self::Error> {
         match item {
-            PageCode { page: 0xFF, code: 0xFF } => Ok(OsCode::KEY_RESERVED),
-            PageCode { page: 0x07, code: 0x04 } => Ok(OsCode::KEY_A),
-            PageCode { page: 0x07, code: 0x05 } => Ok(OsCode::KEY_B),
-            PageCode { page: 0x07, code: 0x06 } => Ok(OsCode::KEY_C),
-            PageCode { page: 0x07, code: 0x07 } => Ok(OsCode::KEY_D),
-            PageCode { page: 0x07, code: 0x08 } => Ok(OsCode::KEY_E),
-            PageCode { page: 0x07, code: 0x09 } => Ok(OsCode::KEY_F),
-            PageCode { page: 0x07, code: 0x0A } => Ok(OsCode::KEY_G),
-            PageCode { page: 0x07, code: 0x0B } => Ok(OsCode::KEY_H),
-            PageCode { page: 0x07, code: 0x0C } => Ok(OsCode::KEY_I),
-            PageCode { page: 0x07, code: 0x0D } => Ok(OsCode::KEY_J),
-            PageCode { page: 0x07, code: 0x0E } => Ok(OsCode::KEY_K),
-            PageCode { page: 0x07, code: 0x0F } => Ok(OsCode::KEY_L),
-            PageCode { page: 0x07, code: 0x10 } => Ok(OsCode::KEY_M),
-            PageCode { page: 0x07, code: 0x11 } => Ok(OsCode::KEY_N),
-            PageCode { page: 0x07, code: 0x12 } => Ok(OsCode::KEY_O),
-            PageCode { page: 0x07, code: 0x13 } => Ok(OsCode::KEY_P),
-            PageCode { page: 0x07, code: 0x14 } => Ok(OsCode::KEY_Q),
-            PageCode { page: 0x07, code: 0x15 } => Ok(OsCode::KEY_R),
-            PageCode { page: 0x07, code: 0x16 } => Ok(OsCode::KEY_S),
-            PageCode { page: 0x07, code: 0x17 } => Ok(OsCode::KEY_T),
-            PageCode { page: 0x07, code: 0x18 } => Ok(OsCode::KEY_U),
-            PageCode { page: 0x07, code: 0x19 } => Ok(OsCode::KEY_V),
-            PageCode { page: 0x07, code: 0x1A } => Ok(OsCode::KEY_W),
-            PageCode { page: 0x07, code: 0x1B } => Ok(OsCode::KEY_X),
-            PageCode { page: 0x07, code: 0x1C } => Ok(OsCode::KEY_Y),
-            PageCode { page: 0x07, code: 0x1D } => Ok(OsCode::KEY_Z),
-            PageCode { page: 0x07, code: 0x1E } => Ok(OsCode::KEY_1),
-            PageCode { page: 0x07, code: 0x1F } => Ok(OsCode::KEY_2),
-            PageCode { page: 0x07, code: 0x20 } => Ok(OsCode::KEY_3),
-            PageCode { page: 0x07, code: 0x21 } => Ok(OsCode::KEY_4),
-            PageCode { page: 0x07, code: 0x22 } => Ok(OsCode::KEY_5),
-            PageCode { page: 0x07, code: 0x23 } => Ok(OsCode::KEY_6),
-            PageCode { page: 0x07, code: 0x24 } => Ok(OsCode::KEY_7),
-            PageCode { page: 0x07, code: 0x25 } => Ok(OsCode::KEY_8),
-            PageCode { page: 0x07, code: 0x26 } => Ok(OsCode::KEY_9),
-            PageCode { page: 0x07, code: 0x27 } => Ok(OsCode::KEY_0),
-            PageCode { page: 0x07, code: 0x28 } => Ok(OsCode::KEY_ENTER),
-            PageCode { page: 0x07, code: 0x29 } => Ok(OsCode::KEY_ESC),
-            PageCode { page: 0x07, code: 0x2A } => Ok(OsCode::KEY_BACKSPACE),
-            PageCode { page: 0x07, code: 0x2B } => Ok(OsCode::KEY_TAB),
-            PageCode { page: 0x07, code: 0x2C } => Ok(OsCode::KEY_SPACE),
-            PageCode { page: 0x07, code: 0x2D } => Ok(OsCode::KEY_MINUS),
-            PageCode { page: 0x07, code: 0x2E } => Ok(OsCode::KEY_EQUAL),
-            PageCode { page: 0x07, code: 0x2F } => Ok(OsCode::KEY_LEFTBRACE),
-            PageCode { page: 0x07, code: 0x30 } => Ok(OsCode::KEY_RIGHTBRACE),
-            PageCode { page: 0x07, code: 0x31 } => Ok(OsCode::KEY_BACKSLASH),
-            PageCode { page: 0x07, code: 0x33 } => Ok(OsCode::KEY_SEMICOLON),
-            PageCode { page: 0x07, code: 0x34 } => Ok(OsCode::KEY_APOSTROPHE),
-            PageCode { page: 0x07, code: 0x35 } => Ok(OsCode::KEY_GRAVE),
-            PageCode { page: 0x07, code: 0x36 } => Ok(OsCode::KEY_COMMA),
-            PageCode { page: 0x07, code: 0x37 } => Ok(OsCode::KEY_DOT),
-            PageCode { page: 0x07, code: 0x38 } => Ok(OsCode::KEY_SLASH),
-            PageCode { page: 0x07, code: 0x39 } => Ok(OsCode::KEY_CAPSLOCK),
-            PageCode { page: 0x07, code: 0x3A } => Ok(OsCode::KEY_F1),
-            PageCode { page: 0x07, code: 0x3B } => Ok(OsCode::KEY_F2),
-            PageCode { page: 0x07, code: 0x3C } => Ok(OsCode::KEY_F3),
-            PageCode { page: 0x07, code: 0x3D } => Ok(OsCode::KEY_F4),
-            PageCode { page: 0x07, code: 0x3E } => Ok(OsCode::KEY_F5),
-            PageCode { page: 0x07, code: 0x3F } => Ok(OsCode::KEY_F6),
-            PageCode { page: 0x07, code: 0x40 } => Ok(OsCode::KEY_F7),
-            PageCode { page: 0x07, code: 0x41 } => Ok(OsCode::KEY_F8),
-            PageCode { page: 0x07, code: 0x42 } => Ok(OsCode::KEY_F9),
-            PageCode { page: 0x07, code: 0x43 } => Ok(OsCode::KEY_F10),
-            PageCode { page: 0x07, code: 0x44 } => Ok(OsCode::KEY_F11),
-            PageCode { page: 0x07, code: 0x45 } => Ok(OsCode::KEY_F12),
-            PageCode { page: 0x07, code: 0x46 } => Ok(OsCode::KEY_PRINT),
-            PageCode { page: 0x07, code: 0x47 } => Ok(OsCode::KEY_SCROLLLOCK),
-            PageCode { page: 0x07, code: 0x48 } => Ok(OsCode::KEY_PAUSE),
-            PageCode { page: 0x07, code: 0x49 } => Ok(OsCode::KEY_INSERT),
-            PageCode { page: 0x07, code: 0x4A } => Ok(OsCode::KEY_HOME),
-            PageCode { page: 0x07, code: 0x4B } => Ok(OsCode::KEY_PAGEUP),
-            PageCode { page: 0x07, code: 0x4C } => Ok(OsCode::KEY_DELETE),
-            PageCode { page: 0x07, code: 0x4D } => Ok(OsCode::KEY_END),
-            PageCode { page: 0x07, code: 0x4E } => Ok(OsCode::KEY_PAGEDOWN),
-            PageCode { page: 0x07, code: 0x4F } => Ok(OsCode::KEY_RIGHT),
-            PageCode { page: 0x07, code: 0x50 } => Ok(OsCode::KEY_LEFT),
-            PageCode { page: 0x07, code: 0x51 } => Ok(OsCode::KEY_DOWN),
-            PageCode { page: 0x07, code: 0x52 } => Ok(OsCode::KEY_UP),
-            PageCode { page: 0x07, code: 0x53 } => Ok(OsCode::KEY_NUMLOCK),
-            PageCode { page: 0x07, code: 0x54 } => Ok(OsCode::KEY_KPSLASH),
-            PageCode { page: 0x07, code: 0x55 } => Ok(OsCode::KEY_KPASTERISK),
-            PageCode { page: 0x07, code: 0x56 } => Ok(OsCode::KEY_KPMINUS),
-            PageCode { page: 0x07, code: 0x57 } => Ok(OsCode::KEY_KPPLUS),
-            PageCode { page: 0x07, code: 0x58 } => Ok(OsCode::KEY_KPENTER),
-            PageCode { page: 0x07, code: 0x59 } => Ok(OsCode::KEY_KP1),
-            PageCode { page: 0x07, code: 0x5A } => Ok(OsCode::KEY_KP2),
-            PageCode { page: 0x07, code: 0x5B } => Ok(OsCode::KEY_KP3),
-            PageCode { page: 0x07, code: 0x5C } => Ok(OsCode::KEY_KP4),
-            PageCode { page: 0x07, code: 0x5D } => Ok(OsCode::KEY_KP5),
-            PageCode { page: 0x07, code: 0x5E } => Ok(OsCode::KEY_KP6),
-            PageCode { page: 0x07, code: 0x5F } => Ok(OsCode::KEY_KP7),
-            PageCode { page: 0x07, code: 0x60 } => Ok(OsCode::KEY_KP8),
-            PageCode { page: 0x07, code: 0x61 } => Ok(OsCode::KEY_KP9),
-            PageCode { page: 0x07, code: 0x62 } => Ok(OsCode::KEY_KP0),
-            PageCode { page: 0x07, code: 0x63 } => Ok(OsCode::KEY_KPDOT),
-            PageCode { page: 0x07, code: 0x64 } => Ok(OsCode::KEY_102ND),
-            PageCode { page: 0x07, code: 0x66 } => Ok(OsCode::KEY_POWER),
-            PageCode { page: 0x07, code: 0x67 } => Ok(OsCode::KEY_KPEQUAL),
-            PageCode { page: 0x07, code: 0x68 } => Ok(OsCode::KEY_F13),
-            PageCode { page: 0x07, code: 0x69 } => Ok(OsCode::KEY_F14),
-            PageCode { page: 0x07, code: 0x6A } => Ok(OsCode::KEY_F15),
-            PageCode { page: 0x07, code: 0x6B } => Ok(OsCode::KEY_F16),
-            PageCode { page: 0x07, code: 0x6C } => Ok(OsCode::KEY_F17),
-            PageCode { page: 0x07, code: 0x6D } => Ok(OsCode::KEY_F18),
-            PageCode { page: 0x07, code: 0x6E } => Ok(OsCode::KEY_F19),
-            PageCode { page: 0x07, code: 0x6F } => Ok(OsCode::KEY_F20),
-            PageCode { page: 0x07, code: 0x70 } => Ok(OsCode::KEY_F21),
-            PageCode { page: 0x07, code: 0x71 } => Ok(OsCode::KEY_F22),
-            PageCode { page: 0x07, code: 0x72 } => Ok(OsCode::KEY_F23),
-            PageCode { page: 0x07, code: 0x73 } => Ok(OsCode::KEY_F24),
-            PageCode { page: 0x07, code: 0x75 } => Ok(OsCode::KEY_HELP),
-            PageCode { page: 0x07, code: 0x76 } => Ok(OsCode::KEY_MENU),
-            PageCode { page: 0x07, code: 0x77 } => Ok(OsCode::KEY_SELECT),
-            PageCode { page: 0x07, code: 0x78 } => Ok(OsCode::KEY_STOP),
-            PageCode { page: 0x07, code: 0x79 } => Ok(OsCode::KEY_AGAIN),
-            PageCode { page: 0x07, code: 0x7A } => Ok(OsCode::KEY_UNDO),
-            PageCode { page: 0x07, code: 0x7B } => Ok(OsCode::KEY_CUT),
-            PageCode { page: 0x07, code: 0x7C } => Ok(OsCode::KEY_COPY),
-            PageCode { page: 0x07, code: 0x7D } => Ok(OsCode::KEY_PASTE),
-            PageCode { page: 0x07, code: 0x7E } => Ok(OsCode::KEY_FIND),
-            PageCode { page: 0x0C, code: 0xE2 } => Ok(OsCode::KEY_MUTE),
-            PageCode { page: 0x0C, code: 0xE9 } => Ok(OsCode::KEY_VOLUMEUP),
-            PageCode { page: 0x0C, code: 0xEA } => Ok(OsCode::KEY_VOLUMEDOWN),
-            PageCode { page: 0x07, code: 0x85 } => Ok(OsCode::KEY_KPCOMMA),
-            PageCode { page: 0x07, code: 0x99 } => Ok(OsCode::KEY_ALTERASE),
-            PageCode { page: 0x07, code: 0x9B } => Ok(OsCode::KEY_CANCEL),
-            PageCode { page: 0x07, code: 0x9C } => Ok(OsCode::KEY_CLEAR),
-            PageCode { page: 0x07, code: 0xE0 } => Ok(OsCode::KEY_LEFTCTRL),
-            PageCode { page: 0x07, code: 0xE1 } => Ok(OsCode::KEY_LEFTSHIFT),
-            PageCode { page: 0x07, code: 0xE2 } => Ok(OsCode::KEY_LEFTALT),
-            PageCode { page: 0x07, code: 0xE3 } => Ok(OsCode::KEY_LEFTMETA),
-            PageCode { page: 0x07, code: 0xE4 } => Ok(OsCode::KEY_RIGHTCTRL),
-            PageCode { page: 0x07, code: 0xE5 } => Ok(OsCode::KEY_RIGHTSHIFT),
-            PageCode { page: 0x07, code: 0xE6 } => Ok(OsCode::KEY_RIGHTALT),
-            PageCode { page: 0x07, code: 0xE7 } => Ok(OsCode::KEY_RIGHTMETA),
-            PageCode { page: 0x0C, code: 0x32 } => Ok(OsCode::KEY_SLEEP),
-            PageCode { page: 0x0C, code: 0xB3 } => Ok(OsCode::KEY_FORWARD),
-            PageCode { page: 0x0C, code: 0xB4 } => Ok(OsCode::KEY_REWIND),
-            PageCode { page: 0x0C, code: 0xB5 } => Ok(OsCode::KEY_NEXTSONG),
-            PageCode { page: 0x0C, code: 0xB6 } => Ok(OsCode::KEY_PREVIOUSSONG),
-            PageCode { page: 0x0C, code: 0xCD } => Ok(OsCode::KEY_PLAYPAUSE),
-            PageCode { page: 0x0C, code: 0x03 } => Ok(OsCode::KEY_FN),
-            PageCode { page: 0x0C, code: 0x6F } => Ok(OsCode::KEY_BRIGHTNESSUP),
-            PageCode { page: 0x0C, code: 0x70 } => Ok(OsCode::KEY_BRIGHTNESSDOWN),
-            PageCode { page: 0xFF, code: 0x07 } => Ok(OsCode::KEY_KBDILLUMTOGGLE),
-            PageCode { page: 0xFF, code: 0x08 } => Ok(OsCode::KEY_KBDILLUMUP),
-            PageCode { page: 0xFF, code: 0x09 } => Ok(OsCode::KEY_KBDILLUMDOWN),
-            PageCode { page: 0xFF, code: 0x02 } => Ok(OsCode::KEY_DASHBOARD),
-            PageCode { page: 0xFF, code: 0x01 } => Ok(OsCode::KEY_SEARCH),
-            _ => Err("PageCode not mapped!"),
+            PageCode {
+                page: 0xFF,
+                code: 0xFF,
+            } => Ok(OsCode::KEY_RESERVED),
+            PageCode {
+                page: 0x07,
+                code: 0x04,
+            } => Ok(OsCode::KEY_A),
+            PageCode {
+                page: 0x07,
+                code: 0x05,
+            } => Ok(OsCode::KEY_B),
+            PageCode {
+                page: 0x07,
+                code: 0x06,
+            } => Ok(OsCode::KEY_C),
+            PageCode {
+                page: 0x07,
+                code: 0x07,
+            } => Ok(OsCode::KEY_D),
+            PageCode {
+                page: 0x07,
+                code: 0x08,
+            } => Ok(OsCode::KEY_E),
+            PageCode {
+                page: 0x07,
+                code: 0x09,
+            } => Ok(OsCode::KEY_F),
+            PageCode {
+                page: 0x07,
+                code: 0x0A,
+            } => Ok(OsCode::KEY_G),
+            PageCode {
+                page: 0x07,
+                code: 0x0B,
+            } => Ok(OsCode::KEY_H),
+            PageCode {
+                page: 0x07,
+                code: 0x0C,
+            } => Ok(OsCode::KEY_I),
+            PageCode {
+                page: 0x07,
+                code: 0x0D,
+            } => Ok(OsCode::KEY_J),
+            PageCode {
+                page: 0x07,
+                code: 0x0E,
+            } => Ok(OsCode::KEY_K),
+            PageCode {
+                page: 0x07,
+                code: 0x0F,
+            } => Ok(OsCode::KEY_L),
+            PageCode {
+                page: 0x07,
+                code: 0x10,
+            } => Ok(OsCode::KEY_M),
+            PageCode {
+                page: 0x07,
+                code: 0x11,
+            } => Ok(OsCode::KEY_N),
+            PageCode {
+                page: 0x07,
+                code: 0x12,
+            } => Ok(OsCode::KEY_O),
+            PageCode {
+                page: 0x07,
+                code: 0x13,
+            } => Ok(OsCode::KEY_P),
+            PageCode {
+                page: 0x07,
+                code: 0x14,
+            } => Ok(OsCode::KEY_Q),
+            PageCode {
+                page: 0x07,
+                code: 0x15,
+            } => Ok(OsCode::KEY_R),
+            PageCode {
+                page: 0x07,
+                code: 0x16,
+            } => Ok(OsCode::KEY_S),
+            PageCode {
+                page: 0x07,
+                code: 0x17,
+            } => Ok(OsCode::KEY_T),
+            PageCode {
+                page: 0x07,
+                code: 0x18,
+            } => Ok(OsCode::KEY_U),
+            PageCode {
+                page: 0x07,
+                code: 0x19,
+            } => Ok(OsCode::KEY_V),
+            PageCode {
+                page: 0x07,
+                code: 0x1A,
+            } => Ok(OsCode::KEY_W),
+            PageCode {
+                page: 0x07,
+                code: 0x1B,
+            } => Ok(OsCode::KEY_X),
+            PageCode {
+                page: 0x07,
+                code: 0x1C,
+            } => Ok(OsCode::KEY_Y),
+            PageCode {
+                page: 0x07,
+                code: 0x1D,
+            } => Ok(OsCode::KEY_Z),
+            PageCode {
+                page: 0x07,
+                code: 0x1E,
+            } => Ok(OsCode::KEY_1),
+            PageCode {
+                page: 0x07,
+                code: 0x1F,
+            } => Ok(OsCode::KEY_2),
+            PageCode {
+                page: 0x07,
+                code: 0x20,
+            } => Ok(OsCode::KEY_3),
+            PageCode {
+                page: 0x07,
+                code: 0x21,
+            } => Ok(OsCode::KEY_4),
+            PageCode {
+                page: 0x07,
+                code: 0x22,
+            } => Ok(OsCode::KEY_5),
+            PageCode {
+                page: 0x07,
+                code: 0x23,
+            } => Ok(OsCode::KEY_6),
+            PageCode {
+                page: 0x07,
+                code: 0x24,
+            } => Ok(OsCode::KEY_7),
+            PageCode {
+                page: 0x07,
+                code: 0x25,
+            } => Ok(OsCode::KEY_8),
+            PageCode {
+                page: 0x07,
+                code: 0x26,
+            } => Ok(OsCode::KEY_9),
+            PageCode {
+                page: 0x07,
+                code: 0x27,
+            } => Ok(OsCode::KEY_0),
+            PageCode {
+                page: 0x07,
+                code: 0x28,
+            } => Ok(OsCode::KEY_ENTER),
+            PageCode {
+                page: 0x07,
+                code: 0x29,
+            } => Ok(OsCode::KEY_ESC),
+            PageCode {
+                page: 0x07,
+                code: 0x2A,
+            } => Ok(OsCode::KEY_BACKSPACE),
+            PageCode {
+                page: 0x07,
+                code: 0x2B,
+            } => Ok(OsCode::KEY_TAB),
+            PageCode {
+                page: 0x07,
+                code: 0x2C,
+            } => Ok(OsCode::KEY_SPACE),
+            PageCode {
+                page: 0x07,
+                code: 0x2D,
+            } => Ok(OsCode::KEY_MINUS),
+            PageCode {
+                page: 0x07,
+                code: 0x2E,
+            } => Ok(OsCode::KEY_EQUAL),
+            PageCode {
+                page: 0x07,
+                code: 0x2F,
+            } => Ok(OsCode::KEY_LEFTBRACE),
+            PageCode {
+                page: 0x07,
+                code: 0x30,
+            } => Ok(OsCode::KEY_RIGHTBRACE),
+            PageCode {
+                page: 0x07,
+                code: 0x31,
+            } => Ok(OsCode::KEY_BACKSLASH),
+            PageCode {
+                page: 0x07,
+                code: 0x33,
+            } => Ok(OsCode::KEY_SEMICOLON),
+            PageCode {
+                page: 0x07,
+                code: 0x34,
+            } => Ok(OsCode::KEY_APOSTROPHE),
+            PageCode {
+                page: 0x07,
+                code: 0x35,
+            } => Ok(OsCode::KEY_GRAVE),
+            PageCode {
+                page: 0x07,
+                code: 0x36,
+            } => Ok(OsCode::KEY_COMMA),
+            PageCode {
+                page: 0x07,
+                code: 0x37,
+            } => Ok(OsCode::KEY_DOT),
+            PageCode {
+                page: 0x07,
+                code: 0x38,
+            } => Ok(OsCode::KEY_SLASH),
+            PageCode {
+                page: 0x07,
+                code: 0x39,
+            } => Ok(OsCode::KEY_CAPSLOCK),
+            PageCode {
+                page: 0x07,
+                code: 0x3A,
+            } => Ok(OsCode::KEY_F1),
+            PageCode {
+                page: 0x07,
+                code: 0x3B,
+            } => Ok(OsCode::KEY_F2),
+            PageCode {
+                page: 0x07,
+                code: 0x3C,
+            } => Ok(OsCode::KEY_F3),
+            PageCode {
+                page: 0x07,
+                code: 0x3D,
+            } => Ok(OsCode::KEY_F4),
+            PageCode {
+                page: 0x07,
+                code: 0x3E,
+            } => Ok(OsCode::KEY_F5),
+            PageCode {
+                page: 0x07,
+                code: 0x3F,
+            } => Ok(OsCode::KEY_F6),
+            PageCode {
+                page: 0x07,
+                code: 0x40,
+            } => Ok(OsCode::KEY_F7),
+            PageCode {
+                page: 0x07,
+                code: 0x41,
+            } => Ok(OsCode::KEY_F8),
+            PageCode {
+                page: 0x07,
+                code: 0x42,
+            } => Ok(OsCode::KEY_F9),
+            PageCode {
+                page: 0x07,
+                code: 0x43,
+            } => Ok(OsCode::KEY_F10),
+            PageCode {
+                page: 0x07,
+                code: 0x44,
+            } => Ok(OsCode::KEY_F11),
+            PageCode {
+                page: 0x07,
+                code: 0x45,
+            } => Ok(OsCode::KEY_F12),
+            PageCode {
+                page: 0x07,
+                code: 0x46,
+            } => Ok(OsCode::KEY_PRINT),
+            PageCode {
+                page: 0x07,
+                code: 0x47,
+            } => Ok(OsCode::KEY_SCROLLLOCK),
+            PageCode {
+                page: 0x07,
+                code: 0x48,
+            } => Ok(OsCode::KEY_PAUSE),
+            PageCode {
+                page: 0x07,
+                code: 0x49,
+            } => Ok(OsCode::KEY_INSERT),
+            PageCode {
+                page: 0x07,
+                code: 0x4A,
+            } => Ok(OsCode::KEY_HOME),
+            PageCode {
+                page: 0x07,
+                code: 0x4B,
+            } => Ok(OsCode::KEY_PAGEUP),
+            PageCode {
+                page: 0x07,
+                code: 0x4C,
+            } => Ok(OsCode::KEY_DELETE),
+            PageCode {
+                page: 0x07,
+                code: 0x4D,
+            } => Ok(OsCode::KEY_END),
+            PageCode {
+                page: 0x07,
+                code: 0x4E,
+            } => Ok(OsCode::KEY_PAGEDOWN),
+            PageCode {
+                page: 0x07,
+                code: 0x4F,
+            } => Ok(OsCode::KEY_RIGHT),
+            PageCode {
+                page: 0x07,
+                code: 0x50,
+            } => Ok(OsCode::KEY_LEFT),
+            PageCode {
+                page: 0x07,
+                code: 0x51,
+            } => Ok(OsCode::KEY_DOWN),
+            PageCode {
+                page: 0x07,
+                code: 0x52,
+            } => Ok(OsCode::KEY_UP),
+            PageCode {
+                page: 0x07,
+                code: 0x53,
+            } => Ok(OsCode::KEY_NUMLOCK),
+            PageCode {
+                page: 0x07,
+                code: 0x54,
+            } => Ok(OsCode::KEY_KPSLASH),
+            PageCode {
+                page: 0x07,
+                code: 0x55,
+            } => Ok(OsCode::KEY_KPASTERISK),
+            PageCode {
+                page: 0x07,
+                code: 0x56,
+            } => Ok(OsCode::KEY_KPMINUS),
+            PageCode {
+                page: 0x07,
+                code: 0x57,
+            } => Ok(OsCode::KEY_KPPLUS),
+            PageCode {
+                page: 0x07,
+                code: 0x58,
+            } => Ok(OsCode::KEY_KPENTER),
+            PageCode {
+                page: 0x07,
+                code: 0x59,
+            } => Ok(OsCode::KEY_KP1),
+            PageCode {
+                page: 0x07,
+                code: 0x5A,
+            } => Ok(OsCode::KEY_KP2),
+            PageCode {
+                page: 0x07,
+                code: 0x5B,
+            } => Ok(OsCode::KEY_KP3),
+            PageCode {
+                page: 0x07,
+                code: 0x5C,
+            } => Ok(OsCode::KEY_KP4),
+            PageCode {
+                page: 0x07,
+                code: 0x5D,
+            } => Ok(OsCode::KEY_KP5),
+            PageCode {
+                page: 0x07,
+                code: 0x5E,
+            } => Ok(OsCode::KEY_KP6),
+            PageCode {
+                page: 0x07,
+                code: 0x5F,
+            } => Ok(OsCode::KEY_KP7),
+            PageCode {
+                page: 0x07,
+                code: 0x60,
+            } => Ok(OsCode::KEY_KP8),
+            PageCode {
+                page: 0x07,
+                code: 0x61,
+            } => Ok(OsCode::KEY_KP9),
+            PageCode {
+                page: 0x07,
+                code: 0x62,
+            } => Ok(OsCode::KEY_KP0),
+            PageCode {
+                page: 0x07,
+                code: 0x63,
+            } => Ok(OsCode::KEY_KPDOT),
+            PageCode {
+                page: 0x07,
+                code: 0x64,
+            } => Ok(OsCode::KEY_102ND),
+            PageCode {
+                page: 0x07,
+                code: 0x66,
+            } => Ok(OsCode::KEY_POWER),
+            PageCode {
+                page: 0x07,
+                code: 0x67,
+            } => Ok(OsCode::KEY_KPEQUAL),
+            PageCode {
+                page: 0x07,
+                code: 0x68,
+            } => Ok(OsCode::KEY_F13),
+            PageCode {
+                page: 0x07,
+                code: 0x69,
+            } => Ok(OsCode::KEY_F14),
+            PageCode {
+                page: 0x07,
+                code: 0x6A,
+            } => Ok(OsCode::KEY_F15),
+            PageCode {
+                page: 0x07,
+                code: 0x6B,
+            } => Ok(OsCode::KEY_F16),
+            PageCode {
+                page: 0x07,
+                code: 0x6C,
+            } => Ok(OsCode::KEY_F17),
+            PageCode {
+                page: 0x07,
+                code: 0x6D,
+            } => Ok(OsCode::KEY_F18),
+            PageCode {
+                page: 0x07,
+                code: 0x6E,
+            } => Ok(OsCode::KEY_F19),
+            PageCode {
+                page: 0x07,
+                code: 0x6F,
+            } => Ok(OsCode::KEY_F20),
+            PageCode {
+                page: 0x07,
+                code: 0x70,
+            } => Ok(OsCode::KEY_F21),
+            PageCode {
+                page: 0x07,
+                code: 0x71,
+            } => Ok(OsCode::KEY_F22),
+            PageCode {
+                page: 0x07,
+                code: 0x72,
+            } => Ok(OsCode::KEY_F23),
+            PageCode {
+                page: 0x07,
+                code: 0x73,
+            } => Ok(OsCode::KEY_F24),
+            PageCode {
+                page: 0x07,
+                code: 0x75,
+            } => Ok(OsCode::KEY_HELP),
+            PageCode {
+                page: 0x07,
+                code: 0x76,
+            } => Ok(OsCode::KEY_MENU),
+            PageCode {
+                page: 0x07,
+                code: 0x77,
+            } => Ok(OsCode::KEY_SELECT),
+            PageCode {
+                page: 0x07,
+                code: 0x78,
+            } => Ok(OsCode::KEY_STOP),
+            PageCode {
+                page: 0x07,
+                code: 0x79,
+            } => Ok(OsCode::KEY_AGAIN),
+            PageCode {
+                page: 0x07,
+                code: 0x7A,
+            } => Ok(OsCode::KEY_UNDO),
+            PageCode {
+                page: 0x07,
+                code: 0x7B,
+            } => Ok(OsCode::KEY_CUT),
+            PageCode {
+                page: 0x07,
+                code: 0x7C,
+            } => Ok(OsCode::KEY_COPY),
+            PageCode {
+                page: 0x07,
+                code: 0x7D,
+            } => Ok(OsCode::KEY_PASTE),
+            PageCode {
+                page: 0x07,
+                code: 0x7E,
+            } => Ok(OsCode::KEY_FIND),
+            PageCode {
+                page: 0x0C,
+                code: 0xE2,
+            } => Ok(OsCode::KEY_MUTE),
+            PageCode {
+                page: 0x0C,
+                code: 0xE9,
+            } => Ok(OsCode::KEY_VOLUMEUP),
+            PageCode {
+                page: 0x0C,
+                code: 0xEA,
+            } => Ok(OsCode::KEY_VOLUMEDOWN),
+            PageCode {
+                page: 0x07,
+                code: 0x85,
+            } => Ok(OsCode::KEY_KPCOMMA),
+            PageCode {
+                page: 0x07,
+                code: 0x99,
+            } => Ok(OsCode::KEY_ALTERASE),
+            PageCode {
+                page: 0x07,
+                code: 0x9B,
+            } => Ok(OsCode::KEY_CANCEL),
+            PageCode {
+                page: 0x07,
+                code: 0x9C,
+            } => Ok(OsCode::KEY_CLEAR),
+            PageCode {
+                page: 0x07,
+                code: 0xE0,
+            } => Ok(OsCode::KEY_LEFTCTRL),
+            PageCode {
+                page: 0x07,
+                code: 0xE1,
+            } => Ok(OsCode::KEY_LEFTSHIFT),
+            PageCode {
+                page: 0x07,
+                code: 0xE2,
+            } => Ok(OsCode::KEY_LEFTALT),
+            PageCode {
+                page: 0x07,
+                code: 0xE3,
+            } => Ok(OsCode::KEY_LEFTMETA),
+            PageCode {
+                page: 0x07,
+                code: 0xE4,
+            } => Ok(OsCode::KEY_RIGHTCTRL),
+            PageCode {
+                page: 0x07,
+                code: 0xE5,
+            } => Ok(OsCode::KEY_RIGHTSHIFT),
+            PageCode {
+                page: 0x07,
+                code: 0xE6,
+            } => Ok(OsCode::KEY_RIGHTALT),
+            PageCode {
+                page: 0x07,
+                code: 0xE7,
+            } => Ok(OsCode::KEY_RIGHTMETA),
+            PageCode {
+                page: 0x0C,
+                code: 0x32,
+            } => Ok(OsCode::KEY_SLEEP),
+            PageCode {
+                page: 0x0C,
+                code: 0xB3,
+            } => Ok(OsCode::KEY_FORWARD),
+            PageCode {
+                page: 0x0C,
+                code: 0xB4,
+            } => Ok(OsCode::KEY_REWIND),
+            PageCode {
+                page: 0x0C,
+                code: 0xB5,
+            } => Ok(OsCode::KEY_NEXTSONG),
+            PageCode {
+                page: 0x0C,
+                code: 0xB6,
+            } => Ok(OsCode::KEY_PREVIOUSSONG),
+            PageCode {
+                page: 0x0C,
+                code: 0xCD,
+            } => Ok(OsCode::KEY_PLAYPAUSE),
+            PageCode {
+                page: 0x0C,
+                code: 0x03,
+            } => Ok(OsCode::KEY_FN),
+            PageCode {
+                page: 0x0C,
+                code: 0x6F,
+            } => Ok(OsCode::KEY_BRIGHTNESSUP),
+            PageCode {
+                page: 0x0C,
+                code: 0x70,
+            } => Ok(OsCode::KEY_BRIGHTNESSDOWN),
+            PageCode {
+                page: 0xFF,
+                code: 0x07,
+            } => Ok(OsCode::KEY_KBDILLUMTOGGLE),
+            PageCode {
+                page: 0xFF,
+                code: 0x08,
+            } => Ok(OsCode::KEY_KBDILLUMUP),
+            PageCode {
+                page: 0xFF,
+                code: 0x09,
+            } => Ok(OsCode::KEY_KBDILLUMDOWN),
+            PageCode {
+                page: 0xFF,
+                code: 0x02,
+            } => Ok(OsCode::KEY_DASHBOARD),
+            PageCode {
+                page: 0xFF,
+                code: 0x01,
+            } => Ok(OsCode::KEY_SEARCH),
+            _ => Err("PageCode unrecognized!"),
         }
     }
 }

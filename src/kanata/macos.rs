@@ -20,22 +20,13 @@ impl Kanata {
         };
 
         loop {
-            //let mut event = dKeyEvent { value: 0, page: 0, code: 0, };
-            //let _key = wait_key(&mut event);
-
             let event = kb.read().map_err(|e| anyhow!("failed read: {}", e))?;
 
-            // nano write events that you can't parse right away,
-            // add debug statement of the keys passed
-
-            //let mut key_event = KeyEvent::try_from(event).map_err(|e| anyhow!("failed read: {:?}", e))?;
-
-            log::debug!("read");
             let mut key_event = match KeyEvent::try_from(event) {
                 Ok(ev) => ev,
                 _ => {
                     // Pass-through non-key and non-scroll events
-                    log::debug!("{event:?} is not recognized!");
+                    log::debug!("{event:?} is unrecognized!");
                     let mut kanata = kanata.lock();
                     kanata
                         .kbd_out
@@ -45,7 +36,6 @@ impl Kanata {
                 }
             };
 
-            log::debug!("check");
             check_for_exit(&key_event);
 
             if !MAPPED_KEYS.lock().contains(&key_event.code) {
@@ -55,7 +45,6 @@ impl Kanata {
                     .kbd_out
                     .write(event.clone())
                     .map_err(|e| anyhow!("failed write: {}", e))?;
-                //send_key(&mut event.to_driverkit_event()  );
                 continue;
             }
 
