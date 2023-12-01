@@ -588,7 +588,7 @@ impl TryFrom<OsCode> for PageCode {
                 code: 0xCD,
             }),
             OsCode::KEY_FN => Ok(PageCode {
-                page: 0x0C,
+                page: 0xFF,
                 code: 0x03,
             }),
             OsCode::KEY_BRIGHTNESSUP => Ok(PageCode {
@@ -1224,7 +1224,7 @@ impl TryFrom<PageCode> for OsCode {
                 code: 0xCD,
             } => Ok(OsCode::KEY_PLAYPAUSE),
             PageCode {
-                page: 0x0C,
+                page: 0xFF,
                 code: 0x03,
             } => Ok(OsCode::KEY_FN),
             PageCode {
