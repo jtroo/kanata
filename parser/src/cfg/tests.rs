@@ -1209,6 +1209,7 @@ fn parse_device_paths() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 fn test_parse_linux_dev() {
     // The old colon separated devices format
     assert_eq!(
