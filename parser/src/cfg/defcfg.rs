@@ -341,20 +341,38 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
-        SExpr::Atom(a) => parse_colon_separated_text(a.t.trim_matches('"')),
+        SExpr::Atom(a) => {
+            let devs = parse_colon_separated_text(a.t.trim_matches('"'));
+            if devs.len() == 1 && devs[0].is_empty() {
+                bail_expr!(val, "empty string is not a valid device name or path")
+            }
+            devs
+        }
         SExpr::List(l) => {
             let r: Result<Vec<String>> =
                 l.t.iter()
                     .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
                         SExpr::Atom(path) => {
-                            acc.push(path.t.trim_matches('"').to_string());
+                            let trimmed_path = path.t.trim_matches('"').to_string();
+                            if trimmed_path.is_empty() {
+                                bail_span!(&path, "empty string is not a valid device name or path")
+                            }
+                            acc.push(trimmed_path);
                             Ok(acc)
                         }
                         SExpr::List(inner_list) => {
                             bail_span!(&inner_list, "expected string, found list")
                         }
                     });
-            r?
+            let devs = r?;
+            if devs.is_empty() {
+                // This errors, because linux-dev, linux-dev-include-names and linux-dev-exclude-names
+                // are all mutually exclusive, and only one of them can be effective at a time.
+                // For all of them, if device list is empty, running kanata will effectively be
+                // a no-op which is surely not desired.
+                bail_expr!(val, "device list is empty, no devices will be intercepted")
+            }
+            devs
         }
     })
 }
