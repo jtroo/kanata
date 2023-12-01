@@ -1,4 +1,5 @@
 use super::*;
+#[allow(unused_imports)]
 use crate::cfg::sexpr::{parse, Span};
 use kanata_keyberon::action::BooleanOperator::*;
 
