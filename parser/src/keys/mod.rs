@@ -11,6 +11,8 @@ mod linux;
 mod windows;
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
 mod macos;
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+pub use macos::PageCode;
 
 mod mappings;
 pub use mappings::*;

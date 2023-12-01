@@ -1,13 +1,10 @@
-use anyhow::{anyhow, bail, Result};
-use driverkit::KeyEvent as dKeyEvent;
-use driverkit::{grab_kb, send_key, wait_key};
+use super::*;
 use log::info;
+use std::sync::Arc;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
+use anyhow::{anyhow, bail, Result};
 use std::sync::mpsc::SyncSender as Sender;
-use std::sync::Arc;
-
-use super::*;
 
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
@@ -19,28 +16,36 @@ impl Kanata {
 
         let mut kb = match KbdIn::new() {
             Ok(kbd_in) => kbd_in,
-            Err(e) => bail!("failed to open keyboard device(s): {}", e)
+            Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };
 
         loop {
-
             //let mut event = dKeyEvent { value: 0, page: 0, code: 0, };
             //let _key = wait_key(&mut event);
 
             let event = kb.read().map_err(|e| anyhow!("failed read: {}", e))?;
 
+            // nano write events that you can't parse right away,
+            // add debug statement of the keys passed
+
             //let mut key_event = KeyEvent::try_from(event).map_err(|e| anyhow!("failed read: {:?}", e))?;
 
+            log::debug!("read");
             let mut key_event = match KeyEvent::try_from(event) {
-                    Ok(ev) => ev,
-                    _ => {
-                        // Pass-through non-key and non-scroll events
-                        let mut kanata = kanata.lock();
-                        kanata.kbd_out.write(event.clone()).map_err(|e| anyhow!("failed write: {}", e))?;
-                        continue;
-                    }
-                };
+                Ok(ev) => ev,
+                _ => {
+                    // Pass-through non-key and non-scroll events
+                    log::debug!("{event:?} is not recognized!");
+                    let mut kanata = kanata.lock();
+                    kanata
+                        .kbd_out
+                        .write(event.clone())
+                        .map_err(|e| anyhow!("failed write: {}", e))?;
+                    continue;
+                }
+            };
 
+            log::debug!("check");
             check_for_exit(&key_event);
 
             if !MAPPED_KEYS.lock().contains(&key_event.code) {

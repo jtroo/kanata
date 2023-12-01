@@ -1,14 +1,11 @@
 //! Contains the input/output code for keyboards on Macos.
-
 use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
-use anyhow::Error;
 use driverkit::KeyEvent as dKeyEvent;
-use driverkit::{send_key, wait_key, grab_kb};
+use driverkit::{grab_kb, send_key, wait_key};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-use rustc_hash::FxHashMap as HashMap;
 use std::convert::TryFrom;
 use std::io;
 
@@ -17,20 +14,26 @@ use std::io;
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 #[derive(Debug, Clone, Copy)]
-pub struct InputEvent { value: u64, page: u32, code: u32, }
+pub struct InputEvent {
+    value: u64,
+    page: u32,
+    code: u32,
+}
 
 impl InputEvent {
     pub fn new(event: dKeyEvent) -> Self {
-        InputEvent { 
-            value: event.value, 
-            page: event.page, 
-            code: event.code, }
+        InputEvent {
+            value: event.value,
+            page: event.page,
+            code: event.code,
+        }
     }
     pub fn to_driverkit_event(self) -> dKeyEvent {
-        dKeyEvent { 
-            value: self.value, 
-            page:  self.page, 
-            code:  self.code, }
+        dKeyEvent {
+            value: self.value,
+            page: self.page,
+            code: self.code,
+        }
     }
 }
 
@@ -38,33 +41,43 @@ pub struct KbdIn {}
 
 impl KbdIn {
     pub fn new() -> Result<Self, io::Error> {
-        let grab_status = grab_kb("Karabiner DriverKit VirtualHIDKeyboard 1.7.0");
-        if grab_status == 0 { 
-            Ok(Self {}) 
-        } else { 
-            Err(io::Error::new(io::ErrorKind::NotConnected, "Couldn't grab keyboard" )) 
+        //let grab_status = grab_kb("Karabiner DriverKit VirtualHIDKeyboard 1.7.0");
+        let grab_status = grab_kb("Apple Internal Keyboard / Trackpad");
+        if grab_status == 0 {
+            Ok(Self {})
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "Couldn't grab keyboard",
+            ))
         }
     }
 
     pub fn read(&mut self) -> Result<InputEvent, io::Error> {
-        // looks like read event
-        let mut event = dKeyEvent { value: 0, page: 0, code: 0, };
-        wait_key(&mut event);
-        Ok( InputEvent {
-            value: event.value,
-            page: event.page,
-            code: event.code
-        }
-        )
-    }
+        // nano: can this fail? or make it return event?
+        let mut event = dKeyEvent {
+            value: 0,
+            page: 0,
+            code: 0,
+        };
 
+        wait_key(&mut event);
+        // while event.value > 1 || event.code == 0xffffffff || event.code == 0x1 {
+        //     wait_key(&mut event);
+        // }
+
+        Ok(InputEvent::new(event))
+    }
 }
 
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
 
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        if let Some(oscode) = OsCode::from_u16( (item.page << 8 | item.code) as u16 ) {
+        if let Ok(oscode) = OsCode::try_from(PageCode {
+            page: item.page,
+            code: item.code,
+        }) {
             Ok(KeyEvent {
                 code: oscode,
                 value: if item.value == 1 {
@@ -80,21 +93,25 @@ impl TryFrom<InputEvent> for KeyEvent {
     }
 }
 
-impl From<KeyEvent> for InputEvent {
+impl TryFrom<KeyEvent> for InputEvent {
+    type Error = ();
 
-    fn from(item: KeyEvent) -> Self {
-        let val = match item.value {
-            KeyValue::Press => 1,
-            _ => 0,
-            // nano what about tap and others?
-        };
-        InputEvent {
-            value: val,
-            page: ( (item.code as u16 & 0xFF00u16) >> 2) as u32,
-            code: ( item.code as u16 & 0x00FFu16 ) as u32,
+    fn try_from(item: KeyEvent) -> Result<Self, Self::Error> {
+        if let Ok(pagecode) = PageCode::try_from(item.code) {
+            let val = match item.value {
+                KeyValue::Press => 1,
+                _ => 0,
+                // nano what about tap (mouse) and repeat?
+            };
+            Ok(InputEvent {
+                value: val,
+                page: pagecode.page,
+                code: pagecode.code,
+            })
+        } else {
+            Err(())
         }
     }
-
 }
 
 pub struct KbdOut {
@@ -108,23 +125,38 @@ impl KbdOut {
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-
         let mut devent = event.to_driverkit_event();
-        let sent = send_key(&mut devent);
+        let _sent = send_key(&mut devent);
 
-        if sent != 0 { 
-            Ok(()) 
-        } else {
-            Err(io::Error::new(io::ErrorKind::NotConnected, "ay haga " ))  // nano
-        }
+        log::debug!("Attempting to write {event:?} {devent:?}");
+        Ok(())
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
-        self.write( InputEvent::from(KeyEvent{value, code: key}) )
+        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
+            self.write(event)
+        } else {
+            log::debug!("couldn't write unrecognized {key:?}");
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "OsCode not recognized!",
+            ))
+        }
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        self.write( InputEvent::from(KeyEvent{value, code: OsCode::from_u16(code as u16).unwrap()}) )
+        if let Ok(event) = InputEvent::try_from(KeyEvent {
+            value,
+            code: OsCode::from_u16(code as u16).unwrap(),
+        }) {
+            self.write(event)
+        } else {
+            log::debug!("couldn't write unrecognized OsCode {code}");
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "OsCode not recognized!",
+            ))
+        }
     }
 
     pub fn press_key(&mut self, key: OsCode) -> Result<(), io::Error> {
@@ -142,27 +174,27 @@ impl KbdOut {
         todo!();
     }
 
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
         Ok(())
     }
 
-    pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+    pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
         Ok(())
     }
 
-    pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+    pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
         Ok(())
     }
 
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
         Ok(())
     }
 
-    pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
+    pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
         Ok(())
     }
 }
