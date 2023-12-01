@@ -55,6 +55,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; kanata does not parse it as multiple devices.
   ;; linux-dev /dev/input/path-to\:device
 
+  ;; Alternatively, you can use list syntax, where both backslashes and colons
+  ;; are parsed literally. List items are separated by spaces or newlines.
+  ;; Using quotation marks for each item is optional, and only required if an
+  ;; item contains spaces.
+  ;; linux-dev (
+  ;;   /dev/input/by-path/pci-0000:00:14.0-usb-0:1:1.0-event
+  ;;   /dev/input/by-id/usb-Dell_Dell_USB_Keyboard-event-kbd
+  ;; )
+
   ;; The linux-dev-names-include entry is parsed identically to linux-dev. It
   ;; defines a list of device names that should be included. This is only
   ;; used if linux-dev is omitted.
@@ -645,10 +654,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This example is similar to the default caps-word behaviour but it moves the
   ;; 0-9 keys to capitalized key list from the extra non-terminating key list.
   cwc (caps-word-custom
-        2000
-        (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
-	(kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
-      )
+    2000
+    (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+    (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+  )
 )
 
 ;; Can see a new action `rpt` in this layer. This repeats the most recently
