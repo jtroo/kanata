@@ -1,13 +1,13 @@
 //! Contains the input/output code for keyboards on Macos.
 use super::*;
-use std::io;
-use std::convert::TryFrom;
-use crate::oskbd::KeyEvent;
-use kanata_parser::keys::*;
-use kanata_parser::custom_action::*;
-use driverkit::KeyEvent as dKeyEvent;
 use crate::kanata::CalculatedMouseMove;
+use crate::oskbd::KeyEvent;
+use driverkit::KeyEvent as dKeyEvent;
 use driverkit::{grab_kb, send_key, wait_key};
+use kanata_parser::custom_action::*;
+use kanata_parser::keys::*;
+use std::convert::TryFrom;
+use std::io;
 
 //  see the whole discove devices thing, might be needed here for macos
 

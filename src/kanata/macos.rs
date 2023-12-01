@@ -1,10 +1,10 @@
 use super::*;
+use anyhow::{anyhow, bail, Result};
 use log::info;
-use std::sync::Arc;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use anyhow::{anyhow, bail, Result};
 use std::sync::mpsc::SyncSender as Sender;
+use std::sync::Arc;
 
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
