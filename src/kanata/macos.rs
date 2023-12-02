@@ -9,14 +9,13 @@ use std::sync::Arc;
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
 impl Kanata {
-    /// Enter an infinite loop that listens for OS key events and sends them to the processing
-    /// thread.
+    /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
         let mut kb = match KbdIn::new() {
             Ok(kbd_in) => kbd_in,
-            Err(e) => bail!("failed to open keyboard device(s): {}", e),
+            Err(e) => bail!("failed to open keyboard device(s): {}", e)
         };
 
         loop {
@@ -25,7 +24,7 @@ impl Kanata {
             let mut key_event = match KeyEvent::try_from(event) {
                 Ok(ev) => ev,
                 _ => {
-                    // Pass-through non-key and non-scroll events
+                    // Pass-through unrecognized keys
                     log::debug!("{event:?} is unrecognized!");
                     let mut kanata = kanata.lock();
                     kanata
