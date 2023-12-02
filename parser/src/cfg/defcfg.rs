@@ -129,10 +129,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev_names_include = Some(parse_linux_dev(val)?);
-                            if cfg.linux_dev.is_empty() {
+                            let dev_names = parse_linux_dev(val)?;
+                            if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
+                            cfg.linux_dev_names_include = Some(dev_names);
                         }
                     }
                     "linux-dev-names-exclude" => {
