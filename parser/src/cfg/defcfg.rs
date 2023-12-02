@@ -119,7 +119,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             cfg.linux_dev = parse_linux_dev(val)?;
                             if cfg.linux_dev.is_empty() {
-                                bail_expr!(val, "device list is empty, no devices will be intercepted");
+                                bail_expr!(
+                                    val,
+                                    "device list is empty, no devices will be intercepted"
+                                );
                             }
                         }
                     }
@@ -361,7 +364,10 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
                         SExpr::Atom(path) => {
                             let trimmed_path = path.t.trim_matches('"').to_string();
                             if trimmed_path.is_empty() {
-                                bail_span!(&path, "an empty string is not a valid device name or path")
+                                bail_span!(
+                                    &path,
+                                    "an empty string is not a valid device name or path"
+                                )
                             }
                             acc.push(trimmed_path);
                             Ok(acc)
@@ -370,8 +376,8 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
                             bail_span!(&inner_list, "expected strings, found a list")
                         }
                     });
-            let devs = r?;
-            devs
+
+            r?
         }
     })
 }

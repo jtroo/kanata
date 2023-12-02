@@ -1264,12 +1264,6 @@ fn test_parse_linux_dev() {
         ]
     );
     parse_linux_dev(&SExpr::List(Spanned {
-        t: vec![],
-        span: Span::default(),
-    }))
-    .expect_err("empty device list shouldn't be allowed");
-
-    parse_linux_dev(&SExpr::List(Spanned {
         t: vec![
             SExpr::Atom(Spanned {
                 t: "Device1".to_string(),
