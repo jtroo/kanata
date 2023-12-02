@@ -2,8 +2,8 @@
 use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
-use driverkit::KeyEvent as dKeyEvent;
-use driverkit::{grab_kb, send_key, wait_key};
+use anyhow::anyhow;
+use driverkit::{grab_kb, release_kb, send_key, wait_key, KeyEvent as dKeyEvent};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use std::convert::TryFrom;
@@ -42,22 +42,33 @@ impl From<InputEvent> for dKeyEvent {
 
 pub struct KbdIn {}
 
+impl Drop for KbdIn {
+    fn drop(&mut self) {
+        release_kb();
+    }
+}
+
 impl KbdIn {
-    pub fn new() -> Result<Self, io::Error> {
+    pub fn new() -> Result<Self, anyhow::Error> {
         //let grab_status = grab_kb("Karabiner DriverKit VirtualHIDKeyboard 1.7.0");
-        let grab_status = grab_kb("Apple Internal Keyboard / Trackpad");
-        if grab_status == 0 {
-            Ok(Self {})
-        } else {
-            Err(io::Error::new(
-                io::ErrorKind::NotConnected,
-                "Couldn't grab keyboard",
-            ))
+        //let grab_status = grab_kb("Apple Internal Keyboard / Trackpad");
+        let grab_status = grab_kb("");
+        match grab_status {
+            0 => Ok(Self {}),
+            e => {
+                release_kb();
+                return if e == 13 {
+                    Err(anyhow!(
+                        "Karabiner-VirtualHIDDevice driver is not activated."
+                    ))
+                } else {
+                    Err(anyhow!("Couldn't grab keyboard"))
+                };
+            }
         }
     }
 
     pub fn read(&mut self) -> Result<InputEvent, io::Error> {
-        // nano: can this fail? or make it return event?
         let mut event = dKeyEvent {
             value: 0,
             page: 0,
