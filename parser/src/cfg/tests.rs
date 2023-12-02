@@ -1,5 +1,6 @@
 use super::*;
-use crate::cfg::sexpr::parse;
+#[allow(unused_imports)]
+use crate::cfg::sexpr::{parse, Span};
 use kanata_keyberon::action::BooleanOperator::*;
 
 use std::sync::Mutex;
@@ -1201,9 +1202,81 @@ fn list_action_not_in_list_error_message_is_good() {
 
 #[test]
 fn parse_device_paths() {
+    assert_eq!(parse_colon_separated_text(""), [""]);
+    assert_eq!(parse_colon_separated_text("device1"), ["device1"]);
     assert_eq!(parse_colon_separated_text("h:w"), ["h", "w"]);
     assert_eq!(parse_colon_separated_text("h\\:w"), ["h:w"]);
     assert_eq!(parse_colon_separated_text("h\\:w\\"), ["h:w\\"]);
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+fn test_parse_linux_dev() {
+    // The old colon separated devices format
+    assert_eq!(
+        parse_linux_dev(&SExpr::Atom(Spanned {
+            t: "\"Keyboard2:Input Device 1:pci-0000\\:00\\:14.0-usb-0\\:1\\:1.0-event\""
+                .to_string(),
+            span: Span::default(),
+        }))
+        .expect("succeeds"),
+        [
+            "Keyboard2",
+            "Input Device 1",
+            "pci-0000:00:14.0-usb-0:1:1.0-event"
+        ]
+    );
+    parse_linux_dev(&SExpr::Atom(Spanned {
+        t: "\"\"".to_string(),
+        span: Span::default(),
+    }))
+    .expect_err("'' is not a valid device name/path, this should fail");
+
+    // The new device list format
+    assert_eq!(
+        parse_linux_dev(&SExpr::List(Spanned {
+            t: vec![
+                SExpr::Atom(Spanned {
+                    t: "Keyboard2".to_string(),
+                    span: Span::default(),
+                }),
+                SExpr::Atom(Spanned {
+                    t: "\"Input Device 1\"".to_string(),
+                    span: Span::default(),
+                }),
+                SExpr::Atom(Spanned {
+                    t: "pci-0000:00:14.0-usb-0:1:1.0-event".to_string(),
+                    span: Span::default(),
+                }),
+                SExpr::Atom(Spanned {
+                    t: r"backslashes\do\not\escape\:\anything".to_string(),
+                    span: Span::default(),
+                }),
+            ],
+            span: Span::default(),
+        }))
+        .expect("succeeds"),
+        [
+            "Keyboard2",
+            "Input Device 1",
+            "pci-0000:00:14.0-usb-0:1:1.0-event",
+            r"backslashes\do\not\escape\:\anything"
+        ]
+    );
+    parse_linux_dev(&SExpr::List(Spanned {
+        t: vec![
+            SExpr::Atom(Spanned {
+                t: "Device1".to_string(),
+                span: Span::default(),
+            }),
+            SExpr::List(Spanned {
+                t: vec![],
+                span: Span::default(),
+            }),
+        ],
+        span: Span::default(),
+    }))
+    .expect_err("nested lists in path list shouldn't be allowed");
 }
 
 #[test]

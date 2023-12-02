@@ -4,7 +4,7 @@ use super::HashSet;
 use crate::cfg::check_first_expr;
 use crate::custom_action::*;
 #[allow(unused)]
-use crate::{anyhow_expr, anyhow_span, bail, bail_expr};
+use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
 #[derive(Debug)]
 pub struct CfgOptions {
@@ -96,65 +96,74 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
             Some(v) => v,
             None => bail_expr!(key, "Found a defcfg option missing a value"),
         };
-        match (&key, &val) {
-            (SExpr::Atom(k), SExpr::Atom(v)) => {
-                if !seen_keys.insert(&k.t) {
-                    bail_expr!(key, "Duplicate defcfg option {}", k.t);
+        match key {
+            SExpr::Atom(k) => {
+                let label = k.t.as_str();
+                if !seen_keys.insert(label) {
+                    bail_expr!(key, "Duplicate defcfg option {}", label);
                 }
-                match k.t.as_str() {
-                    k @ "sequence-timeout" => {
-                        cfg.sequence_timeout = parse_cfg_val_u16(val, k, true)?;
+                match label {
+                    "sequence-timeout" => {
+                        cfg.sequence_timeout = parse_cfg_val_u16(val, label, true)?;
                     }
                     "sequence-input-mode" => {
-                        cfg.sequence_input_mode =
-                            SequenceInputMode::try_from_str(v.t.trim_matches('"'))
-                                .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
+                        let v = sexpr_to_str_or_err(val, label)?;
+                        cfg.sequence_input_mode = SequenceInputMode::try_from_str(v)
+                            .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
                     }
-                    k @ "dynamic-macro-max-presses" => {
-                        cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, k, false)?;
+                    "dynamic-macro-max-presses" => {
+                        cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, label, false)?;
                     }
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let paths = v.t.trim_matches('"');
-                            cfg.linux_dev = parse_colon_separated_text(paths);
+                            cfg.linux_dev = parse_linux_dev(val)?;
+                            if cfg.linux_dev.is_empty() {
+                                bail_expr!(
+                                    val,
+                                    "device list is empty, no devices will be intercepted"
+                                );
+                            }
                         }
                     }
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let paths = v.t.trim_matches('"');
-                            cfg.linux_dev_names_include = Some(parse_colon_separated_text(paths));
+                            cfg.linux_dev_names_include = Some(parse_linux_dev(val)?);
+                            if cfg.linux_dev.is_empty() {
+                                log::warn!("linux-dev-names-include is empty");
+                            }
                         }
                     }
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let paths = v.t.trim_matches('"');
-                            cfg.linux_dev_names_exclude = Some(parse_colon_separated_text(paths));
+                            cfg.linux_dev_names_exclude = Some(parse_linux_dev(val)?);
                         }
                     }
-                    _k @ "linux-unicode-u-code" => {
+                    "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_unicode_u_code = crate::keys::str_to_oscode(
-                                v.t.trim_matches('"'),
-                            )
-                            .ok_or_else(|| anyhow_expr!(val, "unknown code for {_k}: {}", v.t))?;
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            cfg.linux_unicode_u_code =
+                                crate::keys::str_to_oscode(v).ok_or_else(|| {
+                                    anyhow_expr!(val, "unknown code for {label}: {}", v)
+                                })?;
                         }
                     }
-                    _k @ "linux-unicode-termination" => {
+                    "linux-unicode-termination" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_unicode_termination = match v.t.trim_matches('"') {
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            cfg.linux_unicode_termination = match v {
                                 "enter" => UnicodeTermination::Enter,
                                 "space" => UnicodeTermination::Space,
                                 "enter-space" => UnicodeTermination::EnterSpace,
                                 "space-enter" => UnicodeTermination::SpaceEnter,
                                 _ => bail_expr!(
                                     val,
-                                    "{_k} got {}. It accepts: enter|space|enter-space|space-enter",
-                                    v.t
+                                    "{label} got {}. It accepts: enter|space|enter-space|space-enter",
+                                    v
                                 ),
                             }
                         }
@@ -162,7 +171,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-x11-repeat-delay-rate" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let delay_rate = v.t.trim_matches('"').split(',').collect::<Vec<_>>();
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            let delay_rate = v.split(',').collect::<Vec<_>>();
                             const ERRMSG: &str = "Invalid value for linux-x11-repeat-delay-rate.\nExpected two numbers 0-65535 separated by a comma, e.g. 200,25";
                             if delay_rate.len() != 2 {
                                 bail_expr!(val, "{}", ERRMSG)
@@ -179,31 +189,33 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             });
                         }
                     }
-                    _k @ "windows-altgr" => {
+                    "windows-altgr" => {
                         #[cfg(any(target_os = "windows", target_os = "unknown"))]
                         {
                             const CANCEL: &str = "cancel-lctl-press";
                             const ADD: &str = "add-lctl-release";
-                            cfg.windows_altgr = match v.t.trim_matches('"') {
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            cfg.windows_altgr = match v {
                                 CANCEL => AltGrBehaviour::CancelLctlPress,
                                 ADD => AltGrBehaviour::AddLctlRelease,
                                 _ => bail_expr!(
                                     val,
-                                    "Invalid value for {_k}: {}. Valid values are {},{}",
-                                    v.t,
+                                    "Invalid value for {label}: {}. Valid values are {},{}",
+                                    v,
                                     CANCEL,
                                     ADD
                                 ),
                             }
                         }
                     }
-                    _k @ "windows-interception-mouse-hwid" => {
+                    "windows-interception-mouse-hwid" => {
                         #[cfg(any(
                             all(feature = "interception_driver", target_os = "windows"),
                             target_os = "unknown"
                         ))]
                         {
-                            let hwid = v.t.trim_matches('"');
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            let hwid = v;
                             log::trace!("win hwid: {hwid}");
                             let hwid_vec = hwid
                                 .split(',')
@@ -212,12 +224,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                         hwid_bytes.push(b);
                                         hwid_bytes
                                     })
-                                }).map_err(|_| anyhow_expr!(val, "{_k} format is invalid. It should consist of integers separated by commas"))?;
+                                }).map_err(|_| anyhow_expr!(val, "{label} format is invalid. It should consist of integers separated by commas"))?;
                             let hwid_slice = hwid_vec.iter().copied().enumerate()
                                 .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
                                     let (i, b) = idx_byte;
                                     if i > HWID_ARR_SZ {
-                                        bail_expr!(val, "{_k} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
+                                        bail_expr!(val, "{label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
                                     }
                                     hwid[i] = b;
                                     Ok(hwid)
@@ -227,17 +239,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
 
                     "process-unmapped-keys" => {
-                        cfg.process_unmapped_keys = parse_defcfg_val_bool(val, &k.t)?
+                        cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
                     }
-                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, &k.t)?,
+                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
                     "sequence-backtrack-modcancel" => {
-                        cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, &k.t)?
+                        cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, label)?
                     }
                     "log-layer-changes" => {
-                        cfg.log_layer_changes = parse_defcfg_val_bool(val, &k.t)?
+                        cfg.log_layer_changes = parse_defcfg_val_bool(val, label)?
                     }
                     "delegate-to-first-layer" => {
-                        cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, &k.t)?;
+                        cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, label)?;
                         if cfg.delegate_to_first_layer {
                             log::info!("delegating transparent keys on other layers to first defined layer");
                         }
@@ -245,23 +257,20 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-continue-if-no-devs-found" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, &k.t)?
+                            cfg.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "movemouse-smooth-diagonals" => {
-                        cfg.movemouse_smooth_diagonals = parse_defcfg_val_bool(val, &k.t)?
+                        cfg.movemouse_smooth_diagonals = parse_defcfg_val_bool(val, label)?
                     }
                     "movemouse-inherit-accel-state" => {
-                        cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, &k.t)?
+                        cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, label)?
                     }
-                    _ => bail_expr!(key, "Unknown defcfg option {}", &k.t),
+                    _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };
             }
-            (SExpr::List(_), _) => {
-                bail_expr!(key, "Lists are not allowed in defcfg");
-            }
-            (_, SExpr::List(_)) => {
-                bail_expr!(val, "Lists are not allowed in defcfg");
+            SExpr::List(_) => {
+                bail_expr!(key, "Lists are not allowed in as keys in defcfg");
             }
         }
     }
@@ -336,6 +345,48 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     }
     all_paths.shrink_to_fit();
     all_paths
+}
+
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
+    Ok(match val {
+        SExpr::Atom(a) => {
+            let devs = parse_colon_separated_text(a.t.trim_matches('"'));
+            if devs.len() == 1 && devs[0].is_empty() {
+                bail_expr!(val, "an empty string is not a valid device name or path")
+            }
+            devs
+        }
+        SExpr::List(l) => {
+            let r: Result<Vec<String>> =
+                l.t.iter()
+                    .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
+                        SExpr::Atom(path) => {
+                            let trimmed_path = path.t.trim_matches('"').to_string();
+                            if trimmed_path.is_empty() {
+                                bail_span!(
+                                    &path,
+                                    "an empty string is not a valid device name or path"
+                                )
+                            }
+                            acc.push(trimmed_path);
+                            Ok(acc)
+                        }
+                        SExpr::List(inner_list) => {
+                            bail_span!(&inner_list, "expected strings, found a list")
+                        }
+                    });
+
+            r?
+        }
+    })
+}
+
+fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
+    match expr {
+        SExpr::Atom(a) => Ok(a.t.trim_matches('"')),
+        SExpr::List(_) => bail_expr!(expr, "The value for {label} can't be a list"),
+    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
