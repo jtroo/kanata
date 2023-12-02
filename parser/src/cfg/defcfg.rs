@@ -118,12 +118,18 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_dev = parse_linux_dev(val)?;
+                            if cfg.linux_dev.is_empty() {
+                                bail_expr!(val, "device list is empty, no devices will be intercepted");
+                            }
                         }
                     }
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_dev_names_include = Some(parse_linux_dev(val)?);
+                            if cfg.linux_dev.is_empty() {
+                                log::warn!("linux-dev-names-include is empty");
+                            }
                         }
                     }
                     "linux-dev-names-exclude" => {
@@ -344,7 +350,7 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
         SExpr::Atom(a) => {
             let devs = parse_colon_separated_text(a.t.trim_matches('"'));
             if devs.len() == 1 && devs[0].is_empty() {
-                bail_expr!(val, "empty string is not a valid device name or path")
+                bail_expr!(val, "an empty string is not a valid device name or path")
             }
             devs
         }
@@ -355,23 +361,16 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
                         SExpr::Atom(path) => {
                             let trimmed_path = path.t.trim_matches('"').to_string();
                             if trimmed_path.is_empty() {
-                                bail_span!(&path, "empty string is not a valid device name or path")
+                                bail_span!(&path, "an empty string is not a valid device name or path")
                             }
                             acc.push(trimmed_path);
                             Ok(acc)
                         }
                         SExpr::List(inner_list) => {
-                            bail_span!(&inner_list, "expected string, found list")
+                            bail_span!(&inner_list, "expected strings, found a list")
                         }
                     });
             let devs = r?;
-            if devs.is_empty() {
-                // This errors, because linux-dev, linux-dev-include-names and linux-dev-exclude-names
-                // are all mutually exclusive, and only one of them can be effective at a time.
-                // For all of them, if device list is empty, running kanata will effectively be
-                // a no-op which is surely not desired.
-                bail_expr!(val, "device list is empty, no devices will be intercepted")
-            }
             devs
         }
     })
