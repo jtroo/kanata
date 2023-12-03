@@ -120,8 +120,8 @@ pub struct Kanata {
     time_remainder: u128,
     /// Is true if a live reload was requested by the user and false otherwise.
     live_reload_requested: bool,
-    #[cfg(target_os = "linux")]
-    /// Linux input paths in the user configuration.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    /// Linux/Macos input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
     #[cfg(target_os = "linux")]
     /// Tracks the Linux user configuration to continue or abort if no devices are found.
@@ -324,6 +324,8 @@ impl Kanata {
             live_reload_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
+            #[cfg(target_os = "macos")]
+            kbd_in_paths: cfg.items.macos_dev,
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.items.linux_dev,
             #[cfg(target_os = "linux")]

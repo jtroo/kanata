@@ -13,10 +13,12 @@ impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
-        let mut kb = match KbdIn::new() {
+        let k = kanata.lock();
+        let mut kb = match KbdIn::new( &k.kbd_in_paths) {
             Ok(kbd_in) => kbd_in,
-            Err(e) => bail!("failed to open keyboard device(s): {}", e)
+            Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };
+        drop(k);
 
         loop {
             let event = kb.read().map_err(|e| anyhow!("failed read: {}", e))?;

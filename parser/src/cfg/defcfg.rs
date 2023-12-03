@@ -39,6 +39,8 @@ pub struct CfgOptions {
         target_os = "unknown"
     ))]
     pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    #[cfg(target_os = "macos")]
+    pub macos_dev: Vec<String>,
 }
 
 impl Default for CfgOptions {
@@ -77,6 +79,8 @@ impl Default for CfgOptions {
                 target_os = "unknown"
             ))]
             windows_interception_mouse_hwid: None,
+            #[cfg(target_os = "macos")]
+            macos_dev: vec![],
         }
     }
 }
@@ -238,6 +242,18 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.windows_interception_mouse_hwid = Some(hwid_slice?);
                         }
                     }
+                    "macos-dev" => {
+                        #[cfg(target_os = "macos")]
+                        {
+                            cfg.macos_dev = parse_macos_dev(val)?;
+                            if cfg.macos_dev.is_empty() {
+                                bail_expr!(
+                                val,
+                                "device list is empty, no devices will be intercepted"
+                            );
+                            }
+                        }
+                    }
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
@@ -291,18 +307,18 @@ fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
                 Ok(false)
             } else {
                 bail_expr!(
-                    expr,
-                    "The value for {label} must be one of: {}",
-                    BOOLEAN_VALUES.join(", ")
-                );
+                expr,
+                "The value for {label} must be one of: {}",
+                BOOLEAN_VALUES.join(", ")
+            );
             }
         }
         SExpr::List(_) => {
             bail_expr!(
-                expr,
-                "The value for {label} cannot be a list, it must be one of: {}",
-                BOOLEAN_VALUES.join(", "),
-            )
+            expr,
+            "The value for {label} cannot be a list, it must be one of: {}",
+            BOOLEAN_VALUES.join(", "),
+        )
         }
     }
 }
@@ -322,9 +338,9 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
             .ok_or_else(|| anyhow_expr!(expr, "{label} must be {start}-65535"))?),
         SExpr::List(_) => {
             bail_expr!(
-                expr,
-                "The value for {label} cannot be a list, it must be a number {start}-65535",
-            )
+            expr,
+            "The value for {label} cannot be a list, it must be a number {start}-65535",
+        )
         }
     }
 }
@@ -348,6 +364,41 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     all_paths
 }
 
+#[cfg(target_os = "macos")]
+pub fn parse_macos_dev(val: &SExpr) -> Result<Vec<String>> {
+    Ok(match val {
+        SExpr::Atom(a) => {
+            let devs = parse_colon_separated_text(a.t.trim_matches('"'));
+            if devs.len() == 1 && devs[0].is_empty() {
+                bail_expr!(val, "an empty string is not a valid device name or path")
+            }
+            devs
+        }
+        SExpr::List(l) => {
+            let r: Result<Vec<String>> =
+            l.t.iter()
+                .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
+                    SExpr::Atom(path) => {
+                        let trimmed_path = path.t.trim_matches('"').to_string();
+                        if trimmed_path.is_empty() {
+                            bail_span!(
+                                &path,
+                                "an empty string is not a valid device name or path"
+                            )
+                        }
+                        acc.push(trimmed_path);
+                        Ok(acc)
+                    }
+                    SExpr::List(inner_list) => {
+                        bail_span!(&inner_list, "expected strings, found a list")
+                    }
+                });
+
+            r?
+        }
+    })
+}
+
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
@@ -360,23 +411,23 @@ pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
         }
         SExpr::List(l) => {
             let r: Result<Vec<String>> =
-                l.t.iter()
-                    .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
-                        SExpr::Atom(path) => {
-                            let trimmed_path = path.t.trim_matches('"').to_string();
-                            if trimmed_path.is_empty() {
-                                bail_span!(
-                                    &path,
-                                    "an empty string is not a valid device name or path"
-                                )
-                            }
-                            acc.push(trimmed_path);
-                            Ok(acc)
+            l.t.iter()
+                .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
+                    SExpr::Atom(path) => {
+                        let trimmed_path = path.t.trim_matches('"').to_string();
+                        if trimmed_path.is_empty() {
+                            bail_span!(
+                                &path,
+                                "an empty string is not a valid device name or path"
+                            )
                         }
-                        SExpr::List(inner_list) => {
-                            bail_span!(&inner_list, "expected strings, found a list")
-                        }
-                    });
+                        acc.push(trimmed_path);
+                        Ok(acc)
+                    }
+                    SExpr::List(inner_list) => {
+                        bail_span!(&inner_list, "expected strings, found a list")
+                    }
+                });
 
             r?
         }

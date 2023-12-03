@@ -3,7 +3,7 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
-use driverkit::{grab_kb, release_kb, send_key, wait_key, KeyEvent as dKeyEvent};
+use driverkit::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use std::convert::TryFrom;
@@ -21,7 +21,7 @@ pub struct InputEvent {
 }
 
 impl InputEvent {
-    pub fn new(event: dKeyEvent) -> Self {
+    pub fn new(event: DKEvent) -> Self {
         InputEvent {
             value: event.value,
             page: event.page,
@@ -30,7 +30,7 @@ impl InputEvent {
     }
 }
 
-impl From<InputEvent> for dKeyEvent {
+impl From<InputEvent> for DKEvent {
     fn from(event: InputEvent) -> Self {
         Self {
             value: event.value,
@@ -49,27 +49,29 @@ impl Drop for KbdIn {
 }
 
 impl KbdIn {
-    pub fn new() -> Result<Self, anyhow::Error> {
-        //let grab_status = grab_kb("Karabiner DriverKit VirtualHIDKeyboard 1.7.0");
-        //let grab_status = grab_kb("Apple Internal Keyboard / Trackpad");
-        let grab_status = grab_kb("");
-        match grab_status {
-            0 => Ok(Self {}),
-            e => {
+    pub fn new(dev_paths: &[String]) -> Result<Self, anyhow::Error> {
+
+        if dev_paths.is_empty() {
+            println!("fadya ya 3am");
+        } else {
+            for i in dev_paths { println!("FOUND DEV: {}", i); }
+        }
+
+        match grab_kb("") {
+            Ok(()) => Ok(Self {}),
+            Err(GrabError::DeviceMismatch) => Err(anyhow!("Device name not found, try kanata -l to see a list of valid devices")),
+            Err(GrabError::DriverInactive) => Err(anyhow!("Karabiner-VirtualHIDDevice driver is not activated.")),
+            Err(GrabError::GrabbingFailed) => {
                 release_kb();
-                return if e == 13 {
-                    Err(anyhow!(
-                        "Karabiner-VirtualHIDDevice driver is not activated."
-                    ))
-                } else {
-                    Err(anyhow!("Couldn't grab keyboard"))
-                };
+                Err(anyhow!("Couldn't grab keyboard"))
             }
         }
+
+
     }
 
     pub fn read(&mut self) -> Result<InputEvent, io::Error> {
-        let mut event = dKeyEvent {
+        let mut event = DKEvent {
             value: 0,
             page: 0,
             code: 0,
