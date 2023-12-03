@@ -307,18 +307,18 @@ fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
                 Ok(false)
             } else {
                 bail_expr!(
-                expr,
-                "The value for {label} must be one of: {}",
-                BOOLEAN_VALUES.join(", ")
-            );
+                    expr,
+                    "The value for {label} must be one of: {}",
+                    BOOLEAN_VALUES.join(", ")
+                );
             }
         }
         SExpr::List(_) => {
             bail_expr!(
-            expr,
-            "The value for {label} cannot be a list, it must be one of: {}",
-            BOOLEAN_VALUES.join(", "),
-        )
+                expr,
+                "The value for {label} cannot be a list, it must be one of: {}",
+                BOOLEAN_VALUES.join(", "),
+            )
         }
     }
 }
@@ -338,9 +338,9 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
             .ok_or_else(|| anyhow_expr!(expr, "{label} must be {start}-65535"))?),
         SExpr::List(_) => {
             bail_expr!(
-            expr,
-            "The value for {label} cannot be a list, it must be a number {start}-65535",
-        )
+                expr,
+                "The value for {label} cannot be a list, it must be a number {start}-65535",
+            )
         }
     }
 }
@@ -397,48 +397,6 @@ pub fn parse_macos_dev(val: &SExpr) -> Result<Vec<String>> {
             r?
         }
     })
-}
-
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
-pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
-    Ok(match val {
-        SExpr::Atom(a) => {
-            let devs = parse_colon_separated_text(a.t.trim_matches('"'));
-            if devs.len() == 1 && devs[0].is_empty() {
-                bail_expr!(val, "an empty string is not a valid device name or path")
-            }
-            devs
-        }
-        SExpr::List(l) => {
-            let r: Result<Vec<String>> =
-            l.t.iter()
-                .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
-                    SExpr::Atom(path) => {
-                        let trimmed_path = path.t.trim_matches('"').to_string();
-                        if trimmed_path.is_empty() {
-                            bail_span!(
-                                &path,
-                                "an empty string is not a valid device name or path"
-                            )
-                        }
-                        acc.push(trimmed_path);
-                        Ok(acc)
-                    }
-                    SExpr::List(inner_list) => {
-                        bail_span!(&inner_list, "expected strings, found a list")
-                    }
-                });
-
-            r?
-        }
-    })
-}
-
-fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
-    match expr {
-        SExpr::Atom(a) => Ok(a.t.trim_matches('"')),
-        SExpr::List(_) => bail_expr!(expr, "The value for {label} can't be a list"),
-    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
