@@ -30,3 +30,25 @@ pub(crate) fn custom_tap_hold_release(
         None
     })
 }
+
+pub(crate) fn custom_tap_hold_except(
+    keys: &[OsCode],
+    a: &Allocations,
+) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+    let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
+    a.sref(move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
+        while let Some(q) = queued.next() {
+            if q.event().is_press() {
+                let (_i, j) = q.event().coord();
+                // If any key matches the input, do a tap.
+                if keys.iter().copied().map(u16::from).any(|j2| j2 == j) {
+                    return (Some(WaitingAction::Tap), false);
+                }
+                // Otherwise continue with default behavior
+                return (None, false);
+            }
+        }
+        // Otherwise skip timeout
+        (None, true)
+    })
+}

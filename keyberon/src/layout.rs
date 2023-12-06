@@ -400,6 +400,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     }
 
     fn handle_hold_tap(&mut self, cfg: HoldTapConfig, queued: &Queue) -> Option<WaitingAction> {
+        let mut skip_timeout = false;
         match cfg {
             HoldTapConfig::Default => (),
             HoldTapConfig::HoldOnOtherKeyPress => {
@@ -424,6 +425,14 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                     return waiting_action;
                 }
             }
+            HoldTapConfig::NeverHoldOnOtherKeyPress(func) => {
+                let (waiting_action , local_skip) = (func)(QueuedIter(queued.iter()));
+                if waiting_action.is_some() {
+                    return waiting_action;
+                } else {
+                    skip_timeout = local_skip;
+                }
+            }
         }
         if let Some(&Queued { since, .. }) = queued
             .iter()
@@ -434,7 +443,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             } else {
                 Some(WaitingAction::Timeout)
             }
-        } else if self.timeout == 0 {
+        } else if (self.timeout == 0) && (!skip_timeout) {
             Some(WaitingAction::Timeout)
         } else {
             None
