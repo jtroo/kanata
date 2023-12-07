@@ -438,7 +438,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             .iter()
             .find(|s| self.is_corresponding_release(&s.event))
         {
-            if self.timeout >= self.delay.saturating_sub(since) {
+            if self.timeout > self.delay.saturating_sub(since) {
                 Some(WaitingAction::Tap)
             } else {
                 Some(WaitingAction::Timeout)
