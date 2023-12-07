@@ -44,30 +44,37 @@ pub struct KbdIn {}
 
 impl Drop for KbdIn {
     fn drop(&mut self) {
-        release_kb();
+        release();
     }
 }
 
 impl KbdIn {
-    pub fn new(dev_paths: &[String]) -> Result<Self, anyhow::Error> {
+    pub fn new(devices: &[String]) -> Result<Self, anyhow::Error> {
+        if !driver_activated() {
+            return Err(anyhow!(
+                "Karabiner-VirtualHIDDevice driver is not activated."
+            ));
+        }
 
-        if dev_paths.is_empty() {
-            println!("fadya ya 3am");
+        let registered_devices = if !devices.is_empty() {
+            validate_and_register_devices(devices)
         } else {
-            for i in dev_paths { println!("FOUND DEV: {}", i); }
-        }
+            vec![]
+        };
 
-        match grab_kb("") {
-            Ok(()) => Ok(Self {}),
-            Err(GrabError::DeviceMismatch) => Err(anyhow!("Device name not found, try kanata -l to see a list of valid devices")),
-            Err(GrabError::DriverInactive) => Err(anyhow!("Karabiner-VirtualHIDDevice driver is not activated.")),
-            Err(GrabError::GrabbingFailed) => {
-                release_kb();
-                Err(anyhow!("Couldn't grab keyboard"))
+        println!("Ok, here: reg dev len {}", registered_devices.len());
+
+        if !registered_devices.is_empty() || register_device("") {
+            println!("ok");
+            if grab() {
+                println!("ok ok");
+                Ok(Self {})
+            } else {
+                Err(anyhow!("grab failed"))
             }
+        } else {
+            Err(anyhow!("Couldn't register any device"))
         }
-
-
     }
 
     pub fn read(&mut self) -> Result<InputEvent, io::Error> {
@@ -81,6 +88,27 @@ impl KbdIn {
 
         Ok(InputEvent::new(event))
     }
+}
+
+fn validate_and_register_devices(devices: &[String]) -> Vec<String> {
+    devices
+        .iter()
+        .filter_map(|dev| match device_matches(dev) {
+            true => Some(dev.to_string()),
+            false => {
+                log::warn!("Not a valid device name '{dev}'");
+                None
+            }
+        })
+        .filter_map(|dev| {
+            if register_device(&dev) {
+                Some(dev.to_string())
+            } else {
+                log::warn!("Couldn't register device '{dev}'");
+                None
+            }
+        })
+        .collect()
 }
 
 impl TryFrom<InputEvent> for KeyEvent {
