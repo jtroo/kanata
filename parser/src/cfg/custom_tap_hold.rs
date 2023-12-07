@@ -10,24 +10,24 @@ use super::alloc::Allocations;
 pub(crate) fn custom_tap_hold_release(
     keys: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> Option<WaitingAction> + Send + Sync) {
+) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
-    a.sref(move |mut queued: QueuedIter| -> Option<WaitingAction> {
+    a.sref(move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
         while let Some(q) = queued.next() {
             if q.event().is_press() {
                 let (i, j) = q.event().coord();
                 // If any key matches the input, do a tap right away.
                 if keys.iter().copied().map(u16::from).any(|j2| j2 == j) {
-                    return Some(WaitingAction::Tap);
+                    return (Some(WaitingAction::Tap), false);
                 }
                 // Otherwise do the PermissiveHold algorithm.
                 let target = Event::Release(i, j);
                 if queued.clone().copied().any(|q| q.event() == target) {
-                    return Some(WaitingAction::Hold);
+                    return (Some(WaitingAction::Hold), false);
                 }
             }
         }
-        None
+        (None, false)
     })
 }
 

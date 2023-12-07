@@ -1236,8 +1236,8 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         TAP_HOLD_RELEASE_TIMEOUT => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        TAP_HOLD_RELEASE_KEYS => parse_tap_hold_release_keys(&ac[1..], s),
-        TAP_HOLD_EXCEPT_KEYS => parse_tap_hold_except_keys(&ac[1..], s),
+        TAP_HOLD_RELEASE_KEYS => parse_tap_hold_keys(&ac[1..], s, custom_tap_hold_release),
+        TAP_HOLD_EXCEPT_KEYS => parse_tap_hold_keys(&ac[1..], s, custom_tap_hold_except),
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT => parse_macro(&ac[1..], s, RepeatMacro::Yes),
@@ -1384,13 +1384,14 @@ Params in order:
     }))))
 }
 
-fn parse_tap_hold_release_keys(
+fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParsedState,
+    custom_func: fn(&[OsCode], &Allocations) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync),
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
-            r"tap-hold-release-keys expects 5 items after it, got {}.
+            r"tap-hold-(release|except)-keys expects 5 items after it, got {}.
 Params in order:
 <tap-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys>",
             ac_params.len(),
@@ -1405,37 +1406,7 @@ Params in order:
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
-        config: HoldTapConfig::Custom(custom_tap_hold_release(&tap_trigger_keys, &s.a)),
-        tap_hold_interval: tap_timeout,
-        timeout: hold_timeout,
-        tap: *tap_action,
-        hold: *hold_action,
-        timeout_action: *hold_action,
-    }))))
-}
-
-fn parse_tap_hold_except_keys(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    if ac_params.len() != 5 {
-        bail!(
-            r"tap-hold-except-keys expects 5 items after it, got {}.
-Params in order:
-<tap-timeout> <hold-timeout> <tap-action> <hold-action> <always-tap-trigger-keys>",
-            ac_params.len(),
-        )
-    }
-    let tap_timeout = parse_u16(&ac_params[0], s, "tap timeout")?;
-    let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
-    let tap_action = parse_action(&ac_params[2], s)?;
-    let hold_action = parse_action(&ac_params[3], s)?;
-    let always_tap_trigger_keys = parse_key_list(&ac_params[4], s, "always-tap-trigger-keys")?;
-    if matches!(tap_action, Action::HoldTap { .. }) {
-        bail!("tap-hold does not work in the tap-action of tap-hold")
-    }
-    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
-        config: HoldTapConfig::NeverHoldOnOtherKeyPress(custom_tap_hold_except(&always_tap_trigger_keys, &s.a)),
+        config: HoldTapConfig::Custom(custom_func(&tap_trigger_keys, &s.a)),
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
         tap: *tap_action,

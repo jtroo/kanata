@@ -84,8 +84,7 @@ pub enum HoldTapConfig<'a> {
     /// value will cause a fallback to the timeout-based approach. If the
     /// timeout is not triggered, the next tick will call the custom handler
     /// again.
-    Custom(&'a (dyn Fn(QueuedIter) -> Option<WaitingAction> + Send + Sync)),
-    NeverHoldOnOtherKeyPress(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
+    Custom(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
 }
 
 impl<'a> Debug for HoldTapConfig<'a> {
@@ -93,7 +92,6 @@ impl<'a> Debug for HoldTapConfig<'a> {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
             HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
-            HoldTapConfig::NeverHoldOnOtherKeyPress(_) => f.write_str("NeverHoldOnOtherKeyPress"),
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
