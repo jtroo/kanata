@@ -15,6 +15,7 @@ use std::fs;
 use std::io;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 
 use super::*;
@@ -37,6 +38,8 @@ pub struct KbdIn {
 
 const INOTIFY_TOKEN_VALUE: usize = 0;
 const INOTIFY_TOKEN: Token = Token(INOTIFY_TOKEN_VALUE);
+
+pub static WAIT_DEVICE_MS: AtomicU64 = AtomicU64::new(200);
 
 impl KbdIn {
     pub fn new(
@@ -184,7 +187,7 @@ impl KbdIn {
             let discovered_devices = missing
                 .iter()
                 .filter_map(|dev_path| {
-                    for _ in 0..10 {
+                    for _ in 0..(WAIT_DEVICE_MS.load(Ordering::SeqCst) / 10) {
                         // try a few times with waits in between; device might not be ready
                         if let Ok(device) = Device::open(dev_path) {
                             return Some((device, dev_path.clone()));
@@ -206,7 +209,9 @@ impl KbdIn {
             missing.retain(|path| !paths_registered.contains(path));
         } else {
             log::info!("sleeping for a moment to let devices become ready");
-            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::thread::sleep(std::time::Duration::from_millis(
+                WAIT_DEVICE_MS.load(Ordering::SeqCst),
+            ));
             discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())
                 .into_iter()
                 .try_for_each(|(dev, path)| {

@@ -1,18 +1,19 @@
 use anyhow::{bail, Result};
+use clap::Parser;
 use log::info;
 use simplelog::*;
+
 use std::path::PathBuf;
 
 mod kanata;
 mod oskbd;
 mod tcp_server;
 
-#[cfg(test)]
-mod tests;
-
-use clap::Parser;
 use kanata::Kanata;
 use tcp_server::TcpServer;
+
+#[cfg(test)]
+mod tests;
 
 type CfgPath = PathBuf;
 
@@ -98,10 +99,19 @@ kanata.kbd in the current working directory and
     #[arg(short, long)]
     trace: bool,
 
-    /// Remove the startup delay on kanata. In some cases, removing the delay may cause keyboard
-    /// issues on startup.
-    #[arg(short, long)]
+    /// Remove the startup delay on kanata.
+    /// In some cases, removing the delay may cause keyboard issues on startup.
+    #[arg(short, long, verbatim_doc_comment)]
     nodelay: bool,
+
+    /// Milliseconds to wait before attempting to register a newly connected
+    /// device. The default is 200.
+    ///
+    /// You may wish to increase this if you have a device that is failing
+    /// to register - the device may be taking too long to become ready.
+    #[cfg(target_os = "linux")]
+    #[arg(short, long, verbatim_doc_comment)]
+    wait_device_ms: Option<u64>,
 }
 
 /// Parse CLI arguments and initialize logging.
@@ -147,6 +157,13 @@ fn cli_init() -> Result<ValidatedArgs> {
         }
     } else {
         bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
+    }
+
+    #[cfg(target_os = "linux")]
+    if let Some(wait) = args.wait_device_ms {
+        use std::sync::atomic::Ordering;
+        log::info!("Setting device registration wait time to {wait} ms.");
+        oskbd::WAIT_DEVICE_MS.store(wait, Ordering::SeqCst);
     }
 
     Ok(ValidatedArgs {
