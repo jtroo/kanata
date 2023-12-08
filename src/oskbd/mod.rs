@@ -60,7 +60,7 @@ pub struct KeyEvent {
 }
 
 #[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
-#[cfg(not( target_os = "macos"))]
+#[cfg(not(target_os = "macos"))]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }
