@@ -469,6 +469,7 @@ The default length limit is 128 keys.
 By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices to intercept
 using the `macos-dev` configuration.
+
 use `kanata -l` or `kanata --list` to list the available keyboards.
 
 .Example:
