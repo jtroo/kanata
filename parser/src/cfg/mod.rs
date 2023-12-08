@@ -157,6 +157,12 @@ pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction
 type KLayout =
     Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
 
+type TapHoldCustomFunc =
+    fn(
+        &[OsCode],
+        &Allocations,
+    ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
+
 pub type BorrowedKLayout<'a> =
     Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie;
@@ -1387,11 +1393,7 @@ Params in order:
 fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParsedState,
-    custom_func: fn(
-        &[OsCode],
-        &Allocations,
-    )
-        -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync),
+    custom_func: TapHoldCustomFunc,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(

@@ -40,7 +40,7 @@ pub(crate) fn custom_tap_hold_except(
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
         move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
-            while let Some(q) = queued.next() {
+            for q in queued.by_ref() {
                 if q.event().is_press() {
                     let (_i, j) = q.event().coord();
                     // If any key matches the input, do a tap.
