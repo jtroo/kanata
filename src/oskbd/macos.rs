@@ -62,12 +62,8 @@ impl KbdIn {
             vec![]
         };
 
-        println!("Ok, here: reg dev len {}", registered_devices.len());
-
         if !registered_devices.is_empty() || register_device("") {
-            println!("ok");
             if grab() {
-                println!("ok ok");
                 Ok(Self {})
             } else {
                 Err(anyhow!("grab failed"))
@@ -162,9 +158,8 @@ impl KbdOut {
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         let mut devent = event.into();
-        let _sent = send_key(&mut devent);
-
         log::debug!("Attempting to write {event:?} {devent:?}");
+        let _sent = send_key(&mut devent);
         Ok(())
     }
 
