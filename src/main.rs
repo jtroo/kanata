@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use log::info;
 use simplelog::*;
-use std::{path::PathBuf, process::exit};
+use std::path::PathBuf;
 
 mod kanata;
 mod oskbd;
@@ -115,7 +115,7 @@ fn cli_init() -> Result<ValidatedArgs> {
     #[cfg(target_os = "macos")]
     if args.list {
         karabiner_driverkit::list_keyboards();
-        exit(0);
+        std::process::exit(0);
     }
 
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
