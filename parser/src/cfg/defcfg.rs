@@ -39,7 +39,7 @@ pub struct CfgOptions {
         target_os = "unknown"
     ))]
     pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev: Vec<String>,
 }
 
@@ -79,7 +79,7 @@ impl Default for CfgOptions {
                 target_os = "unknown"
             ))]
             windows_interception_mouse_hwid: None,
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev: vec![],
         }
     }
@@ -243,7 +243,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "macos-dev" => {
-                        #[cfg(target_os = "macos")]
+                        #[cfg(any(target_os = "macos", target_os = "unknown"))]
                         {
                             cfg.macos_dev = parse_dev(val)?;
                             if cfg.macos_dev.is_empty() {

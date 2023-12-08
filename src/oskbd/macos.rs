@@ -9,7 +9,6 @@ use karabiner_driverkit::*;
 use std::convert::TryFrom;
 use std::io;
 
-//  see the whole discove devices thing, might be needed here for macos
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
