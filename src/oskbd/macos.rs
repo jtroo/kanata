@@ -3,9 +3,9 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
-use driverkit::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+use karabiner_driverkit::*;
 use std::convert::TryFrom;
 use std::io;
 
