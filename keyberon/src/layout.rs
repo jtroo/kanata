@@ -421,7 +421,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 }
             }
             HoldTapConfig::Custom(func) => {
-                let (waiting_action , local_skip) = (func)(QueuedIter(queued.iter()));
+                let (waiting_action, local_skip) = (func)(QueuedIter(queued.iter()));
                 if waiting_action.is_some() {
                     return waiting_action;
                 } else {

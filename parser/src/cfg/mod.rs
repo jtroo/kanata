@@ -1387,7 +1387,11 @@ Params in order:
 fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParsedState,
-    custom_func: fn(&[OsCode], &Allocations) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync),
+    custom_func: fn(
+        &[OsCode],
+        &Allocations,
+    )
+        -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync),
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
