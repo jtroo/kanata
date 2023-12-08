@@ -121,7 +121,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev = parse_linux_dev(val)?;
+                            cfg.linux_dev = parse_dev(val)?;
                             if cfg.linux_dev.is_empty() {
                                 bail_expr!(
                                     val,
@@ -133,7 +133,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let dev_names = parse_linux_dev(val)?;
+                            let dev_names = parse_dev(val)?;
                             if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
@@ -143,7 +143,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev_names_exclude = Some(parse_linux_dev(val)?);
+                            cfg.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
@@ -245,7 +245,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "macos-dev" => {
                         #[cfg(target_os = "macos")]
                         {
-                            cfg.macos_dev = parse_macos_dev(val)?;
+                            cfg.macos_dev = parse_dev(val)?;
                             if cfg.macos_dev.is_empty() {
                                 bail_expr!(
                                 val,
@@ -365,7 +365,7 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
 }
 
 #[cfg(target_os = "macos")]
-pub fn parse_macos_dev(val: &SExpr) -> Result<Vec<String>> {
+pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
             let devs = parse_colon_separated_text(a.t.trim_matches('"'));
@@ -400,7 +400,7 @@ pub fn parse_macos_dev(val: &SExpr) -> Result<Vec<String>> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
-pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
+pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
             let devs = parse_colon_separated_text(a.t.trim_matches('"'));
