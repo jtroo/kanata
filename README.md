@@ -76,7 +76,7 @@ Using `cargo install`:
 
     cargo install kanata
 
-    # On Linux and Macos, this may not work without `sudo`, see below
+    # On Linux and macOS, this may not work without `sudo`, see below
     kanata --cfg <your_configuration_file>
 
 Build and run yourself in Linux:
@@ -96,7 +96,7 @@ Build and run yourself in Windows.
     cargo build   # --release optional, not really perf sensitive
     target\debug\kanata --cfg <your_configuration_file>
 
-Build and run yourself in Macos:
+Build and run yourself in macOS:
 
 First, install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
 
