@@ -48,20 +48,20 @@ impl Drop for KbdIn {
 }
 
 impl KbdIn {
-    pub fn new(devices: &[String]) -> Result<Self, anyhow::Error> {
+    pub fn new(include_names: Option<Vec<String>>) -> Result<Self, anyhow::Error> {
         if !driver_activated() {
             return Err(anyhow!(
                 "Karabiner-VirtualHIDDevice driver is not activated."
             ));
         }
 
-        let registered_devices = if !devices.is_empty() {
-            validate_and_register_devices(devices)
+        let device_names = if include_names.is_some() {
+            validate_and_register_devices(include_names.unwrap())
         } else {
             vec![]
         };
 
-        if !registered_devices.is_empty() || register_device("") {
+        if !device_names.is_empty() || register_device("") {
             if grab() {
                 Ok(Self {})
             } else {
@@ -85,8 +85,8 @@ impl KbdIn {
     }
 }
 
-fn validate_and_register_devices(devices: &[String]) -> Vec<String> {
-    devices
+fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
+    include_names
         .iter()
         .filter_map(|dev| match device_matches(dev) {
             true => Some(dev.to_string()),

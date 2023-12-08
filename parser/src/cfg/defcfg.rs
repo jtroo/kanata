@@ -40,7 +40,7 @@ pub struct CfgOptions {
     ))]
     pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
-    pub macos_dev: Vec<String>,
+    pub macos_dev_names_include: Option<Vec<String>>,
 }
 
 impl Default for CfgOptions {
@@ -80,7 +80,7 @@ impl Default for CfgOptions {
             ))]
             windows_interception_mouse_hwid: None,
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
-            macos_dev: vec![],
+            macos_dev_names_include: None,
         }
     }
 }
@@ -242,16 +242,14 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.windows_interception_mouse_hwid = Some(hwid_slice?);
                         }
                     }
-                    "macos-dev" => {
+                    "macos-dev-names-include" => {
                         #[cfg(any(target_os = "macos", target_os = "unknown"))]
                         {
-                            cfg.macos_dev = parse_dev(val)?;
-                            if cfg.macos_dev.is_empty() {
-                                bail_expr!(
-                                val,
-                                "device list is empty, no devices will be intercepted"
-                            );
+                            let dev_names = parse_dev(val)?;
+                            if dev_names.is_empty() {
+                                log::warn!("macos-dev-names-include is empty");
                             }
+                            cfg.macos_dev_names_include = Some(dev_names);
                         }
                     }
 
