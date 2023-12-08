@@ -15,7 +15,7 @@
 
 ## What does this do?
 
-This is a software keyboard remapper for Linux and Windows. A short summary of
+This is a cross-platform software keyboard remapper for Linux, Macos and Windows. A short summary of
 the features:
 
 - multiple layers of key functionality
@@ -76,7 +76,7 @@ Using `cargo install`:
 
     cargo install kanata
 
-    # On Linux, this may not work without `sudo`, see below
+    # On Linux and Macos, this may not work without `sudo`, see below
     kanata --cfg <your_configuration_file>
 
 Build and run yourself in Linux:
@@ -95,6 +95,15 @@ Build and run yourself in Windows.
     git clone https://github.com/jtroo/kanata; cd kanata
     cargo build   # --release optional, not really perf sensitive
     target\debug\kanata --cfg <your_configuration_file>
+
+Build and run yourself in Macos:
+
+    git clone https://github.com/jtroo/kanata && cd kanata
+    cargo build   # --release optional, not really perf sensitive
+
+    # sudo is needed to gain permission to intercept the keyboard
+    
+    sudo target/debug/kanata --cfg <your_configuration_file>
 
 The full configuration guide is [found here](./docs/config.adoc).
 

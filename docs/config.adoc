@@ -170,11 +170,12 @@ that are not allowed in `defsrc` by default, at least according to the symbol
 shown. You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
-There are three variants of deflocalkeys:
+There are four variants of deflocalkeys:
 
 - `deflocalkeys-win`
 - `deflocalkeys-wintercept`
 - `deflocalkeys-linux`
+- `deflocalkeys-macos`
 
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
@@ -198,6 +199,10 @@ Please contribute to the document if you are able!
 )
 
 (deflocalkeys-linux
+  ì 13
+)
+
+(deflocalkeys-macos
   ì 13
 )
 
@@ -457,6 +462,59 @@ The default length limit is 128 keys.
   dynamic-macro-max-presses 1000
 )
 ----
+
+[[macos-only-macos-dev]]
+=== Macos only: macos-dev
+<<table-of-contents,Back to ToC>>
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices to intercept
+using the `macos-dev` configuration.
+use `kanata -l` or `kanata --list` to list the available keyboards.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev "Apple Internal Keyboard / Trackpad"
+)
+----
+
+If you want to specify multiple keyboards, you can separate the paths with a
+colon `+:+`.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev keyboard_1:keyboard_2
+)
+----
+
+Due to using the colon to separate devices, if you have a device with colons in
+its file name, you must escape those colons with backslashes:
+
+[source]
+----
+(defcfg
+  macos-dev cool\:keyboard
+)
+----
+
+Alternatively, you can use list syntax, where both backslashes and colons
+are parsed literally. List items are separated by spaces or newlines.
+Using quotation marks for each item is optional, and only required if an
+item contains spaces.
+
+[source]
+----
+(defcfg
+  macos-dev (
+    some:cool:keyboard
+    "Apple Internal Keyboard / Trackpad"
+  )
+)
+----
+
 
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
