@@ -15,7 +15,7 @@
 
 ## What does this do?
 
-This is a cross-platform software keyboard remapper for Linux, Macos and Windows. A short summary of
+This is a cross-platform software keyboard remapper for Linux, macOS and Windows. A short summary of
 the features:
 
 - multiple layers of key functionality
