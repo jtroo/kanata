@@ -199,31 +199,31 @@ impl KbdOut {
 
     /// Send using C-S-u + <unicode hex number> + spc
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
-        log::debug!("sending unicode {c}");
-        todo!();
+        log::error!("Unable to send unicode {c}, unsupported functionality");
+        todo!()
     }
 
     pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 
     pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 
     pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 
     pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 
     pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
-        Ok(())
+        panic!("Mouse is not supported yet on Macos")
     }
 }
