@@ -1211,10 +1211,10 @@ fn parse_device_paths() {
 
 #[test]
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
-fn test_parse_linux_dev() {
+fn test_parse_dev() {
     // The old colon separated devices format
     assert_eq!(
-        parse_linux_dev(&SExpr::Atom(Spanned {
+        parse_dev(&SExpr::Atom(Spanned {
             t: "\"Keyboard2:Input Device 1:pci-0000\\:00\\:14.0-usb-0\\:1\\:1.0-event\""
                 .to_string(),
             span: Span::default(),
@@ -1226,7 +1226,7 @@ fn test_parse_linux_dev() {
             "pci-0000:00:14.0-usb-0:1:1.0-event"
         ]
     );
-    parse_linux_dev(&SExpr::Atom(Spanned {
+    parse_dev(&SExpr::Atom(Spanned {
         t: "\"\"".to_string(),
         span: Span::default(),
     }))
@@ -1234,7 +1234,7 @@ fn test_parse_linux_dev() {
 
     // The new device list format
     assert_eq!(
-        parse_linux_dev(&SExpr::List(Spanned {
+        parse_dev(&SExpr::List(Spanned {
             t: vec![
                 SExpr::Atom(Spanned {
                     t: "Keyboard2".to_string(),
@@ -1263,7 +1263,7 @@ fn test_parse_linux_dev() {
             r"backslashes\do\not\escape\:\anything"
         ]
     );
-    parse_linux_dev(&SExpr::List(Spanned {
+    parse_dev(&SExpr::List(Spanned {
         t: vec![
             SExpr::Atom(Spanned {
                 t: "Device1".to_string(),
