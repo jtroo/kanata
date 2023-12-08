@@ -102,7 +102,8 @@ First, install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-o
 
 To activate it:
 
-    `/Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager activate`
+`/Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager activate`
+
 
     git clone https://github.com/jtroo/kanata && cd kanata
     cargo build   # --release optional, not really perf sensitive
