@@ -7,10 +7,10 @@ use rustc_hash::FxHashMap as HashMap;
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 mod linux;
-#[cfg(any(target_os = "windows", target_os = "unknown"))]
-mod windows;
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
 mod macos;
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+mod windows;
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
 pub use macos::PageCode;
 
