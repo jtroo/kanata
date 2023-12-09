@@ -7,8 +7,12 @@ use rustc_hash::FxHashMap as HashMap;
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 mod linux;
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+mod macos;
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
 mod windows;
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+pub use macos::PageCode;
 
 mod mappings;
 pub use mappings::*;
@@ -18,6 +22,7 @@ pub use mappings::*;
 pub enum Platform {
     Win,
     Linux,
+    Macos,
 }
 
 #[cfg(target_os = "unknown")]
@@ -29,6 +34,7 @@ impl OsCode {
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => self.as_u16_windows(),
             Platform::Linux => self.as_u16_linux(),
+            Platform::Macos => self.as_u16_macos(),
         };
 
         #[cfg(target_os = "linux")]
@@ -36,6 +42,9 @@ impl OsCode {
 
         #[cfg(target_os = "windows")]
         return self.as_u16_windows();
+
+        #[cfg(target_os = "macos")]
+        return self.as_u16_macos();
     }
 
     pub fn from_u16(code: u16) -> Option<Self> {
@@ -43,6 +52,7 @@ impl OsCode {
         return match *OSCODE_MAPPING_VARIANT.lock() {
             Platform::Win => OsCode::from_u16_windows(code),
             Platform::Linux => OsCode::from_u16_linux(code),
+            Platform::Macos => OsCode::from_u16_macos(code),
         };
 
         #[cfg(target_os = "linux")]
@@ -50,6 +60,9 @@ impl OsCode {
 
         #[cfg(target_os = "windows")]
         return OsCode::from_u16_windows(code);
+
+        #[cfg(target_os = "macos")]
+        return OsCode::from_u16_macos(code);
     }
 }
 
@@ -254,6 +267,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f22" => OsCode::KEY_F22,
         "f23" => OsCode::KEY_F23,
         "f24" => OsCode::KEY_F24,
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "fn" => OsCode::KEY_FN,
         #[cfg(target_os = "windows")]
         "kana" | "katakana" | "katakanahiragana" => OsCode::KEY_HANGEUL,
         #[cfg(any(target_os = "linux", target_os = "unknown"))]

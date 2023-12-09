@@ -43,7 +43,10 @@ is-terminal = "=0.4.7"
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
 kanata-keyberon = { path = "keyberon" }
-kanata-parser = { path = "parser" }
+kanata-parser =   { path = "parser" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+karabiner-driverkit = "0.1.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "=0.12.0"

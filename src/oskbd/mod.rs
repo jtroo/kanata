@@ -10,6 +10,11 @@ mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::*;
 
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::*;
+
 // ------------------ KeyValue --------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -55,6 +60,7 @@ pub struct KeyEvent {
 }
 
 #[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
+#[cfg(not(target_os = "macos"))]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }

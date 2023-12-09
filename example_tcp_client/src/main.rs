@@ -33,9 +33,7 @@ fn main() {
     )
     .expect("connect to kanata");
     log::info!("successfully connected");
-    let writer_stream = kanata_conn
-        .try_clone()
-        .expect("clone writer");
+    let writer_stream = kanata_conn.try_clone().expect("clone writer");
     let reader_stream = kanata_conn;
     std::thread::spawn(move || write_to_kanata(writer_stream));
     read_from_kanata(reader_stream);

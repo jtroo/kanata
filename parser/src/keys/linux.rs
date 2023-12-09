@@ -1,11 +1,11 @@
 // This file is taken from the original ktrl project's keys.rs file with modifications.
 
 use super::OsCode;
+
 impl OsCode {
     pub(super) const fn as_u16_linux(self) -> u16 {
         self as u16
     }
-
     pub(super) const fn from_u16_linux(code: u16) -> Option<Self> {
         match code {
             0 => Some(OsCode::KEY_RESERVED),

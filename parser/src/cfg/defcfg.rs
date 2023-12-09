@@ -39,6 +39,8 @@ pub struct CfgOptions {
         target_os = "unknown"
     ))]
     pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    #[cfg(any(target_os = "macos", target_os = "unknown"))]
+    pub macos_dev_names_include: Option<Vec<String>>,
 }
 
 impl Default for CfgOptions {
@@ -77,6 +79,8 @@ impl Default for CfgOptions {
                 target_os = "unknown"
             ))]
             windows_interception_mouse_hwid: None,
+            #[cfg(any(target_os = "macos", target_os = "unknown"))]
+            macos_dev_names_include: None,
         }
     }
 }
@@ -117,7 +121,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev = parse_linux_dev(val)?;
+                            cfg.linux_dev = parse_dev(val)?;
                             if cfg.linux_dev.is_empty() {
                                 bail_expr!(
                                     val,
@@ -129,7 +133,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-names-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let dev_names = parse_linux_dev(val)?;
+                            let dev_names = parse_dev(val)?;
                             if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
@@ -139,7 +143,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev_names_exclude = Some(parse_linux_dev(val)?);
+                            cfg.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
@@ -236,6 +240,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     Ok(hwid)
                             });
                             cfg.windows_interception_mouse_hwid = Some(hwid_slice?);
+                        }
+                    }
+                    "macos-dev-names-include" => {
+                        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+                        {
+                            let dev_names = parse_dev(val)?;
+                            if dev_names.is_empty() {
+                                log::warn!("macos-dev-names-include is empty");
+                            }
+                            cfg.macos_dev_names_include = Some(dev_names);
                         }
                     }
 
@@ -348,8 +362,8 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     all_paths
 }
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
-pub fn parse_linux_dev(val: &SExpr) -> Result<Vec<String>> {
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "unknown"))]
+pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
             let devs = parse_colon_separated_text(a.t.trim_matches('"'));

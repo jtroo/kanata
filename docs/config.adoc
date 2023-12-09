@@ -170,11 +170,12 @@ that are not allowed in `defsrc` by default, at least according to the symbol
 shown. You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
-There are three variants of deflocalkeys:
+There are four variants of deflocalkeys:
 
 - `deflocalkeys-win`
 - `deflocalkeys-wintercept`
 - `deflocalkeys-linux`
+- `deflocalkeys-macos`
 
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
@@ -198,6 +199,10 @@ Please contribute to the document if you are able!
 )
 
 (deflocalkeys-linux
+  ì 13
+)
+
+(deflocalkeys-macos
   ì 13
 )
 
@@ -634,6 +639,30 @@ This configuration item does not affect Wayland or no-desktop environments.
 ----
 (defcfg
   linux-x11-repeat-delay-rate 400,50
+)
+----
+
+[[macos-only-macos-dev-names-include]]
+=== macOS only: macos-dev-names-include
+<<table-of-contents,Back to ToC>>
+
+This option defines a list of device names that should be included.
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices to intercept
+using the `macos-dev-names-include` configuration.
+Device names that do not exist in the list will be ignored.
+This option is parsed identically to `linux-dev`.
+
+Use `kanata -l` or `kanata --list` to list the available keyboards.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev-names-include (
+    "Device name 1"
+    "Device name 2"
+  )
 )
 ----
 

@@ -90,6 +90,10 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     symlink_path: Option<String>,
 
+    #[cfg_attr(target_os = "macos", doc = "List the keyboards available for grabbing")]
+    #[arg(short, long)]
+    list: bool,
+
     /// Enable debug logging.
     #[arg(short, long)]
     debug: bool,
@@ -107,6 +111,12 @@ kanata.kbd in the current working directory and
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
+
+    #[cfg(target_os = "macos")]
+    if args.list {
+        karabiner_driverkit::list_keyboards();
+        std::process::exit(0);
+    }
 
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
