@@ -6,14 +6,14 @@ use crate::keys::OsCode;
 
 // OsCode::KEY_MAX is the biggest OsCode
 pub const KEYS_IN_ROW: usize = OsCode::KEY_MAX as usize;
-pub const LAYER_COLUMNS: usize = 2;
+pub const LAYER_ROWS: usize = 2;
 pub const MAX_LAYERS: usize = 25;
 pub const ACTUAL_NUM_LAYERS: usize = MAX_LAYERS * 2;
 
 pub type KanataLayers = Layers<
     'static,
     KEYS_IN_ROW,
-    LAYER_COLUMNS,
+    LAYER_ROWS,
     ACTUAL_NUM_LAYERS,
     &'static &'static [&'static CustomAction],
 >;
@@ -22,7 +22,7 @@ type Row = [kanata_keyberon::action::Action<'static, &'static &'static [&'static
     KEYS_IN_ROW];
 
 pub fn new_layers() -> Box<KanataLayers> {
-    let boxed_slice: Box<[[Row; LAYER_COLUMNS]]> = {
+    let boxed_slice: Box<[[Row; LAYER_ROWS]]> = {
         let mut layers = Vec::with_capacity(ACTUAL_NUM_LAYERS);
         for _ in 0..ACTUAL_NUM_LAYERS {
             layers.push([
