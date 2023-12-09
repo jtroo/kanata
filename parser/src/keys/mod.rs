@@ -267,7 +267,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "f22" => OsCode::KEY_F22,
         "f23" => OsCode::KEY_F23,
         "f24" => OsCode::KEY_F24,
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
         "fn" => OsCode::KEY_FN,
         #[cfg(target_os = "windows")]
         "kana" | "katakana" | "katakanahiragana" => OsCode::KEY_HANGEUL,
