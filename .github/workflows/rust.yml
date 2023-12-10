@@ -28,6 +28,20 @@ env:
 
 jobs:
 
+    name: Build and upload
+
+    strategy:
+      matrix:
+        # You can add more, for any target you'd like!
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -35,30 +49,24 @@ jobs:
     - name: Check fmt
       run: cargo fmt --all --check
 
-  build-test-clippy-linux:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "persist-cross-job"
-        workspaces: ./
-    - run: rustup component add clippy
-    - name: Run tests
-      run: cargo test --all
-    - name: Run tests all features
-      run: cargo test --all --all-features
-    - name: Run clippy no features
-      run: cargo clippy --all -- -D warnings
-    - name: Run clippy all features
-      run: cargo clippy --all --all-features -- -D warnings
-
-  build-test-clippy-windows:
-    runs-on: windows-latest
+  build-test-clippy:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        target:
-          - x86_64-pc-windows-msvc
+        # You can add more, for any target you'd like!
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    
     steps:
     - uses: actions/checkout@v3
     - uses: Swatinem/rust-cache@v2
