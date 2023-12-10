@@ -9,8 +9,7 @@ on:
       - keyberon/**/*
       - cfg_samples/**/*
       - parser/**/*
-      - test_cfgs/**/*
-      - .github/workflows/**/*
+      - .github/workflows/rust.yml
   pull_request:
     branches: [ "main" ]
     paths:
@@ -19,8 +18,7 @@ on:
       - keyberon/**/*
       - parser/**/*
       - cfg_samples/**/*
-      - test_cfgs/**/*
-      - .github/workflows/**/*
+      - .github/workflows/rust.yml
 
 env:
   CARGO_TERM_COLOR: always
@@ -39,7 +37,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # You can add more, for any target you'd like!
+
         include:
           - build: linux
             os: ubuntu-latest
@@ -52,7 +50,7 @@ jobs:
           - build: macos
             os: macos-latest
             target: x86_64-apple-darwin
-    
+
     steps:
     - uses: actions/checkout@v3
     - uses: Swatinem/rust-cache@v2

@@ -1,0 +1,44 @@
+name: macos-build
+
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "persist-cross-job"
+        workspaces: ./
+    - name: Build release
+      run: cargo build --release
+    - name: Move build artifact
+      shell: bash
+      run: |
+        mkdir -p artifacts
+        mv ./target/aarch64-apple-darwin/release/kanata artifacts/kanata_macos
+    - name: Build release with cmd feature
+      run: cargo build --release --features cmd
+    - name: Move build artifact with cmd feature
+      shell: bash
+      run: |
+        mv ./target/aarch64-apple-darwin/release/kanata artifacts/kanata_macos_cmd_allowed
+    - name: Strip binaries
+      shell: bash
+      run: |
+        strip artifacts/*
+    - uses: actions/upload-artifact@v3
+      with:
+        name: macos-binaries
+        path: |
+          artifacts/kanata_macos
+          artifacts/kanata_macos_cmd_allowed
