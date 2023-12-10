@@ -1260,7 +1260,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         CHORD => parse_chord(&ac[1..], s),
         RELEASE_KEY => parse_release_key(&ac[1..], s),
         RELEASE_LAYER => parse_release_layer(&ac[1..], s),
-        ON_PRESS_FAKEKEY => parse_fake_key_op(&ac[1..], s),
+        ON_PRESS_FAKEKEY => parse_on_press_fake_key_op(&ac[1..], s),
         ON_RELEASE_FAKEKEY => parse_on_release_fake_key_op(&ac[1..], s),
         ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
         ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
@@ -2274,8 +2274,11 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     Ok(())
 }
 
-fn parse_fake_key_op(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s)?;
+fn parse_on_press_fake_key_op(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
+    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
     Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
     )))
@@ -2285,7 +2288,7 @@ fn parse_on_release_fake_key_op(
     ac_params: &[SExpr],
     s: &ParsedState,
 ) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s)?;
+    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
     ))))
@@ -2294,22 +2297,22 @@ fn parse_on_release_fake_key_op(
 fn parse_fake_key_op_coord_action(
     ac_params: &[SExpr],
     s: &ParsedState,
+    ac_name: &str,
 ) -> Result<(Coord, FakeKeyAction)> {
-    const ERR_MSG: &str =
-        "on-(press|release)-fakekey expects two parameters: <fake key name> <(tap|press|release|toggle)>";
+    const ERR_MSG: &str = "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
     if ac_params.len() != 2 {
-        bail!("{ERR_MSG}");
+        bail!("{ac_name} {ERR_MSG}");
     }
     let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
         anyhow_expr!(
             &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
+            "{ac_name} {ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
         )
     })?) {
         Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
         None => bail_expr!(
             &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
+            "{ac_name} {ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
             &ac_params[0]
         ),
     };
