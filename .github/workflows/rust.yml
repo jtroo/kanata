@@ -28,20 +28,6 @@ env:
 
 jobs:
 
-    name: Build and upload
-
-    strategy:
-      matrix:
-        # You can add more, for any target you'd like!
-        include:
-          - build: linux
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-
-          - build: macos
-            os: macos-latest
-            target: x86_64-apple-darwin
-
   fmt:
     runs-on: ubuntu-latest
     steps:
