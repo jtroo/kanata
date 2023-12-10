@@ -54,8 +54,8 @@ impl KbdIn {
             ));
         }
 
-        let device_names = if include_names.is_some() {
-            validate_and_register_devices(include_names.unwrap())
+        let device_names = if let Some(names) = include_names {
+            validate_and_register_devices(names)
         } else {
             vec![]
         };
