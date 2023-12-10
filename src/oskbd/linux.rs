@@ -347,7 +347,9 @@ impl KbdOut {
 
         let mut device = uinput::VirtualDeviceBuilder::new()?
             .name("kanata")
-            .input_id(evdev::InputId::new(evdev::BusType::BUS_USB, 1, 1, 1))
+            // libinput's "disable while typing" feature don't work when bus_type
+            // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
+            .input_id(evdev::InputId::new(evdev::BusType::BUS_I8042, 1, 1, 1))
             .with_keys(&keys)?
             .with_relative_axes(&relative_axes)?
             .build()?;
