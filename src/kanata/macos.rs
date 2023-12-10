@@ -31,7 +31,7 @@ impl Kanata {
                     let mut kanata = kanata.lock();
                     kanata
                         .kbd_out
-                        .write(event.clone())
+                        .write(event)
                         .map_err(|e| anyhow!("failed write: {}", e))?;
                     continue;
                 }
@@ -44,7 +44,7 @@ impl Kanata {
                 let mut kanata = kanata.lock();
                 kanata
                     .kbd_out
-                    .write(event.clone())
+                    .write(event)
                     .map_err(|e| anyhow!("failed write: {}", e))?;
                 continue;
             }
