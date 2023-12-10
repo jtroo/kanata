@@ -55,6 +55,6 @@ which map to the binaries
 
 == MacOS
 
-* Mouse output actions is not implemented
+* Mouse output actions are not implemented
 * Mouse input processing is not implemented
 * Unicode output action is not implemented
