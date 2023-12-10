@@ -232,6 +232,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ì 13
 )
 
+(deflocalkeys-macos
+  ì 13
+)
+
 ;; Only one defsrc is allowed.
 ;;
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the
