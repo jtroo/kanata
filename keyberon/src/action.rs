@@ -84,6 +84,9 @@ pub enum HoldTapConfig<'a> {
     /// value will cause a fallback to the timeout-based approach. If the
     /// timeout is not triggered, the next tick will call the custom handler
     /// again.
+    /// The bool value defines if the timeout check should be skipped at the
+    /// next tick. This should generally be false. This is used by `tap-hold-
+    /// except-keys` to handle presses even when the timeout has been reached.
     Custom(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
 }
 

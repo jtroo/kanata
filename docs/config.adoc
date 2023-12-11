@@ -1529,7 +1529,8 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 This variant takes a 5th parameter which is a list of keys
 that always trigger a tap
 when they are pressed while the `tap-hold-except-keys` action is waiting.
-Otherwise this behaves as `tap-hold`.
+No key is ever output until there is either a release of the key or any other
+key is pressed. This differs from `tap-hold` behaviour.
 
 The keys in the 5th parameter correspond to the physical input keys,
 or in other words the key that corresponds to `defsrc`.
