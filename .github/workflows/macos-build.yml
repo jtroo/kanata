@@ -1,5 +1,11 @@
 name: macos-build
 
+# This currently doesn't *seem* to work.
+# For some reason the binary is much tinier than Linux/Windows. (70 KB, is that real??)
+# Also standard and the cmd_allowed variant have the same checksum,
+# meaning they are the same binary. Which makes no sense.
+# Unfortunately I can't test the binary itself since I don't own any macOS devices.
+
 on:
   workflow_dispatch:
     branches: [ "main" ]
@@ -18,24 +24,14 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
-        workspaces: ./
-    - name: Build release
-      run: cargo build --release
-    - name: Move build artifact
+    - name: Do the stuff
       shell: bash
       run: |
         mkdir -p artifacts
-        mv ./target/aarch64-apple-darwin/release/kanata artifacts/kanata_macos
-    - name: Build release with cmd feature
-      run: cargo build --release --features cmd
-    - name: Move build artifact with cmd feature
-      shell: bash
-      run: |
-        mv ./target/aarch64-apple-darwin/release/kanata artifacts/kanata_macos_cmd_allowed
-    - name: Strip binaries
-      shell: bash
-      run: |
-        strip artifacts/*
+        cargo build --release
+        mv target/release/kanata artifacts/kanata_macos
+        cargo build --release --features cmd
+        mv target/release/kanata artifacts/kanata_macos_cmd_allowed
     - uses: actions/upload-artifact@v3
       with:
         name: macos-binaries
