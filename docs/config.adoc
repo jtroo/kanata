@@ -1553,6 +1553,33 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 )
 ----
 
+- `tap-hold-except-keys`
+
+This variant takes a 5th parameter which is a list of keys
+that always trigger a tap
+when they are pressed while the `tap-hold-except-keys` action is waiting.
+No key is ever output until there is either a release of the key or any other
+key is pressed. This differs from `tap-hold` behaviour.
+
+The keys in the 5th parameter correspond to the physical input keys,
+or in other words the key that corresponds to `defsrc`.
+This is in contrast to the `fork` and `switch` actions
+which operates on outputted keys, or in other words the outputs
+that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
+
+.Example:
+[source]
+----
+(defalias
+  ;; tap: o    hold: arrows layer    timeout: backspace
+  oat (tap-hold-press-timeout   200 200 o @arr bspc)
+  ;; tap: e    hold: chords layer    timeout: esc
+  ect (tap-hold-release-timeout 200 200 e @chr esc)
+  ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
+  umk (tap-hold-except-keys 200 200 u @msc (a o e))
+)
+----
+
 [[macro]]
 === macro
 <<table-of-contents,Back to ToC>>

@@ -170,6 +170,7 @@ fn parse_action_vars() {
   thd (tap-hold $one $two $chr $two)
   tht (tap-hold-release-timeout $one $two $chr $two $one)
   thk (tap-hold-release-keys $one $two $chr $two $three)
+  the (tap-hold-except-keys $one $two $chr $two $three)
   mac (macro $one $two $one $two $chr C-S-$three $one)
   rmc (macro-repeat $one $two $one $two $chr C-S-$three $one)
   dr1 (dynamic-macro-record $one)

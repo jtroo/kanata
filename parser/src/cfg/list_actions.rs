@@ -11,6 +11,7 @@ pub const TAP_HOLD_RELEASE: &str = "tap-hold-release";
 pub const TAP_HOLD_PRESS_TIMEOUT: &str = "tap-hold-press-timeout";
 pub const TAP_HOLD_RELEASE_TIMEOUT: &str = "tap-hold-release-timeout";
 pub const TAP_HOLD_RELEASE_KEYS: &str = "tap-hold-release-keys";
+pub const TAP_HOLD_EXCEPT_KEYS: &str = "tap-hold-except-keys";
 pub const MULTI: &str = "multi";
 pub const MACRO: &str = "macro";
 pub const MACRO_REPEAT: &str = "macro-repeat";
@@ -61,7 +62,7 @@ pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 
 pub fn is_list_action(ac: &str) -> bool {
-    const LIST_ACTIONS: [&str; 57] = [
+    const LIST_ACTIONS: [&str; 58] = [
         LAYER_SWITCH,
         LAYER_TOGGLE,
         LAYER_WHILE_HELD,
@@ -71,6 +72,7 @@ pub fn is_list_action(ac: &str) -> bool {
         TAP_HOLD_PRESS_TIMEOUT,
         TAP_HOLD_RELEASE_TIMEOUT,
         TAP_HOLD_RELEASE_KEYS,
+        TAP_HOLD_EXCEPT_KEYS,
         MULTI,
         MACRO,
         MACRO_REPEAT,

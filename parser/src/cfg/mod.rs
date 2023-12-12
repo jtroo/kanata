@@ -157,6 +157,12 @@ pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction
 type KLayout =
     Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
 
+type TapHoldCustomFunc =
+    fn(
+        &[OsCode],
+        &Allocations,
+    ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
+
 pub type BorrowedKLayout<'a> =
     Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie;
@@ -1240,7 +1246,10 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         TAP_HOLD_RELEASE_TIMEOUT => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        TAP_HOLD_RELEASE_KEYS => parse_tap_hold_release_keys(&ac[1..], s),
+        TAP_HOLD_RELEASE_KEYS => {
+            parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
+        }
+        TAP_HOLD_EXCEPT_KEYS => parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except),
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT => parse_macro(&ac[1..], s, RepeatMacro::Yes),
@@ -1387,15 +1396,18 @@ Params in order:
     }))))
 }
 
-fn parse_tap_hold_release_keys(
+fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParsedState,
+    custom_name: &str,
+    custom_func: TapHoldCustomFunc,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
-            r"tap-hold-release-keys expects 5 items after it, got {}.
+            r"tap-hold-{}-keys expects 5 items after it, got {}.
 Params in order:
 <tap-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys>",
+            custom_name,
             ac_params.len(),
         )
     }
@@ -1408,7 +1420,7 @@ Params in order:
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
-        config: HoldTapConfig::Custom(custom_tap_hold_release(&tap_trigger_keys, &s.a)),
+        config: HoldTapConfig::Custom(custom_func(&tap_trigger_keys, &s.a)),
         tap_hold_interval: tap_timeout,
         timeout: hold_timeout,
         tap: *tap_action,

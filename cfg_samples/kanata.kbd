@@ -374,6 +374,9 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed
   umk (tap-hold-release-keys 200 200 u @msc (a o e))
 
+  ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
+  uek (tap-hold-except-keys 200 200 u @msc (a o e))
+
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
 

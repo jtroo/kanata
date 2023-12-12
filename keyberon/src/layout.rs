@@ -400,6 +400,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     }
 
     fn handle_hold_tap(&mut self, cfg: HoldTapConfig, queued: &Queue) -> Option<WaitingAction> {
+        let mut skip_timeout = false;
         match cfg {
             HoldTapConfig::Default => (),
             HoldTapConfig::HoldOnOtherKeyPress => {
@@ -420,8 +421,11 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 }
             }
             HoldTapConfig::Custom(func) => {
-                if let waiting_action @ Some(_) = (func)(QueuedIter(queued.iter())) {
+                let (waiting_action, local_skip) = (func)(QueuedIter(queued.iter()));
+                if waiting_action.is_some() {
                     return waiting_action;
+                } else {
+                    skip_timeout = local_skip;
                 }
             }
         }
@@ -429,12 +433,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             .iter()
             .find(|s| self.is_corresponding_release(&s.event))
         {
-            if self.timeout >= self.delay.saturating_sub(since) {
+            if self.timeout > self.delay.saturating_sub(since) {
                 Some(WaitingAction::Tap)
             } else {
                 Some(WaitingAction::Timeout)
             }
-        } else if self.timeout == 0 {
+        } else if (self.timeout == 0) && (!skip_timeout) {
             Some(WaitingAction::Timeout)
         } else {
             None
@@ -1979,17 +1983,17 @@ mod test {
 
     #[test]
     fn custom_handler() {
-        fn always_tap(_: QueuedIter) -> Option<WaitingAction> {
-            Some(WaitingAction::Tap)
+        fn always_tap(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+            (Some(WaitingAction::Tap), false)
         }
-        fn always_hold(_: QueuedIter) -> Option<WaitingAction> {
-            Some(WaitingAction::Hold)
+        fn always_hold(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+            (Some(WaitingAction::Hold), false)
         }
-        fn always_nop(_: QueuedIter) -> Option<WaitingAction> {
-            Some(WaitingAction::NoOp)
+        fn always_nop(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+            (Some(WaitingAction::NoOp), false)
         }
-        fn always_none(_: QueuedIter) -> Option<WaitingAction> {
-            None
+        fn always_none(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+            (None, false)
         }
         static LAYERS: Layers<4, 1, 1> = [[[
             HoldTap(&HoldTapAction {
