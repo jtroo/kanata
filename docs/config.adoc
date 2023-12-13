@@ -463,6 +463,18 @@ The default length limit is 128 keys.
 )
 ----
 
+=== multi-tap-hold-quick-timeout [[multi-tap-hold-quick-timeout]]
+This configuration makes multiple tap-hold actions
+that are activated near in time expire their timeout quicker.
+By default this is disabled.
+When disabled, the timeout for a following tap-hold
+will start from 0ms **after** the previous tap-hold expires.
+When enabled, the timeout will start
+as soon as the tap-hold action is pressed
+even if a previous tap-hold action is still held and has not expired.
+
+multi-tap-hold-quick-timeout yes
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
