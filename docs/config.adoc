@@ -746,8 +746,8 @@ The `defcfg` entry is treated as a list with pairs of strings. For example:
 This will be treated as configuration `a` having value `1` and configuration
 `b` having value `2`.
 
-An example defcfg containing all of the options is shown below. It should be
-noted options that are Linux-only or Windows-only will be ignored when used on
+An example defcfg containing many of the options is shown below. It should be
+noted options that are Linux-only, Windows-only, or macOS-only will be ignored when used on
 a non-applicable operating system.
 
 [source]
