@@ -1317,6 +1317,7 @@ fn parse_all_defcfg() {
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes
   dynamic-macro-max-presses 1000
+  multi-tap-hold-quick-timeout yes
   linux-dev /dev/input/dev1:/dev/input/dev2
   linux-dev-names-include "Name 1:Name 2"
   linux-dev-names-exclude "Name 3:Name 4"

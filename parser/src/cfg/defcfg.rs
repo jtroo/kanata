@@ -18,6 +18,7 @@ pub struct CfgOptions {
     pub movemouse_inherit_accel_state: bool,
     pub movemouse_smooth_diagonals: bool,
     pub dynamic_macro_max_presses: u16,
+    pub multi_tap_hold_quick_timeout: bool,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -56,6 +57,7 @@ impl Default for CfgOptions {
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
             dynamic_macro_max_presses: 128,
+            multi_tap_hold_quick_timeout: false,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -280,6 +282,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "movemouse-inherit-accel-state" => {
                         cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, label)?
+                    }
+                    "multi-tap-hold-quick-timeout" => {
+                        cfg.multi_tap_hold_quick_timeout = parse_defcfg_val_bool(val, label)?
                     }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };

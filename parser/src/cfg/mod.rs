@@ -254,12 +254,15 @@ fn parse_cfg(
 )> {
     let mut s = ParsedState::default();
     let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
+    let key_outputs = create_key_outputs(&klayers, &overrides);
+    let mut layout = create_layout(klayers, s.a);
+    layout.bm().quick_tap_hold_timeout = cfg.multi_tap_hold_quick_timeout;
     Ok((
         cfg,
         src,
         layer_info,
-        create_key_outputs(&klayers, &overrides),
-        create_layout(klayers, s.a),
+        key_outputs,
+        layout,
         seqs,
         overrides,
     ))

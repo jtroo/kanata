@@ -189,6 +189,12 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; The default limit is 128 keys.
   ;;
   ;; dynamic-macro-max-presses 1000
+
+  ;; This configuration makes multiple tap-hold actions that are activated near
+  ;; in time expire their timeout quicker. Without this, the timeout for the 2nd
+  ;; tap-hold onwards will start from 0ms after the previous tap-hold expires.
+  ;;
+  ;; multi-tap-hold-quick-timeout yes
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale
