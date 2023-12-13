@@ -385,7 +385,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
                             let trimmed_path = path.t.trim_matches('"').to_string();
                             if trimmed_path.is_empty() {
                                 bail_span!(
-                                    &path,
+                                    path,
                                     "an empty string is not a valid device name or path"
                                 )
                             }
@@ -393,7 +393,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
                             Ok(acc)
                         }
                         SExpr::List(inner_list) => {
-                            bail_span!(&inner_list, "expected strings, found a list")
+                            bail_span!(inner_list, "expected strings, found a list")
                         }
                     });
 
