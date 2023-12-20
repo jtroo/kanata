@@ -1,11 +1,5 @@
 name: macos-build
 
-# This currently doesn't *seem* to work.
-# For some reason the binary is much tinier than Linux/Windows. (70 KB, is that real??)
-# Also standard and the cmd_allowed variant have the same checksum,
-# meaning they are the same binary. Which makes no sense.
-# Unfortunately I can't test the binary itself since I don't own any macOS devices.
-
 on:
   workflow_dispatch:
     branches: [ "main" ]
