@@ -46,7 +46,7 @@ kanata-keyberon = { path = "keyberon" }
 kanata-parser =   { path = "parser" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-karabiner-driverkit = "0.1.0"
+karabiner-driverkit = "0.1.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "=0.12.0"
