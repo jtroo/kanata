@@ -31,13 +31,39 @@ You need to run `kanata.exe` via `cmd` or `powershell` to use a different config
 
 Download `kanata`.
 
-Run it in a terminal and point it to a valid configuration file.  Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
+Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
 ```
 chmod +x kanata   # may be downloaded without executable permissions
 sudo ./kanata --cfg <cfg_file>`
 ```
 
 To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux).
+
+</details>
+
+## macOS
+
+<details>
+<summary>Instructions</summary>
+
+**WARNING**: feature support on macOS [is limited](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc#macos).
+
+First, install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
+
+To activate it:
+
+```
+/Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager activate
+```
+
+Download `kanata_macos`.
+
+Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup.
+
+```
+chmod +x kanata_macos   # may be downloaded without executable permissions
+sudo ./kanata_macos --cfg <cfg_file>`
+```
 
 </details>
 
