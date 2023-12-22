@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.5.0-prerelease-3"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -385,8 +385,8 @@ dependencies = [
  "inotify",
  "is-terminal",
  "kanata-interception",
- "kanata-keyberon",
- "kanata-parser",
+ "kanata-keyberon 0.150.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-parser 0.150.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "karabiner-driverkit",
  "log",
  "miette",
@@ -420,7 +420,18 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.150.3"
+version = "0.150.4"
+dependencies = [
+ "arraydeque",
+ "heapless",
+ "kanata-keyberon-macros",
+]
+
+[[package]]
+name = "kanata-keyberon"
+version = "0.150.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d843a10ea56d4b2ace524a36021592c9e5f1b99db0401836fa9d401cb4f2e746"
 dependencies = [
  "arraydeque",
  "heapless",
@@ -439,10 +450,27 @@ dependencies = [
 
 [[package]]
 name = "kanata-parser"
-version = "0.150.3"
+version = "0.150.4"
 dependencies = [
  "anyhow",
- "kanata-keyberon",
+ "kanata-keyberon 0.150.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "miette",
+ "once_cell",
+ "parking_lot",
+ "radix_trie",
+ "rustc-hash",
+ "thiserror",
+]
+
+[[package]]
+name = "kanata-parser"
+version = "0.150.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01989b1457cc24d8838196a50900a894fab5c957c58890a316a8cb115d20a34c"
+dependencies = [
+ "anyhow",
+ "kanata-keyberon 0.150.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "miette",
  "once_cell",
