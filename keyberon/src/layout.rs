@@ -84,6 +84,7 @@ where
     pub action_queue: ActionQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
     pub historical_keys: ArrayDeque<[KeyCode; 8], arraydeque::behavior::Wrapping>,
+    pub quick_tap_hold_timeout: bool,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
 }
 
@@ -438,7 +439,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             } else {
                 Some(WaitingAction::Timeout)
             }
-        } else if (self.timeout == 0) && (!skip_timeout) {
+        } else if self.timeout == 0 && (!skip_timeout) {
             Some(WaitingAction::Timeout)
         } else {
             None
@@ -881,6 +882,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             rpt_action: None,
             historical_keys: ArrayDeque::new(),
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
+            quick_tap_hold_timeout: false,
         }
     }
     /// Iterates on the key codes of the current state.
@@ -1254,7 +1256,11 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 {
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
-                        timeout: *timeout,
+                        timeout: if self.quick_tap_hold_timeout {
+                            timeout.saturating_sub(delay)
+                        } else {
+                            *timeout
+                        },
                         delay,
                         ticks: 0,
                         hold,
@@ -1871,6 +1877,66 @@ mod test {
         assert_keys(&[], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn simultaneous_hold() {
+        static LAYERS: Layers<3, 1, 1> = [[[
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(LAlt),
+                timeout_action: k(LAlt),
+                tap: k(Space),
+                config: HoldTapConfig::Default,
+                tap_hold_interval: 0,
+            }),
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(RAlt),
+                timeout_action: k(RAlt),
+                tap: k(A),
+                config: HoldTapConfig::Default,
+                tap_hold_interval: 0,
+            }),
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(LCtrl),
+                timeout_action: k(LCtrl),
+                tap: k(A),
+                config: HoldTapConfig::Default,
+                tap_hold_interval: 0,
+            }),
+        ]]];
+        let mut layout = Layout::new(&LAYERS);
+        layout.quick_tap_hold_timeout = true;
+
+        // Press and release another key before timeout
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        for _ in 0..196 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, RAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, RAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, RAlt, LCtrl], layout.keycodes());
     }
 
     #[test]

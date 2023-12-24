@@ -18,6 +18,7 @@ pub struct CfgOptions {
     pub movemouse_inherit_accel_state: bool,
     pub movemouse_smooth_diagonals: bool,
     pub dynamic_macro_max_presses: u16,
+    pub concurrent_tap_hold: bool,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -56,6 +57,7 @@ impl Default for CfgOptions {
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
             dynamic_macro_max_presses: 128,
+            concurrent_tap_hold: false,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -281,6 +283,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "movemouse-inherit-accel-state" => {
                         cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, label)?
                     }
+                    "concurrent-tap-hold" => {
+                        cfg.concurrent_tap_hold = parse_defcfg_val_bool(val, label)?
+                    }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };
             }
@@ -380,7 +385,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
                             let trimmed_path = path.t.trim_matches('"').to_string();
                             if trimmed_path.is_empty() {
                                 bail_span!(
-                                    &path,
+                                    path,
                                     "an empty string is not a valid device name or path"
                                 )
                             }
@@ -388,7 +393,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
                             Ok(acc)
                         }
                         SExpr::List(inner_list) => {
-                            bail_span!(&inner_list, "expected strings, found a list")
+                            bail_span!(inner_list, "expected strings, found a list")
                         }
                     });
 

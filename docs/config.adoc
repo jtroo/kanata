@@ -463,6 +463,18 @@ The default length limit is 128 keys.
 )
 ----
 
+=== concurrent-tap-hold [[concurrent-tap-hold]]
+This configuration makes multiple tap-hold actions
+that are activated near in time expire their timeout quicker.
+By default this is disabled.
+When disabled, the timeout for a following tap-hold
+will start from 0ms **after** the previous tap-hold expires.
+When enabled, the timeout will start
+as soon as the tap-hold action is pressed
+even if a previous tap-hold action is still held and has not expired.
+
+concurrent-tap-hold yes
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
@@ -734,8 +746,8 @@ The `defcfg` entry is treated as a list with pairs of strings. For example:
 This will be treated as configuration `a` having value `1` and configuration
 `b` having value `2`.
 
-An example defcfg containing all of the options is shown below. It should be
-noted options that are Linux-only or Windows-only will be ignored when used on
+An example defcfg containing many of the options is shown below. It should be
+noted options that are Linux-only, Windows-only, or macOS-only will be ignored when used on
 a non-applicable operating system.
 
 [source]
