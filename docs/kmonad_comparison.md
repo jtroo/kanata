@@ -4,7 +4,7 @@ The kmonad project is the closest alternative for this project.
 
 ## Benefits of kmonad over kanata
 
-- MacOS support
+- ~MacOS support~ (this is implemented now)
 - Different features
 
 ## Why I built and use kanata
