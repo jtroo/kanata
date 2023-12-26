@@ -98,12 +98,14 @@ Build and run yourself in Windows.
 
 Build and run yourself in macOS:
 
-First, install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
+For macOS version 11 and newer: Install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
 
 To activate it:
 
 `/Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager activate`
 
+For macOS version 10 and older:
+Install the [Karabiner kernel extension](https://github.com/pqrs-org/Karabiner-VirtualHIDDevice).
 
     git clone https://github.com/jtroo/kanata && cd kanata
     cargo build   # --release optional, not really perf sensitive
