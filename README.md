@@ -24,7 +24,7 @@ the features:
 
 To see all of the features, see the [configuration guide](./docs/config.adoc).
 
-The most similar project is [kmonad](https://github.com/david-janssen/kmonad),
+The most similar project is [kmonad](https://github.com/kmonad/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
 
 You can see a [list of known issues here](./docs/platform-known-issues.adoc).
@@ -268,7 +268,7 @@ hardware, instead of having to purchase an enthusiast mechanical keyboard
 (which are admittedly very nice — I own a few — but can be costly).
 
 The best alternative solution that I found for keyboards that don't run QMK was
-[kmonad](https://github.com/david-janssen/kmonad). This is an excellent project
+[kmonad](https://github.com/kmonad/kmonad). This is an excellent project
 and I recommend it if you want to try something similar.
 
 The reason for this project's existence is that kmonad is written in Haskell
@@ -289,7 +289,7 @@ exists.
 
 ## Similar Projects
 
-- [kmonad](https://github.com/david-janssen/kmonad): The inspiration for kanata (Linux, Windows, Mac)
+- [kmonad](https://github.com/kmonad/kmonad): The inspiration for kanata (Linux, Windows, Mac)
 - [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware
 - [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware
 - [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with layers, a TCP server, and audio support
