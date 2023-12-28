@@ -19,6 +19,7 @@ type CfgPath = PathBuf;
 
 pub struct ValidatedArgs {
     paths: Vec<CfgPath>,
+    #[cfg(feature = "tcp_server")]
     port: Option<i32>,
     #[cfg(target_os = "linux")]
     symlink_path: Option<String>,
@@ -82,6 +83,7 @@ kanata.kbd in the current working directory and
 
     /// Port to run the optional TCP server on. If blank, no TCP port will be
     /// listened on.
+    #[cfg(feature = "tcp_server")]
     #[arg(short, long, verbatim_doc_comment)]
     port: Option<i32>,
 
@@ -178,6 +180,7 @@ fn cli_init() -> Result<ValidatedArgs> {
 
     Ok(ValidatedArgs {
         paths: cfg_paths,
+        #[cfg(feature = "tcp_server")]
         port: args.port,
         #[cfg(target_os = "linux")]
         symlink_path: args.symlink_path,
@@ -200,7 +203,16 @@ fn main_impl() -> Result<()> {
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
 
-    let (server, ntx, nrx) = if let Some(port) = args.port {
+    let (server, ntx, nrx) = if let Some(port) = {
+        #[cfg(feature = "tcp_server")]
+        {
+            args.port
+        }
+        #[cfg(not(feature = "tcp_server"))]
+        {
+            None
+        }
+    } {
         let mut server = TcpServer::new(port);
         server.start(kanata_arc.clone());
         let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
@@ -213,6 +225,7 @@ fn main_impl() -> Result<()> {
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
+        #[allow(clippy::unit_arg)]
         Kanata::start_notification_loop(nrx, server.connections);
     }
 

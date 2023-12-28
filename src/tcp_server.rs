@@ -1,12 +1,15 @@
 use crate::Kanata;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
 
+#[cfg(feature = "tcp_server")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
+#[cfg(feature = "tcp_server")]
+use std::io::{Read, Write};
+#[cfg(feature = "tcp_server")]
+use std::net::{TcpListener, TcpStream};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
@@ -26,6 +29,7 @@ pub enum ClientMessage {
     ChangeLayer { new: String },
 }
 
+#[cfg(feature = "tcp_server")]
 impl ServerMessage {
     pub fn as_bytes(&self) -> Vec<u8> {
         serde_json::to_string(self)
@@ -43,12 +47,25 @@ impl FromStr for ClientMessage {
     }
 }
 
+#[cfg(feature = "tcp_server")]
+pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
+
+#[cfg(not(feature = "tcp_server"))]
+pub type Connections = ();
+
+#[cfg(feature = "tcp_server")]
 pub struct TcpServer {
     pub port: i32,
-    pub connections: Arc<Mutex<HashMap<String, TcpStream>>>,
+    pub connections: Connections,
+}
+
+#[cfg(not(feature = "tcp_server"))]
+pub struct TcpServer {
+    pub connections: Connections,
 }
 
 impl TcpServer {
+    #[cfg(feature = "tcp_server")]
     pub fn new(port: i32) -> Self {
         Self {
             port,
@@ -56,6 +73,12 @@ impl TcpServer {
         }
     }
 
+    #[cfg(not(feature = "tcp_server"))]
+    pub fn new(_port: i32) -> Self {
+        Self { connections: () }
+    }
+
+    #[cfg(feature = "tcp_server")]
     pub fn start(&mut self, kanata: Arc<Mutex<Kanata>>) {
         let listener =
             TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
@@ -135,4 +158,7 @@ impl TcpServer {
             }
         });
     }
+
+    #[cfg(not(feature = "tcp_server"))]
+    pub fn start(&mut self, _kanata: Arc<Mutex<Kanata>>) {}
 }
