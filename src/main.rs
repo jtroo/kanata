@@ -81,9 +81,9 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
-    #[cfg(feature = "tcp_server")]
     /// Port to run the optional TCP server on. If blank, no TCP port will be
     /// listened on.
+    #[cfg(feature = "tcp_server")]
     #[arg(short, long, verbatim_doc_comment)]
     port: Option<i32>,
 
