@@ -701,7 +701,7 @@ fn handle_signals(symlink: Option<Symlink>) {
                 SIGTSTP => {
                     drop(symlink);
                     log::warn!("got SIGTSTP, exiting instead of pausing so keyboards don't hang");
-                    std::process::exit(i32::from(SIGTSTP));
+                    std::process::exit(SIGTSTP);
                 }
                 _ => unreachable!(),
             }
