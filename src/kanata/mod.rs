@@ -9,8 +9,6 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 
 use std::collections::VecDeque;
-use std::io::Write;
-use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
@@ -1507,6 +1505,7 @@ impl Kanata {
         Ok(())
     }
 
+    #[cfg(feature = "tcp_server")]
     pub fn change_layer(&mut self, layer_name: String) {
         for (i, l) in self.layer_info.iter().enumerate() {
             if l.name == layer_name {
@@ -1516,6 +1515,7 @@ impl Kanata {
         }
     }
 
+    #[allow(unused_variables)]
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
@@ -1525,6 +1525,7 @@ impl Kanata {
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
 
+            #[cfg(feature = "tcp_server")]
             if let Some(tx) = tx {
                 match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
@@ -1542,10 +1543,12 @@ impl Kanata {
         }
     }
 
+    #[cfg(feature = "tcp_server")]
     pub fn start_notification_loop(
         rx: Receiver<ServerMessage>,
-        clients: Arc<Mutex<HashMap<String, TcpStream>>>,
+        clients: crate::tcp_server::Connections,
     ) {
+        use std::io::Write;
         info!("listening for event notifications to relay to connected clients");
         std::thread::spawn(move || {
             loop {
@@ -1577,6 +1580,13 @@ impl Kanata {
                 }
             }
         });
+    }
+
+    #[cfg(not(feature = "tcp_server"))]
+    pub fn start_notification_loop(
+        _rx: Receiver<ServerMessage>,
+        _clients: crate::tcp_server::Connections,
+    ) {
     }
 
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.

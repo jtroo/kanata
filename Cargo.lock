@@ -454,11 +454,12 @@ dependencies = [
 
 [[package]]
 name = "karabiner-driverkit"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dc92890fc2bb14a485e777968e7c18355386a30467cc0bf24f7744c9e44dde5"
+checksum = "37c0f0d450e1a3e33739108102ec7e23e56b870b09b367ffb54a82a95682f999"
 dependencies = [
  "cc",
+ "os_info",
 ]
 
 [[package]]
@@ -669,6 +670,17 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
+name = "os_info"
+version = "3.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "006e42d5b888366f1880eda20371fedde764ed2213dc8496f49622fa0c99cd5e"
+dependencies = [
+ "log",
+ "serde",
+ "winapi",
+]
 
 [[package]]
 name = "owo-colors"
