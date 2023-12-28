@@ -6,7 +6,7 @@ use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use nix::ioctl_read_buf;
 use rustc_hash::FxHashMap as HashMap;
 use signal_hook::{
-    consts::{SIGINT, SIGTERM},
+    consts::{SIGINT, SIGTERM, SIGTSTP},
     iterator::Signals,
 };
 
@@ -314,8 +314,6 @@ pub struct KbdOut {
     device: uinput::VirtualDevice,
     accumulated_scroll: u16,
     accumulated_hscroll: u16,
-    #[allow(dead_code)] // stored here for persistence+cleanup on exit
-    symlink: Option<Symlink>,
     raw_buf: Vec<InputEvent>,
     pub unicode_termination: Cell<UnicodeTermination>,
     pub unicode_u_code: Cell<OsCode>,
@@ -361,17 +359,16 @@ impl KbdOut {
         let symlink = if let Some(symlink_path) = symlink_path {
             let dest = PathBuf::from(symlink_path);
             let symlink = Symlink::new(devnode, dest)?;
-            Symlink::clean_when_killed(symlink.clone());
             Some(symlink)
         } else {
             None
         };
+        handle_signals(symlink);
 
         Ok(KbdOut {
             device,
             accumulated_scroll: 0,
             accumulated_hscroll: 0,
-            symlink,
             raw_buf: vec![],
 
             // historically was the only option, so make Enter the default
@@ -688,23 +685,28 @@ impl Symlink {
         log::info!("Created symlink {:#?} -> {:#?}", dest, source);
         Ok(Self { dest })
     }
+}
 
-    fn clean_when_killed(symlink: Self) {
-        thread::spawn(|| {
-            let mut signals = Signals::new([SIGINT, SIGTERM]).expect("signals register");
-            if let Some(signal) = (&mut signals).into_iter().next() {
-                match signal {
-                    SIGINT | SIGTERM => {
-                        drop(symlink);
-                        signal_hook::low_level::emulate_default_handler(signal)
-                            .expect("run original sighandlers");
-                        unreachable!();
-                    }
-                    _ => unreachable!(),
+fn handle_signals(symlink: Option<Symlink>) {
+    thread::spawn(|| {
+        let mut signals = Signals::new([SIGINT, SIGTERM, SIGTSTP]).expect("signals register");
+        if let Some(signal) = (&mut signals).into_iter().next() {
+            match signal {
+                SIGINT | SIGTERM => {
+                    drop(symlink);
+                    signal_hook::low_level::emulate_default_handler(signal)
+                        .expect("run original sighandlers");
+                    unreachable!();
                 }
+                SIGTSTP => {
+                    drop(symlink);
+                    log::warn!("got SIGTSTP, exiting instead of pausing so keyboards don't hang");
+                    std::process::exit(SIGTSTP);
+                }
+                _ => unreachable!(),
             }
-        });
-    }
+        }
+    });
 }
 
 // Note for allow: the ioctl_read_buf triggers this clippy lint.
