@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use kanata_keyberon::layout::Event;
+use kanata_parser::cfg::ReplayDelayBehaviour;
 use kanata_parser::keys::OsCode;
 use rustc_hash::FxHashMap as HashMap;
 use rustc_hash::FxHashSet as HashSet;
@@ -10,7 +11,7 @@ pub enum DynamicMacroItem {
     Press(OsCode),
     Release(OsCode),
     EndMacro(u16),
-    Delay(u16)
+    Delay(u16),
 }
 
 pub struct DynamicMacroReplayState {
@@ -22,6 +23,7 @@ pub struct DynamicMacroReplayState {
 pub struct DynamicMacroRecordState {
     pub starting_macro_id: u16,
     pub macro_items: Vec<DynamicMacroItem>,
+    pub current_delay: u16,
 }
 
 impl DynamicMacroRecordState {
@@ -48,25 +50,49 @@ pub enum ReplayEvent {
     Delay(u16),
 }
 
-pub fn tick_replay_state(record_state: &mut Option<DynamicMacroReplayState>) -> Option<ReplayEvent> {
+pub fn tick_record_state(record_state: &mut Option<DynamicMacroRecordState>) {
     if let Some(state) = record_state {
+        state.current_delay = state.current_delay.saturating_add(1);
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ReplayBehaviour {
+    pub delay: ReplayDelayBehaviour,
+}
+
+pub fn tick_replay_state(
+    replay_state: &mut Option<DynamicMacroReplayState>,
+    replay_behaviour: ReplayBehaviour,
+) -> Option<ReplayEvent> {
+    if let Some(state) = replay_state {
         state.delay_remaining = state.delay_remaining.saturating_sub(1);
         if state.delay_remaining == 0 {
             state.delay_remaining = 5;
             match state.macro_items.pop_front() {
                 None => {
-                    *record_state = None;
+                    *replay_state = None;
                     log::debug!("finished macro replay");
                     None
                 }
                 Some(i) => match i {
-                    DynamicMacroItem::Press(k) => Some(ReplayEvent::KeyEvent(Event::Press(0, k.into()))),
-                    DynamicMacroItem::Release(k) => Some(ReplayEvent::KeyEvent(Event::Release(0, k.into()))),
+                    DynamicMacroItem::Press(k) => {
+                        Some(ReplayEvent::KeyEvent(Event::Press(0, k.into())))
+                    }
+                    DynamicMacroItem::Release(k) => {
+                        Some(ReplayEvent::KeyEvent(Event::Release(0, k.into())))
+                    }
                     DynamicMacroItem::EndMacro(macro_id) => {
                         state.active_macros.remove(&macro_id);
                         None
                     }
-                    DynamicMacroItem::Delay(ticks) => Some(ReplayEvent::Delay(ticks)),
+                    DynamicMacroItem::Delay(ticks) => match replay_behaviour.delay {
+                        ReplayDelayBehaviour::Constant => None,
+                        ReplayDelayBehaviour::Recorded => {
+                            state.delay_remaining = ticks;
+                            Some(ReplayEvent::Delay(ticks))
+                        }
+                    },
                 },
             }
         } else {
@@ -87,6 +113,7 @@ pub fn record_macro(
             *record_state = Some(DynamicMacroRecordState {
                 starting_macro_id: macro_id,
                 macro_items: vec![],
+                current_delay: 0,
             });
             None
         }
@@ -110,6 +137,7 @@ pub fn record_macro(
                 *record_state = Some(DynamicMacroRecordState {
                     starting_macro_id: macro_id,
                     macro_items: vec![],
+                    current_delay: 0,
                 });
             }
             Some((state.starting_macro_id, state.macro_items))
@@ -201,6 +229,10 @@ pub fn record_press(
             let state = record_state.take().unwrap();
             Some((state.starting_macro_id, state.macro_items))
         } else {
+            state
+                .macro_items
+                .push(DynamicMacroItem::Delay(state.current_delay));
+            state.current_delay = 0;
             state.macro_items.push(DynamicMacroItem::Press(osc));
             None
         }
@@ -211,6 +243,10 @@ pub fn record_press(
 
 pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
     if let Some(state) = record_state {
+        state
+            .macro_items
+            .push(DynamicMacroItem::Delay(state.current_delay));
+        state.current_delay = 0;
         state.macro_items.push(DynamicMacroItem::Release(osc));
     }
 }

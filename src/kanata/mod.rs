@@ -155,6 +155,8 @@ pub struct Kanata {
     /// Configured maximum for dynamic macro recording, to protect users from themselves if they
     /// have accidentally left it on.
     dynamic_macro_max_presses: u16,
+    /// Determines behaviour of replayed dynamic macros.
+    dynamic_macro_replay_behaviour: ReplayBehaviour,
     /// Keys that should be unmodded. If non-empty, any modifier should be cleared.
     unmodded_keys: Vec<KeyCode>,
     /// Keys that should be unshifted. If non-empty, left+right shift keys should be cleared.
@@ -309,6 +311,9 @@ impl Kanata {
             movemouse_smooth_diagonals: cfg.items.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.items.movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.items.dynamic_macro_max_presses,
+            dynamic_macro_replay_behaviour: ReplayBehaviour {
+                delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+            },
             #[cfg(target_os = "linux")]
             x11_repeat_rate: cfg.items.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
@@ -346,6 +351,9 @@ impl Kanata {
         self.movemouse_smooth_diagonals = cfg.items.movemouse_smooth_diagonals;
         self.movemouse_inherit_accel_state = cfg.items.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.items.dynamic_macro_max_presses;
+        self.dynamic_macro_replay_behaviour = ReplayBehaviour {
+            delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+        };
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -401,24 +409,34 @@ impl Kanata {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
             self.tick_states()?;
-            match tick_replay_state(&mut self.dynamic_macro_replay_state) {
-                Some(ReplayEvent::KeyEvent(event)) => { self.layout.bm().event(event); },
-                Some(ReplayEvent::Delay(ticks)) => { extra_ticks = extra_ticks.saturating_add(ticks); },
+            match tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            ) {
+                Some(ReplayEvent::KeyEvent(event)) => {
+                    self.layout.bm().event(event);
+                }
+                Some(ReplayEvent::Delay(ticks)) => {
+                    extra_ticks = extra_ticks.saturating_add(ticks);
+                }
                 None => {}
             }
-            self.prev_keys.clear();
-            self.prev_keys.append(&mut self.cur_keys);
         }
 
         for _ in 0..extra_ticks {
             self.tick_states()?;
-            match tick_replay_state(&mut self.dynamic_macro_replay_state) {
-                Some(ReplayEvent::KeyEvent(event)) => { self.layout.bm().event(event); },
-                Some(ReplayEvent::Delay(_)) => { unreachable!("there should not be replay delays when doing extra ticks") },
+            match tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            ) {
+                Some(ReplayEvent::KeyEvent(event)) => {
+                    self.layout.bm().event(event);
+                }
+                Some(ReplayEvent::Delay(_)) => {
+                    unreachable!("there should not be replay delays when doing extra ticks")
+                }
                 None => {}
             }
-            self.prev_keys.clear();
-            self.prev_keys.append(&mut self.cur_keys);
         }
 
         if ms_elapsed > 0 {
@@ -472,7 +490,10 @@ impl Kanata {
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
-        Ok(())        
+        tick_record_state(&mut self.dynamic_macro_record_state);
+        self.prev_keys.clear();
+        self.prev_keys.append(&mut self.cur_keys);
+        Ok(())
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
