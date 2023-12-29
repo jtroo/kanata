@@ -47,7 +47,7 @@ impl DynamicMacroRecordState {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ReplayEvent {
     KeyEvent(Event),
-    Delay(u16),
+    ExtraTicks(u16),
 }
 
 pub fn tick_record_state(record_state: &mut Option<DynamicMacroRecordState>) {
@@ -90,7 +90,7 @@ pub fn tick_replay_state(
                         ReplayDelayBehaviour::Constant => None,
                         ReplayDelayBehaviour::Recorded => {
                             state.delay_remaining = ticks;
-                            Some(ReplayEvent::Delay(ticks))
+                            Some(ReplayEvent::ExtraTicks(ticks))
                         }
                     },
                 },
@@ -103,7 +103,7 @@ pub fn tick_replay_state(
     }
 }
 
-pub fn record_macro(
+pub fn begin_record_macro(
     macro_id: u16,
     record_state: &mut Option<DynamicMacroRecordState>,
 ) -> Option<(u16, Vec<DynamicMacroItem>)> {
@@ -142,6 +142,50 @@ pub fn record_macro(
             }
             Some((state.starting_macro_id, state.macro_items))
         }
+    }
+}
+
+pub fn record_press(
+    record_state: &mut Option<DynamicMacroRecordState>,
+    osc: OsCode,
+    max_presses: u16,
+) -> Option<(u16, Vec<DynamicMacroItem>)> {
+    if let Some(state) = record_state {
+        // This is not 100% accurate since there may be multiple presses before any of
+        // their relesease are received. But it's probably good enough in practice.
+        //
+        // The presses are defined so that a user cares about the number of keys rather
+        // than events. So rather than the user multiplying by 2 in their config after
+        // considering the number of keys they want, kanata does the multiplication
+        // instead.
+        if state.macro_items.len() > usize::from(max_presses) * 2 {
+            log::warn!(
+                "saving and stopping dynamic macro {} recording due to exceeding limit",
+                state.starting_macro_id,
+            );
+            state.add_release_for_all_unreleased_presses();
+            let state = record_state.take().unwrap();
+            Some((state.starting_macro_id, state.macro_items))
+        } else {
+            state
+                .macro_items
+                .push(DynamicMacroItem::Delay(state.current_delay));
+            state.current_delay = 0;
+            state.macro_items.push(DynamicMacroItem::Press(osc));
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
+    if let Some(state) = record_state {
+        state
+            .macro_items
+            .push(DynamicMacroItem::Delay(state.current_delay));
+        state.current_delay = 0;
+        state.macro_items.push(DynamicMacroItem::Release(osc));
     }
 }
 
@@ -204,49 +248,5 @@ pub fn play_macro(
                 }
             }
         }
-    }
-}
-
-pub fn record_press(
-    record_state: &mut Option<DynamicMacroRecordState>,
-    osc: OsCode,
-    max_presses: u16,
-) -> Option<(u16, Vec<DynamicMacroItem>)> {
-    if let Some(state) = record_state {
-        // This is not 100% accurate since there may be multiple presses before any of
-        // their relesease are received. But it's probably good enough in practice.
-        //
-        // The presses are defined so that a user cares about the number of keys rather
-        // than events. So rather than the user multiplying by 2 in their config after
-        // considering the number of keys they want, kanata does the multiplication
-        // instead.
-        if state.macro_items.len() > usize::from(max_presses) * 2 {
-            log::warn!(
-                "saving and stopping dynamic macro {} recording due to exceeding limit",
-                state.starting_macro_id,
-            );
-            state.add_release_for_all_unreleased_presses();
-            let state = record_state.take().unwrap();
-            Some((state.starting_macro_id, state.macro_items))
-        } else {
-            state
-                .macro_items
-                .push(DynamicMacroItem::Delay(state.current_delay));
-            state.current_delay = 0;
-            state.macro_items.push(DynamicMacroItem::Press(osc));
-            None
-        }
-    } else {
-        None
-    }
-}
-
-pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
-    if let Some(state) = record_state {
-        state
-            .macro_items
-            .push(DynamicMacroItem::Delay(state.current_delay));
-        state.current_delay = 0;
-        state.macro_items.push(DynamicMacroItem::Release(osc));
     }
 }

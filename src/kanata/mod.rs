@@ -416,7 +416,7 @@ impl Kanata {
                 Some(ReplayEvent::KeyEvent(event)) => {
                     self.layout.bm().event(event);
                 }
-                Some(ReplayEvent::Delay(ticks)) => {
+                Some(ReplayEvent::ExtraTicks(ticks)) => {
                     extra_ticks = extra_ticks.saturating_add(ticks);
                 }
                 None => {}
@@ -432,7 +432,7 @@ impl Kanata {
                 Some(ReplayEvent::KeyEvent(event)) => {
                     self.layout.bm().event(event);
                 }
-                Some(ReplayEvent::Delay(_)) => {
+                Some(ReplayEvent::ExtraTicks(_)) => {
                     unreachable!("there should not be replay delays when doing extra ticks")
                 }
                 None => {}
@@ -1162,7 +1162,7 @@ impl Kanata {
                         }
                         CustomAction::DynamicMacroRecord(macro_id) => {
                             if let Some((macro_id, prev_recorded_macro)) =
-                                record_macro(*macro_id, &mut self.dynamic_macro_record_state)
+                                begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
                             {
                                 self.dynamic_macros.insert(macro_id, prev_recorded_macro);
                             }

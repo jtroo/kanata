@@ -58,7 +58,7 @@ impl Default for CfgOptions {
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
             dynamic_macro_max_presses: 128,
-            dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Constant,
+            dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
@@ -459,8 +459,9 @@ pub const HWID_ARR_SZ: usize = 128;
 pub enum ReplayDelayBehaviour {
     /// Always use a fixed number of ticks between presses and releases.
     /// This is the original kanata behaviour.
+    /// This means that held action activations like in tap-hold do not behave as intended.
     Constant,
     /// Use the recorded number of ticks between presses and releases.
-    /// This is new behaviour.
+    /// This is newer behaviour.
     Recorded,
 }
