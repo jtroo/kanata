@@ -10,6 +10,7 @@ pub enum DynamicMacroItem {
     Press(OsCode),
     Release(OsCode),
     EndMacro(u16),
+    Delay(u16)
 }
 
 pub struct DynamicMacroReplayState {
@@ -31,6 +32,7 @@ impl DynamicMacroRecordState {
                 DynamicMacroItem::Press(osc) => pressed_oscs.insert(*osc),
                 DynamicMacroItem::Release(osc) => pressed_oscs.remove(osc),
                 DynamicMacroItem::EndMacro(_) => false,
+                DynamicMacroItem::Delay(_) => false,
             };
         }
         // Hopefully release order doesn't matter here since a HashSet is being used
@@ -40,7 +42,13 @@ impl DynamicMacroRecordState {
     }
 }
 
-pub fn tick_replay_state(record_state: &mut Option<DynamicMacroReplayState>) -> Option<Event> {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ReplayEvent {
+    KeyEvent(Event),
+    Delay(u16),
+}
+
+pub fn tick_replay_state(record_state: &mut Option<DynamicMacroReplayState>) -> Option<ReplayEvent> {
     if let Some(state) = record_state {
         state.delay_remaining = state.delay_remaining.saturating_sub(1);
         if state.delay_remaining == 0 {
@@ -52,12 +60,13 @@ pub fn tick_replay_state(record_state: &mut Option<DynamicMacroReplayState>) -> 
                     None
                 }
                 Some(i) => match i {
-                    DynamicMacroItem::Press(k) => Some(Event::Press(0, k.into())),
-                    DynamicMacroItem::Release(k) => Some(Event::Release(0, k.into())),
+                    DynamicMacroItem::Press(k) => Some(ReplayEvent::KeyEvent(Event::Press(0, k.into()))),
+                    DynamicMacroItem::Release(k) => Some(ReplayEvent::KeyEvent(Event::Release(0, k.into()))),
                     DynamicMacroItem::EndMacro(macro_id) => {
                         state.active_macros.remove(&macro_id);
                         None
                     }
+                    DynamicMacroItem::Delay(ticks) => Some(ReplayEvent::Delay(ticks)),
                 },
             }
         } else {

@@ -398,17 +398,25 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
+        let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.live_reload_requested |= self.handle_keystate_changes()?;
-            self.handle_scrolling()?;
-            self.handle_move_mouse()?;
-            self.tick_sequence_state()?;
-            self.tick_idle_timeout();
-
-            if let Some(event) = tick_replay_state(&mut self.dynamic_macro_replay_state) {
-                self.layout.bm().event(event);
+            self.tick_states()?;
+            match tick_replay_state(&mut self.dynamic_macro_replay_state) {
+                Some(ReplayEvent::KeyEvent(event)) => { self.layout.bm().event(event); },
+                Some(ReplayEvent::Delay(ticks)) => { extra_ticks = extra_ticks.saturating_add(ticks); },
+                None => {}
             }
+            self.prev_keys.clear();
+            self.prev_keys.append(&mut self.cur_keys);
+        }
 
+        for _ in 0..extra_ticks {
+            self.tick_states()?;
+            match tick_replay_state(&mut self.dynamic_macro_replay_state) {
+                Some(ReplayEvent::KeyEvent(event)) => { self.layout.bm().event(event); },
+                Some(ReplayEvent::Delay(_)) => { unreachable!("there should not be replay delays when doing extra ticks") },
+                None => {}
+            }
             self.prev_keys.clear();
             self.prev_keys.append(&mut self.cur_keys);
         }
@@ -456,6 +464,15 @@ impl Kanata {
         // end up being wrong. Prefer to do the cheaper operation, as compared to doing the min of
         // u16::MAX and ms_elapsed.
         Ok(ms_elapsed as u16)
+    }
+
+    fn tick_states(&mut self) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes()?;
+        self.handle_scrolling()?;
+        self.handle_move_mouse()?;
+        self.tick_sequence_state()?;
+        self.tick_idle_timeout();
+        Ok(())        
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
