@@ -31,13 +31,16 @@ impl DynamicMacroRecordState {
         let mut pressed_oscs = HashSet::default();
         for item in self.macro_items.iter() {
             match item {
-                DynamicMacroItem::Press(osc) => pressed_oscs.insert(*osc),
-                DynamicMacroItem::Release(osc) => pressed_oscs.remove(osc),
-                DynamicMacroItem::EndMacro(_) => false,
-                DynamicMacroItem::Delay(_) => false,
+                DynamicMacroItem::Press(osc) => {
+                    pressed_oscs.insert(*osc);
+                }
+                DynamicMacroItem::Release(osc) => {
+                    pressed_oscs.remove(osc);
+                }
+                DynamicMacroItem::EndMacro(_) | DynamicMacroItem::Delay(_) => {}
             };
         }
-        // Hopefully release order doesn't matter here since a HashSet is being used
+        // Hopefully release order doesn't matter here. A HashSet is being used, meaning release order is arbitrary.
         for osc in pressed_oscs.into_iter() {
             self.macro_items.push(DynamicMacroItem::Release(osc));
         }
