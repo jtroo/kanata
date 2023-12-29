@@ -40,50 +40,46 @@ impl DynamicMacroRecordState {
     }
 }
 
-pub fn tick_replay_state(state: &mut Option<DynamicMacroReplayState>) -> Option<Event> {
-    let mut ret = None;
-    let mut clear_replaying_macro = false;
-    if let Some(state) = state {
+pub fn tick_replay_state(record_state: &mut Option<DynamicMacroReplayState>) -> Option<Event> {
+    if let Some(state) = record_state {
         state.delay_remaining = state.delay_remaining.saturating_sub(1);
         if state.delay_remaining == 0 {
+            state.delay_remaining = 5;
             match state.macro_items.pop_front() {
-                None => clear_replaying_macro = true,
+                None => {
+                    *record_state = None;
+                    log::debug!("finished macro replay");
+                    None
+                }
                 Some(i) => match i {
-                    DynamicMacroItem::Press(k) => {
-                        ret = Some(Event::Press(0, k.into()));
-                    }
-                    DynamicMacroItem::Release(k) => {
-                        ret = Some(Event::Release(0, k.into()));
-                    }
+                    DynamicMacroItem::Press(k) => Some(Event::Press(0, k.into())),
+                    DynamicMacroItem::Release(k) => Some(Event::Release(0, k.into())),
                     DynamicMacroItem::EndMacro(macro_id) => {
                         state.active_macros.remove(&macro_id);
+                        None
                     }
                 },
             }
-            state.delay_remaining = 5;
+        } else {
+            None
         }
+    } else {
+        None
     }
-    if clear_replaying_macro {
-        log::debug!("finished macro replay");
-        *state = None;
-    }
-    ret
 }
 
 pub fn record_macro(
     macro_id: u16,
     record_state: &mut Option<DynamicMacroRecordState>,
 ) -> Option<(u16, Vec<DynamicMacroItem>)> {
-    let mut stop_record = false;
-    let mut new_recording = None;
-    let mut ret = None;
     match record_state.take() {
         None => {
             log::info!("starting dynamic macro {macro_id} recording");
             *record_state = Some(DynamicMacroRecordState {
                 starting_macro_id: macro_id,
                 macro_items: vec![],
-            })
+            });
+            None
         }
         Some(mut state) => {
             // remove the last item, since it's almost certainly a "macro
@@ -91,39 +87,31 @@ pub fn record_macro(
             state.macro_items.remove(state.macro_items.len() - 1);
             state.add_release_for_all_unreleased_presses();
 
-            ret = Some((state.starting_macro_id, state.macro_items));
             if state.starting_macro_id == macro_id {
                 log::info!(
                     "same macro id pressed. saving and stopping dynamic macro {} recording",
                     state.starting_macro_id
                 );
-                stop_record = true;
+                *record_state = None;
             } else {
                 log::info!(
                     "saving dynamic macro {} recording then starting new macro recording {macro_id}",
                     state.starting_macro_id,
                 );
-                new_recording = Some(macro_id);
+                *record_state = Some(DynamicMacroRecordState {
+                    starting_macro_id: macro_id,
+                    macro_items: vec![],
+                });
             }
+            Some((state.starting_macro_id, state.macro_items))
         }
     }
-    if stop_record {
-        *record_state = None;
-    } else if let Some(macro_id) = new_recording {
-        log::info!("starting new dynamic macro {macro_id} recording");
-        *record_state = Some(DynamicMacroRecordState {
-            starting_macro_id: macro_id,
-            macro_items: vec![],
-        });
-    }
-    ret
 }
 
 pub fn stop_macro(
     record_state: &mut Option<DynamicMacroRecordState>,
     num_actions_to_remove: u16,
 ) -> Option<(u16, Vec<DynamicMacroItem>)> {
-    let mut ret = None;
     if let Some(mut state) = record_state.take() {
         // remove the last item independently of `num_actions_to_remove`
         // since it's almost certainly a "macro record stop" key press
@@ -140,10 +128,11 @@ pub fn stop_macro(
                 .saturating_sub(usize::from(num_actions_to_remove)),
         );
         state.add_release_for_all_unreleased_presses();
-        ret = Some((state.starting_macro_id, state.macro_items));
+        Some((state.starting_macro_id, state.macro_items))
+    } else {
+        *record_state = None;
+        None
     }
-    *record_state = None;
-    ret
 }
 
 pub fn play_macro(
@@ -186,7 +175,6 @@ pub fn record_press(
     osc: OsCode,
     max_presses: u16,
 ) -> Option<(u16, Vec<DynamicMacroItem>)> {
-    let mut ret = None;
     if let Some(state) = record_state {
         // This is not 100% accurate since there may be multiple presses before any of
         // their relesease are received. But it's probably good enough in practice.
@@ -202,12 +190,14 @@ pub fn record_press(
             );
             state.add_release_for_all_unreleased_presses();
             let state = record_state.take().unwrap();
-            ret = Some((state.starting_macro_id, state.macro_items));
+            Some((state.starting_macro_id, state.macro_items))
         } else {
             state.macro_items.push(DynamicMacroItem::Press(osc));
+            None
         }
+    } else {
+        None
     }
-    ret
 }
 
 pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
