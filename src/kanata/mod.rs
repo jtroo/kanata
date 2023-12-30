@@ -163,7 +163,6 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
-    tick_count: u64,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -323,7 +322,6 @@ impl Kanata {
             unmodded_keys: vec![],
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            tick_count: 0,
         })
     }
 
@@ -415,11 +413,9 @@ impl Kanata {
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
             ) {
-                log::debug!("sending event at tick {}", self.tick_count);
                 self.layout.bm().event(event.key_event());
                 extra_ticks = extra_ticks.saturating_add(event.delay());
-                log::debug!("dyn macro ms elapsed: {ms_elapsed}");
-                log::debug!("dyn macro extra ticks: {extra_ticks}");
+                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
             }
         }
 
@@ -490,7 +486,6 @@ impl Kanata {
         tick_record_state(&mut self.dynamic_macro_record_state);
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
-        self.tick_count += 1;
         Ok(())
     }
 
