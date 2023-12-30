@@ -67,7 +67,7 @@ impl DynamicMacroRecordState {
                     pending_event.0,
                     self.current_delay,
                 ))),
-                WaitingEventType::Release => self.macro_items.push(DynamicMacroItem::Press((
+                WaitingEventType::Release => self.macro_items.push(DynamicMacroItem::Release((
                     pending_event.0,
                     self.current_delay,
                 ))),
