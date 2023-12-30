@@ -8,10 +8,9 @@ use rustc_hash::FxHashSet as HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DynamicMacroItem {
-    Press(OsCode),
-    Release(OsCode),
+    Press((OsCode, u16)),
+    Release((OsCode, u16)),
     EndMacro(u16),
-    Delay(u16),
 }
 
 pub struct DynamicMacroReplayState {
@@ -22,9 +21,14 @@ pub struct DynamicMacroReplayState {
 
 pub struct DynamicMacroRecordState {
     starting_macro_id: u16,
-    waiting_event: Option<OsCode>,
+    waiting_event: Option<(OsCode, WaitingEventType)>,
     macro_items: Vec<DynamicMacroItem>,
     current_delay: u16,
+}
+
+enum WaitingEventType {
+    Press,
+    Release,
 }
 
 impl DynamicMacroRecordState {
@@ -37,23 +41,40 @@ impl DynamicMacroRecordState {
         }
     }
 
-    pub fn add_release_for_all_unreleased_presses(&mut self) {
+    fn add_release_for_all_unreleased_presses(&mut self) {
         let mut pressed_oscs = HashSet::default();
         for item in self.macro_items.iter() {
             match item {
-                DynamicMacroItem::Press(osc) => {
+                DynamicMacroItem::Press((osc, _)) => {
                     pressed_oscs.insert(*osc);
                 }
-                DynamicMacroItem::Release(osc) => {
+                DynamicMacroItem::Release((osc, _)) => {
                     pressed_oscs.remove(osc);
                 }
-                DynamicMacroItem::EndMacro(_) | DynamicMacroItem::Delay(_) => {}
+                DynamicMacroItem::EndMacro(_) => {}
             };
         }
         // Hopefully release order doesn't matter here. A HashSet is being used, meaning release order is arbitrary.
         for osc in pressed_oscs.into_iter() {
-            self.macro_items.push(DynamicMacroItem::Release(osc));
+            self.macro_items.push(DynamicMacroItem::Release((osc, 0)));
         }
+    }
+
+    fn add_event(&mut self, osc: OsCode, evtype: WaitingEventType) {
+        if let Some(pending_event) = self.waiting_event.take() {
+            match pending_event.1 {
+                WaitingEventType::Press => self.macro_items.push(DynamicMacroItem::Press((
+                    pending_event.0,
+                    self.current_delay,
+                ))),
+                WaitingEventType::Release => self.macro_items.push(DynamicMacroItem::Press((
+                    pending_event.0,
+                    self.current_delay,
+                ))),
+            };
+        }
+        self.current_delay = 0;
+        self.waiting_event = Some((osc, evtype));
     }
 }
 
@@ -99,49 +120,32 @@ pub fn tick_replay_state(
                     None
                 }
                 Some(i) => match i {
-                    DynamicMacroItem::Press(k) => {
-                        let event = Event::Press(0, k.into());
-                        let ticks = if let Some(DynamicMacroItem::Delay(ticks)) =
-                            state.macro_items.front()
-                        {
-                            match replay_behaviour.delay {
-                                ReplayDelayBehaviour::Constant => 0,
-                                ReplayDelayBehaviour::Recorded => {
-                                    state.delay_remaining = *ticks;
-                                    *ticks
-                                }
+                    DynamicMacroItem::Press((key, delay)) => {
+                        let event = Event::Press(0, key.into());
+                        let delay = match replay_behaviour.delay {
+                            ReplayDelayBehaviour::Constant => 0,
+                            ReplayDelayBehaviour::Recorded => {
+                                state.delay_remaining = delay;
+                                delay
                             }
-                        } else {
-                            0
                         };
-                        state.macro_items.pop_front();
-                        Some(ReplayEvent(event, ticks))
+                        Some(ReplayEvent(event, delay))
                     }
-                    DynamicMacroItem::Release(k) => {
-                        let event = Event::Release(0, k.into());
-                        let ticks = if let Some(DynamicMacroItem::Delay(ticks)) =
-                            state.macro_items.front()
-                        {
-                            match replay_behaviour.delay {
-                                ReplayDelayBehaviour::Constant => 0,
-                                ReplayDelayBehaviour::Recorded => {
-                                    state.delay_remaining = *ticks;
-                                    *ticks
-                                }
+                    DynamicMacroItem::Release((key, delay)) => {
+                        let event = Event::Release(0, key.into());
+                        let delay = match replay_behaviour.delay {
+                            ReplayDelayBehaviour::Constant => 0,
+                            ReplayDelayBehaviour::Recorded => {
+                                state.delay_remaining = delay;
+                                delay
                             }
-                        } else {
-                            0
                         };
-                        state.macro_items.pop_front();
-                        Some(ReplayEvent(event, ticks))
+                        Some(ReplayEvent(event, delay))
                     }
                     DynamicMacroItem::EndMacro(macro_id) => {
                         state.active_macros.remove(&macro_id);
                         None
                     }
-                    // A delay not associated with an event is meaningless.
-                    // This should only happen at the end or beginning of a dyn macro.
-                    DynamicMacroItem::Delay(_) => None,
                 },
             }
         } else {
@@ -163,6 +167,18 @@ pub fn begin_record_macro(
             None
         }
         Some(mut state) => {
+            if let Some(pending_event) = state.waiting_event.take() {
+                match pending_event.1 {
+                    WaitingEventType::Press => state.macro_items.push(DynamicMacroItem::Press((
+                        pending_event.0,
+                        state.current_delay,
+                    ))),
+                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Press((
+                        pending_event.0,
+                        state.current_delay,
+                    ))),
+                };
+            }
             // remove the last item, since it's almost certainly a "macro
             // record" key press action which we don't want to keep.
             state.macro_items.remove(state.macro_items.len() - 1);
@@ -209,11 +225,7 @@ pub fn record_press(
             Some((state.starting_macro_id, state.macro_items))
         } else {
             log::debug!("delay to press: {}", state.current_delay);
-            state
-                .macro_items
-                .push(DynamicMacroItem::Delay(state.current_delay));
-            state.current_delay = 0;
-            state.macro_items.push(DynamicMacroItem::Press(osc));
+            state.add_event(osc, WaitingEventType::Press);
             None
         }
     } else {
@@ -224,11 +236,7 @@ pub fn record_press(
 pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
     if let Some(state) = record_state {
         log::debug!("delay to release: {}", state.current_delay);
-        state
-            .macro_items
-            .push(DynamicMacroItem::Delay(state.current_delay));
-        state.current_delay = 0;
-        state.macro_items.push(DynamicMacroItem::Release(osc));
+        state.add_event(osc, WaitingEventType::Release);
     }
 }
 
@@ -237,6 +245,18 @@ pub fn stop_macro(
     num_actions_to_remove: u16,
 ) -> Option<(u16, Vec<DynamicMacroItem>)> {
     if let Some(mut state) = record_state.take() {
+        if let Some(pending_event) = state.waiting_event.take() {
+            match pending_event.1 {
+                WaitingEventType::Press => state.macro_items.push(DynamicMacroItem::Press((
+                    pending_event.0,
+                    state.current_delay,
+                ))),
+                WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Press((
+                    pending_event.0,
+                    state.current_delay,
+                ))),
+            };
+        }
         // remove the last item independently of `num_actions_to_remove`
         // since it's almost certainly a "macro record stop" key press
         // action which we don't want to keep.
@@ -254,7 +274,6 @@ pub fn stop_macro(
         state.add_release_for_all_unreleased_presses();
         Some((state.starting_macro_id, state.macro_items))
     } else {
-        *record_state = None;
         None
     }
 }

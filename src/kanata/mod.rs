@@ -429,7 +429,9 @@ impl Kanata {
                 if tick_replay_state(
                     &mut self.dynamic_macro_replay_state,
                     self.dynamic_macro_replay_behaviour,
-                ).is_some() {
+                )
+                .is_some()
+                {
                     log::error!("overshot to next event at iteration #{i}, the code is broken!");
                     break;
                 }
