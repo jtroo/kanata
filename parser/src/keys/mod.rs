@@ -15,7 +15,6 @@ mod windows;
 pub use macos::PageCode;
 
 mod mappings;
-pub use mappings::*;
 
 #[cfg(target_os = "unknown")]
 #[derive(Clone, Copy)]

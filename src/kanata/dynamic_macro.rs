@@ -47,11 +47,12 @@ impl DynamicMacroRecordState {
     }
 }
 
+/// A replay event for a dynamically recorded macro.
+/// Note that the key event and the subsequent delay must be processed together.
+/// Otherwise there will be real-world time gap between event and the delay,
+/// which results in an inaccurate simulation of the keyberon state machine.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ReplayEvent {
-    KeyEvent(Event),
-    ExtraTicks(u16),
-}
+pub struct ReplayEvent(pub Event, pub u16);
 
 pub fn tick_record_state(record_state: &mut Option<DynamicMacroRecordState>) {
     if let Some(state) = record_state {
@@ -80,22 +81,48 @@ pub fn tick_replay_state(
                 }
                 Some(i) => match i {
                     DynamicMacroItem::Press(k) => {
-                        Some(ReplayEvent::KeyEvent(Event::Press(0, k.into())))
+                        let event = Event::Press(0, k.into());
+                        let ticks = if let Some(DynamicMacroItem::Delay(ticks)) =
+                            state.macro_items.front()
+                        {
+                            match replay_behaviour.delay {
+                                ReplayDelayBehaviour::Constant => 0,
+                                ReplayDelayBehaviour::Recorded => {
+                                    state.delay_remaining = *ticks;
+                                    *ticks
+                                }
+                            }
+                        } else {
+                            0
+                        };
+                        state.macro_items.pop_front();
+                        Some(ReplayEvent(event, ticks))
                     }
                     DynamicMacroItem::Release(k) => {
-                        Some(ReplayEvent::KeyEvent(Event::Release(0, k.into())))
+                        let event = Event::Release(0, k.into());
+                        let ticks = if let Some(DynamicMacroItem::Delay(ticks)) =
+                            state.macro_items.front()
+                        {
+                            match replay_behaviour.delay {
+                                ReplayDelayBehaviour::Constant => 0,
+                                ReplayDelayBehaviour::Recorded => {
+                                    state.delay_remaining = *ticks;
+                                    *ticks
+                                }
+                            }
+                        } else {
+                            0
+                        };
+                        state.macro_items.pop_front();
+                        Some(ReplayEvent(event, ticks))
                     }
                     DynamicMacroItem::EndMacro(macro_id) => {
                         state.active_macros.remove(&macro_id);
                         None
                     }
-                    DynamicMacroItem::Delay(ticks) => match replay_behaviour.delay {
-                        ReplayDelayBehaviour::Constant => None,
-                        ReplayDelayBehaviour::Recorded => {
-                            state.delay_remaining = ticks;
-                            Some(ReplayEvent::ExtraTicks(ticks))
-                        }
-                    },
+                    // A delay not associated with an event is meaningless.
+                    // This should only happen at the end or beginning of a dyn macro.
+                    DynamicMacroItem::Delay(_) => None,
                 },
             }
         } else {
@@ -170,6 +197,7 @@ pub fn record_press(
             let state = record_state.take().unwrap();
             Some((state.starting_macro_id, state.macro_items))
         } else {
+            log::debug!("delay to press: {}", state.current_delay);
             state
                 .macro_items
                 .push(DynamicMacroItem::Delay(state.current_delay));
@@ -184,6 +212,7 @@ pub fn record_press(
 
 pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
     if let Some(state) = record_state {
+        log::debug!("delay to release: {}", state.current_delay);
         state
             .macro_items
             .push(DynamicMacroItem::Delay(state.current_delay));
@@ -230,6 +259,7 @@ pub fn play_macro(
             *replay_state = recorded_macros.get(&macro_id).map(|macro_items| {
                 let mut active_macros = HashSet::default();
                 active_macros.insert(macro_id);
+                log::debug!("playing macro {macro_items:?}");
                 DynamicMacroReplayState {
                     active_macros,
                     delay_remaining: 0,
@@ -242,6 +272,7 @@ pub fn play_macro(
                 log::warn!("refusing to recurse into macro {macro_id}");
             } else if let Some(items) = recorded_macros.get(&macro_id) {
                 log::debug!("prepending macro {macro_id} items to current replay");
+                log::debug!("playing macro {items:?}");
                 state.active_macros.insert(macro_id);
                 state
                     .macro_items

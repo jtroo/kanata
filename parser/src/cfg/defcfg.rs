@@ -123,11 +123,19 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, label, false)?;
                     }
                     "dynamic-macro-replay-delay-behaviour" => {
-                        cfg.dynamic_macro_replay_delay_behaviour = match label {
-                            "constant" => ReplayDelayBehaviour::Constant,
-                            "recorded" => ReplayDelayBehaviour::Recorded,
-                            _ => bail_expr!(val, "this option must be one of: constant | recorded"),
-                        }
+                        cfg.dynamic_macro_replay_delay_behaviour = val
+                            .atom(None)
+                            .map(|v| match v {
+                                "constant" => Ok(ReplayDelayBehaviour::Constant),
+                                "recorded" => Ok(ReplayDelayBehaviour::Recorded),
+                                _ => bail_expr!(
+                                    val,
+                                    "this option must be one of: constant | recorded"
+                                ),
+                            })
+                            .ok_or_else(|| {
+                                anyhow_expr!(val, "this option must be one of: constant | recorded")
+                            })??;
                     }
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]

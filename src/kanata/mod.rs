@@ -163,6 +163,7 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
+    tick_count: u64,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -322,6 +323,7 @@ impl Kanata {
             unmodded_keys: vec![],
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            tick_count: 0,
         })
     }
 
@@ -409,37 +411,30 @@ impl Kanata {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
             self.tick_states()?;
-            match tick_replay_state(
+            if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
             ) {
-                Some(ReplayEvent::KeyEvent(event)) => {
-                    self.layout.bm().event(event);
-                }
-                Some(ReplayEvent::ExtraTicks(ticks)) => {
-                    extra_ticks = extra_ticks.saturating_add(ticks);
-                }
-                None => {}
-            }
-        }
-
-        for _ in 0..extra_ticks {
-            self.tick_states()?;
-            match tick_replay_state(
-                &mut self.dynamic_macro_replay_state,
-                self.dynamic_macro_replay_behaviour,
-            ) {
-                Some(ReplayEvent::KeyEvent(event)) => {
-                    self.layout.bm().event(event);
-                }
-                Some(ReplayEvent::ExtraTicks(_)) => {
-                    unreachable!("there should not be replay delays when doing extra ticks")
-                }
-                None => {}
+                log::debug!("sending event at tick {}", self.tick_count);
+                self.layout.bm().event(event.0);
+                extra_ticks = extra_ticks.saturating_add(event.1);
+                log::debug!("dyn macro ms elapsed: {ms_elapsed}");
+                log::debug!("dyn macro extra ticks: {extra_ticks}");
             }
         }
 
         if ms_elapsed > 0 {
+            for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
+                self.tick_states()?;
+                if let Some(_) = tick_replay_state(
+                    &mut self.dynamic_macro_replay_state,
+                    self.dynamic_macro_replay_behaviour,
+                ) {
+                    log::error!("overshot to next event at iteration #{i}, the code is broken!");
+                    break;
+                }
+            }
+
             self.last_tick = match ms_elapsed {
                 0..=10 => now,
                 // If too many ms elapsed, probably doing a tight loop of something that's quite
@@ -493,6 +488,7 @@ impl Kanata {
         tick_record_state(&mut self.dynamic_macro_record_state);
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
+        self.tick_count += 1;
         Ok(())
     }
 
@@ -1164,6 +1160,7 @@ impl Kanata {
                             if let Some((macro_id, prev_recorded_macro)) =
                                 begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
                             {
+                                log::debug!("saving macro {prev_recorded_macro:?}");
                                 self.dynamic_macros.insert(macro_id, prev_recorded_macro);
                             }
                         }
@@ -1172,6 +1169,7 @@ impl Kanata {
                                 &mut self.dynamic_macro_record_state,
                                 *num_actions_to_remove,
                             ) {
+                                log::debug!("saving macro {prev_recorded_macro:?}");
                                 self.dynamic_macros.insert(macro_id, prev_recorded_macro);
                             }
                         }

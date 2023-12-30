@@ -6,13 +6,9 @@ use crate::kanata::*;
 
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;
-#[cfg(not(feature = "interception_driver"))]
-pub use llhook::*;
 
 #[cfg(feature = "interception_driver")]
 mod interception;
-#[cfg(feature = "interception_driver")]
-pub use self::interception::*;
 
 static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
