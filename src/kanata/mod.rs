@@ -416,8 +416,8 @@ impl Kanata {
                 self.dynamic_macro_replay_behaviour,
             ) {
                 log::debug!("sending event at tick {}", self.tick_count);
-                self.layout.bm().event(event.0);
-                extra_ticks = extra_ticks.saturating_add(event.1);
+                self.layout.bm().event(event.key_event());
+                extra_ticks = extra_ticks.saturating_add(event.delay());
                 log::debug!("dyn macro ms elapsed: {ms_elapsed}");
                 log::debug!("dyn macro extra ticks: {extra_ticks}");
             }
@@ -426,10 +426,10 @@ impl Kanata {
         if ms_elapsed > 0 {
             for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
                 self.tick_states()?;
-                if let Some(_) = tick_replay_state(
+                if tick_replay_state(
                     &mut self.dynamic_macro_replay_state,
                     self.dynamic_macro_replay_behaviour,
-                ) {
+                ).is_some() {
                     log::error!("overshot to next event at iteration #{i}, the code is broken!");
                     break;
                 }

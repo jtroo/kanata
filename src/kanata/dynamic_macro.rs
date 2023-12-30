@@ -15,18 +15,28 @@ pub enum DynamicMacroItem {
 }
 
 pub struct DynamicMacroReplayState {
-    pub active_macros: HashSet<u16>,
-    pub delay_remaining: u16,
-    pub macro_items: VecDeque<DynamicMacroItem>,
+    active_macros: HashSet<u16>,
+    delay_remaining: u16,
+    macro_items: VecDeque<DynamicMacroItem>,
 }
 
 pub struct DynamicMacroRecordState {
-    pub starting_macro_id: u16,
-    pub macro_items: Vec<DynamicMacroItem>,
-    pub current_delay: u16,
+    starting_macro_id: u16,
+    waiting_event: Option<OsCode>,
+    macro_items: Vec<DynamicMacroItem>,
+    current_delay: u16,
 }
 
 impl DynamicMacroRecordState {
+    fn new(macro_id: u16) -> Self {
+        Self {
+            starting_macro_id: macro_id,
+            waiting_event: None,
+            macro_items: vec![],
+            current_delay: 0,
+        }
+    }
+
     pub fn add_release_for_all_unreleased_presses(&mut self) {
         let mut pressed_oscs = HashSet::default();
         for item in self.macro_items.iter() {
@@ -52,7 +62,16 @@ impl DynamicMacroRecordState {
 /// Otherwise there will be real-world time gap between event and the delay,
 /// which results in an inaccurate simulation of the keyberon state machine.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ReplayEvent(pub Event, pub u16);
+pub struct ReplayEvent(Event, u16);
+
+impl ReplayEvent {
+    pub fn key_event(self) -> Event {
+        self.0
+    }
+    pub fn delay(self) -> u16 {
+        self.1
+    }
+}
 
 pub fn tick_record_state(record_state: &mut Option<DynamicMacroRecordState>) {
     if let Some(state) = record_state {
@@ -140,11 +159,7 @@ pub fn begin_record_macro(
     match record_state.take() {
         None => {
             log::info!("starting dynamic macro {macro_id} recording");
-            *record_state = Some(DynamicMacroRecordState {
-                starting_macro_id: macro_id,
-                macro_items: vec![],
-                current_delay: 0,
-            });
+            *record_state = Some(DynamicMacroRecordState::new(macro_id));
             None
         }
         Some(mut state) => {
@@ -164,11 +179,7 @@ pub fn begin_record_macro(
                     "saving dynamic macro {} recording then starting new macro recording {macro_id}",
                     state.starting_macro_id,
                 );
-                *record_state = Some(DynamicMacroRecordState {
-                    starting_macro_id: macro_id,
-                    macro_items: vec![],
-                    current_delay: 0,
-                });
+                *record_state = Some(DynamicMacroRecordState::new(macro_id));
             }
             Some((state.starting_macro_id, state.macro_items))
         }
