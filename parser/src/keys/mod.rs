@@ -135,7 +135,7 @@ fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
 #[rustfmt::skip]
 pub fn str_to_oscode(s: &str) -> Option<OsCode> {
     Some(match s {
-        "grv" => OsCode::KEY_GRAVE,
+        "grv" | "grave" => OsCode::KEY_GRAVE,
         "1" => OsCode::KEY_1,
         "2" => OsCode::KEY_2,
         "3" => OsCode::KEY_3,
@@ -229,7 +229,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "up" => OsCode::KEY_UP,
         "down" => OsCode::KEY_DOWN,
         "lft" | "left" => OsCode::KEY_LEFT,
-        "rght" => OsCode::KEY_RIGHT,
+        "rght" | "right" => OsCode::KEY_RIGHT,
         "home" => OsCode::KEY_HOME,
         "end" => OsCode::KEY_END,
         "nlck" | "nlk" => OsCode::KEY_NUMLOCK,
