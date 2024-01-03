@@ -99,7 +99,7 @@ pub fn clear_custom_str_oscode_mapping() {
 /// be useful to remap via `defcustomkeys`, then it should be moved into here. This is so that the
 /// key name can be remapped while also working for older configurations that already use it.
 fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
-    let default_mappings = [
+    const DEFAULT_MAPPINGS: &[(&str, OsCode)] = &[
         ("+", OsCode::KEY_KPPLUS),
         ("[", OsCode::KEY_LEFTBRACE),
         ("]", OsCode::KEY_RIGHTBRACE),
@@ -118,8 +118,10 @@ fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
         ("yen", OsCode::KEY_BACKSLASH),
         // Unicode yen is probably the yen key, so map this to a separate oscode by default.
         ("¥", OsCode::KEY_YEN),
+        ("right", OsCode::KEY_RIGHT),
+        ("grave", OsCode::KEY_GRAVE),
     ];
-    for dm in default_mappings {
+    for dm in DEFAULT_MAPPINGS {
         mapping.entry(dm.0.into()).or_insert(dm.1);
     }
 }
