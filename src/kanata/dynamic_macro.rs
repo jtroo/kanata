@@ -173,10 +173,9 @@ pub fn begin_record_macro(
                         pending_event.0,
                         state.current_delay,
                     ))),
-                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release((
-                        pending_event.0,
-                        state.current_delay,
-                    ))),
+                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release(
+                        (pending_event.0, state.current_delay),
+                    )),
                 };
             }
             // remove the last item, since it's almost certainly a "macro
