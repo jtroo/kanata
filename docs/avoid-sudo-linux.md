@@ -5,7 +5,8 @@ In Linux, kanata needs to be able to access the input and uinput subsystem to in
 ### 1. If the uinput group does not exist, create a new group
 
 ```bash
-sudo groupadd uinput
+sudo groupdadd -f uinput
+sudo gpasswd -a username uinput
 ```
 
 ### 2. Add your user to the input and the uinput group
@@ -19,10 +20,27 @@ Make sure that it's effective by running `groups`. You might have to logout and 
 
 ### 3. Make sure the uinput device file has the right permissions.
 
-Add a udev rule (in either `/etc/udev/rules.d` or `/lib/udev/rules.d`) with the following content:
+#### Create a new file name:
+`/etc/udev/rules.d/99-input.rules`
 
-```
+#### Insert the following in the code
+```bash
 KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
+```
+
+#### Machine reboot or run this to reload
+```bash
+sudo sh -c ‘udevadm control –reload; udevadm trigger -v –name-match uinput’
+```
+
+#### Verify settings by following command:
+```bash
+ls -l /dev/uinput
+```
+
+#### Output:
+```bash
+crw-rw---- 1 root date uinput /dev/uinput
 ```
 
 ### 4. Make sure the uinput drivers are loaded
