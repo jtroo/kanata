@@ -173,7 +173,7 @@ pub fn begin_record_macro(
                         pending_event.0,
                         state.current_delay,
                     ))),
-                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Press((
+                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release((
                         pending_event.0,
                         state.current_delay,
                     ))),
@@ -251,7 +251,7 @@ pub fn stop_macro(
                     pending_event.0,
                     state.current_delay,
                 ))),
-                WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Press((
+                WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release((
                     pending_event.0,
                     state.current_delay,
                 ))),
