@@ -93,7 +93,8 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     symlink_path: Option<String>,
 
-    #[cfg_attr(target_os = "macos", doc = "List the keyboards available for grabbing")]
+    /// List the keyboards available for grabbing and exit.
+    #[cfg(target_os = "macos")]
     #[arg(short, long)]
     list: bool,
 
