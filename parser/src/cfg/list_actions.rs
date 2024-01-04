@@ -62,7 +62,7 @@ pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 
 pub fn is_list_action(ac: &str) -> bool {
-    const LIST_ACTIONS: [&str; 58] = [
+    const LIST_ACTIONS: &[&str] = &[
         LAYER_SWITCH,
         LAYER_TOGGLE,
         LAYER_WHILE_HELD,
