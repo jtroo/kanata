@@ -161,10 +161,6 @@ fn cli_init() -> Result<ValidatedArgs> {
     log::info!("using LLHOOK+SendInput for keyboard IO");
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     log::info!("using the Interception driver for keyboard IO");
-    log::info!(
-        "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
-                These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
-    );
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
@@ -188,7 +184,6 @@ fn cli_init() -> Result<ValidatedArgs> {
         };
         std::process::exit(status);
     }
-
 
     #[cfg(target_os = "linux")]
     if let Some(wait) = args.wait_device_ms {
