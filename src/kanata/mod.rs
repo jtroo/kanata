@@ -153,6 +153,8 @@ pub struct Kanata {
     /// Configured maximum for dynamic macro recording, to protect users from themselves if they
     /// have accidentally left it on.
     dynamic_macro_max_presses: u16,
+    /// Determines behaviour of replayed dynamic macros.
+    dynamic_macro_replay_behaviour: ReplayBehaviour,
     /// Keys that should be unmodded. If non-empty, any modifier should be cleared.
     unmodded_keys: Vec<KeyCode>,
     /// Keys that should be unshifted. If non-empty, left+right shift keys should be cleared.
@@ -307,6 +309,9 @@ impl Kanata {
             movemouse_smooth_diagonals: cfg.items.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.items.movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.items.dynamic_macro_max_presses,
+            dynamic_macro_replay_behaviour: ReplayBehaviour {
+                delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+            },
             #[cfg(target_os = "linux")]
             x11_repeat_rate: cfg.items.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
@@ -344,6 +349,9 @@ impl Kanata {
         self.movemouse_smooth_diagonals = cfg.items.movemouse_smooth_diagonals;
         self.movemouse_inherit_accel_state = cfg.items.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.items.dynamic_macro_max_presses;
+        self.dynamic_macro_replay_behaviour = ReplayBehaviour {
+            delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+        };
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -396,22 +404,33 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
+        let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.live_reload_requested |= self.handle_keystate_changes()?;
-            self.handle_scrolling()?;
-            self.handle_move_mouse()?;
-            self.tick_sequence_state()?;
-            self.tick_idle_timeout();
-
-            if let Some(event) = tick_replay_state(&mut self.dynamic_macro_replay_state) {
-                self.layout.bm().event(event);
+            self.tick_states()?;
+            if let Some(event) = tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            ) {
+                self.layout.bm().event(event.key_event());
+                extra_ticks = extra_ticks.saturating_add(event.delay());
+                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
             }
-
-            self.prev_keys.clear();
-            self.prev_keys.append(&mut self.cur_keys);
         }
 
         if ms_elapsed > 0 {
+            for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
+                self.tick_states()?;
+                if tick_replay_state(
+                    &mut self.dynamic_macro_replay_state,
+                    self.dynamic_macro_replay_behaviour,
+                )
+                .is_some()
+                {
+                    log::error!("overshot to next event at iteration #{i}, the code is broken!");
+                    break;
+                }
+            }
+
             self.last_tick = match ms_elapsed {
                 0..=10 => now,
                 // If too many ms elapsed, probably doing a tight loop of something that's quite
@@ -454,6 +473,18 @@ impl Kanata {
         // end up being wrong. Prefer to do the cheaper operation, as compared to doing the min of
         // u16::MAX and ms_elapsed.
         Ok(ms_elapsed as u16)
+    }
+
+    fn tick_states(&mut self) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes()?;
+        self.handle_scrolling()?;
+        self.handle_move_mouse()?;
+        self.tick_sequence_state()?;
+        self.tick_idle_timeout();
+        tick_record_state(&mut self.dynamic_macro_record_state);
+        self.prev_keys.clear();
+        self.prev_keys.append(&mut self.cur_keys);
+        Ok(())
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
@@ -1122,8 +1153,9 @@ impl Kanata {
                         }
                         CustomAction::DynamicMacroRecord(macro_id) => {
                             if let Some((macro_id, prev_recorded_macro)) =
-                                record_macro(*macro_id, &mut self.dynamic_macro_record_state)
+                                begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
                             {
+                                log::debug!("saving macro {prev_recorded_macro:?}");
                                 self.dynamic_macros.insert(macro_id, prev_recorded_macro);
                             }
                         }
@@ -1132,6 +1164,7 @@ impl Kanata {
                                 &mut self.dynamic_macro_record_state,
                                 *num_actions_to_remove,
                             ) {
+                                log::debug!("saving macro {prev_recorded_macro:?}");
                                 self.dynamic_macros.insert(macro_id, prev_recorded_macro);
                             }
                         }

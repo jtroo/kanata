@@ -18,6 +18,7 @@ pub struct CfgOptions {
     pub movemouse_inherit_accel_state: bool,
     pub movemouse_smooth_diagonals: bool,
     pub dynamic_macro_max_presses: u16,
+    pub dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour,
     pub concurrent_tap_hold: bool,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
@@ -57,6 +58,7 @@ impl Default for CfgOptions {
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
             dynamic_macro_max_presses: 128,
+            dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
@@ -119,6 +121,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "dynamic-macro-max-presses" => {
                         cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, label, false)?;
+                    }
+                    "dynamic-macro-replay-delay-behaviour" => {
+                        cfg.dynamic_macro_replay_delay_behaviour = val
+                            .atom(None)
+                            .map(|v| match v {
+                                "constant" => Ok(ReplayDelayBehaviour::Constant),
+                                "recorded" => Ok(ReplayDelayBehaviour::Recorded),
+                                _ => bail_expr!(
+                                    val,
+                                    "this option must be one of: constant | recorded"
+                                ),
+                            })
+                            .ok_or_else(|| {
+                                anyhow_expr!(val, "this option must be one of: constant | recorded")
+                            })??;
                     }
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -445,3 +462,14 @@ impl Default for AltGrBehaviour {
     target_os = "unknown"
 ))]
 pub const HWID_ARR_SZ: usize = 128;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReplayDelayBehaviour {
+    /// Always use a fixed number of ticks between presses and releases.
+    /// This is the original kanata behaviour.
+    /// This means that held action activations like in tap-hold do not behave as intended.
+    Constant,
+    /// Use the recorded number of ticks between presses and releases.
+    /// This is newer behaviour.
+    Recorded,
+}
