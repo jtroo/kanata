@@ -19,7 +19,7 @@ Make sure that it's effective by running `groups`. You might have to logout and 
 
 ### 3. Make sure the uinput device file has the right permissions.
 
-#### Create a new file name:
+#### Create a new file:
 `/etc/udev/rules.d/99-input.rules`
 
 #### Insert the following in the code
