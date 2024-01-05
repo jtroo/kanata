@@ -49,7 +49,39 @@ You may need to run this command whenever you start kanata for the first time:
 ```
 sudo modprobe uinput
 ```
+### 5. To create and enable a daemon service
 
+Run this command first:
+```bash
+mkdir -p ~/.config/systemd/user
+```
+
+Then add this to: `~/.config/systemd/user/kanata.service`
+```bash
+[Unit]
+Description=Kanata keyboard remapper
+Documentation=https://github.com/jtroo/kanata
+
+[Service]
+Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
+Environment=DISPLAY=:0
+Environment=HOME=/$HOME
+Type=simple
+ExecStart=$(which kanata) --cfg $HOME/.config/kanata/config.kbd
+Restart=no
+
+[Install]
+WantedBy=default.target
+
+```
+
+Then run:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable kanata.service
+systemctl --user start kanata.service
+systemctl --user status kanata.service   # check whether the service is running
+```
 # Credits
 
 The original text was taken and adapted from: https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
