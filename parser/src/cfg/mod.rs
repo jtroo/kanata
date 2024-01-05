@@ -216,7 +216,7 @@ pub struct Cfg {
 /// Parse a new configuration from a file.
 pub fn new_from_file(p: &Path) -> MResult<Cfg> {
     let (items, mapped_keys, layer_info, key_outputs, layout, sequences, overrides) = parse_cfg(p)?;
-    log::info!("config parsed");
+    log::info!("config file is valid");
     Ok(Cfg {
         items,
         mapped_keys,

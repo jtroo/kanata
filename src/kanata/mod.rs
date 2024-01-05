@@ -1491,6 +1491,12 @@ impl Kanata {
             let mut ms_elapsed = 0;
 
             info!("Starting kanata proper");
+
+            info!(
+                "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
+                        These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
+            );
+
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();

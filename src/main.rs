@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use clap::Parser;
+use kanata_parser::cfg;
 use log::info;
 use simplelog::*;
 
@@ -93,7 +94,8 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     symlink_path: Option<String>,
 
-    #[cfg_attr(target_os = "macos", doc = "List the keyboards available for grabbing")]
+    /// List the keyboards available for grabbing and exit.
+    #[cfg(target_os = "macos")]
     #[arg(short, long)]
     list: bool,
 
@@ -118,6 +120,10 @@ kanata.kbd in the current working directory and
     #[cfg(target_os = "linux")]
     #[arg(short, long, verbatim_doc_comment)]
     wait_device_ms: Option<u64>,
+
+    /// Validate configuration file and exit
+    #[arg(long, verbatim_doc_comment)]
+    check: bool,
 }
 
 /// Parse CLI arguments and initialize logging.
@@ -155,10 +161,6 @@ fn cli_init() -> Result<ValidatedArgs> {
     log::info!("using LLHOOK+SendInput for keyboard IO");
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     log::info!("using the Interception driver for keyboard IO");
-    log::info!(
-        "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
-                These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
-    );
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
@@ -169,6 +171,18 @@ fn cli_init() -> Result<ValidatedArgs> {
         }
     } else {
         bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
+    }
+
+    if args.check {
+        log::info!("validating config only and exiting");
+        let status = match cfg::new_from_file(&cfg_paths[0]) {
+            Ok(_) => 0,
+            Err(e) => {
+                log::error!("{e:?}");
+                1
+            }
+        };
+        std::process::exit(status);
     }
 
     #[cfg(target_os = "linux")]
