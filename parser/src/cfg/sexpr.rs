@@ -191,7 +191,7 @@ impl std::fmt::Debug for SExpr {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 /// Complementary to SExpr metadata items.
 pub enum SExprMetaData {
     LineComment(Spanned<String>),
