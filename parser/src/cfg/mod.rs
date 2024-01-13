@@ -1296,6 +1296,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         SEQUENCE => parse_sequence_start(&ac[1..], s),
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
         UNSHIFT => parse_unmod(UNSHIFT, &ac[1..], s),
+        LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         _ => unreachable!(),
     }
 }
@@ -2505,6 +2506,20 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
     let key = parse_u16(&ac_params[0], s, "macro ID")?;
     Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroPlay(key))),
+    )))
+}
+
+fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "{LIVE_RELOAD_NUM} expects 1 parameter: <config argument position (1-65535)>";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}, found {}", ac_params.len());
+    }
+    let num = parse_non_zero_u16(&ac_params[0], s, "config argument position")?;
+    Ok(s.a.sref(Action::Custom(
+        // Note: for user-friendliness (hopefully), begin at 1 for parsing.
+        // But for use as an index when stored as data, subtract 1 for 0-based indexing.
+        s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNum(num-1))),
     )))
 }
 

@@ -939,6 +939,19 @@ impl Kanata {
                                 self.cfg_paths[self.cur_cfg_idx].display()
                             );
                         }
+                        CustomAction::LiveReloadNum(n) => {
+                            let n = usize::from(*n);
+                            live_reload_requested = true;
+                            match self.cfg_paths.get(n) {
+                                Some(path) => {
+                                    self.cur_cfg_idx = n;
+                                    log::info!("Requested live reload of file: {}", path.display(),);
+                                }
+                                None => {
+                                    log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
+                                }
+                            }
+                        }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
                             if let Some(pbtn) = prev_mouse_btn {
