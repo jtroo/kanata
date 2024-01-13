@@ -7,7 +7,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 use super::{ParseError, Result};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Position {
     /// The position (since the beginning of the file), in bytes.
     pub absolute: usize,
@@ -18,7 +18,7 @@ pub struct Position {
 }
 
 impl Position {
-    fn new(absolute: usize, line: usize, line_beginning: usize) -> Self {
+    pub fn new(absolute: usize, line: usize, line_beginning: usize) -> Self {
         assert!(line <= absolute);
         assert!(line_beginning <= absolute);
         Self {
@@ -29,7 +29,7 @@ impl Position {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub start: Position,
     pub end: Position,
@@ -49,7 +49,7 @@ impl Default for Span {
 }
 
 impl Span {
-    fn new(start: Position, end: Position, file_name: Rc<str>, file_content: Rc<str>) -> Span {
+    pub fn new(start: Position, end: Position, file_name: Rc<str>, file_content: Rc<str>) -> Span {
         assert!(start.absolute <= end.absolute);
         assert!(start.line <= end.line);
         Span {
@@ -114,7 +114,7 @@ impl Index<Span> for String {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Spanned<T> {
     pub t: T,
     pub span: Span,
@@ -126,7 +126,7 @@ impl<T> Spanned<T> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 /// I know this isn't the classic definition of an S-Expression which uses cons cell and atom, but
 /// this is more convenient to work with (I find).
 pub enum SExpr {
@@ -191,12 +191,22 @@ impl std::fmt::Debug for SExpr {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 /// Complementary to SExpr metadata items.
 pub enum SExprMetaData {
     LineComment(Spanned<String>),
     BlockComment(Spanned<String>),
     Whitespace(Spanned<String>),
+}
+
+impl SExprMetaData {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::LineComment(x) => x.span.clone(),
+            Self::BlockComment(x) => x.span.clone(),
+            Self::Whitespace(x) => x.span.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -387,21 +397,7 @@ pub type TopLevel = Spanned<Vec<SExpr>>;
 
 pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, ParseError> {
     let ignore_whitespace_and_comments = true;
-    parse_(cfg, file_name, ignore_whitespace_and_comments)
-        .map_err(|e| {
-            if e.msg.contains("Unterminated multiline comment") {
-                if let Some(mut span) = e.span {
-                    span.end = span.start;
-                    span.end.absolute += 2;
-                    ParseError::new(span, e.msg)
-                } else {
-                    e
-                }
-            } else {
-                e
-            }
-        })
-        .map(|(x, _)| x)
+    parse_(cfg, file_name, ignore_whitespace_and_comments).map(|(x, _)| x)
 }
 
 pub fn parse_(
@@ -413,6 +409,19 @@ pub fn parse_(
         cfg,
         Lexer::new(cfg, file_name, ignore_whitespace_and_comments),
     )
+    .map_err(|e| {
+        if e.msg.contains("Unterminated multiline comment") {
+            if let Some(mut span) = e.span {
+                span.end = span.start;
+                span.end.absolute += 2;
+                ParseError::new(span, e.msg)
+            } else {
+                e
+            }
+        } else {
+            e
+        }
+    })
 }
 
 fn parse_with(
