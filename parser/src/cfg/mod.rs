@@ -2519,7 +2519,7 @@ fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
     Ok(s.a.sref(Action::Custom(
         // Note: for user-friendliness (hopefully), begin at 1 for parsing.
         // But for use as an index when stored as data, subtract 1 for 0-based indexing.
-        s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNum(num-1))),
+        s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNum(num - 1))),
     )))
 }
 
