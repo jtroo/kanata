@@ -60,6 +60,7 @@ pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
 pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
+pub const LIVE_RELOAD_NUM: &str = "lrld-num";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -121,6 +122,7 @@ pub fn is_list_action(ac: &str) -> bool {
         SEQUENCE,
         UNMOD,
         UNSHIFT,
+        LIVE_RELOAD_NUM,
     ];
     LIST_ACTIONS.contains(&ac)
 }

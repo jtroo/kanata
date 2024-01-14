@@ -569,13 +569,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; except for linux-dev. So in Linux, you cannot live reload and switch keyboard
 ;; devices at the time of writing. The variants `lrpv` and `lrnx` will cycle
 ;; between multiple configuration files, if they are specified in the startup.
-;; arguments.
+;; arguments. The list action variant `lrld-num` takes a number parameter and
+;; reloads the configuration file specified by the number, according to the
+;; order passed into the arguments on kanata startup.
 ;;
 ;; Upon a successful reload, the kanata state will begin on the default base layer
 ;; in the configuration. E.g. in this example configuration, you would start on
 ;; the qwerty layer.
 (deflayer layers
-  _    @qwr @dvk lrld lrpv lrnx _    _    _    _    _    _    _    _
+  _    @qwr @dvk lrld lrpv lrnx (lrld-num 1) _ _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
