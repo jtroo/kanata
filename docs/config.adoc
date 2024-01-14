@@ -921,11 +921,16 @@ The first configuration file specified will be the one loaded on startup.
 The prev/next variants can be used with shortened names of `lrpv` and `lrnx` as
 well.
 
+Another variant is the list action `lrld-num`.
+This reloads the configuration file specified by the number,
+according to the order that the configuration file arguments
+are passed into kanata's startup command.
+
 .Example:
 [source]
 ----
 (deflayer has-live-reloads
-  lrld lrpv lrnx
+  lrld lrpv lrnx (lrld-num 3)
 )
 ----
 
@@ -935,6 +940,9 @@ Example specifying multiple config files in the command line:
 ----
 kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
 ----
+
+Given the above startup command,
+activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 
 [[layer-switch]]
 === layer-switch
