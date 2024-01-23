@@ -1513,7 +1513,7 @@ press+release+press of a key will result in the tap action being held instead
 of the hold action activating.
 
 .Tap timeout in more detail
-[%collapsible]
+[%collapsible,indent=4]
 ====
 The way a `tap-hold` action works with respect to the tap timeout
 is often unclear to newcomers.
@@ -1542,7 +1542,8 @@ With `(defvar $tap-timeout 0)`, the output event sequence is:
 - 100 ms elapses
 - release `lctl`
 
-The above output sequence apply for all values `0` to `99` inclusive.
+The above output sequence is the same for all `$tap-timeout` values
+between and including `0` and `99`.
 
 For a value of `100` or greater for `$tap-timeout`,
 the output event sequence is instead:
