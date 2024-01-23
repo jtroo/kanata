@@ -1512,6 +1512,50 @@ The tap timeout is the number of milliseconds within which a rapid
 press+release+press of a key will result in the tap action being held instead
 of the hold action activating.
 
+.Tap timeout in more detail
+[%collapsible]
+====
+The way a `tap-hold` action works with respect to the tap timeout
+is often unclear to newcomers.
+To make it concrete, the output event sequence of the `tap-hold` action
+`(tap-hold $tap-timeout 200 a lctl)`
+for varying values of `$tap-timeout`
+with a fixed input event sequence will be described.
+
+The input event sequence is:
+
+- press
+- 50 ms elapses
+- release
+- 50 ms elapses
+- press
+- 300 ms elapses
+- release
+
+With `(defvar $tap-timeout 0)`, the output event sequence is:
+
+- 50 ms elapses
+- press `a`
+- release `a`
+- 250 ms elapses
+- press `lctl`
+- 100 ms elapses
+- release `lctl`
+
+The above output sequence apply for all values `0` to `99` inclusive.
+
+For a value of `100` or greater for `$tap-timeout`,
+the output event sequence is instead:
+
+- 50 ms elapses
+- press `a`
+- release `a`
+- 50 ms elapses
+- press `a`
+- 300 ms elapses
+- release `a`
+====
+
 The hold timeout is the number of milliseconds after which the hold action will
 activate.
 
