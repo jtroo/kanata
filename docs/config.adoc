@@ -473,7 +473,13 @@ When enabled, the timeout will start
 as soon as the tap-hold action is pressed
 even if a previous tap-hold action is still held and has not expired.
 
-concurrent-tap-hold yes
+.Example:
+[source]
+----
+(defcfg
+  concurrent-tap-hold yes
+)
+----
 
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
