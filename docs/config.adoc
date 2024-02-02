@@ -229,19 +229,18 @@ mentioned before, please ask for help in an issue or discussion if needed, and
 help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document] is very welcome so that future
 users can have an easier time 🙂.
 
-[[optional-defcfg-entries]]
-== Optional defcfg entries
-
-[[defcfg]]
-=== defcfg
+[[introduction-defcfg]]
+== Introduction to defcfg
 <<table-of-contents,Back to ToC>>
 
 Your configuration file may include a single `defcfg` entry.
+The `defcfg` can be empty or omitted.
+There are options that change kanata's behaviour,
+but this introduction will introduce
+only the most prevalent entry: `process-unmapped-keys`.
+All other options can be found later in the <<optional-defcfg-options>> section.
 
-It can be empty but there are options that can change kanata's behaviour that
-will be described in this section.
-
-.Example:
+.Example of an empty defcfg:
 [source]
 ----
 (defcfg)
@@ -251,535 +250,27 @@ will be described in this section.
 === process-unmapped-keys
 <<table-of-contents,Back to ToC>>
 
-Enabling this configuration makes kanata process keys that are not in defsrc.
-This is useful if you are only mapping a few keys in defsrc instead of most of
-the keys on your keyboard.
+The `process-unmapped-keys` option in `defcfg` is probably the most
+generally impactful option.
+Enabling this configuration makes kanata process keys
+that are not defined in `defsrc'.
+This might be useful
+if you are only mapping a few keys in defsrc
+instead of most of the keys on your keyboard.
 
 Without this, some actions like `+rpt+`, `+tap-hold-release+`, `+one-shot+`,
 will not work correctly for subsequent key presses that are not in defsrc.
 
-This is disabled by default. The reason this is not enabled by default is
-because some keys may not work correctly if they are intercepted. For example,
-see the <<windows-only-windows-altgr>> option below.
+This option is disabled by default.
+The reason this is not enabled by default is
+because some keys may not work correctly if they are intercepted.
+For example, see <<windows-only-windows-altgr>>.
 
 .Example:
 [source]
 ----
 (defcfg
   process-unmapped-keys yes
-)
-----
-
-[[danger-enable-cmd]]
-=== danger-enable-cmd
-<<table-of-contents,Back to ToC>>
-
-This option can be used to enable the `cmd` action in your configuration. The
-`+cmd+` action allows kanata to execute programs with arguments passed to them.
-
-This requires using a kanata program that is compiled with the `cmd` action
-enabled. The reason for this is so that if you choose to, there is no way for
-kanata to execute arbitrary programs even if you download some random
-configuration from the internet.
-
-This configuration is disabled by default and can be enabled by giving it the
-value `yes`.
-
-.Example:
-[source]
-----
-(defcfg
-  danger-enable-cmd yes
-)
-----
-
-[[sequence-timeout]]
-=== sequence-timeout
-<<table-of-contents,Back to ToC>>
-
-This option customizes the key sequence timeout (unit: ms). Its default value
-is 1000. The purpose of this item is explained in <<sequences>>.
-
-.Example:
-[source]
-----
-(defcfg
-  sequence-timeout 2000
-)
-----
-
-[[sequence-input-mode]]
-=== sequence-input-mode
-<<table-of-contents,Back to ToC>>
-
-This option customizes the key sequence input mode. Its default value when not
-configured is `hidden-suppressed`.
-
-The options are:
-
-- `visible-backspaced`: types sequence characters as they are inputted. The
-  typed characters will be erased with backspaces for a valid sequence termination.
-- `hidden-suppressed`: hides sequence characters as they are typed. Does not
-  output the hidden characters for an invalid sequence termination.
-- `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
-  hidden characters for an invalid sequence termination either after a
-  timeout or after a non-sequence key is typed.
-
-For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
-be ignored if a sequence is already active. For historical reasons, and in case
-it is desired behaviour, a sequence leader input using `hidden-suppressed` will
-reset the key sequence.
-
-See <<sequences>> for more about sequences.
-
-.Example:
-[source]
-----
-(defcfg
-  sequence-input-mode visible-backspaced
-)
-----
-
-
-[[sequence-backtrack-modcancel]]
-=== sequence-backtrack-modcancel
-<<table-of-contents,Back to ToC>>
-
-This option customizes the behaviour of key sequences
-when modifiers are used.
-The default is `yes` and can be overridden to `no` if desired.
-
-Setting it to `yes` allows both `fk1` and `fk2` to be activated
-in the following configuration, but with `no`,
-`fk1` will be impossible to activate
-
-----
-(defseq
-  fk1 (lsft a b)
-  fk2 (S-(c d))
-)
-----
-
-See <<sequences>> for more about sequences and
-https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[this document]
-for more context about this specific configuration.
-
-.Example:
-[source]
-----
-(defcfg
-  sequence-backtrack-modcancel no
-)
-----
-
-[[log-layer-changes]]
-=== log-layer-changes
-<<table-of-contents,Back to ToC>>
-
-By default, kanata will log layer changes. However, logging has some processing
-overhead. If you do not care for the logging, you can choose to disable it.
-
-.Example:
-[source]
-----
-(defcfg
-  log-layer-changes no
-)
-----
-
-[[delegate-to-first-layer]]
-=== delegate-to-first-layer
-<<table-of-contents,Back to ToC>>
-
-
-By default, transparent keys on layers
-will delegate to the corresponding defsrc key
-when found on a layer activated by `layer-switch`.
-
-This config entry changes the behaviour
-to delegate to the action in the same position on the first layer defined
-in the configuration, which is the active layer on startup.
-
-For more context, see https://github.com/jtroo/kanata/issues/435.
-
-.Example:
-[source]
-----
-(defcfg
-  delegate-to-first-layer yes
-)
-----
-
-
-[[movemouse-inherit-accel-state]]
-=== movemouse-inherit-accel-state
-<<table-of-contents,Back to ToC>>
-
-By default `movemouse-accel` actions will track the acceleration
-state for vertical and horizontal axes separately.
-
-When this setting is enabled, `movemouse-accel` will behave exactly like mouse movements in https://qmk.fm[QMK],
-i.e. the acceleration state of new mouse
-movement actions will be inherited if others are already being pressed.
-
-.Example:
-[source]
-----
-(defcfg
-  movemouse-inherit-accel-state yes
-)
-----
-
-[[movemouse-smooth-diagonals]]
-=== movemouse-smooth-diagonals
-<<table-of-contents,Back to ToC>>
-
-By default, mouse movements move one direction at a time
-and vertical/horizontal movements are on independent timers.
-
-This can result in non-smooth diagonals when drawing a line in some app.
-This option adds a small imperceptible amount of latency to
-synchronize the mouse movements.
-
-.Example:
-[source]
-----
-(defcfg
-  movemouse-smooth-diagonals yes
-)
-----
-
-=== dynamic-macro-max-presses [[dynamic-macro-max-presses]]
-<<table-of-contents,Back to ToC>>
-
-This configuration allows you to customize the length limit on dynamic macros.
-The default length limit is 128 keys.
-
-.Example:
-[source]
-----
-(defcfg
-  dynamic-macro-max-presses 1000
-)
-----
-
-=== concurrent-tap-hold [[concurrent-tap-hold]]
-This configuration makes multiple tap-hold actions
-that are activated near in time expire their timeout quicker.
-By default this is disabled.
-When disabled, the timeout for a following tap-hold
-will start from 0ms **after** the previous tap-hold expires.
-When enabled, the timeout will start
-as soon as the tap-hold action is pressed
-even if a previous tap-hold action is still held and has not expired.
-
-.Example:
-[source]
-----
-(defcfg
-  concurrent-tap-hold yes
-)
-----
-
-[[linux-only-linux-dev]]
-=== Linux only: linux-dev
-<<table-of-contents,Back to ToC>>
-By default, kanata will try to detect which input devices are keyboards and try
-to intercept them all. However, you may specify exact keyboard devices from the
-`/dev/input` directories using the `linux-dev` configuration.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
-)
-----
-
-If you want to specify multiple keyboards, you can separate the paths with a
-colon `+:+`.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-dev /dev/input/dev1:/dev/input/dev2
-)
-----
-
-Due to using the colon to separate devices, if you have a device with colons in
-its file name, you must escape those colons with backslashes:
-
-[source]
-----
-(defcfg
-  linux-dev /dev/input/path-to\:device
-)
-----
-
-Alternatively, you can use list syntax, where both backslashes and colons
-are parsed literally. List items are separated by spaces or newlines.
-Using quotation marks for each item is optional, and only required if an
-item contains spaces.
-
-[source]
-----
-(defcfg
-  linux-dev (
-    /dev/input/path:to:device
-    "/dev/input/path to device"
-  )
-)
-----
-
-[[linux-only-linux-dev-names-include]]
-=== Linux only: linux-dev-names-include
-<<table-of-contents,Back to ToC>>
-
-In the case that `linux-dev` is omitted,
-this option defines a list of device names that should be included.
-Device names that do not exist in the list will be ignored.
-This option is parsed identically to `linux-dev`.
-
-Kanata will print device names on startup with log lines that look like below:
-
-----
-registering /dev/input/eventX: "Name goes here"
-----
-
-.Example:
-[source]
-----
-(defcfg
-  linux-dev-names-include (
-    "Device name 1"
-    "Device name 2"
-  )
-)
-----
-
-[[linux-only-linux-dev-names-exclude]]
-=== Linux only: linux-dev-names-exclude
-<<table-of-contents,Back to ToC>>
-
-In the case that `linux-dev` is omitted,
-this option defines a list of device names that should be excluded.
-This option is parsed identically to `linux-dev`.
-
-The `linux-dev-names-include` and `linux-dev-names-exclude` options
-are not mutually exclusive
-but in practice it probably only makes sense to use one and not both.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-dev-names-exclude (
-    "Device Name 1"
-    "Device Name 2"
-  )
-)
-----
-
-[[linux-only-linux-continue-if-no-devs-found]]
-=== Linux only: linux-continue-if-no-devs-found
-<<table-of-contents,Back to ToC>>
-
-By default, kanata will crash if no input devices are found. You can change
-this behaviour by setting `linux-continue-if-no-devs-found`.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-continue-if-no-devs-found yes
-)
-----
-
-[[linux-only-linux-unicode-u-code]]
-=== Linux only: linux-unicode-u-code
-<<table-of-contents,Back to ToC>>
-
-Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
-then pressing Enter. However, if you do remapping in userspace, e.g. via
-xmodmap/xkb, the keycode "U" that kanata outputs may not become a keysym "u"
-after the userspace remapping. This will be likely if you use non-US,
-non-European keyboards on top of kanata. For unicode to work, kanata needs to
-use the keycode that outputs the keysym "u", which might not be the keycode
-"U".
-
-You can use `evtest` or `kanata --debug`, set your userspace key remapping,
-then press the key that outputs the keysym "u" to see which underlying keycode
-is sent. Then you can use this configuration to change kanata's behaviour.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-unicode-u-code v
-)
-----
-
-[[linux-only-linux-unicode-termination]]
-=== Linux only: linux-unicode-termination
-<<table-of-contents,Back to ToC>>
-
-Unicode on Linux terminates with the Enter key by default. This may not work in
-some applications. The termination is configurable with the following options:
-
-- `enter`
-- `space`
-- `enter-space`
-- `space-enter`
-
-.Example:
-[source]
-----
-(defcfg
-  linux-unicode-termination space
-)
-----
-
-=== Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
-<<table-of-contents,Back to ToC>>
-
-On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
-on startup and on live reload
-via the configuration item `linux-only-x11-repeat-rate`.
-This takes two numbers separated by a comma.
-The first number is the delay in ms
-and the second number is the repeat rate in repeats/second.
-
-This configuration item does not affect Wayland or no-desktop environments.
-
-.Example:
-[source]
-----
-(defcfg
-  linux-x11-repeat-delay-rate 400,50
-)
-----
-
-[[macos-only-macos-dev-names-include]]
-=== macOS only: macos-dev-names-include
-<<table-of-contents,Back to ToC>>
-
-This option defines a list of device names that should be included.
-By default, kanata will try to detect which input devices are keyboards and try
-to intercept them all. However, you may specify exact keyboard devices to intercept
-using the `macos-dev-names-include` configuration.
-Device names that do not exist in the list will be ignored.
-This option is parsed identically to `linux-dev`.
-
-Use `kanata -l` or `kanata --list` to list the available keyboards.
-
-.Example:
-[source]
-----
-(defcfg
-  macos-dev-names-include (
-    "Device name 1"
-    "Device name 2"
-  )
-)
-----
-
-[[windows-only-windows-altgr]]
-=== Windows only: windows-altgr
-<<table-of-contents,Back to ToC>>
-
-There is an option for Windows to help mitigate the strange behaviour of AltGr
-(ralt) if you're using that key in your defsrc. This is applicable for many
-non-US layouts. You can use one of the listed values to change what kanata does
-with the key:
-
-* `cancel-lctl-press`
-** This will remove the `lctl` press that is generated alonside `ralt`
-* `add-lctl-release`
-** This adds an `lctl` release when `ralt` is released
-
-.Example:
-[source]
-----
-(defcfg
-  windows-altgr add-lctl-release
-)
-----
-
-For more context, see: https://github.com/jtroo/kanata/issues/55.
-
-NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
-work properly with other applications that also use keyboard interception.
-Known application with issues: GWSL/VcXsrv
-
-=== Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
-<<table-of-contents,Back to ToC>>
-
-This defcfg item allows you to intercept mouse buttons for a specific mouse
-device. This only works with the Interception driver (the -wintercept variants
-of the binary).
-
-The intended use case for this is for laptops such as a Thinkpad, which have
-mouse buttons that may be desirable to activate kanata actions with.
-
-To know what numbers to put into the string, you can run the variant with this
-defcfg item defined with any numbers. Then when a button is first pressed on
-the mouse device, kanata will print its hwid in the log; you can then
-copy-paste that into this configuration entry. If this defcfg item is not
-defined, the log will not print.
-
-https://github.com/jtroo/kanata/issues/108[Relevant issue].
-
-.Example:
-[source]
-----
-(defcfg
-  windows-interception-mouse-hwid "70, 0, 60, 0"
-)
-----
-
-[[using-multiple-defcfg-entries]]
-=== Using multiple defcfg entries
-<<table-of-contents,Back to ToC>>
-
-The `defcfg` entry is treated as a list with pairs of strings. For example:
-
-[source]
-----
-(defcfg a 1 b 2)
-----
-
-This will be treated as configuration `a` having value `1` and configuration
-`b` having value `2`.
-
-An example defcfg containing many of the options is shown below. It should be
-noted options that are Linux-only, Windows-only, or macOS-only will be ignored when used on
-a non-applicable operating system.
-
-[source]
-----
-;; Don't actually use this exact configuration,
-;; it's almost certainly not what you want.
-(defcfg
-  process-unmapped-keys yes
-  danger-enable-cmd yes
-  sequence-timeout 2000
-  sequence-input-mode visible-backspaced
-  sequence-backtrack-modcancel no
-  log-layer-changes no
-  delegate-to-first-layer yes
-  movemouse-inherit-accel-state yes
-  movemouse-smooth-diagonals yes
-  dynamic-macro-max-presses 1000
-  linux-dev (/dev/input/dev1 /dev/input/dev2)
-  linux-dev-names-include ("Name 1" "Name 2")
-  linux-dev-names-exclude ("Name 3" "Name 4")
-  linux-continue-if-no-devs-found yes
-  linux-unicode-u-code v
-  linux-unicode-termination space
-  linux-x11-repeat-delay-rate 400,50
-  windows-altgr add-lctl-release
-  windows-interception-mouse-hwid "70, 0, 60, 0"
 )
 ----
 
@@ -1891,6 +1382,11 @@ This can be useful for forcing unshifted keys while AltGr is still held.
 === cmd
 <<table-of-contents,Back to ToC>>
 
+WARNING:
+This action does not work unless you use the appropriate binary,
+or if compiling yourself, the appropriate feature flag.
+Additionally you must add the <<danger-enable-cmd>> `defcfg` entry.
+
 The `+cmd+` action executes a program with arguments. It accepts one or more
 strings. The first string is the program that will be run and the following
 strings are arguments to that program. The arguments are provided to the
@@ -2007,6 +1503,522 @@ The included files also cannot contain includes themselves.
 ;; This is in the other file
 (deflayer included-layer
   ;; ...
+)
+----
+
+[[optional-defcfg-options]]
+== defcfg options
+
+[[danger-enable-cmd]]
+=== danger-enable-cmd
+<<table-of-contents,Back to ToC>>
+
+This option can be used to enable the `cmd` action in your configuration. The
+`+cmd+` action allows kanata to execute programs with arguments passed to them.
+
+This requires using a kanata program that is compiled with the `cmd` action
+enabled. The reason for this is so that if you choose to, there is no way for
+kanata to execute arbitrary programs even if you download some random
+configuration from the internet.
+
+This configuration is disabled by default and can be enabled by giving it the
+value `yes`.
+
+.Example:
+[source]
+----
+(defcfg
+  danger-enable-cmd yes
+)
+----
+
+[[sequence-timeout]]
+=== sequence-timeout
+<<table-of-contents,Back to ToC>>
+
+This option customizes the key sequence timeout (unit: ms). Its default value
+is 1000. The purpose of this item is explained in <<sequences>>.
+
+.Example:
+[source]
+----
+(defcfg
+  sequence-timeout 2000
+)
+----
+
+[[sequence-input-mode]]
+=== sequence-input-mode
+<<table-of-contents,Back to ToC>>
+
+This option customizes the key sequence input mode. Its default value when not
+configured is `hidden-suppressed`.
+
+The options are:
+
+- `visible-backspaced`: types sequence characters as they are inputted. The
+  typed characters will be erased with backspaces for a valid sequence termination.
+- `hidden-suppressed`: hides sequence characters as they are typed. Does not
+  output the hidden characters for an invalid sequence termination.
+- `hidden-delay-type`: hides sequence characters as they are typed. Outputs the
+  hidden characters for an invalid sequence termination either after a
+  timeout or after a non-sequence key is typed.
+
+For `visible-backspaced` and `hidden-delay-type`, a sequence leader input will
+be ignored if a sequence is already active. For historical reasons, and in case
+it is desired behaviour, a sequence leader input using `hidden-suppressed` will
+reset the key sequence.
+
+See <<sequences>> for more about sequences.
+
+.Example:
+[source]
+----
+(defcfg
+  sequence-input-mode visible-backspaced
+)
+----
+
+
+[[sequence-backtrack-modcancel]]
+=== sequence-backtrack-modcancel
+<<table-of-contents,Back to ToC>>
+
+This option customizes the behaviour of key sequences
+when modifiers are used.
+The default is `yes` and can be overridden to `no` if desired.
+
+Setting it to `yes` allows both `fk1` and `fk2` to be activated
+in the following configuration, but with `no`,
+`fk1` will be impossible to activate
+
+----
+(defseq
+  fk1 (lsft a b)
+  fk2 (S-(c d))
+)
+----
+
+See <<sequences>> for more about sequences and
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[this document]
+for more context about this specific configuration.
+
+.Example:
+[source]
+----
+(defcfg
+  sequence-backtrack-modcancel no
+)
+----
+
+[[log-layer-changes]]
+=== log-layer-changes
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will log layer changes. However, logging has some processing
+overhead. If you do not care for the logging, you can choose to disable it.
+
+.Example:
+[source]
+----
+(defcfg
+  log-layer-changes no
+)
+----
+
+[[delegate-to-first-layer]]
+=== delegate-to-first-layer
+<<table-of-contents,Back to ToC>>
+
+
+By default, transparent keys on layers
+will delegate to the corresponding defsrc key
+when found on a layer activated by `layer-switch`.
+
+This config entry changes the behaviour
+to delegate to the action in the same position on the first layer defined
+in the configuration, which is the active layer on startup.
+
+For more context, see https://github.com/jtroo/kanata/issues/435.
+
+.Example:
+[source]
+----
+(defcfg
+  delegate-to-first-layer yes
+)
+----
+
+
+[[movemouse-inherit-accel-state]]
+=== movemouse-inherit-accel-state
+<<table-of-contents,Back to ToC>>
+
+By default `movemouse-accel` actions will track the acceleration
+state for vertical and horizontal axes separately.
+
+When this setting is enabled, `movemouse-accel` will behave exactly like mouse movements in https://qmk.fm[QMK],
+i.e. the acceleration state of new mouse
+movement actions will be inherited if others are already being pressed.
+
+.Example:
+[source]
+----
+(defcfg
+  movemouse-inherit-accel-state yes
+)
+----
+
+[[movemouse-smooth-diagonals]]
+=== movemouse-smooth-diagonals
+<<table-of-contents,Back to ToC>>
+
+By default, mouse movements move one direction at a time
+and vertical/horizontal movements are on independent timers.
+
+This can result in non-smooth diagonals when drawing a line in some app.
+This option adds a small imperceptible amount of latency to
+synchronize the mouse movements.
+
+.Example:
+[source]
+----
+(defcfg
+  movemouse-smooth-diagonals yes
+)
+----
+
+=== dynamic-macro-max-presses [[dynamic-macro-max-presses]]
+<<table-of-contents,Back to ToC>>
+
+This configuration allows you to customize the length limit on dynamic macros.
+The default length limit is 128 keys.
+
+.Example:
+[source]
+----
+(defcfg
+  dynamic-macro-max-presses 1000
+)
+----
+
+=== concurrent-tap-hold [[concurrent-tap-hold]]
+This configuration makes multiple tap-hold actions
+that are activated near in time expire their timeout quicker.
+By default this is disabled.
+When disabled, the timeout for a following tap-hold
+will start from 0ms **after** the previous tap-hold expires.
+When enabled, the timeout will start
+as soon as the tap-hold action is pressed
+even if a previous tap-hold action is still held and has not expired.
+
+.Example:
+[source]
+----
+(defcfg
+  concurrent-tap-hold yes
+)
+----
+
+[[linux-only-linux-dev]]
+=== Linux only: linux-dev
+<<table-of-contents,Back to ToC>>
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices from the
+`/dev/input` directories using the `linux-dev` configuration.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev /dev/input/by-path/platform-i8042-serio-0-event-kbd
+)
+----
+
+If you want to specify multiple keyboards, you can separate the paths with a
+colon `+:+`.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev /dev/input/dev1:/dev/input/dev2
+)
+----
+
+Due to using the colon to separate devices, if you have a device with colons in
+its file name, you must escape those colons with backslashes:
+
+[source]
+----
+(defcfg
+  linux-dev /dev/input/path-to\:device
+)
+----
+
+Alternatively, you can use list syntax, where both backslashes and colons
+are parsed literally. List items are separated by spaces or newlines.
+Using quotation marks for each item is optional, and only required if an
+item contains spaces.
+
+[source]
+----
+(defcfg
+  linux-dev (
+    /dev/input/path:to:device
+    "/dev/input/path to device"
+  )
+)
+----
+
+[[linux-only-linux-dev-names-include]]
+=== Linux only: linux-dev-names-include
+<<table-of-contents,Back to ToC>>
+
+In the case that `linux-dev` is omitted,
+this option defines a list of device names that should be included.
+Device names that do not exist in the list will be ignored.
+This option is parsed identically to `linux-dev`.
+
+Kanata will print device names on startup with log lines that look like below:
+
+----
+registering /dev/input/eventX: "Name goes here"
+----
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-names-include (
+    "Device name 1"
+    "Device name 2"
+  )
+)
+----
+
+[[linux-only-linux-dev-names-exclude]]
+=== Linux only: linux-dev-names-exclude
+<<table-of-contents,Back to ToC>>
+
+In the case that `linux-dev` is omitted,
+this option defines a list of device names that should be excluded.
+This option is parsed identically to `linux-dev`.
+
+The `linux-dev-names-include` and `linux-dev-names-exclude` options
+are not mutually exclusive
+but in practice it probably only makes sense to use one and not both.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-names-exclude (
+    "Device Name 1"
+    "Device Name 2"
+  )
+)
+----
+
+[[linux-only-linux-continue-if-no-devs-found]]
+=== Linux only: linux-continue-if-no-devs-found
+<<table-of-contents,Back to ToC>>
+
+By default, kanata will crash if no input devices are found. You can change
+this behaviour by setting `linux-continue-if-no-devs-found`.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-continue-if-no-devs-found yes
+)
+----
+
+[[linux-only-linux-unicode-u-code]]
+=== Linux only: linux-unicode-u-code
+<<table-of-contents,Back to ToC>>
+
+Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
+then pressing Enter. However, if you do remapping in userspace, e.g. via
+xmodmap/xkb, the keycode "U" that kanata outputs may not become a keysym "u"
+after the userspace remapping. This will be likely if you use non-US,
+non-European keyboards on top of kanata. For unicode to work, kanata needs to
+use the keycode that outputs the keysym "u", which might not be the keycode
+"U".
+
+You can use `evtest` or `kanata --debug`, set your userspace key remapping,
+then press the key that outputs the keysym "u" to see which underlying keycode
+is sent. Then you can use this configuration to change kanata's behaviour.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-unicode-u-code v
+)
+----
+
+[[linux-only-linux-unicode-termination]]
+=== Linux only: linux-unicode-termination
+<<table-of-contents,Back to ToC>>
+
+Unicode on Linux terminates with the Enter key by default. This may not work in
+some applications. The termination is configurable with the following options:
+
+- `enter`
+- `space`
+- `enter-space`
+- `space-enter`
+
+.Example:
+[source]
+----
+(defcfg
+  linux-unicode-termination space
+)
+----
+
+=== Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
+<<table-of-contents,Back to ToC>>
+
+On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
+on startup and on live reload
+via the configuration item `linux-only-x11-repeat-rate`.
+This takes two numbers separated by a comma.
+The first number is the delay in ms
+and the second number is the repeat rate in repeats/second.
+
+This configuration item does not affect Wayland or no-desktop environments.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-x11-repeat-delay-rate 400,50
+)
+----
+
+[[macos-only-macos-dev-names-include]]
+=== macOS only: macos-dev-names-include
+<<table-of-contents,Back to ToC>>
+
+This option defines a list of device names that should be included.
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices to intercept
+using the `macos-dev-names-include` configuration.
+Device names that do not exist in the list will be ignored.
+This option is parsed identically to `linux-dev`.
+
+Use `kanata -l` or `kanata --list` to list the available keyboards.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev-names-include (
+    "Device name 1"
+    "Device name 2"
+  )
+)
+----
+
+[[windows-only-windows-altgr]]
+=== Windows only: windows-altgr
+<<table-of-contents,Back to ToC>>
+
+There is an option for Windows to help mitigate the strange behaviour of AltGr
+(ralt) if you're using that key in your defsrc. This is applicable for many
+non-US layouts. You can use one of the listed values to change what kanata does
+with the key:
+
+* `cancel-lctl-press`
+** This will remove the `lctl` press that is generated alonside `ralt`
+* `add-lctl-release`
+** This adds an `lctl` release when `ralt` is released
+
+.Example:
+[source]
+----
+(defcfg
+  windows-altgr add-lctl-release
+)
+----
+
+For more context, see: https://github.com/jtroo/kanata/issues/55.
+
+NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
+work properly with other applications that also use keyboard interception.
+Known application with issues: GWSL/VcXsrv
+
+=== Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
+<<table-of-contents,Back to ToC>>
+
+This defcfg item allows you to intercept mouse buttons for a specific mouse
+device. This only works with the Interception driver (the -wintercept variants
+of the binary).
+
+The intended use case for this is for laptops such as a Thinkpad, which have
+mouse buttons that may be desirable to activate kanata actions with.
+
+To know what numbers to put into the string, you can run the variant with this
+defcfg item defined with any numbers. Then when a button is first pressed on
+the mouse device, kanata will print its hwid in the log; you can then
+copy-paste that into this configuration entry. If this defcfg item is not
+defined, the log will not print.
+
+https://github.com/jtroo/kanata/issues/108[Relevant issue].
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-mouse-hwid "70, 0, 60, 0"
+)
+----
+
+[[using-multiple-defcfg-options]]
+=== Using multiple defcfg options
+<<table-of-contents,Back to ToC>>
+
+The `defcfg` entry is treated as a list with pairs of strings. For example:
+
+[source]
+----
+(defcfg a 1 b 2)
+----
+
+This will be treated as configuration `a` having value `1` and configuration
+`b` having value `2`.
+
+An example defcfg containing many of the options is shown below. It should be
+noted options that are Linux-only, Windows-only, or macOS-only will be ignored when used on
+a non-applicable operating system.
+
+[source]
+----
+;; Don't actually use this exact configuration,
+;; it's almost certainly not what you want.
+(defcfg
+  process-unmapped-keys yes
+  danger-enable-cmd yes
+  sequence-timeout 2000
+  sequence-input-mode visible-backspaced
+  sequence-backtrack-modcancel no
+  log-layer-changes no
+  delegate-to-first-layer yes
+  movemouse-inherit-accel-state yes
+  movemouse-smooth-diagonals yes
+  dynamic-macro-max-presses 1000
+  linux-dev (/dev/input/dev1 /dev/input/dev2)
+  linux-dev-names-include ("Name 1" "Name 2")
+  linux-dev-names-exclude ("Name 3" "Name 4")
+  linux-continue-if-no-devs-found yes
+  linux-unicode-u-code v
+  linux-unicode-termination space
+  linux-x11-repeat-delay-rate 400,50
+  windows-altgr add-lctl-release
+  windows-interception-mouse-hwid "70, 0, 60, 0"
 )
 ----
 
