@@ -9,6 +9,7 @@ use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 #[derive(Debug)]
 pub struct CfgOptions {
     pub process_unmapped_keys: bool,
+    pub block_unmapped_keys: bool,
     pub enable_cmd: bool,
     pub sequence_timeout: u16,
     pub sequence_input_mode: SequenceInputMode,
@@ -49,6 +50,7 @@ impl Default for CfgOptions {
     fn default() -> Self {
         Self {
             process_unmapped_keys: false,
+            block_unmapped_keys: false,
             enable_cmd: false,
             sequence_timeout: 1000,
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
@@ -274,6 +276,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                    }
+                    "block-unmapped-keys" => {
+                        cfg.block_unmapped_keys = parse_defcfg_val_bool(val, label)?
                     }
                     "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
                     "sequence-backtrack-modcancel" => {
