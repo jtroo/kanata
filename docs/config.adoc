@@ -1418,8 +1418,8 @@ NOTE: commands are executed directly and not via a shell, so you cannot make
 use of environment variables or symbols with special meaning.
 For example `+~+` or `+$HOME+` in Linux will not be
 substituted with your home directory.
-If you want to execute with a shell program use `bash -c` or `powershell.exe`
-as the first parameter.
+If you want to execute with a shell program
+use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
 .Example:
 [source]
