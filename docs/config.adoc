@@ -287,14 +287,14 @@ it will be useful to first learn about aliases and variables.
 Using the `defalias` configuration entry, you can introduce a shortcut label
 for an action.
 
-Similar to how `defcfg` works, `defalias` reads pairs of items in a sequence
+The `defalias` entry reads pairs of items in a sequence
 where the first item in the pair is the alias name and the second item is the
-action it can be substituted for. However, unlike `+defcfg+`, the second item
-in `defalias` may be a "list" as opposed to a single string like it was in
-`defcfg`.
+action it can be substituted for.
 
-A list is a sequence of strings separated by whitespace, surrounded by
-parentheses. All of the configuration entries we've looked at so far are lists;
+A list is a sequence of strings
+or nested lists separated by whitespace,
+surrounded by parentheses.
+All of the configuration entries we've looked at so far are lists;
 `defalias` is where we'll first see nested lists in this guide.
 
 .Example:
@@ -1742,6 +1742,25 @@ even if a previous tap-hold action is still held and has not expired.
 ----
 (defcfg
   concurrent-tap-hold yes
+)
+----
+
+[[block-unmapped-keys]]
+=== block-unmapped-keys
+<<table-of-contents,Back to ToC>>
+
+If you desire to use only a subset of your keyboard
+you can use `block-unmapped-keys` to make every key
+other than those that exist in `defsrc` a no-op.
+
+NOTE: this only functions correctly if you also set
+<<process-unmapped-keys>> to yes.
+
+.Example:
+[source]
+----
+(defcfg
+  block-unmapped-keys yes
 )
 ----
 
