@@ -1480,6 +1480,10 @@ fn parse_defvar_concat() {
     xz (notconcat a b " " c " d")
     yx (concat a b " " c " d" (concat "efg" " hij ") "kl")
     yz (concat "abc"def"ghi""jkl")
+
+    rootpath "/home/myuser/mysubdir"
+    ;; $otherpath will be the string: /home/myuser/mysubdir/helloworld
+    otherpath (concat $rootpath "/helloworld")
 )
 "#;
     let mut s = ParsedState::default();
@@ -1523,6 +1527,10 @@ fn parse_defvar_concat() {
     }
     match s.vars().unwrap().get("yz").unwrap() {
         SExpr::Atom(a) => assert_eq!(&a.t, "abcdefghijkl"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("otherpath").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "/home/myuser/mysubdir/helloworld"),
         SExpr::List(l) => panic!("expected string not list: {l:?}"),
     }
 }
