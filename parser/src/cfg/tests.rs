@@ -1460,3 +1460,132 @@ fn parse_cmd() {
     )
     .expect("succeeds");
 }
+
+#[test]
+fn parse_defvar_concat() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a)
+(deflayer base a)
+(defvar
+    x (concat a b c)
+    y (concat d (concat e f))
+    z (squish squash (splish splosh))
+    xx (concat $x $y)
+    xy (concat $x (concat $y))
+    xz (notconcat a b " " c " d")
+    yx (concat a b " " c " d" (concat "efg" " hij ") "kl")
+    yz (concat "abc"def"ghi""jkl")
+
+    rootpath "/home/myuser/mysubdir"
+    ;; $otherpath will be the string: /home/myuser/mysubdir/helloworld
+    otherpath (concat $rootpath "/helloworld")
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect("succeeds");
+    match s.vars().unwrap().get("x").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "abc"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("y").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "def"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("z").unwrap() {
+        SExpr::Atom(a) => panic!("expected list not string: {a:?}"),
+        SExpr::List(_) => {}
+    }
+    match s.vars().unwrap().get("xx").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "abcdef"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("xy").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "abcdef"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("xz").unwrap() {
+        SExpr::Atom(a) => panic!("expected list not string {a:?}"),
+        SExpr::List(_) => {}
+    }
+    match s.vars().unwrap().get("yx").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "ab c defg hij kl"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("yz").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "abcdefghijkl"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+    match s.vars().unwrap().get("otherpath").unwrap() {
+        SExpr::Atom(a) => assert_eq!(&a.t, "/home/myuser/mysubdir/helloworld"),
+        SExpr::List(l) => panic!("expected string not list: {l:?}"),
+    }
+}
+
+#[test]
+fn parse_defvar_concat_err1() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a)
+(deflayer base a)
+(defvar
+    x (concat a b c (not nested concat))
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect_err("fails");
+}
+
+#[test]
+fn parse_defvar_concat_err2() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a)
+(deflayer base a)
+(defvar
+    x (list var uh oh)
+    y (concat a b c $x)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .expect_err("fails");
+}

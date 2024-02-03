@@ -253,7 +253,7 @@ All other options can be found later in the <<optional-defcfg-options>> section.
 The `process-unmapped-keys` option in `defcfg` is probably the most
 generally impactful option.
 Enabling this configuration makes kanata process keys
-that are not defined in `defsrc'.
+that are not defined in `defsrc`.
 This might be useful
 if you are only mapping a few keys in defsrc
 instead of most of the keys on your keyboard.
@@ -390,11 +390,29 @@ Variables are referred to by prefixing their name with `$`.
 )
 ----
 
+[[concat-in-defvar]]
+==== concat in defvar
+
+Within the second item of `defvar`,
+a list that begins with the special keyword `concat` will concatenate all
+subsequent items in the list together into a single string value.
+Without using `concat`, lists are saved as-is.
+
+.Example:
+[source]
+----
+(defvar
+  rootpath "/home/myuser/mysubdir"
+  ;; $otherpath will be the string: /home/myuser/mysubdir/helloworld
+  otherpath (concat $rootpath "/helloworld")
+)
+----
+
 [[actions]]
 == Actions
 
-The actions kanata provides are what make it truly customizable. This section
-explains the available actions.
+The actions kanata provides are what make it truly customizable.
+This section explains the available actions.
 
 [[live-reload]]
 === Live reload
@@ -1382,19 +1400,26 @@ This can be useful for forcing unshifted keys while AltGr is still held.
 === cmd
 <<table-of-contents,Back to ToC>>
 
-WARNING:
-This action does not work unless you use the appropriate binary,
-or if compiling yourself, the appropriate feature flag.
-Additionally you must add the <<danger-enable-cmd>> `defcfg` entry.
+WARNING: This action does not work unless you use the appropriate binary
+or - if compiling yourself - the appropriate feature flag.
+Additionally you must add the <<danger-enable-cmd>> `defcfg` option.
 
 The `+cmd+` action executes a program with arguments. It accepts one or more
 strings. The first string is the program that will be run and the following
 strings are arguments to that program. The arguments are provided to the
 program in the order written in the config file.
+Lists may also be used within `cmd`
+which you may desire to do for reuse via `defvar`.
+Lists will be flattened such that arguments are provided to the program
+in the order written in the config file, regardless of list nesting.
+To be technical, it would be a depth-first flattening (similar to DFS).
 
-NOTE: The command is executed directly and not via a shell, so you cannot make
-use of environment variables, e.g. `+~+` or `+$HOME+` in Linux will not be
+NOTE: commands are executed directly and not via a shell, so you cannot make
+use of environment variables or symbols with special meaning.
+For example `+~+` or `+$HOME+` in Linux will not be
 substituted with your home directory.
+If you want to execute with a shell program
+use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
 .Example:
 [source]
