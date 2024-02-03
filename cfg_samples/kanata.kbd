@@ -150,6 +150,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; process-unmapped-keys yes
 
+  ;; Disable all keys not mapped in defsrc.
+  ;; Only works if process-unmapped-keys is also yes.
+  ;; block-unmapped-keys yes
+
   ;; Intercept mouse buttons for a specific mouse device.
   ;; The intended use case for this is for laptops such as a Thinkpad, which have
   ;; mouse buttons that may be useful to activate kanata actions with. This only

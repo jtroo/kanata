@@ -451,7 +451,6 @@ pub fn parse_cfg_raw_string(
             "Only one defcfg is allowed, found more. Delete the extras."
         )
     }
-
     let src_expr = root_exprs
         .iter()
         .find(gen_first_atom_filter("defsrc"))
@@ -559,6 +558,7 @@ pub fn parse_cfg_raw_string(
         delegate_to_first_layer: cfg.delegate_to_first_layer,
         default_sequence_timeout: cfg.sequence_timeout,
         default_sequence_input_mode: cfg.sequence_input_mode,
+        block_unmapped_keys: cfg.block_unmapped_keys,
         ..Default::default()
     };
 
@@ -886,6 +886,7 @@ pub struct ParsedState {
     delegate_to_first_layer: bool,
     default_sequence_timeout: u16,
     default_sequence_input_mode: SequenceInputMode,
+    block_unmapped_keys: bool,
     a: Arc<Allocations>,
 }
 
@@ -911,6 +912,7 @@ impl Default for ParsedState {
             delegate_to_first_layer: default_cfg.delegate_to_first_layer,
             default_sequence_timeout: default_cfg.sequence_timeout,
             default_sequence_input_mode: default_cfg.sequence_input_mode,
+            block_unmapped_keys: default_cfg.block_unmapped_keys,
             a: unsafe { Allocations::new() },
         }
     }
@@ -2578,15 +2580,17 @@ fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
             }
-            // If there is no corresponding action in defsrc, default to the OsCode at the
-            // position. This is done so that `process-unmapped-keys` works correctly.
-            if *layer_action == Action::Trans {
-                *layer_action = OsCode::from_u16(i as u16)
-                    .and_then(|osc| match KeyCode::from(osc) {
-                        KeyCode::No => None,
-                        kc => Some(Action::KeyCode(kc)),
-                    })
-                    .unwrap_or(Action::Trans);
+            if !s.block_unmapped_keys {
+                // If there is no corresponding action in defsrc, default to the OsCode at the
+                // position. This is done so that `process-unmapped-keys` works correctly.
+                if *layer_action == Action::Trans {
+                    *layer_action = OsCode::from_u16(i as u16)
+                        .and_then(|osc| match KeyCode::from(osc) {
+                            KeyCode::No => None,
+                            kc => Some(Action::KeyCode(kc)),
+                        })
+                        .unwrap_or(Action::Trans);
+                }
             }
         }
         // Set fake keys on the `layer-switch` version of each layer.
