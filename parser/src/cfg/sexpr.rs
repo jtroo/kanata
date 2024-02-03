@@ -164,6 +164,22 @@ impl SExpr {
         }
     }
 
+    pub fn span_list<'a>(
+        &'a self,
+        vars: Option<&'a HashMap<String, SExpr>>,
+    ) -> Option<&'a Spanned<Vec<SExpr>>> {
+        match self {
+            SExpr::List(l) => Some(l),
+            SExpr::Atom(a) => match (a.t.strip_prefix('$'), vars) {
+                (Some(varname), Some(vars)) => match vars.get(varname) {
+                    Some(var) => var.span_list(Some(vars)),
+                    None => None,
+                },
+                _ => None,
+            },
+        }
+    }
+
     pub fn span(&self) -> Span {
         match self {
             SExpr::Atom(a) => a.span.clone(),

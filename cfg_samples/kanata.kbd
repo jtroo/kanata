@@ -291,6 +291,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   hold-timeout  200
   tt $tap-timeout
   ht $hold-timeout
+
+  ;; A list value in defvar that begins with concat behaves in a special manner
+  ;; where strings will be joined together.
+  ;;
+  ;; Below results in 100200
+  a "hello"
+  b "world"
+  ct (concat $a " " $b)
 )
 
 (defalias

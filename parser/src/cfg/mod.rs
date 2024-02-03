@@ -938,18 +938,51 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
                 _ => bail_expr!(var_name_expr, "variable name must not be a list"),
             };
             let var_expr = match subexprs.next() {
-                Some(v) => v,
+                Some(v) => match v {
+                    SExpr::Atom(_) => v.clone(),
+                    SExpr::List(l) => parse_list_var(l, s)?,
+                },
                 None => bail_expr!(
                     var_name_expr,
                     "variable key name has no action - you should add an action."
                 ),
             };
-            if s.vars.insert(var_name.into(), var_expr.clone()).is_some() {
+            if s.vars.insert(var_name.into(), var_expr).is_some() {
                 bail_expr!(var_name_expr, "duplicate variable name: {}", var_name);
             }
         }
     }
     Ok(())
+}
+
+fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> {
+    let ret = match expr.t.first() {
+        Some(SExpr::Atom(a)) => match a.t.as_str() {
+            "concat" => {
+                let mut concat_str = String::new();
+                for expr in expr.t.iter().skip(1) {
+                    if let Some(a) = expr.atom(s.vars()) {
+                        concat_str.push_str(a.trim_matches('"'));
+                    } else if let Some(l) = expr.span_list(s.vars()) {
+                        match parse_list_var(l, s)? {
+                            SExpr::Atom(a) => concat_str.push_str(a.t.trim_matches('"')),
+                            SExpr::List(_) => bail_expr!(
+                                expr,
+                                "concat must contain only strings or nested concat lists"
+                            ),
+                        };
+                    }
+                }
+                SExpr::Atom(Spanned {
+                    span: expr.span.clone(),
+                    t: concat_str,
+                })
+            }
+            _ => SExpr::List(expr.clone()),
+        },
+        _ => SExpr::List(expr.clone()),
+    };
+    Ok(ret)
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
