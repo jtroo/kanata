@@ -253,7 +253,7 @@ All other options can be found later in the <<optional-defcfg-options>> section.
 The `process-unmapped-keys` option in `defcfg` is probably the most
 generally impactful option.
 Enabling this configuration makes kanata process keys
-that are not defined in `defsrc'.
+that are not defined in `defsrc`.
 This might be useful
 if you are only mapping a few keys in defsrc
 instead of most of the keys on your keyboard.
