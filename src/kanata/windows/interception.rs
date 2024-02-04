@@ -100,15 +100,13 @@ impl Kanata {
     }
 }
 
-fn mouse_state_to_event(
+fn is_mouse_dev_interceptable(
     input_dev: ic::Device,
-    allowed_hwid: &[u8; HWID_ARR_SZ],
-    state: ic::MouseState,
-    rolling: i16,
     intrcptn: &ic::Interception,
-    is_dev_interceptable: &mut HashMap<ic::Device, bool>,
-) -> Option<KeyEvent> {
-    if !match is_dev_interceptable.get(&input_dev) {
+    allowed_hwid: &[u8; HWID_ARR_SZ],
+    cache: &mut HashMap<ic::Device, bool>,
+) -> bool {
+    match cache.get(&input_dev) {
         Some(v) => *v,
         None => {
             let mut hwid = [0u8; HWID_ARR_SZ];
@@ -116,10 +114,26 @@ fn mouse_state_to_event(
             let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
             let dev_is_interceptable = hwid == *allowed_hwid;
             log::info!("res {res}; device #{input_dev} hwid {hwid:?} matches allowed mouse input: {dev_is_interceptable}");
-            is_dev_interceptable.insert(input_dev, dev_is_interceptable);
+            cache.insert(input_dev, dev_is_interceptable);
             dev_is_interceptable
         }
-    } {
+    }
+}
+
+fn mouse_state_to_event(
+    input_dev: ic::Device,
+    allowed_hwid: &[u8; HWID_ARR_SZ],
+    state: ic::MouseState,
+    rolling: i16,
+    intrcptn: &ic::Interception,
+    device_interceptability_cache: &mut HashMap<ic::Device, bool>,
+) -> Option<KeyEvent> {
+    if !is_mouse_dev_interceptable(
+        input_dev,
+        intrcptn,
+        allowed_hwid,
+        device_interceptability_cache,
+    ) {
         return None;
     }
 
