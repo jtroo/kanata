@@ -294,18 +294,19 @@ fn parse_cfg_raw(
             relative_main_cfg_file_dir.join(filepath)
         };
 
-        // Forbid loading the same file multiple times.
-        // This prevents a potential recursive infinite loop of includes
-        // (if includes within includes were to be allowed).
         let abs_filepath: PathBuf = filepath_relative_to_loaded_kanata_cfg
             .canonicalize()
             .map_err(|e| {
                 format!(
-                    "Failed to resolve absolute path: {}: {}",
+                    "Failed to resolve relative path: {}: {}",
                     filepath_relative_to_loaded_kanata_cfg.to_string_lossy(),
                     e
                 )
             })?;
+
+        // Forbid loading the same file multiple times.
+        // This prevents a potential recursive infinite loop of includes
+        // (if includes within includes were to be allowed).
         if !loaded_files.insert(abs_filepath.clone()) {
             return Err("The provided config file was already included before".to_string());
         };
