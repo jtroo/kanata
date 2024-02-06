@@ -1030,4 +1030,5 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; The top-level action `include` will read a configuration from a new file.
 ;; At the time of writing, includes can only be placed at the top level. The
 ;; included files also cannot contain includes themselves.
-(include included-file.kbd)
+;;
+;; (include included-file.kbd)
