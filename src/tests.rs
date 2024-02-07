@@ -62,6 +62,22 @@ fn parse_all_keys() {
 }
 
 #[test]
+fn parse_home_row_mods() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from(
+        "./cfg_samples/home-row-mod-basic.kbd",
+    ))
+    .unwrap();
+    new_from_file(&std::path::PathBuf::from(
+        "./cfg_samples/home-row-mod-advanced.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn sizeof_state() {
     assert_eq!(
         std::mem::size_of::<
