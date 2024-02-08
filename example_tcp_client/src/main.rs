@@ -28,7 +28,7 @@ fn main() {
     let args = Args::parse();
     init_logger(&args);
     print_usage();
- 
+
     let port = match args.port {
         Some(p) => p,
         None => {
@@ -50,7 +50,8 @@ fn main() {
 }
 
 fn print_usage() {
-    log::info!("\n\
+    log::info!(
+        "\n\
     You can also use any other software to connect to kanata over TCP.\n\
     The protocol is plaintext JSON with newline terminated messages.
 \n\
@@ -60,8 +61,14 @@ fn print_usage() {
     Requests to change kanata's layer look like:\n\
     {}
     ",
-    serde_json::to_string(&ServerMessage::LayerChange { new: "newly-changed-to-layer".into() }).expect("deserializable"),
-    serde_json::to_string(&ClientMessage::ChangeLayer { new: "requested-layer".into() }).expect("deserializable"),
+        serde_json::to_string(&ServerMessage::LayerChange {
+            new: "newly-changed-to-layer".into()
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ChangeLayer {
+            new: "requested-layer".into()
+        })
+        .expect("deserializable"),
     )
 }
 
@@ -89,7 +96,7 @@ fn init_logger(args: &Args) {
 }
 
 /// Example when serialized:
-/// 
+///
 ///     {"LayerChange":{"new":"newly-changed-to-layer"}}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
@@ -97,7 +104,7 @@ pub enum ServerMessage {
 }
 
 /// Example when serialized:
-/// 
+///
 ///     {"ChangeLayer":{"new":"requested-layer"}}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
