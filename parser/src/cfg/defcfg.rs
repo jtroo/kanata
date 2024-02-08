@@ -523,7 +523,7 @@ impl Default for AltGrBehaviour {
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"
 ))]
-pub const HWID_ARR_SZ: usize = 128;
+pub const HWID_ARR_SZ: usize = 512;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReplayDelayBehaviour {
