@@ -3,6 +3,7 @@ members = [
     "./",
     "parser",
     "keyberon",
+    "example_tcp_client"
 ]
 
 [package]
