@@ -1998,12 +1998,12 @@ Known application with issues: GWSL/VcXsrv
 === Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 <<table-of-contents,Back to ToC>>
 
-This defcfg item allows you to intercept mouse buttons for a specific mouse
-device. This only works with the Interception driver (the -wintercept variants
-of the binary).
+This defcfg item allows you to intercept mouse buttons for a specific mouse device.
+This only works with the Interception driver
+(the -wintercept variants of the release binaries).
 
-The intended use case for this is for laptops such as a Thinkpad, which have
-mouse buttons that may be desirable to activate kanata actions with.
+The original use case for this is for laptops such as a Thinkpad,
+which have mouse buttons that may be desirable to activate kanata actions with.
 
 To know what numbers to put into the string, you can run the variant with this
 defcfg item defined with any numbers. Then when a button is first pressed on
@@ -2018,6 +2018,32 @@ https://github.com/jtroo/kanata/issues/108[Relevant issue].
 ----
 (defcfg
   windows-interception-mouse-hwid "70, 0, 60, 0"
+)
+----
+
+
+=== Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
+<<table-of-contents,Back to ToC>>
+
+This defcfg item allows you to intercept only specific keyboards.
+Its value must be a list of strings
+with each string representing one hardware ID.
+
+To know what numbers to put into the string,
+you can run the variant with this defcfg item empty.
+Then when a button is first pressed on the keyboard,
+kanata will print its hwid in the log.
+You can then copy-paste that into this configuration entry.
+If this defcfg item is not defined, the log will not print.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-keyboard-hwids (
+    "70, 0, 60, 0"
+    "71, 72, 73, 74"
+  )
 )
 ----
 

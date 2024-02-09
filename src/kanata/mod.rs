@@ -127,6 +127,10 @@ pub struct Kanata {
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
     intercept_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which input device to treat as a mouse for intercepting and processing inputs
+    /// by kanata.
+    intercept_kb_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
@@ -299,6 +303,8 @@ impl Kanata {
             exclude_names: cfg.items.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwid: cfg.items.windows_interception_mouse_hwid,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids: cfg.items.windows_interception_keyboard_hwids,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
