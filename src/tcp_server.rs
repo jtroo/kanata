@@ -32,9 +32,9 @@ pub enum ClientMessage {
 #[cfg(feature = "tcp_server")]
 impl ServerMessage {
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut msg = serde_json::to_string(self).expect("ServerMessage should serialize");
-        msg.push('\n');
-        msg.as_bytes().to_vec()
+        let mut msg = serde_json::to_vec(self).expect("ServerMessage should serialize");
+        msg.push(b'\n');
+        msg
     }
 }
 
