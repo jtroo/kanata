@@ -4,6 +4,7 @@ use simplelog::*;
 
 use std::io::{stdin, Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::process::exit;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ use std::time::Duration;
 struct Args {
     /// Port that kanata's TCP server is listening on
     #[clap(short, long)]
-    port: u16,
+    port: Option<u16>,
 
     /// Enable debug logging
     #[clap(short, long)]
@@ -26,9 +27,18 @@ struct Args {
 fn main() {
     let args = Args::parse();
     init_logger(&args);
+    print_usage();
+
+    let port = match args.port {
+        Some(p) => p,
+        None => {
+            log::error!("no port provided via the -p|--port flag; exiting");
+            exit(1);
+        }
+    };
     log::info!("attempting to connect to kanata");
     let kanata_conn = TcpStream::connect_timeout(
-        &SocketAddr::from(([127, 0, 0, 1], args.port)),
+        &SocketAddr::from(([127, 0, 0, 1], port)),
         Duration::from_secs(5),
     )
     .expect("connect to kanata");
@@ -37,6 +47,29 @@ fn main() {
     let reader_stream = kanata_conn;
     std::thread::spawn(move || write_to_kanata(writer_stream));
     read_from_kanata(reader_stream);
+}
+
+fn print_usage() {
+    log::info!(
+        "\n\
+    You can also use any other software to connect to kanata over TCP.\n\
+    The protocol is plaintext JSON with newline terminated messages.
+\n\
+    Layer change notifications from kanata look like:\n\
+    {}
+\n\
+    Requests to change kanata's layer look like:\n\
+    {}
+    ",
+        serde_json::to_string(&ServerMessage::LayerChange {
+            new: "newly-changed-to-layer".into()
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ChangeLayer {
+            new: "requested-layer".into()
+        })
+        .expect("deserializable"),
+    )
 }
 
 fn init_logger(args: &Args) {
@@ -62,11 +95,17 @@ fn init_logger(args: &Args) {
     );
 }
 
+/// Example when serialized:
+///
+///     {"LayerChange":{"new":"newly-changed-to-layer"}}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
 }
 
+/// Example when serialized:
+///
+///     {"ChangeLayer":{"new":"requested-layer"}}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
     ChangeLayer { new: String },
