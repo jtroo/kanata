@@ -1,6 +1,6 @@
 [package]
 name = "kanata_example_tcp_client"
-Description = "Example kanata TCP client"
+description = "Example kanata TCP client"
 version = "1.0.0"
 edition = "2021"
 license = "LGPL-3.0"
