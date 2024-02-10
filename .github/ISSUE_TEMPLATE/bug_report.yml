@@ -22,7 +22,7 @@ body:
     id: config
     attributes:
       label: Relevant kanata config
-      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config. Please ensure to surround with triple backticks: ``` to avoid `@` notifying people.
+      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config. Please ensure to use code formatting, e.g. surround with triple backticks to avoid pinging users with the @ character.
     validations:
       required: false
   - type: textarea
