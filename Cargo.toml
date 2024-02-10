@@ -71,6 +71,7 @@ kanata-interception = { version = "0.2.0", optional = true }
 default = ["tcp_server"]
 perf_logging = []
 tcp_server = []
+win_sendinput_send_scancodes = []
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 
