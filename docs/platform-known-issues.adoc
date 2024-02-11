@@ -35,6 +35,10 @@ which map to the binaries
 ** https://github.com/espanso/espanso/issues/1488
 * AltGr can misbehave
 ** https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
+* NumLock state can mess with arrow keys in unexpected ways
+** https://github.com/jtroo/kanata/issues/78
+** https://github.com/jtroo/kanata/issues/667
+** Workaround: use the correct [numlock state](https://github.com/jtroo/kanata/discussions/354)
 
 == Windows 10+11 Interception
 
