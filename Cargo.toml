@@ -20,7 +20,7 @@ license = "LGPL-3.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.1.6", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
+clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
 log = { version = "0.4.8", default_features = false }
 simplelog = "0.12.0"
 anyhow = "1"
@@ -35,9 +35,6 @@ rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
 dirs = "5.0.1"
 
-# Pinned to avoid including multiple versions of a dependency
-is-terminal = "=0.4.7"
-
 # kanata-keyberon = "0.150.4"
 # kanata-parser = "0.150.4"
 # Uncomment below and comment out above for testing local changes.
@@ -50,6 +47,7 @@ kanata-parser =   { path = "parser" }
 karabiner-driverkit = "0.1.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# Pinned to avoid a bug in 0.12.1
 evdev = "=0.12.0"
 signal-hook = "0.3.14"
 inotify = { version = "0.10.0", default_features = false }
