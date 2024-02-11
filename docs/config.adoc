@@ -578,6 +578,20 @@ normal key name with one or more of:
 
 These modifiers may be combined together if desired.
 
+NOTE: A special behaviour of output chords is that if another key is pressed,
+all of the chord keys will be released
+before the newly pressed key action activates.
+The modifier keys are often not desired for subsequent actions
+and without this behaviour,
+rapid typing can result in undesired modified key presses.
+If you want keys to remain pressed, use <<multi>> instead.
+
+Output chords are typically used do one-off actions such as:
+
+- type a symbol, e.g. `S-1`
+- type a special/accented character, e.g. `RA-a`
+- do a special action like `C-c` to send `SIGTERM` in the terminal
+
 .Example:
 [source]
 ----
@@ -593,18 +607,6 @@ These modifiers may be combined together if desired.
   pst C-S-v
 )
 ----
-
-A special behaviour of output chords is that if another key is pressed,
-all of the chord keys will be released
-before the newly pressed key action activates.
-Output chords are typically used do one-off actions such as:
-
-- type a symbol, e.g. `S-1`
-- type a special/accented character, e.g. `RA-a`
-- do a special action like `C-c` to send `SIGTERM` in the terminal
-
-The modifier pressed with these one-off action
-is usually not desired for subsequent actions.
 
 [[repeat-key]]
 === Repeat key
@@ -1172,7 +1174,7 @@ This means that with `+macro+` you can have some letters capitalized and others
 not. This is not possible with `+multi+`.
 
 The `+macro+` action accepts one or more keys, some actions, chords, and delays
-(unit: ms).  It also accepts a list prefixed with <<output-chords-combos,output chord>>
+(unit: ms).  It also accepts a list prefixed with <<output-chordscombos,output chord>>
 modifiers where the list is subject to the aforementioned restrictions. The
 number keys will be parsed as delays, so they must be aliased to be used in a macro.
 
