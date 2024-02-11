@@ -38,7 +38,7 @@ which map to the binaries
 * NumLock state can mess with arrow keys in unexpected ways
 ** https://github.com/jtroo/kanata/issues/78
 ** https://github.com/jtroo/kanata/issues/667
-** Workaround: use the correct [numlock state](https://github.com/jtroo/kanata/discussions/354)
+** Workaround: use the correct https://github.com/jtroo/kanata/discussions/354[numlock state]
 
 == Windows 10+11 Interception
 
