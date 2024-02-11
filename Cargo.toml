@@ -20,20 +20,19 @@ license = "LGPL-3.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
-log = { version = "0.4.8", default_features = false }
-simplelog = "0.12.0"
 anyhow = "1"
-parking_lot = "0.12"
+clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
+dirs = "5.0.1"
+log = { version = "0.4.8", default_features = false }
+miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
-serde = { version = "1", features = ["alloc", "derive"], default_features = false }
-serde_json = { version = "1", features = ["alloc"], default_features = false }
-serde_derive = "1.0"
-
+parking_lot = "0.12"
 radix_trie = "0.2"
 rustc-hash = "1.1.0"
-miette = { version = "5.7.0", features = ["fancy"] }
-dirs = "5.0.1"
+serde = { version = "1", features = ["alloc", "derive"], default_features = false }
+serde_derive = "1.0"
+serde_json = { version = "1", features = ["alloc"], default_features = false }
+simplelog = "0.12.0"
 
 # kanata-keyberon = "0.150.4"
 # kanata-parser = "0.150.4"
@@ -47,13 +46,13 @@ kanata-parser =   { path = "parser" }
 karabiner-driverkit = "0.1.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-# Pinned to avoid a bug in 0.12.1
-evdev = "=0.12.0"
 signal-hook = "0.3.14"
 inotify = { version = "0.10.0", default_features = false }
 mio = { version = "0.8.4", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
 sd-notify = "0.4.1"
+
+evdev = "=0.12.0" # Pinned to avoid a bug in 0.12.1
 
 [target.'cfg(target_os = "windows")'.dependencies]
 encode_unicode = "0.3.6"
