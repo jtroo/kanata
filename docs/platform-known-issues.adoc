@@ -58,6 +58,8 @@ which map to the binaries
 ** https://github.com/jtroo/kanata/issues/450
 * Unicode support has limitations, using xkb is a more consistent solution
 ** https://github.com/jtroo/kanata/discussions/703
+* Some special desktop-layer keys (e.g. `ISO_Level3_Latch`) behave incorrectly with rapid press-release
+** https://github.com/jtroo/kanata/discussions/733
 
 == MacOS
 
