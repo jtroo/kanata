@@ -9,7 +9,7 @@ body:
       label: Requirements
       description: Before you create a bug report, please check the following
       options:
-        - label: I've searched [issues](https://github.com/jtroo/kanata/issues) and [discussions](https://github.com/jtroo/kanata/discussions) to see if this has been reported before.
+        - label: I've searched [platform-specific issues](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc), [issues](https://github.com/jtroo/kanata/issues) and [discussions](https://github.com/jtroo/kanata/discussions) to see if this has been reported before.
           required: true
   - type: textarea
     id: summary
