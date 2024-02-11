@@ -56,6 +56,8 @@ which map to the binaries
 * Key repeats can occur when they normally wouldn't in some cases
 ** https://github.com/jtroo/kanata/discussions/422
 ** https://github.com/jtroo/kanata/issues/450
+* Unicode support has limitations, using xkb is a more consistent solution
+** https://github.com/jtroo/kanata/discussions/703
 
 == MacOS
 
