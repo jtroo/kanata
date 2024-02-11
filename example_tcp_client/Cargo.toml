@@ -8,7 +8,7 @@ authors = ["jtroo <j.andreitabs@gmail.com>"]
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = [ "derive" ] }
+clap = { version = "4", features = [ "derive" ] }
 log = "0.4.8"
 simplelog = "0.12"
 serde = { version = "1", features = ["derive"] }
