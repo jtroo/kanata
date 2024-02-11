@@ -34,13 +34,13 @@ serde_derive = "1.0"
 serde_json = { version = "1", features = ["alloc"], default_features = false }
 simplelog = "0.12.0"
 
-kanata-keyberon = "0.160.1"
-kanata-parser = "0.160.1"
+# kanata-keyberon = "0.160.1"
+# kanata-parser = "0.160.1"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-# kanata-keyberon = { path = "keyberon" }
-# kanata-parser =   { path = "parser" }
+kanata-keyberon = { path = "keyberon" }
+kanata-parser =   { path = "parser" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
