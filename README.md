@@ -55,7 +55,7 @@ Some tips for running kanata in the background:
 
 - Windows: https://github.com/jtroo/kanata/discussions/193
 - Linux: https://github.com/jtroo/kanata/discussions/130
-- Run from tray icon: https://github.com/rszyma/kanata-tray
+- Run from tray icon: [kanata-tray](https://github.com/rszyma/kanata-tray)
 
 ### Pre-built executables
 
