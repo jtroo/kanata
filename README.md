@@ -55,6 +55,7 @@ Some tips for running kanata in the background:
 
 - Windows: https://github.com/jtroo/kanata/discussions/193
 - Linux: https://github.com/jtroo/kanata/discussions/130
+- Run from tray icon: https://github.com/rszyma/kanata-tray
 
 ### Pre-built executables
 
@@ -218,6 +219,13 @@ to understand what changes to make.
 - If you know anything about writing a keyboard driver for Windows, starting an
   open-source alternative to the Interception driver would be lovely.
 
+  
+## Community projects related to kanata
+
+- [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
+- [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi)
+- [kanata-tray](https://github.com/rszyma/kanata-tray): Control kanata from a tray icon
+
 ## What does the name mean?
 
 I wanted a "k" word since this relates to keyboards. According to Wikipedia,
@@ -282,11 +290,6 @@ language and the prior work of the awesome [keyberon crate](https://github.com/T
 exists.
 </details>
 
-## Community projects related to kanata
-
-- [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
-- [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi)
-
 ## Similar Projects
 
 - [kmonad](https://github.com/kmonad/kmonad): The inspiration for kanata (Linux, Windows, Mac)
@@ -302,7 +305,7 @@ exists.
 
 ### Why the list?
 
-While kanata is the best tool for me (jtroo), it may not be the best tool for
+While kanata is the best tool for some, it may not be the best tool for
 you. I'm happy to introduce you to tools that may better suit your needs. This
 list is also useful as reference/inspiration for functionality that could be
 added to kanata.
