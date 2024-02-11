@@ -14,6 +14,7 @@ build_release_linux output_dir:
 build_release_windows output_dir:
   cargo build --release; cp target/release/kanata.exe "{{output_dir}}\kanata.exe"
   cargo build --release --features interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_wintercept.exe"
+  cargo build --release --features win_sendinput_send_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata_scancode_experimental.exe"
   cargo build --release --features cmd; cp target/release/kanata.exe "{{output_dir}}\kanata_cmd_allowed.exe"
   cargo build --release --features cmd,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_wintercept_cmd_allowed.exe"
   cp cfg_samples/kanata.kbd "{{output_dir}}"
