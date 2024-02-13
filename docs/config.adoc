@@ -418,9 +418,15 @@ This section explains the available actions.
 === Live reload
 <<table-of-contents,Back to ToC>>
 
-You can put the `+lrld+` action onto a key to live-reload your configuration
-file. If kanata can't parse the file, it will continue using the previous
-configuration.
+You can put the `+lrld+` action onto a key to live reload your configuration file.
+If kanata can't parse the file,
+the previous configuration will continue to be used.
+When live reload is activated,
+the active kanata layer will be the first `deflayer` defined in the configuration.
+
+NOTE: live reload does not read or apply changes to device-related configurations,
+such as `linux-dev`, `macos-dev-names-include`,
+or `windows-only-windows-interception-keyboard-hwids`.
 
 .Example:
 [source]

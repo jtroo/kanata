@@ -586,11 +586,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   _    _    _              _              _    _    _
 )
 
-;; The `lrld` action stands for "live reload". This will re-parse everything
-;; except for linux-dev. So in Linux, you cannot live reload and switch keyboard
-;; devices at the time of writing. The variants `lrpv` and `lrnx` will cycle
-;; between multiple configuration files, if they are specified in the startup.
-;; arguments. The list action variant `lrld-num` takes a number parameter and
+;; The `lrld` action stands for "live reload".
+;;
+;; NOTE: live reload does not read changes to device-related configurations,
+;; such as `linux-dev`, `macos-dev-names-include`,
+;; or `windows-only-windows-interception-keyboard-hwids`.
+;;
+;; The variants `lrpv` and `lrnx` will cycle between multiple configuration files
+;; if they are specified in the startup arguments.
+;; The list action variant `lrld-num` takes a number parameter and
 ;; reloads the configuration file specified by the number, according to the
 ;; order passed into the arguments on kanata startup.
 ;;
