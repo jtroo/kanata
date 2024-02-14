@@ -5,6 +5,7 @@
 
 use std::cell::Cell;
 use std::io;
+use std::time::Instant;
 use std::{mem, ptr};
 
 use winapi::ctypes::*;
@@ -148,15 +149,20 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
 }
 
 /// Handle for writing keys to the OS.
-pub struct KbdOut {}
+pub struct KbdOut {
+    pub last_action_time: Instant,
+}
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        Ok(Self {})
+        Ok(Self {
+            last_action_time: Instant::now(),
+        })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         super::send_key_sendinput(event.code as u16, event.up);
+        self.last_action_time = Instant::now();
         Ok(())
     }
 

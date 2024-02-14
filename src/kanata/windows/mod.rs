@@ -10,7 +10,8 @@ mod llhook;
 #[cfg(feature = "interception_driver")]
 mod interception;
 
-static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
+pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
+    Lazy::new(|| Mutex::new(HashSet::default()));
 
 pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
     Lazy::new(|| Mutex::new(AltGrBehaviour::default()));
