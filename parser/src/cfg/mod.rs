@@ -54,6 +54,9 @@ use list_actions::*;
 mod defcfg;
 pub use defcfg::*;
 
+mod deftemplate;
+pub use deftemplate::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -387,7 +390,8 @@ pub fn parse_cfg_raw_string(
     Overrides,
 )> {
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
-        .and_then(|xs| expand_includes(xs, file_content_provider))?;
+        .and_then(|xs| expand_includes(xs, file_content_provider))
+        .and_then(|xs| expand_templates(xs))?;
 
     if let Some(spanned) = spanned_root_exprs
         .iter()
@@ -398,7 +402,7 @@ pub fn parse_cfg_raw_string(
 
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
-    error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
+    error_on_unknown_top_level_atoms(&spanned_root_exprs)?;  
 
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
@@ -645,6 +649,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deffakekeys"
                 | "defchords"
                 | "defvar"
+                | "deftemplate"
                 | "defseq" => Ok(()),
                 _ => bail_span!(expr, "Found unknown configuration item"),
             })
