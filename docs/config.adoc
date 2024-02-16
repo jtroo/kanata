@@ -2019,6 +2019,10 @@ the mouse device, kanata will print its hwid in the log; you can then
 copy-paste that into this configuration entry. If this defcfg item is not
 defined, the log will not print.
 
+Hwids in Kanata are byte array representations of a concatenation of the 
+ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
+they are an arbitrary length and can be very long.
+
 https://github.com/jtroo/kanata/issues/108[Relevant issue].
 
 .Example:
@@ -2043,6 +2047,10 @@ Then when a button is first pressed on the keyboard,
 kanata will print its hwid in the log.
 You can then copy-paste that into this configuration entry.
 If this defcfg item is not defined, the log will not print.
+
+Hwids in Kanata are byte array representations of a concatenation of the 
+ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
+they are an arbitrary length and can be very long.
 
 .Example:
 [source]
