@@ -1,18 +1,33 @@
+//! This file is responsible for template expansion.
+//! For simplicity of implementation, there is performance left off the table.
+//! This code runs at parse time and not in runtime
+//! so it is not performance critical.
+//!
+//! The performance left off the table is:
+//! - Creating the expanded template recurses through all SExprs every time.
+//!   Instead the code could pre-compute the paths to access every variable
+//!   that needs substition (perf:1)
+//! - Replacing the `expand-template` list item with an expanded template
+//!   recreates the Vec for every replacement that happens at that layer.
+//!   Instead the code could do a single pass and intelligently insert
+//!   SExprs at the proper places.
+
 use crate::anyhow_expr;
 use crate::anyhow_span;
 use crate::bail_expr;
 use crate::bail_span;
+use crate::err_span;
 
 use super::error::*;
 use super::sexpr::*;
 use super::*;
 
-use itertools::Itertools;
-
 #[derive(Debug)]
 pub struct Template {
     name: String,
     vars: Vec<String>,
+    // Same as vars above but all names are prefixed with '$'.
+    vars_substitute_names: Vec<String>,
     content: Vec<SExpr>,
 }
 
@@ -36,8 +51,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         // Parse template name
         let name = list
             .t
-            .iter()
-            .nth(1)
+            .get(1)
             .ok_or_else(|| {
                 anyhow_span!(
                     list,
@@ -59,8 +73,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         // Parse template variable names
         let vars = list
             .t
-            .iter()
-            .nth(2)
+            .get(2)
             .ok_or_else(|| {
                 anyhow_span!(list, "deftemplate must have a list as the second parameter")
             })
@@ -78,14 +91,15 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
                     Ok(vars)
                 })
             })?;
+        let vars_substitute_names: Vec<_> = vars.iter().map(|v| format!("${v}")).collect();
 
         // Validate content of template
         let content: Vec<SExpr> = list.t.iter().skip(3).cloned().collect();
         let mut var_usage_counts: HashMap<String, u32> =
             vars.iter().map(|v| (v.clone(), 0)).collect();
         visit_validate_all_atoms(&content, |s| match s.t.as_str() {
-            "deftemplate" => bail_span!(s, "deftemplate is not allowed within deftemplate"),
-            "template-expand" => bail_span!(s, "template-expand is not allowed within deftemplate"),
+            "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
+            "template-expand" => err_span!(s, "template-expand is not allowed within deftemplate"),
             s => {
                 if let Some(count) = var_usage_counts.get_mut(s) {
                     *count += 1;
@@ -102,6 +116,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         templates.push(Template {
             name,
             vars,
+            vars_substitute_names,
             content,
         });
     }
@@ -127,8 +142,23 @@ fn visit_validate_all_atoms(
     Ok(())
 }
 
+fn visit_mut_all_atoms(exprs: &mut [SExpr], mut visit: impl FnMut(&mut SExpr)) {
+    for expr in exprs {
+        match expr {
+            SExpr::Atom(_) => visit(expr),
+            SExpr::List(l) => visit_mut_all_atoms(&mut l.t, &mut visit),
+        }
+    }
+}
+
+struct Replacement {
+    exprs: Vec<SExpr>,
+    insert_index: usize,
+}
+
 fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
-    for (i, expr) in exprs.iter_mut().enumerate() {
+    let mut replacements: Vec<Replacement> = vec![];
+    for (expr_index, expr) in exprs.iter_mut().enumerate() {
         match expr {
             SExpr::Atom(_) => continue,
             SExpr::List(l) => {
@@ -142,8 +172,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
 
                 // found expand, now parse
                 let template =
-                    l.t.iter()
-                        .nth(1)
+                    l.t.get(1)
                         .ok_or_else(|| {
                             anyhow_span!(
                                 l,
@@ -165,11 +194,55 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     bail_span!(l, "template-expand of {} needs {} parameters but instead found {}.\nParameters: {}",
                     &template.name, template.vars.len(), l.t.len() - 2, template.vars.join(" "));
                 }
-                // generate exprs to replace/insert
-                // save index for replace/insert later
+
+                let var_substitutions = l.t.iter().skip(2);
+                let mut expanded_template = template.content.clone();
+                visit_mut_all_atoms(&mut expanded_template, |expr| {
+                    *expr = match expr {
+                        SExpr::Atom(a) => {
+                            match template
+                                .vars_substitute_names
+                                .iter()
+                                .enumerate()
+                                .find(|(_, var)| *var == &a.t)
+                            {
+                                None => expr.clone(),
+                                Some((var_index, _)) => var_substitutions
+                                    .clone()
+                                    .nth(var_index)
+                                    .expect("validated matching var lens")
+                                    .clone(),
+                            }
+                        }
+                        // Below should not be reached because only atoms should be visited
+                        SExpr::List(_) => unreachable!(),
+                    }
+                });
+
+                replacements.push(Replacement {
+                    insert_index: expr_index,
+                    exprs: expanded_template,
+                });
+
+                // TODO: do something about the spans to make error messages more clear.
             }
         }
     }
-    // replace/insert later
+
+    // Ensure replacements are sorted. They probably are, but may as well make sure.
+    replacements.sort_by_key(|r| r.insert_index);
+    // Must replace last-first to keep unreplaced insertion points stable.
+    for replacement in replacements.iter().rev() {
+        let (before, after) = exprs.split_at(replacement.insert_index);
+        let after = after.iter().skip(1); // after includes the variable to replace.
+        let new_vec = before
+            .iter()
+            .cloned()
+            .chain(replacement.exprs.iter().cloned())
+            .chain(after.cloned())
+            .collect();
+        *exprs = new_vec;
+    }
+
     Ok(())
 }
