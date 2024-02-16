@@ -3,14 +3,16 @@
 //! This code runs at parse time and not in runtime
 //! so it is not performance critical.
 //!
-//! The performance left off the table is:
+//! The known performance left off the table is:
+//!
 //! - Creating the expanded template recurses through all SExprs every time.
 //!   Instead the code could pre-compute the paths to access every variable
-//!   that needs substition (perf:1)
+//!   that needs substition. (perf_1)
+//!
 //! - Replacing the `expand-template` list item with an expanded template
 //!   recreates the Vec for every replacement that happens at that layer.
 //!   Instead the code could do a single pass and intelligently insert
-//!   SExprs at the proper places.
+//!   SExprs at the proper places. (perf_2)
 
 use crate::anyhow_expr;
 use crate::anyhow_span;
@@ -96,8 +98,8 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         // Validate content of template
         let content: Vec<SExpr> = list.t.iter().skip(3).cloned().collect();
         let mut var_usage_counts: HashMap<String, u32> =
-            vars.iter().map(|v| (v.clone(), 0)).collect();
-        visit_validate_all_atoms(&content, |s| match s.t.as_str() {
+            vars_substitute_names.iter().map(|v| (v.clone(), 0)).collect();
+        visit_validate_all_atoms(&content, &mut |s| match s.t.as_str() {
             "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
             "template-expand" => err_span!(s, "template-expand is not allowed within deftemplate"),
             s => {
@@ -126,27 +128,27 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         expand(&mut list.t, &templates)?;
     }
 
-    todo!()
+    Ok(toplevel_exprs)
 }
 
 fn visit_validate_all_atoms(
     exprs: &[SExpr],
-    mut visit: impl FnMut(&Spanned<String>) -> Result<()>,
+    visit: &mut dyn FnMut(&Spanned<String>) -> Result<()>,
 ) -> Result<()> {
     for expr in exprs {
         match expr {
             SExpr::Atom(a) => visit(a)?,
-            SExpr::List(l) => visit_validate_all_atoms(&l.t, &mut visit)?,
+            SExpr::List(l) => visit_validate_all_atoms(&l.t, visit)?,
         }
     }
     Ok(())
 }
 
-fn visit_mut_all_atoms(exprs: &mut [SExpr], mut visit: impl FnMut(&mut SExpr)) {
+fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
     for expr in exprs {
         match expr {
             SExpr::Atom(_) => visit(expr),
-            SExpr::List(l) => visit_mut_all_atoms(&mut l.t, &mut visit),
+            SExpr::List(l) => visit_mut_all_atoms(&mut l.t, visit),
         }
     }
 }
@@ -197,7 +199,9 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
 
                 let var_substitutions = l.t.iter().skip(2);
                 let mut expanded_template = template.content.clone();
-                visit_mut_all_atoms(&mut expanded_template, |expr| {
+                // perf_1 : could store substitution knowledge instead of iterating and searching
+                // every time
+                visit_mut_all_atoms(&mut expanded_template, &mut |expr: &mut SExpr| {
                     *expr = match expr {
                         SExpr::Atom(a) => {
                             match template
@@ -223,8 +227,6 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     insert_index: expr_index,
                     exprs: expanded_template,
                 });
-
-                // TODO: do something about the spans to make error messages more clear.
             }
         }
     }
@@ -232,6 +234,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
     // Ensure replacements are sorted. They probably are, but may as well make sure.
     replacements.sort_by_key(|r| r.insert_index);
     // Must replace last-first to keep unreplaced insertion points stable.
+    // perf_2 : could construct vec in one pass.
     for replacement in replacements.iter().rev() {
         let (before, after) = exprs.split_at(replacement.insert_index);
         let after = after.iter().skip(1); // after includes the variable to replace.
