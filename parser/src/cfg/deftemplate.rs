@@ -9,10 +9,10 @@
 //!   Instead the code could pre-compute the paths to access every variable
 //!   that needs substition. (perf_1)
 //!
-//! - Replacing the `expand-template` list item with an expanded template
+//! - Replacing the `template-expand` items with the expanded template
 //!   recreates the Vec for every replacement that happens at that layer.
-//!   Instead the code could do a single pass and intelligently insert
-//!   SExprs at the proper places. (perf_2)
+//!   Instead the code could do a single pass
+//!   and intelligently insert SExprs at the proper places. (perf_2)
 
 use crate::anyhow_expr;
 use crate::anyhow_span;
@@ -124,11 +124,18 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
     }
 
     // Find and do expansions
-    for list in toplevel_exprs.iter_mut() {
-        expand(&mut list.t, &templates)?;
-    }
+    let mut toplevels: Vec<SExpr> = toplevel_exprs.into_iter().map(
+        |tl| SExpr::List(Spanned {span: tl.span, t: tl.t})
+    ).collect();
+    expand(&mut toplevels, &templates)?;
 
-    Ok(toplevel_exprs)
+    toplevels.into_iter().try_fold(vec![], |mut tls, tl| {
+        tls.push(match &tl {
+            SExpr::Atom(_) => bail_expr!(&tl, "expansion created a string outside any list which is not allowed"),
+            SExpr::List(l) => Spanned { t: l.t.clone(), span: l.span.clone() },
+        });
+        Ok(tls)
+    })
 }
 
 fn visit_validate_all_atoms(
@@ -166,7 +173,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
             SExpr::List(l) => {
                 if !matches!(
                     l.t.first().and_then(|expr| expr.atom(None)),
-                    Some("expand-template")
+                    Some("template-expand")
                 ) {
                     expand(&mut l.t, templates)?;
                     continue;
@@ -178,7 +185,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                         .ok_or_else(|| {
                             anyhow_span!(
                                 l,
-                                "expand-template must have a template name as the first parameter"
+                                "template-expand must have a template name as the first parameter"
                             )
                         })
                         .and_then(|name_expr| {

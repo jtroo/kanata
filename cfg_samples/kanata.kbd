@@ -1045,3 +1045,39 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; included files also cannot contain includes themselves.
 ;;
 ;; (include included-file.kbd)
+
+
+;; The top-level item `deftemplate` declares a template
+;; which can be expanded multiple times to reduce repetition.
+;;
+;; Expansion of a template is done via `expand-template`.
+
+(defvar chord-timeout 200)
+
+(deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
+  (defalias
+    $alias1 (chord $chordgroupname $k1)
+    $alias2 (chord $chordgroupname $k2)
+    $alias3 (chord $chordgroupname $k3)
+    $alias4 (chord $chordgroupname $k4)
+  )
+  (defchords $chordgroupname $chord-timeout
+    ($k1) $k1
+    ($k2) $k2
+    ($k3) $k3
+    ($k4) $k4
+    ($k1 $k2) lctl
+    ($k3 $k4) lsft
+  )
+)
+
+(template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
+(template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)
+
+(deflayer template-example
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    @qwa @qws @qwd @qwf _    _    _    _    _    _    _    _    _
+  _    @dva @dvo @dve @dvu _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _              _              _    _    _
+)
