@@ -25,7 +25,7 @@ use super::sexpr::*;
 use super::*;
 
 #[derive(Debug)]
-pub struct Template {
+struct Template {
     name: String,
     vars: Vec<String>,
     // Same as vars above but all names are prefixed with '$'.
@@ -33,11 +33,15 @@ pub struct Template {
     content: Vec<SExpr>,
 }
 
-/// Parse and expand deftemplates.
+/// Parse `deftemplate`s and expand `template-expand`s.
 ///
-/// Syntax of deftemplate is:
+/// Syntax of `deftemplate` is:
 ///
-/// (deftemplate (<list of template vars>) <rest of template>)
+/// `(deftemplate (<list of template vars>) <rest of template>)`
+///
+/// Syntax of `template-expand` is:
+///
+/// `(template-expand <template name> <template var substitutions>)`
 pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLevel>> {
     let mut templates: Vec<Template> = vec![];
 
@@ -258,7 +262,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
     // perf_2 : could construct vec in one pass.
     for replacement in replacements.iter().rev() {
         let (before, after) = exprs.split_at(replacement.insert_index);
-        let after = after.iter().skip(1); // after includes the variable to replace.
+        let after = after.iter().skip(1); // first element is `(template-expand ...)`
         let new_vec = before
             .iter()
             .cloned()
