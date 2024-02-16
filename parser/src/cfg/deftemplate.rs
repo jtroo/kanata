@@ -97,8 +97,10 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
 
         // Validate content of template
         let content: Vec<SExpr> = list.t.iter().skip(3).cloned().collect();
-        let mut var_usage_counts: HashMap<String, u32> =
-            vars_substitute_names.iter().map(|v| (v.clone(), 0)).collect();
+        let mut var_usage_counts: HashMap<String, u32> = vars_substitute_names
+            .iter()
+            .map(|v| (v.clone(), 0))
+            .collect();
         visit_validate_all_atoms(&content, &mut |s| match s.t.as_str() {
             "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
             "template-expand" => err_span!(s, "template-expand is not allowed within deftemplate"),
@@ -124,15 +126,27 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
     }
 
     // Find and do expansions
-    let mut toplevels: Vec<SExpr> = toplevel_exprs.into_iter().map(
-        |tl| SExpr::List(Spanned {span: tl.span, t: tl.t})
-    ).collect();
+    let mut toplevels: Vec<SExpr> = toplevel_exprs
+        .into_iter()
+        .map(|tl| {
+            SExpr::List(Spanned {
+                span: tl.span,
+                t: tl.t,
+            })
+        })
+        .collect();
     expand(&mut toplevels, &templates)?;
 
     toplevels.into_iter().try_fold(vec![], |mut tls, tl| {
         tls.push(match &tl {
-            SExpr::Atom(_) => bail_expr!(&tl, "expansion created a string outside any list which is not allowed"),
-            SExpr::List(l) => Spanned { t: l.t.clone(), span: l.span.clone() },
+            SExpr::Atom(_) => bail_expr!(
+                &tl,
+                "expansion created a string outside any list which is not allowed"
+            ),
+            SExpr::List(l) => Spanned {
+                t: l.t.clone(),
+                span: l.span.clone(),
+            },
         });
         Ok(tls)
     })
