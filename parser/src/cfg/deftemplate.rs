@@ -81,11 +81,17 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
             .t
             .get(2)
             .ok_or_else(|| {
-                anyhow_span!(list, "deftemplate must have a list as the second parameter")
+                anyhow_span!(
+                    list,
+                    "deftemplate must have a list of template variables as the second parameter"
+                )
             })
             .and_then(|v| {
                 v.list(None).ok_or_else(|| {
-                    anyhow_expr!(v, "deftemplate must have a list as the second parameter")
+                    anyhow_expr!(
+                        v,
+                        "deftemplate must have a list of template variables the second parameter"
+                    )
                 })
             })
             .and_then(|v| {
@@ -117,7 +123,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         })?;
         for (var, count) in var_usage_counts.iter() {
             if *count == 0 {
-                log::warn!("deftemplate variable {var} did not appear in its template");
+                log::warn!("deftemplate variable {var} did not appear in its template {name}");
             }
         }
 
