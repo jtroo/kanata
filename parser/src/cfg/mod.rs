@@ -402,7 +402,7 @@ pub fn parse_cfg_raw_string(
 
     let root_exprs: Vec<_> = spanned_root_exprs.iter().map(|t| t.t.clone()).collect();
 
-    error_on_unknown_top_level_atoms(&spanned_root_exprs)?;  
+    error_on_unknown_top_level_atoms(&spanned_root_exprs)?;
 
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
