@@ -1052,8 +1052,9 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;;
 ;; Expansion of a template is done via `expand-template`.
 
-(defvar chord-timeout 200)
-
+;; This template defines a chord group and aliases that use the chord group.
+;; The purpose is to easily define the same chord position behaviour
+;; for multiple layers that have different underlying keys.
 (deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
   (defalias
     $alias1 (chord $chordgroupname $k1)
@@ -1070,6 +1071,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ($k3 $k4) lsft
   )
 )
+
+(defvar chord-timeout 200)
 
 (template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
 (template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)

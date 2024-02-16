@@ -2516,6 +2516,92 @@ and 8 is 8th most recent key pressed.
 )
 ----
 
+[[templates]]
+=== Templates
+<<table-of-contents,Back to ToC>>
+
+The top-level configuration item `deftemplate`
+declares a template that can be expanded multiple times
+via the list item `template-expand`.
+
+The parameters to `deftemplate` in order are:
+
+* Template name
+* List of template variables
+* Template content (any combination of lists / strings)
+
+Template expansion happens after file includes and before any other parsing.
+Within the template content, variable names prefixed with `$`
+will be substituted with the expression passed into `template-expand`.
+
+The list item `template-expand` can be placed as a top-level list
+or within another list.
+Its parameters in order are:
+
+* template name
+* parameters to substitute into the template
+
+.Example 1:
+[source]
+----
+(defvar chord-timeout 200)
+(defcfg process-unmapped-keys yes)
+
+;; This template defines a chord group and aliases that use the chord group.
+;; The purpose is to easily define the same chord position behaviour
+;; for multiple layers that have different underlying keys.
+(deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
+  (defalias
+    $alias1 (chord $chordgroupname $k1)
+    $alias2 (chord $chordgroupname $k2)
+    $alias3 (chord $chordgroupname $k3)
+    $alias4 (chord $chordgroupname $k4)
+  )
+  (defchords $chordgroupname $chord-timeout
+    ($k1) $k1
+    ($k2) $k2
+    ($k3) $k3
+    ($k4) $k4
+    ($k1 $k2) lctl
+    ($k3 $k4) lsft
+  )
+)
+
+(template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
+(template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)
+
+(defsrc a s d f)
+(deflayer dvorak @dva @dvo @dve @dvu)
+(deflayer qwerty @qwa @qws @qwd @qwf)
+----
+
+.Example 2:
+[source]
+----
+;; This template defines a home row that customizes a single key's behaviour
+(deftemplate home-row (j-behaviour)
+  a s d f g h $j-behaviour k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+       ;; usable even inside defsrc
+  caps (template-expand home-row j)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+                                 ;; lists can be passed in too!
+  caps (template-expand home-row (tap-hold 200 200 j lctl))    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
