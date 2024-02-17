@@ -733,10 +733,12 @@ pub struct OneShotState {
     /// the key release before the next press,
     /// even if temporally the release was sent after.
     pub on_press_release_delay: u16,
-    /// If on_press_release_delay is used, this will be set to true,
+    /// If on_press_release_delay is used, this will be >0,
     /// meaning input processing should be paused to prevent extra presses
     /// from coming in while OneShot has not yet been released.
-    pub pause_input_processing: bool,
+    ///
+    /// May also be reused for other purposes...
+    pub pause_input_processing_ticks: u16,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -754,7 +756,7 @@ impl OneShotState {
         if self.release_on_next_tick || self.timeout == 0 {
             self.release_on_next_tick = false;
             self.timeout = 0;
-            self.pause_input_processing = false;
+            self.pause_input_processing_ticks = 0;
             self.keys.clear();
             self.other_pressed_keys.clear();
             Some(self.released_keys.drain(..).collect())
@@ -787,7 +789,7 @@ impl OneShotState {
                     OneShotEndConfig::EndOnFirstPress | OneShotEndConfig::EndOnFirstPressOrRepress
                 ) {
                     self.timeout = core::cmp::min(self.on_press_release_delay, self.timeout);
-                    self.pause_input_processing = true;
+                    self.pause_input_processing_ticks = self.on_press_release_delay;
                 } else {
                     let _ = self.other_pressed_keys.push_back(pressed_coord);
                 }
@@ -889,8 +891,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 released_keys: ArrayDeque::new(),
                 other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
-                on_press_release_delay: 10,
-                pause_input_processing: false,
+                on_press_release_delay: 0,
+                pause_input_processing_ticks: 0,
             },
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
@@ -950,6 +952,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     }
                 }
             }
+            // Similar issue happens for the quick tap-hold tap as with on-press release;
+            // the rapidity of the release can cause issues. See on_press_release_delay
+            // comments for more detail.
+            self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
             ret
         } else {
             CustomEvent::NoEvent
@@ -1024,7 +1030,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 // the release happens might occur.
                 //
                 // A mitigation against that is to pause input processing.
-                if self.oneshot.timeout > 0 && self.oneshot.pause_input_processing {
+                if self.oneshot.pause_input_processing_ticks > 0 {
+                    self.oneshot.pause_input_processing_ticks =
+                        self.oneshot.pause_input_processing_ticks.saturating_sub(1);
                     CustomEvent::NoEvent
                 } else {
                     match self.queue.pop_front() {
