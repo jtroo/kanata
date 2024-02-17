@@ -54,6 +54,9 @@ use list_actions::*;
 mod defcfg;
 pub use defcfg::*;
 
+mod deftemplate;
+pub use deftemplate::*;
+
 use crate::custom_action::*;
 use crate::keys::*;
 use crate::layers::*;
@@ -111,6 +114,16 @@ macro_rules! bail_span {
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
         return Err(ParseError::from_spanned($expr, format!($fmt, $($arg)*)))
+    };
+}
+
+#[macro_export]
+macro_rules! err_span {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        Err(ParseError::from_spanned($expr, format!($fmt)))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        Err(ParseError::from_spanned($expr, format!($fmt, $($arg)*)))
     };
 }
 
@@ -387,7 +400,8 @@ pub fn parse_cfg_raw_string(
     Overrides,
 )> {
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
-        .and_then(|xs| expand_includes(xs, file_content_provider))?;
+        .and_then(|xs| expand_includes(xs, file_content_provider))
+        .and_then(expand_templates)?;
 
     if let Some(spanned) = spanned_root_exprs
         .iter()
@@ -645,6 +659,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deffakekeys"
                 | "defchords"
                 | "defvar"
+                | "deftemplate"
                 | "defseq" => Ok(()),
                 _ => bail_span!(expr, "Found unknown configuration item"),
             })

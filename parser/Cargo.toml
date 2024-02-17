@@ -11,6 +11,7 @@ license = "LGPL-3.0"
 edition = "2021"
 
 [dependencies]
+itertools = "0.12"
 log = { version = "0.4.8", default_features = false }
 anyhow = "1"
 parking_lot = "0.12"
