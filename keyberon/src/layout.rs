@@ -1195,14 +1195,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     } else if i == 0 {
                         // unwrap is here because tde cannot be ref mut
                         self.tap_dance_eager.as_mut().expect("some").set_expired();
-                        let action = self.press_as_action((i, j), self.current_layer());
+                        let action = self.resolve_coord((i, j));
                         self.do_action(action, (i, j), queue.since, false)
                     } else {
-                        let action = self.press_as_action((i, j), self.current_layer());
+                        let action = self.resolve_coord((i, j));
                         self.do_action(action, (i, j), queue.since, false)
                     }
                 } else {
-                    let action = self.press_as_action((i, j), self.current_layer());
+                    let action = self.resolve_coord((i, j));
                     self.do_action(action, (i, j), queue.since, false)
                 }
             }
@@ -1215,24 +1215,28 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.dequeue(queued);
         }
     }
-    fn press_as_action(&self, coord: KCoord, layer: usize) -> &'a Action<'a, T> {
+    fn resolve_coord(&self, coord: KCoord) -> &'a Action<'a, T> {
         use crate::action::Action::*;
-        let action = self
-            .layers
-            .get(layer)
-            .and_then(|l| l.get(coord.0 as usize))
-            .and_then(|l| l.get(coord.1 as usize));
-        match action {
-            None => &NoOp,
-            Some(Trans) => {
-                if layer != self.default_layer {
-                    self.press_as_action(coord, self.default_layer)
-                } else {
-                    &NoOp
+        for layer in self
+            .active_held_layers()
+            .iter()
+            .rev()
+            .chain(&[self.default_layer])
+        {
+            let action = self
+                .layers
+                .get(*layer)
+                .and_then(|l| l.get(coord.0 as usize))
+                .and_then(|l| l.get(coord.1 as usize));
+            match action {
+                None => return &NoOp,
+                Some(Trans) => {
+                    continue;
                 }
+                Some(action) => return action,
             }
-            Some(action) => action,
         }
+        &NoOp
     }
     fn do_action(
         &mut self,
@@ -1251,12 +1255,15 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             _ => true,
         });
         match action {
-            NoOp | Trans => {
+            NoOp => {
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
                 self.rpt_action = Some(action);
+            }
+            Trans => {
+                return self.do_action(self.resolve_coord(coord), coord, delay, is_oneshot);
             }
             Repeat => {
                 // Notes around repeat:
@@ -1636,6 +1643,13 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             .rev()
             .find_map(State::get_layer)
             .unwrap_or(self.default_layer)
+    }
+
+    pub fn active_held_layers(&self) -> std::vec::Vec<usize> {
+        self.states
+            .iter()
+            .filter_map(State::get_layer)
+            .collect::<std::vec::Vec<_>>()
     }
 
     /// Sets the default layer for the layout
