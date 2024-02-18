@@ -208,6 +208,17 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; tap-hold onwards will start from 0ms after the previous tap-hold expires.
   ;;
   ;; concurrent-tap-hold yes
+
+  ;; This configuration makes the release of one-shot-press and of the tap in a tap-hold
+  ;; by the defined number of milliseconds (approximate).
+  ;; The default value is 5.
+  ;; While the release is delayed, further processing of inputs is also paused.
+  ;; This means that there will be a minor input latency impact in the mentioned scenarios.
+  ;; The reason for this configuration existing is that some environments
+  ;; do not process the scenarios correctly due to the rapidity of the release.
+  ;; Kanata does send the events in the correct order,
+  ;; so the fault is more in the environment, but kanata provides a workaround anyway.
+  rapid-event-delay 5
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

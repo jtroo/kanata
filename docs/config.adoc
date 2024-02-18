@@ -1772,6 +1772,38 @@ NOTE: this only functions correctly if you also set
 )
 ----
 
+[[rapid-event-delay]]
+=== rapid-event-delay
+<<table-of-contents,Back to ToC>>
+
+This configuration applies to the following events:
+
+* the release of one-shot-press activation
+* the release of the tapped key in a tap-hold activation
+
+These events are delayed the defined number of milliseconds (approximate).
+The default value is 5.
+
+While the release is delayed, further processing of inputs is also paused.
+This means that there will be a minor input latency impact in the mentioned scenarios.
+Since 5ms is 1 frame for a 200 Hz refresh rate,
+in most scenarios this will not be perceptible.
+
+The reason for this configuration existing is that some environments
+do not process the scenarios correctly due to the rapidity of the release.
+Kanata does send the events in the correct order,
+so the fault is more in the environment,
+but kanata provides a workaround anyway.
+
+If you are negatively impacted by the latency increase of these events
+and your environment is not impacted by increased rapidity,
+you can set reduce the value to a number 0 to 4.
+
+(defcfg
+  ;; If your environment is particularly buggy, might need to delay even more
+  rapid-event-delay 20
+)
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>

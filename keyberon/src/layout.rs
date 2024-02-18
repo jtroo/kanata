@@ -725,6 +725,20 @@ pub struct OneShotState {
     pub end_config: OneShotEndConfig,
     /// Marks if release of the one shot keys should be done on the next tick
     pub release_on_next_tick: bool,
+    /// The number of ticks to delay the release of the one-shot activation
+    /// for EndOnFirstPress(OrRepress).
+    /// This used to not exist and effectively be 1 (1ms),
+    /// but that is too short for some environments.
+    /// When too short, applications or desktop environments process
+    /// the key release before the next press,
+    /// even if temporally the release was sent after.
+    pub on_press_release_delay: u16,
+    /// If on_press_release_delay is used, this will be >0,
+    /// meaning input processing should be paused to prevent extra presses
+    /// from coming in while OneShot has not yet been released.
+    ///
+    /// May also be reused for other purposes...
+    pub pause_input_processing_ticks: u16,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -742,6 +756,7 @@ impl OneShotState {
         if self.release_on_next_tick || self.timeout == 0 {
             self.release_on_next_tick = false;
             self.timeout = 0;
+            self.pause_input_processing_ticks = 0;
             self.keys.clear();
             self.other_pressed_keys.clear();
             Some(self.released_keys.drain(..).collect())
@@ -773,7 +788,8 @@ impl OneShotState {
                     self.end_config,
                     OneShotEndConfig::EndOnFirstPress | OneShotEndConfig::EndOnFirstPressOrRepress
                 ) {
-                    self.release_on_next_tick = true;
+                    self.timeout = core::cmp::min(self.on_press_release_delay, self.timeout);
+                    self.pause_input_processing_ticks = self.on_press_release_delay;
                 } else {
                     let _ = self.other_pressed_keys.push_back(pressed_coord);
                 }
@@ -875,6 +891,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 released_keys: ArrayDeque::new(),
                 other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
+                on_press_release_delay: 0,
+                pause_input_processing_ticks: 0,
             },
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
@@ -934,6 +952,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     }
                 }
             }
+            // Similar issue happens for the quick tap-hold tap as with on-press release;
+            // the rapidity of the release can cause issues. See on_press_release_delay
+            // comments for more detail.
+            self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
             ret
         } else {
             CustomEvent::NoEvent
@@ -1001,10 +1023,24 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 Some((WaitingAction::NoOp, _)) => self.drop_waiting(),
                 None => CustomEvent::NoEvent,
             },
-            None => match self.queue.pop_front() {
-                Some(s) => self.dequeue(s),
-                None => CustomEvent::NoEvent,
-            },
+            None => {
+                // Due to the possible delay in the key release for EndOnFirstPress
+                // because some apps/DEs do not handle it properly if done too quickly,
+                // undesirable behaviour of extra presses making it in before
+                // the release happens might occur.
+                //
+                // A mitigation against that is to pause input processing.
+                if self.oneshot.pause_input_processing_ticks > 0 {
+                    self.oneshot.pause_input_processing_ticks =
+                        self.oneshot.pause_input_processing_ticks.saturating_sub(1);
+                    CustomEvent::NoEvent
+                } else {
+                    match self.queue.pop_front() {
+                        Some(s) => self.dequeue(s),
+                        None => CustomEvent::NoEvent,
+                    }
+                }
+            }
         });
         self.process_sequence_custom(custom)
     }
@@ -2438,6 +2474,7 @@ mod test {
             k(B),
         ]]];
         let mut layout = Layout::new(&LAYERS);
+        layout.oneshot.on_press_release_delay = 1;
 
         // Test:
         // 1. press one-shot
@@ -2549,6 +2586,7 @@ mod test {
             k(B),
         ]]];
         let mut layout = Layout::new(&LAYERS);
+        layout.oneshot.on_press_release_delay = 1;
 
         // Test:
         // 1. press one-shot
@@ -2859,6 +2897,7 @@ mod test {
             [[k(A), k(B), k(C), k(D)]],
         ];
         let mut layout = Layout::new(&LAYERS);
+        layout.oneshot.on_press_release_delay = 1;
 
         layout.event(Press(0, 0));
         layout.event(Release(0, 0));
@@ -2914,6 +2953,7 @@ mod test {
             [[k(A), k(B), k(C)]],
         ];
         let mut layout = Layout::new(&LAYERS);
+        layout.oneshot.on_press_release_delay = 1;
 
         layout.event(Press(0, 0));
         layout.event(Release(0, 0));
