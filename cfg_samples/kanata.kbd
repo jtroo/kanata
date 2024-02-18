@@ -218,7 +218,6 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; do not process the scenarios correctly due to the rapidity of the release.
   ;; Kanata does send the events in the correct order,
   ;; so the fault is more in the environment, but kanata provides a workaround anyway.
-  ;;
   rapid-event-delay 5
 )
 
