@@ -1217,18 +1217,16 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     }
     fn resolve_coord(&self, coord: KCoord) -> &'a Action<'a, T> {
         use crate::action::Action::*;
+        let x = coord.0 as usize;
+        let y = coord.1 as usize;
+        assert!(x <= self.layers[0].len());
+        assert!(y <= self.layers[0][0].len());
         for layer in self.active_held_layers().rev().chain([self.default_layer]) {
-            let action = self
-                .layers
-                .get(layer)
-                .and_then(|l| l.get(coord.0 as usize))
-                .and_then(|l| l.get(coord.1 as usize));
+            assert!(layer <= self.layers.len());
+            let action = &self.layers[layer][x][y];
             match action {
-                None => return &NoOp,
-                Some(Trans) => {
-                    continue;
-                }
-                Some(action) => return action,
+                Trans => continue,
+                action => return action,
             }
         }
         &NoOp
