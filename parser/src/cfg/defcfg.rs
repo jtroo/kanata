@@ -68,7 +68,7 @@ impl Default for CfgOptions {
             dynamic_macro_max_presses: 128,
             dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
-            rapid_event_delay: 10,
+            rapid_event_delay: 5,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
