@@ -1352,8 +1352,12 @@ impl Kanata {
 
         // Prioritize checking the active layer in case a layer-while-held is active.
         let active_held_layers = self.layout.bm().active_held_layers();
-        for layer in active_held_layers.iter().rev() {
-            if let Some(outputs_for_key) = self.key_outputs[*layer].get(&event.code) {
+        let mut held_layer_active = false;
+        for layer in active_held_layers.rev() {
+            if !held_layer_active {
+                held_layer_active = true;
+            }
+            if let Some(outputs_for_key) = self.key_outputs[layer].get(&event.code) {
                 log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
                 for osc in outputs_for_key.iter().rev().copied() {
                     let kc = osc.into();
@@ -1370,7 +1374,7 @@ impl Kanata {
                 }
             }
         }
-        if !active_held_layers.is_empty() {
+        if held_layer_active {
             log::debug!("empty layer-while-held outputs, probably transparent");
         }
 

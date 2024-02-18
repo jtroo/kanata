@@ -1217,15 +1217,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     }
     fn resolve_coord(&self, coord: KCoord) -> &'a Action<'a, T> {
         use crate::action::Action::*;
-        for layer in self
-            .active_held_layers()
-            .iter()
-            .rev()
-            .chain(&[self.default_layer])
-        {
+        for layer in self.active_held_layers().rev().chain([self.default_layer]) {
             let action = self
                 .layers
-                .get(*layer)
+                .get(layer)
                 .and_then(|l| l.get(coord.0 as usize))
                 .and_then(|l| l.get(coord.1 as usize));
             match action {
@@ -1645,11 +1640,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             .unwrap_or(self.default_layer)
     }
 
-    pub fn active_held_layers(&self) -> std::vec::Vec<usize> {
-        self.states
-            .iter()
-            .filter_map(State::get_layer)
-            .collect::<std::vec::Vec<_>>()
+    pub fn active_held_layers(&self) -> impl DoubleEndedIterator<Item = usize> + '_ {
+        self.states.iter().filter_map(State::get_layer)
     }
 
     /// Sets the default layer for the layout
