@@ -21,6 +21,7 @@ pub struct CfgOptions {
     pub dynamic_macro_max_presses: u16,
     pub dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour,
     pub concurrent_tap_hold: bool,
+    pub rapid_event_delay: u16,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -67,6 +68,7 @@ impl Default for CfgOptions {
             dynamic_macro_max_presses: 128,
             dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
+            rapid_event_delay: 10,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -353,6 +355,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "concurrent-tap-hold" => {
                         cfg.concurrent_tap_hold = parse_defcfg_val_bool(val, label)?
+                    }
+                    "rapid-event-delay" => {
+                        cfg.rapid_event_delay = parse_cfg_val_u16(val, label, false)?
                     }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };

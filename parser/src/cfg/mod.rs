@@ -270,6 +270,7 @@ fn parse_cfg(
     let key_outputs = create_key_outputs(&klayers, &overrides);
     let mut layout = create_layout(klayers, s.a);
     layout.bm().quick_tap_hold_timeout = cfg.concurrent_tap_hold;
+    layout.bm().oneshot.on_press_release_delay = cfg.rapid_event_delay;
     Ok((cfg, src, layer_info, key_outputs, layout, seqs, overrides))
 }
 
