@@ -1799,10 +1799,13 @@ If you are negatively impacted by the latency increase of these events
 and your environment is not impacted by increased rapidity,
 you can set reduce the value to a number 0 to 4.
 
+[source]
+----
 (defcfg
   ;; If your environment is particularly buggy, might need to delay even more
   rapid-event-delay 20
 )
+----
 
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
