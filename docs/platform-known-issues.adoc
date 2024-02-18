@@ -61,6 +61,7 @@ which map to the binaries
 * Key actions can behave incorrectly due to the rapidity of key events
 ** https://github.com/jtroo/kanata/discussions/733
 ** https://github.com/jtroo/kanata/issues/740
+** adjusting https://github.com/jtroo/kanata/blob/main/docs/config.adoc#rapid-event-delay[rapid-event-delay] can potentially be a workaround
 
 == MacOS
 
