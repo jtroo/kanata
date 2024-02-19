@@ -291,7 +291,7 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
             continue;
         }
         // expr must be a list, visit it
-        if let Some(exprs) = expand_if_equal_check_list(expr)? {
+        if let Some(exprs) = if_equal_replacement(expr)? {
             replacements.push(Replacement {
                 exprs,
                 insert_index: index,
@@ -316,41 +316,38 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
     Ok(())
 }
 
-fn expand_if_equal_check_list(expr: &mut SExpr) -> Result<Option<Vec<SExpr>>> {
-    let exprclone = expr.clone();
+fn if_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
     match expr {
         // Below should not be reached because only lists should be visited
         SExpr::Atom(_) => unreachable!(),
         SExpr::List(l) => Ok(match l.t.first() {
             Some(SExpr::Atom(Spanned { t, .. })) if t.as_str() == "if-equal" => {
-                let first = l
-                    .t
-                    .get(1)
-                    .ok_or_else(|| {
-                        anyhow_expr!(
-                            &exprclone,
-                            "if-equal expects a string comparand as the first parameter"
-                        )
-                    })
-                    .and_then(|expr| {
-                        expr.atom(None).ok_or_else(|| {
-                            anyhow_expr!(&exprclone, "comparands within if-equal must be strings")
+                let first =
+                    l.t.get(1)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "if-equal expects a string comparand as the first parameter"
+                            )
                         })
-                    })?;
-                let second = l
-                    .t
-                    .get(2)
-                    .ok_or_else(|| {
-                        anyhow_expr!(
-                            &exprclone,
-                            "if-equal expects a string comparand as the second parameter"
-                        )
-                    })
-                    .and_then(|expr| {
-                        expr.atom(None).ok_or_else(|| {
-                            anyhow_expr!(&exprclone, "comparands within if-equal must be strings")
+                        .and_then(|expr| {
+                            expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                            })
+                        })?;
+                let second =
+                    l.t.get(2)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "if-equal expects a string comparand as the second parameter"
+                            )
                         })
-                    })?;
+                        .and_then(|expr| {
+                            expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                            })
+                        })?;
                 if first == second {
                     Some(l.t.iter().skip(3).cloned().collect())
                 } else {
