@@ -9,10 +9,10 @@
 //!   Instead the code could pre-compute the paths to access every variable
 //!   that needs substition. (perf_1)
 //!
-//! - Replacing the `template-expand` items with the expanded template
-//!   recreates the Vec for every replacement that happens at that layer.
-//!   Instead the code could do a single pass
-//!   and intelligently insert SExprs at the proper places. (perf_2)
+//! - Replacing the `template-expand|if-equal` items with the appropriate values
+//!   recreates the Vec for every replacement that happens at that recursion depth.
+//!   Instead the code could do recreate the vec only once
+//!   and insert SExprs at the proper places. (perf_2)
 
 use crate::anyhow_expr;
 use crate::anyhow_span;
