@@ -1353,7 +1353,7 @@ impl Kanata {
         // Prioritize checking the active layer in case a layer-while-held is active.
         let active_held_layers = self.layout.bm().active_held_layers();
         let mut held_layer_active = false;
-        for layer in active_held_layers.rev() {
+        for layer in active_held_layers {
             if !held_layer_active {
                 held_layer_active = true;
             }
