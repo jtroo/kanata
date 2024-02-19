@@ -9,10 +9,10 @@
 //!   Instead the code could pre-compute the paths to access every variable
 //!   that needs substition. (perf_1)
 //!
-//! - Replacing the `template-expand` items with the expanded template
-//!   recreates the Vec for every replacement that happens at that layer.
-//!   Instead the code could do a single pass
-//!   and intelligently insert SExprs at the proper places. (perf_2)
+//! - Replacing the `template-expand|if-equal` items with the appropriate values
+//!   recreates the Vec for every replacement that happens at that recursion depth.
+//!   Instead the code could do recreate the vec only once
+//!   and insert SExprs at the proper places. (perf_2)
 
 use crate::anyhow_expr;
 use crate::anyhow_span;
@@ -175,15 +175,6 @@ fn visit_validate_all_atoms(
     Ok(())
 }
 
-fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
-    for expr in exprs {
-        match expr {
-            SExpr::Atom(_) => visit(expr),
-            SExpr::List(l) => visit_mut_all_atoms(&mut l.t, visit),
-        }
-    }
-}
-
 struct Replacement {
     exprs: Vec<SExpr>,
     insert_index: usize,
@@ -230,10 +221,13 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
 
                 let var_substitutions = l.t.iter().skip(2);
                 let mut expanded_template = template.content.clone();
+                // Substitute variables.
                 // perf_1 : could store substitution knowledge instead of iterating and searching
                 // every time
                 visit_mut_all_atoms(&mut expanded_template, &mut |expr: &mut SExpr| {
                     *expr = match expr {
+                        // Below should not be reached because only atoms should be visited
+                        SExpr::List(_) => unreachable!(),
                         SExpr::Atom(a) => {
                             match template
                                 .vars_substitute_names
@@ -249,8 +243,6 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                                     .clone(),
                             }
                         }
-                        // Below should not be reached because only atoms should be visited
-                        SExpr::List(_) => unreachable!(),
                     }
                 });
 
@@ -278,5 +270,91 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
         *exprs = new_vec;
     }
 
+    expand_if_equal(exprs)?;
+
     Ok(())
+}
+
+fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
+    for expr in exprs {
+        match expr {
+            SExpr::Atom(_) => visit(expr),
+            SExpr::List(l) => visit_mut_all_atoms(&mut l.t, visit),
+        }
+    }
+}
+
+fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
+    let mut replacements: Vec<Replacement> = vec![];
+    for (index, expr) in exprs.iter_mut().enumerate() {
+        if matches!(expr, SExpr::Atom(_)) {
+            continue;
+        }
+        // expr must be a list, visit it
+        if let Some(exprs) = if_equal_replacement(expr)? {
+            replacements.push(Replacement {
+                exprs,
+                insert_index: index,
+            })
+        }
+    }
+    // Ensure replacements are sorted. They probably are, but may as well make sure.
+    replacements.sort_by_key(|r| r.insert_index);
+    // Must replace last-first to keep unreplaced insertion points stable.
+    // perf_2 : could construct vec in one pass.
+    for replacement in replacements.iter().rev() {
+        let (before, after) = exprs.split_at(replacement.insert_index);
+        let after = after.iter().skip(1); // first element is `(if-equal ...)`
+        let new_vec = before
+            .iter()
+            .cloned()
+            .chain(replacement.exprs.iter().cloned())
+            .chain(after.cloned())
+            .collect();
+        *exprs = new_vec;
+    }
+    Ok(())
+}
+
+fn if_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
+    match expr {
+        // Below should not be reached because only lists should be visited
+        SExpr::Atom(_) => unreachable!(),
+        SExpr::List(l) => Ok(match l.t.first() {
+            Some(SExpr::Atom(Spanned { t, .. })) if t.as_str() == "if-equal" => {
+                let first =
+                    l.t.get(1)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "if-equal expects a string comparand as the first parameter"
+                            )
+                        })
+                        .and_then(|expr| {
+                            expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                            })
+                        })?;
+                let second =
+                    l.t.get(2)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "if-equal expects a string comparand as the second parameter"
+                            )
+                        })
+                        .and_then(|expr| {
+                            expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                            })
+                        })?;
+                if first == second {
+                    Some(l.t.iter().skip(3).cloned().collect())
+                } else {
+                    Some(vec![])
+                }
+            }
+            _ => None,
+        }),
+    }
 }
