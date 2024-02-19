@@ -1698,28 +1698,28 @@ fn parse_template_3() {
     };
 
     let source = r#"
-(deftemplate home-row (v1)
+(deftemplate home-row (version)
   a s d f g h 
-  (if-equal $v1 j j)
-  (if-equal $v1 h h)
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j lctl))
    k l ; '
 )
 
 (defsrc
-    grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-    tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-    caps (template-expand home-row j)                            ret
-    lsft z    x    c    v    b    n    m    ,    .    /    rsft
-    lctl lmet lalt           spc            ralt rmet rctl
-  )
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v1)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
   
-  (deflayer base
-    grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-    tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-    caps (template-expand home-row h)    ret
-    lsft z    x    c    v    b    n    m    ,    .    /    rsft
-    lctl lmet lalt           spc            ralt rmet rctl
-  )
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v2)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
 "#;
     let mut s = ParsedState::default();
     parse_cfg_raw_string(

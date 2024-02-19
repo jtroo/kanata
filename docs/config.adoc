@@ -2646,6 +2646,45 @@ Its parameters in order are:
 )
 ----
 
+==== if-equal
+
+Within a template you can use the list item `if-equal`
+to have condiditionally-used items within a template.
+
+It accepts a minimum of 2 parameters.
+The first two parameters must be strings and are compared
+against each other.
+If they match, the following parameters are inserted into
+the template in place of the `if-equal` list.
+Otherwise if the strings do not match
+then the whole `if-equal` list is removed from the template.
+
+.Example:
+----
+(deftemplate home-row (version)
+  a s d f g h 
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j lctl))
+   k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v1)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+  
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v2)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>

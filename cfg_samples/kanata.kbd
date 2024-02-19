@@ -1,5 +1,9 @@
 #|
 This is a sample configuration file that showcases every feature in kanata.
+A more detailed and less terse configuration guide is found here:
+
+    https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+
 If anything is confusing or hard to discover, please file an issue or
 contribute a pull request to help improve the document.
 
@@ -11,9 +15,6 @@ three following keys together at the same time will cause kanata to exit:
 This is for the physical key input rather than after any remappings
 that are done by kanata.
 
-This mechanism works on the key input*before any remappings done by kanata.
-
-https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 |#
 
 ;; Single-line comments are prefixed by double-semicolon. A single semicolon
@@ -1094,4 +1095,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   _    @dva @dvo @dve @dvu _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _              _              _    _    _
+)
+
+;; Within a deftemplate you can use if-equal to conditionally insert content
+;; into the template.
+
+(deftemplate home-row (version)
+  a s d f g h 
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j lctl))
+   k l ; '
 )
