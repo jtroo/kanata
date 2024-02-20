@@ -924,7 +924,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default(),
+                &mut self.active_layers_including_default().into_iter(),
             )
         } else {
             CustomEvent::NoEvent
@@ -944,7 +944,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default(),
+                &mut self.active_layers_including_default().into_iter(),
             );
             if let Some(pq) = pq {
                 if matches!(
@@ -965,7 +965,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                             other_coord,
                             delay,
                             false,
-                            &mut self.active_layers_including_default(),
+                            &mut self.active_layers_including_default().into_iter(),
                         );
                     }
                 }
@@ -996,7 +996,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default(),
+                &mut self.active_layers_including_default().into_iter(),
             )
         } else {
             CustomEvent::NoEvent
@@ -1021,7 +1021,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 0,
                 false,
-                &mut self.active_layers_including_default(),
+                &mut self.active_layers_including_default().into_iter(),
             );
         }
         self.states = self.states.iter().filter_map(State::tick).collect();
@@ -1208,7 +1208,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
 
             Press(i, j) => {
-                let layer_stack = &mut self.active_layers_including_default();
+                let layer_stack = &mut self.active_layers_including_default().into_iter();
                 if let Some(tde) = self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let custom = self.do_action(
@@ -1247,7 +1247,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.dequeue(queued);
         }
     }
-    fn resolve_coord<'b>(
+    fn resolve_coord(
         &self,
         coord: KCoord,
         layer_stack: &mut (impl Iterator<Item = usize> + Clone),
@@ -1684,7 +1684,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default(),
+                &mut self.active_layers_including_default().into_iter(),
             );
         };
     }
@@ -1702,8 +1702,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         self.states.iter().filter_map(State::get_layer).rev()
     }
 
-    pub fn active_layers_including_default(&self) -> impl Iterator<Item = usize> + Clone + '_ {
-        self.active_held_layers().chain([self.default_layer])
+    pub fn active_layers_including_default(&self) -> std::vec::Vec<usize> {
+        self.active_held_layers()
+            .chain([self.default_layer])
+            .collect()
     }
 
     /// Sets the default layer for the layout
