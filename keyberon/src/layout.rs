@@ -924,7 +924,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                self.active_layers_including_default(),
+                &mut self.active_layers_including_default(),
             )
         } else {
             CustomEvent::NoEvent
@@ -944,7 +944,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                self.active_layers_including_default(),
+                &mut self.active_layers_including_default(),
             );
             if let Some(pq) = pq {
                 if matches!(
@@ -965,7 +965,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                             other_coord,
                             delay,
                             false,
-                            self.active_layers_including_default(),
+                            &mut self.active_layers_including_default(),
                         );
                     }
                 }
@@ -996,7 +996,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                self.active_layers_including_default(),
+                &mut self.active_layers_including_default(),
             )
         } else {
             CustomEvent::NoEvent
@@ -1021,7 +1021,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 0,
                 false,
-                self.active_layers_including_default(),
+                &mut self.active_layers_including_default(),
             );
         }
         self.states = self.states.iter().filter_map(State::tick).collect();
@@ -1208,7 +1208,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
 
             Press(i, j) => {
-                let layer_stack = self.active_layers_including_default();
+                let layer_stack = &mut self.active_layers_including_default();
                 if let Some(tde) = self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let custom = self.do_action(
@@ -1250,7 +1250,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     fn resolve_coord<'b>(
         &self,
         coord: KCoord,
-        layer_stack: impl Iterator<Item = usize> + Clone,
+        layer_stack: &mut (impl Iterator<Item = usize> + Clone),
     ) -> &'a Action<'a, T> {
         use crate::action::Action::*;
         let x = coord.0 as usize;
@@ -1273,7 +1273,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         coord: KCoord,
         delay: u16,
         is_oneshot: bool,
-        layer_stack: impl Iterator<Item = usize> + Clone, // used to resolve Trans action
+        layer_stack: &mut (impl Iterator<Item = usize> + Clone), // used to resolve Trans action
     ) -> CustomEvent<'a, T> {
         self.clear_and_handle_waiting(action);
         if self.last_press_tracker.coord != coord {
@@ -1317,7 +1317,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 // not the outer (tap-dance|hold) but multi will repeat the entire outer multi
                 // action.
                 if let Some(ac) = self.rpt_action {
-                    self.do_action(ac, coord, delay, is_oneshot, std::iter::empty());
+                    self.do_action(ac, coord, delay, is_oneshot, &mut std::iter::empty());
                 }
             }
             HoldTap(HoldTapAction {
@@ -1359,7 +1359,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             &OneShot(oneshot) => {
                 self.last_press_tracker.coord = coord;
-                let custom = self.do_action(oneshot.action, coord, delay, true, std::iter::empty());
+                let custom =
+                    self.do_action(oneshot.action, coord, delay, true, &mut std::iter::empty());
                 // Note - set rpt_action after doing the inner oneshot action. This means that the
                 // whole oneshot will be repeated by rpt-any rather than only the inner action.
                 self.rpt_action = Some(action);
@@ -1522,7 +1523,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         coord,
                         delay,
                         is_oneshot,
-                        layer_stack.clone(),
+                        &mut layer_stack.clone(),
                     ));
                 }
                 // Save the whole multi action instead of the final action in multi so that Repeat
@@ -1619,8 +1620,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     }
                     _ => false,
                 }) {
-                    false => self.do_action(&fcfg.left, coord, delay, false, layer_stack.clone()),
-                    true => self.do_action(&fcfg.right, coord, delay, false, layer_stack.clone()),
+                    false => {
+                        self.do_action(&fcfg.left, coord, delay, false, &mut layer_stack.clone())
+                    }
+                    true => {
+                        self.do_action(&fcfg.right, coord, delay, false, &mut layer_stack.clone())
+                    }
                 };
                 // Repeat the fork rather than the terminal action.
                 self.rpt_action = Some(action);
@@ -1679,7 +1684,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                self.active_layers_including_default(),
+                &mut self.active_layers_including_default(),
             );
         };
     }
