@@ -953,14 +953,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         // Like above block, but for the same simple actions within MultipleActions
                         for ac in acs.iter() {
                             if matches!(
-                                dbg!(ac),
+                                ac,
                                 Action::KeyCode(_)
                                     | Action::MultipleKeyCodes(_)
                                     | Action::OneShot(_)
                                     | Action::Layer(_)
                             ) {
                                 for other_coord in pq.iter().copied() {
-                                    self.do_action(ac, dbg!(other_coord), delay, false);
+                                    self.do_action(ac, other_coord, delay, false);
                                 }
                             }
                         }

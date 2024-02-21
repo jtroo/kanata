@@ -1709,7 +1709,6 @@ impl Kanata {
                                         )
                                     });
                                     PRESSED_KEYS.lock().clear();
-                                    dbg!(&k.layout.bm().states);
                                 }
                             }
 

@@ -60,10 +60,8 @@ impl Kanata {
         for prev_state in prev_states.iter() {
             if let State::NormalKey { keycode, coord, .. } = prev_state {
                 if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
-                    || dbg!(
-                        matches!(keycode, KeyCode::LShift)
-                            && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT)
-                    )
+                    || matches!(keycode, KeyCode::LShift)
+                        && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT)
                     || (matches!(keycode, KeyCode::RShift)
                         && coord.1 == u16::from(OsCode::KEY_RIGHTSHIFT))
                     || self
