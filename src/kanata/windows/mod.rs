@@ -58,41 +58,64 @@ impl Kanata {
         // this should not be a problem. State does not implement Hash so can't use a HashSet. A
         // HashSet might perform worse anyway.
         for prev_state in prev_states.iter() {
-            if let State::NormalKey { keycode, coord, .. } = prev_state {
-                // Goal of this matches:
-                //
-                // Skip to next prev_state if:
-                // - keycode is neither shift
-                // - keycode is at the position of either shift
-                // - state has not yet been released
-                if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
-                    || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT))
-                    || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_RIGHTSHIFT))
-                    || self
-                        .layout
-                        .bm()
-                        .states
-                        .iter()
-                        .filter_map(state_filter)
-                        .any(|s| s == *prev_state)
-                {
-                    continue;
+            let keycode = match prev_state {
+                State::NormalKey { keycode, coord, .. } => {
+                    // Goal of this matches:
+                    //
+                    // Do not process state if:
+                    // - keycode is neither shift
+                    // - keycode is at the position of either shift
+                    // - state has not yet been released
+                    if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
+                        || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT))
+                        || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_RIGHTSHIFT))
+                        || self
+                            .layout
+                            .bm()
+                            .states
+                            .iter()
+                            .filter_map(state_filter)
+                            .any(|s| s == *prev_state)
+                    {
+                        continue;
+                    } else {
+                        keycode
+                    }
                 }
-                log::debug!(
-                    "lsft-arrowkey workaround: removing {keycode:?} at its typical coordinate"
-                );
-                self.layout.bm().states.retain(|s| match s {
-                    State::LayerModifier { coord, .. } |
-                    State::Custom { coord, ..} |
-                    State::RepeatingSequence { coord, .. } |
-                    State::NormalKey {
-                        coord, ..
-                    } => *coord != (NORMAL_KEY_ROW, u16::from(OsCode::from(keycode))),
-                    _ => true,
-                });
-                log::debug!("removing {keycode:?} from pressed keys");
-                PRESSED_KEYS.lock().remove(&keycode.into());
-            }
+                State::FakeKey { keycode } => {
+                    // Goal of this matches:
+                    //
+                    // Do not process state if:
+                    // - keycode is neither shift
+                    // - state has not yet been released
+                    if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
+                        || self
+                            .layout
+                            .bm()
+                            .states
+                            .iter()
+                            .filter_map(state_filter)
+                            .any(|s| s == *prev_state)
+                    {
+                        keycode
+                    } else {
+                        continue;
+                    }
+                }
+                _ => continue,
+            };
+            log::debug!("lsft-arrowkey workaround: removing {keycode:?} at its typical coordinate");
+            self.layout.bm().states.retain(|s| match s {
+                State::LayerModifier { coord, .. }
+                | State::Custom { coord, .. }
+                | State::RepeatingSequence { coord, .. }
+                | State::NormalKey { coord, .. } => {
+                    *coord != (NORMAL_KEY_ROW, u16::from(OsCode::from(keycode)))
+                }
+                _ => true,
+            });
+            log::debug!("removing {keycode:?} from pressed keys");
+            PRESSED_KEYS.lock().remove(&keycode.into());
         }
 
         prev_states.clear();
