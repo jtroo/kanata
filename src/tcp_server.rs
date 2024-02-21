@@ -14,6 +14,7 @@ use std::net::{TcpListener, TcpStream};
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
+    LayerNames { names: Vec<String> },
 }
 
 #[cfg(feature = "tcp_server")]
@@ -28,6 +29,7 @@ impl ServerMessage {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
     ChangeLayer { new: String },
+    RequestLayerNames {},
 }
 
 impl FromStr for ClientMessage {
@@ -120,6 +122,9 @@ impl TcpServer {
                                         match event {
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
+                                            }
+                                            ClientMessage::RequestLayerNames {} => {
+                                                kanata.lock().tcp_send_layer_names_requested = true;
                                             }
                                         }
                                     } else {
