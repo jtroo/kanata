@@ -59,11 +59,15 @@ impl Kanata {
         // HashSet might perform worse anyway.
         for prev_state in prev_states.iter() {
             if let State::NormalKey { keycode, coord, .. } = prev_state {
+                // Goal of this matches:
+                //
+                // Skip to next prev_state if:
+                // - keycode is neither shift
+                // - keycode is at the position of either shift
+                // - state has not yet been released
                 if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
-                    || matches!(keycode, KeyCode::LShift)
-                        && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT)
-                    || (matches!(keycode, KeyCode::RShift)
-                        && coord.1 == u16::from(OsCode::KEY_RIGHTSHIFT))
+                    || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT))
+                    || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_RIGHTSHIFT))
                     || self
                         .layout
                         .bm()
@@ -78,11 +82,12 @@ impl Kanata {
                     "lsft-arrowkey workaround: removing {keycode:?} at its typical coordinate"
                 );
                 self.layout.bm().states.retain(|s| match s {
+                    State::LayerModifier { coord, .. } |
+                    State::Custom { coord, ..} |
+                    State::RepeatingSequence { coord, .. } |
                     State::NormalKey {
-                        keycode: cur_kc,
-                        coord: cur_coord,
-                        ..
-                    } => cur_kc != keycode || *cur_coord != (0, u16::from(OsCode::from(keycode))),
+                        coord, ..
+                    } => *coord != (NORMAL_KEY_ROW, u16::from(OsCode::from(keycode))),
                     _ => true,
                 });
                 log::debug!("removing {keycode:?} from pressed keys");
