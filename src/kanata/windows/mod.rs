@@ -60,8 +60,10 @@ impl Kanata {
         for prev_state in prev_states.iter() {
             if let State::NormalKey { keycode, coord, .. } = prev_state {
                 if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
-                    || (matches!(keycode, KeyCode::LShift)
-                        && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT))
+                    || dbg!(
+                        matches!(keycode, KeyCode::LShift)
+                            && coord.1 == u16::from(OsCode::KEY_LEFTSHIFT)
+                    )
                     || (matches!(keycode, KeyCode::RShift)
                         && coord.1 == u16::from(OsCode::KEY_RIGHTSHIFT))
                     || self
@@ -75,21 +77,18 @@ impl Kanata {
                     continue;
                 }
                 log::debug!(
-                    "lsft-arrowkey workaround: releasing {keycode:?} at its typical coordinate"
+                    "lsft-arrowkey workaround: removing {keycode:?} at its typical coordinate"
                 );
                 self.layout.bm().states.retain(|s| match s {
                     State::NormalKey {
                         keycode: cur_kc,
                         coord: cur_coord,
                         ..
-                    } => cur_kc != keycode && *cur_coord != (0, u16::from(OsCode::from(keycode))),
+                    } => cur_kc != keycode || *cur_coord != (0, u16::from(OsCode::from(keycode))),
                     _ => true,
                 });
-                log::debug!("releasing {keycode:?} from pressed keys");
+                log::debug!("removing {keycode:?} from pressed keys");
                 PRESSED_KEYS.lock().remove(&keycode.into());
-                if let Err(e) = self.kbd_out.release_key(keycode.into()) {
-                    bail!("failed to release key: {:?}", e);
-                }
             }
         }
 
