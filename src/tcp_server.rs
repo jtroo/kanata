@@ -16,19 +16,6 @@ pub enum ServerMessage {
     LayerChange { new: String },
 }
 
-#[test]
-fn layer_change_serializes() {
-    serde_json::to_string(&ServerMessage::LayerChange {
-        new: "hello".into(),
-    })
-    .expect("ServerMessage serializes");
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ClientMessage {
-    ChangeLayer { new: String },
-}
-
 #[cfg(feature = "tcp_server")]
 impl ServerMessage {
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -36,6 +23,11 @@ impl ServerMessage {
         msg.push(b'\n');
         msg
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ClientMessage {
+    ChangeLayer { new: String },
 }
 
 impl FromStr for ClientMessage {
@@ -160,4 +152,12 @@ impl TcpServer {
 
     #[cfg(not(feature = "tcp_server"))]
     pub fn start(&mut self, _kanata: Arc<Mutex<Kanata>>) {}
+}
+
+#[test]
+fn layer_change_serializes() {
+    serde_json::to_string(&ServerMessage::LayerChange {
+        new: "hello".into(),
+    })
+    .expect("ServerMessage serializes");
 }
