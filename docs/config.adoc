@@ -2377,6 +2377,8 @@ the input chord have been released.
 In other words, if even one key is held for the input chord
 then the output action will be continued to be held,
 but only for the mentioned action categories.
+The behaviour also applies to the actions mentioned above
+when used inside of `multi` but not within any other action.
 
 An exception to the behaviour described above
 for the action categories that would normally apply

@@ -935,21 +935,37 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.waiting = None;
             let ret = self.do_action(tap, coord, delay, false);
             if let Some(pq) = pq {
-                if matches!(
-                    tap,
+                match tap {
                     Action::KeyCode(_)
-                        | Action::MultipleKeyCodes(_)
-                        | Action::OneShot(_)
-                        | Action::Layer(_)
-                ) {
-                    // The current intent of this block is to ensure that simple actions like
-                    // key presses or layer-while-held remain pressed as long as a single key from
-                    // the input chord remains held. The behaviour of these actions is correct in
-                    // the case of repeating do_action, so there is currently no harm in doing
-                    // this. Other action types are more problematic though.
-                    for other_coord in pq.iter().copied() {
-                        self.do_action(tap, other_coord, delay, false);
+                    | Action::MultipleKeyCodes(_)
+                    | Action::OneShot(_)
+                    | Action::Layer(_) => {
+                        // The current intent of this block is to ensure that simple actions like
+                        // key presses or layer-while-held remain pressed as long as a single key from
+                        // the input chord remains held. The behaviour of these actions is correct in
+                        // the case of repeating do_action, so there is currently no harm in doing
+                        // this. Other action types are more problematic though.
+                        for other_coord in pq.iter().copied() {
+                            self.do_action(tap, other_coord, delay, false);
+                        }
                     }
+                    Action::MultipleActions(acs) => {
+                        // Like above block, but for the same simple actions within MultipleActions
+                        for ac in acs.iter() {
+                            if matches!(
+                                dbg!(ac),
+                                Action::KeyCode(_)
+                                    | Action::MultipleKeyCodes(_)
+                                    | Action::OneShot(_)
+                                    | Action::Layer(_)
+                            ) {
+                                for other_coord in pq.iter().copied() {
+                                    self.do_action(ac, dbg!(other_coord), delay, false);
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
             // Similar issue happens for the quick tap-hold tap as with on-press release;
