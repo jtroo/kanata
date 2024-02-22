@@ -163,7 +163,6 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
-    pub tcp_send_layer_names_requested: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -325,7 +324,6 @@ impl Kanata {
             unmodded_keys: vec![],
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            tcp_send_layer_names_requested: false,
         })
     }
 
@@ -453,8 +451,6 @@ impl Kanata {
             // would make a difference, so may as well reduce the amount of processing.
             self.check_handle_layer_change(tx);
         }
-
-        self.check_handle_request_layer_names(tx);
 
         if self.live_reload_requested
             && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
@@ -1430,29 +1426,6 @@ impl Kanata {
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);
                     }
-                }
-            }
-        }
-    }
-
-    pub fn check_handle_request_layer_names(&mut self, tx: &Option<Sender<ServerMessage>>) {
-        if self.tcp_send_layer_names_requested {
-            self.tcp_send_layer_names_requested = false
-        } else {
-            return;
-        }
-        let names = self
-            .layer_info
-            .iter()
-            .map(|info| info.name.clone())
-            .collect::<Vec<_>>();
-
-        #[cfg(feature = "tcp_server")]
-        if let Some(tx) = tx {
-            match tx.try_send(ServerMessage::LayerNames { names }) {
-                Ok(_) => {}
-                Err(error) => {
-                    log::error!("could not send event notification: {}", error);
                 }
             }
         }

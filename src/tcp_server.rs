@@ -124,7 +124,21 @@ impl TcpServer {
                                                 kanata.lock().change_layer(new);
                                             }
                                             ClientMessage::RequestLayerNames {} => {
-                                                kanata.lock().tcp_send_layer_names_requested = true;
+                                                let msg = ServerMessage::LayerNames {
+                                                    names: kanata
+                                                        .lock()
+                                                        .layer_info
+                                                        .iter()
+                                                        .map(|info| info.name.clone())
+                                                        .collect::<Vec<_>>(),
+                                                };
+                                                match stream.write(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "server could not send response: {}",
+                                                        err
+                                                    ),
+                                                }
                                             }
                                         }
                                     } else {
