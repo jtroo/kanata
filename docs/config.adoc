@@ -2587,7 +2587,28 @@ Its parameters in order are:
 * template name
 * parameters to substitute into the template
 
-.Example 1:
+Example 1:
+
+In a simple example, let's say you wanted to set a large group of keys
+to do something different when you're holding alt. Yes, this could also
+be handled with remapping alt to a layer shift, but there are cases where
+you wouldn't want this. Rather than retyping the code with `fork` and
+`unmod` (to release alt) a bunch of times, you could template it like so:
+[source]
+----
+(deftemplate alt-fork (original-action new-action) 
+  (fork $original-action (multi (unmod ralt lalt) $new-action) (lalt ralt))
+)
+(defsrc 1 2 3)
+(defalias fn1 (template-expand alt-fork 1 f1))
+;; Templates are a simple text substitution, so the above is exactly equivalent to:
+;; (defalias fn1 (fork 1 (multi (unmod ralt lalt) f1) (lalt ralt)))
+(defalias fn2 (template-expand alt-fork 2 f2))
+(defalias fn3 (template-expand alt-fork 3 f3))
+(deflayer default (@fn1 @fn2 @fn3))
+----
+
+.Example 2:
 [source]
 ----
 (defvar chord-timeout 200)
@@ -2621,7 +2642,7 @@ Its parameters in order are:
 (deflayer qwerty @qwa @qws @qwd @qwf)
 ----
 
-.Example 2:
+.Example 3:
 [source]
 ----
 ;; This template defines a home row that customizes a single key's behaviour
