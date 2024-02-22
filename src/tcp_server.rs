@@ -186,6 +186,7 @@ impl TcpServer {
                                                     }
                                                 };
                                                 if let Some(index) = index {
+                                                    log::info!("hi {name}");
                                                     handle_fakekey_action(
                                                         action.into(),
                                                         k.layout.bm(),
@@ -193,6 +194,7 @@ impl TcpServer {
                                                         index,
                                                     );
                                                 }
+                                                drop(k);
                                             }
                                         }
                                     } else {
