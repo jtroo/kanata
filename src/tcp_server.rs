@@ -14,19 +14,7 @@ use std::net::{TcpListener, TcpStream};
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
-}
-
-#[test]
-fn layer_change_serializes() {
-    serde_json::to_string(&ServerMessage::LayerChange {
-        new: "hello".into(),
-    })
-    .expect("ServerMessage serializes");
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ClientMessage {
-    ChangeLayer { new: String },
+    LayerNames { names: Vec<String> },
 }
 
 #[cfg(feature = "tcp_server")]
@@ -36,6 +24,12 @@ impl ServerMessage {
         msg.push(b'\n');
         msg
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ClientMessage {
+    ChangeLayer { new: String },
+    RequestLayerNames {},
 }
 
 impl FromStr for ClientMessage {
@@ -129,6 +123,24 @@ impl TcpServer {
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
                                             }
+                                            ClientMessage::RequestLayerNames {} => {
+                                                let msg = ServerMessage::LayerNames {
+                                                    names: kanata
+                                                        .lock()
+                                                        .layer_info
+                                                        .iter()
+                                                        .step_by(2) // skip every other name, which is a duplicate
+                                                        .map(|info| info.name.clone())
+                                                        .collect::<Vec<_>>(),
+                                                };
+                                                match stream.write(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "server could not send response: {}",
+                                                        err
+                                                    ),
+                                                }
+                                            }
                                         }
                                     } else {
                                         log::warn!(
@@ -160,4 +172,12 @@ impl TcpServer {
 
     #[cfg(not(feature = "tcp_server"))]
     pub fn start(&mut self, _kanata: Arc<Mutex<Kanata>>) {}
+}
+
+#[test]
+fn layer_change_serializes() {
+    serde_json::to_string(&ServerMessage::LayerChange {
+        new: "hello".into(),
+    })
+    .expect("ServerMessage serializes");
 }
