@@ -502,6 +502,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     ) -> Option<(WaitingAction, &'a Action<'a, T>, PressedQueue)> {
         // need to keep track of how many Press events we handled so we can filter them out later
         let mut handled_press_events = 0;
+        let start_chord_coord = self.coord;
         let mut released_coord = None;
 
         // Compute the set of chord keys that are currently pressed
@@ -566,6 +567,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         };
 
         let mut pq = PressedQueue::new();
+        let _ = pq.push_back(start_chord_coord);
 
         // Return all press events that were logically handled by this chording event
         queued.retain(|s| {
