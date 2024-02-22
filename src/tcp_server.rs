@@ -129,15 +129,8 @@ impl TcpServer {
                                                         .lock()
                                                         .layer_info
                                                         .iter()
-                                                        .enumerate()
-                                                        .filter_map(|(i, info)| {
-                                                            if i % 2 == 0 {
-                                                                Some(info.name.clone())
-                                                            } else {
-                                                                // skip every other name, which is a duplicate
-                                                                None
-                                                            }
-                                                        })
+                                                        .step_by(2) // skip every other name, which is a duplicate
+                                                        .map(|info| info.name.clone())
                                                         .collect::<Vec<_>>(),
                                                 };
                                                 match stream.write(&msg.as_bytes()) {
