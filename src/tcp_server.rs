@@ -1,4 +1,5 @@
 use crate::Kanata;
+use kanata_parser::custom_action::FakeKeyAction;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -28,8 +29,33 @@ impl ServerMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
-    ChangeLayer { new: String },
+    ChangeLayer {
+        new: String,
+    },
     RequestLayerNames {},
+    ActOnFakeKey {
+        name: String,
+        action: FakeKeyActionMessage,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub enum FakeKeyActionMessage {
+    Press,
+    Release,
+    Tap,
+    Toggle,
+}
+
+impl Into<FakeKeyAction> for FakeKeyActionMessage {
+    fn into(self) -> FakeKeyAction {
+        match self {
+            FakeKeyActionMessage::Press => FakeKeyAction::Press,
+            FakeKeyActionMessage::Release => FakeKeyAction::Release,
+            FakeKeyActionMessage::Tap => FakeKeyAction::Tap,
+            FakeKeyActionMessage::Toggle => FakeKeyAction::Toggle,
+        }
+    }
 }
 
 impl FromStr for ClientMessage {
@@ -73,6 +99,10 @@ impl TcpServer {
 
     #[cfg(feature = "tcp_server")]
     pub fn start(&mut self, kanata: Arc<Mutex<Kanata>>) {
+        use kanata_parser::cfg::FAKE_KEY_ROW;
+
+        use crate::kanata::handle_fakekey_action;
+
         let listener =
             TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
 
@@ -139,6 +169,29 @@ impl TcpServer {
                                                         "server could not send response: {}",
                                                         err
                                                     ),
+                                                }
+                                            }
+                                            ClientMessage::ActOnFakeKey { name, action } => {
+                                                let mut k = kanata.lock();
+                                                let index = match k.fake_keys.get(&name) {
+                                                    Some(index) => Some(*index as u16),
+                                                    None => {
+                                                        if let Err(e) = writeln!(
+                                                            stream,
+                                                            "unknown fake key {name}"
+                                                        ) {
+                                                            log::error!("stream write error: {e}")
+                                                        }
+                                                        None
+                                                    }
+                                                };
+                                                if let Some(index) = index {
+                                                    handle_fakekey_action(
+                                                        action.into(),
+                                                        k.layout.bm(),
+                                                        FAKE_KEY_ROW,
+                                                        index,
+                                                    );
                                                 }
                                             }
                                         }

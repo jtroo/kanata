@@ -30,3 +30,4 @@ kanata-keyberon = { path = "../keyberon" }
 [features]
 cmd = []
 interception_driver = []
+tcp_server = []
