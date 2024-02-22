@@ -270,7 +270,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
         *exprs = new_vec;
     }
 
-    expand_if_equal(exprs)?;
+    while expand_if_equal(exprs)? {}
 
     Ok(())
 }
@@ -284,8 +284,11 @@ fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
     }
 }
 
-fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
+type ExpandHappened = bool;
+
+fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
     let mut replacements: Vec<Replacement> = vec![];
+    let mut expand_happened = false;
     for (index, expr) in exprs.iter_mut().enumerate() {
         if matches!(expr, SExpr::Atom(_)) {
             continue;
@@ -296,6 +299,11 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
                 exprs,
                 insert_index: index,
             })
+        } else {
+            expand_happened |= match expr {
+                SExpr::Atom(_) => unreachable!(),
+                SExpr::List(l) => expand_if_equal(&mut l.t)?,
+            };
         }
     }
     // Ensure replacements are sorted. They probably are, but may as well make sure.
@@ -313,7 +321,8 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<()> {
             .collect();
         *exprs = new_vec;
     }
-    Ok(())
+    expand_happened |= !replacements.is_empty();
+    Ok(expand_happened)
 }
 
 fn if_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {

@@ -1701,7 +1701,7 @@ fn parse_template_3() {
 (deftemplate home-row (version)
   a s d f g h 
   (if-equal $version v1 j)
-  (if-equal $version v2 (tap-hold 200 200 j lctl))
+  (if-equal $version v2 (tap-hold 200 200 j (if-equal $version v2 k)))
    k l ; '
 )
 
