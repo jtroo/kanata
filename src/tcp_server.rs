@@ -47,9 +47,9 @@ pub enum FakeKeyActionMessage {
     Toggle,
 }
 
-impl Into<FakeKeyAction> for FakeKeyActionMessage {
-    fn into(self) -> FakeKeyAction {
-        match self {
+impl From<FakeKeyActionMessage> for FakeKeyAction {
+    fn from(val: FakeKeyActionMessage) -> Self {
+        match val {
             FakeKeyActionMessage::Press => FakeKeyAction::Press,
             FakeKeyActionMessage::Release => FakeKeyAction::Release,
             FakeKeyActionMessage::Tap => FakeKeyAction::Tap,
