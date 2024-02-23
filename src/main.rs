@@ -207,7 +207,7 @@ fn main_impl() -> Result<()> {
     let kanata_arc = Kanata::new_arc(&args)?;
 
     if !args.nodelay {
-        info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
+        info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
         std::thread::sleep(std::time::Duration::from_secs(2));
     }
 
