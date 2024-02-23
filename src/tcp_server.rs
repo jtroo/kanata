@@ -193,7 +193,7 @@ impl TcpServer {
                                                     }
                                                 };
                                                 if let Some(index) = index {
-                                                    log::info!("hi {name}");
+                                                    log::info!("tcp server fake-key,action: {name},{action:?}");
                                                     handle_fakekey_action(
                                                         action.into(),
                                                         k.layout.bm(),
