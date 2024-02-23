@@ -101,6 +101,8 @@ fn init_logger(args: &Args) {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
+    LayerNames { names: Vec<String> },
+    Error { msg: String },
 }
 
 /// Example when serialized:
@@ -177,6 +179,9 @@ fn read_from_kanata(s: TcpStream) {
         match parsed_msg {
             ServerMessage::LayerChange { new } => {
                 log::info!("reader: kanata changed layers to \"{new}\"");
+            }
+            msg => {
+                log::info!("got msg: {msg:?}");
             }
         }
     }
