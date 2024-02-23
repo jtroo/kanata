@@ -1,8 +1,12 @@
+use crate::oskbd::*;
 use crate::Kanata;
+
 use kanata_parser::custom_action::FakeKeyAction;
+use kanata_parser::keys::*;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
 #[cfg(feature = "tcp_server")]
@@ -76,6 +80,7 @@ pub type Connections = ();
 pub struct TcpServer {
     pub port: i32,
     pub connections: Connections,
+    pub wakeup_channel: Sender<KeyEvent>,
 }
 
 #[cfg(not(feature = "tcp_server"))]
@@ -85,15 +90,16 @@ pub struct TcpServer {
 
 impl TcpServer {
     #[cfg(feature = "tcp_server")]
-    pub fn new(port: i32) -> Self {
+    pub fn new(port: i32, wakeup_channel: Sender<KeyEvent>) -> Self {
         Self {
             port,
             connections: Arc::new(Mutex::new(HashMap::default())),
+            wakeup_channel,
         }
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_port: i32) -> Self {
+    pub fn new(_port: i32, _wakeup_channel: Sender<KeyEvent>) -> Self {
         Self { connections: () }
     }
 
@@ -107,6 +113,7 @@ impl TcpServer {
             TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
 
         let connections = self.connections.clone();
+        let wakeup_channel = self.wakeup_channel.clone();
 
         std::thread::spawn(move || {
             for stream in listener.incoming() {
@@ -142,6 +149,7 @@ impl TcpServer {
 
                         let connections = connections.clone();
                         let kanata = kanata.clone();
+                        let wakeup_channel = wakeup_channel.clone();
                         std::thread::spawn(move || loop {
                             let mut buf = vec![0; 1024];
                             match stream.read(&mut buf) {
@@ -195,6 +203,12 @@ impl TcpServer {
                                                     );
                                                 }
                                                 drop(k);
+                                                wakeup_channel
+                                                    .send(KeyEvent::new(
+                                                        OsCode::KEY_RESERVED,
+                                                        KeyValue::WakeUp,
+                                                    ))
+                                                    .expect("write key event");
                                             }
                                         }
                                     } else {

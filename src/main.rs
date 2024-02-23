@@ -217,6 +217,8 @@ fn main_impl() -> Result<()> {
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
 
+    let (tx, rx) = std::sync::mpsc::sync_channel(100);
+
     let (server, ntx, nrx) = if let Some(port) = {
         #[cfg(feature = "tcp_server")]
         {
@@ -227,7 +229,7 @@ fn main_impl() -> Result<()> {
             None
         }
     } {
-        let mut server = TcpServer::new(port);
+        let mut server = TcpServer::new(port, tx.clone());
         server.start(kanata_arc.clone());
         let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
         (Some(server), Some(ntx), Some(nrx))
@@ -235,7 +237,6 @@ fn main_impl() -> Result<()> {
         (None, None, None)
     };
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(100);
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {

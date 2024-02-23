@@ -108,7 +108,9 @@ pub enum ServerMessage {
 ///     {"ChangeLayer":{"new":"requested-layer"}}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
-    ChangeLayer { new: String },
+    ChangeLayer {
+        new: String,
+    },
     ActOnFakeKey {
         name: String,
         action: FakeKeyActionMessage,
@@ -140,7 +142,11 @@ fn write_to_kanata(mut s: TcpStream) {
         let new = layer.trim_end().to_owned();
         if new.starts_with("fk:") {
             let fkname = new.trim_start_matches("fk:").into();
-            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey { name: fkname, action: FakeKeyActionMessage::Tap }).expect("deserializable");
+            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
+                name: fkname,
+                action: FakeKeyActionMessage::Tap,
+            })
+            .expect("deserializable");
             write!(s, "{}", msg).expect("stream writable");
             layer.clear();
             continue;

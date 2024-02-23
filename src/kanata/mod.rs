@@ -402,6 +402,9 @@ impl Kanata {
                 self.layout.bm().event(Event::Release(0, evc));
                 return Ok(());
             }
+            KeyValue::WakeUp => {
+                return Ok(());
+            }
         };
         self.layout.bm().event(kbrn_ev);
         Ok(())

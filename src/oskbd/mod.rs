@@ -23,6 +23,7 @@ pub enum KeyValue {
     Press = 1,
     Repeat = 2,
     Tap,
+    WakeUp,
 }
 
 impl From<i32> for KeyValue {

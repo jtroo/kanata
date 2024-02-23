@@ -57,6 +57,7 @@ fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
             KeyValue::Press | KeyValue::Repeat => false,
             KeyValue::Release => true,
             KeyValue::Tap => panic!("invalid value attempted to be sent"),
+            KeyValue::WakeUp => panic!("invalid value attempted to be sent"),
         },
     );
     Ok(())
