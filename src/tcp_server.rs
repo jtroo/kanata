@@ -204,10 +204,10 @@ impl TcpServer {
                                                 }
                                                 drop(k);
                                                 wakeup_channel
-                                                    .send(KeyEvent::new(
-                                                        OsCode::KEY_RESERVED,
-                                                        KeyValue::WakeUp,
-                                                    ))
+                                                    .send(KeyEvent {
+                                                        code: OsCode::KEY_RESERVED,
+                                                        value: KeyValue::WakeUp,
+                                                    })
                                                     .expect("write key event");
                                             }
                                         }
