@@ -2,7 +2,6 @@ use crate::oskbd::*;
 use crate::Kanata;
 
 use kanata_parser::custom_action::FakeKeyAction;
-use kanata_parser::keys::*;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -203,6 +202,7 @@ impl TcpServer {
                                                     );
                                                 }
                                                 drop(k);
+                                                use kanata_parser::keys::*;
                                                 wakeup_channel
                                                     .send(KeyEvent {
                                                         code: OsCode::KEY_RESERVED,
