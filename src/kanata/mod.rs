@@ -14,12 +14,12 @@ use std::sync::Arc;
 use std::time;
 
 use crate::oskbd::{KeyEvent, *};
-use crate::tcp_server::ServerMessage;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;
 use dynamic_macro::*;

@@ -1,10 +1,9 @@
 use crate::oskbd::*;
 use crate::Kanata;
 
-use kanata_parser::custom_action::FakeKeyAction;
+#[cfg(feature = "tcp_server")]
+use kanata_tcp_protocol::*;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
@@ -15,66 +14,24 @@ use std::io::{Read, Write};
 #[cfg(feature = "tcp_server")]
 use std::net::{TcpListener, TcpStream};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ServerMessage {
-    LayerChange { new: String },
-    LayerNames { names: Vec<String> },
-    Error { msg: String },
-}
-
-#[cfg(feature = "tcp_server")]
-impl ServerMessage {
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut msg = serde_json::to_vec(self).expect("ServerMessage should serialize");
-        msg.push(b'\n');
-        msg
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ClientMessage {
-    ChangeLayer {
-        new: String,
-    },
-    RequestLayerNames {},
-    ActOnFakeKey {
-        name: String,
-        action: FakeKeyActionMessage,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub enum FakeKeyActionMessage {
-    Press,
-    Release,
-    Tap,
-    Toggle,
-}
-
-impl From<FakeKeyActionMessage> for FakeKeyAction {
-    fn from(val: FakeKeyActionMessage) -> Self {
-        match val {
-            FakeKeyActionMessage::Press => FakeKeyAction::Press,
-            FakeKeyActionMessage::Release => FakeKeyAction::Release,
-            FakeKeyActionMessage::Tap => FakeKeyAction::Tap,
-            FakeKeyActionMessage::Toggle => FakeKeyAction::Toggle,
-        }
-    }
-}
-
-impl FromStr for ClientMessage {
-    type Err = serde_json::Error;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        serde_json::from_str(s)
-    }
-}
-
 #[cfg(feature = "tcp_server")]
 pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
 
 #[cfg(not(feature = "tcp_server"))]
 pub type Connections = ();
+
+#[cfg(feature = "tcp_server")]
+use kanata_parser::custom_action::FakeKeyAction;
+
+#[cfg(feature = "tcp_server")]
+fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
+    match val {
+        FakeKeyActionMessage::Press => FakeKeyAction::Press,
+        FakeKeyActionMessage::Release => FakeKeyAction::Release,
+        FakeKeyActionMessage::Tap => FakeKeyAction::Tap,
+        FakeKeyActionMessage::Toggle => FakeKeyAction::Toggle,
+    }
+}
 
 #[cfg(feature = "tcp_server")]
 pub struct TcpServer {
@@ -105,6 +62,8 @@ impl TcpServer {
 
     #[cfg(feature = "tcp_server")]
     pub fn start(&mut self, kanata: Arc<Mutex<Kanata>>) {
+        use std::str::FromStr;
+
         use kanata_parser::cfg::FAKE_KEY_ROW;
 
         use crate::kanata::handle_fakekey_action;
@@ -204,7 +163,7 @@ impl TcpServer {
                                                     if let Some(index) = index {
                                                         log::info!("tcp server fake-key action: {name},{action:?}");
                                                         handle_fakekey_action(
-                                                            action.into(),
+                                                            to_action(action),
                                                             k.layout.bm(),
                                                             FAKE_KEY_ROW,
                                                             index,
@@ -251,12 +210,4 @@ impl TcpServer {
 
     #[cfg(not(feature = "tcp_server"))]
     pub fn start(&mut self, _kanata: Arc<Mutex<Kanata>>) {}
-}
-
-#[test]
-fn layer_change_serializes() {
-    serde_json::to_string(&ServerMessage::LayerChange {
-        new: "hello".into(),
-    })
-    .expect("ServerMessage serializes");
 }

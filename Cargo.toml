@@ -3,7 +3,8 @@ members = [
     "./",
     "parser",
     "keyberon",
-    "example_tcp_client"
+    "example_tcp_client",
+    "tcp_protocol"
 ]
 
 [package]
@@ -29,18 +30,17 @@ once_cell = "1"
 parking_lot = "0.12"
 radix_trie = "0.2"
 rustc-hash = "1.1.0"
-serde = { version = "1", features = ["alloc", "derive"], default_features = false }
-serde_derive = "1.0"
-serde_json = { version = "1", features = ["alloc"], default_features = false }
 simplelog = "0.12.0"
 
 # kanata-keyberon = "0.160.1"
 # kanata-parser = "0.160.1"
+# kanata-tcp-protocol = "0.160.1"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
 kanata-keyberon = { path = "keyberon" }
 kanata-parser =   { path = "parser" }
+kanata-tcp-protocol = { path = "tcp_protocol" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"

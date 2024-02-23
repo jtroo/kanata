@@ -1,11 +1,9 @@
 use clap::Parser;
-use serde::{Deserialize, Serialize};
+use kanata_tcp_protocol::*;
 use simplelog::*;
-
 use std::io::{stdin, BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::process::exit;
-use std::str::FromStr;
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -95,46 +93,6 @@ fn init_logger(args: &Args) {
     );
 }
 
-/// Example when serialized:
-///
-///     {"LayerChange":{"new":"newly-changed-to-layer"}}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ServerMessage {
-    LayerChange { new: String },
-    LayerNames { names: Vec<String> },
-    Error { msg: String },
-}
-
-/// Example when serialized:
-///
-///     {"ChangeLayer":{"new":"requested-layer"}}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ClientMessage {
-    ChangeLayer {
-        new: String,
-    },
-    ActOnFakeKey {
-        name: String,
-        action: FakeKeyActionMessage,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub enum FakeKeyActionMessage {
-    Press,
-    Release,
-    Tap,
-    Toggle,
-}
-
-impl FromStr for ServerMessage {
-    type Err = serde_json::Error;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        serde_json::from_str(s)
-    }
-}
-
 fn write_to_kanata(mut s: TcpStream) {
     log::info!("writer starting");
     log::info!("writer: type layer name then press enter to send a change layer request to kanata");
@@ -169,7 +127,7 @@ fn read_from_kanata(s: TcpStream) {
     loop {
         msg.clear();
         reader.read_line(&mut msg).expect("stream readable");
-        let parsed_msg = match ServerMessage::from_str(&msg) {
+        let parsed_msg: ServerMessage = match serde_json::from_str(&msg) {
             Ok(msg) => msg,
             Err(e) => {
                 log::warn!("could not parse server message {msg}: {e:?}");
