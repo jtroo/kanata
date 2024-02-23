@@ -224,21 +224,12 @@ pub struct Cfg {
     pub sequences: KeySeqsToFKeys,
     /// Overrides defined in `defoverrides`.
     pub overrides: Overrides,
+    pub fake_keys: HashMap<String, usize>,
 }
 
 /// Parse a new configuration from a file.
 pub fn new_from_file(p: &Path) -> MResult<Cfg> {
-    let (items, mapped_keys, layer_info, key_outputs, layout, sequences, overrides) = parse_cfg(p)?;
-    log::info!("config file is valid");
-    Ok(Cfg {
-        items,
-        mapped_keys,
-        layer_info,
-        key_outputs,
-        layout,
-        sequences,
-        overrides,
-    })
+    parse_cfg(p)
 }
 
 pub type MappedKeys = HashSet<OsCode>;
@@ -254,24 +245,27 @@ pub struct LayerInfo {
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
-fn parse_cfg(
-    p: &Path,
-) -> MResult<(
-    CfgOptions,
-    MappedKeys,
-    Vec<LayerInfo>,
-    KeyOutputs,
-    KanataLayout,
-    KeySeqsToFKeys,
-    Overrides,
-)> {
+fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParsedState::default();
-    let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
+    let (items, mapped_keys, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
     let mut layout = create_layout(klayers, s.a);
-    layout.bm().quick_tap_hold_timeout = cfg.concurrent_tap_hold;
-    layout.bm().oneshot.on_press_release_delay = cfg.rapid_event_delay;
-    Ok((cfg, src, layer_info, key_outputs, layout, seqs, overrides))
+    layout.bm().quick_tap_hold_timeout = items.concurrent_tap_hold;
+    layout.bm().oneshot.on_press_release_delay = items.rapid_event_delay;
+    let mut fake_keys: HashMap<String, usize> =
+        s.fake_keys.iter().map(|(k, v)| (k.clone(), v.0)).collect();
+    fake_keys.shrink_to_fit();
+    log::info!("config file is valid");
+    Ok(Cfg {
+        items,
+        mapped_keys,
+        layer_info,
+        key_outputs,
+        layout,
+        sequences,
+        overrides,
+        fake_keys,
+    })
 }
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]

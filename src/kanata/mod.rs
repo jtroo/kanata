@@ -163,6 +163,9 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
+    #[cfg(feature = "tcp_server")]
+    /// Names of fake keys mapped to their index in the fake keys row
+    pub fake_keys: HashMap<String, usize>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -324,6 +327,8 @@ impl Kanata {
             unmodded_keys: vec![],
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "tcp_server")]
+            fake_keys: cfg.fake_keys,
         })
     }
 
@@ -356,6 +361,10 @@ impl Kanata {
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
             delay: cfg.items.dynamic_macro_replay_delay_behaviour,
         };
+        #[cfg(feature = "tcp_server")]
+        {
+            self.fake_keys = cfg.fake_keys;
+        }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -391,6 +400,9 @@ impl Kanata {
             KeyValue::Tap => {
                 self.layout.bm().event(Event::Press(0, evc));
                 self.layout.bm().event(Event::Release(0, evc));
+                return Ok(());
+            }
+            KeyValue::WakeUp => {
                 return Ok(());
             }
         };
@@ -1861,7 +1873,7 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
     Ok(())
 }
 
-fn handle_fakekey_action<'a, const C: usize, const R: usize, const L: usize, T>(
+pub fn handle_fakekey_action<'a, const C: usize, const R: usize, const L: usize, T>(
     action: FakeKeyAction,
     layout: &mut Layout<'a, C, R, L, T>,
     x: u8,
