@@ -299,6 +299,21 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
                 exprs,
                 insert_index: index,
             })
+        } else if let Some(exprs) = if_not_equal_replacement(expr)? {
+            replacements.push(Replacement {
+                exprs,
+                insert_index: index,
+            })
+        } else if let Some(exprs) = if_in_list_replacement(expr)? {
+            replacements.push(Replacement {
+                exprs,
+                insert_index: index,
+            })
+        } else if let Some(exprs) = if_not_in_list_replacement(expr)? {
+            replacements.push(Replacement {
+                exprs,
+                insert_index: index,
+            })
         } else {
             expand_happened |= match expr {
                 SExpr::Atom(_) => unreachable!(),
@@ -326,22 +341,38 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
 }
 
 fn if_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
+    strings_compare_replacement(expr, "if-equal")
+}
+
+fn if_not_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
+    strings_compare_replacement(expr, "if-not-equal")
+}
+
+fn if_in_list_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
+    string_list_compare_replacement(expr, "if-in-list")
+}
+
+fn if_not_in_list_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
+    string_list_compare_replacement(expr, "if-not-in-list")
+}
+
+fn strings_compare_replacement(expr: &SExpr, operation: &str) -> Result<Option<Vec<SExpr>>> {
     match expr {
         // Below should not be reached because only lists should be visited
         SExpr::Atom(_) => unreachable!(),
         SExpr::List(l) => Ok(match l.t.first() {
-            Some(SExpr::Atom(Spanned { t, .. })) if t.as_str() == "if-equal" => {
+            Some(SExpr::Atom(Spanned { t, .. })) if t.as_str() == operation => {
                 let first =
                     l.t.get(1)
                         .ok_or_else(|| {
                             anyhow_expr!(
                                 &expr,
-                                "if-equal expects a string comparand as the first parameter"
+                                "{operation} expects a string comparand as the first parameter"
                             )
                         })
                         .and_then(|expr| {
                             expr.atom(None).ok_or_else(|| {
-                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                                anyhow_expr!(&expr, "comparands within {operation} must be strings")
                             })
                         })?;
                 let second =
@@ -349,15 +380,77 @@ fn if_equal_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
                         .ok_or_else(|| {
                             anyhow_expr!(
                                 &expr,
-                                "if-equal expects a string comparand as the second parameter"
+                                "{operation} expects a string comparand as the second parameter"
                             )
                         })
                         .and_then(|expr| {
                             expr.atom(None).ok_or_else(|| {
-                                anyhow_expr!(&expr, "comparands within if-equal must be strings")
+                                anyhow_expr!(&expr, "comparands within {operation} must be strings")
                             })
                         })?;
-                if first == second {
+                if match operation {
+                    "if-equal" => first == second,
+                    "if-not-equal" => first != second,
+                    _ => unreachable!(),
+                } {
+                    Some(l.t.iter().skip(3).cloned().collect())
+                } else {
+                    Some(vec![])
+                }
+            }
+            _ => None,
+        }),
+    }
+}
+
+fn string_list_compare_replacement(expr: &SExpr, operation: &str) -> Result<Option<Vec<SExpr>>> {
+    match expr {
+        // Below should not be reached because only lists should be visited
+        SExpr::Atom(_) => unreachable!(),
+        SExpr::List(l) => Ok(match l.t.first() {
+            Some(SExpr::Atom(Spanned { t, .. })) if t.as_str() == operation => {
+                let first =
+                    l.t.get(1)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "{operation} expects a string comparand as the first parameter"
+                            )
+                        })
+                        .and_then(|expr| {
+                            expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(
+                                    &expr,
+                                    "the first parameter of {operation} must be a string"
+                                )
+                            })
+                        })?;
+                let second =
+                    l.t.get(2)
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                &expr,
+                                "{operation} expects a list comparand as the second parameter"
+                            )
+                        })
+                        .and_then(|expr| {
+                            expr.list(None).ok_or_else(|| {
+                                anyhow_expr!(
+                                    &expr,
+                                    "the second parameter of {operation} must be a list"
+                                )
+                            })
+                        })?;
+                let mut in_list = false;
+                visit_validate_all_atoms(second, &mut |s| {
+                    in_list |= s.t == first;
+                    Ok(())
+                })?;
+                if match operation {
+                    "if-in-list" => in_list,
+                    "if-not-in-list" => !in_list,
+                    _ => unreachable!(),
+                } {
                     Some(l.t.iter().skip(3).cloned().collect())
                 } else {
                     Some(vec![])

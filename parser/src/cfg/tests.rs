@@ -1736,3 +1736,120 @@ fn parse_template_3() {
     })
     .expect("parses");
 }
+
+#[test]
+fn parse_template_4() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h 
+  (if-not-equal $version v2 j)
+  (if-not-equal $version v1 (tap-hold 200 200 j (if-not-equal $version v1 k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+  
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_5() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h 
+  (if-in-list $version (v0 v3 v1 v4) j)
+  (if-in-list $version (v0 v2 v3 v4) (tap-hold 200 200 j (if-in-list $version (v0 v3 v4 v2) k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+  
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_6() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h 
+  (if-not-in-list $version (v2 v3 v4) j)
+  (if-not-in-list $version (v1 v3 v4) (tap-hold 200 200 j (if-not-in-list $version (v1 v3 v4) k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+  
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
