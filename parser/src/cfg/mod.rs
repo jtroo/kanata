@@ -247,24 +247,23 @@ pub struct LayerInfo {
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParsedState::default();
-    let (items, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
-    let key_outputs = create_key_outputs(&klayers, &overrides);
-    let mut layout = create_layout(klayers, s.a);
-    layout.bm().quick_tap_hold_timeout = items.concurrent_tap_hold;
-    layout.bm().oneshot.on_press_release_delay = items.rapid_event_delay;
+    let icfg = parse_cfg_raw(p, &mut s)?;
+    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides);
+    let mut layout = create_layout(icfg.klayers, s.a);
+    layout.bm().quick_tap_hold_timeout = icfg.cfg.concurrent_tap_hold;
+    layout.bm().oneshot.on_press_release_delay = icfg.cfg.rapid_event_delay;
     let mut fake_keys: HashMap<String, usize> =
         s.fake_keys.iter().map(|(k, v)| (k.clone(), v.0)).collect();
     fake_keys.shrink_to_fit();
-    let mapped_keys = s.mapped_keys;
     log::info!("config file is valid");
     Ok(Cfg {
-        items,
-        mapped_keys,
-        layer_info,
+        items: icfg.cfg,
+        mapped_keys: s.mapped_keys,
+        layer_info: icfg.layer_info,
         key_outputs,
         layout,
-        sequences,
-        overrides,
+        sequences: icfg.sequences,
+        overrides: icfg.overrides,
         fake_keys,
     })
 }
@@ -278,17 +277,16 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
+pub struct IntermediateCfg {
+    pub cfg: CfgOptions,
+    pub layer_info: Vec<LayerInfo>,
+    pub klayers: Box<KanataLayers>,
+    pub sequences: KeySeqsToFKeys,
+    pub overrides: Overrides,
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
-fn parse_cfg_raw(
-    p: &Path,
-    s: &mut ParsedState,
-) -> MResult<(
-    CfgOptions,
-    Vec<LayerInfo>,
-    Box<KanataLayers>,
-    KeySeqsToFKeys,
-    Overrides,
-)> {
+fn parse_cfg_raw(p: &Path, s: &mut ParsedState) -> MResult<IntermediateCfg> {
     const INVALID_PATH_ERROR: &str = "The provided config file path is not valid";
 
     let mut loaded_files: HashSet<PathBuf> = HashSet::default();
@@ -386,13 +384,7 @@ pub fn parse_cfg_raw_string(
     cfg_path: &Path,
     file_content_provider: &mut FileContentProvider,
     def_local_keys_variant_to_apply: &str,
-) -> Result<(
-    CfgOptions,
-    Vec<LayerInfo>,
-    Box<KanataLayers>,
-    KeySeqsToFKeys,
-    Overrides,
-)> {
+) -> Result<IntermediateCfg> {
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider))
         .and_then(expand_templates)?;
@@ -631,7 +623,13 @@ pub fn parse_cfg_raw_string(
             )
         }
     };
-    Ok((cfg, layer_info, klayers, sequences, overrides))
+    Ok(IntermediateCfg {
+        cfg,
+        layer_info,
+        klayers,
+        sequences,
+        overrides,
+    })
 }
 
 fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()> {
