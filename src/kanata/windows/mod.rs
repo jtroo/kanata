@@ -60,7 +60,7 @@ impl Kanata {
         for prev_state in prev_states.iter() {
             let keycode = match prev_state {
                 State::NormalKey { keycode, coord, .. } => {
-                    // Goal of this matches:
+                    // Goal of this conditional:
                     //
                     // Do not process state if:
                     // - keycode is neither shift
@@ -83,7 +83,7 @@ impl Kanata {
                     }
                 }
                 State::FakeKey { keycode } => {
-                    // Goal of this matches:
+                    // Goal of this conditional:
                     //
                     // Do not process state if:
                     // - keycode is neither shift
@@ -97,9 +97,9 @@ impl Kanata {
                             .filter_map(state_filter)
                             .any(|s| s == *prev_state)
                     {
-                        keycode
-                    } else {
                         continue;
+                    } else {
+                        keycode
                     }
                 }
                 _ => continue,
