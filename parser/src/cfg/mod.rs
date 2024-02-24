@@ -247,7 +247,7 @@ pub struct LayerInfo {
 #[allow(clippy::type_complexity)] // return type is not pub
 fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParsedState::default();
-    let (items, mapped_keys, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
+    let (items, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
     let mut layout = create_layout(klayers, s.a);
     layout.bm().quick_tap_hold_timeout = items.concurrent_tap_hold;
@@ -255,6 +255,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut fake_keys: HashMap<String, usize> =
         s.fake_keys.iter().map(|(k, v)| (k.clone(), v.0)).collect();
     fake_keys.shrink_to_fit();
+    let mapped_keys = s.mapped_keys;
     log::info!("config file is valid");
     Ok(Cfg {
         items,
@@ -283,7 +284,6 @@ fn parse_cfg_raw(
     s: &mut ParsedState,
 ) -> MResult<(
     CfgOptions,
-    MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
     KeySeqsToFKeys,
@@ -388,7 +388,6 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
 ) -> Result<(
     CfgOptions,
-    MappedKeys,
     Vec<LayerInfo>,
     Box<KanataLayers>,
     KeySeqsToFKeys,
@@ -475,7 +474,7 @@ pub fn parse_cfg_raw_string(
             "Exactly one defsrc is allowed, found more. Delete the extras."
         )
     }
-    let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
+    let (mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
     let deflayer_filter = gen_first_atom_filter("deflayer");
     let layer_exprs = spanned_root_exprs
@@ -568,7 +567,14 @@ pub fn parse_cfg_raw_string(
         delegate_to_first_layer: cfg.delegate_to_first_layer,
         default_sequence_timeout: cfg.sequence_timeout,
         default_sequence_input_mode: cfg.sequence_input_mode,
-        block_unmapped_keys: cfg.block_unmapped_keys,
+        unmapped_keys_behaviour: if cfg.block_unmapped_keys {
+            UnmappedKeysBehaviour::Block
+        } else if cfg.process_unmapped_keys {
+            UnmappedKeysBehaviour::Process
+        } else {
+            UnmappedKeysBehaviour::Ignore
+        },
+        mapped_keys,
         ..Default::default()
     };
 
@@ -625,8 +631,7 @@ pub fn parse_cfg_raw_string(
             )
         }
     };
-
-    Ok((cfg, src, layer_info, klayers, sequences, overrides))
+    Ok((cfg, layer_info, klayers, sequences, overrides))
 }
 
 fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()> {
@@ -883,8 +888,22 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
     Ok(layer_indexes)
 }
 
+#[derive(Debug, PartialEq)]
+enum UnmappedKeysBehaviour {
+    Ignore,
+    Process,
+    Block,
+}
+
+impl Default for UnmappedKeysBehaviour {
+    fn default() -> Self {
+        Self::Ignore
+    }
+}
+
 #[derive(Debug)]
 pub struct ParsedState {
+    mapped_keys: MappedKeys,
     layer_exprs: Vec<Vec<SExpr>>,
     aliases: Aliases,
     layer_idxs: LayerIndexes,
@@ -897,7 +916,7 @@ pub struct ParsedState {
     delegate_to_first_layer: bool,
     default_sequence_timeout: u16,
     default_sequence_input_mode: SequenceInputMode,
-    block_unmapped_keys: bool,
+    unmapped_keys_behaviour: UnmappedKeysBehaviour,
     a: Arc<Allocations>,
 }
 
@@ -911,6 +930,7 @@ impl Default for ParsedState {
     fn default() -> Self {
         let default_cfg = CfgOptions::default();
         Self {
+            mapped_keys: Default::default(),
             layer_exprs: Default::default(),
             aliases: Default::default(),
             layer_idxs: Default::default(),
@@ -923,7 +943,7 @@ impl Default for ParsedState {
             delegate_to_first_layer: default_cfg.delegate_to_first_layer,
             default_sequence_timeout: default_cfg.sequence_timeout,
             default_sequence_input_mode: default_cfg.sequence_input_mode,
-            block_unmapped_keys: default_cfg.block_unmapped_keys,
+            unmapped_keys_behaviour: Default::default(),
             a: unsafe { Allocations::new() },
         }
     }
@@ -1508,10 +1528,19 @@ fn parse_key_list(expr: &SExpr, s: &ParsedState, label: &str) -> Result<Vec<OsCo
         .map(|keys| {
             keys.iter().try_fold(vec![], |mut keys, key| {
                 key.atom(s.vars())
-                    .map(|a| -> Result<()> {
-                        keys.push(str_to_oscode(a).ok_or_else(|| {
+                    .map(|k| -> Result<()> {
+                        let osc = str_to_oscode(k).ok_or_else(|| {
                             anyhow_expr!(key, "string of a known key is expected")
-                        })?);
+                        })?;
+                        if !s.mapped_keys.contains(&osc) {
+                            match s.unmapped_keys_behaviour {
+                                UnmappedKeysBehaviour::Process => {}
+                                UnmappedKeysBehaviour::Ignore | UnmappedKeysBehaviour::Block=> {
+                                    bail_expr!(key, "you must either add `{k}` to `defsrc` or enable `process-unmapped-keys`, otherwise this key would be ignored by kanata")
+                                }
+                            }
+                        }
+                        keys.push(osc);
                         Ok(())
                     })
                     .ok_or_else(|| {
@@ -2591,7 +2620,9 @@ fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
             if *layer_action == Action::Trans {
                 *layer_action = defsrc_action;
             }
-            if !s.block_unmapped_keys {
+            if let UnmappedKeysBehaviour::Process | UnmappedKeysBehaviour::Ignore =
+                s.unmapped_keys_behaviour
+            {
                 // If there is no corresponding action in defsrc, default to the OsCode at the
                 // position. This is done so that `process-unmapped-keys` works correctly.
                 if *layer_action == Action::Trans {
