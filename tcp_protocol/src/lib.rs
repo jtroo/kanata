@@ -26,6 +26,10 @@ pub enum ClientMessage {
         name: String,
         action: FakeKeyActionMessage,
     },
+    SetMouse {
+        x: u16,
+        y: u16,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

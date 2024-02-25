@@ -178,6 +178,25 @@ impl TcpServer {
                                                         })
                                                         .expect("write key event");
                                                 }
+                                                ClientMessage::SetMouse { x, y } => {
+                                                    log::info!(
+                                                        "client message: set Mouse: x {x} y {y}"
+                                                    );
+                                                    //let _ = kanata.lock().kbd_out.set_mouse(x, y);
+                                                    match kanata.lock().kbd_out.set_mouse(x, y) {
+                                                        Ok(_) => {
+                                                            log::info!("sucessfully did set mouse position to: x {x} y {y}");
+                                                            // Optionally send a success message to the client
+                                                        }
+                                                        Err(e) => {
+                                                            log::error!(
+                                                                "Failed to set mouse position: {}",
+                                                                e
+                                                            );
+                                                            // Implement any error handling logic here, such as sending an error response to the client
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                         Err(e) => {
