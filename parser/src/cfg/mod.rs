@@ -277,6 +277,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
+#[derive(Debug)]
 pub struct IntermediateCfg {
     pub cfg: CfgOptions,
     pub layer_info: Vec<LayerInfo>,

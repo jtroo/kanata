@@ -235,7 +235,7 @@ fn parse_delegate_to_default_layer_yes() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::B),
     );
 }
@@ -264,7 +264,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
     );
 }
@@ -293,7 +293,7 @@ fn parse_delegate_to_default_layer_no() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
     );
 }
@@ -305,13 +305,14 @@ fn parse_transparent_default() {
         Err(poisoned) => poisoned.into_inner(),
     };
     let mut s = ParsedState::default();
-    let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
+    let icfg = parse_cfg_raw(
         &std::path::PathBuf::from("./test_cfgs/transparent_default.kbd"),
         &mut s,
     )
     .unwrap();
+    let layers = icfg.klayers;
 
-    assert_eq!(layer_strings.len(), 4);
+    assert_eq!(icfg.layer_info.len(), 4);
 
     assert_eq!(
         layers[0][0][usize::from(OsCode::KEY_F13)],
@@ -798,7 +799,7 @@ fn parse_switch() {
     )
     .unwrap();
     assert_eq!(
-        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
             cases: &[
                 (
@@ -916,7 +917,7 @@ fn parse_on_idle_fakekey() {
     })
     .unwrap();
     assert_eq!(
-        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
                 coord: Coord { x: 1, y: 0 },
