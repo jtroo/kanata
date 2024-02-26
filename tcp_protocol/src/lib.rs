@@ -43,3 +43,15 @@ impl FromStr for ClientMessage {
         serde_json::from_str(s)
     }
 }
+
+impl From<&str> for FakeKeyActionMessage {
+    fn from(s: &str) -> FakeKeyActionMessage {
+        match s {
+            "Press" => FakeKeyActionMessage::Press,
+            "Release" => FakeKeyActionMessage::Release,
+            "Tap" => FakeKeyActionMessage::Tap,
+            "Toggle" => FakeKeyActionMessage::Toggle,
+            _ => FakeKeyActionMessage::Press,   // What's the best practice here?
+        }
+    }
+}

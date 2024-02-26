@@ -5,6 +5,7 @@ use std::io::{stdin, BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;
+use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -58,6 +59,18 @@ fn print_usage() {
 \n\
     Requests to change kanata's layer look like:\n\
     {}
+\n\
+    Requests to press a fake key look like:\n\
+    {}
+\n\
+    Requests to release a fake key look like:\n\
+    {}
+\n\
+    Requests to tap a fake key look like:\n\
+    {}
+\n\
+    Requests to toggle a fake key look like:\n\
+    {}
     ",
         serde_json::to_string(&ServerMessage::LayerChange {
             new: "newly-changed-to-layer".into()
@@ -67,6 +80,22 @@ fn print_usage() {
             new: "requested-layer".into()
         })
         .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ActOnFakeKey {
+            name: "fake-key-name".into(),
+            action: "Press".into()
+        }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ActOnFakeKey {
+            name: "fake-key-name".into(),
+            action: "Release".into()
+        }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ActOnFakeKey {
+            name: "fake-key-name".into(),
+            action: "Tap".into()
+        }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ActOnFakeKey {
+            name: "fake-key-name".into(),
+            action: "Toggle".into()
+        }).expect("deserializable"),
     )
 }
 
