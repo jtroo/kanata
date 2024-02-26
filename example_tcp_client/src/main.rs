@@ -82,19 +82,19 @@ fn print_usage() {
         .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Press".into()
+            action: "Press".try_into().expect("Valid fake key action")
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Release".into()
+            action: "Release".try_into().expect("Valid fake key action")
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Tap".into()
+            action: "Tap".try_into().expect("Valid fake key action")
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Toggle".into()
+            action: "Toggle".try_into().expect("Valid fake key action")
         }).expect("deserializable"),
     )
 }

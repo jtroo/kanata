@@ -44,14 +44,15 @@ impl FromStr for ClientMessage {
     }
 }
 
-impl From<&str> for FakeKeyActionMessage {
-    fn from(s: &str) -> FakeKeyActionMessage {
+impl TryFrom<&str> for FakeKeyActionMessage {
+    type Error = &'static str;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "Press" => FakeKeyActionMessage::Press,
-            "Release" => FakeKeyActionMessage::Release,
-            "Tap" => FakeKeyActionMessage::Tap,
-            "Toggle" => FakeKeyActionMessage::Toggle,
-            _ => FakeKeyActionMessage::Press,   // What's the best practice here?
+            "Press" => Ok(FakeKeyActionMessage::Press),
+            "Release" => Ok(FakeKeyActionMessage::Release),
+            "Tap" => Ok(FakeKeyActionMessage::Tap),
+            "Toggle" => Ok(FakeKeyActionMessage::Toggle),
+            _ => Err("Invalid FakeKeyAction"),
         }
     }
 }
