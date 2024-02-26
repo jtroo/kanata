@@ -233,6 +233,17 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     }
                 });
 
+                visit_mut_all_lists(&mut expanded_template, |expr| {
+                    let ret = false;
+                    *expr = match expr {
+                        // Below should not be reached because only lists should be visited
+                        SExpr::Atom(_) => unreachable!(),
+                        SExpr::List(l) => {
+                            todo!() // TBD: concat code
+                        }
+                    }
+                });
+
                 replacements.push(Replacement {
                     insert_index: expr_index,
                     exprs: expanded_template,
@@ -257,7 +268,8 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
         *exprs = new_vec;
     }
 
-    while evaluate_concats(exprs)? {}
+    // TODO: probably best to move this into scope template expansion
+    // instead of the scope of all expressions, like with the TBD concat code.
     while evaluate_conditionals(exprs)? {}
 
     Ok(())
@@ -285,9 +297,26 @@ fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
     }
 }
 
-type ExpandHappened = bool;
+fn visit_mut_all_lists(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr) -> ChangeOccurred) {
+    for expr in exprs {
+        loop {
+            if let SExpr::Atom(_) = expr {
+                break;
+            }
+            // revisit until change did not happen to the list
+            if !visit(expr) {
+                if let SExpr::List(l) = expr {
+                    visit_mut_all_lists(&mut l.t, visit);
+                }
+                break;
+            }
+        }
+    }
+}
 
-fn evaluate_concats(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
+type ChangeOccurred = bool;
+
+fn evaluate_concats(exprs: &mut Vec<SExpr>) -> Result<ChangeOccurred> {
     let mut expand_happened = false;
     for expr in exprs.iter_mut() {
         if matches!(expr, SExpr::Atom(_)) {
@@ -311,14 +340,14 @@ fn concat_replacement(expr: &SExpr) -> Result<Option<SExpr>> {
     match expr {
         // Below should not be reached because only lists should be visited
         SExpr::Atom(_) => unreachable!(),
-        SExpr::List(l) => match parse_list_var(&l, &ParsedState::default())? {
+        SExpr::List(l) => match parse_list_var(&l, &HashMap::default())? {
             concat_expr @ SExpr::Atom(_) => Ok(Some(concat_expr)),
             SExpr::List(_) => Ok(None),
         },
     }
 }
 
-fn evaluate_conditionals(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
+fn evaluate_conditionals(exprs: &mut Vec<SExpr>) -> Result<ChangeOccurred> {
     let mut replacements: Vec<Replacement> = vec![];
     let mut expand_happened = false;
     for (index, expr) in exprs.iter_mut().enumerate() {

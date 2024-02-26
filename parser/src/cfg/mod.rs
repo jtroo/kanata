@@ -67,6 +67,7 @@ pub use error::*;
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::collections::hash_map::Entry;
+use std::hash::Hash;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -937,6 +938,7 @@ struct ChordGroup {
 }
 
 fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
+    let mut vars = s.vars.clone();
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defvar")?;
         // Read k-v pairs from the configuration
@@ -945,34 +947,35 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
                 SExpr::Atom(a) => &a.t,
                 _ => bail_expr!(var_name_expr, "variable name must not be a list"),
             };
-            dbg!(s.vars());
+            dbg!(&vars);
             let var_expr = match subexprs.next() {
                 Some(v) => match v {
                     SExpr::Atom(_) => v.clone(),
-                    SExpr::List(l) => parse_list_var(l, s)?,
+                    SExpr::List(l) => parse_list_var(l, &vars)?,
                 },
                 None => bail_expr!(
                     var_name_expr,
                     "variable name must have a subsequent value"
                 ),
             };
-            if s.vars.insert(var_name.into(), var_expr).is_some() {
+            if vars.insert(var_name.into(), var_expr).is_some() {
                 bail_expr!(var_name_expr, "duplicate variable name: {}", var_name);
             }
         }
     }
+    s.vars = vars;
     Ok(())
 }
 
-fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> {
+fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> Result<SExpr> {
     let ret = match expr.t.first() {
         Some(SExpr::Atom(a)) => match a.t.as_str() {
             "concat" => {
                 let mut concat_str = String::new();
                 let visitees = &expr.t[1..];
-                dbg!(s.vars());
+                dbg!(vars);
                 dbg!(visitees);
-                push_all_atoms(visitees, s, &mut concat_str);
+                push_all_atoms(visitees, vars, &mut concat_str);
                 SExpr::Atom(Spanned {
                     span: expr.span.clone(),
                     t: concat_str,
@@ -985,12 +988,12 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> 
     Ok(ret)
 }
 
-fn push_all_atoms(exprs: &[SExpr], s: &ParsedState, pusheen: &mut String) {
+fn push_all_atoms(exprs: &[SExpr], vars: &HashMap<String, SExpr>, pusheen: &mut String) {
     for expr in exprs {
-        if let Some(a) = expr.atom(s.vars()) {
+        if let Some(a) = expr.atom(Some(vars)) {
             pusheen.push_str(a);
-        } else if let Some(l) = expr.list(s.vars()) {
-            push_all_atoms(&l, s, pusheen);
+        } else if let Some(l) = expr.list(Some(vars)) {
+            push_all_atoms(&l, vars, pusheen);
         }
     }
 }
