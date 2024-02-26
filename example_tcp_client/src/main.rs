@@ -5,7 +5,6 @@ use std::io::{stdin, BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
