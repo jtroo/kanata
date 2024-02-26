@@ -1475,12 +1475,12 @@ fn parse_defvar_concat() {
 (deflayer base a)
 (defvar
     x (concat a b c)
-    y (concat d (concat e f))
+    y (concat d (e f))
     z (squish squash (splish splosh))
     xx (concat $x $y)
-    xy (concat $x (concat $y))
+    xy (concat $x ($y))
     xz (notconcat a b " " c " d")
-    yx (concat a b " " c " d" (concat "efg" " hij ") "kl")
+    yx (concat a b " " c " d" ("efg" " hij ") "kl")
     yz (concat "abc"def"ghi""jkl")
 
     rootpath "/home/myuser/mysubdir"
@@ -1535,61 +1535,6 @@ fn parse_defvar_concat() {
         SExpr::Atom(a) => assert_eq!(&a.t, "/home/myuser/mysubdir/helloworld"),
         SExpr::List(l) => panic!("expected string not list: {l:?}"),
     }
-}
-
-#[test]
-fn parse_defvar_concat_err1() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-
-    let source = r#"
-(defsrc a)
-(deflayer base a)
-(defvar
-    x (concat a b c (not nested concat))
-)
-"#;
-    let mut s = ParsedState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-    )
-    .expect_err("fails");
-}
-
-#[test]
-fn parse_defvar_concat_err2() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-
-    let source = r#"
-(defsrc a)
-(deflayer base a)
-(defvar
-    x (list var uh oh)
-    y (concat a b c $x)
-)
-"#;
-    let mut s = ParsedState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-    )
-    .expect_err("fails");
 }
 
 #[test]

@@ -77,10 +77,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
-use sexpr::SExpr;
-
-use self::sexpr::Spanned;
-use self::sexpr::TopLevel;
+use sexpr::*;
 
 #[cfg(test)]
 mod tests;
@@ -948,6 +945,7 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
                 SExpr::Atom(a) => &a.t,
                 _ => bail_expr!(var_name_expr, "variable name must not be a list"),
             };
+            dbg!(s.vars());
             let var_expr = match subexprs.next() {
                 Some(v) => match v {
                     SExpr::Atom(_) => v.clone(),
@@ -971,19 +969,10 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> 
         Some(SExpr::Atom(a)) => match a.t.as_str() {
             "concat" => {
                 let mut concat_str = String::new();
-                for expr in expr.t.iter().skip(1) {
-                    if let Some(a) = expr.atom(s.vars()) {
-                        concat_str.push_str(a.trim_matches('"'));
-                    } else if let Some(l) = expr.span_list(s.vars()) {
-                        match parse_list_var(l, s)? {
-                            SExpr::Atom(a) => concat_str.push_str(a.t.trim_matches('"')),
-                            SExpr::List(_) => bail_expr!(
-                                expr,
-                                "concat must contain only strings or nested concat lists"
-                            ),
-                        };
-                    }
-                }
+                let visitees = &expr.t[1..];
+                dbg!(s.vars());
+                dbg!(visitees);
+                push_all_atoms(visitees, s, &mut concat_str);
                 SExpr::Atom(Spanned {
                     span: expr.span.clone(),
                     t: concat_str,
@@ -994,6 +983,16 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> 
         _ => SExpr::List(expr.clone()),
     };
     Ok(ret)
+}
+
+fn push_all_atoms(exprs: &[SExpr], s: &ParsedState, pusheen: &mut String) {
+    for expr in exprs {
+        if let Some(a) = expr.atom(s.vars()) {
+            pusheen.push_str(a);
+        } else if let Some(l) = expr.list(s.vars()) {
+            push_all_atoms(&l, s, pusheen);
+        }
+    }
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
