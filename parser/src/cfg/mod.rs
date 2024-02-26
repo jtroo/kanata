@@ -953,7 +953,7 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
                 },
                 None => bail_expr!(
                     var_name_expr,
-                    "variable key name has no action - you should add an action."
+                    "variable name must have a subsequent value"
                 ),
             };
             if s.vars.insert(var_name.into(), var_expr).is_some() {
