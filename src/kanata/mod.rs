@@ -1583,34 +1583,8 @@ impl Kanata {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    let mut coords_to_release = vec![];
                                     let layout = k.layout.bm();
-                                    for state in layout.states.iter().copied() {
-                                        match state {
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            } => {
-                                                coords_to_release.push((NORMAL_KEY_ROW, y));
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    for coord in coords_to_release.into_iter() {
-                                        layout.event(Event::Release(coord.0, coord.1));
-                                    }
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1747,35 +1721,8 @@ impl Kanata {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    let mut coords_to_release = vec![];
                                     let layout = k.layout.bm();
-                                    for state in layout.states.iter().copied() {
-                                        match state {
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            }
-                                            | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, y),
-                                                ..
-                                            } => {
-                                                coords_to_release.push((NORMAL_KEY_ROW, y));
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    for coord in coords_to_release.into_iter() {
-                                        layout.event(Event::Release(coord.0, coord.1));
-                                    }
-
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1961,4 +1908,39 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
         | State::RepeatingSequence { coord, .. } => *coord == (x, y),
         _ => false,
     })
+}
+
+#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+fn release_normalkey_states<'a, const C: usize, const R: usize, const L: usize, T>(
+    layout: &mut Layout<'a, C, R, L, T>,
+) where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    let mut coords_to_release = vec![];
+    for state in layout.states.iter().copied() {
+        match state {
+            State::NormalKey {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::LayerModifier {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::Custom {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::RepeatingSequence {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            } => {
+                coords_to_release.push((NORMAL_KEY_ROW, y));
+            }
+            _ => {}
+        }
+    }
+    for coord in coords_to_release.into_iter() {
+        layout.event(Event::Release(coord.0, coord.1));
+    }
 }
