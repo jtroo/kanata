@@ -1578,24 +1578,31 @@ impl Kanata {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
+                                    let mut coords_to_release = vec![];
+                                    let layout = k.layout.bm();
+                                    for state in layout.states.iter().copied() {
+                                        match state {
                                             State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
+                                            } => {
+                                                coords_to_release.push((NORMAL_KEY_ROW, y));
                                             }
-                                        )
-                                    });
+                                            _ => {}
+                                        }
+                                    }
+                                    for coord in coords_to_release.into_iter() {
+                                        layout.event(Event::Release(coord.0, coord.1));
+                                    }
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1702,24 +1709,32 @@ impl Kanata {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
+                                    let mut coords_to_release = vec![];
+                                    let layout = k.layout.bm();
+                                    for state in layout.states.iter().copied() {
+                                        match state {
                                             State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
+                                                coord: (NORMAL_KEY_ROW, y),
                                                 ..
+                                            } => {
+                                                coords_to_release.push((NORMAL_KEY_ROW, y));
                                             }
-                                        )
-                                    });
+                                            _ => {}
+                                        }
+                                    }
+                                    for coord in coords_to_release.into_iter() {
+                                        layout.event(Event::Release(coord.0, coord.1));
+                                    }
+                                        
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
