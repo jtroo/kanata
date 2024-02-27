@@ -180,9 +180,8 @@ impl TcpServer {
                                                 }
                                                 ClientMessage::SetMouse { x, y } => {
                                                     log::info!(
-                                                        "client message: set Mouse: x {x} y {y}"
+                                                        "tcp server SetMouse action: x {x} y {y}"
                                                     );
-                                                    //let _ = kanata.lock().kbd_out.set_mouse(x, y);
                                                     match kanata.lock().kbd_out.set_mouse(x, y) {
                                                         Ok(_) => {
                                                             log::info!("sucessfully did set mouse position to: x {x} y {y}");
