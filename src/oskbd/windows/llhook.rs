@@ -5,7 +5,6 @@
 
 use std::cell::Cell;
 use std::io;
-use std::time::Instant;
 use std::{mem, ptr};
 
 use winapi::ctypes::*;
@@ -17,6 +16,8 @@ use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::{KeyEvent, KeyValue};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+
+pub const LLHOOK_IDLE_TIME_CLEAR_INPUTS: u64 = 60;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 
@@ -149,20 +150,15 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
 }
 
 /// Handle for writing keys to the OS.
-pub struct KbdOut {
-    pub last_action_time: Instant,
-}
+pub struct KbdOut {}
 
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        Ok(Self {
-            last_action_time: Instant::now(),
-        })
+        Ok(Self {})
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         super::send_key_sendinput(event.code as u16, event.up);
-        self.last_action_time = Instant::now();
         Ok(())
     }
 

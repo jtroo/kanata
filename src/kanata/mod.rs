@@ -1526,6 +1526,11 @@ impl Kanata {
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
             );
 
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            let mut idle_clear_happened = false;
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            let mut last_input_time = time::Instant::now();
+
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
@@ -1572,30 +1577,14 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (now - k.kbd_out.last_action_time)
-                                    > time::Duration::from_secs(60)
+                                if (now - last_input_time)
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
                                 {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            }
-                                        )
-                                    });
+                                    let layout = k.layout.bm();
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1606,6 +1595,20 @@ impl Kanata {
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = now;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -1641,6 +1644,20 @@ impl Kanata {
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = std::time::Instant::now();
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -1696,30 +1713,16 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (std::time::Instant::now() - (k.kbd_out.last_action_time))
-                                    > time::Duration::from_secs(60)
+                                if (std::time::Instant::now() - (last_input_time))
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
+                                    && !idle_clear_happened
                                 {
+                                    idle_clear_happened = true;
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            }
-                                        )
-                                    });
+                                    let layout = k.layout.bm();
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1905,4 +1908,39 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
         | State::RepeatingSequence { coord, .. } => *coord == (x, y),
         _ => false,
     })
+}
+
+#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+fn release_normalkey_states<'a, const C: usize, const R: usize, const L: usize, T>(
+    layout: &mut Layout<'a, C, R, L, T>,
+) where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    let mut coords_to_release = vec![];
+    for state in layout.states.iter().copied() {
+        match state {
+            State::NormalKey {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::LayerModifier {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::Custom {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::RepeatingSequence {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            } => {
+                coords_to_release.push((NORMAL_KEY_ROW, y));
+            }
+            _ => {}
+        }
+    }
+    for coord in coords_to_release.into_iter() {
+        layout.event(Event::Release(coord.0, coord.1));
+    }
 }
