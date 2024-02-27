@@ -1526,6 +1526,11 @@ impl Kanata {
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
             );
 
+            let mut idle_clear_happened = false;
+
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            let mut last_input_time = time::Instant::now();
+
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
@@ -1572,9 +1577,7 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (now - k.kbd_out.last_action_time)
-                                    > time::Duration::from_secs(60)
-                                {
+                                if (now - last_input_time) > time::Duration::from_secs(5) {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
@@ -1585,13 +1588,16 @@ impl Kanata {
                                             State::NormalKey {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::LayerModifier {
+                                            }
+                                            | State::LayerModifier {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::Custom {
+                                            }
+                                            | State::Custom {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::RepeatingSequence {
+                                            }
+                                            | State::RepeatingSequence {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } => {
@@ -1614,6 +1620,14 @@ impl Kanata {
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = now;
+                            }
+                            idle_clear_happened = false;
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
@@ -1649,6 +1663,14 @@ impl Kanata {
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
                             }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = std::time::Instant::now();
+                            }
+                            idle_clear_happened = false;
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
@@ -1703,9 +1725,11 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (std::time::Instant::now() - (k.kbd_out.last_action_time))
-                                    > time::Duration::from_secs(60)
+                                if (std::time::Instant::now() - (last_input_time))
+                                    > time::Duration::from_secs(5)
+                                    && !idle_clear_happened
                                 {
+                                    idle_clear_happened = true;
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
@@ -1716,13 +1740,16 @@ impl Kanata {
                                             State::NormalKey {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::LayerModifier {
+                                            }
+                                            | State::LayerModifier {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::Custom {
+                                            }
+                                            | State::Custom {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
-                                            } | State::RepeatingSequence {
+                                            }
+                                            | State::RepeatingSequence {
                                                 coord: (NORMAL_KEY_ROW, y),
                                                 ..
                                             } => {
@@ -1734,7 +1761,7 @@ impl Kanata {
                                     for coord in coords_to_release.into_iter() {
                                         layout.event(Event::Release(coord.0, coord.1));
                                     }
-                                        
+
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
