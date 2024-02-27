@@ -1577,7 +1577,7 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (now - last_input_time) > time::Duration::from_secs(5) {
+                                if (now - last_input_time) > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS) {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
@@ -1726,7 +1726,7 @@ impl Kanata {
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
                                 if (std::time::Instant::now() - (last_input_time))
-                                    > time::Duration::from_secs(5)
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
                                     && !idle_clear_happened
                                 {
                                     idle_clear_happened = true;
