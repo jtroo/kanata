@@ -81,19 +81,19 @@ fn print_usage() {
         .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Press".try_into().expect("Valid fake key action")
+            action: FakeKeyActionMessage::Press
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Release".try_into().expect("Valid fake key action")
+            action: FakeKeyActionMessage::Release
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Tap".try_into().expect("Valid fake key action")
+            action: FakeKeyActionMessage::Tap
         }).expect("deserializable"),
         serde_json::to_string(&ClientMessage::ActOnFakeKey {
             name: "fake-key-name".into(),
-            action: "Toggle".try_into().expect("Valid fake key action")
+            action: FakeKeyActionMessage::Toggle
         }).expect("deserializable"),
     )
 }
@@ -128,8 +128,44 @@ fn write_to_kanata(mut s: TcpStream) {
     loop {
         stdin().read_line(&mut layer).expect("stdin is readable");
         let new = layer.trim_end().to_owned();
-        if new.starts_with("fk:") {
-            let fkname = new.trim_start_matches("fk:").into();
+        if new.starts_with("fkpress:") {
+            let fkname = new.trim_start_matches("fkpress:").into();
+            log::info!("writer: telling kanata to press fake key \"{fkname}\"");
+            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
+                name: fkname,
+                action: FakeKeyActionMessage::Press,
+            })
+            .expect("deserializable");
+            s.write_all(msg.as_bytes()).expect("stream writable");
+            layer.clear();
+            continue;
+        }
+        if new.starts_with("fkrelease:") {
+            let fkname = new.trim_start_matches("fkrelease:").into();
+            log::info!("writer: telling kanata to release fake key \"{fkname}\"");
+            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
+                name: fkname,
+                action: FakeKeyActionMessage::Release,
+            })
+            .expect("deserializable");
+            s.write_all(msg.as_bytes()).expect("stream writable");
+            layer.clear();
+            continue;
+        }
+        if new.starts_with("fktap:") {
+            let fkname = new.trim_start_matches("fktap:").into();
+            log::info!("writer: telling kanata to tap fake key \"{fkname}\"");
+            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
+                name: fkname,
+                action: FakeKeyActionMessage::Tap,
+            })
+            .expect("deserializable");
+            s.write_all(msg.as_bytes()).expect("stream writable");
+            layer.clear();
+            continue;
+        }
+        if new.starts_with("fktap:") {
+            let fkname = new.trim_start_matches("fktap:").into();
             log::info!("writer: telling kanata to tap fake key \"{fkname}\"");
             let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
                 name: fkname,
