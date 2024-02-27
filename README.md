@@ -203,11 +203,6 @@ otherwise.
 
 [*]: https://www.gnu.org/licenses/identify-licenses-clearly.html
 
-If you want to test changes in the keyberon library code,
-you should change the top-level `Cargo.toml` file.
-Look at the comments around the `kanata-keyberon` dependency
-to understand what changes to make.
-
 ## How you can help
 
 - Try it out and let me know what you think. Feel free to file an issue or
