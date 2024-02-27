@@ -1526,8 +1526,8 @@ impl Kanata {
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
             );
 
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut idle_clear_happened = false;
-
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut last_input_time = time::Instant::now();
 
@@ -1577,7 +1577,9 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (now - last_input_time) > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS) {
+                                if (now - last_input_time)
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
+                                {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
@@ -1627,7 +1629,13 @@ impl Kanata {
                             {
                                 last_input_time = now;
                             }
-                            idle_clear_happened = false;
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
+                            }
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
@@ -1670,7 +1678,13 @@ impl Kanata {
                             {
                                 last_input_time = std::time::Instant::now();
                             }
-                            idle_clear_happened = false;
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
+                            }
 
                             #[cfg(feature = "perf_logging")]
                             log::info!(
