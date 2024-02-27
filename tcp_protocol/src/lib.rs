@@ -43,16 +43,3 @@ impl FromStr for ClientMessage {
         serde_json::from_str(s)
     }
 }
-
-impl TryFrom<&str> for FakeKeyActionMessage {
-    type Error = &'static str;
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s {
-            "Press" => Ok(FakeKeyActionMessage::Press),
-            "Release" => Ok(FakeKeyActionMessage::Release),
-            "Tap" => Ok(FakeKeyActionMessage::Tap),
-            "Toggle" => Ok(FakeKeyActionMessage::Toggle),
-            _ => Err("Invalid FakeKeyAction"),
-        }
-    }
-}
