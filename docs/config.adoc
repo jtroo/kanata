@@ -734,6 +734,10 @@ The mouse button actions are:
 * `mbck`: backward mouse button
 
 The mouse button will be held while the key mapped to it is held.
+Using Linux and Windows-Interception,
+the above actions are also usable in `defsrc`
+to enable remapping specified mouse actions in your layers,
+like you would with keyboard keys.
 
 If there are multiple mouse click actions within a single multi action, e.g.
 
