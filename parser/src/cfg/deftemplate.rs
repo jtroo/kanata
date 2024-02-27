@@ -233,14 +233,15 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     }
                 });
 
-                visit_mut_all_lists(&mut expanded_template, |expr| {
-                    let ret = false;
+                visit_mut_all_lists(&mut expanded_template, &mut |expr: &mut SExpr| {
                     *expr = match expr {
                         // Below should not be reached because only lists should be visited
                         SExpr::Atom(_) => unreachable!(),
-                        SExpr::List(l) => {
-                            todo!() // TBD: concat code
-                        }
+                        SExpr::List(l) => parse_list_var(l, &HashMap::default()),
+                    };
+                    match expr {
+                        SExpr::Atom(_) => true,
+                        SExpr::List(_) => false,
                     }
                 });
 
@@ -315,37 +316,6 @@ fn visit_mut_all_lists(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr) ->
 }
 
 type ChangeOccurred = bool;
-
-fn evaluate_concats(exprs: &mut Vec<SExpr>) -> Result<ChangeOccurred> {
-    let mut expand_happened = false;
-    for expr in exprs.iter_mut() {
-        if matches!(expr, SExpr::Atom(_)) {
-            continue;
-        }
-        // expr must be a list, visit it
-        if let Some(replacement) = concat_replacement(expr)? {
-            *expr = replacement;
-            expand_happened = true;
-        } else {
-            expand_happened |= match expr {
-                SExpr::Atom(_) => unreachable!(),
-                SExpr::List(l) => evaluate_concats(&mut l.t)?,
-            };
-        }
-    }
-    Ok(expand_happened)
-}
-
-fn concat_replacement(expr: &SExpr) -> Result<Option<SExpr>> {
-    match expr {
-        // Below should not be reached because only lists should be visited
-        SExpr::Atom(_) => unreachable!(),
-        SExpr::List(l) => match parse_list_var(&l, &HashMap::default())? {
-            concat_expr @ SExpr::Atom(_) => Ok(Some(concat_expr)),
-            SExpr::List(_) => Ok(None),
-        },
-    }
-}
 
 fn evaluate_conditionals(exprs: &mut Vec<SExpr>) -> Result<ChangeOccurred> {
     let mut replacements: Vec<Replacement> = vec![];
