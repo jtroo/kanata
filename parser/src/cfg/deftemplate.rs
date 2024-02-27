@@ -245,6 +245,8 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     }
                 });
 
+                while evaluate_conditionals(&mut expanded_template)? {}
+
                 replacements.push(Replacement {
                     insert_index: expr_index,
                     exprs: expanded_template,
@@ -268,10 +270,6 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
             .collect();
         *exprs = new_vec;
     }
-
-    // TODO: probably best to move this into scope template expansion
-    // instead of the scope of all expressions, like with the TBD concat code.
-    while evaluate_conditionals(exprs)? {}
 
     Ok(())
 }
