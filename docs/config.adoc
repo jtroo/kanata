@@ -2286,8 +2286,7 @@ precisely, the action triggered is:
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 You may also be interested in
-https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[
-the document describing chords is sequences]
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[the document describing chords in sequences]
 to read about how chords in sequences behave.
 
 ==== Override the global timeout and input mode
