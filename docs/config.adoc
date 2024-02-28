@@ -2731,11 +2731,6 @@ a list beginning with `concat` within the content of `deftemplate`
 will be replaced with a single string that consists of
 all the subsequent items in the list concatenated to each other.
 
-Within the second item of `defvar`,
-a list that begins with the special keyword `concat` will concatenate all
-subsequent items in the list together into a single string value.
-Without using `concat`, lists are saved as-is.
-
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
