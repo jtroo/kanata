@@ -2059,7 +2059,7 @@ the mouse device, kanata will print its hwid in the log; you can then
 copy-paste that into this configuration entry. If this defcfg item is not
 defined, the log will not print.
 
-Hwids in Kanata are byte array representations of a concatenation of the 
+Hwids in Kanata are byte array representations of a concatenation of the
 ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
 they are an arbitrary length and can be very long.
 
@@ -2088,7 +2088,7 @@ kanata will print its hwid in the log.
 You can then copy-paste that into this configuration entry.
 If this defcfg item is not defined, the log will not print.
 
-Hwids in Kanata are byte array representations of a concatenation of the 
+Hwids in Kanata are byte array representations of a concatenation of the
 ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
 they are an arbitrary length and can be very long.
 
@@ -2580,7 +2580,6 @@ The parameters to `deftemplate` in order are:
 * List of template variables
 * Template content (any combination of lists / strings)
 
-Template expansion happens after file includes and before any other parsing.
 Within the template content, variable names prefixed with `$`
 will be substituted with the expression passed into `template-expand`.
 
@@ -2591,6 +2590,12 @@ Its parameters in order are:
 * template name
 * parameters to substitute into the template
 
+NOTE: Template expansion happens after file includes and before any other parsing.
+One consequence of this early parsing is that variables defined in `defvar`
+are **not** substituted when used inside of `template-expand`.
+This has consequences for condtional content, e.g. with `if-equal`.
+This is discussed further in Example 5.
+
 Example 1:
 
 In a simple example, let's say you wanted to set a large group of keys
@@ -2600,7 +2605,7 @@ you wouldn't want this. Rather than retyping the code with `fork` and
 `unmod` (to release alt) a bunch of times, you could template it like so:
 [source]
 ----
-(deftemplate alt-fork (original-action new-action) 
+(deftemplate alt-fork (original-action new-action)
   (fork $original-action (multi (unmod ralt lalt) $new-action) (lalt ralt))
 )
 (defsrc 1 2 3)
@@ -2686,10 +2691,10 @@ the template in place of the `if-equal` list.
 Otherwise if the strings do not match
 then the whole `if-equal` list is removed from the template.
 
-.Example:
+.Example 4:
 ----
 (deftemplate home-row (version)
-  a s d f g h 
+  a s d f g h
   (if-equal $version v1 j)
   (if-equal $version v2 (tap-hold 200 200 j lctl))
    k l ; '
@@ -2702,7 +2707,7 @@ then the whole `if-equal` list is removed from the template.
   lsft z    x    c    v    b    n    m    ,    .    /    rsft
   lctl lmet lalt           spc            ralt rmet rctl
 )
-  
+
 (deflayer base
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
@@ -2722,6 +2727,31 @@ the second list-of-strings parameter
 * `if-not-in-list`
 ** the content is used if the first string parameter does not exist in
 the second list-of-strings parameter
+
+.Example 5:
+----
+;; defvar is parsed AFTER template expansion occurs.
+(defvar a hello)
+
+(deftemplate template1 (var1)
+  a (if-equal hello $var1 b) c
+)
+
+;; Below will expand to: `a c` because the string
+;; $a itself is compared against the string hello
+;; and they are not equal.
+(expand-template template1 $a)
+
+(deftemplate template2 (var1)
+  a (if-equal $a $var1 b) c
+)
+
+;; Below will expand to: `a b c` because the string
+;; $a is compared against the string $a and they are equal.
+;; But note that the variable $a is still not substituted
+;; with its defvar value of: hello.
+(expand-template template2 $a)
+----
 
 [[concat-in-deftemplate]]
 ==== concat in deftemplate
