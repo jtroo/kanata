@@ -1809,8 +1809,8 @@ fn parse_template_7() {
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
-  (if-in-list $version (v0 v3 (concat v 1) v4) (concat j))
-  (if-in-list $version ((concat v 0) (concat v 2) v3 v4) (tap-hold 200 200 (concat j) (if-in-list $version (v0 v3 v4 v2) (concat "k"))))
+  (if-in-list $version (v0 v3 (concat v (((1)))) v4) (concat j))
+  (if-in-list $version ((concat v 0) (concat v (2)) v3 v4) (tap-hold 200 200 (concat j) (if-in-list $version (v0 v3 v4 v2) (concat "k"))))
    k l ; '
 )
 
