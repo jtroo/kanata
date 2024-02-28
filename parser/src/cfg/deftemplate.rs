@@ -162,19 +162,6 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
     })
 }
 
-fn visit_validate_all_atoms(
-    exprs: &[SExpr],
-    visit: &mut dyn FnMut(&Spanned<String>) -> Result<()>,
-) -> Result<()> {
-    for expr in exprs {
-        match expr {
-            SExpr::Atom(a) => visit(a)?,
-            SExpr::List(l) => visit_validate_all_atoms(&l.t, visit)?,
-        }
-    }
-    Ok(())
-}
-
 struct Replacement {
     exprs: Vec<SExpr>,
     insert_index: usize,
@@ -246,6 +233,20 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     }
                 });
 
+                visit_mut_all_lists(&mut expanded_template, &mut |expr: &mut SExpr| {
+                    *expr = match expr {
+                        // Below should not be reached because only lists should be visited
+                        SExpr::Atom(_) => unreachable!(),
+                        SExpr::List(l) => parse_list_var(l, &HashMap::default()),
+                    };
+                    match expr {
+                        SExpr::Atom(_) => true,
+                        SExpr::List(_) => false,
+                    }
+                });
+
+                while evaluate_conditionals(&mut expanded_template)? {}
+
                 replacements.push(Replacement {
                     insert_index: expr_index,
                     exprs: expanded_template,
@@ -270,8 +271,19 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
         *exprs = new_vec;
     }
 
-    while expand_if_equal(exprs)? {}
+    Ok(())
+}
 
+fn visit_validate_all_atoms(
+    exprs: &[SExpr],
+    visit: &mut dyn FnMut(&Spanned<String>) -> Result<()>,
+) -> Result<()> {
+    for expr in exprs {
+        match expr {
+            SExpr::Atom(a) => visit(a)?,
+            SExpr::List(l) => visit_validate_all_atoms(&l.t, visit)?,
+        }
+    }
     Ok(())
 }
 
@@ -284,9 +296,26 @@ fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
     }
 }
 
-type ExpandHappened = bool;
+fn visit_mut_all_lists(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr) -> ChangeOccurred) {
+    for expr in exprs {
+        loop {
+            if let SExpr::Atom(_) = expr {
+                break;
+            }
+            // revisit until change did not happen to the list
+            if !visit(expr) {
+                if let SExpr::List(l) = expr {
+                    visit_mut_all_lists(&mut l.t, visit);
+                }
+                break;
+            }
+        }
+    }
+}
 
-fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
+type ChangeOccurred = bool;
+
+fn evaluate_conditionals(exprs: &mut Vec<SExpr>) -> Result<ChangeOccurred> {
     let mut replacements: Vec<Replacement> = vec![];
     let mut expand_happened = false;
     for (index, expr) in exprs.iter_mut().enumerate() {
@@ -317,7 +346,7 @@ fn expand_if_equal(exprs: &mut Vec<SExpr>) -> Result<ExpandHappened> {
         } else {
             expand_happened |= match expr {
                 SExpr::Atom(_) => unreachable!(),
-                SExpr::List(l) => expand_if_equal(&mut l.t)?,
+                SExpr::List(l) => evaluate_conditionals(&mut l.t)?,
             };
         }
     }

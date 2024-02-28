@@ -77,10 +77,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 use kanata_keyberon::action::*;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
-use sexpr::SExpr;
-
-use self::sexpr::Spanned;
-use self::sexpr::TopLevel;
+use sexpr::*;
 
 #[cfg(test)]
 mod tests;
@@ -104,6 +101,16 @@ macro_rules! bail_expr {
     };
     ($expr:expr, $fmt:expr, $($arg:tt)*) => {
         return Err(ParseError::from_expr($expr, format!($fmt, $($arg)*)))
+    };
+}
+
+#[macro_export]
+macro_rules! err_expr {
+    ($expr:expr, $fmt:expr $(,)?) => {
+        Err(ParseError::from_expr($expr, format!($fmt)))
+    };
+    ($expr:expr, $fmt:expr, $($arg:tt)*) => {
+        Err(ParseError::from_expr($expr, format!($fmt, $($arg)*)))
     };
 }
 
@@ -656,7 +663,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defvar"
                 | "deftemplate"
                 | "defseq" => Ok(()),
-                _ => bail_span!(expr, "Found unknown configuration item"),
+                _ => err_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
                 anyhow_expr!(
@@ -753,7 +760,8 @@ fn parse_deflocalkeys(
                 key_expr,
                 "Cannot use {key} in {def_local_keys_variant} because it is a default key name"
             );
-        } else if localkeys.contains_key(key) {
+        }
+        if localkeys.contains_key(key) {
             bail_expr!(
                 key_expr,
                 "Duplicate {key} found in {def_local_keys_variant}"
@@ -951,12 +959,9 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
             let var_expr = match subexprs.next() {
                 Some(v) => match v {
                     SExpr::Atom(_) => v.clone(),
-                    SExpr::List(l) => parse_list_var(l, s)?,
+                    SExpr::List(l) => parse_list_var(l, &s.vars),
                 },
-                None => bail_expr!(
-                    var_name_expr,
-                    "variable key name has no action - you should add an action."
-                ),
+                None => bail_expr!(var_name_expr, "variable name must have a subsequent value"),
             };
             if s.vars.insert(var_name.into(), var_expr).is_some() {
                 bail_expr!(var_name_expr, "duplicate variable name: {}", var_name);
@@ -966,24 +971,13 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     Ok(())
 }
 
-fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> {
+fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> SExpr {
     let ret = match expr.t.first() {
         Some(SExpr::Atom(a)) => match a.t.as_str() {
             "concat" => {
                 let mut concat_str = String::new();
-                for expr in expr.t.iter().skip(1) {
-                    if let Some(a) = expr.atom(s.vars()) {
-                        concat_str.push_str(a.trim_matches('"'));
-                    } else if let Some(l) = expr.span_list(s.vars()) {
-                        match parse_list_var(l, s)? {
-                            SExpr::Atom(a) => concat_str.push_str(a.t.trim_matches('"')),
-                            SExpr::List(_) => bail_expr!(
-                                expr,
-                                "concat must contain only strings or nested concat lists"
-                            ),
-                        };
-                    }
-                }
+                let visitees = &expr.t[1..];
+                push_all_atoms(visitees, vars, &mut concat_str);
                 SExpr::Atom(Spanned {
                     span: expr.span.clone(),
                     t: concat_str,
@@ -993,7 +987,17 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, s: &ParsedState) -> Result<SExpr> 
         },
         _ => SExpr::List(expr.clone()),
     };
-    Ok(ret)
+    ret
+}
+
+fn push_all_atoms(exprs: &[SExpr], vars: &HashMap<String, SExpr>, pusheen: &mut String) {
+    for expr in exprs {
+        if let Some(a) = expr.atom(Some(vars)) {
+            pusheen.push_str(a.trim_matches('"'));
+        } else if let Some(l) = expr.list(Some(vars)) {
+            push_all_atoms(l, vars, pusheen);
+        }
+    }
 }
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
@@ -1370,7 +1374,7 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
     };
     match layers.get(layer_name) {
         Some(i) => Ok(*i),
-        None => bail_expr!(
+        None => err_expr!(
             &ac_params[0],
             "layer name is not declared in any deflayer: {layer_name}"
         ),
@@ -1957,7 +1961,7 @@ fn parse_chord(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
         .atom(s.vars())
         .map(|s| match group.keys.iter().position(|e| e == s) {
             Some(i) => Ok(i),
-            None => bail_expr!(
+            None => err_expr!(
                 &ac_params[1],
                 r#"Identifier "{}" is not used in chord group "{}"."#,
                 &s,
@@ -1987,7 +1991,7 @@ fn parse_release_key(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static Ka
         Action::KeyCode(kc) => {
             Ok(s.a.sref(Action::ReleaseState(ReleasableState::KeyCode(*kc))))
         }
-        _ => bail_expr!(&ac_params[0], "{}", ERR_MSG),
+        _ => err_expr!(&ac_params[0], "{}", ERR_MSG),
     }
 }
 

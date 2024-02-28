@@ -2712,6 +2712,25 @@ then the whole `if-equal` list is removed from the template.
 )
 ----
 
+Similar to `if-equal` are three more conditional operators for templates:
+
+* `if-not-equal`
+** the content is used if the first two string parameters are not equal
+* `if-in-list`
+** the content is used if the first string parameter exists in
+the second list-of-strings parameter
+* `if-not-in-list`
+** the content is used if the first string parameter does not exist in
+the second list-of-strings parameter
+
+[[concat-in-deftemplate]]
+==== concat in deftemplate
+
+Like <<concat-in-defvar,concat in defvar>>,
+a list beginning with `concat` within the content of `deftemplate`
+will be replaced with a single string that consists of
+all the subsequent items in the list concatenated to each other.
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
