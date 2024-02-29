@@ -42,7 +42,7 @@ pub struct CfgOptions {
         all(feature = "interception_driver", target_os = "windows"),
         target_os = "unknown"
     ))]
-    pub windows_interception_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(any(
         all(feature = "interception_driver", target_os = "windows"),
         target_os = "unknown"
@@ -91,7 +91,7 @@ impl Default for CfgOptions {
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
             ))]
-            windows_interception_mouse_hwid: None,
+            windows_interception_mouse_hwids: None,
             #[cfg(any(
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
@@ -271,8 +271,66 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     }
                                     hwid[i] = b;
                                     Ok(hwid)
+                            })?;
+                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                                Some(v) => {
+                                    v.push(hwid_slice);
+                                }
+                                None => {
+                                    cfg.windows_interception_mouse_hwids = Some(vec![hwid_slice]);
+                                }
+                            }
+                            cfg.windows_interception_mouse_hwids
+                                .as_mut()
+                                .unwrap()
+                                .shrink_to_fit();
+                        }
+                    }
+                    "windows-interception-mouse-hwids" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            let hwids = sexpr_to_list_or_err(val, label)?;
+                            let mut parsed_hwids = vec![];
+                            for hwid_expr in hwids.iter() {
+                                let hwid = sexpr_to_str_or_err(
+                                    hwid_expr,
+                                    "entry in windows-interception-mouse-hwids",
+                                )?;
+                                log::trace!("win hwid: {hwid}");
+                                let hwid_vec = hwid
+                                .split(',')
+                                .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
+                                    hwid_byte.trim_matches(' ').parse::<u8>().map(|b| {
+                                        hwid_bytes.push(b);
+                                        hwid_bytes
+                                    })
+                                }).map_err(|_| anyhow_expr!(hwid_expr, "Entry in {label} is invalid. Entries should be numbers [0,255] separated by commas"))?;
+                                let hwid_slice = hwid_vec.iter().copied().enumerate()
+                                .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
+                                    let (i, b) = idx_byte;
+                                    if i > HWID_ARR_SZ {
+                                        bail_expr!(hwid_expr, "entry in {label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
+                                    }
+                                    hwid[i] = b;
+                                    Ok(hwid)
                             });
-                            cfg.windows_interception_mouse_hwid = Some(hwid_slice?);
+                                parsed_hwids.push(hwid_slice?);
+                            }
+                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                                Some(v) => {
+                                    v.extend(parsed_hwids.into_iter());
+                                }
+                                None => {
+                                    cfg.windows_interception_mouse_hwids = Some(parsed_hwids);
+                                }
+                            }
+                            cfg.windows_interception_mouse_hwids
+                                .as_mut()
+                                .unwrap()
+                                .shrink_to_fit();
                         }
                     }
                     "windows-interception-keyboard-hwids" => {
@@ -308,6 +366,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 });
                                 parsed_hwids.push(hwid_slice?);
                             }
+                            parsed_hwids.shrink_to_fit();
                             cfg.windows_interception_keyboard_hwids = Some(parsed_hwids);
                         }
                     }

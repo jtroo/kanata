@@ -1328,6 +1328,7 @@ fn parse_all_defcfg() {
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
+  windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
   windows-interception-keyboard-hwids ("0, 0, 0" "1, 1, 1")
 )
 (defsrc a)
