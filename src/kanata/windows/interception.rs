@@ -63,7 +63,7 @@ impl Kanata {
                             KeyEvent { code, value }
                         }
                         ic::Stroke::Mouse { state, rolling, .. } => {
-                            if let Some(_) = mouse_to_intercept_hwids {
+                            if mouse_to_intercept_hwids.is_some() {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,

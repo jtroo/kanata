@@ -321,7 +321,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             }
                             match cfg.windows_interception_mouse_hwids.as_mut() {
                                 Some(v) => {
-                                    v.extend(parsed_hwids.into_iter());
+                                    v.extend(parsed_hwids);
                                 }
                                 None => {
                                     cfg.windows_interception_mouse_hwids = Some(parsed_hwids);
