@@ -301,7 +301,7 @@ exists.
 - [capsicain](https://github.com/cajhin/capsicain): Windows-only key remapper with driver-level key interception
 - [keyd](https://github.com/rvaiya/keyd): Linux-only key remapper very similar to QMK, kmonad, and kanata
 - [xremap](https://github.com/k0kubun/xremap): Linux-only application-aware key remapper inspired more by Emacs key sequences vs. QMK layers/Vim modes
-- [keymapper](https://github.com/houmain/keymapper): Context-aware key cross-platform remapper with a different transformation model (Linux, Windows, Mac)
+- [keymapper](https://github.com/houmain/keymapper): Context-aware cross-platform key remapper with a different transformation model (Linux, Windows, Mac)
 
 ### Why the list?
 
