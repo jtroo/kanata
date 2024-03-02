@@ -43,6 +43,13 @@ pub type Layers<'a, const C: usize, const R: usize, const L: usize, T = core::co
     [[[Action<'a, T>; C]; R]; L];
 
 const QUEUE_SIZE: usize = 32;
+pub type QueueLen = u8;
+
+#[test]
+fn check_queue_size() {
+    use std::convert::TryFrom;
+    let _v = QueueLen::try_from(QUEUE_SIZE).unwrap();
+}
 
 /// The current event queue.
 ///
@@ -341,6 +348,7 @@ pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     tap: &'a Action<'a, T>,
     timeout_action: &'a Action<'a, T>,
     config: WaitingConfig<'a, T>,
+    prev_queue_len: QueueLen,
 }
 
 /// Actions that can be triggered for a key configured for HoldTap.
@@ -370,6 +378,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             WaitingConfig::TapDance(ref tds) => {
                 let (ret, num_taps) =
                     self.handle_tap_dance(tds.num_taps, tds.actions.len(), queued);
+                self.prev_queue_len = queued.len() as u8;
                 // Due to ownership issues, handle_tap_dance can't contain all of the necessary
                 // logic.
                 if ret.is_some() {
@@ -401,6 +410,11 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     }
 
     fn handle_hold_tap(&mut self, cfg: HoldTapConfig, queued: &Queue) -> Option<WaitingAction> {
+        if queued.len() as u8 == self.prev_queue_len && self.timeout > 0 {
+            // Fast path: nothing has changed since last tick and we haven't timed out yet.
+            return None;
+        }
+        self.prev_queue_len = queued.len() as u8;
         let mut skip_timeout = false;
         match cfg {
             HoldTapConfig::Default => (),
@@ -425,9 +439,8 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 let (waiting_action, local_skip) = (func)(QueuedIter(queued.iter()));
                 if waiting_action.is_some() {
                     return waiting_action;
-                } else {
-                    skip_timeout = local_skip;
                 }
+                skip_timeout = local_skip;
             }
         }
         if let Some(&Queued { since, .. }) = queued
@@ -452,6 +465,10 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         max_taps: usize,
         queued: &mut Queue,
     ) -> (Option<WaitingAction>, u16) {
+        if queued.len() as u8 == self.prev_queue_len && self.timeout > 0 {
+            // Fast path: nothing has changed since last tick and we haven't timed out yet.
+            return (None, num_taps);
+        }
         // Evict events with the same coordinates except for the final release. E.g. if 3 taps have
         // occurred, this will remove all `Press` events and 2 `Release` events. This is done so
         // that the state machine processes the entire tap dance sequence as a single press and
@@ -471,7 +488,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 do_retain
             });
         };
-        if self.timeout == 0 || usize::from(num_taps) >= max_taps {
+        if self.timeout == 0 {
             evict_same_coord_events(num_taps, queued);
             return (Some(WaitingAction::Tap), num_taps);
         }
@@ -486,6 +503,10 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 Ok(same_tap_count)
             }
         }) {
+            Ok(num_taps) if usize::from(num_taps) >= max_taps => {
+                evict_same_coord_events(num_taps, queued);
+                (Some(WaitingAction::Tap), num_taps)
+            }
             Ok(num_taps) => (None, num_taps),
             Err((num_taps, _)) => {
                 evict_same_coord_events(num_taps, queued);
@@ -500,6 +521,13 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         queued: &mut Queue,
         action_queue: &mut ActionQueue<'a, T>,
     ) -> Option<(WaitingAction, &'a Action<'a, T>, PressedQueue)> {
+        if queued.len() as u8 == self.prev_queue_len && self.timeout.saturating_sub(self.delay) > 0
+        {
+            // Fast path: nothing has changed since last tick and we haven't timed out yet.
+            return None;
+        }
+        self.prev_queue_len = queued.len() as u8;
+
         // need to keep track of how many Press events we handled so we can filter them out later
         let mut handled_press_events = 0;
         let start_chord_coord = self.coord;
@@ -1321,6 +1349,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         tap,
                         timeout_action,
                         config: WaitingConfig::HoldTap(*config),
+                        prev_queue_len: QueueLen::MAX,
                     };
                     self.waiting = Some(waiting);
                     self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
@@ -1364,6 +1393,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                                 timeout: td.timeout,
                                 num_taps: 1,
                             }),
+                            prev_queue_len: QueueLen::MAX,
                         });
                     }
                     TapDanceConfig::Eager => {
@@ -1404,6 +1434,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
                     config: WaitingConfig::Chord(chords),
+                    prev_queue_len: QueueLen::MAX,
                 });
             }
             &KeyCode(keycode) => {
@@ -3011,7 +3042,7 @@ mod test {
     }
 
     #[test]
-    fn tap_dance() {
+    fn tap_dance_uneager() {
         static LAYERS: Layers<2, 2, 1> = [[
             [
                 TapDance(&crate::action::TapDance {
@@ -3115,8 +3146,6 @@ mod test {
         assert_keys(&[], layout.keycodes());
         layout.event(Release(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[Space], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
@@ -3139,7 +3168,7 @@ mod test {
             assert_keys(&[], layout.keycodes());
         }
         layout.event(Press(0, 0));
-        for _ in 0..101 {
+        for _ in 0..100 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
         }
