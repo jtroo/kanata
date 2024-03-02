@@ -282,7 +282,7 @@ impl<'a, T> ChordsGroup<'a, T> {
 /// A set of virtual keys (represented as a bit mask) pressed together.
 /// The keys do not directly correspond to physical keys. They are unique to a given [ChordGroup] and their mapping from physical keys is definied in [ChordGroup.coords].
 /// As such, each chord group can effectively have at most 32 different keys (though multiple physical keys may be mapped to the same virtual key).
-pub type ChordKeys = u32;
+pub type ChordKeys = u128;
 
 /// Defines the maximum number of (virtual) keys that can be used in a single chords group.
 pub const MAX_CHORD_KEYS: usize = ChordKeys::BITS as usize;

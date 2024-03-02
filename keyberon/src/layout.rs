@@ -593,7 +593,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         queued: &mut Queue,
         action_queue: &mut ActionQueue<'a, T>,
     ) {
-        let mut chord_key_order = [0u32; ChordKeys::BITS as usize];
+        let mut chord_key_order = [0u128; ChordKeys::BITS as usize];
 
         // Default to the initial coordinate. But if a key is released early (before the timeout
         // occurs), use that key for action releases. That way the chord is released as early as

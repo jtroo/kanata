@@ -943,7 +943,7 @@ struct ChordGroup {
     name: String,
     keys: Vec<String>,
     coords: Vec<((u8, u16), ChordKeys)>,
-    chords: HashMap<u32, SExpr>,
+    chords: HashMap<u128, SExpr>,
     timeout: u16,
 }
 
@@ -1969,7 +1969,7 @@ fn parse_chord(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAc
             ),
         })
         .ok_or_else(|| anyhow_expr!(&ac_params[0], "{ERR_MSG}"))??;
-    let chord_keys = 1 << chord_key_index;
+    let chord_keys: u128 = 1 << chord_key_index;
 
     // We don't yet know at this point what the entire chords group will look like nor at which
     // coords this action will end up. So instead we store a dummy action which will be properly
@@ -2064,7 +2064,7 @@ fn parse_chord_groups(exprs: &[&Spanned<Vec<SExpr>>], s: &mut ParsedState) -> Re
                     })
                 })
                 .ok_or_else(|| anyhow_expr!(keys_expr, "Chord must be a list/set of keys"))?;
-            let mask = keys.try_fold(0, |mask, key| {
+            let mask: u128 = keys.try_fold(0, |mask, key| {
                 let key = key?;
                 let index = match group.keys.iter().position(|k| k == key) {
                     Some(i) => i,
