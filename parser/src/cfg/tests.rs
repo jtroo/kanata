@@ -780,6 +780,7 @@ fn parse_switch() {
 (deflayer base
   (switch
     ((and a b (or c d) (or e f))) XX break
+    ((not (and a b (not (or c (not d))) (or e f)))) XX break
     () _ fallthrough
     (a b c) $var1 fallthrough
     ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
@@ -810,6 +811,24 @@ fn parse_switch() {
                         OpCode::new_key(KeyCode::C),
                         OpCode::new_key(KeyCode::D),
                         OpCode::new_bool(Or, 9),
+                        OpCode::new_key(KeyCode::E),
+                        OpCode::new_key(KeyCode::F),
+                    ],
+                    &Action::NoOp,
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[
+                        OpCode::new_bool(Not, 12),
+                        OpCode::new_bool(And, 12),
+                        OpCode::new_key(KeyCode::A),
+                        OpCode::new_key(KeyCode::B),
+                        OpCode::new_bool(Not, 9),
+                        OpCode::new_bool(Or, 9),
+                        OpCode::new_key(KeyCode::C),
+                        OpCode::new_bool(Not, 9),
+                        OpCode::new_key(KeyCode::D),
+                        OpCode::new_bool(Or, 12),
                         OpCode::new_key(KeyCode::E),
                         OpCode::new_key(KeyCode::F),
                     ],
