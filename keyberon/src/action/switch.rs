@@ -35,6 +35,7 @@ pub struct Switch<'a, T: 'a> {
 
 const OR_VAL: u16 = 0x1000;
 const AND_VAL: u16 = 0x2000;
+const NOT_VAL: u16 = 0x3000;
 // Highest bit in u16. Lower 3 bits in the highest nibble are "how far back". This means that
 // switch can look back up to 8 keys.
 const HISTORICAL_KEYCODE_VAL: u16 = 0x8000;
@@ -44,6 +45,7 @@ const HISTORICAL_KEYCODE_VAL: u16 = 0x8000;
 pub enum BooleanOperator {
     Or,
     And,
+    Not,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -147,6 +149,7 @@ impl BooleanOperator {
         match self {
             Or => OR_VAL,
             And => AND_VAL,
+            Not => NOT_VAL,
         }
     }
 }
@@ -193,6 +196,7 @@ impl From<u16> for OperatorAndEndIndex {
             op: match value & 0xF000 {
                 OR_VAL => Or,
                 AND_VAL => And,
+                NOT_VAL => Not,
                 _ => unreachable!("public interface should protect from this"),
             },
             idx: usize::from(value & MAX_OPCODE_LEN),
@@ -216,13 +220,18 @@ fn evaluate_boolean(
     > = Default::default();
     while current_index < bool_expr.len() {
         if current_index >= current_end_index {
+            // Apply Not
+            if matches!(current_op, Not) {
+                ret = !ret;
+            }
             match stack.pop_back() {
                 Some(operator) => {
                     (current_op, current_end_index) = (operator.op, operator.idx);
                 }
                 None => break,
             }
-            if matches!((ret, current_op), (true, Or) | (false, And)) {
+            // Short-circuiting logic
+            if matches!((ret, current_op), (true, Or | Not) | (false, And)) {
                 current_index = current_end_index;
                 continue;
             }
@@ -230,7 +239,7 @@ fn evaluate_boolean(
         match bool_expr[current_index].opcode_type() {
             OpCodeType::KeyCode(kc) => {
                 ret = key_codes.clone().any(|kc_input| kc_input as u16 == kc);
-                if matches!((ret, current_op), (true, Or) | (false, And)) {
+                if matches!((ret, current_op), (true, Or | Not) | (false, And)) {
                     current_index = current_end_index;
                     continue;
                 }
@@ -241,7 +250,7 @@ fn evaluate_boolean(
                     .nth(hkc.how_far_back as usize)
                     .map(|kc| kc as u16 == hkc.key_code)
                     .unwrap_or(false);
-                if matches!((ret, current_op), (true, Or) | (false, And)) {
+                if matches!((ret, current_op), (true, Or | Not) | (false, And)) {
                     current_index = current_end_index;
                     continue;
                 }
