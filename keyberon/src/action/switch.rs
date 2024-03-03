@@ -219,19 +219,17 @@ fn evaluate_boolean(
         arraydeque::behavior::Saturating,
     > = Default::default();
     while current_index < bool_expr.len() {
-        dbg!((current_op, current_index, ret));
         if current_index >= current_end_index {
-            dbg!((current_op, current_end_index, ret));
             match stack.pop_back() {
                 Some(operator) => {
                     (current_op, current_end_index) = (operator.op, operator.idx);
                 }
                 None => break,
             }
-            dbg!((current_op, current_end_index, ret));
             // Short-circuiting logic
             if matches!((ret, current_op), (true, Or | Not) | (false, And))
-            || current_index >= current_end_index {
+                || current_index >= current_end_index
+            {
                 if current_op == Not {
                     ret = false;
                 }
@@ -241,11 +239,10 @@ fn evaluate_boolean(
         }
         match bool_expr[current_index].opcode_type() {
             OpCodeType::KeyCode(kc) => {
-                ret = dbg!(key_codes.clone().any(|kc_input| kc_input as u16 == kc));
+                ret = key_codes.clone().any(|kc_input| kc_input as u16 == kc);
                 if current_op == Not {
                     ret = !ret;
                 }
-                dbg!((kc, ret, current_index, current_end_index));
                 if matches!((ret, current_op), (true, Or) | (false, And | Not)) {
                     current_index = current_end_index;
                     continue;
@@ -281,12 +278,11 @@ fn evaluate_boolean(
         current_index += 1;
     }
     while let Some(OperatorAndEndIndex { op, .. }) = stack.pop_back() {
-        dbg!((op, ret));
         if op == Not {
             ret = !ret;
         }
     }
-    dbg!(ret)
+    ret
 }
 
 #[test]
@@ -847,6 +843,25 @@ fn bool_evaluation_test_not_6() {
 }
 
 #[test]
+fn bool_evaluation_test_or_equivalency_not_6() {
+    let opcodes = [
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Or, 4),
+        OpCode::new_key(KeyCode::C),
+        OpCode::new_key(KeyCode::D),
+    ];
+    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+    assert_eq!(
+        false,
+        evaluate_boolean(
+            opcodes.as_slice(),
+            keycodes.iter().copied(),
+            [].iter().copied()
+        )
+    );
+}
+
+#[test]
 fn bool_evaluation_test_not_7() {
     // A exists, make sure this short-circuits, and E nonexistence does not override the return.
     let opcodes = [
@@ -866,22 +881,54 @@ fn bool_evaluation_test_not_7() {
 }
 
 #[test]
-fn bool_evaluation_test_not_8() {
+fn bool_evaluation_test_or_equivalency_not_7() {
     let opcodes = [
-        OpCode::new_bool(And, 10),
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Or, 4),
         OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-        OpCode::new_bool(Not, 7),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_bool(Not, 7),
-        OpCode::new_key(KeyCode::D),
-        OpCode::new_bool(Or, 10),
         OpCode::new_key(KeyCode::E),
-        OpCode::new_key(KeyCode::F),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
     assert_eq!(
         false,
+        evaluate_boolean(
+            opcodes.as_slice(),
+            keycodes.iter().copied(),
+            [].iter().copied()
+        )
+    );
+}
+
+#[test]
+fn bool_evaluation_test_not_8() {
+    let opcodes = [
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Not, 4),
+        OpCode::new_key(KeyCode::A),
+    ];
+    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+    assert_eq!(
+        false,
+        evaluate_boolean(
+            opcodes.as_slice(),
+            keycodes.iter().copied(),
+            [].iter().copied()
+        )
+    );
+}
+
+#[test]
+fn bool_evaluation_test_not_9() {
+    let opcodes = [
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Not, 4),
+        OpCode::new_bool(Not, 4),
+        OpCode::new_key(KeyCode::C),
+    ];
+    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+    assert_eq!(
+        true,
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
