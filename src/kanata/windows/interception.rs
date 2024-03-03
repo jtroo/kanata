@@ -20,8 +20,9 @@ impl Kanata {
         }; 32];
 
         let keyboards_to_intercept_hwids = kanata.lock().intercept_kb_hwids.clone();
-        let mouse_to_intercept_hwid: Option<[u8; HWID_ARR_SZ]> = kanata.lock().intercept_mouse_hwid;
-        if mouse_to_intercept_hwid.is_some() {
+        let mouse_to_intercept_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
+            kanata.lock().intercept_mouse_hwids.clone();
+        if mouse_to_intercept_hwids.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,
                 ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
@@ -36,7 +37,7 @@ impl Kanata {
                 for i in 0..num_strokes {
                     let mut key_event = match strokes[i] {
                         ic::Stroke::Keyboard { state, .. } => {
-                            if !is_keyboard_interceptable(
+                            if !is_device_interceptable(
                                 dev,
                                 &intrcptn,
                                 &keyboards_to_intercept_hwids,
@@ -62,11 +63,11 @@ impl Kanata {
                             KeyEvent { code, value }
                         }
                         ic::Stroke::Mouse { state, rolling, .. } => {
-                            if let Some(hwid) = mouse_to_intercept_hwid {
+                            if mouse_to_intercept_hwids.is_some() {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,
-                                    &hwid,
+                                    &mouse_to_intercept_hwids,
                                     state,
                                     rolling,
                                     &intrcptn,
@@ -111,7 +112,7 @@ impl Kanata {
     }
 }
 
-fn is_keyboard_interceptable(
+fn is_device_interceptable(
     input_dev: ic::Device,
     intrcptn: &ic::Interception,
     allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
@@ -134,38 +135,18 @@ fn is_keyboard_interceptable(
     }
 }
 
-fn is_mouse_dev_interceptable(
-    input_dev: ic::Device,
-    intrcptn: &ic::Interception,
-    allowed_hwid: &[u8; HWID_ARR_SZ],
-    cache: &mut HashMap<ic::Device, bool>,
-) -> bool {
-    match cache.get(&input_dev) {
-        Some(v) => *v,
-        None => {
-            let mut hwid = [0u8; HWID_ARR_SZ];
-            log::trace!("getting hardware id for input dev: {input_dev}");
-            let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
-            let dev_is_interceptable = hwid == *allowed_hwid;
-            log::info!("res {res}; device #{input_dev} hwid {hwid:?} matches allowed mouse input: {dev_is_interceptable}");
-            cache.insert(input_dev, dev_is_interceptable);
-            dev_is_interceptable
-        }
-    }
-}
-
 fn mouse_state_to_event(
     input_dev: ic::Device,
-    allowed_hwid: &[u8; HWID_ARR_SZ],
+    allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
     state: ic::MouseState,
     rolling: i16,
     intrcptn: &ic::Interception,
     device_interceptability_cache: &mut HashMap<ic::Device, bool>,
 ) -> Option<KeyEvent> {
-    if !is_mouse_dev_interceptable(
+    if !is_device_interceptable(
         input_dev,
         intrcptn,
-        allowed_hwid,
+        allowed_hwids,
         device_interceptability_cache,
     ) {
         return None;

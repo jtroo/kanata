@@ -126,7 +126,7 @@ pub struct Kanata {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
-    intercept_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    intercept_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
@@ -305,7 +305,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             exclude_names: cfg.items.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwid: cfg.items.windows_interception_mouse_hwid,
+            intercept_mouse_hwids: cfg.items.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_kb_hwids: cfg.items.windows_interception_keyboard_hwids,
             dynamic_macro_replay_state: None,

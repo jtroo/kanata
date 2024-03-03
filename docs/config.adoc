@@ -2073,6 +2073,24 @@ https://github.com/jtroo/kanata/issues/108[Relevant issue].
 )
 ----
 
+=== Windows only: windows-interception-mouse-hwids[[windows-only-windows-interception-mouse-hwids]]
+<<table-of-contents,Back to ToC>>
+
+This item has a similar purpose as the singular version documented above,
+but is instead a list of strings that allows multiple mice to be intercepted.
+
+If both the singular and list items are used,
+the singular version will behave as if added to the list.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-mouse-hwids (
+    "70, 0, 60, 0"
+    "71, 0, 62, 0"
+  )
+)
 
 === Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
 <<table-of-contents,Back to ToC>>
