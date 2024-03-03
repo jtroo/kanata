@@ -2091,6 +2091,7 @@ the singular version will behave as if added to the list.
     "71, 0, 62, 0"
   )
 )
+----
 
 === Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
 <<table-of-contents,Back to ToC>>
