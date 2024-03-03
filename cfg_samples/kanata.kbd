@@ -574,6 +574,16 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ;; {n | n ∈ [1, 8]}, matches the given key.
     ((key-history a 1) (key-history b 8)) c break
 
+    ;; not means "not any of the list constituents".
+    ;; The example below behaves like:
+    ;;
+    ;;    !(a || b || c)
+    ;;
+    ;; and is equivalent to:
+    ;;
+    ;;    ((not (or a b c)))
+    ((not a b c)) c break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break

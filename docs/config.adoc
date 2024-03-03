@@ -2494,7 +2494,7 @@ The default use of keys check behaves similarly to fork.
 For example, the keys check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
-The keys check also accepts the boolean operators `and|or` to allow more
+The keys check also accepts the boolean operators `and|or|not` to allow more
 complex use cases.
 
 The order of cases matters.
@@ -2548,11 +2548,11 @@ No other action will activate since `break` is used.
 
 Case 2's key check behaves like that of `fork`, i.e.
 
-   (or a b c)
+    (or a b c)
 
 or for some other common languages:
 
-   a || b || c
+    a || b || c
 
 If this keys check passes and the case 1 does not pass,
 the action `@ac2` will activate first.
@@ -2583,6 +2583,29 @@ and 8 is 8th most recent key pressed.
   )
 )
 ----
+
+==== not
+
+The examples presented so far have not included the `not` boolean operator.
+This operator will now be discussed.
+Syntactically, the `not` operator is used similarly to `or|and`.
+Functionally, it means "not **any** of" the list elements.
+
+.Example:
+[source]
+----
+(defalias
+  swn (switch
+    ((not x y z)) S-a break
+    ;; the above and below cases are equivalent in logic
+    ((not (or x y z))) S-a break
+  )
+)
+----
+
+In potentially more familiar notation, both cases have the logic:
+
+    !(x || y || z)
 
 [[templates]]
 === Templates

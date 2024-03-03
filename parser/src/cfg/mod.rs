@@ -3031,7 +3031,6 @@ fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataA
     }))))
 }
 
-/// Returns the
 fn parse_switch_case_bool(
     depth: u8,
     op_expr: &SExpr,
@@ -3065,6 +3064,7 @@ fn parse_switch_case_bool(
         enum AllowedListOps {
             Or,
             And,
+            Not,
             KeyHistory,
         }
         let op = l[0]
@@ -3072,13 +3072,14 @@ fn parse_switch_case_bool(
             .and_then(|s| match s {
                 "or" => Some(AllowedListOps::Or),
                 "and" => Some(AllowedListOps::And),
+                "not" => Some(AllowedListOps::Not),
                 "key-history" => Some(AllowedListOps::KeyHistory),
                 _ => None,
             })
             .ok_or_else(|| {
                 anyhow_expr!(
                     op_expr,
-                    "lists inside key match must begin with one of: or, and, key-history"
+                    "lists inside key match must begin with one of: or | and | not | key-history"
                 )
             })?;
         match op {
@@ -3097,10 +3098,11 @@ fn parse_switch_case_bool(
                 ops.push(OpCode::new_key_history(osc.into(), key_recency));
                 Ok(())
             }
-            AllowedListOps::Or | AllowedListOps::And => {
+            AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
                 let op = match op {
                     AllowedListOps::Or => BooleanOperator::Or,
                     AllowedListOps::And => BooleanOperator::And,
+                    AllowedListOps::Not => BooleanOperator::Not,
                     _ => unreachable!(),
                 };
                 // insert a placeholder for now, don't know the end index yet.
