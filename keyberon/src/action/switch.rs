@@ -18,6 +18,7 @@ use BooleanOperator::*;
 use BreakOrFallthrough::*;
 
 pub const MAX_OPCODE_LEN: u16 = 0x0FFF;
+pub const OP_MASK: u16 = 0xF000;
 pub const MAX_BOOL_EXPR_DEPTH: usize = 8;
 pub const MAX_KEY_RECENCY: u8 = 7;
 
@@ -33,9 +34,21 @@ pub struct Switch<'a, T: 'a> {
     pub cases: &'a [Case<'a, T>],
 }
 
+// NOTE: have exhausted our opcodes for u16!
+
 const OR_VAL: u16 = 0x1000;
 const AND_VAL: u16 = 0x2000;
 const NOT_VAL: u16 = 0x3000;
+
+// Binary values:
+// 0b0100 ...
+// 0b0110 ...
+//
+// How-far-back are in bits 12-10 (3 bits)
+// Time is compressed in bits 9-0 (10 bits)
+const TICKS_SINCE_VAL_GT: u16 = 0x4000;
+const TICKS_SINCE_VAL_LT: u16 = 0x6000;
+
 // Highest bit in u16. Lower 3 bits in the highest nibble are "how far back". This means that
 // switch can look back up to 8 keys.
 const HISTORICAL_KEYCODE_VAL: u16 = 0x8000;
@@ -58,6 +71,8 @@ enum OpCodeType {
     BooleanOp(OperatorAndEndIndex),
     KeyCode(u16),
     HistoricalKeyCode(HistoricalKeyCode),
+    TicksSinceLessThan(TicksSinceNthKey),
+    TicksSinceGreaterThan(TicksSinceNthKey),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -73,6 +88,12 @@ struct OperatorAndEndIndex {
 struct HistoricalKeyCode {
     key_code: u16,
     how_far_back: u8,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct TicksSinceNthKey {
+    nth_key: u8,
+    ticks_since: u16,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -153,6 +174,22 @@ impl BooleanOperator {
     }
 }
 
+fn lossy_compress_ticks(t: u16) -> u16 {
+    match t {
+        0..=255 => t,
+        256..=2303 => (t - 255) / 8 + 255,
+        _ => (t - 2303) / 128 + 511,
+    }
+}
+
+fn lossy_decompress_ticks(t: u16) -> u16 {
+    match t {
+        0..=255 => t,
+        256..=511 => (t - 255) * 8 + 255,
+        _ => (t - 511) / 128 + 2303,
+    }
+}
+
 impl OpCode {
     /// Return a new OpCode that checks if the key active or not.
     pub fn new_key(kc: KeyCode) -> Self {
@@ -168,6 +205,26 @@ impl OpCode {
         Self((kc as u16 & MAX_OPCODE_LEN) | HISTORICAL_KEYCODE_VAL | ((key_recency as u16) << 12))
     }
 
+    /// Returns a new opcode that returns true if the n'th most recent key was pressed greater
+    /// than `ticks_since` ticks ago.
+    ///
+    /// At 256 ticks or above, this has a resolution of 8ms (rounded down). At 2304 ticks or
+    /// above, this has a resolution of 128 ms (rounded down).
+    pub fn new_ticks_since_gt(nth_key: u8, ticks_since: u16) -> Self {
+        assert!(nth_key <= MAX_KEY_RECENCY);
+        Self(TICKS_SINCE_VAL_GT | lossy_compress_ticks(ticks_since))
+    }
+
+    /// Returns a new opcode that returns true if the n'th most recent key was pressed greater
+    /// than `ticks_since` ticks ago.
+    ///
+    /// At 256 ticks or above, this has a resolution of 8ms (rounded down). At 2304 ticks or
+    /// above, this has a resolution of 128 ms (rounded down).
+    pub fn new_ticks_since_lt(nth_key: u8, ticks_since: u16) -> Self {
+        assert!(nth_key <= MAX_KEY_RECENCY);
+        Self(TICKS_SINCE_VAL_LT | lossy_compress_ticks(ticks_since))
+    }
+
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
     /// index.
     pub fn new_bool(op: BooleanOperator, end_idx: u16) -> Self {
@@ -178,13 +235,18 @@ impl OpCode {
     fn opcode_type(self) -> OpCodeType {
         if self.0 < MAX_OPCODE_LEN {
             OpCodeType::KeyCode(self.0)
-        } else if self.0 & HISTORICAL_KEYCODE_VAL == HISTORICAL_KEYCODE_VAL {
-            OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
-                key_code: self.0 & 0x0FFF,
-                how_far_back: ((self.0 & 0x7000) >> 12) as u8,
-            })
         } else {
-            OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0))
+            match self.0 & OP_MASK {
+                TICKS_SINCE_VAL_LT => {
+                }
+                0x8000 ..= 0xF000 => {
+                    OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
+                        key_code: self.0 & 0x0FFF,
+                        how_far_back: ((self.0 & 0x7000) >> 12) as u8,
+                    })
+                }
+                _ => OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0))
+            }
         }
     }
 }
@@ -192,7 +254,7 @@ impl OpCode {
 impl From<u16> for OperatorAndEndIndex {
     fn from(value: u16) -> Self {
         Self {
-            op: match value & 0xF000 {
+            op: match value & OP_MASK {
                 OR_VAL => Or,
                 AND_VAL => And,
                 NOT_VAL => Not,
@@ -262,6 +324,8 @@ fn evaluate_boolean(
                     continue;
                 }
             }
+            OpCodeType::TicksSinceLessThan(_) => todo!(),
+            OpCodeType::TicksSinceGreaterThan(_) => todo!(),
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
