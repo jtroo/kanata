@@ -136,9 +136,8 @@ where
                     Fallthrough => self.case_index += 1,
                 }
                 return Some(ret_ac);
-            } else {
-                self.case_index += 1;
             }
+            self.case_index += 1;
         }
         None
     }
@@ -215,7 +214,8 @@ fn evaluate_boolean(
     let mut current_end_index = bool_expr.len();
     let mut current_op = Or;
     let mut stack: arraydeque::ArrayDeque<
-        [OperatorAndEndIndex; MAX_BOOL_EXPR_DEPTH],
+        OperatorAndEndIndex,
+        MAX_BOOL_EXPR_DEPTH,
         arraydeque::behavior::Saturating,
     > = Default::default();
     while current_index < bool_expr.len() {

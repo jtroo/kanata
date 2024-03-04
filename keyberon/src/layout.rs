@@ -54,11 +54,11 @@ fn check_queue_size() {
 /// The current event queue.
 ///
 /// Events can be retrieved by iterating over this struct and calling [Queued::event].
-type Queue = ArrayDeque<[Queued; QUEUE_SIZE], arraydeque::behavior::Wrapping>;
+type Queue = ArrayDeque<Queued, QUEUE_SIZE, arraydeque::behavior::Wrapping>;
 
 /// A list of queued press events. Used for special handling of potentially multiple press events
 /// that occur during a Waiting event.
-type PressedQueue = ArrayDeque<[KCoord; QUEUE_SIZE]>;
+type PressedQueue = ArrayDeque<KCoord, QUEUE_SIZE>;
 
 /// The maximum number of actions that can be activated concurrently via chord decomposition or
 /// activation of multiple switch cases using fallthrough.
@@ -69,8 +69,10 @@ pub const ACTION_QUEUE_LEN: usize = 8;
 /// enough for real world usage, but if one wanted to be extra safe, this should be ChordKeys::BITS
 /// since that should guarantee that all potentially queueable actions can fit.
 type ActionQueue<'a, T> =
-    ArrayDeque<[QueuedAction<'a, T>; ACTION_QUEUE_LEN], arraydeque::behavior::Wrapping>;
+    ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type QueuedAction<'a, T> = Option<(KCoord, &'a Action<'a, T>)>;
+
+const HISTORICAL_EVENT_LEN: usize = 8;
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
 /// generate keyboard reports.
@@ -87,12 +89,78 @@ where
     pub queue: Queue,
     pub oneshot: OneShotState,
     pub last_press_tracker: LastPressTracker,
-    pub active_sequences: ArrayDeque<[SequenceState<'a, T>; 4], arraydeque::behavior::Wrapping>,
+    pub active_sequences: ArrayDeque<SequenceState<'a, T>, 4, arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
-    pub historical_keys: ArrayDeque<[KeyCode; 8], arraydeque::behavior::Wrapping>,
+    pub historical_keys: History<KeyCode>,
+    pub historical_inputs: History<KCoord>,
     pub quick_tap_hold_timeout: bool,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
+}
+
+pub struct History<T> {
+    events: ArrayDeque<T, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
+    ticks_since_occurrences: ArrayDeque<u16, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
+}
+
+pub struct HistoricalEvent<T> {
+    event: T,
+    ticks_since_occurrence: u16,
+}
+
+pub struct HistoricalEvents<'a, T> {
+    events: arraydeque::Iter<'a, T>,
+    ticks_since_occurrences: arraydeque::Iter<'a, u16>,
+}
+
+impl<'a, T> Iterator for HistoricalEvents<'a, T> where T: Copy {
+    type Item = HistoricalEvent<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = *self.events.next()?;
+        let ticks_since_occurrence = *self.ticks_since_occurrences.next()?;
+        Some(HistoricalEvent {
+            event,
+            ticks_since_occurrence,
+        })
+    }
+}
+
+impl<T> History<T>
+where
+    T: Copy,
+{
+    fn new() -> Self {
+        Self {
+            ticks_since_occurrences: ArrayDeque::new(),
+            events: ArrayDeque::new(),
+        }
+    }
+
+    fn tick(&mut self) {
+        let ticks = self.ticks_since_occurrences.as_uninit_slice_mut();
+        for tick_count in ticks {
+            unsafe {
+                *tick_count.assume_init_mut() = tick_count.assume_init().saturating_add(1);
+            }
+        }
+    }
+
+    fn push_front(&mut self, event: T) {
+        self.ticks_since_occurrences.push_front(0);
+        self.events.push_front(event);
+    }
+
+    fn iter_hevents(&self) -> impl Iterator<Item = HistoricalEvent<T>> + '_ {
+        self.events
+            .iter()
+            .copied()
+            .zip(self.ticks_since_occurrences.iter().copied())
+            .map(|(event, ticks_since_occurrence)| HistoricalEvent {
+                event,
+                ticks_since_occurrence,
+            })
+    }
 }
 
 /// An event on the key matrix.
@@ -728,7 +796,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     }
 }
 
-type OneShotCoords = ArrayDeque<[KCoord; ONE_SHOT_MAX_ACTIVE], arraydeque::behavior::Wrapping>;
+type OneShotCoords = ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>;
 
 #[derive(Debug, Copy, Clone)]
 pub struct SequenceState<'a, T: 'a> {
@@ -738,17 +806,16 @@ pub struct SequenceState<'a, T: 'a> {
     remaining_events: &'a [SequenceEvent<'a, T>],
 }
 
-type OneShotKeys = [KCoord; ONE_SHOT_MAX_ACTIVE];
 type ReleasedOneShotKeys = Vec<KCoord, ONE_SHOT_MAX_ACTIVE>;
 
 /// Contains the state of one shot keys that are currently active.
 pub struct OneShotState {
     /// KCoordinates of one shot keys that are active
-    pub keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
+    pub keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// KCoordinates of one shot keys that have been released
-    pub released_keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
+    pub released_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Used to keep track of already-pressed keys for the release variants.
-    pub other_pressed_keys: ArrayDeque<OneShotKeys, arraydeque::behavior::Wrapping>,
+    pub other_pressed_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Timeout (ms) after which all one shot keys expire
     pub timeout: u16,
     /// Contains the end config of the most recently pressed one shot key
@@ -928,7 +995,8 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
             rpt_action: None,
-            historical_keys: ArrayDeque::new(),
+            historical_keys: History::new(),
+            historical_inputs: History::new(),
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
         }
@@ -1050,6 +1118,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
         }
         self.process_sequences();
+
+        self.historical_keys.tick();
+        self.historical_inputs.tick();
 
         let mut custom = CustomEvent::NoEvent;
         if let Some(released_keys) = self.oneshot.tick() {
@@ -1256,6 +1327,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     }
     /// Register a key event.
     pub fn event(&mut self, event: Event) {
+        if let Event::Press(x, y) = event {
+            self.historical_inputs.push_front((x, y));
+        }
         if let Some(queued) = self.queue.push_back(event.into()) {
             self.waiting_into_hold();
             self.dequeue(queued);
@@ -1628,7 +1702,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             Switch(sw) => {
                 let active_keys = self.states.iter().filter_map(State::keycode);
-                let historical_keys = self.historical_keys.iter().copied();
+                let historical_keys = self.historical_keys.events.iter().copied();
                 let action_queue = &mut self.action_queue;
                 for ac in sw.actions(active_keys, historical_keys) {
                     action_queue.push_back(Some((coord, ac)));
