@@ -69,6 +69,7 @@ pub use error::*;
 
 use crate::trie::Trie;
 use anyhow::anyhow;
+use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::path::PathBuf;
@@ -234,7 +235,10 @@ pub struct Cfg {
     pub sequences: KeySeqsToFKeys,
     /// Overrides defined in `defoverrides`.
     pub overrides: Overrides,
+    /// Mapping of fake key name to its column in the fake key row.
     pub fake_keys: HashMap<String, usize>,
+    /// The maximum value of switch's key-timing item in the configuration.
+    pub switch_max_key_timing: u16,
 }
 
 /// Parse a new configuration from a file.
@@ -259,6 +263,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParsedState::default();
     let (items, mapped_keys, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
+    let switch_max_key_timing = s.switch_max_key_timing.get();
     let mut layout = create_layout(klayers, s.a);
     layout.bm().quick_tap_hold_timeout = items.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = items.rapid_event_delay;
@@ -275,6 +280,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         sequences,
         overrides,
         fake_keys,
+        switch_max_key_timing,
     })
 }
 
@@ -909,6 +915,7 @@ pub struct ParsedState {
     default_sequence_timeout: u16,
     default_sequence_input_mode: SequenceInputMode,
     block_unmapped_keys: bool,
+    switch_max_key_timing: Cell<u16>,
     a: Arc<Allocations>,
 }
 
@@ -935,6 +942,7 @@ impl Default for ParsedState {
             default_sequence_timeout: default_cfg.sequence_timeout,
             default_sequence_input_mode: default_cfg.sequence_input_mode,
             block_unmapped_keys: default_cfg.block_unmapped_keys,
+            switch_max_key_timing: Cell::new(0),
             a: unsafe { Allocations::new() },
         }
     }

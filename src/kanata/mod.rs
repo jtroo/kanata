@@ -166,6 +166,8 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub fake_keys: HashMap<String, usize>,
+    /// The maximum value of switch's key-timing item in the configuration.
+    pub switch_max_key_timing: u16,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -329,6 +331,7 @@ impl Kanata {
             last_pressed_key: KeyCode::No,
             #[cfg(feature = "tcp_server")]
             fake_keys: cfg.fake_keys,
+            switch_max_key_timing: cfg.switch_max_key_timing,
         })
     }
 
@@ -365,6 +368,7 @@ impl Kanata {
         {
             self.fake_keys = cfg.fake_keys;
         }
+        self.switch_max_key_timing = cfg.switch_max_key_timing;
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -1547,7 +1551,15 @@ impl Kanata {
                         #[cfg(feature = "perf_logging")]
                         log::info!("ticks since idle: {}", k.ticks_since_idle);
                     }
-                    is_idle && !counting_idle_ticks
+                    let passed_max_switch_timing_check = k
+                        .layout
+                        .b()
+                        .historical_keys
+                        .iter_hevents()
+                        .next()
+                        .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
+                        .unwrap_or(true);
+                    is_idle && !counting_idle_ticks && passed_max_switch_timing_check
                 };
                 if can_block {
                     log::trace!("blocking on channel");

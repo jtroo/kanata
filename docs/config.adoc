@@ -2561,11 +2561,22 @@ Since the keys check of case 3 always passes, `@ac3` will activate next.
 If neither case 1 or case 2 pass their keys checks,
 case 3 will always activate with `@ac3`.
 
-==== key-history
+[[key-history-and-key-timing]]
+==== key-history and key-timing
 
-In addition to simple keys,
-you can use the `key-history` list item within a case.
-This accepts, in order, a key and the key recency.
+In addition to simple keys there are two list items
+that can be used within the case keys check
+that compare against your typed key history:
+
+* `key-history`
+* `key-timing`
+
+The `key-history` item compares the order that keys were typed.
+It accepts, in order:
+
+* a key
+* the key recency
+
 The key recency must be in the range 1-8,
 where 1 is the most recent key that was pressed
 and 8 is 8th most recent key pressed.
@@ -2579,6 +2590,43 @@ and 8 is 8th most recent key pressed.
     ((key-history b 1)) S-b break
     ((key-history c 1)) S-c break
     ((key-history d 8)) (macro d d d) break
+    () XX break
+  )
+)
+----
+
+The `key-timing` compares how long ago recent key typing events occurred.
+It accepts, in order,
+
+* the key recency
+* a comparison string, which is one of: `less-than|greater-than|lt|gt`
+* number of milliseconds to compare against
+
+The key recency must be in the range 1-8,
+where 1 is the most recent key that was pressed
+and 8 is 8th most recent key pressed.
+Most use cases are expected to use a value of 1 for this parameter,
+but perhaps you can find a creative use for the other values.
+
+The comparison string determines how the actual key event timing
+will be compared to the provided timing.
+
+The number of milliseconds must be 0-65535.
+
+WARNING: The maximum milliseconds value of this configuration item
+across your whole configuration
+will be a lower bound of how long it takes for kanata to become idle
+and stop processing its state machine every approxmately 1ms.
+
+.Example:
+[source]
+----
+(defalias
+  swh (switch
+    ((key-timing 1 less-than 200)) S-a break
+    ((key-timing 1 greater-than 500)) S-b break
+    ((key-timing 2 lt 1000)) S-c break
+    ((key-timing 8 gt 2000)) (macro d d d) break
     () XX break
   )
 )

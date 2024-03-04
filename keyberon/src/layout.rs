@@ -156,7 +156,7 @@ where
         self.events.push_front(event);
     }
 
-    fn iter_hevents(&self) -> impl Iterator<Item = HistoricalEvent<T>> + '_ + Clone {
+    pub fn iter_hevents(&self) -> impl Iterator<Item = HistoricalEvent<T>> + '_ + Clone {
         self.events
             .iter()
             .copied()

@@ -129,7 +129,12 @@ pub fn parse_switch_case_bool(
                 }
                 let nth_key = parse_u8_with_range(&l[1], s, "key-recency", 1, 8)? - 1;
                 let ticks_since = parse_u16(&l[3], s, "milliseconds")?;
-                match l[2].atom(s.vars()).ok_or_else(|| anyhow_expr!(&l[2], "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than"))? {
+                match l[2].atom(s.vars()).ok_or_else(|| {
+                    anyhow_expr!(
+                        &l[2],
+                        "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than"
+                    )
+                })? {
                     "less-than" | "lt" => {
                         ops.push(OpCode::new_ticks_since_lt(nth_key, ticks_since));
                     }
@@ -137,9 +142,14 @@ pub fn parse_switch_case_bool(
                         ops.push(OpCode::new_ticks_since_gt(nth_key, ticks_since));
                     }
                     _ => {
-                        bail_expr!(&l[2], "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than");
+                        bail_expr!(
+                            &l[2],
+                            "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than"
+                        );
                     }
                 };
+                s.switch_max_key_timing
+                    .set(std::cmp::max(s.switch_max_key_timing.get(), ticks_since));
                 Ok(())
             }
             AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
