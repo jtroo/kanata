@@ -36,6 +36,10 @@ pub struct Switch<'a, T: 'a> {
 }
 
 // NOTE: have exhausted our opcodes for u16!
+//
+// Future rewrite: do traditional u8 opcodes, with variable length for the total opcode depending
+// on the first one encountered? Or could be lazy and use u32 and have 4 bytes for every opcode.
+// This probably isn't that performance-sensitive anyway... it's triggering on every input.
 
 const OR_VAL: u16 = 0x1000;
 const AND_VAL: u16 = 0x2000;
@@ -174,7 +178,6 @@ impl BooleanOperator {
         }
     }
 }
-
 fn lossy_compress_ticks(t: u16) -> u16 {
     match t {
         0..=255 => t,
@@ -187,7 +190,7 @@ fn lossy_decompress_ticks(t: u16) -> u16 {
     match t {
         0..=255 => t,
         256..=511 => (t - 255) * 8 + 255,
-        _ => (t - 511) / 128 + 2303,
+        _ => (t - 511) * 128 + 2303,
     }
 }
 
@@ -213,7 +216,7 @@ impl OpCode {
     /// above, this has a resolution of 128 ms (rounded down).
     pub fn new_ticks_since_gt(nth_key: u8, ticks_since: u16) -> Self {
         assert!(nth_key <= MAX_KEY_RECENCY);
-        Self(TICKS_SINCE_VAL_GT | lossy_compress_ticks(ticks_since))
+        Self(TICKS_SINCE_VAL_GT | lossy_compress_ticks(ticks_since) | u16::from(nth_key) << 10)
     }
 
     /// Returns a new opcode that returns true if the n'th most recent key was pressed greater
@@ -223,7 +226,7 @@ impl OpCode {
     /// above, this has a resolution of 128 ms (rounded down).
     pub fn new_ticks_since_lt(nth_key: u8, ticks_since: u16) -> Self {
         assert!(nth_key <= MAX_KEY_RECENCY);
-        Self(TICKS_SINCE_VAL_LT | lossy_compress_ticks(ticks_since))
+        Self(TICKS_SINCE_VAL_LT | lossy_compress_ticks(ticks_since) | u16::from(nth_key) << 10)
     }
 
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
@@ -818,6 +821,119 @@ fn switch_historical_bools() {
     test(&opcodes_false_and1, false);
     test(&opcodes_false_and2, false);
     test(&opcodes_false_or, false);
+}
+
+#[test]
+fn switch_historical_ticks_since() {
+    let opcodes_true_and = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_ticks_since_gt(0, 99),
+        OpCode::new_ticks_since_lt(0, 101),
+    ];
+    let opcodes_false_and1 = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_ticks_since_gt(1, 200),
+        OpCode::new_ticks_since_lt(1, 240),
+    ];
+    let opcodes_false_and2 = [
+        OpCode::new_bool(And, 3),
+        OpCode::new_ticks_since_gt(2, 300),
+        OpCode::new_ticks_since_lt(2, 300),
+    ];
+    let opcodes_true_or1 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(3, 500),
+        OpCode::new_ticks_since_lt(3, 510),
+    ];
+    let opcodes_true_or2 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(4, 500),
+        OpCode::new_ticks_since_lt(4, 511),
+    ];
+    let opcodes_true_or3 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(5, 980),
+        OpCode::new_ticks_since_lt(5, 999),
+    ];
+    let opcodes_false_or1 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(6, 40200),
+        OpCode::new_ticks_since_lt(6, 39999),
+    ];
+    let opcodes_false_or2 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(5, 1030),
+        OpCode::new_ticks_since_lt(5, 999),
+    ];
+    let opcodes_false_or3 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(4, 520),
+        OpCode::new_ticks_since_lt(4, 511),
+    ];
+    let opcodes_false_or4 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(3, 520),
+        OpCode::new_ticks_since_lt(3, 510),
+    ];
+    let opcodes_false_or5 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(2, 265),
+        OpCode::new_ticks_since_lt(2, 255),
+    ];
+    let opcodes_false_or6 = [
+        OpCode::new_bool(Or, 3),
+        OpCode::new_ticks_since_gt(1, 256),
+        OpCode::new_ticks_since_lt(1, 254),
+    ];
+    let hist_keycodes = [
+        HistoricalEvent {
+            event: KeyCode::A,
+            ticks_since_occurrence: 100,
+        },
+        HistoricalEvent {
+            event: KeyCode::B,
+            ticks_since_occurrence: 255,
+        },
+        HistoricalEvent {
+            event: KeyCode::C,
+            ticks_since_occurrence: 256,
+        },
+        HistoricalEvent {
+            event: KeyCode::D,
+            ticks_since_occurrence: 511,
+        },
+        HistoricalEvent {
+            event: KeyCode::E,
+            ticks_since_occurrence: 512,
+        },
+        HistoricalEvent {
+            event: KeyCode::F,
+            ticks_since_occurrence: 1000,
+        },
+        HistoricalEvent {
+            event: KeyCode::G,
+            ticks_since_occurrence: 40000,
+        },
+    ];
+
+    let test = |opcodes: &[OpCode], expectation: bool| {
+        assert_eq!(
+            evaluate_boolean(opcodes, [].iter().copied(), hist_keycodes.iter().copied(),),
+            expectation
+        );
+    };
+    test(&opcodes_true_and, true);
+    test(&opcodes_true_or1, true);
+    test(&opcodes_true_or2, true);
+    test(&opcodes_true_or3, true);
+    test(&opcodes_false_and1, false);
+    test(&opcodes_false_and2, false);
+    test(&opcodes_false_or1, false);
+    test(&opcodes_false_or2, false);
+    test(&opcodes_false_or3, false);
+    test(&opcodes_false_or4, false);
+    test(&opcodes_false_or5, false);
+    test(&opcodes_false_or6, false);
 }
 
 #[test]
