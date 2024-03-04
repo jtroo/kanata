@@ -785,6 +785,12 @@ fn parse_switch() {
     (a b c) $var1 fallthrough
     ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
     ((key-history a 1) (key-history b 5) (key-history c 8)) $var1 fallthrough
+    ((not
+      (key-timing 1 less-than 200)
+      (key-timing 4 greater-than 500)
+      (key-timing 7 lt 1000)
+      (key-timing 8 gt 20000)
+    )) $var1 fallthrough
   )
 )
 "#;
@@ -864,6 +870,17 @@ fn parse_switch() {
                         OpCode::new_key_history(KeyCode::A, 0),
                         OpCode::new_key_history(KeyCode::B, 4),
                         OpCode::new_key_history(KeyCode::C, 7),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
+                (
+                    &[
+                        OpCode::new_bool(Not, 5),
+                        OpCode::new_ticks_since_lt(0, 200),
+                        OpCode::new_ticks_since_gt(3, 500),
+                        OpCode::new_ticks_since_lt(6, 1000),
+                        OpCode::new_ticks_since_gt(7, 20000),
                     ],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Fallthrough

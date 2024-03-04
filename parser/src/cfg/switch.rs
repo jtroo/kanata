@@ -86,6 +86,7 @@ pub fn parse_switch_case_bool(
             And,
             Not,
             KeyHistory,
+            KeyTiming,
         }
         let op = l[0]
             .atom(s.vars())
@@ -94,6 +95,7 @@ pub fn parse_switch_case_bool(
                 "and" => Some(AllowedListOps::And),
                 "not" => Some(AllowedListOps::Not),
                 "key-history" => Some(AllowedListOps::KeyHistory),
+                "key-timing" => Some(AllowedListOps::KeyTiming),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -116,6 +118,28 @@ pub fn parse_switch_case_bool(
                     .ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
                 let key_recency = parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
                 ops.push(OpCode::new_key_history(osc.into(), key_recency));
+                Ok(())
+            }
+            AllowedListOps::KeyTiming => {
+                if l.len() != 4 {
+                    bail_expr!(
+                        op_expr,
+                        "key-timing must have 3 parameters: key-recency, lt|gt|less-than|greater-than, milliseconds (0-65535)"
+                    );
+                }
+                let nth_key = parse_u8_with_range(&l[1], s, "key-recency", 1, 8)? - 1;
+                let ticks_since = parse_u16(&l[3], s, "milliseconds")?;
+                match l[2].atom(s.vars()).ok_or_else(|| anyhow_expr!(&l[2], "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than"))? {
+                    "less-than" | "lt" => {
+                        ops.push(OpCode::new_ticks_since_lt(nth_key, ticks_since));
+                    }
+                    "greater-than" | "gt" => {
+                        ops.push(OpCode::new_ticks_since_gt(nth_key, ticks_since));
+                    }
+                    _ => {
+                        bail_expr!(&l[2], "key-timing 2nd parameter must be one of: lt|gt|less-than|greater-than");
+                    }
+                };
                 Ok(())
             }
             AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
