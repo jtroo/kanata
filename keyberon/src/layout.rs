@@ -103,17 +103,22 @@ pub struct History<T> {
     ticks_since_occurrences: ArrayDeque<u16, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
 }
 
+#[derive(Copy, Clone)]
 pub struct HistoricalEvent<T> {
-    event: T,
-    ticks_since_occurrence: u16,
+    pub event: T,
+    pub ticks_since_occurrence: u16,
 }
 
+#[derive(Clone)]
 pub struct HistoricalEvents<'a, T> {
     events: arraydeque::Iter<'a, T>,
     ticks_since_occurrences: arraydeque::Iter<'a, u16>,
 }
 
-impl<'a, T> Iterator for HistoricalEvents<'a, T> where T: Copy {
+impl<'a, T> Iterator for HistoricalEvents<'a, T>
+where
+    T: Copy,
+{
     type Item = HistoricalEvent<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -151,7 +156,7 @@ where
         self.events.push_front(event);
     }
 
-    fn iter_hevents(&self) -> impl Iterator<Item = HistoricalEvent<T>> + '_ {
+    fn iter_hevents(&self) -> impl Iterator<Item = HistoricalEvent<T>> + '_ + Clone {
         self.events
             .iter()
             .copied()
@@ -1702,7 +1707,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             Switch(sw) => {
                 let active_keys = self.states.iter().filter_map(State::keycode);
-                let historical_keys = self.historical_keys.events.iter().copied();
+                let historical_keys = self.historical_keys.iter_hevents();
                 let action_queue = &mut self.action_queue;
                 for ac in sw.actions(active_keys, historical_keys) {
                     action_queue.push_back(Some((coord, ac)));

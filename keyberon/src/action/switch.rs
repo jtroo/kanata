@@ -11,6 +11,7 @@
 //! when the corresponding key is pressed.
 
 use super::*;
+use crate::layout::HistoricalEvent;
 
 use crate::key_code::*;
 
@@ -112,7 +113,7 @@ impl<'a, T> Switch<'a, T> {
     pub fn actions<A, H>(&self, active_keys: A, historical_keys: H) -> SwitchActions<'a, T, A, H>
     where
         A: Iterator<Item = KeyCode> + Clone,
-        H: Iterator<Item = KeyCode> + Clone,
+        H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     {
         SwitchActions {
             cases: self.cases,
@@ -128,7 +129,7 @@ impl<'a, T> Switch<'a, T> {
 pub struct SwitchActions<'a, T, A, H>
 where
     A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = KeyCode> + Clone,
+    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
     active_keys: A,
@@ -139,7 +140,7 @@ where
 impl<'a, T, A, H> Iterator for SwitchActions<'a, T, A, H>
 where
     A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = KeyCode> + Clone,
+    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
 {
     type Item = &'a Action<'a, T>;
 
@@ -236,16 +237,20 @@ impl OpCode {
         if self.0 < MAX_OPCODE_LEN {
             OpCodeType::KeyCode(self.0)
         } else {
-            match self.0 & OP_MASK {
-                TICKS_SINCE_VAL_LT => {
-                }
-                0x8000 ..= 0xF000 => {
-                    OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
-                        key_code: self.0 & 0x0FFF,
-                        how_far_back: ((self.0 & 0x7000) >> 12) as u8,
-                    })
-                }
-                _ => OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0))
+            match self.0 & 0xE000 {
+                TICKS_SINCE_VAL_LT => OpCodeType::TicksSinceLessThan(TicksSinceNthKey {
+                    nth_key: ((self.0 & 0x1C00) >> 10) as u8,
+                    ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
+                }),
+                TICKS_SINCE_VAL_GT => OpCodeType::TicksSinceGreaterThan(TicksSinceNthKey {
+                    nth_key: ((self.0 & 0x1C00) >> 10) as u8,
+                    ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
+                }),
+                0x8000..=0xF000 => OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
+                    key_code: self.0 & 0x0FFF,
+                    how_far_back: ((self.0 & 0x7000) >> 12) as u8,
+                }),
+                _ => OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0)),
             }
         }
     }
@@ -269,7 +274,7 @@ impl From<u16> for OperatorAndEndIndex {
 fn evaluate_boolean(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,
-    historical_keys: impl Iterator<Item = KeyCode> + Clone,
+    historical_keys: impl Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -300,32 +305,6 @@ fn evaluate_boolean(
             }
         }
         match bool_expr[current_index].opcode_type() {
-            OpCodeType::KeyCode(kc) => {
-                ret = key_codes.clone().any(|kc_input| kc_input as u16 == kc);
-                if current_op == Not {
-                    ret = !ret;
-                }
-                if matches!((ret, current_op), (true, Or) | (false, And | Not)) {
-                    current_index = current_end_index;
-                    continue;
-                }
-            }
-            OpCodeType::HistoricalKeyCode(hkc) => {
-                ret = historical_keys
-                    .clone()
-                    .nth(hkc.how_far_back as usize)
-                    .map(|kc| kc as u16 == hkc.key_code)
-                    .unwrap_or(false);
-                if current_op == Not {
-                    ret = !ret;
-                }
-                if matches!((ret, current_op), (true, Or) | (false, And | Not)) {
-                    current_index = current_end_index;
-                    continue;
-                }
-            }
-            OpCodeType::TicksSinceLessThan(_) => todo!(),
-            OpCodeType::TicksSinceGreaterThan(_) => todo!(),
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
@@ -337,8 +316,41 @@ fn evaluate_boolean(
                     MAX_BOOL_EXPR_DEPTH
                 );
                 (current_op, current_end_index) = (operator.op, operator.idx);
+                current_index += 1;
+                continue;
+            }
+            OpCodeType::KeyCode(kc) => {
+                ret = key_codes.clone().any(|kc_input| kc_input as u16 == kc);
+            }
+            OpCodeType::HistoricalKeyCode(hkc) => {
+                ret = historical_keys
+                    .clone()
+                    .nth(hkc.how_far_back as usize)
+                    .map(|he| he.event as u16 == hkc.key_code)
+                    .unwrap_or(false);
+            }
+            OpCodeType::TicksSinceLessThan(tsnk) => {
+                ret = historical_keys
+                    .clone()
+                    .nth(tsnk.nth_key.into())
+                    .map(|he| he.ticks_since_occurrence <= tsnk.ticks_since)
+                    .unwrap_or(false);
+            }
+            OpCodeType::TicksSinceGreaterThan(tsnk) => {
+                ret = historical_keys
+                    .clone()
+                    .nth(tsnk.nth_key.into())
+                    .map(|he| he.ticks_since_occurrence > tsnk.ticks_since)
+                    .unwrap_or(false);
             }
         };
+        if current_op == Not {
+            ret = !ret;
+        }
+        if matches!((ret, current_op), (true, Or) | (false, And | Not)) {
+            current_index = current_end_index;
+            continue;
+        }
         current_index += 1;
     }
     while let Some(OperatorAndEndIndex { op, .. }) = stack.pop_back() {
@@ -666,14 +678,38 @@ fn switch_historical_1() {
         OpCode(0xF000 | KeyCode::H as u16)
     );
     let hist_keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::C,
-        KeyCode::D,
-        KeyCode::E,
-        KeyCode::F,
-        KeyCode::G,
-        KeyCode::H,
+        HistoricalEvent {
+            event: KeyCode::A,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::B,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::C,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::D,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::E,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::F,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::G,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::H,
+            ticks_since_occurrence: 0,
+        },
     ];
     assert!(evaluate_boolean(
         opcode_true.as_slice(),
@@ -735,14 +771,38 @@ fn switch_historical_bools() {
         OpCode::new_key_history(KeyCode::B, 2),
     ];
     let hist_keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::C,
-        KeyCode::D,
-        KeyCode::E,
-        KeyCode::F,
-        KeyCode::G,
-        KeyCode::H,
+        HistoricalEvent {
+            event: KeyCode::A,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::B,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::C,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::D,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::E,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::F,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::G,
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: KeyCode::H,
+            ticks_since_occurrence: 0,
+        },
     ];
 
     let test = |opcodes: &[OpCode], expectation: bool| {
