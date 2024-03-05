@@ -167,7 +167,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; entry. If this defcfg item is not defined, the log will not print.
   ;;
   ;; windows-interception-mouse-hwid "70, 0, 90, 0, 20"
-  
+
   ;; There is also a list version of windows-interception-mouse-hwid:
   ;;
   ;; windows-interception-mouse-hwids (
@@ -570,9 +570,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ;;    a || b || c
     (a b c) b fallthrough
 
-    ;; key-history evaluates to true if the n'th most recent key press,
+    ;; key-history evaluates to true if the n'th most recent typed key,
     ;; {n | n ∈ [1, 8]}, matches the given key.
     ((key-history a 1) (key-history b 8)) c break
+
+    ;; key-timing evaluates to true if the n'th most recent typed key,
+    ;; {n | n ∈ [1, 8]}, was typed at a time less-than/greater-than the
+    ;; given number of milliseconds.
+    ((key-timing 1 lt 3000)       (key-timing 2 gt 30000)        ) c break
+    ((key-timing 7 less-than 200) (key-timing 8 greater-than 500)) c break
 
     ;; not means "not any of the list constituents".
     ;; The example below behaves like:
@@ -1118,7 +1124,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; into the template.
 
 (deftemplate home-row (version)
-  a s d f g h 
+  a s d f g h
   (if-equal $version v1 j)
   (if-equal $version v2 (tap-hold 200 200 j lctl))
    k l ; '
