@@ -48,7 +48,7 @@ karabiner-driverkit = "0.1.3"
 [target.'cfg(target_os = "linux")'.dependencies]
 signal-hook = "0.3.14"
 inotify = { version = "0.10.0", default_features = false }
-mio = { version = "0.8.4", features = ["os-poll", "os-ext"] }
+mio = { version = "0.8.11", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
 sd-notify = "0.4.1"
 
