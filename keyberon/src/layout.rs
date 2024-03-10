@@ -3643,29 +3643,32 @@ mod test {
         const GROUP: ChordsGroup<core::convert::Infallible> = ChordsGroup {
             coords: &[((0, 0), 1), ((0, 1), 2)],
             chords: &[
-                (1, &HoldTap(&HoldTapAction {
-                    timeout: 100,
-                    hold: k(A),
-                    timeout_action: k(A),
-                    tap: k(Kb1),
-                    config: HoldTapConfig::Default,
-                    tap_hold_interval: 0,
-                })),
-                (2, &HoldTap(&HoldTapAction {
-                    timeout: 100,
-                    hold: k(B),
-                    timeout_action: k(B),
-                    tap: k(Kb2),
-                    config: HoldTapConfig::Default,
-                    tap_hold_interval: 0,
-                })),
+                (
+                    1,
+                    &HoldTap(&HoldTapAction {
+                        timeout: 100,
+                        hold: k(A),
+                        timeout_action: k(A),
+                        tap: k(Kb1),
+                        config: HoldTapConfig::Default,
+                        tap_hold_interval: 0,
+                    }),
+                ),
+                (
+                    2,
+                    &HoldTap(&HoldTapAction {
+                        timeout: 100,
+                        hold: k(B),
+                        timeout_action: k(B),
+                        tap: k(Kb2),
+                        config: HoldTapConfig::Default,
+                        tap_hold_interval: 0,
+                    }),
+                ),
             ],
             timeout: 100,
         };
-        static LAYERS: Layers<2, 1, 1> = [[[
-            Chords(&GROUP),
-            Chords(&GROUP),
-        ]]];
+        static LAYERS: Layers<2, 1, 1> = [[[Chords(&GROUP), Chords(&GROUP)]]];
 
         let mut layout = Layout::new(&LAYERS);
         layout.quick_tap_hold_timeout = true;
