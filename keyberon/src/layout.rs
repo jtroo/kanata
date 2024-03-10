@@ -73,6 +73,11 @@ type ActionQueue<'a, T> =
 type QueuedAction<'a, T> = Option<(KCoord, &'a Action<'a, T>)>;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
+const EXTRA_WAITING_LEN: usize = 8;
+#[test]
+fn extra_waiting_size_constraint() {
+    assert!(EXTRA_WAITING_LEN < i8::MAX as usize);
+}
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
 /// generate keyboard reports.
@@ -85,7 +90,8 @@ where
     /// Key states.
     pub states: Vec<State<'a, T>, 64>,
     pub waiting: Option<WaitingState<'a, T>>,
-    pub extra_waiting: ArrayDeque<WaitingState<'a, T>, 8, arraydeque::behavior::Wrapping>,
+    pub extra_waiting:
+        ArrayDeque<WaitingState<'a, T>, EXTRA_WAITING_LEN, arraydeque::behavior::Wrapping>,
     pub tap_dance_eager: Option<TapDanceEagerState<'a, T>>,
     pub queue: Queue,
     pub oneshot: OneShotState,
@@ -1203,21 +1209,25 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 None => CustomEvent::NoEvent,
             },
             None => {
-                // Due to the possible delay in the key release for EndOnFirstPress
-                // because some apps/DEs do not handle it properly if done too quickly,
-                // undesirable behaviour of extra presses making it in before
-                // the release happens might occur.
-                //
-                // A mitigation against that is to pause input processing.
-                if self.oneshot.pause_input_processing_ticks > 0 {
-                    self.oneshot.pause_input_processing_ticks =
-                        self.oneshot.pause_input_processing_ticks.saturating_sub(1);
-                    CustomEvent::NoEvent
-                } else {
-                    match self.queue.pop_front() {
-                        Some(s) => self.dequeue(s),
-                        None => CustomEvent::NoEvent,
+                if self.extra_waiting.is_empty() {
+                    // Due to the possible delay in the key release for EndOnFirstPress
+                    // because some apps/DEs do not handle it properly if done too quickly,
+                    // undesirable behaviour of extra presses making it in before
+                    // the release happens might occur.
+                    //
+                    // A mitigation against that is to pause input processing.
+                    if self.oneshot.pause_input_processing_ticks > 0 {
+                        self.oneshot.pause_input_processing_ticks =
+                            self.oneshot.pause_input_processing_ticks.saturating_sub(1);
+                        CustomEvent::NoEvent
+                    } else {
+                        match self.queue.pop_front() {
+                            Some(s) => self.dequeue(s),
+                            None => CustomEvent::NoEvent,
+                        }
                     }
+                } else {
+                    CustomEvent::NoEvent
                 }
             }
         });
@@ -1426,7 +1436,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.historical_inputs.push_front((x, y));
         }
         if let Some(queued) = self.queue.push_back(event.into()) {
-            self.waiting_into_hold(-1);
+            for i in -1..(EXTRA_WAITING_LEN as i8) {
+                self.waiting_into_hold(i);
+            }
             self.dequeue(queued);
         }
     }
