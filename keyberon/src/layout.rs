@@ -3489,9 +3489,13 @@ mod test {
         assert_keys(&[Kb5, Kb3], layout.keycodes());
         layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
+        assert_keys(&[Kb3], layout.keycodes());
         layout.event(Release(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Kb3], layout.keycodes());
         layout.event(Release(0, 4));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
 
         // release terminal chord with no action associated
         // combo like (h j k) -> (h j) (k)
@@ -3516,9 +3520,11 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[Kb5, Kb3], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        layout.event(Release(0, 3));
+        assert_keys(&[Kb5], layout.keycodes());
         layout.event(Release(0, 2));
+        layout.event(Release(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
@@ -3542,7 +3548,7 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[Kb3, Kb6], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
+        assert_keys(&[Kb3], layout.keycodes());
     }
 
     #[test]
