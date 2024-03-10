@@ -81,9 +81,8 @@ pub(super) fn help(err_msg: impl AsRef<str>) -> String {
     format!(
         r"{}
 
-For more info, see the configuration guide or ask in GitHub discussions.
-    guide : https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-    ask   : https://github.com/jtroo/kanata/discussions",
+For more info, see the configuration guide:
+https://github.com/jtroo/kanata/blob/main/docs/config.adoc",
         err_msg.as_ref(),
     )
 }

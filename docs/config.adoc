@@ -11,9 +11,11 @@ familiar with any Lisp-like programming language, do not be too worried. This
 document will hopefully be a sufficient guide to help you customize your
 keyboard behaviour to your exact liking.
 
-If you have any questions or confusions, feel free to file an issue or start a
-discussion. If you have ideas for how to improve this document or any other
-part of the project, please be welcome to make a pull request or file an issue.
+If you have any questions, confusions, suggestions, etc., feel free to
+https://github.com/jtroo/kanata/discussions/new/choose[start a discussion]
+or https://github.com/jtroo/kanata/issues/new/choose[file an issue].
+If you have ideas for how to improve this document or any other part of the project,
+please be welcome to make a pull request or file an issue.
 
 '''
 
