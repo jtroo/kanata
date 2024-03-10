@@ -691,7 +691,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
     fn decompose_chord_into_action_queue(
         &mut self,
         config: &'a ChordsGroup<'a, T>,
-        queued: &mut Queue,
+        queued: &Queue,
         action_queue: &mut ActionQueue<'a, T>,
     ) {
         let mut chord_key_order = [0u128; ChordKeys::BITS as usize];
@@ -699,7 +699,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         // Default to the initial coordinate. But if a key is released early (before the timeout
         // occurs), use that key for action releases. That way the chord is released as early as
         // possible.
-        let mut action_queue_coord = self.coord;
+        let mut default_associated_coord = self.coord;
 
         let starting_mask = config.get_keys(self.coord).unwrap_or(0);
         let mut mask_bits_set = 1;
@@ -709,7 +709,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 Ok(active)
             } else if let Some(chord_keys) = config.get_keys(s.event.coord()) {
                 match s.event {
-                    Event::Press(_, _) => {
+                    Event::Press(..) => {
                         if active | chord_keys != active {
                             chord_key_order[mask_bits_set] = chord_keys;
                             mask_bits_set += 1;
@@ -717,7 +717,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         Ok(active | chord_keys)
                     }
                     Event::Release(i, j) => {
-                        action_queue_coord = (i, j);
+                        default_associated_coord = (i, j);
                         Err(active) // released a chord key, abort
                     }
                 }
@@ -729,6 +729,32 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         });
         let len = mask_bits_set;
         let chord_keys = &chord_key_order[0..len];
+
+        let get_coord_for_chord = |mask: ChordKeys| -> (u8, u16) {
+            if config.get_keys(default_associated_coord).unwrap_or(0) & mask > 0 {
+                // This might be a release.
+                // If it belongs to the associated action, prefer to use it.
+                return default_associated_coord;
+            }
+            if self.coord != default_associated_coord
+                && config.get_keys(self.coord).unwrap_or(0) & mask > 0
+            {
+                // The first coordinate not in queued
+                // so must be explicitly checked if it is not the default coord.
+                return self.coord;
+            }
+            queued
+                .iter()
+                .find_map(|q| {
+                    let coord = q.event.coord();
+                    let qmask = config.get_keys(coord).unwrap_or(0);
+                    match qmask & mask {
+                        0 => None,
+                        _ => Some(coord),
+                    }
+                })
+                .unwrap_or(default_associated_coord)
+        };
 
         // Compute actions using the following description:
         //
@@ -768,7 +794,8 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 .reduce(|acc, e| acc | e)
                 .unwrap_or(0);
             if let Some(action) = config.get_chord(chord_mask) {
-                let _ = action_queue.push_back(Some((action_queue_coord, action)));
+                let coord = get_coord_for_chord(chord_mask);
+                let _ = action_queue.push_back(Some((coord, action)));
             } else {
                 end -= 1;
                 // shrink from end until something is found, or have checked up to and including
@@ -781,7 +808,8 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         .reduce(|acc, e| acc | e)
                         .unwrap_or(0);
                     if let Some(action) = config.get_chord(chord_mask) {
-                        let _ = action_queue.push_back(Some((action_queue_coord, action)));
+                        let coord = get_coord_for_chord(chord_mask);
+                        let _ = action_queue.push_back(Some((coord, action)));
                         break;
                     }
                     end -= 1;
