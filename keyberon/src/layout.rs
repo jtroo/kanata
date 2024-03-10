@@ -73,6 +73,11 @@ type ActionQueue<'a, T> =
 type QueuedAction<'a, T> = Option<(KCoord, &'a Action<'a, T>)>;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
+const EXTRA_WAITING_LEN: usize = 8;
+#[test]
+fn extra_waiting_size_constraint() {
+    assert!(EXTRA_WAITING_LEN < i8::MAX as usize);
+}
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
 /// generate keyboard reports.
@@ -85,6 +90,8 @@ where
     /// Key states.
     pub states: Vec<State<'a, T>, 64>,
     pub waiting: Option<WaitingState<'a, T>>,
+    pub extra_waiting:
+        ArrayDeque<WaitingState<'a, T>, EXTRA_WAITING_LEN, arraydeque::behavior::Wrapping>,
     pub tap_dance_eager: Option<TapDanceEagerState<'a, T>>,
     pub queue: Queue,
     pub oneshot: OneShotState,
@@ -1012,6 +1019,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             default_layer: 0,
             states: Vec::new(),
             waiting: None,
+            extra_waiting: ArrayDeque::new(),
             tap_dance_eager: None,
             queue: ArrayDeque::new(),
             oneshot: OneShotState {
@@ -1038,15 +1046,24 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
         self.states.iter().filter_map(State::keycode)
     }
-    fn waiting_into_hold(&mut self) -> CustomEvent<'a, T> {
-        if let Some(w) = &self.waiting {
+    fn waiting_into_hold(&mut self, idx: i8) -> CustomEvent<'a, T> {
+        let waiting = if idx < 0 {
+            self.waiting.as_ref()
+        } else {
+            self.extra_waiting.get(idx as usize)
+        };
+        if let Some(w) = waiting {
             let hold = w.hold;
             let coord = w.coord;
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
-            self.waiting = None;
+            if idx < 0 {
+                self.waiting = None;
+            } else {
+                self.extra_waiting.remove(idx as usize);
+            }
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
             }
@@ -1055,15 +1072,24 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             CustomEvent::NoEvent
         }
     }
-    fn waiting_into_tap(&mut self, pq: Option<PressedQueue>) -> CustomEvent<'a, T> {
-        if let Some(w) = &self.waiting {
+    fn waiting_into_tap(&mut self, pq: Option<PressedQueue>, idx: i8) -> CustomEvent<'a, T> {
+        let waiting = if idx < 0 {
+            self.waiting.as_ref()
+        } else {
+            self.extra_waiting.get(idx as usize)
+        };
+        if let Some(w) = waiting {
             let tap = w.tap;
             let coord = w.coord;
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
-            self.waiting = None;
+            if idx < 0 {
+                self.waiting = None;
+            } else {
+                self.extra_waiting.remove(idx as usize);
+            }
             let ret = self.do_action(tap, coord, delay, false);
             if let Some(pq) = pq {
                 match tap {
@@ -1108,15 +1134,24 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             CustomEvent::NoEvent
         }
     }
-    fn waiting_into_timeout(&mut self) -> CustomEvent<'a, T> {
-        if let Some(w) = &self.waiting {
+    fn waiting_into_timeout(&mut self, idx: i8) -> CustomEvent<'a, T> {
+        let waiting = if idx < 0 {
+            self.waiting.as_ref()
+        } else {
+            self.extra_waiting.get(idx as usize)
+        };
+        if let Some(w) = waiting {
             let timeout_action = w.timeout_action;
             let coord = w.coord;
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
-            self.waiting = None;
+            if idx < 0 {
+                self.waiting = None;
+            } else {
+                self.extra_waiting.remove(idx as usize);
+            }
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
             }
@@ -1167,31 +1202,36 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
 
         custom.update(match &mut self.waiting {
             Some(w) => match w.tick(&mut self.queue, &mut self.action_queue) {
-                Some((WaitingAction::Hold, _)) => self.waiting_into_hold(),
-                Some((WaitingAction::Tap, pq)) => self.waiting_into_tap(pq),
-                Some((WaitingAction::Timeout, _)) => self.waiting_into_timeout(),
+                Some((WaitingAction::Hold, _)) => self.waiting_into_hold(-1),
+                Some((WaitingAction::Tap, pq)) => self.waiting_into_tap(pq, -1),
+                Some((WaitingAction::Timeout, _)) => self.waiting_into_timeout(-1),
                 Some((WaitingAction::NoOp, _)) => self.drop_waiting(),
                 None => CustomEvent::NoEvent,
             },
             None => {
-                // Due to the possible delay in the key release for EndOnFirstPress
-                // because some apps/DEs do not handle it properly if done too quickly,
-                // undesirable behaviour of extra presses making it in before
-                // the release happens might occur.
-                //
-                // A mitigation against that is to pause input processing.
-                if self.oneshot.pause_input_processing_ticks > 0 {
-                    self.oneshot.pause_input_processing_ticks =
-                        self.oneshot.pause_input_processing_ticks.saturating_sub(1);
-                    CustomEvent::NoEvent
-                } else {
-                    match self.queue.pop_front() {
-                        Some(s) => self.dequeue(s),
-                        None => CustomEvent::NoEvent,
+                if self.extra_waiting.is_empty() {
+                    // Due to the possible delay in the key release for EndOnFirstPress
+                    // because some apps/DEs do not handle it properly if done too quickly,
+                    // undesirable behaviour of extra presses making it in before
+                    // the release happens might occur.
+                    //
+                    // A mitigation against that is to pause input processing.
+                    if self.oneshot.pause_input_processing_ticks > 0 {
+                        self.oneshot.pause_input_processing_ticks =
+                            self.oneshot.pause_input_processing_ticks.saturating_sub(1);
+                        CustomEvent::NoEvent
+                    } else {
+                        match self.queue.pop_front() {
+                            Some(s) => self.dequeue(s),
+                            None => CustomEvent::NoEvent,
+                        }
                     }
+                } else {
+                    CustomEvent::NoEvent
                 }
             }
         });
+        let custom = self.process_extra_waitings(custom);
         self.process_sequence_custom(custom)
     }
     /// Takes care of draining and populating the `active_sequences` ArrayDeque,
@@ -1285,6 +1325,38 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
         }
     }
+
+    fn process_extra_waitings(&mut self, current_custom: CustomEvent<'a, T>) -> CustomEvent<'a, T> {
+        if !matches!(current_custom, CustomEvent::NoEvent) {
+            return current_custom;
+        }
+        let mut waiting_action = (0, None);
+        for (i, w) in self.extra_waiting.iter_mut().enumerate() {
+            match w.tick(&mut self.queue, &mut self.action_queue) {
+                None => {}
+                wa => {
+                    waiting_action = (i as isize, wa);
+                    // break - only complete one at a time even if potentially multiple have
+                    // completed, so that only one custom event is returned.
+                    //
+                    // Theoretically if we could call the waiting_into_* function, we could do that
+                    // here and break only if custom is None, but that runs into mutability
+                    // problems. I don't expect any measurable improvements from being able to do
+                    // that too.
+                    break;
+                }
+            }
+        }
+        let i = waiting_action.0;
+        match waiting_action.1 {
+            Some((WaitingAction::Hold, _)) => self.waiting_into_hold(i as i8),
+            Some((WaitingAction::Tap, pq)) => self.waiting_into_tap(pq, i as i8),
+            Some((WaitingAction::Timeout, _)) => self.waiting_into_timeout(i as i8),
+            Some((WaitingAction::NoOp, _)) => self.drop_waiting(),
+            None => current_custom,
+        }
+    }
+
     fn process_sequence_custom(
         &mut self,
         mut current_custom: CustomEvent<'a, T>,
@@ -1364,7 +1436,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.historical_inputs.push_front((x, y));
         }
         if let Some(queued) = self.queue.push_back(event.into()) {
-            self.waiting_into_hold();
+            for i in -1..(EXTRA_WAITING_LEN as i8) {
+                self.waiting_into_hold(i);
+            }
             self.dequeue(queued);
         }
     }
@@ -1394,7 +1468,6 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         delay: u16,
         is_oneshot: bool,
     ) -> CustomEvent<'a, T> {
-        self.clear_and_handle_waiting(action);
         if self.last_press_tracker.coord != coord {
             self.last_press_tracker.tap_hold_timeout = 0;
         }
@@ -1458,7 +1531,11 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         config: WaitingConfig::HoldTap(*config),
                         prev_queue_len: QueueLen::MAX,
                     };
-                    self.waiting = Some(waiting);
+                    if self.waiting.is_some() {
+                        self.extra_waiting.push_back(waiting);
+                    } else {
+                        self.waiting = Some(waiting);
+                    }
                     self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
                 } else {
                     self.last_press_tracker.tap_hold_timeout = 0;
@@ -1748,41 +1825,6 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
         }
         CustomEvent::NoEvent
-    }
-
-    /// Clear the waiting state if it is about to be overwritten by a new waiting state.
-    ///
-    /// If something is waiting **and** another waiting action is currently being activated, that
-    /// probably means that there were multiple actions in the action queue caused by a single
-    /// terminal state. In this scenario, do some sensible default for the waiting state and end it
-    /// early, since a new action should interrupt the waiting action anyway.
-    ///
-    /// Another potential concern is if there is some processing in the event queue that needs to
-    /// happen as part of the cleanup, i.e. the code runs in `handle_tap_dance`, `handle_chord`
-    /// where some queued events are consumed. I'm fairly sure that there is no extra processing
-    /// that needs to happen. Actions in the action queue should be activated on subsequent ticks
-    /// with no room for key events to be a factor when handling this case.
-    fn clear_and_handle_waiting(&mut self, action: &'a Action<'a, T>) {
-        if !matches!(
-            action,
-            Action::HoldTap(_) | Action::TapDance(_) | Action::Chords(_)
-        ) {
-            return;
-        }
-        let mut waiting_action = None;
-        if let Some(waiting) = &self.waiting {
-            waiting_action = match waiting.config {
-                WaitingConfig::HoldTap(_) => Some((waiting.tap, waiting.coord, waiting.delay)),
-                WaitingConfig::TapDance(tdc) => {
-                    Some((tdc.actions[0], waiting.coord, waiting.delay))
-                }
-                WaitingConfig::Chord(_) => None,
-            };
-            self.waiting = None;
-        };
-        if let Some((action, coord, delay)) = waiting_action {
-            self.do_action(action, coord, delay, false);
-        };
     }
 
     /// Obtain the index of the current active layer
