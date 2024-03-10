@@ -70,7 +70,8 @@ pub const ACTION_QUEUE_LEN: usize = 8;
 /// since that should guarantee that all potentially queueable actions can fit.
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
-type QueuedAction<'a, T> = Option<(KCoord, &'a Action<'a, T>)>;
+type Delay = u16;
+type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
 const EXTRA_WAITING_LEN: usize = 8;
@@ -793,6 +794,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
 
         let mut start = 0;
         let mut end = len;
+        let delay = self.delay + self.ticks;
         while start < len {
             let sub_chord = &chord_keys[start..end];
             let chord_mask = sub_chord
@@ -802,7 +804,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 .unwrap_or(0);
             if let Some(action) = config.get_chord(chord_mask) {
                 let coord = get_coord_for_chord(chord_mask);
-                let _ = action_queue.push_back(Some((coord, action)));
+                let _ = action_queue.push_back(Some((coord, delay, action)));
             } else {
                 end -= 1;
                 // shrink from end until something is found, or have checked up to and including
@@ -816,7 +818,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         .unwrap_or(0);
                     if let Some(action) = config.get_chord(chord_mask) {
                         let coord = get_coord_for_chord(chord_mask);
-                        let _ = action_queue.push_back(Some((coord, action)));
+                        let _ = action_queue.push_back(Some((coord, delay, action)));
                         break;
                     }
                     end -= 1;
@@ -1171,10 +1173,10 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
     pub fn tick(&mut self) -> CustomEvent<'a, T> {
-        if let Some(Some((coord, action))) = self.action_queue.pop_front() {
+        if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
-            return self.do_action(action, coord, 0, false);
+            return self.do_action(action, coord, delay, false);
         }
         self.states = self.states.iter().filter_map(State::tick).collect();
         self.queue.iter_mut().for_each(Queued::tick);
@@ -1815,7 +1817,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 let historical_keys = self.historical_keys.iter_hevents();
                 let action_queue = &mut self.action_queue;
                 for ac in sw.actions(active_keys, historical_keys) {
-                    action_queue.push_back(Some((coord, ac)));
+                    action_queue.push_back(Some((coord, 0, ac)));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the
                 // purpose of proper Custom action handling, because a single switch action can
@@ -3632,6 +3634,62 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[Kb1], layout.keycodes());
         layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_chord_multi_waiting_decomposition() {
+        const GROUP: ChordsGroup<core::convert::Infallible> = ChordsGroup {
+            coords: &[((0, 0), 1), ((0, 1), 2)],
+            chords: &[
+                (
+                    1,
+                    &HoldTap(&HoldTapAction {
+                        timeout: 100,
+                        hold: k(A),
+                        timeout_action: k(A),
+                        tap: k(Kb1),
+                        config: HoldTapConfig::Default,
+                        tap_hold_interval: 0,
+                    }),
+                ),
+                (
+                    2,
+                    &HoldTap(&HoldTapAction {
+                        timeout: 100,
+                        hold: k(B),
+                        timeout_action: k(B),
+                        tap: k(Kb2),
+                        config: HoldTapConfig::Default,
+                        tap_hold_interval: 0,
+                    }),
+                ),
+            ],
+            timeout: 100,
+        };
+        static LAYERS: Layers<2, 1, 1> = [[[Chords(&GROUP), Chords(&GROUP)]]];
+
+        let mut layout = Layout::new(&LAYERS);
+        layout.quick_tap_hold_timeout = true;
+        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
+        // Why does this take 103 ticks?
+        // 0: chord begin
+        // 1: chord decompose
+        // 2: action queue dequeue
+        // 3: action queue dequeue
+        // 4-103: timeout ticks
+        for _ in 0..102 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A, B], layout.keycodes());
+        layout.event(Release(0, 0));
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
