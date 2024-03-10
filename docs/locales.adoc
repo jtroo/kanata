@@ -118,7 +118,7 @@ Commented out since doc is short enough without a ToC for the time being.
 
 == ISO French AZERTY (Windows, non-interception)[[french]]
 
-NOTE: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/overview+virtualkeys[French AZERTY layout]. Tested on Windows only.
+NOTE: This is for the https://kbdlayout.info/kbdfr?arrangement=ISO105[French AZERTY layout] (ISO105 arrangement). Tested on Windows only.
 
 [%collapsible]
 ====
@@ -134,5 +134,39 @@ NOTE: This source is for ISO105 arrangement of the http://kbdlayout.info/kbdfr/o
   lsft nubs   w     x     c     v     b     n     comm  .     /     k252                rsft
   lctl    lmet   lalt           spc                             ralt                    rctl
 )
+----
+====
+
+== ISO Turkish QWERTY (Linux)[[turkish]]
+
+NOTE: This is for the https://kbdlayout.info/kbdtuq?arrangement=ISO105[Turkish QWERTY layout] (ISO105 arrangement). Tested on Linux only.
+
+[%collapsible]
+====
+----
+(deflocalkeys-linux
+	* 	12
+	- 	13
+	ı 	23
+	ğ 	26
+	ü 	27
+	ş 	39
+	İ 	40
+	, 	43
+	< 	86
+	ö 	51
+	ç 	52
+	. 	53
+)
+
+(defsrc ;; turkish-iso105
+	grv  	1	2	3	4	5	6	7	8	9	0	*	-	bspc
+	tab  	q	w	e	r	t	y	u	ı	o	p	ğ	ü
+	caps 	a	s	d	f	g	h	j	k	l	ş	İ	,	ret
+	lsft 	<	z	x	c	v	b	n	m	ö	ç	.		rsft
+	lctl	lmet	lalt				spc					ralt	rmet	rctl
+)
+
+;; We use İ instead of i because kanata doesn't allow using i in deflocalkeys, as it is a default key name.
 ----
 ====
