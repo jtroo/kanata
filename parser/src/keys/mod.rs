@@ -1,6 +1,6 @@
 //! Platform specific code for OS key code mappings.
 
-use kanata_keyberon::key_code::KeyCode;
+use kanata_keyberon::key_code::*;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
@@ -1090,6 +1090,11 @@ pub enum OsCode {
     MouseWheelRight = 748,
 
     KEY_MAX = 767,
+}
+
+#[test]
+fn parser_key_max_lt_keyberon_key_max() {
+    assert!(u16::from(OsCode::KEY_MAX) < KEY_MAX);
 }
 
 impl TryFrom<usize> for OsCode {

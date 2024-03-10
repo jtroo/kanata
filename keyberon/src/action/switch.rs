@@ -11,7 +11,7 @@
 //! when the corresponding key is pressed.
 
 use super::*;
-use crate::layout::HistoricalEvent;
+use crate::layout::{HistoricalEvent, KCoord};
 
 use crate::key_code::*;
 
@@ -76,6 +76,8 @@ enum OpCodeType {
     BooleanOp(OperatorAndEndIndex),
     KeyCode(u16),
     HistoricalKeyCode(HistoricalKeyCode),
+    KeyPosition(KCoord),
+    HistoricalKeyPosition((u8, u16)),
     TicksSinceLessThan(TicksSinceNthKey),
     TicksSinceGreaterThan(TicksSinceNthKey),
 }
@@ -92,6 +94,14 @@ struct OperatorAndEndIndex {
 /// history.
 struct HistoricalKeyCode {
     key_code: u16,
+    how_far_back: u8,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// An op that checks specifically for a key that is a certain number of key presses back in
+/// history.
+struct HistoricalKeyPosition {
+    key_position: KCoord,
     how_far_back: u8,
 }
 
@@ -114,15 +124,19 @@ impl<'a, T> Switch<'a, T> {
     /// the currently active keys, and historically pressed keys.
     ///
     /// The `historical_keys` parameter should iterate in the order of most-recent-first.
-    pub fn actions<A, H>(&self, active_keys: A, historical_keys: H) -> SwitchActions<'a, T, A, H>
+    pub fn actions<A1, A2, H1, H2>(&self, active_keys: A1, active_positions: A2, historical_keys: H1, historical_positions: H2) -> SwitchActions<'a, T, A1, A2, H1, H2>
     where
-        A: Iterator<Item = KeyCode> + Clone,
-        H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+        A1: Iterator<Item = KeyCode> + Clone,
+        A2: Iterator<Item = KCoord> + Clone,
+        H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+        H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     {
         SwitchActions {
             cases: self.cases,
             active_keys,
+            active_positions,
             historical_keys,
+            historical_positions,
             case_index: 0,
         }
     }
@@ -130,21 +144,27 @@ impl<'a, T> Switch<'a, T> {
 
 #[derive(Debug, Clone)]
 /// Iterator returned by `Switch::actions`.
-pub struct SwitchActions<'a, T, A, H>
+pub struct SwitchActions<'a, T, A1, A2, H1, H2>
 where
-    A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    A1: Iterator<Item = KeyCode> + Clone,
+    A2: Iterator<Item = KCoord> + Clone,
+    H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
-    active_keys: A,
-    historical_keys: H,
+    active_keys: A1,
+    active_positions: A2,
+    historical_keys: H1,
+    historical_positions: H2,
     case_index: usize,
 }
 
-impl<'a, T, A, H> Iterator for SwitchActions<'a, T, A, H>
+impl<'a, T, A1, A2, H1, H2> Iterator for SwitchActions<'a, T, A1, A2, H1, H2>
 where
-    A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    A1: Iterator<Item = KeyCode> + Clone,
+    A2: Iterator<Item = KCoord> + Clone,
+    H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 {
     type Item = &'a Action<'a, T>;
 
@@ -154,7 +174,9 @@ where
             if evaluate_boolean(
                 case.0,
                 self.active_keys.clone(),
+                self.active_positions.clone(),
                 self.historical_keys.clone(),
+                self.historical_positions.clone(),
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -197,7 +219,7 @@ fn lossy_decompress_ticks(t: u16) -> u16 {
 impl OpCode {
     /// Return a new OpCode that checks if the key active or not.
     pub fn new_key(kc: KeyCode) -> Self {
-        assert!((kc as u16) <= MAX_OPCODE_LEN);
+        assert!((kc as u16) <= KEY_MAX);
         Self(kc as u16 & MAX_OPCODE_LEN)
     }
 
@@ -236,9 +258,11 @@ impl OpCode {
     }
 
     /// Return the interpretation of this `OpCode`.
-    fn opcode_type(self) -> OpCodeType {
-        if self.0 < MAX_OPCODE_LEN {
+    fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
+        if self.0 < KEY_MAX {
             OpCodeType::KeyCode(self.0)
+        } else if self.0 <= MAX_OPCODE_LEN {
+            todo!()
         } else {
             match self.0 & 0xE000 {
                 TICKS_SINCE_VAL_LT => OpCodeType::TicksSinceLessThan(TicksSinceNthKey {
@@ -277,7 +301,9 @@ impl From<u16> for OperatorAndEndIndex {
 fn evaluate_boolean(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,
+    key_positions: impl Iterator<Item = KCoord> + Clone,
     historical_keys: impl Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    historical_positions: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -307,7 +333,7 @@ fn evaluate_boolean(
                 continue;
             }
         }
-        match bool_expr[current_index].opcode_type() {
+        match bool_expr[current_index].opcode_type(bool_expr.get(current_index+1).copied()) {
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
@@ -346,6 +372,8 @@ fn evaluate_boolean(
                     .map(|he| he.ticks_since_occurrence > tsnk.ticks_since)
                     .unwrap_or(false);
             }
+            OpCodeType::KeyPosition(..) => todo!(),
+            OpCodeType::HistoricalKeyPosition(..) => todo!(),
         };
         if current_op == Not {
             ret = !ret;
