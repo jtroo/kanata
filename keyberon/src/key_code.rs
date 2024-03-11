@@ -1,5 +1,13 @@
 //! Key code definitions.
 
+/// Used for switch opcode purposes. Keys should not exceed this amount.
+pub const KEY_MAX: u16 = 850;
+
+#[test]
+fn keycode_max_test() {
+    assert!((KeyCode::KeyMax as u16) < KEY_MAX);
+}
+
 #[allow(missing_docs)]
 /// Define a key code according to the HID specification.  Their names
 /// correspond to the american QWERTY layout.
@@ -809,4 +817,5 @@ pub enum KeyCode {
     K742,
     K743,
     K744,
+    KeyMax,
 }

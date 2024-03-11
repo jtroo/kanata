@@ -312,6 +312,15 @@ impl<'a, T: 'a> State<'a, T> {
             _ => None,
         }
     }
+    fn coord(&self) -> Option<KCoord> {
+        match self {
+            NormalKey { coord, .. }
+            | LayerModifier { coord, .. }
+            | Custom { coord, .. }
+            | RepeatingSequence { coord, .. } => Some(*coord),
+            _ => None,
+        }
+    }
     fn keycode_in_coords(&self, coords: &OneShotCoords) -> Option<KeyCode> {
         match self {
             NormalKey { keycode, coord, .. } => {
@@ -1814,9 +1823,16 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
             Switch(sw) => {
                 let active_keys = self.states.iter().filter_map(State::keycode);
+                let active_coords = self.states.iter().filter_map(State::coord);
                 let historical_keys = self.historical_keys.iter_hevents();
+                let historical_coords = self.historical_inputs.iter_hevents();
                 let action_queue = &mut self.action_queue;
-                for ac in sw.actions(active_keys, historical_keys) {
+                for ac in sw.actions(
+                    active_keys,
+                    active_coords,
+                    historical_keys,
+                    historical_coords,
+                ) {
                     action_queue.push_back(Some((coord, 0, ac)));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the

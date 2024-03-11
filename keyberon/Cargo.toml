@@ -2,7 +2,7 @@
 name = "kanata-keyberon"
 version = "0.160.1"
 authors = ["Guillaume Pinot <texitoi@texitoi.eu>", "Robin Krahl <robin.krahl@ireas.org>", "jtroo <j.andreitabs@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Pure Rust keyboard firmware. Fork intended for use with kanata."
 documentation = "https://docs.rs/keyberon"
 repository = "https://github.com/TeXitoi/keyberon"

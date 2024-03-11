@@ -11,7 +11,7 @@
 //! when the corresponding key is pressed.
 
 use super::*;
-use crate::layout::HistoricalEvent;
+use crate::layout::{HistoricalEvent, KCoord};
 
 use crate::key_code::*;
 
@@ -45,6 +45,9 @@ const OR_VAL: u16 = 0x1000;
 const AND_VAL: u16 = 0x2000;
 const NOT_VAL: u16 = 0x3000;
 
+const INPUT_VAL: u16 = 851;
+const HISTORICAL_INPUT_VAL: u16 = 852;
+
 // Binary values:
 // 0b0100 ...
 // 0b0110 ...
@@ -76,6 +79,8 @@ enum OpCodeType {
     BooleanOp(OperatorAndEndIndex),
     KeyCode(u16),
     HistoricalKeyCode(HistoricalKeyCode),
+    Input(KCoord),
+    HistoricalInput(HistoricalInput),
     TicksSinceLessThan(TicksSinceNthKey),
     TicksSinceGreaterThan(TicksSinceNthKey),
 }
@@ -92,6 +97,14 @@ struct OperatorAndEndIndex {
 /// history.
 struct HistoricalKeyCode {
     key_code: u16,
+    how_far_back: u8,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// An op that checks specifically for a key that is a certain number of key presses back in
+/// history.
+struct HistoricalInput {
+    input: KCoord,
     how_far_back: u8,
 }
 
@@ -114,15 +127,25 @@ impl<'a, T> Switch<'a, T> {
     /// the currently active keys, and historically pressed keys.
     ///
     /// The `historical_keys` parameter should iterate in the order of most-recent-first.
-    pub fn actions<A, H>(&self, active_keys: A, historical_keys: H) -> SwitchActions<'a, T, A, H>
+    pub fn actions<A1, A2, H1, H2>(
+        &self,
+        active_keys: A1,
+        active_positions: A2,
+        historical_keys: H1,
+        historical_positions: H2,
+    ) -> SwitchActions<'a, T, A1, A2, H1, H2>
     where
-        A: Iterator<Item = KeyCode> + Clone,
-        H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+        A1: Iterator<Item = KeyCode> + Clone,
+        A2: Iterator<Item = KCoord> + Clone,
+        H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+        H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     {
         SwitchActions {
             cases: self.cases,
             active_keys,
+            active_positions,
             historical_keys,
+            historical_positions,
             case_index: 0,
         }
     }
@@ -130,21 +153,27 @@ impl<'a, T> Switch<'a, T> {
 
 #[derive(Debug, Clone)]
 /// Iterator returned by `Switch::actions`.
-pub struct SwitchActions<'a, T, A, H>
+pub struct SwitchActions<'a, T, A1, A2, H1, H2>
 where
-    A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    A1: Iterator<Item = KeyCode> + Clone,
+    A2: Iterator<Item = KCoord> + Clone,
+    H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
-    active_keys: A,
-    historical_keys: H,
+    active_keys: A1,
+    active_positions: A2,
+    historical_keys: H1,
+    historical_positions: H2,
     case_index: usize,
 }
 
-impl<'a, T, A, H> Iterator for SwitchActions<'a, T, A, H>
+impl<'a, T, A1, A2, H1, H2> Iterator for SwitchActions<'a, T, A1, A2, H1, H2>
 where
-    A: Iterator<Item = KeyCode> + Clone,
-    H: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    A1: Iterator<Item = KeyCode> + Clone,
+    A2: Iterator<Item = KCoord> + Clone,
+    H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 {
     type Item = &'a Action<'a, T>;
 
@@ -154,7 +183,9 @@ where
             if evaluate_boolean(
                 case.0,
                 self.active_keys.clone(),
+                self.active_positions.clone(),
                 self.historical_keys.clone(),
+                self.historical_positions.clone(),
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -197,7 +228,7 @@ fn lossy_decompress_ticks(t: u16) -> u16 {
 impl OpCode {
     /// Return a new OpCode that checks if the key active or not.
     pub fn new_key(kc: KeyCode) -> Self {
-        assert!((kc as u16) <= MAX_OPCODE_LEN);
+        assert!((kc as u16) <= KEY_MAX);
         Self(kc as u16 & MAX_OPCODE_LEN)
     }
 
@@ -235,10 +266,41 @@ impl OpCode {
         Self((end_idx & MAX_OPCODE_LEN) + op.to_u16())
     }
 
+    /// Return OpCodes specifying an active input check.
+    pub fn new_active_input(input: KCoord) -> (Self, Self) {
+        assert!(input.0 < 4);
+        assert!(input.1 < 0x0400);
+        (
+            Self(INPUT_VAL),
+            Self((u16::from(input.0 & 3) << 14) + input.1),
+        )
+    }
+
+    /// Return OpCodes specifying an active input check.
+    pub fn new_historical_input(input: KCoord, key_recency: u8) -> (Self, Self) {
+        assert!(input.0 < 4);
+        assert!(input.1 < 0x0400);
+        assert!(key_recency < 0x8);
+        (
+            Self(HISTORICAL_INPUT_VAL),
+            Self((u16::from(input.0 & 3) << 14) + (u16::from(key_recency) << 11) + input.1),
+        )
+    }
+
     /// Return the interpretation of this `OpCode`.
-    fn opcode_type(self) -> OpCodeType {
-        if self.0 < MAX_OPCODE_LEN {
+    fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
+        if self.0 < KEY_MAX {
             OpCodeType::KeyCode(self.0)
+        } else if self.0 <= MAX_OPCODE_LEN {
+            let op2 = next.expect("next should be some for opcode {self:?}");
+            match self.0 {
+                INPUT_VAL => OpCodeType::Input((((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF)),
+                HISTORICAL_INPUT_VAL => OpCodeType::HistoricalInput(HistoricalInput {
+                    input: (((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF),
+                    how_far_back: (op2.0 >> 11) as u8 & 0x7,
+                }),
+                _ => unreachable!("unexpected opcode {self:?}"),
+            }
         } else {
             match self.0 & 0xE000 {
                 TICKS_SINCE_VAL_LT => OpCodeType::TicksSinceLessThan(TicksSinceNthKey {
@@ -277,7 +339,9 @@ impl From<u16> for OperatorAndEndIndex {
 fn evaluate_boolean(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,
+    inputs: impl Iterator<Item = KCoord> + Clone,
     historical_keys: impl Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
+    historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -307,7 +371,7 @@ fn evaluate_boolean(
                 continue;
             }
         }
-        match bool_expr[current_index].opcode_type() {
+        match bool_expr[current_index].opcode_type(bool_expr.get(current_index + 1).copied()) {
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
@@ -346,6 +410,20 @@ fn evaluate_boolean(
                     .map(|he| he.ticks_since_occurrence > tsnk.ticks_since)
                     .unwrap_or(false);
             }
+            OpCodeType::Input(coord) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = inputs.clone().any(|c| c == coord)
+            }
+            OpCodeType::HistoricalInput(hki) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = historical_inputs
+                    .clone()
+                    .nth(dbg!(hki.how_far_back as usize))
+                    .map(|he| dbg!(he.event) == dbg!(hki.input))
+                    .unwrap_or(false)
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -381,7 +459,9 @@ fn bool_evaluation_test_0() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
-        [].iter().copied()
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
     ));
 }
 
@@ -409,6 +489,8 @@ fn bool_evaluation_test_1() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -430,6 +512,8 @@ fn bool_evaluation_test_2() {
     assert!(!evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -451,6 +535,8 @@ fn bool_evaluation_test_3() {
     assert!(!evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -462,6 +548,8 @@ fn bool_evaluation_test_4() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -480,6 +568,8 @@ fn bool_evaluation_test_5() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -498,6 +588,8 @@ fn bool_evaluation_test_6() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -509,6 +601,8 @@ fn bool_evaluation_test_7() {
     assert!(!evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -525,6 +619,8 @@ fn bool_evaluation_test_9() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -541,6 +637,8 @@ fn bool_evaluation_test_10() {
     assert!(!evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -556,6 +654,8 @@ fn bool_evaluation_test_11() {
     assert!(!evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -573,6 +673,8 @@ fn bool_evaluation_test_12() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -593,6 +695,8 @@ fn bool_evaluation_test_max_depth_does_not_panic() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -615,6 +719,8 @@ fn bool_evaluation_test_more_than_max_depth_panics() {
     assert!(evaluate_boolean(
         opcodes.as_slice(),
         keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
         [].iter().copied()
     ));
 }
@@ -627,7 +733,12 @@ fn switch_fallthrough() {
             (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
     assert_eq!(actions.next(), None);
@@ -641,7 +752,12 @@ fn switch_break() {
             (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
 }
@@ -662,7 +778,12 @@ fn switch_no_actions() {
             ),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), None);
 }
 
@@ -717,22 +838,30 @@ fn switch_historical_1() {
     assert!(evaluate_boolean(
         opcode_true.as_slice(),
         [].iter().copied(),
+        [].iter().copied(),
         hist_keycodes.iter().copied(),
+        [].iter().copied(),
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
         [].iter().copied(),
+        [].iter().copied(),
         hist_keycodes.iter().copied(),
+        [].iter().copied(),
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
         [].iter().copied(),
+        [].iter().copied(),
         hist_keycodes.iter().copied(),
+        [].iter().copied(),
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
         [].iter().copied(),
+        [].iter().copied(),
         hist_keycodes.iter().copied(),
+        [].iter().copied(),
     ));
 }
 
@@ -810,7 +939,13 @@ fn switch_historical_bools() {
 
     let test = |opcodes: &[OpCode], expectation: bool| {
         assert_eq!(
-            evaluate_boolean(opcodes, [].iter().copied(), hist_keycodes.iter().copied(),),
+            evaluate_boolean(
+                opcodes,
+                [].iter().copied(),
+                [].iter().copied(),
+                hist_keycodes.iter().copied(),
+                [].iter().copied()
+            ),
             expectation
         );
     };
@@ -918,7 +1053,13 @@ fn switch_historical_ticks_since() {
 
     let test = |opcodes: &[OpCode], expectation: bool| {
         assert_eq!(
-            evaluate_boolean(opcodes, [].iter().copied(), hist_keycodes.iter().copied(),),
+            evaluate_boolean(
+                opcodes,
+                [].iter().copied(),
+                [].iter().copied(),
+                hist_keycodes.iter().copied(),
+                [].iter().copied()
+            ),
             expectation
         );
     };
@@ -957,7 +1098,9 @@ fn bool_evaluation_test_not_0() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
-            [].iter().copied()
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
         )
     );
 }
@@ -976,6 +1119,8 @@ fn bool_evaluation_test_not_1() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -995,6 +1140,8 @@ fn bool_evaluation_test_not_2() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1013,6 +1160,8 @@ fn bool_evaluation_test_not_3() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1038,6 +1187,8 @@ fn bool_evaluation_test_not_4() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1057,6 +1208,8 @@ fn bool_evaluation_test_not_5() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1077,6 +1230,8 @@ fn bool_evaluation_test_not_6() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1096,6 +1251,8 @@ fn bool_evaluation_test_or_equivalency_not_6() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1115,6 +1272,8 @@ fn bool_evaluation_test_not_7() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1134,6 +1293,8 @@ fn bool_evaluation_test_or_equivalency_not_7() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1153,6 +1314,8 @@ fn bool_evaluation_test_not_8() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
@@ -1172,7 +1335,108 @@ fn bool_evaluation_test_not_9() {
         evaluate_boolean(
             opcodes.as_slice(),
             keycodes.iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
             [].iter().copied()
         )
     );
+}
+
+#[test]
+fn switch_inputs() {
+    let (op1, op2) = OpCode::new_active_input((0, 1));
+    let (op3, op4) = OpCode::new_active_input((1, 2));
+    let (op5, op6) = OpCode::new_active_input((1, 3));
+    let (op7, op8) = OpCode::new_active_input((3, 3));
+    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
+    let active_inputs = [(0, 1), (1, 2), (2, 3), (3, 4)];
+    let test = |opcodes: &[OpCode], expectation: bool| {
+        assert_eq!(
+            evaluate_boolean(
+                opcodes,
+                [].iter().copied(),
+                active_inputs.iter().copied(),
+                [].iter().copied(),
+                [].iter().copied()
+            ),
+            expectation
+        );
+    };
+    test(&opcodes_true_and, true);
+    test(&opcodes_false_and1, false);
+    test(&opcodes_false_and2, false);
+    test(&opcodes_false_or, false);
+    test(&opcodes_true_or1, true);
+    test(&opcodes_true_or2, true);
+}
+
+#[test]
+fn switch_historical_inputs() {
+    let (op1, op2) = OpCode::new_historical_input((0, 0), 0);
+    let (op3, op4) = OpCode::new_historical_input((3, 750), 7);
+    let (op5, op6) = OpCode::new_historical_input((1, 3), 0);
+    let (op7, op8) = OpCode::new_historical_input((3, 3), 7);
+    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
+    let historical_inputs = [
+        HistoricalEvent {
+            event: (0, 0),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (1, 750),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (2, 1),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (3, 749),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (0, 1),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (1, 2),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (2, 3),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (3, 750),
+            ticks_since_occurrence: 0,
+        },
+    ];
+    let test = |opcodes: &[OpCode], expectation: bool| {
+        assert_eq!(
+            evaluate_boolean(
+                opcodes,
+                [].iter().copied(),
+                [].iter().copied(),
+                [].iter().copied(),
+                historical_inputs.iter().copied(),
+            ),
+            expectation
+        );
+    };
+    test(&opcodes_true_and, true);
+    test(&opcodes_false_and1, false);
+    test(&opcodes_false_and2, false);
+    test(&opcodes_false_or, false);
+    test(&opcodes_true_or1, true);
+    test(&opcodes_true_or2, true);
 }
