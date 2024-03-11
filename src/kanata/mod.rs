@@ -972,8 +972,8 @@ impl Kanata {
                                 }
                             }
                         }
-                        CustomAction::LiveReloadFile(n) => {
-                            let path = PathBuf::from(n);
+                        CustomAction::LiveReloadFile(st_path) => {
+                            let path = PathBuf::from(st_path);
 
                             let result = self
                                 .cfg_paths
