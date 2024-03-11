@@ -270,7 +270,10 @@ impl OpCode {
     pub fn new_active_input(input: KCoord) -> (Self, Self) {
         assert!(input.0 < 4);
         assert!(input.1 < 0x0400);
-        (Self(INPUT_VAL), Self((u16::from(input.0 & 3) << 14) + input.1))
+        (
+            Self(INPUT_VAL),
+            Self((u16::from(input.0 & 3) << 14) + input.1),
+        )
     }
 
     /// Return OpCodes specifying an active input check.
@@ -278,7 +281,10 @@ impl OpCode {
         assert!(input.0 < 4);
         assert!(input.1 < 0x0400);
         assert!(key_recency < 0x8);
-        (Self(INPUT_VAL), Self((u16::from(input.0 & 3) << 14) + (u16::from(key_recency) << 11) + input.1))
+        (
+            Self(HISTORICAL_INPUT_VAL),
+            Self((u16::from(input.0 & 3) << 14) + (u16::from(key_recency) << 11) + input.1),
+        )
     }
 
     /// Return the interpretation of this `OpCode`.
@@ -288,8 +294,8 @@ impl OpCode {
         } else if self.0 <= MAX_OPCODE_LEN {
             let op2 = next.expect("next should be some for opcode {self:?}");
             match self.0 {
-                INPUT_VAL => OpCodeType::Input(((op2.0 >> 14) as u8, op2.0 & 0x3FF)),
-                HISTORICAL_INPUT_VAL => OpCodeType::HistoricalInput( HistoricalInput{
+                INPUT_VAL => OpCodeType::Input((((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF)),
+                HISTORICAL_INPUT_VAL => OpCodeType::HistoricalInput(HistoricalInput {
                     input: (((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF),
                     how_far_back: (op2.0 >> 11) as u8 & 0x7,
                 }),
@@ -407,19 +413,17 @@ fn evaluate_boolean(
             OpCodeType::Input(coord) => {
                 // opcode has size 2
                 current_index += 1;
-                ret = inputs
-                    .clone()
-                    .any(|c| c == coord)
-            },
+                ret = inputs.clone().any(|c| c == coord)
+            }
             OpCodeType::HistoricalInput(hki) => {
                 // opcode has size 2
                 current_index += 1;
                 ret = historical_inputs
                     .clone()
-                    .nth(hki.how_far_back as usize)
-                    .map(|he| he.event == hki.input)
+                    .nth(dbg!(hki.how_far_back as usize))
+                    .map(|he| dbg!(he.event) == dbg!(hki.input))
                     .unwrap_or(false)
-            },
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -729,7 +733,12 @@ fn switch_fallthrough() {
             (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied(), [].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
     assert_eq!(actions.next(), None);
@@ -743,7 +752,12 @@ fn switch_break() {
             (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied(), [].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
 }
@@ -764,7 +778,12 @@ fn switch_no_actions() {
             ),
         ],
     };
-    let mut actions = sw.actions([].iter().copied(), [].iter().copied(), [].iter().copied(), [].iter().copied());
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    );
     assert_eq!(actions.next(), None);
 }
 
@@ -1329,36 +1348,13 @@ fn switch_inputs() {
     let (op3, op4) = OpCode::new_active_input((1, 2));
     let (op5, op6) = OpCode::new_active_input((1, 3));
     let (op7, op8) = OpCode::new_active_input((3, 3));
-    let opcodes_true_and = [
-        OpCode::new_bool(And, 5),
-        op1, op2, op3, op4
-    ];
-    let opcodes_false_and1 = [
-        OpCode::new_bool(And, 5),
-        op1, op2, op5, op6
-    ];
-    let opcodes_false_and2 = [
-        OpCode::new_bool(And, 5),
-         op5, op6,op1, op2,
-    ];
-    let opcodes_false_or = [
-        OpCode::new_bool(Or, 5),
-         op7, op8,op5, op6,
-    ];
-    let opcodes_true_or1 = [
-        OpCode::new_bool(Or, 5),
-         op1, op2,op5, op6,
-    ];
-    let opcodes_true_or2 = [
-        OpCode::new_bool(Or, 5),
-         op7, op8,op3, op4,
-    ];
-    let active_inputs = [
-        (0, 1),
-        (1, 2),
-        (2, 3),
-        (3, 4),
-    ];
+    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
+    let active_inputs = [(0, 1), (1, 2), (2, 3), (3, 4)];
     let test = |opcodes: &[OpCode], expectation: bool| {
         assert_eq!(
             evaluate_boolean(
@@ -1381,43 +1377,49 @@ fn switch_inputs() {
 
 #[test]
 fn switch_historical_inputs() {
-    let (op1, op2) = OpCode::new_historical_input((0, 0),0);
-    let (op3, op4) = OpCode::new_historical_input((3, 750),7);
-    let (op5, op6) = OpCode::new_historical_input((1, 3),0);
-    let (op7, op8) = OpCode::new_historical_input((3, 3),7);
-    let opcodes_true_and = [
-        OpCode::new_bool(And, 5),
-        op1, op2, op3, op4
-    ];
-    let opcodes_false_and1 = [
-        OpCode::new_bool(And, 5),
-        op1, op2, op5, op6
-    ];
-    let opcodes_false_and2 = [
-        OpCode::new_bool(And, 5),
-         op5, op6,op1, op2,
-    ];
-    let opcodes_false_or = [
-        OpCode::new_bool(And, 5),
-         op7, op8,op5, op6,
-    ];
-    let opcodes_true_or1 = [
-        OpCode::new_bool(And, 5),
-         op1, op2,op5, op6,
-    ];
-    let opcodes_true_or2 = [
-        OpCode::new_bool(And, 5),
-         op7, op8,op3, op4,
-    ];
+    let (op1, op2) = OpCode::new_historical_input((0, 0), 0);
+    let (op3, op4) = OpCode::new_historical_input((3, 750), 7);
+    let (op5, op6) = OpCode::new_historical_input((1, 3), 0);
+    let (op7, op8) = OpCode::new_historical_input((3, 3), 7);
+    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
     let historical_inputs = [
-        HistoricalEvent{ event: (0, 0), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (1, 750), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (2, 1), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (3, 749), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (0, 1), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (1, 2), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (2, 3), ticks_since_occurrence: 0 },
-        HistoricalEvent{ event: (3, 750), ticks_since_occurrence: 0 },
+        HistoricalEvent {
+            event: (0, 0),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (1, 750),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (2, 1),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (3, 749),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (0, 1),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (1, 2),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (2, 3),
+            ticks_since_occurrence: 0,
+        },
+        HistoricalEvent {
+            event: (3, 750),
+            ticks_since_occurrence: 0,
+        },
     ];
     let test = |opcodes: &[OpCode], expectation: bool| {
         assert_eq!(
