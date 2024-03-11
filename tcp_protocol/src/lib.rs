@@ -5,6 +5,7 @@ use std::str::FromStr;
 pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
+    ConfigFileReload { new: String },
     Error { msg: String },
 }
 

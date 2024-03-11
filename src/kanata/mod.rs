@@ -340,7 +340,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    fn do_live_reload(&mut self) -> Result<()> {
+    fn do_live_reload(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -374,6 +374,23 @@ impl Kanata {
         #[cfg(target_os = "linux")]
         Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
+        #[cfg(feature = "tcp_server")]
+        if let Some(tx) = tx {
+            match tx.try_send(ServerMessage::ConfigFileReload {
+                new: self.cfg_paths[self.cur_cfg_idx]
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!(
+                        "could not send ConfigFileReload event notification: {}",
+                        error
+                    );
+                }
+            }
+        }
         Ok(())
     }
 
@@ -482,7 +499,7 @@ impl Kanata {
             // activate. Having this fallback allows live reload to happen which resets the
             // kanata states.
             self.live_reload_requested = false;
-            if let Err(e) = self.do_live_reload() {
+            if let Err(e) = self.do_live_reload(tx) {
                 log::error!("live reload failed {e}");
             }
         }
