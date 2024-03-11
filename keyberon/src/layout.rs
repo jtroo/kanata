@@ -314,10 +314,10 @@ impl<'a, T: 'a> State<'a, T> {
     }
     fn coord(&self) -> Option<KCoord> {
         match self {
-            NormalKey { coord, .. } |
-            LayerModifier {  coord , ..} |
-            Custom { coord , ..} |
-            RepeatingSequence { coord, .. } => Some(*coord),
+            NormalKey { coord, .. }
+            | LayerModifier { coord, .. }
+            | Custom { coord, .. }
+            | RepeatingSequence { coord, .. } => Some(*coord),
             _ => None,
         }
     }
@@ -1827,7 +1827,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 let historical_keys = self.historical_keys.iter_hevents();
                 let historical_coords = self.historical_inputs.iter_hevents();
                 let action_queue = &mut self.action_queue;
-                for ac in sw.actions(active_keys, active_coords, historical_keys, historical_coords) {
+                for ac in sw.actions(
+                    active_keys,
+                    active_coords,
+                    historical_keys,
+                    historical_coords,
+                ) {
                     action_queue.push_back(Some((coord, 0, ac)));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the
