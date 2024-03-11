@@ -972,6 +972,29 @@ impl Kanata {
                                 }
                             }
                         }
+                        CustomAction::LiveReloadFile(n) => {
+                            let path = PathBuf::from(n);
+
+                            let result = self
+                                .cfg_paths
+                                .iter()
+                                .enumerate()
+                                .find(|(_idx, fpath)| **fpath == path);
+
+                            match result {
+                                Some((index, _path)) => {
+                                    log::info!(
+                                        "Requested live reload of file with path: {}",
+                                        path.display(),
+                                    );
+                                    live_reload_requested = true;
+                                    self.cur_cfg_idx = index;
+                                }
+                                None => {
+                                    log::error!("Requested live reload of file with path {}, but no such path was passed as an argument to Kanata", path.display());
+                                }
+                            }
+                        }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
                             if let Some(pbtn) = prev_mouse_btn {
