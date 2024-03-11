@@ -6,6 +6,9 @@ use encode_unicode::CharExt;
 
 use crate::oskbd::KeyValue;
 
+#[cfg(feature = "win_sendinput_send_scancodes")]
+use kanata_parser::keys::OsCode;
+
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;
 #[cfg(not(feature = "interception_driver"))]
@@ -79,6 +82,13 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
                 let code_u32 = code as u32;
                 kb_input.dwFlags |= KEYEVENTF_SCANCODE;
                 kb_input.wScan = MapVirtualKeyA(code_u32, 0) as u16;
+                match OsCode::from(code) {
+                    OsCode::KEY_PREVIOUSSONG|OsCode::KEY_NEXTSONG|OsCode::KEY_KPENTER|OsCode::KEY_RIGHTCTRL|OsCode::KEY_MUTE|OsCode::KEY_PLAYPAUSE|OsCode::KEY_VOLUMEDOWN|OsCode::KEY_VOLUMEUP|OsCode::KEY_KPSLASH|OsCode::KEY_PRINT|OsCode::KEY_RIGHTALT|OsCode::KEY_HOME|OsCode::KEY_UP|OsCode::KEY_PAGEUP|OsCode::KEY_LEFT|OsCode::KEY_RIGHT|OsCode::KEY_END|OsCode::KEY_DOWN|OsCode::KEY_PAGEDOWN|OsCode::KEY_INSERT|OsCode::KEY_DELETE|OsCode::KEY_LEFTMETA|OsCode::KEY_RIGHTMETA|OsCode::KEY_FORWARD|OsCode::KEY_BACK|OsCode::KEY_COMPOSE => {
+                        kb_input.wScan |= 0xE000;
+                        kb_input.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+                    }
+                    _ => {}
+                }
             }
         }
         #[cfg(not(feature = "win_sendinput_send_scancodes"))]
