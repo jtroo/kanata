@@ -340,7 +340,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    fn do_live_reload(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -375,7 +375,7 @@ impl Kanata {
         Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
-        if let Some(tx) = tx {
+        if let Some(tx) = _tx {
             match tx.try_send(ServerMessage::ConfigFileReload {
                 new: self.cfg_paths[self.cur_cfg_idx]
                     .to_str()
