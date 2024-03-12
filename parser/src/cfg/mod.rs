@@ -2572,10 +2572,9 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
 }
 
 fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str =
-        "{LIVE_RELOAD_NUM} expects 1 parameter: <config argument position (1-65535)>";
+    const ERR_MSG: &str = "expects 1 parameter: <config argument position (1-65535)>";
     if ac_params.len() != 1 {
-        bail!("{ERR_MSG}, found {}", ac_params.len());
+        bail!("{LIVE_RELOAD_NUM} {ERR_MSG}, found {}", ac_params.len());
     }
     let num = parse_non_zero_u16(&ac_params[0], s, "config argument position")?;
     Ok(s.a.sref(Action::Custom(
@@ -2586,9 +2585,9 @@ fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
 }
 
 fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "{LIVE_RELOAD_FILE} expects 1 parameter: <config argument (exact path)>";
+    const ERR_MSG: &str = "expects 1 parameter: <config argument (exact path)>";
     if ac_params.len() != 1 {
-        bail!("{ERR_MSG}, found {}", ac_params.len());
+        bail!("{LIVE_RELOAD_FILE} {ERR_MSG}, found {}", ac_params.len());
     }
     let expr = &ac_params[0];
     let spanned_filepath = match expr {
