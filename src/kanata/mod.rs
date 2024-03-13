@@ -374,6 +374,39 @@ impl Kanata {
         #[cfg(target_os = "linux")]
         Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
+        #[cfg(feature = "tcp_server")]
+        if let Some(tx) = _tx {
+            match tx.try_send(ServerMessage::ConfigFileReload {
+                new: self.cfg_paths[self.cur_cfg_idx]
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!(
+                        "could not send ConfigFileReload event notification: {}",
+                        error
+                    );
+                }
+            }
+        }
+        let cur_layer = self.layout.bm().current_layer();
+        //don't wrap in if cur_layer != self.prev_layer, a new deflayer prepended to top of config
+        //then would not send the layer change event, because it would have the same index, 0
+        let new = self.layer_info[cur_layer].name.clone();
+        self.prev_layer = cur_layer;
+        self.print_layer(cur_layer);
+
+        #[cfg(feature = "tcp_server")]
+        if let Some(tx) = _tx {
+            match tx.try_send(ServerMessage::LayerChange { new }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send LayerChange event notification: {}", error);
+                }
+            }
+        }
         Ok(())
     }
 
