@@ -205,6 +205,7 @@ impl TcpServer {
                                                             .cfg_text
                                                             .clone(),
                                                     };
+                                                    drop(k);
                                                     match stream.write(&msg.as_bytes()) {
                                                         Ok(_) => {}
                                                         Err(err) => log::error!(
