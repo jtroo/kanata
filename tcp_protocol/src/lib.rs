@@ -6,6 +6,7 @@ pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
     CurrentLayerInfo { name: String, cfg_text: String },
+    ConfigFileReload { new: String },
     Error { msg: String },
 }
 

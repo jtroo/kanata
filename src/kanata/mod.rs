@@ -340,7 +340,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    fn do_live_reload(&mut self) -> Result<()> {
+    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -515,7 +515,7 @@ impl Kanata {
             // activate. Having this fallback allows live reload to happen which resets the
             // kanata states.
             self.live_reload_requested = false;
-            if let Err(e) = self.do_live_reload() {
+            if let Err(e) = self.do_live_reload(tx) {
                 log::error!("live reload failed {e}");
             }
         }
