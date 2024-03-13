@@ -219,6 +219,7 @@ impl TcpServer {
                                                     let msg = ServerMessage::CurrentLayerName {
                                                         name: k.layer_info[cur_layer].name.clone(),
                                                     };
+                                                    drop(k);
                                                     match stream.write(&msg.as_bytes()) {
                                                         Ok(_) => {}
                                                         Err(err) => log::error!(
