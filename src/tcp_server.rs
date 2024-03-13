@@ -196,6 +196,23 @@ impl TcpServer {
                                                         }
                                                     }
                                                 }
+                                                ClientMessage::RequestCurrentLayerInfo {} => {
+                                                    let mut k = kanata.lock();
+                                                    let cur_layer = k.layout.bm().current_layer();
+                                                    let msg = ServerMessage::CurrentLayerInfo {
+                                                        name: k.layer_info[cur_layer].name.clone(),
+                                                        cfg_text: k.layer_info[cur_layer]
+                                                            .cfg_text
+                                                            .clone(),
+                                                    };
+                                                    drop(k);
+                                                    match stream.write(&msg.as_bytes()) {
+                                                        Ok(_) => {}
+                                                        Err(err) => log::error!(
+                                                            "Error writing response to RequestCurrentLayerInfo: {err}"
+                                                        ),
+                                                    }
+                                                }
                                             }
                                         }
                                         Err(e) => {

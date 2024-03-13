@@ -5,6 +5,7 @@ use std::str::FromStr;
 pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
+    CurrentLayerInfo { name: String, cfg_text: String },
     Error { msg: String },
 }
 
@@ -22,6 +23,7 @@ pub enum ClientMessage {
         new: String,
     },
     RequestLayerNames {},
+    RequestCurrentLayerInfo {},
     ActOnFakeKey {
         name: String,
         action: FakeKeyActionMessage,
