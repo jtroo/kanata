@@ -1358,6 +1358,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
         UNSHIFT => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
+        LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
         _ => unreachable!(),
     }
 }
@@ -2571,10 +2572,9 @@ fn parse_dynamic_macro_play(ac_params: &[SExpr], s: &ParsedState) -> Result<&'st
 }
 
 fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str =
-        "{LIVE_RELOAD_NUM} expects 1 parameter: <config argument position (1-65535)>";
+    const ERR_MSG: &str = "expects 1 parameter: <config argument position (1-65535)>";
     if ac_params.len() != 1 {
-        bail!("{ERR_MSG}, found {}", ac_params.len());
+        bail!("{LIVE_RELOAD_NUM} {ERR_MSG}, found {}", ac_params.len());
     }
     let num = parse_non_zero_u16(&ac_params[0], s, "config argument position")?;
     Ok(s.a.sref(Action::Custom(
@@ -2582,6 +2582,24 @@ fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
         // But for use as an index when stored as data, subtract 1 for 0-based indexing.
         s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNum(num - 1))),
     )))
+}
+
+fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <config argument (exact path)>";
+    if ac_params.len() != 1 {
+        bail!("{LIVE_RELOAD_FILE} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let expr = &ac_params[0];
+    let spanned_filepath = match expr {
+        SExpr::Atom(filepath) => filepath,
+        SExpr::List(_) => {
+            bail_expr!(&expr, "Filepath cannot be a list")
+        }
+    };
+    let lrld_file_path = spanned_filepath.t.trim_matches('"');
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::LiveReloadFile(lrld_file_path.to_string()),
+    )))))
 }
 
 fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {

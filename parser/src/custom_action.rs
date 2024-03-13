@@ -58,6 +58,7 @@ pub enum CustomAction {
     /// the first configuration file provided. The rest of the parser code is free to choose 0 or 1
     /// as the user-facing value though.
     LiveReloadNum(u16),
+    LiveReloadFile(String),
     Repeat,
     CancelMacroOnRelease,
     DynamicMacroRecord(u16),
