@@ -87,6 +87,21 @@ pub fn parse_switch_case_bool(
             Not,
             KeyHistory,
             KeyTiming,
+            Input,
+            InputHistory,
+        }
+        #[derive(Copy, Clone)]
+        enum InputType {
+            Real,
+            Virtual,
+        }
+        impl InputType {
+            fn to_row(self) -> u8 {
+                match self {
+                    InputType::Real => 0,
+                    InputType::Virtual => 1,
+                }
+            }
         }
         let op = l[0]
             .atom(s.vars())
@@ -96,6 +111,8 @@ pub fn parse_switch_case_bool(
                 "not" => Some(AllowedListOps::Not),
                 "key-history" => Some(AllowedListOps::KeyHistory),
                 "key-timing" => Some(AllowedListOps::KeyTiming),
+                "input" => Some(AllowedListOps::Input),
+                "input-history" => Some(AllowedListOps::InputHistory),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -118,6 +135,77 @@ pub fn parse_switch_case_bool(
                     .ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
                 let key_recency = parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
                 ops.push(OpCode::new_key_history(osc.into(), key_recency));
+                Ok(())
+            }
+            AllowedListOps::Input => {
+                if l.len() != 3 {
+                    bail_expr!(
+                        op_expr,
+                        "input must have 2 parameters: key-type(virtual|real), key"
+                    );
+                }
+
+                let input_type = match l[1]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(op_expr, "key-type must be virtual|real"))?
+                {
+                    "real" => InputType::Real,
+                    "fake" | "virtual" => InputType::Virtual,
+                    _ => bail_expr!(op_expr, "key-type must be virtual|real"),
+                };
+                let input = l[2]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(op_expr, "input key name must not be a list"))?;
+                let input = match input_type {
+                    InputType::Real => u16::from(
+                        str_to_oscode(input)
+                            .ok_or_else(|| anyhow_expr!(op_expr, "invalid input key name"))?,
+                    ),
+                    InputType::Virtual => {
+                        let vk = s.fake_keys.get(input).ok_or_else(|| {
+                            anyhow_expr!(op_expr, "virtual key name is not defined")
+                        })?;
+                        assert!(vk.0 < usize::from(KEY_MAX));
+                        vk.0 as u16
+                    }
+                };
+                let (op1, op2) = OpCode::new_active_input((input_type.to_row(), input));
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::InputHistory => {
+                if l.len() != 4 {
+                    bail_expr!(op_expr, "input-history must have 3 parameters: key-type(virtual|real), key, key-recency");
+                }
+
+                let input_type = match l[1]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(op_expr, "key-type must be virtual|real"))?
+                {
+                    "real" => InputType::Real,
+                    "fake" | "virtual" => InputType::Virtual,
+                    _ => bail_expr!(op_expr, "key-type must be virtual|real"),
+                };
+                let input = l[2]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(op_expr, "input key name must not be a list"))?;
+                let input = match input_type {
+                    InputType::Real => u16::from(
+                        str_to_oscode(input)
+                            .ok_or_else(|| anyhow_expr!(op_expr, "invalid input key name"))?,
+                    ),
+                    InputType::Virtual => {
+                        let vk = s.fake_keys.get(input).ok_or_else(|| {
+                            anyhow_expr!(op_expr, "virtual key name is not defined")
+                        })?;
+                        assert!(vk.0 < usize::from(KEY_MAX));
+                        vk.0 as u16
+                    }
+                };
+                let key_recency = parse_u8_with_range(&l[3], s, "key-recency", 1, 8)? - 1;
+                let (op1, op2) =
+                    OpCode::new_historical_input((input_type.to_row(), input), key_recency);
+                ops.extend(&[op1, op2]);
                 Ok(())
             }
             AllowedListOps::KeyTiming => {
@@ -164,6 +252,9 @@ pub fn parse_switch_case_bool(
                 ops.push(OpCode::new_bool(op, placeholder_index));
                 for op in l.iter().skip(1) {
                     parse_switch_case_bool(depth + 1, op, ops, s)?;
+                }
+                if ops.len() > usize::from(MAX_OPCODE_LEN) {
+                    bail_expr!(op_expr, "switch logic length has been exceeded");
                 }
                 ops[placeholder_index as usize] = OpCode::new_bool(op, ops.len() as u16);
                 Ok(())

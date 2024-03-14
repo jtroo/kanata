@@ -263,6 +263,7 @@ impl OpCode {
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
     /// index.
     pub fn new_bool(op: BooleanOperator, end_idx: u16) -> Self {
+        assert!(end_idx <= MAX_OPCODE_LEN);
         Self((end_idx & MAX_OPCODE_LEN) + op.to_u16())
     }
 
