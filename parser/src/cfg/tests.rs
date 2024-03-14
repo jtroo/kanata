@@ -813,7 +813,8 @@ fn parse_switch() {
     let (op1, op2) = OpCode::new_active_input((FAKE_KEY_ROW, 0));
     let (op3, op4) = OpCode::new_active_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTCTRL)));
     let (op5, op6) = OpCode::new_historical_input((FAKE_KEY_ROW, 1), 0);
-    let (op7, op8) = OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
+    let (op7, op8) =
+        OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
     assert_eq!(
         res.3[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
@@ -896,22 +897,22 @@ fn parse_switch() {
                     BreakOrFallthrough::Fallthrough
                 ),
                 (
-                    &[ op1, op2 ],
+                    &[op1, op2],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
                 (
-                    &[ op3, op4 ],
+                    &[op3, op4],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
                 (
-                    &[ op5, op6 ],
+                    &[op5, op6],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
                 (
-                    &[ op7, op8 ],
+                    &[op7, op8],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
