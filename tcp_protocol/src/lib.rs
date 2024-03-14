@@ -6,6 +6,7 @@ pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
     CurrentLayerInfo { name: String, cfg_text: String },
+    CurrentLayerName { name: String },
     Error { msg: String },
 }
 
@@ -24,6 +25,7 @@ pub enum ClientMessage {
     },
     RequestLayerNames {},
     RequestCurrentLayerInfo {},
+    RequestCurrentLayerName {},
     ActOnFakeKey {
         name: String,
         action: FakeKeyActionMessage,
