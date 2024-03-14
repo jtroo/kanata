@@ -202,7 +202,7 @@ pub fn parse_switch_case_bool(
                         vk.0 as u16
                     }
                 };
-                let key_recency = parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
+                let key_recency = parse_u8_with_range(&l[3], s, "key-recency", 1, 8)? - 1;
                 let (op1, op2) =
                     OpCode::new_historical_input((input_type.to_row(), input), key_recency);
                 ops.extend(&[op1, op2]);
@@ -252,6 +252,9 @@ pub fn parse_switch_case_bool(
                 ops.push(OpCode::new_bool(op, placeholder_index));
                 for op in l.iter().skip(1) {
                     parse_switch_case_bool(depth + 1, op, ops, s)?;
+                }
+                if ops.len() > usize::from(MAX_OPCODE_LEN) {
+                    bail_expr!(op_expr, "switch logic length has been exceeded");
                 }
                 ops[placeholder_index as usize] = OpCode::new_bool(op, ops.len() as u16);
                 Ok(())

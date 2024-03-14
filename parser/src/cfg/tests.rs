@@ -777,6 +777,8 @@ fn parse_switch() {
     let source = r#"
 (defvar var1 a)
 (defsrc a)
+(deffakekeys vk1 XX)
+(deffakekeys vk2 XX)
 (deflayer base
   (switch
     ((and a b (or c d) (or e f))) XX break
@@ -791,6 +793,10 @@ fn parse_switch() {
       (key-timing 7 lt 1000)
       (key-timing 8 gt 20000)
     )) $var1 fallthrough
+    ((input virtual vk1)) $var1 break
+    ((input real lctl)) $var1 break
+    ((input-history virtual vk2 1)) $var1 break
+    ((input-history real lsft 8)) $var1 break
   )
 )
 "#;
@@ -804,6 +810,10 @@ fn parse_switch() {
         DEF_LOCAL_KEYS,
     )
     .unwrap();
+    let (op1, op2) = OpCode::new_active_input((FAKE_KEY_ROW, 0));
+    let (op3, op4) = OpCode::new_active_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTCTRL)));
+    let (op5, op6) = OpCode::new_historical_input((FAKE_KEY_ROW, 1), 0);
+    let (op7, op8) = OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
     assert_eq!(
         res.3[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
@@ -884,6 +894,26 @@ fn parse_switch() {
                     ],
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Fallthrough
+                ),
+                (
+                    &[ op1, op2 ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[ op3, op4 ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[ op5, op6 ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[ op7, op8 ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
                 ),
             ]
         })
