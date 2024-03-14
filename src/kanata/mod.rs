@@ -394,12 +394,12 @@ impl Kanata {
         let cur_layer = self.layout.bm().current_layer();
         //don't wrap in if cur_layer != self.prev_layer, a new deflayer prepended to top of config
         //then would not send the layer change event, because it would have the same index, 0
-        let new = self.layer_info[cur_layer].name.clone();
         self.prev_layer = cur_layer;
         self.print_layer(cur_layer);
 
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
+            let new = self.layer_info[cur_layer].name.clone();
             match tx.try_send(ServerMessage::LayerChange { new }) {
                 Ok(_) => {}
                 Err(error) => {
