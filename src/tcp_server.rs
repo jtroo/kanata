@@ -213,6 +213,19 @@ impl TcpServer {
                                                         ),
                                                     }
                                                 }
+                                                ClientMessage::RequestCurrentLayerName {} => {
+                                                    let mut k = kanata.lock();
+                                                    let cur_layer = k.layout.bm().current_layer();
+                                                    let msg = ServerMessage::CurrentLayerName {
+                                                        name: k.layer_info[cur_layer].name.clone(),
+                                                    };
+                                                    match stream.write(&msg.as_bytes()) {
+                                                        Ok(_) => {}
+                                                        Err(err) => log::error!(
+                                                            "Error writing response to RequestCurrentLayerName: {err}"
+                                                        ),
+                                                    }
+                                                }
                                             }
                                         }
                                         Err(e) => {
