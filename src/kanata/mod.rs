@@ -391,9 +391,8 @@ impl Kanata {
                 }
             }
         }
+
         let cur_layer = self.layout.bm().current_layer();
-        //don't wrap in if cur_layer != self.prev_layer, a new deflayer prepended to top of config
-        //then would not send the layer change event, because it would have the same index, 0
         self.prev_layer = cur_layer;
         self.print_layer(cur_layer);
 
