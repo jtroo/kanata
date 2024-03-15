@@ -1213,7 +1213,9 @@ impl Kanata {
                                         if send {
                                             match key_action {
                                                 KeyAction::Press => self.kbd_out.press_key(osc)?,
-                                                KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                                KeyAction::Release => {
+                                                    self.kbd_out.release_key(osc)?
+                                                }
                                             }
                                         }
                                     }
@@ -1234,7 +1236,9 @@ impl Kanata {
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
                             if send {
-                                std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                                std::thread::sleep(std::time::Duration::from_millis(
+                                    (*delay).into(),
+                                ));
                             }
                         }
                         CustomAction::SequenceCancel => {

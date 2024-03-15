@@ -59,7 +59,7 @@ test/sim.txt in the current working directory and
 test/sim.txt in the current working directory and
 '$XDG_CONFIG_HOME/kanata/test/sim.txt'"
     )]
-    #[arg(short='s', long, verbatim_doc_comment)]
+    #[arg(short = 's', long, verbatim_doc_comment)]
     sim: Option<Vec<PathBuf>>,
 }
 
@@ -77,7 +77,6 @@ fn log_init() {
     )])
     .expect("logger can init");
 }
-
 
 /// Parse CLI arguments
 fn cli_init() -> Result<ValidatedArgs> {
@@ -137,24 +136,27 @@ fn main_impl() -> Result<()> {
             for pair in l.split_whitespace() {
                 match pair.split_once(':') {
                     Some((kind, val)) => match kind {
-                        "tick"|"🕐" => {
-                            k.tick_ms(str::parse::<u128>(val)?,send)?;
+                        "tick" | "🕐" => {
+                            k.tick_ms(str::parse::<u128>(val)?, send)?;
                         }
-                        "press"|"↓" => {
+                        "press" | "↓" => {
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
                                 value: KeyValue::Press,
                             })?;
                         }
-                        "release"|"↑" => {
+                        "release" | "↑" => {
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
                                 value: KeyValue::Release,
                             })?;
                         }
-                        "repeat"|"⟳" => {
+                        "repeat" | "⟳" => {
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
                                 value: KeyValue::Repeat,
                             })?;
                         }
