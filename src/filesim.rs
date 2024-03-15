@@ -44,22 +44,22 @@ fn main_impl() -> Result<()> {
     for l in s.lines() {
         match l.split_once(':') {
             Some((kind, val)) => match kind {
-                "tick" => {
+                "tick"|"🕐" => {
                     k.tick_ms(str::parse::<u128>(val)?,send)?;
                 }
-                "press" => {
+                "press"|"↓" => {
                     k.handle_input_event(&KeyEvent {
                         code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
                         value: KeyValue::Press,
                     })?;
                 }
-                "release" => {
+                "release"|"↑" => {
                     k.handle_input_event(&KeyEvent {
                         code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
                         value: KeyValue::Release,
                     })?;
                 }
-                "repeat" => {
+                "repeat"|"⟳" => {
                     k.handle_input_event(&KeyEvent {
                         code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
                         value: KeyValue::Repeat,
