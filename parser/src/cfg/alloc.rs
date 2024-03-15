@@ -40,24 +40,14 @@ impl Allocations {
     ///
     /// Ensure that all associated allocations are no longer referenced before dropping all
     /// clones of the `Arc`.
-    pub(super) unsafe fn new() -> Arc<Self> {
+    pub(crate) unsafe fn new() -> Arc<Self> {
         Arc::new(Self {
             allocations: Mutex::new(vec![]),
         })
     }
 
-    /// Returns a `&'static T` by leaking the existing box.
-    pub(super) fn bref<T>(&self, v: Box<T>) -> &'static T {
-        let p = Box::into_raw(v);
-        if (p as usize) < 16 {
-            panic!("bref bad ptr");
-        }
-        self.allocations.lock().push(p as usize);
-        Box::leak(unsafe { Box::from_raw(p) })
-    }
-
     /// Returns a `&'static T` by leaking a newly created Box of `v`.
-    pub(super) fn sref<T>(&self, v: T) -> &'static T {
+    pub(crate) fn sref<T>(&self, v: T) -> &'static T {
         let p = Box::into_raw(Box::new(v));
         if (p as usize) < 16 {
             panic!("sref bad ptr");
@@ -66,7 +56,7 @@ impl Allocations {
         Box::leak(unsafe { Box::from_raw(p) })
     }
 
-    fn bref_slice<T>(&self, v: Box<[T]>) -> &'static [T] {
+    pub(crate) fn bref_slice<T>(&self, v: Box<[T]>) -> &'static [T] {
         // An empty slice has no backing allocation. `Box<[T]>` is a fat pointer so the leaked return
         // will contain a length of 0 and an invalid pointer.
         if !v.is_empty() {
@@ -76,12 +66,12 @@ impl Allocations {
     }
 
     /// Returns a &'static [&'static T] from a `Vec<T>` by converting to a boxed slice and leaking it.
-    pub(super) fn sref_vec<T>(&self, v: Vec<T>) -> &'static [T] {
+    pub(crate) fn sref_vec<T>(&self, v: Vec<T>) -> &'static [T] {
         self.bref_slice(v.into_boxed_slice())
     }
 
     /// Returns a `&'static [&'static T]` by leaking a newly created box and boxed slice of `v`.
-    pub(super) fn sref_slice<T>(&self, v: T) -> &'static [&'static T] {
+    pub(crate) fn sref_slice<T>(&self, v: T) -> &'static [&'static T] {
         self.bref_slice(vec![self.sref(v)].into_boxed_slice())
     }
 }

@@ -39,8 +39,8 @@ pub type KCoord = (u8, u16);
 /// corresponds to the key on the first layer, row 2, column 3.
 /// The generic parameters are in order: the number of columns, rows and layers,
 /// and the type contained in custom actions.
-pub type Layers<'a, const C: usize, const R: usize, const L: usize, T = core::convert::Infallible> =
-    [[[Action<'a, T>; C]; R]; L];
+pub type Layers<'a, const C: usize, const R: usize, T = core::convert::Infallible> =
+    &'a [[[Action<'a, T>; C]; R]];
 
 const QUEUE_SIZE: usize = 32;
 pub type QueueLen = u8;
@@ -82,11 +82,11 @@ fn extra_waiting_size_constraint() {
 
 /// The layout manager. It takes `Event`s and `tick`s as input, and
 /// generate keyboard reports.
-pub struct Layout<'a, const C: usize, const R: usize, const L: usize, T = core::convert::Infallible>
+pub struct Layout<'a, const C: usize, const R: usize, T = core::convert::Infallible>
 where
     T: 'a + std::fmt::Debug,
 {
-    pub layers: &'a [[[Action<'a, T>; C]; R]; L],
+    pub layers: &'a [[[Action<'a, T>; C]; R]],
     pub default_layer: usize,
     /// Key states.
     pub states: Vec<State<'a, T>, 64>,
@@ -1020,11 +1020,9 @@ impl LastPressTracker {
     }
 }
 
-impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt::Debug>
-    Layout<'a, C, R, L, T>
-{
+impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<'a, C, R, T> {
     /// Creates a new `Layout` object.
-    pub fn new(layers: &'a [[[Action<T>; C]; R]; L]) -> Self {
+    pub fn new(layers: &'a [[[Action<T>; C]; R]]) -> Self {
         Self {
             layers,
             default_layer: 0,
@@ -1882,7 +1880,7 @@ mod test {
 
     #[test]
     fn basic_hold_tap() {
-        static LAYERS: Layers<2, 1, 2> = [
+        static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
                     timeout: 200,
@@ -1934,7 +1932,7 @@ mod test {
 
     #[test]
     fn basic_hold_tap_timeout() {
-        static LAYERS: Layers<2, 1, 2> = [
+        static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
                     timeout: 200,
@@ -1986,7 +1984,7 @@ mod test {
 
     #[test]
     fn hold_tap_interleaved_timeout() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2035,7 +2033,7 @@ mod test {
 
     #[test]
     fn hold_on_press() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2093,7 +2091,7 @@ mod test {
 
     #[test]
     fn permissive_hold() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2133,7 +2131,7 @@ mod test {
 
     #[test]
     fn simultaneous_hold() {
-        static LAYERS: Layers<3, 1, 1> = [[[
+        static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2193,7 +2191,7 @@ mod test {
 
     #[test]
     fn multiple_actions() {
-        static LAYERS: Layers<2, 1, 2> = [
+        static LAYERS: Layers<2, 1> = &[
             [[MultipleActions(&[l(1), k(LShift)].as_slice()), k(F)]],
             [[Trans, k(E)]],
         ];
@@ -2216,7 +2214,7 @@ mod test {
 
     #[test]
     fn custom() {
-        static LAYERS: Layers<1, 1, 1, u8> = [[[Action::Custom(42)]]];
+        static LAYERS: Layers<1, 1, i32> = &[[[Action::Custom(42)]]];
         let mut layout = Layout::new(&LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
@@ -2238,7 +2236,7 @@ mod test {
 
     #[test]
     fn multiple_layers() {
-        static LAYERS: Layers<2, 1, 4> = [
+        static LAYERS: Layers<2, 1> = &[
             [[l(1), l(2)]],
             [[k(A), l(3)]],
             [[l(0), k(B)]],
@@ -2313,7 +2311,7 @@ mod test {
         fn always_none(_: QueuedIter) -> (Option<WaitingAction>, bool) {
             (None, false)
         }
-        static LAYERS: Layers<4, 1, 1> = [[[
+        static LAYERS: Layers<4, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(Kb1),
@@ -2410,7 +2408,7 @@ mod test {
 
     #[test]
     fn tap_hold_interval() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2465,7 +2463,7 @@ mod test {
 
     #[test]
     fn tap_hold_interval_interleave() {
-        static LAYERS: Layers<3, 1, 1> = [[[
+        static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 200,
                 hold: k(LAlt),
@@ -2588,7 +2586,7 @@ mod test {
 
     #[test]
     fn tap_hold_interval_short_hold() {
-        static LAYERS: Layers<1, 1, 1> = [[[HoldTap(&HoldTapAction {
+        static LAYERS: Layers<1, 1> = &[[[HoldTap(&HoldTapAction {
             timeout: 50,
             hold: k(LAlt),
             timeout_action: k(LAlt),
@@ -2630,7 +2628,7 @@ mod test {
 
     #[test]
     fn tap_hold_interval_different_hold() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 timeout: 50,
                 hold: k(LAlt),
@@ -2680,7 +2678,7 @@ mod test {
 
     #[test]
     fn one_shot() {
-        static LAYERS: Layers<3, 1, 1> = [[[
+        static LAYERS: Layers<3, 1> = &[[[
             OneShot(&crate::action::OneShot {
                 timeout: 100,
                 action: &k(LShift),
@@ -2792,7 +2790,7 @@ mod test {
 
     #[test]
     fn one_shot_end_press_or_repress() {
-        static LAYERS: Layers<3, 1, 1> = [[[
+        static LAYERS: Layers<3, 1> = &[[[
             OneShot(&crate::action::OneShot {
                 timeout: 100,
                 action: &k(LShift),
@@ -2946,7 +2944,7 @@ mod test {
 
     #[test]
     fn one_shot_end_on_release() {
-        static LAYERS: Layers<3, 1, 1> = [[[
+        static LAYERS: Layers<3, 1> = &[[[
             OneShot(&crate::action::OneShot {
                 timeout: 100,
                 action: &k(LShift),
@@ -3091,7 +3089,7 @@ mod test {
 
     #[test]
     fn one_shot_multi() {
-        static LAYERS: Layers<4, 1, 2> = [
+        static LAYERS: Layers<4, 1> = &[
             [[
                 OneShot(&crate::action::OneShot {
                     timeout: 100,
@@ -3149,7 +3147,7 @@ mod test {
 
     #[test]
     fn one_shot_tap_hold() {
-        static LAYERS: Layers<3, 1, 2> = [
+        static LAYERS: Layers<3, 1> = &[
             [[
                 OneShot(&crate::action::OneShot {
                     timeout: 200,
@@ -3210,7 +3208,7 @@ mod test {
 
     #[test]
     fn tap_dance_uneager() {
-        static LAYERS: Layers<2, 2, 1> = [[
+        static LAYERS: Layers<2, 2> = &[[
             [
                 TapDance(&crate::action::TapDance {
                     timeout: 100,
@@ -3350,7 +3348,7 @@ mod test {
 
     #[test]
     fn tap_dance_eager() {
-        static LAYERS: Layers<2, 2, 1> = [[
+        static LAYERS: Layers<2, 2> = &[[
             [
                 TapDance(&crate::action::TapDance {
                     timeout: 100,
@@ -3437,7 +3435,7 @@ mod test {
 
     #[test]
     fn release_state() {
-        static LAYERS: Layers<2, 1, 2> = [
+        static LAYERS: Layers<2, 1> = &[
             [[
                 MultipleActions(&(&[KeyCode(LCtrl), Layer(1)] as _)),
                 MultipleActions(&(&[KeyCode(LAlt), Layer(1)] as _)),
@@ -3496,7 +3494,7 @@ mod test {
             ],
             timeout: 100,
         };
-        static LAYERS: Layers<6, 1, 1> = [[[
+        static LAYERS: Layers<6, 1> = &[[[
             NoOp,
             NoOp,
             Chords(&GROUP),
@@ -3625,7 +3623,7 @@ mod test {
             ],
             timeout: 100,
         };
-        static LAYERS: Layers<6, 1, 1> = [[[
+        static LAYERS: Layers<6, 1> = &[[[
             NoOp,
             k(A),
             Chords(&GROUP),
@@ -3684,7 +3682,7 @@ mod test {
             ],
             timeout: 100,
         };
-        static LAYERS: Layers<2, 1, 1> = [[[Chords(&GROUP), Chords(&GROUP)]]];
+        static LAYERS: Layers<2, 1> = &[[[Chords(&GROUP), Chords(&GROUP)]]];
 
         let mut layout = Layout::new(&LAYERS);
         layout.quick_tap_hold_timeout = true;
@@ -3712,7 +3710,7 @@ mod test {
 
     #[test]
     fn test_fork() {
-        static LAYERS: Layers<2, 1, 1> = [[[
+        static LAYERS: Layers<2, 1> = &[[[
             Fork(&ForkConfig {
                 left: k(Kb1),
                 right: k(Kb2),
@@ -3745,7 +3743,7 @@ mod test {
 
     #[test]
     fn test_repeat() {
-        static LAYERS: Layers<5, 1, 2> = [
+        static LAYERS: Layers<5, 1> = &[
             [[
                 k(A),
                 MultipleKeyCodes(&[LShift, B].as_slice()),
@@ -3850,7 +3848,7 @@ mod test {
 
     #[test]
     fn test_clear_multiple_keycodes() {
-        static LAYERS: Layers<2, 1, 1> = [[[k(A), MultipleKeyCodes(&[LCtrl, Enter].as_slice())]]];
+        static LAYERS: Layers<2, 1> = &[[[k(A), MultipleKeyCodes(&[LCtrl, Enter].as_slice())]]];
         let mut layout = Layout::new(&LAYERS);
         layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());

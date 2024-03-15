@@ -1943,9 +1943,9 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_fakekey_action<'a, const C: usize, const R: usize, const L: usize, T>(
+pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
     action: FakeKeyAction,
-    layout: &mut Layout<'a, C, R, L, T>,
+    layout: &mut Layout<'a, C, R, T>,
     x: u8,
     y: u16,
 ) where
@@ -1978,9 +1978,8 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
 }
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-fn release_normalkey_states<'a, const C: usize, const R: usize, const L: usize, T>(
-    layout: &mut Layout<'a, C, R, L, T>,
-) where
+fn release_normalkey_states<'a, const C: usize, const R: usize, T>(layout: &mut Layout<'a, C, R, T>)
+where
     T: 'a + std::fmt::Debug + Copy,
 {
     let mut coords_to_release = vec![];

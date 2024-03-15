@@ -178,8 +178,7 @@ impl<'a> FileContentProvider<'a> {
 }
 
 pub type KanataAction = Action<'static, &'static &'static [&'static CustomAction]>;
-type KLayout =
-    Layout<'static, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'static &'static [&'static CustomAction]>;
+type KLayout = Layout<'static, KEYS_IN_ROW, 2, &'static &'static [&'static CustomAction]>;
 
 type TapHoldCustomFunc =
     fn(
@@ -187,8 +186,7 @@ type TapHoldCustomFunc =
         &Allocations,
     ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
 
-pub type BorrowedKLayout<'a> =
-    Layout<'a, KEYS_IN_ROW, 2, ACTUAL_NUM_LAYERS, &'a &'a [&'a CustomAction]>;
+pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie;
 
 pub struct KanataLayout {
@@ -301,7 +299,7 @@ fn parse_cfg_raw(
     CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
-    Box<KanataLayers>,
+    KanataLayers,
     KeySeqsToFKeys,
     Overrides,
 )> {
@@ -406,7 +404,7 @@ pub fn parse_cfg_raw_string(
     CfgOptions,
     MappedKeys,
     Vec<LayerInfo>,
-    Box<KanataLayers>,
+    KanataLayers,
     KeySeqsToFKeys,
     Overrides,
 )> {
@@ -501,18 +499,6 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     if layer_exprs.is_empty() {
         bail!("No deflayer expressions exist. At least one layer must be defined.")
-    }
-    if layer_exprs.len() > MAX_LAYERS {
-        let spanned = spanned_root_exprs
-            .iter()
-            .filter(gen_first_atom_filter_spanned("deflayer"))
-            .nth(MAX_LAYERS)
-            .expect(">25 layers");
-        bail_span!(
-            spanned,
-            "Exceeded the maximum number of layers ({MAX_LAYERS}), the layer shown is #{}",
-            MAX_LAYERS + 1
-        )
     }
 
     let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
@@ -642,7 +628,14 @@ pub fn parse_cfg_raw_string(
         }
     };
 
-    Ok((cfg, src, layer_info, klayers, sequences, overrides))
+    Ok((
+        cfg,
+        src,
+        layer_info,
+        s.a.bref_slice(klayers),
+        sequences,
+        overrides,
+    ))
 }
 
 fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()> {
@@ -2102,7 +2095,7 @@ fn parse_chord_groups(exprs: &[&Spanned<Vec<SExpr>>], s: &mut ParsedState) -> Re
     Ok(())
 }
 
-fn resolve_chord_groups(layers: &mut KanataLayers, s: &ParsedState) -> Result<()> {
+fn resolve_chord_groups(layers: &mut IntermediateLayers, s: &ParsedState) -> Result<()> {
     let mut chord_groups = s.chord_groups.values().cloned().collect::<Vec<_>>();
     chord_groups.sort_by_key(|group| group.id);
 
@@ -2602,10 +2595,10 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stat
     )))))
 }
 
-fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
+fn parse_layers(s: &mut ParsedState) -> Result<IntermediateLayers> {
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
-    let mut layers_cfg = new_layers();
+    let mut layers_cfg = new_layers(s.layer_exprs.len());
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         // The skip is done to skip the the `deflayer` and layer name tokens.
         for (i, ac) in layer.iter().skip(2).enumerate() {
@@ -3215,6 +3208,6 @@ fn add_kc_output(
 }
 
 /// Create a layout from `layers::LAYERS`.
-fn create_layout(layers: Box<KanataLayers>, a: Arc<Allocations>) -> KanataLayout {
-    KanataLayout::new(Layout::new(a.bref(layers)), a)
+fn create_layout(layers: KanataLayers, a: Arc<Allocations>) -> KanataLayout {
+    KanataLayout::new(Layout::new(layers), a)
 }

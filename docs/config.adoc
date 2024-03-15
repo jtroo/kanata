@@ -118,7 +118,7 @@ physical key in the same sequence position defined in `+defsrc+`.
 
 The first layer defined in your configuration file will be the starting layer
 when kanata runs. Other layers can be temporarily activated or switched to
-using actions. There is currently a maximum of 25 layers allowed.
+using actions.
 
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
