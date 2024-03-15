@@ -86,10 +86,25 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
             left arrow is 0x25 and 4 from numpad is 0x64.
             There is a windows function called 'MapVirtualKeyA' that can be used to convert a virtual key code to a scancode.
             */
-            const EXTENDED_KEYS: [u8; 35] = [
+            const EXTENDED_KEYS: [u8; 48] = [
                 0xb1, 0xb0, 0xa3, 0xad, 0x8c, 0xb3, 0xb2, 0xae, 0xaf, 0xac, 0x6f, 0x2c, 0xa5, 0x24,
                 0x26, 0x21, 0x25, 0x27, 0x23, 0x28, 0x22, 0x2d, 0x2e, 0x5b, 0x5c, 0x5d, 0x5f, 0xaa,
                 0xa8, 0xa9, 0xa7, 0xa6, 0xac, 0xb4, 0x13,
+                /*
+                The 0x13 here is repeated. Why? Maybe it will generate better comparison code 😅.
+                Probably should test+measure when making changes like this (but I didn't).
+                The theory is that comparing on a 16-byte boundary seems good.
+                Below taken from Rust source:
+
+                const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
+                    // Scan for a single byte value by reading two `usize` words at a time.
+                    //
+                    // Split `text` in three parts
+                    // - unaligned initial part, before the first word aligned address in text
+                    // - body, scan by 2 words at a time
+                    // - the last remaining part, < 2 word size
+                */
+                0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13,
             ];
 
             let code_u32 = code as u32;
