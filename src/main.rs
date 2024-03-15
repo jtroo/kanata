@@ -159,6 +159,7 @@ fn cli_init() -> Result<ValidatedArgs> {
 
     Ok(ValidatedArgs {
         paths: cfg_paths,
+        sim_paths: None,
         #[cfg(feature = "tcp_server")]
         port: args.port,
         #[cfg(target_os = "linux")]
