@@ -1,10 +1,45 @@
 use anyhow::{anyhow, bail, Result};
+use clap::Parser;
 use kanata_parser::keys::str_to_oscode;
 use kanata_state_machine::{oskbd::*, *};
 use simplelog::*;
 
+use std::path::PathBuf;
+
 #[cfg(test)]
 mod tests;
+
+#[derive(Parser, Debug)]
+#[command(author, version, verbatim_doc_comment)]
+///
+/// kanata_filesim is a helper cli tool that helps debug kanata's user configuration:
+/// - it reads a text file with a sequence of key events, including key delays
+/// - interprets them with kanata
+/// - prints out which key|mouse events/actions kanata would execute if the keys were
+/// pressed by a user
+struct Args {
+    // Display different platform specific paths based on the target OS
+    #[cfg_attr(
+        target_os = "windows",
+        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'"
+    )]
+    #[cfg_attr(
+        target_os = "macos",
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$HOME/Library/Application Support/kanata/kanata.kbd.'"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "macos", target_os = "windows")),
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$XDG_CONFIG_HOME/kanata/kanata.kbd'"
+    )]
+    #[arg(short, long, verbatim_doc_comment)]
+    cfg: Option<Vec<PathBuf>>,
+}
 
 fn log_init() {
     let mut log_cfg = ConfigBuilder::new();
@@ -21,8 +56,28 @@ fn log_init() {
     .expect("logger can init");
 }
 
-fn arg_init() -> Result<ValidatedArgs> {
-    let cfg_paths = default_cfg();
+
+/// Parse CLI arguments
+fn cli_init() -> Result<ValidatedArgs> {
+    let args = Args::parse();
+    let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
+
+    log::info!("kanata_filesim v{} starting", env!("CARGO_PKG_VERSION"));
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    log::info!("using LLHOOK+SendInput for keyboard IO");
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    log::info!("using the Interception driver for keyboard IO");
+
+    if let Some(config_file) = cfg_paths.first() {
+        if !config_file.exists() {
+            bail!(
+                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                cfg_paths[0].to_str().unwrap_or("?")
+            )
+        }
+    } else {
+        bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
+    }
 
     Ok(ValidatedArgs {
         paths: cfg_paths,
@@ -36,7 +91,7 @@ fn arg_init() -> Result<ValidatedArgs> {
 
 fn main_impl() -> Result<()> {
     log_init();
-    let args = arg_init()?;
+    let args = cli_init()?;
     let mut k = Kanata::new(&args)?;
 
     let s = std::fs::read_to_string("testing/sim.txt")?;
