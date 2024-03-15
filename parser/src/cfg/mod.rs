@@ -262,7 +262,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let (items, mapped_keys, layer_info, klayers, sequences, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
     let switch_max_key_timing = s.switch_max_key_timing.get();
-    let mut layout = create_layout(klayers, s.a);
+    let mut layout = KanataLayout::new(Layout::new(klayers), s.a);
     layout.bm().quick_tap_hold_timeout = items.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = items.rapid_event_delay;
     let mut fake_keys: HashMap<String, usize> =
@@ -3205,9 +3205,4 @@ fn add_kc_output(
             outputs.push(ov_osc);
         }
     }
-}
-
-/// Create a layout from `layers::LAYERS`.
-fn create_layout(layers: KanataLayers, a: Arc<Allocations>) -> KanataLayout {
-    KanataLayout::new(Layout::new(layers), a)
 }
