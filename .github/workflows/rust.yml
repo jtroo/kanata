@@ -58,11 +58,15 @@ jobs:
         shared-key: "persist-cross-job"
         workspaces: ./
     - run: rustup component add clippy
-    - name: Run tests
+    - name: Run tests no features
+      run: cargo test --all --no-default-features
+    - name: Run clippy no features
+      run: cargo clippy --all --no-default-features -- -D warnings
+    - name: Run tests default features
       run: cargo test --all
+    - name: Run clippy default features
+      run: cargo clippy --all -- -D warnings
     - name: Run tests all features
       run: cargo test --all --all-features
-    - name: Run clippy no features
-      run: cargo clippy --all -- -D warnings
     - name: Run clippy all features
       run: cargo clippy --all --all-features -- -D warnings
