@@ -40,11 +40,12 @@ fn main_impl() -> Result<()> {
     let mut k = Kanata::new(&args)?;
 
     let s = std::fs::read_to_string("testing/sim.txt")?;
+    let send = false; // do not send key/mouse events, just print debug info
     for l in s.lines() {
         match l.split_once(':') {
             Some((kind, val)) => match kind {
                 "tick" => {
-                    k.tick_ms(str::parse::<u128>(val)?)?;
+                    k.tick_ms(str::parse::<u128>(val)?,send)?;
                 }
                 "press" => {
                     k.handle_input_event(&KeyEvent {

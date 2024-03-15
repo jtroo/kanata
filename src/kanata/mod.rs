@@ -456,7 +456,7 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
-        self.tick_ms(ms_elapsed)?;
+        self.tick_ms(ms_elapsed, true)?;
 
         self.last_tick = match ms_elapsed {
             0..=10 => now,
@@ -499,10 +499,10 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128) -> Result<()> {
+    pub fn tick_ms(&mut self, ms_elapsed: u128, send: bool) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.tick_states()?;
+            self.tick_states(send)?;
             if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -514,7 +514,7 @@ impl Kanata {
         }
         if ms_elapsed > 0 {
             for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-                self.tick_states()?;
+                self.tick_states(send)?;
                 if tick_replay_state(
                     &mut self.dynamic_macro_replay_state,
                     self.dynamic_macro_replay_behaviour,
@@ -529,8 +529,8 @@ impl Kanata {
         Ok(())
     }
 
-    fn tick_states(&mut self) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes()?;
+    fn tick_states(&mut self, send: bool) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(send)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -696,7 +696,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, send: bool) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -798,8 +798,10 @@ impl Kanata {
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);
-                    if let Err(e) = self.kbd_out.press_key(k.into()) {
-                        bail!("failed to press key: {:?}", e);
+                    if send {
+                        if let Err(e) = self.kbd_out.press_key(k.into()) {
+                            bail!("failed to press key: {:?}", e);
+                        }
                     }
                 }
                 Some(state) => {
@@ -828,7 +830,9 @@ impl Kanata {
                     state.sequence.push(pushed_into_seq);
                     match state.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
-                            self.kbd_out.press_key(osc)?;
+                            if send {
+                                self.kbd_out.press_key(osc)?;
+                            }
                         }
                         SequenceInputMode::HiddenSuppressed
                         | SequenceInputMode::HiddenDelayType => {}
@@ -865,9 +869,11 @@ impl Kanata {
                             match state.sequence_input_mode {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
-                                        if let Some(osc) = OsCode::from_u16(code) {
-                                            self.kbd_out.press_key(osc)?;
-                                            self.kbd_out.release_key(osc)?;
+                                        if send {
+                                            if let Some(osc) = OsCode::from_u16(code) {
+                                                self.kbd_out.press_key(osc)?;
+                                                self.kbd_out.release_key(osc)?;
+                                            }
                                         }
                                     }
                                 }
@@ -927,8 +933,10 @@ impl Kanata {
                                         continue;
                                     }
 
-                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
-                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                    if send {
+                                        self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
+                                        self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                    }
                                 }
                             }
                         }
@@ -1033,16 +1041,24 @@ impl Kanata {
                             log::debug!("click     {:?}", btn);
                             if let Some(pbtn) = prev_mouse_btn {
                                 log::debug!("unclick   {:?}", pbtn);
-                                self.kbd_out.release_btn(pbtn)?;
+                                if send {
+                                    self.kbd_out.release_btn(pbtn)?;
+                                }
                             }
-                            self.kbd_out.click_btn(*btn)?;
+                            if send {
+                                self.kbd_out.click_btn(*btn)?;
+                            }
                             prev_mouse_btn = Some(*btn);
                         }
                         CustomAction::MouseTap(btn) => {
                             log::debug!("click     {:?}", btn);
-                            self.kbd_out.click_btn(*btn)?;
+                            if send {
+                                self.kbd_out.click_btn(*btn)?;
+                            }
                             log::debug!("unclick   {:?}", btn);
-                            self.kbd_out.release_btn(*btn)?;
+                            if send {
+                                self.kbd_out.release_btn(*btn)?;
+                            }
                         }
                         CustomAction::MWheel {
                             direction,
@@ -1050,25 +1066,31 @@ impl Kanata {
                             distance,
                         } => match direction {
                             MWheelDirection::Up | MWheelDirection::Down => {
-                                self.scroll_state = Some(ScrollState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_scroll: 0,
-                                    interval: *interval,
-                                })
+                                if send {
+                                    self.scroll_state = Some(ScrollState {
+                                        direction: *direction,
+                                        distance: *distance,
+                                        ticks_until_scroll: 0,
+                                        interval: *interval,
+                                    })
+                                }
                             }
                             MWheelDirection::Left | MWheelDirection::Right => {
-                                self.hscroll_state = Some(ScrollState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_scroll: 0,
-                                    interval: *interval,
-                                })
+                                if send {
+                                    self.hscroll_state = Some(ScrollState {
+                                        direction: *direction,
+                                        distance: *distance,
+                                        ticks_until_scroll: 0,
+                                        interval: *interval,
+                                    })
+                                }
                             }
                         },
                         CustomAction::MWheelNotch { direction } => {
-                            self.kbd_out
-                                .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
+                            if send {
+                                self.kbd_out
+                                    .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
+                            }
                         }
                         CustomAction::MoveMouse {
                             direction,
@@ -1076,22 +1098,26 @@ impl Kanata {
                             distance,
                         } => match direction {
                             MoveDirection::Up | MoveDirection::Down => {
-                                self.move_mouse_state_vertical = Some(MoveMouseState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_move: 0,
-                                    interval: *interval,
-                                    move_mouse_accel_state: None,
-                                })
+                                if send {
+                                    self.move_mouse_state_vertical = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: None,
+                                    })
+                                }
                             }
                             MoveDirection::Left | MoveDirection::Right => {
-                                self.move_mouse_state_horizontal = Some(MoveMouseState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_move: 0,
-                                    interval: *interval,
-                                    move_mouse_accel_state: None,
-                                })
+                                if send {
+                                    self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                        direction: *direction,
+                                        distance: *distance,
+                                        ticks_until_move: 0,
+                                        interval: *interval,
+                                        move_mouse_accel_state: None,
+                                    })
+                                }
                             }
                         },
                         CustomAction::MoveMouseAccel {
@@ -1141,43 +1167,55 @@ impl Kanata {
 
                             match direction {
                                 MoveDirection::Up | MoveDirection::Down => {
-                                    self.move_mouse_state_vertical = Some(MoveMouseState {
-                                        direction: *direction,
-                                        distance: *min_distance,
-                                        ticks_until_move: 0,
-                                        interval: *interval,
-                                        move_mouse_accel_state: Some(move_mouse_accel_state),
-                                    })
+                                    if send {
+                                        self.move_mouse_state_vertical = Some(MoveMouseState {
+                                            direction: *direction,
+                                            distance: *min_distance,
+                                            ticks_until_move: 0,
+                                            interval: *interval,
+                                            move_mouse_accel_state: Some(move_mouse_accel_state),
+                                        })
+                                    }
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
-                                    self.move_mouse_state_horizontal = Some(MoveMouseState {
-                                        direction: *direction,
-                                        distance: *min_distance,
-                                        ticks_until_move: 0,
-                                        interval: *interval,
-                                        move_mouse_accel_state: Some(move_mouse_accel_state),
-                                    })
+                                    if send {
+                                        self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                            direction: *direction,
+                                            distance: *min_distance,
+                                            ticks_until_move: 0,
+                                            interval: *interval,
+                                            move_mouse_accel_state: Some(move_mouse_accel_state),
+                                        })
+                                    }
                                 }
                             }
                         }
                         CustomAction::MoveMouseSpeed { speed } => {
-                            self.move_mouse_speed_modifiers.push(*speed);
+                            if send {
+                                self.move_mouse_speed_modifiers.push(*speed);
+                            }
                             log::debug!(
                                 "movemousespeed modifiers: {:?}",
                                 self.move_mouse_speed_modifiers
                             );
                         }
                         CustomAction::Cmd(_cmd) => {
-                            #[cfg(feature = "cmd")]
-                            cmds.push(_cmd.clone());
+                            if send {
+                                #[cfg(feature = "cmd")]
+                                cmds.push(_cmd.clone());
+                            }
                         }
                         CustomAction::CmdOutputKeys(_cmd) => {
-                            #[cfg(feature = "cmd")]
-                            {
-                                for (key_action, osc) in keys_for_cmd_output(_cmd) {
-                                    match key_action {
-                                        KeyAction::Press => self.kbd_out.press_key(osc)?,
-                                        KeyAction::Release => self.kbd_out.release_key(osc)?,
+                            if send {
+                                #[cfg(feature = "cmd")]
+                                {
+                                    for (key_action, osc) in keys_for_cmd_output(_cmd) {
+                                        if send {
+                                            match key_action {
+                                                KeyAction::Press => self.kbd_out.press_key(osc)?,
+                                                KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1189,11 +1227,15 @@ impl Kanata {
                                 layout.default_layer,
                                 layout.layers[layout.default_layer][x as usize][y as usize]
                             );
-                            handle_fakekey_action(*action, layout, x, y);
+                            if send {
+                                handle_fakekey_action(*action, layout, x, y);
+                            }
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            if send {
+                                std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            }
                         }
                         CustomAction::SequenceCancel => {
                             if self.sequence_state.is_some() {
@@ -1209,12 +1251,14 @@ impl Kanata {
                                     == SequenceInputMode::HiddenSuppressed
                             {
                                 log::debug!("entering sequence mode");
-                                self.sequence_state = Some(SequenceState {
-                                    sequence: vec![],
-                                    sequence_input_mode: *input_mode,
-                                    ticks_until_timeout: *timeout,
-                                    sequence_timeout: *timeout,
-                                });
+                                if send {
+                                    self.sequence_state = Some(SequenceState {
+                                        sequence: vec![],
+                                        sequence_input_mode: *input_mode,
+                                        ticks_until_timeout: *timeout,
+                                        sequence_timeout: *timeout,
+                                    });
+                                }
                             }
                         }
                         CustomAction::Repeat => {
@@ -1229,16 +1273,20 @@ impl Kanata {
                                     cw.maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
                                         do_caps_word = true;
-                                        self.kbd_out.press_key(OsCode::KEY_LEFTSHIFT)?;
+                                        if send {
+                                            self.kbd_out.press_key(OsCode::KEY_LEFTSHIFT)?;
+                                        }
                                     }
                                 }
                             }
                             // Release key in case the most recently pressed key is still pressed.
-                            self.kbd_out.release_key(osc)?;
-                            self.kbd_out.press_key(osc)?;
-                            self.kbd_out.release_key(osc)?;
-                            if do_caps_word {
-                                self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                            if send {
+                                self.kbd_out.release_key(osc)?;
+                                self.kbd_out.press_key(osc)?;
+                                self.kbd_out.release_key(osc)?;
+                                if do_caps_word {
+                                    self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                                }
                             }
                         }
                         CustomAction::DynamicMacroRecord(macro_id) => {
@@ -1246,7 +1294,9 @@ impl Kanata {
                                 begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
                             {
                                 log::debug!("saving macro {prev_recorded_macro:?}");
-                                self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                                if send {
+                                    self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                                }
                             }
                         }
                         CustomAction::DynamicMacroRecordStop(num_actions_to_remove) => {
@@ -1255,24 +1305,32 @@ impl Kanata {
                                 *num_actions_to_remove,
                             ) {
                                 log::debug!("saving macro {prev_recorded_macro:?}");
-                                self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                                if send {
+                                    self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                                }
                             }
                         }
                         CustomAction::DynamicMacroPlay(macro_id) => {
-                            play_macro(
-                                *macro_id,
-                                &mut self.dynamic_macro_replay_state,
-                                &self.dynamic_macros,
-                            );
+                            if send {
+                                play_macro(
+                                    *macro_id,
+                                    &mut self.dynamic_macro_replay_state,
+                                    &self.dynamic_macros,
+                                );
+                            }
                         }
                         CustomAction::SendArbitraryCode(code) => {
-                            self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
+                            if send {
+                                self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
+                            }
                         }
                         CustomAction::CapsWord(cfg) => {
                             self.caps_word = Some(CapsWordState::new(cfg));
                         }
                         CustomAction::SetMouse { x, y } => {
-                            self.kbd_out.set_mouse(*x, *y)?;
+                            if send {
+                                self.kbd_out.set_mouse(*x, *y)?;
+                            }
                         }
                         CustomAction::FakeKeyOnIdle(fkd) => {
                             self.ticks_since_idle = 0;
@@ -1385,7 +1443,11 @@ impl Kanata {
                     })
                     .map(|btn| {
                         log::debug!("unclick   {:?}", btn);
-                        self.kbd_out.release_btn(*btn)
+                        if send {
+                            self.kbd_out.release_btn(*btn)
+                        } else {
+                            Ok(())
+                        }
                     })
                 {
                     bail!(e);
