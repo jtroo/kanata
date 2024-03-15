@@ -134,32 +134,34 @@ fn main_impl() -> Result<()> {
         let s = std::fs::read_to_string(config_sim_file)?;
         let send = false; // do not send key/mouse events, just print debug info
         for l in s.lines() {
-            match l.split_once(':') {
-                Some((kind, val)) => match kind {
-                    "tick"|"🕐" => {
-                        k.tick_ms(str::parse::<u128>(val)?,send)?;
-                    }
-                    "press"|"↓" => {
-                        k.handle_input_event(&KeyEvent {
-                            code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
-                            value: KeyValue::Press,
-                        })?;
-                    }
-                    "release"|"↑" => {
-                        k.handle_input_event(&KeyEvent {
-                            code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
-                            value: KeyValue::Release,
-                        })?;
-                    }
-                    "repeat"|"⟳" => {
-                        k.handle_input_event(&KeyEvent {
-                            code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
-                            value: KeyValue::Repeat,
-                        })?;
-                    }
-                    _ => bail!("invalid line prefix: {kind}"),
-                },
-                None => bail!("invalid line: {l}"),
+            for pair in l.split_whitespace() {
+                match pair.split_once(':') {
+                    Some((kind, val)) => match kind {
+                        "tick"|"🕐" => {
+                            k.tick_ms(str::parse::<u128>(val)?,send)?;
+                        }
+                        "press"|"↓" => {
+                            k.handle_input_event(&KeyEvent {
+                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                value: KeyValue::Press,
+                            })?;
+                        }
+                        "release"|"↑" => {
+                            k.handle_input_event(&KeyEvent {
+                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                value: KeyValue::Release,
+                            })?;
+                        }
+                        "repeat"|"⟳" => {
+                            k.handle_input_event(&KeyEvent {
+                                code: str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                value: KeyValue::Repeat,
+                            })?;
+                        }
+                        _ => bail!("invalid pair prefix: {kind}"),
+                    },
+                    None => bail!("invalid pair: {l}"),
+                }
             }
         }
     }
