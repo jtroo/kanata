@@ -269,7 +269,7 @@ impl Kanata {
         update_kbd_out(&cfg.options, &kbd_out)?;
 
         #[cfg(target_os = "windows")]
-        set_win_altgr_behaviour(cfg.items.windows_altgr);
+        set_win_altgr_behaviour(cfg.options.windows_altgr);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
@@ -297,7 +297,7 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
-            include_names: cfg.items.macos_dev_names_include,
+            include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.options.linux_dev,
             #[cfg(target_os = "linux")]
@@ -307,9 +307,9 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.items.windows_interception_mouse_hwids,
+            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.items.windows_interception_keyboard_hwids,
+            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -350,7 +350,7 @@ impl Kanata {
         };
         update_kbd_out(&cfg.options, &self.kbd_out)?;
         #[cfg(target_os = "windows")]
-        set_win_altgr_behaviour(cfg.items.windows_altgr);
+        set_win_altgr_behaviour(cfg.options.windows_altgr);
         self.sequence_backtrack_modcancel = cfg.options.sequence_backtrack_modcancel;
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
