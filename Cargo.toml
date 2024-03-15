@@ -19,6 +19,19 @@ repository = "https://github.com/jtroo/kanata"
 readme = "README.md"
 license = "LGPL-3.0"
 edition = "2021"
+default-run = "kanata"
+
+[lib]
+name = "kanata_state_machine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kanata"
+path = "src/main.rs"
+
+[[bin]]
+name = "kanata_filesim"
+path = "src/filesim.rs"
 
 [dependencies]
 anyhow = "1"
