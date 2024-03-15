@@ -226,7 +226,7 @@ pub struct Cfg {
     /// Layer info used for printing to the logs.
     pub layer_info: Vec<LayerInfo>,
     /// Configuration items in `defcfg`.
-    pub items: CfgOptions,
+    pub options: CfgOptions,
     /// The keyberon layout state machine struct.
     pub layout: KanataLayout,
     /// Sequences defined in `defseq`.
@@ -270,7 +270,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     fake_keys.shrink_to_fit();
     log::info!("config file is valid");
     Ok(Cfg {
-        items: icfg.options,
+        options: icfg.options,
         mapped_keys: icfg.mapped_keys,
         layer_info: icfg.layer_info,
         key_outputs,

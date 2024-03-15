@@ -266,7 +266,7 @@ impl Kanata {
             );
         }
 
-        update_kbd_out(&cfg.items, &kbd_out)?;
+        update_kbd_out(&cfg.options, &kbd_out)?;
 
         #[cfg(target_os = "windows")]
         set_win_altgr_behaviour(cfg.items.windows_altgr);
@@ -288,7 +288,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
-            sequence_backtrack_modcancel: cfg.items.sequence_backtrack_modcancel,
+            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: time::Instant::now(),
@@ -299,13 +299,13 @@ impl Kanata {
             #[cfg(target_os = "macos")]
             include_names: cfg.items.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.items.linux_dev,
+            kbd_in_paths: cfg.options.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.items.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.items.linux_dev_names_include,
+            include_names: cfg.options.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.items.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwids: cfg.items.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -313,16 +313,16 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.items.log_layer_changes,
+            log_layer_changes: cfg.options.log_layer_changes,
             caps_word: None,
-            movemouse_smooth_diagonals: cfg.items.movemouse_smooth_diagonals,
-            movemouse_inherit_accel_state: cfg.items.movemouse_inherit_accel_state,
-            dynamic_macro_max_presses: cfg.items.dynamic_macro_max_presses,
+            movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
-                delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+                delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.items.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -348,21 +348,21 @@ impl Kanata {
                 bail!("failed to parse config file");
             }
         };
-        update_kbd_out(&cfg.items, &self.kbd_out)?;
+        update_kbd_out(&cfg.options, &self.kbd_out)?;
         #[cfg(target_os = "windows")]
         set_win_altgr_behaviour(cfg.items.windows_altgr);
-        self.sequence_backtrack_modcancel = cfg.items.sequence_backtrack_modcancel;
+        self.sequence_backtrack_modcancel = cfg.options.sequence_backtrack_modcancel;
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes = cfg.items.log_layer_changes;
-        self.movemouse_smooth_diagonals = cfg.items.movemouse_smooth_diagonals;
-        self.movemouse_inherit_accel_state = cfg.items.movemouse_inherit_accel_state;
-        self.dynamic_macro_max_presses = cfg.items.dynamic_macro_max_presses;
+        self.log_layer_changes = cfg.options.log_layer_changes;
+        self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
+        self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
+        self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
-            delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+            delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
         #[cfg(feature = "tcp_server")]
         {
@@ -372,7 +372,7 @@ impl Kanata {
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
-        Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
+        Kanata::set_repeat_rate(cfg.options.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
