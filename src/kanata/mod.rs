@@ -513,18 +513,16 @@ impl Kanata {
                 log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
             }
         }
-        if ms_elapsed > 0 {
-            for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-                self.tick_states()?;
-                if tick_replay_state(
-                    &mut self.dynamic_macro_replay_state,
-                    self.dynamic_macro_replay_behaviour,
-                )
-                .is_some()
-                {
-                    log::error!("overshot to next event at iteration #{i}, the code is broken!");
-                    break;
-                }
+        for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
+            self.tick_states()?;
+            if tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            )
+            .is_some()
+            {
+                log::error!("overshot to next event at iteration #{i}, the code is broken!");
+                break;
             }
         }
         Ok(())
