@@ -3,11 +3,10 @@
 use super::*;
 
 use crate::kanata::CalculatedMouseMove;
+use kanata_keyberon::key_code::KeyCode;
 use kanata_parser::custom_action::*;
 
-#[cfg(target_os = "linux")]
-use evdev::InputEvent;
-
+use std::fmt;
 use std::io;
 
 /// Handle for writing keys to the OS.
@@ -91,5 +90,53 @@ impl KbdOut {
     pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         log::info!("set-mouse:{x},{y}");
         Ok(())
+    }
+}
+
+/// Key event received by the low level keyboard hook.
+#[derive(Debug, Clone, Copy)]
+pub struct InputEvent {
+    pub code: u32,
+
+    /// Key was released
+    pub up: bool,
+}
+
+impl fmt::Display for InputEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let direction = if self.up { "↑" } else { "↓" };
+        let key_name = KeyCode::from(OsCode::from(self.code));
+        write!(f, "{}{:?}", direction, key_name)
+    }
+}
+
+impl InputEvent {
+    pub fn from_oscode(code: OsCode, val: KeyValue) -> Self {
+        Self {
+            code: code.into(),
+            up: val.into(),
+        }
+    }
+}
+
+impl TryFrom<InputEvent> for KeyEvent {
+    type Error = ();
+    fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
+        Ok(Self {
+            code: OsCode::from_u16(item.code as u16).ok_or(())?,
+            value: match item.up {
+                true => KeyValue::Release,
+                false => KeyValue::Press,
+            },
+        })
+    }
+}
+
+impl From<KeyEvent> for InputEvent {
+    fn from(item: KeyEvent) -> Self {
+        Self {
+            code: item.code.into(),
+            up: item.value.into(),
+        }
     }
 }
