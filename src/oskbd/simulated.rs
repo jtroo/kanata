@@ -1,3 +1,5 @@
+//! Output that just prints text to stdout instead of actually doing anything OS-related.
+
 use super::*;
 
 use crate::kanata::CalculatedMouseMove;
@@ -52,7 +54,6 @@ impl KbdOut {
         self.write_key(key, KeyValue::Release)
     }
 
-    /// Send using VK_PACKET
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
         println!("unicode:{c}");
         Ok(())
