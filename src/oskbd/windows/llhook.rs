@@ -4,16 +4,21 @@
 // https://github.com/timokroeger/kbremap
 
 use std::cell::Cell;
+#[cfg(not(feature = "simulated_output"))]
 use std::io;
-use std::{mem, ptr};
+#[cfg(not(feature = "simulated_output"))]
+use std::mem;
+use std::ptr;
 
 use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
+#[cfg(not(feature = "simulated_output"))]
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::{KeyEvent, KeyValue};
+#[cfg(not(feature = "simulated_output"))]
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
@@ -238,6 +243,7 @@ impl KbdOut {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn send_btn(flag: u32) {
     unsafe {
         let mut inputs: [INPUT; 1] = mem::zeroed();
@@ -252,6 +258,7 @@ fn send_btn(flag: u32) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn send_xbtn(flag: u32, xbtn: u16) {
     unsafe {
         let mut inputs: [INPUT; 1] = mem::zeroed();
@@ -267,6 +274,7 @@ fn send_xbtn(flag: u32, xbtn: u16) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn scroll(direction: MWheelDirection, distance: u16) {
     unsafe {
         let mut inputs: [INPUT; 1] = mem::zeroed();
@@ -285,6 +293,7 @@ fn scroll(direction: MWheelDirection, distance: u16) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn hscroll(direction: MWheelDirection, distance: u16) {
     unsafe {
         let mut inputs: [INPUT; 1] = mem::zeroed();
@@ -303,6 +312,7 @@ fn hscroll(direction: MWheelDirection, distance: u16) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn move_mouse(direction: MoveDirection, distance: u16) {
     log::debug!("move mouse: {direction:?} {distance:?}");
     match direction {
@@ -313,6 +323,7 @@ fn move_mouse(direction: MoveDirection, distance: u16) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn move_mouse_many(moves: &[CalculatedMouseMove]) {
     let mut x_acc = 0;
     let mut y_acc = 0;
@@ -329,10 +340,12 @@ fn move_mouse_many(moves: &[CalculatedMouseMove]) {
     move_mouse_xy(x_acc, y_acc);
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn move_mouse_xy(x: i32, y: i32) {
     mouse_event(MOUSEEVENTF_MOVE, 0, x, y);
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn set_mouse_xy(x: i32, y: i32) {
     mouse_event(
         MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK,
@@ -343,6 +356,7 @@ fn set_mouse_xy(x: i32, y: i32) {
 }
 
 // Taken from Enigo: https://github.com/enigo-rs/enigo
+#[cfg(not(feature = "simulated_output"))]
 fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
     let mut input = INPUT {
         type_: INPUT_MOUSE,

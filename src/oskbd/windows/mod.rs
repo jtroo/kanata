@@ -1,9 +1,13 @@
+#[cfg(not(feature = "simulated_output"))]
 use std::mem;
 
+#[cfg(not(feature = "simulated_output"))]
 use winapi::um::winuser::*;
 
+#[cfg(not(feature = "simulated_output"))]
 use encode_unicode::CharExt;
 
+#[cfg(not(feature = "simulated_output"))]
 use crate::oskbd::KeyValue;
 
 #[cfg(not(feature = "interception_driver"))]
@@ -22,6 +26,7 @@ pub use interception_convert::*;
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
+#[cfg(not(feature = "simulated_output"))]
 fn send_uc(c: char, up: bool) {
     log::debug!("sending unicode {c}");
     let mut inputs: [INPUT; 2] = unsafe { mem::zeroed() };
@@ -50,6 +55,7 @@ fn send_uc(c: char, up: bool) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
     send_key_sendinput(
         code,
@@ -63,6 +69,7 @@ fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+#[cfg(not(feature = "simulated_output"))]
 fn send_key_sendinput(code: u16, is_key_up: bool) {
     unsafe {
         let mut kb_input: KEYBDINPUT = mem::zeroed();
