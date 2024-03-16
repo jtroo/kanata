@@ -6,7 +6,14 @@ use super::OsCode;
 mod keys {
     // Taken from:
     // https://github.com/microsoft/windows-rs/blob/0.55.0/crates/libs/windows/src/Windows/Win32/UI/Input/KeyboardAndMouse/mod.rs
+    // Category             Count  List
+    // Reserved             #  6   7 10 11                            94                                     184 185
+    // Unassigned/undefined # 19           14 15 58 59 60 61 62 63 64    151 152 153 154 155 156 157 158 159         232
+    // Assigned             #230
+    // Total                #255
+    // 232 unassigned used as a `VK_KPENTER_FAKE`
     pub type VirtualKey = u16;
+    pub const VK_KPENTER_FAKE: VirtualKey = 232u16; // unassigned VK used to enable Interception use
     pub const VK_0: VirtualKey = 48u16;
     pub const VK_1: VirtualKey = 49u16;
     pub const VK_2: VirtualKey = 50u16;
@@ -346,7 +353,7 @@ impl OsCode {
             VK_SUBTRACT => Some(OsCode::KEY_KPMINUS),
             VK_ADD => Some(OsCode::KEY_KPPLUS),
             VK_DECIMAL => Some(OsCode::KEY_KPDOT),
-            VK_NONE => Some(OsCode::KEY_KPENTER),
+            VK_KPENTER_FAKE => Some(OsCode::KEY_KPENTER),
             VK_RCONTROL => Some(OsCode::KEY_RIGHTCTRL),
             VK_DIVIDE => Some(OsCode::KEY_KPSLASH),
             VK_RMENU => Some(OsCode::KEY_RIGHTALT),
@@ -984,7 +991,7 @@ impl OsCode {
             OsCode::KEY_KPMINUS => VK_SUBTRACT,
             OsCode::KEY_KPPLUS => VK_ADD,
             OsCode::KEY_KPDOT => VK_DECIMAL,
-            OsCode::KEY_KPENTER => VK_NONE,
+            OsCode::KEY_KPENTER => VK_KPENTER_FAKE,
             OsCode::KEY_RIGHTCTRL => VK_RCONTROL,
             OsCode::KEY_KPSLASH => VK_DIVIDE,
             OsCode::KEY_RIGHTALT => VK_RMENU,
