@@ -291,11 +291,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(target_os = "windows")]
         "prtsc" | "prnt" => OsCode::KEY_PRINT,
 
-        "mlft" | "mouseleft" => OsCode::BTN_LEFT,
-        "mrgt" | "mouseright" => OsCode::BTN_RIGHT,
-        "mmid" | "mousemid" => OsCode::BTN_MIDDLE,
-        "mfwd" | "mouseforward" => OsCode::BTN_EXTRA,
-        "mbck" | "mousebackward" => OsCode::BTN_SIDE,
+        "mlft" | "mouseleft" | "🖰1" | "‹🖰" => OsCode::BTN_LEFT,
+        "mrgt" | "mouseright" | "🖰2" | "🖰›" => OsCode::BTN_RIGHT,
+        "mmid" | "mousemid" | "🖰3" => OsCode::BTN_MIDDLE,
+        "mbck" | "mousebackward" | "🖰4" => OsCode::BTN_SIDE,
+        "mfwd" | "mouseforward" | "🖰5" => OsCode::BTN_EXTRA,
 
         // NOTE: these are linux and interception-only due to missing implementation for LLHOOK
         #[cfg(any(target_os = "linux", target_os = "unknown", feature = "interception_driver"))]
