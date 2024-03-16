@@ -31,7 +31,7 @@ impl KbdOut {
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        println!("out:{event:?}");
+        println!("out:{event}");
         Ok(())
     }
 
