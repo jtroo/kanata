@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
+
 use std::fmt::Write;
 
 use kanata_parser::cfg::parse_mod_prefix;

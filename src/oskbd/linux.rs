@@ -1,5 +1,7 @@
 //! Contains the input/output code for keyboards on Linux.
 
+#![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
+
 use evdev::{uinput, Device, EventType, InputEvent, RelativeAxisType};
 use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
