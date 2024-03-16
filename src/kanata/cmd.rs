@@ -203,7 +203,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
 
 #[cfg(feature = "simulated_output")]
 pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item = Item> {
-    println!("cmd:{cmd_and_args:?}");
+    println!("cmd-keys:{cmd_and_args:?}");
     [].iter().copied()
 }
 

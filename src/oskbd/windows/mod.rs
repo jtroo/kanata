@@ -1,3 +1,8 @@
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
 use std::mem;
 
 use winapi::um::winuser::*;

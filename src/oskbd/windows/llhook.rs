@@ -3,6 +3,11 @@
 // This file is taken from kbremap with minor modifications.
 // https://github.com/timokroeger/kbremap
 
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
 use core::fmt;
 use std::cell::Cell;
 use std::io;
