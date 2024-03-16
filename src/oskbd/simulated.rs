@@ -3,14 +3,31 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use kanata_parser::custom_action::*;
 
+#[cfg(target_os = "linux")]
+use evdev::InputEvent;
+
 use std::io;
+
+
 
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
 impl KbdOut {
+    #[cfg(not(target_os = "linux"))]
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self {})
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
+        Ok(Self {})
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
+        println!("rawevent:{event:?}");
+        Ok(())
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
@@ -19,7 +36,8 @@ impl KbdOut {
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
-        let event = InputEvent::from_oscode(key, value);
+        let key_ev = KeyEvent::new(key, value);
+        let event = key_ev.into();
         self.write(event)
     }
 
