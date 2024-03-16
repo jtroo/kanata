@@ -12,7 +12,7 @@ mod tests;
 pub fn default_sim() -> Vec<PathBuf> {
     let mut cfgs = Vec::new();
 
-    let default = PathBuf::from("test/sim.txts");
+    let default = PathBuf::from("test/sim.txt");
     if default.is_file() {
         cfgs.push(default);
     }
