@@ -8,8 +8,6 @@ use evdev::InputEvent;
 
 use std::io;
 
-
-
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
