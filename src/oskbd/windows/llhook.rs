@@ -81,7 +81,7 @@ impl InputEvent {
         }
     }
 
-    fn from_oscode(code: OsCode, val: KeyValue) -> Self {
+    pub fn from_oscode(code: OsCode, val: KeyValue) -> Self {
         Self {
             code: code.into(),
             up: val.into(),
@@ -149,9 +149,11 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
+#[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self {})

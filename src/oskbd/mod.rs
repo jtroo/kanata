@@ -15,6 +15,11 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::*;
 
+#[cfg(feature = "simulated_output")]
+mod simulated;
+#[cfg(feature = "simulated_output")]
+pub use simulated::*;
+
 // ------------------ KeyValue --------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

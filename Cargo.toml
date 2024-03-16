@@ -84,6 +84,7 @@ tcp_server = []
 win_sendinput_send_scancodes = []
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
+simulated_output = []
 
 [profile.release]
 opt-level = "z"

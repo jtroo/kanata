@@ -147,8 +147,10 @@ impl TryFrom<KeyEvent> for InputEvent {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 pub struct KbdOut {}
 
+#[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {})
