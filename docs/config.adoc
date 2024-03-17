@@ -548,7 +548,7 @@ will do nothing as opposed to typing a letter.
 === Unicode
 <<table-of-contents,Back to ToC>>
 
-The `+unicode+` action accepts a single unicode character. The character will
+The `+unicode+` (or `+🔣+`) action accepts a single unicode character. The character will
 not be repeatedly typed if you hold the key down.
 
 You may use a unicode character as an alias if desired.
@@ -563,10 +563,11 @@ NOTE: If using Linux, make sure to look at the
 ----
 (defalias
   sml (unicode 😀)
+  😀 (🔣 😀)
   🙁 (unicode 🙁)
 )
 (deflayer has-happy-sad
-  @sml @🙁 a s d f
+  @sml @🙁 @😀 s d f
 )
 ----
 
