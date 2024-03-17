@@ -113,7 +113,7 @@ impl fmt::Display for InputEvent {
     }
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "windows")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 impl InputEvent {
     pub fn from_oscode(code: OsCode, val: KeyValue) -> Self {
         Self {
@@ -123,7 +123,7 @@ impl InputEvent {
     }
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "windows")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
@@ -137,7 +137,7 @@ impl TryFrom<InputEvent> for KeyEvent {
     }
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "windows")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
         Self {
