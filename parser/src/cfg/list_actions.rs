@@ -18,6 +18,7 @@ pub const MACRO_REPEAT: &str = "macro-repeat";
 pub const MACRO_RELEASE_CANCEL: &str = "macro-release-cancel";
 pub const MACRO_REPEAT_RELEASE_CANCEL: &str = "macro-repeat-release-cancel";
 pub const UNICODE: &str = "unicode";
+pub const SYM: &str = "🔣";
 pub const ONE_SHOT: &str = "one-shot";
 pub const ONE_SHOT_PRESS: &str = "one-shot-press";
 pub const ONE_SHOT_RELEASE: &str = "one-shot-release";
@@ -81,6 +82,7 @@ pub fn is_list_action(ac: &str) -> bool {
         MACRO_RELEASE_CANCEL,
         MACRO_REPEAT_RELEASE_CANCEL,
         UNICODE,
+        SYM,
         ONE_SHOT,
         ONE_SHOT_PRESS,
         ONE_SHOT_RELEASE,
