@@ -1112,7 +1112,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'sta
     }
     match ac {
         "_" | "‗" | "≝" => return Ok(s.a.sref(Action::Trans)),
-        "XX" | "✗" | "∅" | "‿" => return Ok(s.a.sref(Action::NoOp)),
+        "XX" | "✗" | "∅" => return Ok(s.a.sref(Action::NoOp)),
         "lrld" => {
             return Ok(s.a.sref(Action::Custom(
                 s.a.sref(s.a.sref_slice(CustomAction::LiveReload)),
