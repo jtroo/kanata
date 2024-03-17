@@ -1,4 +1,10 @@
 //! Contains the input/output code for keyboards on Macos.
+
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
 use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
@@ -8,11 +14,6 @@ use kanata_parser::keys::*;
 use karabiner_driverkit::*;
 use std::convert::TryFrom;
 use std::io;
-
-#![cfg_attr(
-    feature = "simulated_output",
-    allow(dead_code, unused_imports, unused_variables, unused_mut)
-)]
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
