@@ -1766,49 +1766,49 @@ fn parse_mods_held_for_submacro<'a>(
     Ok((mod_keys, unparsed_str))
 }
 
+static KEYMODI: [(&str, KeyCode); 22] = [
+    ("S-", KeyCode::LShift),
+    ("‹⇧", KeyCode::LShift),
+    ("⇧›", KeyCode::RShift),
+    ("C-", KeyCode::LCtrl),
+    ("‹⎈", KeyCode::LCtrl),
+    ("‹⌃", KeyCode::LCtrl),
+    ("⎈›", KeyCode::RCtrl),
+    ("⌃›", KeyCode::RCtrl),
+    ("M-", KeyCode::LGui),
+    ("‹◆", KeyCode::LGui),
+    ("‹⌘", KeyCode::LGui),
+    ("‹❖", KeyCode::LGui),
+    ("◆›", KeyCode::RGui),
+    ("⌘›", KeyCode::RGui),
+    ("❖›", KeyCode::RGui),
+    ("‹⎇", KeyCode::LAlt),
+    ("A-", KeyCode::LAlt),
+    ("‹⌥", KeyCode::LAlt),
+    ("AG-", KeyCode::RAlt),
+    ("RA-", KeyCode::RAlt),
+    ("⎇›", KeyCode::RAlt),
+    ("⌥›", KeyCode::RAlt),
+];
+
 /// Parses mod keys like `C-S-`. Returns the `KeyCode`s for the modifiers parsed and the unparsed
 /// text after any parsed modifier prefixes.
 pub fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
     let mut key_stack = Vec::new();
     let mut rem = mods;
     loop {
-        if let Some(rest) = rem.strip_prefix("C-") {
-            if key_stack.contains(&KeyCode::LCtrl) {
-                bail!("Redundant \"C-\" in {mods:?}");
+        let mut found_none = true;
+        for (key_s, key_code) in &KEYMODI {
+            if let Some(rest) = rem.strip_prefix(key_s) {
+                if key_stack.contains(key_code) {
+                    bail!("Redundant \"{key_code:?}\" in {mods:?}");
+                }
+                key_stack.push(*key_code);
+                rem = rest;
+                found_none = false;
             }
-            key_stack.push(KeyCode::LCtrl);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("S-") {
-            if key_stack.contains(&KeyCode::LShift) {
-                bail!("Redundant \"S-\" in {mods:?}");
-            }
-            key_stack.push(KeyCode::LShift);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("AG-") {
-            if key_stack.contains(&KeyCode::RAlt) {
-                bail!("Redundant \"AltGr\" in {mods:?}");
-            }
-            key_stack.push(KeyCode::RAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("RA-") {
-            if key_stack.contains(&KeyCode::RAlt) {
-                bail!("Redundant \"AltGr\" in {mods:?}");
-            }
-            key_stack.push(KeyCode::RAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("A-") {
-            if key_stack.contains(&KeyCode::LAlt) {
-                bail!("Redundant \"A-\" in {mods:?}");
-            }
-            key_stack.push(KeyCode::LAlt);
-            rem = rest;
-        } else if let Some(rest) = rem.strip_prefix("M-") {
-            if key_stack.contains(&KeyCode::LGui) {
-                bail!("Redundant \"M-\" in {mods:?}");
-            }
-            key_stack.push(KeyCode::LGui);
-            rem = rest;
-        } else {
+        }
+        if found_none {
             break;
         }
     }

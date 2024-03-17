@@ -578,11 +578,14 @@ You may want to remap a key to automatically be pressed in combination with
 modifiers such as Control or Shift. You can achieve this by prefixing the
 normal key name with one or more of:
 
-* `+C-+`: Left Control
-* `+A-+`: Left Alt
-* `+S-+`: Left Shift
-* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super
-* `+RA-+` or `+AG+`: Right Alt, a.k.a. AltGr
+* `+C-+`: Left Control (also `+‹⎈+` `+‹⌃+`)
+* `+⎈›+`: Right Control (also `+⌃›+`)
+* `+A-+`: Left Alt (also `+‹⎇+` `+‹⌥+`)
+* `+S-+`: Left Shift (also `+‹⇧+`)
+* `+⇧›+`: Right Shift
+* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super (also `+‹◆+` `+‹⌘+` `+‹❖+`)
+* `+◆›+`: Right Meta (also `+⌘›+` `+❖›+`)
+* `+RA-+` or `+AG+`: Right Alt, a.k.a. AltGr (also `+⎇›+` `+⌥›+`)
 
 These modifiers may be combined together if desired.
 
@@ -2867,3 +2870,17 @@ doesn't make full use of the power of this functionality.
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behaviour].
+
+
+[[fancy-key-symbols]]
+=== Fancy key symbols
+<<table-of-contents,Back to ToC>>
+
+Instead of using the same `+a-z+` letters for special keys, e.g., `+lsft+` for `+LeftShift+`
+you can use much shorter, yet more visible, key symbols like `+‹⇧+`.
+
+For more details see
+https://github.com/jtroo/kanata/blob/main/docs/fancy_symbols.md[symbol list] and
+https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example config], which not only uses these symbols in layer definitions, but also repurposes `+⎇›+` and `+⇧›+` `+⎇›+` keys into "symbol" keys that allow you to insert these fancy symbols by pressing the key, e.g.,
+
+* hold `+⎇›+` and tap `+Delete+` would insert `+␡+`
