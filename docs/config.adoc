@@ -548,10 +548,12 @@ will do nothing as opposed to typing a letter.
 === Unicode
 <<table-of-contents,Back to ToC>>
 
-The `+unicode+` (or `+🔣+`) action accepts a single unicode character. The character will
-not be repeatedly typed if you hold the key down.
+The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
+a composed character, so 🤲, but not 🤲🏿). The character will not be repeatedly
+typed if you hold the key down.
 
-You may use a unicode character as an alias if desired.
+You may use a unicode character as an alias if desired or in its simplified form `+🔣😀+`
+(vs the usual `+(🔣 😀)+`).
 
 NOTE: The unicode action may not be correctly accepted by the active
 application.
@@ -567,7 +569,7 @@ NOTE: If using Linux, make sure to look at the
   🙁 (unicode 🙁)
 )
 (deflayer has-happy-sad
-  @sml @🙁 @😀 s d f
+  @sml @🙁 @😀 🔣😀 d f
 )
 ----
 

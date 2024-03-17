@@ -1244,7 +1244,12 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParsedState) -> Result<&'sta
             ),
         };
     }
-
+    if let Some(unisym) = ac.strip_prefix('🔣') {
+        // TODO: when unicode accepts multiple chars, change this to feed the whole string, not just the first char
+        return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+            CustomAction::Unicode(unisym.chars().next().expect("1 char")),
+        )))));
+    }
     // Parse a sequence like `C-S-v` or `C-A-del`
     let (mut keys, unparsed_str) = parse_mod_prefix(ac)?;
     keys.push(
@@ -1817,7 +1822,7 @@ pub fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
 }
 
 fn parse_unicode(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_STR: &str = "unicode expects exactly one unicode character as an argument";
+    const ERR_STR: &str = "unicode expects exactly one (not combos looking like one) unicode character as an argument";
     if ac_params.len() != 1 {
         bail!(ERR_STR)
     }
