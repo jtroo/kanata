@@ -67,6 +67,10 @@ use crate::layers::*;
 mod error;
 pub use error::*;
 
+mod fake_key;
+use fake_key::*;
+pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -1316,6 +1320,9 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
         ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
         ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),
+        ON_PRESS => parse_on_press(&ac[1..], s),
+        ON_RELEASE => parse_on_release(&ac[1..], s),
+        ON_IDLE => parse_on_idle(&ac[1..], s),
         MWHEEL_UP => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
         MWHEEL_DOWN => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_LEFT => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
@@ -2330,105 +2337,6 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
     Ok(())
 }
 
-fn parse_on_press_fake_key_op(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
-    )))
-}
-
-fn parse_on_release_fake_key_op(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
-    ))))
-}
-
-fn parse_fake_key_op_coord_action(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-    ac_name: &str,
-) -> Result<(Coord, FakeKeyAction)> {
-    const ERR_MSG: &str = "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
-    if ac_params.len() != 2 {
-        bail!("{ac_name} {ERR_MSG}");
-    }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ac_name} {ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
-        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(
-            &ac_params[0],
-            "{ac_name} {ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
-            &ac_params[0]
-        ),
-    };
-    let action = ac_params[1]
-        .atom(s.vars())
-        .and_then(|a| match a {
-            "tap" => Some(FakeKeyAction::Tap),
-            "press" => Some(FakeKeyAction::Press),
-            "release" => Some(FakeKeyAction::Release),
-            "toggle" => Some(FakeKeyAction::Toggle),
-            _ => None,
-        })
-        .ok_or_else(|| {
-            anyhow_expr!(
-                &ac_params[1],
-                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
-            )
-        })?;
-    let (x, y) = get_fake_key_coords(y);
-    Ok((Coord { x, y }, action))
-}
-
-pub const NORMAL_KEY_ROW: u8 = 0;
-pub const FAKE_KEY_ROW: u8 = 1;
-
-fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u16) {
-    let y: usize = y.into();
-    (FAKE_KEY_ROW, y as u16)
-}
-
-fn parse_fake_key_delay(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    parse_delay(ac_params, false, s)
-}
-
-fn parse_on_release_fake_key_delay(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    parse_delay(ac_params, true, s)
-}
-
-fn parse_delay(
-    ac_params: &[SExpr],
-    is_release: bool,
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
-    log::warn!("The configuration contains a fakekey-delay action. This is broken for many use cases. It is recommended to use macro instead.");
-    let delay = ac_params[0]
-        .atom(s.vars())
-        .map(str::parse::<u16>)
-        .ok_or_else(|| anyhow!("{ERR_MSG}"))?
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match is_release {
-            false => CustomAction::Delay(delay),
-            true => CustomAction::DelayOnRelease(delay),
-        })))))
-}
-
 fn parse_distance(expr: &SExpr, s: &ParsedState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
         .map(str::parse::<u16>)
@@ -2995,54 +2903,6 @@ fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
     ))))
-}
-
-fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str =
-        "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
-    if ac_params.len() != 3 {
-        bail!("{ERR_MSG}");
-    }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
-        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(
-            &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
-            &ac_params[0]
-        ),
-    };
-    let action = ac_params[1]
-        .atom(s.vars())
-        .and_then(|a| match a {
-            "tap" => Some(FakeKeyAction::Tap),
-            "press" => Some(FakeKeyAction::Press),
-            "release" => Some(FakeKeyAction::Release),
-            _ => None,
-        })
-        .ok_or_else(|| {
-            anyhow_expr!(
-                &ac_params[1],
-                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
-            )
-        })?;
-    let idle_duration = parse_u16(&ac_params[2], s, "idle time").map_err(|mut e| {
-        e.msg = format!("{ERR_MSG}\nInvalid third parameter: {}", e.msg);
-        e
-    })?;
-    let (x, y) = get_fake_key_coords(y);
-    let coord = Coord { x, y };
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
-        CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
-            coord,
-            action,
-            idle_duration,
-        }),
-    )))))
 }
 
 fn parse_unmod(
