@@ -75,8 +75,16 @@ pub struct InputEvent {
 
 impl InputEvent {
     fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
+        let code = if lparam.vkCode == (VK_RETURN as u32) {
+            match lparam.flags & 0x1 {
+                0 => VK_RETURN as u32,
+                _ => u32::from(VK_KPENTER_FAKE),
+            }
+        } else {
+            lparam.vkCode
+        };
         Self {
-            code: lparam.vkCode,
+            code,
             up: lparam.flags & LLKHF_UP != 0,
         }
     }
