@@ -14,6 +14,9 @@ mod windows;
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
 pub use macos::PageCode;
 
+#[cfg(target_os = "windows")]
+pub use windows::VK_KPENTER_FAKE;
+
 mod mappings;
 
 #[cfg(target_os = "unknown")]
