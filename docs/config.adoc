@@ -514,16 +514,17 @@ key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
 while-held layer. When `+_+` is pressed on the active base layer, the key will
 default to the corresponding `defsrc` key. If `+_+` is pressed on the active
 while-held layer, the base layer's behaviour will activate.
+(alternatively you can use `+‗+` `+≝+`)
 
 .Example:
 [source]
 ----
 (defsrc
-  a b c
+  a b c d
 )
 
 (deflayer remap-only-c-to-d
-  _ _ d
+  _ ‗ d ≝
 )
 ----
 
@@ -535,12 +536,13 @@ You may use the action `+XX+` as a "no operation" key, meaning pressing the key
 will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
 will do nothing as opposed to typing a letter.
+(alternatively you can use `+✗+` `+‿+` `+∅+`)
 
 .Example:
 [source]
 ----
 (deflayer contains-no-op
-  XX a s d f
+  XX ‿ ✗ d f
 )
 ----
 
