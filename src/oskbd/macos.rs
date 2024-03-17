@@ -121,7 +121,7 @@ impl fmt::Display for InputEvent {
             KeyValue::Repeat => "⟳",
             KeyValue::Tap => "↓↑",
             KeyValue::WakeUp => "!",
-        }
+        };
         let key_name = KeyCode::from(ke.code);
         write!(f, "{}{:?}", direction, key_name)
     }
