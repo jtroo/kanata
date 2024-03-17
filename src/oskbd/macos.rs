@@ -115,7 +115,7 @@ use std::fmt;
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ke = KeyValue::try_from(self).unwrap();
-        let direction = match code {
+        let direction = match ke.value {
             KeyValue::Press => "↓",
             KeyValue::Release => "↑",
             KeyValue::Repeat => "⟳",
