@@ -111,6 +111,22 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+#[cfg(not(target_os = "windows"))]
+impl fmt::Display for InputEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ke = KeyValue::try_from(self).unwrap();
+        let direction = match code {
+            KeyValue::Press => "↓",
+            KeyValue::Release => "↑",
+            KeyValue::Repeat => "⟳",
+            KeyValue::Tap => "↓↑",
+            KeyValue::WakeUp => "!",
+        }
+        let key_name = KeyCode::from(ke.code);
+        write!(f, "{}{:?}", direction, key_name)
+    }
+}
+
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
 
