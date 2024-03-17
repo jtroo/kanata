@@ -70,3 +70,5 @@ jobs:
       run: cargo test --all --features=cmd,interception_driver,win_sendinput_send_scancodes
     - name: Run clippy all features
       run: cargo clippy --all --features=cmd,interception_driver,win_sendinput_send_scancodes -- -D warnings
+    - name: Run check simulated output
+      run: cargo check --all --features=simulated_output,cmd -- -D warnings
