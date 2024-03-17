@@ -207,6 +207,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "🔢₌" => OsCode::KEY_KPEQUAL,
         "kp-" | "🔢₋" => OsCode::KEY_KPMINUS,
         "kp." | "🔢．" => OsCode::KEY_KPDOT,
+        "kp," | "🔢⸴" =>OsCode::KEY_KPCOMMA,
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
         // Typically the Non-US backslash, near the left shift key
         "102d" | "lsgt" | "nubs" | "nonusbslash" | "﹨" => OsCode::KEY_102ND,
