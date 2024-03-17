@@ -111,7 +111,7 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-#[cfg(not(target_os = "windows"))]
+use std::fmt;
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ke = KeyValue::try_from(self).unwrap();
