@@ -22,7 +22,10 @@ pub(crate) fn parse_on_release_fake_key_op(
     ))))
 }
 
-fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+pub(crate) fn parse_on_idle_fakekey(
+    ac_params: &[SExpr],
+    s: &ParsedState,
+) -> Result<&'static KanataAction> {
     const ERR_MSG: &str =
         "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
     if ac_params.len() != 3 {
@@ -152,6 +155,41 @@ fn parse_delay(
         })))))
 }
 
+fn parse_vkey_coord(param: &SExpr, s: &ParsedState) -> Result<Coord> {
+    let y = match s.fake_keys.get(
+        param
+            .atom(s.vars())
+            .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?,
+    ) {
+        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
+        None => bail_expr!(param, "unknown virtual key name",),
+    };
+    let coord = Coord { x: FAKE_KEY_ROW, y };
+    Ok(coord)
+}
+
+fn parse_vkey_action(param: &SExpr, s: &ParsedState) -> Result<FakeKeyAction> {
+    let action = param
+        .atom(s.vars())
+        .and_then(|ac| {
+            Some(match ac {
+                "press-vkey" | "press-virtualkey" => FakeKeyAction::Press,
+                "release-vkey" | "release-virtualkey" => FakeKeyAction::Release,
+                "tap-vkey" | "tap-virtualkey" => FakeKeyAction::Tap,
+                "toggle-vkey" | "toggle-virtualkey" => FakeKeyAction::Toggle,
+                _ => return None,
+            })
+        })
+        .ok_or_else(|| {
+            anyhow_expr!(
+                param,
+                "action must be one of: (press|release|tap|toggle)-virtualkey\n\
+            e.g. press-virtualkey"
+            )
+        })?;
+    Ok(action)
+}
+
 pub(crate) fn parse_on_press(
     ac_params: &[SExpr],
     s: &ParsedState,
@@ -160,18 +198,12 @@ pub(crate) fn parse_on_press(
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
-    let y = match s.fake_keys.get(ac_params[1].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!( &ac_params[1],
-            "key-name must not be a list",
-        )
-    })?) {
-        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(
-            &ac_params[1],
-            "unknown virtual key name",
-        ),
-    };
-    todo!()
+    let action = parse_vkey_action(&ac_params[0], s)?;
+    let coord = parse_vkey_coord(&ac_params[1], s)?;
+
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
+    )))
 }
 
 pub(crate) fn parse_on_release(
@@ -182,12 +214,28 @@ pub(crate) fn parse_on_release(
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
-    todo!()
+    let action = parse_vkey_action(&ac_params[0], s)?;
+    let coord = parse_vkey_coord(&ac_params[1], s)?;
+
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
+    ))))
 }
 
-pub(crate) fn parse_on_idle(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    todo!()
+pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "on-idle expects three parameters: <timeout> <action> <key-name>";
+    if ac_params.len() != 3 {
+        bail!("{ERR_MSG}");
+    }
+    let idle_duration = parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
+    let action = parse_vkey_action(&ac_params[1], s)?;
+    let coord = parse_vkey_coord(&ac_params[2], s)?;
+
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
+            coord,
+            action,
+            idle_duration,
+        }),
+    )))))
 }
