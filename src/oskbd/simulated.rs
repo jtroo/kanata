@@ -7,9 +7,9 @@ use kanata_parser::custom_action::*;
 
 use std::io;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 use kanata_keyberon::key_code::KeyCode;
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 use std::fmt;
 
 /// Handle for writing keys to the OS.
@@ -39,7 +39,16 @@ impl KbdOut {
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
-        let event = key_ev.into();
+        let event = {
+            #[cfg(target_os = "macos")]
+            {
+                key_ev.try_into().unwrap()
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                key_ev.into()
+            }
+        };
         self.write(event)
     }
 
