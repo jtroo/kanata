@@ -115,7 +115,7 @@ use std::fmt;
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use kanata_keyberon::key_code::KeyCode;
-        let ke = KeyValue::try_from(self).unwrap();
+        let ke = KeyEvent::try_from(self).unwrap();
         let direction = match ke.value {
             KeyValue::Press => "↓",
             KeyValue::Release => "↑",
