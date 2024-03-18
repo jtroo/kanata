@@ -2665,6 +2665,49 @@ In potentially more familiar notation, both cases have the logic:
 
     !(x || y || z)
 
+==== input
+
+Until now, all `switch` logic has been associated to key code outputs.
+It is also possible to operate on inputs.
+Inputs can be either real keys or "virtual" (fake) keys.
+
+.Example:
+[source]
+----
+(defalias switch-input-example
+  (switch
+    ((input real lctl)) $ac1 break
+    ((input virtual vk1)) $ac2 break
+    () $ac3 break
+  )
+)
+----
+
+Similar to `key-history` for regular active keys,
+`input-history` also exists.
+
+NOTE:
+A perhaps surprising (but hopefully logical) behaviour of input-history
+when compared to key-history is that, at the time of switch activation,
+the history of `input-history` for recency `1` will be the just-pressed input.
+Whereas with `key-history` for example, the key that will be next outputted
+is of course still undetermined, so is not in the history.
+The consequence of this is that you should use a recency of `2`
+when referring to the previously pressed input
+because the current input is in the recency `1` slot.
+
+.Example:
+[source]
+----
+(defalias switch-input-history-example
+  (switch
+    ((input-history real lsft 2)) $var1 break
+    ((input-history virtual vk2 2)) $var1 break
+    () $ac3 break
+  )
+)
+----
+
 [[templates]]
 === Templates
 <<table-of-contents,Back to ToC>>

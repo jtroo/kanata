@@ -3,7 +3,7 @@ This is a sample configuration file that showcases every feature in kanata.
 A more detailed and less terse configuration guide is found here:
 
     https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-  
+
 Other configuration samples are found here:
 
     https://github.com/jtroo/kanata/tree/main/cfg_samples
@@ -591,6 +591,12 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ;;
     ;;    ((not (or a b c)))
     ((not a b c)) c break
+
+    ;; input logic
+    ((input real lctl)) d break
+    ((input virtual sft)) e break
+    ((input-history real lsft 2)) f break
+    ((input-history virtual ctl 2)) g break
 
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
