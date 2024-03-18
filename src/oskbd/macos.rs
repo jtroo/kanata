@@ -120,7 +120,7 @@ impl fmt::Display for InputEvent {
             KeyValue::Press => "↓",
             KeyValue::Release => "↑",
             KeyValue::Repeat => "⟳",
-            KeyValue::Tap => "↓↑",
+            KeyValue::Tap => "↕",
             KeyValue::WakeUp => "!",
         };
         let key_name = KeyCode::from(ke.code);
