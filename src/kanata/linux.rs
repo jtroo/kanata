@@ -1,3 +1,8 @@
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
 use anyhow::{anyhow, bail, Result};
 use evdev::{InputEvent, InputEventKind, RelativeAxisType};
 use log::info;
@@ -42,6 +47,7 @@ impl Kanata {
                     _ => {
                         // Pass-through non-key and non-scroll events
                         let mut kanata = kanata.lock();
+                        #[cfg(not(feature = "simulated_output"))]
                         kanata
                             .kbd_out
                             .write_raw(in_event)
@@ -63,6 +69,7 @@ impl Kanata {
                     // If it hasn't been mapped, send it immediately.
                     if !MAPPED_KEYS.lock().contains(&key_event.code) {
                         let mut kanata = kanata.lock();
+                        #[cfg(not(feature = "simulated_output"))]
                         kanata
                             .kbd_out
                             .write_raw(in_event)

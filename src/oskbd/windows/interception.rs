@@ -142,6 +142,7 @@ thread_local! {
     static INTRCPTN: Interception = Interception::new().expect("interception driver should init: have you completed the interception driver installation?");
 }
 
+#[cfg(not(feature = "simulated_output"))]
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
@@ -163,6 +164,7 @@ fn write_interception(event: InputEvent) {
     })
 }
 
+#[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self {})

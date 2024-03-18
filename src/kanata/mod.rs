@@ -410,7 +410,7 @@ impl Kanata {
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
-    fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
+    pub fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;
@@ -456,49 +456,22 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
-        let mut extra_ticks: u16 = 0;
-        for _ in 0..ms_elapsed {
-            self.tick_states()?;
-            if let Some(event) = tick_replay_state(
-                &mut self.dynamic_macro_replay_state,
-                self.dynamic_macro_replay_behaviour,
-            ) {
-                self.layout.bm().event(event.key_event());
-                extra_ticks = extra_ticks.saturating_add(event.delay());
-                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
-            }
-        }
+        self.tick_ms(ms_elapsed)?;
 
-        if ms_elapsed > 0 {
-            for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-                self.tick_states()?;
-                if tick_replay_state(
-                    &mut self.dynamic_macro_replay_state,
-                    self.dynamic_macro_replay_behaviour,
-                )
-                .is_some()
-                {
-                    log::error!("overshot to next event at iteration #{i}, the code is broken!");
-                    break;
-                }
-            }
+        self.last_tick = match ms_elapsed {
+            0 => self.last_tick,
+            1..=10 => now,
+            // If too many ms elapsed, probably doing a tight loop of something that's quite
+            // expensive, e.g. click spamming. To avoid a growing ms_elapsed due to trying and
+            // failing to catch up, reset last_tick to the "actual now" instead the "past now"
+            // even though that means ticks will be missed - meaning there will be fewer than
+            // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
+            // ticks in 1ms when running expensive operations, this just avoids having tens to
+            // thousands of ticks all happening as soon as the expensive operations end.
+            _ => time::Instant::now(),
+        };
 
-            self.last_tick = match ms_elapsed {
-                0..=10 => now,
-                // If too many ms elapsed, probably doing a tight loop of something that's quite
-                // expensive, e.g. click spamming. To avoid a growing ms_elapsed due to trying and
-                // failing to catch up, reset last_tick to the "actual now" instead the "past now"
-                // even though that means ticks will be missed - meaning there will be fewer than
-                // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
-                // ticks in 1ms when running expensive operations, this just avoids having tens to
-                // thousands of ticks all happening as soon as the expensive operations end.
-                _ => time::Instant::now(),
-            };
-
-            // Handle layer change outside the loop. I don't see any practical scenario where it
-            // would make a difference, so may as well reduce the amount of processing.
-            self.check_handle_layer_change(tx);
-        }
+        self.check_handle_layer_change(tx);
 
         if self.live_reload_requested
             && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
@@ -525,6 +498,34 @@ impl Kanata {
         // end up being wrong. Prefer to do the cheaper operation, as compared to doing the min of
         // u16::MAX and ms_elapsed.
         Ok(ms_elapsed as u16)
+    }
+
+    pub fn tick_ms(&mut self, ms_elapsed: u128) -> Result<()> {
+        let mut extra_ticks: u16 = 0;
+        for _ in 0..ms_elapsed {
+            self.tick_states()?;
+            if let Some(event) = tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            ) {
+                self.layout.bm().event(event.key_event());
+                extra_ticks = extra_ticks.saturating_add(event.delay());
+                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
+            }
+        }
+        for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
+            self.tick_states()?;
+            if tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            )
+            .is_some()
+            {
+                log::error!("overshot to next event at iteration #{i}, the code is broken!");
+                break;
+            }
+        }
+        Ok(())
     }
 
     fn tick_states(&mut self) -> Result<()> {
@@ -1920,7 +1921,7 @@ fn check_for_exit(event: &KeyEvent) {
 }
 
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
-    #[cfg(target_os = "linux")]
+    #[cfg(all(not(feature = "simulated_output"), target_os = "linux"))]
     {
         _kbd_out.update_unicode_termination(_cfg.linux_unicode_termination);
         _kbd_out.update_unicode_u_code(_cfg.linux_unicode_u_code);

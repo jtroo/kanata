@@ -1,49 +1,14 @@
 use anyhow::{bail, Result};
 use clap::Parser;
 use kanata_parser::cfg;
+use kanata_state_machine::*;
 use log::info;
 use simplelog::*;
 
 use std::path::PathBuf;
 
-mod kanata;
-mod oskbd;
-mod tcp_server;
-
-use kanata::Kanata;
-use tcp_server::TcpServer;
-
 #[cfg(test)]
 mod tests;
-
-type CfgPath = PathBuf;
-
-pub struct ValidatedArgs {
-    paths: Vec<CfgPath>,
-    #[cfg(feature = "tcp_server")]
-    port: Option<i32>,
-    #[cfg(target_os = "linux")]
-    symlink_path: Option<String>,
-    nodelay: bool,
-}
-
-fn default_cfg() -> Vec<PathBuf> {
-    let mut cfgs = Vec::new();
-
-    let default = PathBuf::from("kanata.kbd");
-    if default.is_file() {
-        cfgs.push(default);
-    }
-
-    if let Some(config_dir) = dirs::config_dir() {
-        let fallback = config_dir.join("kanata").join("kanata.kbd");
-        if fallback.is_file() {
-            cfgs.push(fallback);
-        }
-    }
-
-    cfgs
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
