@@ -183,6 +183,7 @@ impl LogFmt {
         };
     }
 
+    #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) {
         let key_name = KeyCode::from(OsCode::from(event.code));
         if event.up {

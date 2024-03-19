@@ -19,9 +19,9 @@ pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
-    value: u64,
-    page: u32,
-    code: u32,
+    pub value: u64,
+    pub page: u32,
+    pub code: u32,
 }
 
 impl InputEvent {
