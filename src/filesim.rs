@@ -144,6 +144,9 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
 
 fn main_impl() -> Result<()> {
     log_init();
+    #[cfg(not(feature = "simulated_output"))]
+    let (args, sim_paths) = cli_init()?;
+    #[cfg(feature = "simulated_output")]
     let (args, sim_paths, sim_appendix) = cli_init()?;
 
     for config_sim_file in &sim_paths {

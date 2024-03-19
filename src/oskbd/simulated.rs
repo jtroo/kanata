@@ -39,7 +39,7 @@ fn append_file_name(path: impl AsRef<Path>, appendix: impl AsRef<OsStr>) -> Path
     let path = path.as_ref();
     let mut result = path.to_owned();
     let stem_in = path.file_stem().unwrap_or(OsStr::new(""));
-    let stem_out = concat_os_str2(stem_in, &OsStr::new(&appendix));
+    let stem_out = concat_os_str2(stem_in, OsStr::new(&appendix));
     result.set_file_name(stem_out);
     if let Some(ext) = path.extension() {
         result.set_extension(ext);
@@ -334,7 +334,7 @@ impl KbdOut {
     }
     #[cfg(target_os = "linux")]
     pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
-        Ok(Self {})
+        Ok(Self { log: LogFmt::new() })
     }
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
