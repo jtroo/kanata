@@ -1002,7 +1002,7 @@ fn parse_virtualkeys() {
     assert_eq!(
         res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
-            &[&CustomAction::FakeKey{
+            &[&CustomAction::FakeKey {
                 coord: Coord { x: 1, y: 0 },
                 action: FakeKeyAction::Press,
             }]
@@ -1012,7 +1012,7 @@ fn parse_virtualkeys() {
     assert_eq!(
         res.klayers[0][0][OsCode::KEY_F.as_u16() as usize],
         Action::Custom(
-            &[&CustomAction::FakeKey{
+            &[&CustomAction::FakeKey {
                 coord: Coord { x: 1, y: 1 },
                 action: FakeKeyAction::Release,
             }]
@@ -1022,7 +1022,7 @@ fn parse_virtualkeys() {
     assert_eq!(
         res.klayers[0][0][OsCode::KEY_K.as_u16() as usize],
         Action::Custom(
-            &[&CustomAction::FakeKeyOnRelease{
+            &[&CustomAction::FakeKeyOnRelease {
                 coord: Coord { x: 1, y: 0 },
                 action: FakeKeyAction::Toggle,
             }]
@@ -1032,7 +1032,7 @@ fn parse_virtualkeys() {
     assert_eq!(
         res.klayers[0][0][OsCode::KEY_P.as_u16() as usize],
         Action::Custom(
-            &[&CustomAction::FakeKeyOnRelease{
+            &[&CustomAction::FakeKeyOnRelease {
                 coord: Coord { x: 1, y: 1 },
                 action: FakeKeyAction::Tap,
             }]
