@@ -1,7 +1,12 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
+#[cfg(feature = "simulated_output")]
+use anyhow::{anyhow, bail};
 use clap::Parser;
+#[cfg(feature = "simulated_output")]
 use kanata_parser::keys::str_to_oscode;
+#[cfg(feature = "simulated_output")]
 use kanata_state_machine::{oskbd::*, *};
+#[cfg(feature = "simulated_output")]
 use simplelog::*;
 
 use std::path::PathBuf;
@@ -85,6 +90,7 @@ test/sim.txt in the current working directory and
     out: Option<String>,
 }
 
+#[cfg(feature = "simulated_output")]
 fn log_init() {
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
@@ -101,7 +107,8 @@ fn log_init() {
 }
 
 /// Parse CLI arguments
-fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
+#[cfg(feature = "simulated_output")]
+fn cli_init() -> Result<ValidatedArgs> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
     let sim_paths = args.sim.unwrap_or_else(default_sim);
@@ -126,30 +133,27 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     } else {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
-    let sim_appendix = args.out;
 
-    Ok((
-        ValidatedArgs {
-            paths: cfg_paths,
-            #[cfg(feature = "tcp_server")]
-            port: None,
-            #[cfg(target_os = "linux")]
-            symlink_path: None,
-            nodelay: true,
-        },
+    Ok(ValidatedArgs {
+        paths: cfg_paths,
+        #[cfg(feature = "tcp_server")]
+        port: None,
+        #[cfg(target_os = "linux")]
+        symlink_path: None,
+        nodelay: true,
+        #[cfg(feature = "simulated_output")]
         sim_paths,
-        sim_appendix,
-    ))
+        #[cfg(feature = "simulated_output")]
+        sim_appendix: args.out,
+    })
 }
 
+#[cfg(feature = "simulated_output")]
 fn main_impl() -> Result<()> {
     log_init();
-    #[cfg(not(feature = "simulated_output"))]
-    let (args, sim_paths) = cli_init()?;
-    #[cfg(feature = "simulated_output")]
-    let (args, sim_paths, sim_appendix) = cli_init()?;
+    let args = cli_init()?;
 
-    for config_sim_file in &sim_paths {
+    for config_sim_file in &args.sim_paths {
         let mut k = Kanata::new(&args)?;
         println!("Evaluating simulation file = {:?}", config_sim_file);
         let s = std::fs::read_to_string(config_sim_file)?;
@@ -159,14 +163,12 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
-                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_tick(tick);
                             k.tick_ms(tick)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -176,7 +178,6 @@ fn main_impl() -> Result<()> {
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -186,7 +187,6 @@ fn main_impl() -> Result<()> {
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -199,13 +199,19 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
-        #[cfg(feature = "simulated_output")]
-        k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
+        k.kbd_out
+            .log
+            .end(config_sim_file, args.sim_appendix.clone());
     }
 
     Ok(())
 }
 
+#[cfg(not(feature = "simulated_output"))]
+fn main() -> Result<()> {
+    Ok(())
+}
+#[cfg(feature = "simulated_output")]
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {
