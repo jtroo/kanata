@@ -31,12 +31,14 @@ pub(crate) fn parse_on_idle_fakekey(
     if ac_params.len() != 3 {
         bail!("{ERR_MSG}");
     }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
+    let y = match s
+        .virtual_keys
+        .get(ac_params[0].atom(s.vars()).ok_or_else(|| {
+            anyhow_expr!(
+                &ac_params[0],
+                "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
+            )
+        })?) {
         Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
         None => bail_expr!(
             &ac_params[0],
@@ -82,12 +84,14 @@ fn parse_fake_key_op_coord_action(
     if ac_params.len() != 2 {
         bail!("{ac_name} {ERR_MSG}");
     }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ac_name} {ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
+    let y = match s
+        .virtual_keys
+        .get(ac_params[0].atom(s.vars()).ok_or_else(|| {
+            anyhow_expr!(
+                &ac_params[0],
+                "{ac_name} {ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
+            )
+        })?) {
         Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
         None => bail_expr!(
             &ac_params[0],
@@ -156,13 +160,12 @@ fn parse_delay(
 }
 
 fn parse_vkey_coord(param: &SExpr, s: &ParsedState) -> Result<Coord> {
-    let y = match s.fake_keys.get(
-        param
-            .atom(s.vars())
-            .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?,
-    ) {
+    let name = param
+        .atom(s.vars())
+        .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?;
+    let y = match s.virtual_keys.get(name) {
         Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(param, "unknown virtual key name",),
+        None => bail_expr!(param, "unknown virtual key name: {name}",),
     };
     let coord = Coord { x: FAKE_KEY_ROW, y };
     Ok(coord)
@@ -184,7 +187,7 @@ fn parse_vkey_action(param: &SExpr, s: &ParsedState) -> Result<FakeKeyAction> {
             anyhow_expr!(
                 param,
                 "action must be one of: (press|release|tap|toggle)-virtualkey\n\
-            e.g. press-virtualkey"
+                 example: toggle-virtualkey"
             )
         })?;
     Ok(action)

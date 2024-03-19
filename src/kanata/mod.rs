@@ -165,7 +165,7 @@ pub struct Kanata {
     last_pressed_key: KeyCode,
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
-    pub fake_keys: HashMap<String, usize>,
+    pub virtual_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
 }
@@ -330,7 +330,7 @@ impl Kanata {
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
             #[cfg(feature = "tcp_server")]
-            fake_keys: cfg.fake_keys,
+            virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
         })
     }
@@ -366,7 +366,7 @@ impl Kanata {
         };
         #[cfg(feature = "tcp_server")]
         {
-            self.fake_keys = cfg.fake_keys;
+            self.virtual_keys = cfg.fake_keys;
         }
         self.switch_max_key_timing = cfg.switch_max_key_timing;
 
