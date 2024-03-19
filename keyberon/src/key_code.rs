@@ -819,3 +819,10 @@ pub enum KeyCode {
     K744,
     KeyMax,
 }
+
+use core::fmt;
+impl fmt::Display for KeyCode {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f,"{:?}",self)
+  }
+}
