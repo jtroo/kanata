@@ -35,6 +35,7 @@ pub fn default_sim() -> Vec<PathBuf> {
 /// - interpreting them with kanata
 /// - printing out which actions or key/mouse events kanata would execute if the keys were
 /// pressed by a user
+/// - (optionally) saving the result to a file for reference
 struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -79,6 +80,9 @@ test/sim.txt in the current working directory and
     )]
     #[arg(short = 's', long, verbatim_doc_comment)]
     sim: Option<Vec<PathBuf>>,
+    /// Save output to the simulation file's path with its name appended by the value of this argument
+    #[arg(short = 'o', long, verbatim_doc_comment)]
+    out: Option<String>,
 }
 
 fn log_init() {
@@ -97,7 +101,7 @@ fn log_init() {
 }
 
 /// Parse CLI arguments
-fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
+fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
     let sim_paths = args.sim.unwrap_or_else(default_sim);
@@ -122,6 +126,7 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
     } else {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
+    let sim_appendix = args.out;
 
     Ok((
         ValidatedArgs {
@@ -133,12 +138,13 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
             nodelay: true,
         },
         sim_paths,
+        sim_appendix,
     ))
 }
 
 fn main_impl() -> Result<()> {
     log_init();
-    let (args, sim_paths) = cli_init()?;
+    let (args, sim_paths, sim_appendix) = cli_init()?;
 
     for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
@@ -191,7 +197,7 @@ fn main_impl() -> Result<()> {
             }
         }
         #[cfg(feature = "simulated_output")]
-        k.kbd_out.log.end();
+        k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
     Ok(())
