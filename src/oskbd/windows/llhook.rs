@@ -11,6 +11,8 @@
 use core::fmt;
 use std::cell::Cell;
 use std::io;
+use std::sync::atomic::AtomicI64;
+use std::sync::atomic::Ordering::SeqCst;
 use std::{mem, ptr};
 
 use winapi::ctypes::*;
@@ -72,7 +74,7 @@ impl Drop for KeyboardHook {
 }
 
 /// Key event received by the low level keyboard hook.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InputEvent {
     pub code: u32,
 
@@ -134,6 +136,8 @@ impl From<KeyEvent> for InputEvent {
     }
 }
 
+pub static EVENTS_TO_IGNORE_COUNT: AtomicI64 = AtomicI64::new(0);
+
 /// The actual WinAPI compatible callback.
 unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
@@ -148,7 +152,12 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     // `SendInput()` internally calls the hook function. Filter out injected events
     // to prevent recursion and potential stack overflows if our remapping logic
     // sent the injected event.
-    if is_injected {
+    let ignore_count = EVENTS_TO_IGNORE_COUNT.load(SeqCst);
+    if is_injected && EVENTS_TO_IGNORE_COUNT.load(SeqCst) > 0 {
+        eprintln!("ignore count: {ignore_count}");
+        if EVENTS_TO_IGNORE_COUNT.fetch_sub(1, SeqCst) == 0 {
+            let _ = EVENTS_TO_IGNORE_COUNT.compare_exchange(-1, 0, SeqCst, SeqCst);
+        }
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
 

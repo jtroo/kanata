@@ -75,6 +75,13 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
             kb_input.dwFlags |= KEYEVENTF_KEYUP;
         }
 
+        #[cfg(not(feature = "interception_driver"))]
+        {
+            // let mut events = EVENTS_TO_IGNORE.lock();
+            // events.push_back(InputEvent { code: u32::from(code), up: is_key_up });
+            EVENTS_TO_IGNORE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+
         #[cfg(feature = "win_sendinput_send_scancodes")]
         {
             /*
