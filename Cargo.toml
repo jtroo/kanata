@@ -54,6 +54,7 @@ simplelog = "0.12.0"
 kanata-keyberon = { path = "keyberon" }
 kanata-parser =   { path = "parser" }
 kanata-tcp-protocol = { path = "tcp_protocol" }
+indoc = "2.0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
