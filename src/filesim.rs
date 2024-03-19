@@ -110,21 +110,14 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
-            bail!(
-                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                cfg_paths[0].to_str().unwrap_or("?")
-            )
+            bail!("Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",cfg_paths[0].to_str().unwrap_or("?"))
         }
     } else {
         bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
-
     if let Some(config_sim_file) = sim_paths.first() {
         if !config_sim_file.exists() {
-            bail!(
-                "Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                sim_paths[0].to_str().unwrap_or("?")
-            )
+            bail!("Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",sim_paths[0].to_str().unwrap_or("?"))
         }
     } else {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
@@ -156,26 +149,38 @@ fn main_impl() -> Result<()> {
                 match pair.split_once(':') {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
-                            k.tick_ms(str::parse::<u128>(val)?)?;
+                            let tick = str::parse::<u128>(val)?;
+                            #[cfg(feature = "simulated_output")]
+                            k.kbd_out.log.in_tick(tick);
+                            k.tick_ms(tick)?;
                         }
                         "press" | "↓" | "d" | "down" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
+                            k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Press,
                             })?;
                         }
                         "release" | "↑" | "u" | "up" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
+                            k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Release,
                             })?;
                         }
                         "repeat" | "⟳" | "r" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
+                            k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Repeat,
                             })?;
                         }
@@ -185,6 +190,8 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
+        #[cfg(feature = "simulated_output")]
+        k.kbd_out.log.end();
     }
 
     Ok(())
