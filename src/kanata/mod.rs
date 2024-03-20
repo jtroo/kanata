@@ -19,7 +19,7 @@ use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-use kanata_tcp_protocol::ServerMessage;
+use kanata_tcp_protocol::{simple_sexpr_to_json_array, ServerMessage};
 
 mod dynamic_macro;
 use dynamic_macro::*;
@@ -456,7 +456,7 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
-        self.tick_ms(ms_elapsed)?;
+        self.tick_ms(ms_elapsed, tx)?;
 
         self.last_tick = match ms_elapsed {
             0 => self.last_tick,
@@ -500,10 +500,10 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128) -> Result<()> {
+    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.tick_states()?;
+            self.tick_states(_tx)?;
             if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -514,7 +514,7 @@ impl Kanata {
             }
         }
         for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-            self.tick_states()?;
+            self.tick_states(_tx)?;
             if tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -528,8 +528,8 @@ impl Kanata {
         Ok(())
     }
 
-    fn tick_states(&mut self) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes()?;
+    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -695,7 +695,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -1177,6 +1177,23 @@ impl Kanata {
                                     match key_action {
                                         KeyAction::Press => self.kbd_out.press_key(osc)?,
                                         KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                    }
+                                }
+                            }
+                        }
+                        CustomAction::PushMessage(message) => {
+                            log::debug!("Action push-msg message");
+                            #[cfg(feature = "tcp_server")]
+                            if let Some(tx) = _tx {
+                                match tx.try_send(ServerMessage::MessagePush {
+                                    message: simple_sexpr_to_json_array(message),
+                                }) {
+                                    Ok(_) => {}
+                                    Err(error) => {
+                                        log::error!(
+                                            "could not send MessagePush event notification: {}",
+                                            error
+                                        );
                                     }
                                 }
                             }

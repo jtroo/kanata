@@ -518,6 +518,7 @@ dependencies = [
 name = "kanata-tcp-protocol"
 version = "0.160.1"
 dependencies = [
+ "kanata-parser",
  "serde",
  "serde_derive",
  "serde_json",

@@ -7,3 +7,5 @@ edition = "2021"
 serde = { version = "1", features = ["alloc", "derive"], default_features = false }
 serde_derive = "1.0"
 serde_json = { version = "1", features = ["alloc"], default_features = false }
+
+kanata-parser = { path = "../parser" }

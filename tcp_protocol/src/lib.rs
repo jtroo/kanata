@@ -1,3 +1,4 @@
+use kanata_parser::cfg::SimpleSExpr;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -8,6 +9,7 @@ pub enum ServerMessage {
     CurrentLayerInfo { name: String, cfg_text: String },
     ConfigFileReload { new: String },
     CurrentLayerName { name: String },
+    MessagePush { message: serde_json::Value },
     Error { msg: String },
 }
 
@@ -51,4 +53,17 @@ impl FromStr for ClientMessage {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
+}
+
+pub fn simple_sexpr_to_json_array(exprs: &Vec<SimpleSExpr>) -> serde_json::Value {
+    let mut result = Vec::new();
+
+    for expr in exprs.iter() {
+        match expr {
+            SimpleSExpr::Atom(s) => result.push(serde_json::Value::String(s.clone())),
+            SimpleSExpr::List(list) => result.push(simple_sexpr_to_json_array(list)),
+        }
+    }
+
+    serde_json::Value::Array(result)
 }
