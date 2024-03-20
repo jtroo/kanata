@@ -37,6 +37,7 @@ path = "src/filesim.rs"
 anyhow = "1"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
 dirs = "5.0.1"
+indoc = { version = "2.0.4", optional = true }
 log = { version = "0.4.8", default_features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
@@ -54,7 +55,6 @@ simplelog = "0.12.0"
 kanata-keyberon = { path = "keyberon" }
 kanata-parser =   { path = "parser" }
 kanata-tcp-protocol = { path = "tcp_protocol" }
-indoc = "2.0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
@@ -85,7 +85,7 @@ tcp_server = []
 win_sendinput_send_scancodes = []
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
-simulated_output = []
+simulated_output = ["indoc"]
 
 [profile.release]
 opt-level = "z"
