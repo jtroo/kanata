@@ -19,7 +19,9 @@ use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-use kanata_tcp_protocol::{simple_sexpr_to_json_array, ServerMessage};
+#[cfg(feature = "tcp_server")]
+use kanata_tcp_protocol::simple_sexpr_to_json_array;
+use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;
 use dynamic_macro::*;
@@ -1181,12 +1183,12 @@ impl Kanata {
                                 }
                             }
                         }
-                        CustomAction::PushMessage(message) => {
+                        CustomAction::PushMessage(_message) => {
                             log::debug!("Action push-msg message");
                             #[cfg(feature = "tcp_server")]
                             if let Some(tx) = _tx {
                                 match tx.try_send(ServerMessage::MessagePush {
-                                    message: simple_sexpr_to_json_array(message),
+                                    message: simple_sexpr_to_json_array(_message),
                                 }) {
                                     Ok(_) => {}
                                     Err(error) => {
