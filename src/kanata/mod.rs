@@ -26,6 +26,8 @@ use kanata_tcp_protocol::ServerMessage;
 mod dynamic_macro;
 use dynamic_macro::*;
 
+use kanata_parser::cfg::list_actions::*;
+
 #[cfg(feature = "cmd")]
 mod cmd;
 #[cfg(feature = "cmd")]
@@ -170,6 +172,8 @@ pub struct Kanata {
     pub fake_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
+    #[cfg(feature = "tcp_server")]
+    tcp_server_port: Option<i32>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -334,6 +338,8 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             fake_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_port: args.port,
         })
     }
 
@@ -1184,21 +1190,34 @@ impl Kanata {
                             }
                         }
                         CustomAction::PushMessage(_message) => {
-                            log::debug!("Action push-msg message");
+                            log::debug!("Action push-msg");
                             #[cfg(feature = "tcp_server")]
                             if let Some(tx) = _tx {
-                                match tx.try_send(ServerMessage::MessagePush {
-                                    message: simple_sexpr_to_json_array(_message),
-                                }) {
+                                let message = simple_sexpr_to_json_array(_message);
+                                log::debug!("Action push-msg message: {}", message);
+                                match tx.try_send(ServerMessage::MessagePush { message }) {
                                     Ok(_) => {}
                                     Err(error) => {
                                         log::error!(
-                                            "could not send MessagePush event notification: {}",
+                                            "could not send {} event notification: {}",
+                                            PUSH_MESSAGE,
                                             error
                                         );
                                     }
                                 }
                             }
+                            #[cfg(feature = "tcp_server")]
+                            match self.tcp_server_port {
+                                None => {
+                                    log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
+                                }
+                                Some(_) => {}
+                            }
+                            #[cfg(not(feature = "tcp_server"))]
+                            log::warn!(
+                                "{} was used, but Kanata was compiled with TCP server disabled.",
+                                PUSH_MESSAGE
+                            );
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);

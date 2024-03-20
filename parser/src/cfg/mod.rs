@@ -48,7 +48,7 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
-mod list_actions;
+pub mod list_actions;
 use list_actions::*;
 
 mod defcfg;
@@ -1843,9 +1843,6 @@ fn test_collect_strings() {
 }
 
 fn parse_push_message(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    //if !s.is_tcp_enabled {
-    //    bail!("using {PUSH_MESSAGE} but TCP server is not enabled!");
-    //}
     if ac_params.is_empty() {
         bail!(
              "{PUSH_MESSAGE} expects at least one item, an item can be a list or an atom, found 0, none"
