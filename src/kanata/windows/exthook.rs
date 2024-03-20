@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
@@ -11,22 +10,16 @@ use crate::kanata::*;
 impl Kanata {
   /// Initialize the callback that is passed to the Windows low level hook to receive key events and run the native_windows_gui event loop.
   pub fn event_loop(_cfg:Arc<Mutex<Self>>, tx:Sender<KeyEvent>) -> Result<()> {
-    unsafe { // Display debug and panic output when launched from a terminal.
-      use winapi::um::wincon::*;
-      if AttachConsole(ATTACH_PARENT_PROCESS) != 0 {panic!("Could not attach to console");}};
-    native_windows_gui::init()?;
-
     let (preprocess_tx, preprocess_rx) = sync_channel(100);
     start_event_preprocessor(preprocess_rx, tx);
 
-    let _kbhook = KeyboardHook::set_input_cb(move |input_event| { // This callback should return `false` if the input event is **not** handled by the callback and `true` if the input event **is** handled by the callback. Returning false informs the callback caller that the input event should be handed back to the OS for normal processing.
+    let _ = KeyboardHook::set_input_cb(move |input_event| { // This callback should return `false` if the input event is **not** handled by the callback and `true` if the input event **is** handled by the callback. Returning false informs the callback caller that the input event should be handed back to the OS for normal processing.
       let mut key_event = match KeyEvent::try_from(input_event) { // InputEvent{code:u32      , up   :bool}
         Ok(ev)	=> ev,                                            // KeyEvent  {code:OsCode   , value:KeyValue}
         _     	=> return false,};                                // Some(OsCode::KEY_0)←0x30        Release0 Press1 Repeat2 Tap WakeUp
       check_for_exit(&key_event);
       let oscode = OsCode::from(input_event.code);
-      if !MAPPED_KEYS.lock().contains(&oscode) {return false;}
-
+      if ! MAPPED_KEYS.lock().contains(&oscode) {return false;}
       log::debug!("event loop: {:?}", key_event);
       match key_event.value { // Unlike Linux, Windows does not use a separate value for repeat. However, our code needs to differentiate between initial press and repeat press.
         KeyValue::Release	=> {                       PRESSED_KEYS.lock().remove(&key_event.code);}
@@ -35,14 +28,9 @@ impl Kanata {
           } else                                    {       pressed_keys.insert( key_event.code);}}
         _                 => {}
       }
-      if key_event.code == OsCode::KEY_0 {
-        log::debug!("event loop: ✗BLOCKING {:?}", key_event);
-      } else {
-        try_send_panic(&preprocess_tx, key_event); // Send input_events to the preprocessing loop. Panic if channel somehow gets full or if channel disconnects. Typing input should never trigger a panic based on the channel getting full, assuming regular operation of the program and some other bug isn't the problem. I've tried to crash the program by pressing as many keys on my keyboard at the same time as I could, but was unable to.
-      }
+      try_send_panic(&preprocess_tx, key_event); // Send input_events to the preprocessing loop. Panic if channel somehow gets full or if channel disconnects. Typing input should never trigger a panic based on the channel getting full, assuming regular operation of the program and some other bug isn't the problem. I've tried to crash the program by pressing as many keys on my keyboard at the same time as I could, but was unable to.
       true
     });
-    native_windows_gui::dispatch_thread_events(); // The event loop is also required for the low-level keyboard hook to work.
     Ok(())
   }
 }
