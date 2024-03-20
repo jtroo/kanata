@@ -55,7 +55,7 @@ impl FromStr for ClientMessage {
     }
 }
 
-pub fn simple_sexpr_to_json_array(exprs: &Vec<SimpleSExpr>) -> serde_json::Value {
+pub fn simple_sexpr_to_json_array(exprs: &[SimpleSExpr]) -> serde_json::Value {
     let mut result = Vec::new();
 
     for expr in exprs.iter() {
