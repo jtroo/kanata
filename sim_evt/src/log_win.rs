@@ -40,7 +40,7 @@ impl log::Log for WinDebugLogger {
   #[cfg(not(windows))]fn enabled(&self, metadata:&Metadata) -> bool {false}
   fn log(&self, record:&Record) {
     if self.enabled(record.metadata()) {
-      let s = format!("{}{}:{} {}\n",
+      let s = format!("{}{}:{} {}",
         iconify(record.level()),clean_name(record.file()),record.line().unwrap_or(0),record.args());
       dbg_win(&s);
     }  }
