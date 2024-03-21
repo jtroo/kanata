@@ -108,10 +108,11 @@ fn log_init() {
 
 /// Parse CLI arguments
 #[cfg(feature = "simulated_output")]
-fn cli_init() -> Result<ValidatedArgs> {
+fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
     let sim_paths = args.sim.unwrap_or_else(default_sim);
+    let sim_appendix = args.out;
 
     log::info!("kanata_filesim v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
@@ -134,26 +135,26 @@ fn cli_init() -> Result<ValidatedArgs> {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
 
-    Ok(ValidatedArgs {
-        paths: cfg_paths,
-        #[cfg(feature = "tcp_server")]
-        port: None,
-        #[cfg(target_os = "linux")]
-        symlink_path: None,
-        nodelay: true,
-        #[cfg(feature = "simulated_output")]
+    Ok((
+        ValidatedArgs {
+            paths: cfg_paths,
+            #[cfg(feature = "tcp_server")]
+            port: None,
+            #[cfg(target_os = "linux")]
+            symlink_path: None,
+            nodelay: true,
+        },
         sim_paths,
-        #[cfg(feature = "simulated_output")]
-        sim_appendix: args.out,
-    })
+        sim_appendix,
+    ))
 }
 
 #[cfg(feature = "simulated_output")]
 fn main_impl() -> Result<()> {
     log_init();
-    let args = cli_init()?;
+    let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
 
-    for config_sim_file in &args.sim_paths {
+    for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
         println!("Evaluating simulation file = {:?}", config_sim_file);
         let s = std::fs::read_to_string(config_sim_file)?;
@@ -199,9 +200,7 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
-        k.kbd_out
-            .log
-            .end(config_sim_file, args.sim_appendix.clone());
+        k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
     Ok(())

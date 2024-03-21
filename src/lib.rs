@@ -16,10 +16,6 @@ pub struct ValidatedArgs {
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
-    #[cfg(feature = "simulated_output")]
-    pub sim_paths: Vec<PathBuf>,
-    #[cfg(feature = "simulated_output")]
-    pub sim_appendix: Option<String>,
 }
 
 pub fn default_cfg() -> Vec<PathBuf> {

@@ -164,10 +164,6 @@ fn cli_init() -> Result<ValidatedArgs> {
         #[cfg(target_os = "linux")]
         symlink_path: args.symlink_path,
         nodelay: args.nodelay,
-        #[cfg(feature = "simulated_output")]
-        sim_paths: vec![PathBuf::new()],
-        #[cfg(feature = "simulated_output")]
-        sim_appendix: None,
     })
 }
 
