@@ -14,13 +14,13 @@ use std::sync::Arc;
 use std::time;
 
 use crate::oskbd::{KeyEvent, *};
+#[cfg(feature = "tcp_server")]
+use crate::tcp_server::simple_sexpr_to_json_array;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-#[cfg(feature = "tcp_server")]
-use kanata_tcp_protocol::simple_sexpr_to_json_array;
 use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;

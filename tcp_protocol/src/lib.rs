@@ -1,4 +1,3 @@
-use kanata_parser::cfg::SimpleSExpr;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -53,17 +52,4 @@ impl FromStr for ClientMessage {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
-}
-
-pub fn simple_sexpr_to_json_array(exprs: &[SimpleSExpr]) -> serde_json::Value {
-    let mut result = Vec::new();
-
-    for expr in exprs.iter() {
-        match expr {
-            SimpleSExpr::Atom(s) => result.push(serde_json::Value::String(s.clone())),
-            SimpleSExpr::List(list) => result.push(simple_sexpr_to_json_array(list)),
-        }
-    }
-
-    serde_json::Value::Array(result)
 }

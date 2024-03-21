@@ -1849,9 +1849,7 @@ fn parse_push_message(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static K
         );
     }
     let message = to_simple_expr(ac_params, s);
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::PushMessage(message))),
-    )))
+    custom(CustomAction::PushMessage(message), &s.a)
 }
 
 fn to_simple_expr(params: &[SExpr], s: &ParsedState) -> Vec<SimpleSExpr> {
