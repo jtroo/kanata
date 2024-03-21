@@ -54,3 +54,8 @@ winapi = { version = "0.3.9", features = [
 native-windows-gui = { version = "1.0.12", default_features = false }
 kanata-interception = { version = "0.2.0", optional = true }
 win_dbg_logger = "0.1.0"
+
+[features]
+default         	= ["simulated_input","simulated_output"]
+simulated_output	= ["indoc"]
+simulated_input 	= ["indoc"]
