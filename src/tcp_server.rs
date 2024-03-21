@@ -148,7 +148,7 @@ impl TcpServer {
                                                             if let Err(e) = stream.write_all(
                                                                 &ServerMessage::Error {
                                                                     msg: format!(
-                                                                        "unknown fake key: {name}"
+                                                                        "unknown virtual/fake key: {name}"
                                                                     ),
                                                                 }
                                                                 .as_bytes(),

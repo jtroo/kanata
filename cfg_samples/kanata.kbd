@@ -883,6 +883,37 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   _    _    _              _              _    _    _
 )
 
+;; Virtual key actions
+
+(defvirtualkeys
+  ;; Define some virtual keys that perform modifier actions
+  vkctl lctl
+  vksft lsft
+  vkmet lmet
+  vkalt lalt
+
+  ;; A virtual key that toggles all modifier virtual keys above
+  vktal (multi
+        (on-press toggle-virtualkey vkctl)
+        (on-press toggle-virtualkey vksft)
+        (on-press toggle-virtualkey vkmet)
+        (on-press toggle-virtualkey vkalt)
+      )
+
+  ;; Virtual key that activates a macro
+  vkmacro (macro h e l l o spc w o r l d)
+)
+
+(defalias
+  psfvk (on-press press-virtualkey   vksft)
+  rsfvk (on-press release-virtualkey vksft)
+
+  palvk (on-press tap-vkey vktal)
+  macvk (on-press tap-vkey vkmacro)
+
+  isfvk (on-idle 1000 tap-vkey vksft)
+)
+
 ;; Press and release fake keys.
 ;;
 ;; Fake keys can't be pressed by any physical keyboard buttons and can only be
