@@ -779,7 +779,7 @@ fn parse_switch() {
 (defvar var1 a)
 (defsrc a)
 (deffakekeys vk1 XX)
-(deffakekeys vk2 XX)
+(defvirtualkeys vk2 XX)
 (deflayer base
   (switch
     ((and a b (or c d) (or e f))) XX break
@@ -955,7 +955,7 @@ fn parse_switch_exceed_depth() {
 }
 
 #[test]
-fn parse_on_idle_fakekey() {
+fn parse_virtualkeys() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -963,10 +963,26 @@ fn parse_on_idle_fakekey() {
     let mut s = ParsedState::default();
     let source = r#"
 (defvar var1 a)
-(defsrc a)
+(defsrc a b c d e f g h i j k l m n o p)
 (deffakekeys hello a)
+(defvirtualkeys bye a)
 (deflayer base
-  (on-idle-fakekey hello tap 200)
+  (on-press   press-virtualkey hello)
+  (on-press release-virtualkey hello)
+  (on-press  toggle-virtualkey hello)
+  (on-press     tap-virtualkey hello)
+  (on-press   press-vkey bye)
+  (on-press release-vkey bye)
+  (on-press  toggle-vkey bye)
+  (on-press     tap-vkey bye)
+  (on-release   press-virtualkey hello)
+  (on-release release-virtualkey hello)
+  (on-release  toggle-virtualkey hello)
+  (on-release     tap-virtualkey hello)
+  (on-release   press-vkey bye)
+  (on-release release-vkey bye)
+  (on-release  toggle-vkey bye)
+  (on-release     tap-vkey bye)
 )
 "#;
     let res = parse_cfg_raw_string(
@@ -978,8 +994,88 @@ fn parse_on_idle_fakekey() {
         },
         DEF_LOCAL_KEYS,
     )
-    .map_err(|_e| {
-        eprintln!("{:?}", _e);
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+        ""
+    })
+    .unwrap();
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKey {
+                coord: Coord { x: 1, y: 0 },
+                action: FakeKeyAction::Press,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_F.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKey {
+                coord: Coord { x: 1, y: 1 },
+                action: FakeKeyAction::Release,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_K.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKeyOnRelease {
+                coord: Coord { x: 1, y: 0 },
+                action: FakeKeyAction::Toggle,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_P.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKeyOnRelease {
+                coord: Coord { x: 1, y: 1 },
+                action: FakeKeyAction::Tap,
+            }]
+            .as_ref()
+        ),
+    );
+}
+
+#[test]
+fn parse_on_idle_fakekey() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar var1 a)
+(defsrc a b c d e f g h i)
+(deffakekeys hello a)
+(defvirtualkeys bye a)
+(deflayer base
+  (on-idle-fakekey hello tap 200)
+  (on-idle 100   press-virtualkey hello)
+  (on-idle 100 release-virtualkey hello)
+  (on-idle 100  toggle-virtualkey hello)
+  (on-idle 100     tap-virtualkey hello)
+  (on-idle 100   press-vkey bye)
+  (on-idle 100 release-vkey bye)
+  (on-idle 100  toggle-vkey bye)
+  (on-idle 200     tap-vkey bye)
+)
+"#;
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
         ""
     })
     .unwrap();

@@ -140,7 +140,7 @@ impl TcpServer {
                                                 }
                                                 ClientMessage::ActOnFakeKey { name, action } => {
                                                     let mut k = kanata.lock();
-                                                    let index = match k.fake_keys.get(&name) {
+                                                    let index = match k.virtual_keys.get(&name) {
                                                         Some(index) => Some(*index as u16),
                                                         None => {
                                                             if let Err(e) = stream.write_all(

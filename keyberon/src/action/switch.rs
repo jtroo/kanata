@@ -421,8 +421,8 @@ fn evaluate_boolean(
                 current_index += 1;
                 ret = historical_inputs
                     .clone()
-                    .nth(dbg!(hki.how_far_back as usize))
-                    .map(|he| dbg!(he.event) == dbg!(hki.input))
+                    .nth(hki.how_far_back as usize)
+                    .map(|he| he.event == hki.input)
                     .unwrap_or(false)
             }
         };

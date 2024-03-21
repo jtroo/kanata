@@ -67,6 +67,10 @@ use crate::layers::*;
 mod error;
 pub use error::*;
 
+mod fake_key;
+use fake_key::*;
+pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -265,8 +269,11 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut layout = KanataLayout::new(Layout::new(icfg.klayers), s.a);
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
-    let mut fake_keys: HashMap<String, usize> =
-        s.fake_keys.iter().map(|(k, v)| (k.clone(), v.0)).collect();
+    let mut fake_keys: HashMap<String, usize> = s
+        .virtual_keys
+        .iter()
+        .map(|(k, v)| (k.clone(), v.0))
+        .collect();
     fake_keys.shrink_to_fit();
     log::info!("config file is valid");
     Ok(Cfg {
@@ -585,6 +592,12 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     parse_fake_keys(&fake_keys_exprs, s)?;
 
+    let vkeys_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defvirtualkeys"))
+        .collect::<Vec<_>>();
+    parse_virtual_keys(&vkeys_exprs, s)?;
+
     let sequence_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defseq"))
@@ -654,6 +667,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deflocalkeys-win"
                 | "deflocalkeys-wintercept"
                 | "deffakekeys"
+                | "defvirtualkeys"
                 | "defchords"
                 | "defvar"
                 | "deftemplate"
@@ -892,7 +906,7 @@ pub struct ParsedState {
     aliases: Aliases,
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
-    fake_keys: HashMap<String, (usize, &'static KanataAction)>,
+    virtual_keys: HashMap<String, (usize, &'static KanataAction)>,
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     vars: HashMap<String, SExpr>,
@@ -920,7 +934,7 @@ impl Default for ParsedState {
             layer_idxs: Default::default(),
             mapping_order: Default::default(),
             defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
-            fake_keys: Default::default(),
+            virtual_keys: Default::default(),
             chord_groups: Default::default(),
             vars: Default::default(),
             is_cmd_enabled: default_cfg.enable_cmd,
@@ -1271,6 +1285,9 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
         ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
         ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),
+        ON_PRESS => parse_on_press(&ac[1..], s),
+        ON_RELEASE => parse_on_release(&ac[1..], s),
+        ON_IDLE => parse_on_idle(&ac[1..], s),
         MWHEEL_UP => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
         MWHEEL_DOWN => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_LEFT => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
@@ -2266,9 +2283,9 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
                 ),
             };
             let action = parse_action(action, s)?;
-            let idx = s.fake_keys.len();
+            let idx = s.virtual_keys.len();
             log::trace!("inserting {key_name}->{idx}:{action:?}");
-            if s.fake_keys
+            if s.virtual_keys
                 .insert(key_name.clone(), (idx, action))
                 .is_some()
             {
@@ -2276,112 +2293,49 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
             }
         }
     }
-    if s.fake_keys.len() > KEYS_IN_ROW {
+    if s.virtual_keys.len() > KEYS_IN_ROW {
         bail!(
             "Maximum number of fake keys is {KEYS_IN_ROW}, found {}",
-            s.fake_keys.len()
+            s.virtual_keys.len()
         );
     }
     Ok(())
 }
 
-fn parse_on_press_fake_key_op(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
-    )))
-}
-
-fn parse_on_release_fake_key_op(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
-    ))))
-}
-
-fn parse_fake_key_op_coord_action(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-    ac_name: &str,
-) -> Result<(Coord, FakeKeyAction)> {
-    const ERR_MSG: &str = "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
-    if ac_params.len() != 2 {
-        bail!("{ac_name} {ERR_MSG}");
+fn parse_virtual_keys(exprs: &[&Vec<SExpr>], s: &mut ParsedState) -> Result<()> {
+    for expr in exprs {
+        let mut subexprs = check_first_expr(expr.iter(), "defvirtualkeys")?;
+        // Read k-v pairs from the configuration
+        while let Some(key_name_expr) = subexprs.next() {
+            let key_name = key_name_expr
+                .atom(s.vars())
+                .ok_or_else(|| anyhow_expr!(key_name_expr, "Virtual key name must not be a list."))?
+                .to_owned();
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail_expr!(
+                    key_name_expr,
+                    "Virtual key name has no action - you must add an action."
+                ),
+            };
+            let action = parse_action(action, s)?;
+            let idx = s.virtual_keys.len();
+            log::trace!("inserting {key_name}->{idx}:{action:?}");
+            if s.virtual_keys
+                .insert(key_name.clone(), (idx, action))
+                .is_some()
+            {
+                bail_expr!(key_name_expr, "Duplicate virtual key: {}", key_name);
+            }
+        }
     }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ac_name} {ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
-        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(
-            &ac_params[0],
-            "{ac_name} {ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
-            &ac_params[0]
-        ),
-    };
-    let action = ac_params[1]
-        .atom(s.vars())
-        .and_then(|a| match a {
-            "tap" => Some(FakeKeyAction::Tap),
-            "press" => Some(FakeKeyAction::Press),
-            "release" => Some(FakeKeyAction::Release),
-            "toggle" => Some(FakeKeyAction::Toggle),
-            _ => None,
-        })
-        .ok_or_else(|| {
-            anyhow_expr!(
-                &ac_params[1],
-                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
-            )
-        })?;
-    let (x, y) = get_fake_key_coords(y);
-    Ok((Coord { x, y }, action))
-}
-
-pub const NORMAL_KEY_ROW: u8 = 0;
-pub const FAKE_KEY_ROW: u8 = 1;
-
-fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u16) {
-    let y: usize = y.into();
-    (FAKE_KEY_ROW, y as u16)
-}
-
-fn parse_fake_key_delay(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    parse_delay(ac_params, false, s)
-}
-
-fn parse_on_release_fake_key_delay(
-    ac_params: &[SExpr],
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    parse_delay(ac_params, true, s)
-}
-
-fn parse_delay(
-    ac_params: &[SExpr],
-    is_release: bool,
-    s: &ParsedState,
-) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
-    log::warn!("The configuration contains a fakekey-delay action. This is broken for many use cases. It is recommended to use macro instead.");
-    let delay = ac_params[0]
-        .atom(s.vars())
-        .map(str::parse::<u16>)
-        .ok_or_else(|| anyhow!("{ERR_MSG}"))?
-        .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match is_release {
-            false => CustomAction::Delay(delay),
-            true => CustomAction::DelayOnRelease(delay),
-        })))))
+    if s.virtual_keys.len() > KEYS_IN_ROW {
+        bail!(
+            "Maximum number of virtual keys is {KEYS_IN_ROW}, found {}",
+            s.virtual_keys.len()
+        );
+    }
+    Ok(())
 }
 
 fn parse_distance(expr: &SExpr, s: &ParsedState, label: &str) -> Result<u16> {
@@ -2579,7 +2533,7 @@ fn parse_layers(s: &mut ParsedState) -> Result<IntermediateLayers> {
             }
         }
         // Set fake keys on the `layer-switch` version of each layer.
-        for (y, action) in s.fake_keys.values() {
+        for (y, action) in s.virtual_keys.values() {
             let (x, y) = get_fake_key_coords(*y);
             layers_cfg[layer_level * 2][x as usize][y as usize] = **action;
         }
@@ -2596,26 +2550,26 @@ fn parse_layers(s: &mut ParsedState) -> Result<IntermediateLayers> {
     Ok(layers_cfg)
 }
 
-const SEQ_ERR: &str = "defseq expects pairs of parameters: <fake_key_name> <key_list>";
+const SEQ_ERR: &str = "defseq expects pairs of parameters: <virtual_key_name> <key_list>";
 
 fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFKeys> {
     let mut sequences = Trie::new();
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
 
-        while let Some(fake_key_expr) = subexprs.next() {
-            let fake_key = fake_key_expr.atom(s.vars()).ok_or_else(|| {
-                anyhow_expr!(fake_key_expr, "{SEQ_ERR}\nGot a list for fake_key_name")
+        while let Some(vkey_expr) = subexprs.next() {
+            let vkey = vkey_expr.atom(s.vars()).ok_or_else(|| {
+                anyhow_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
             })?;
-            if !s.fake_keys.contains_key(fake_key) {
+            if !s.virtual_keys.contains_key(vkey) {
                 bail_expr!(
-                    fake_key_expr,
-                    "{SEQ_ERR}\nThe referenced key does not exist: {fake_key}"
+                    vkey_expr,
+                    "{SEQ_ERR}\nThe referenced key does not exist: {vkey}"
                 );
             }
-            let key_seq_expr = subexprs.next().ok_or_else(|| {
-                anyhow_expr!(fake_key_expr, "{SEQ_ERR}\nMissing key_list for {fake_key}")
-            })?;
+            let key_seq_expr = subexprs
+                .next()
+                .ok_or_else(|| anyhow_expr!(vkey_expr, "{SEQ_ERR}\nMissing key_list for {vkey}"))?;
             let key_seq = key_seq_expr.list(s.vars()).ok_or_else(|| {
                 anyhow_expr!(key_seq_expr, "{SEQ_ERR}\nGot a non-list for key_list")
             })?;
@@ -2634,10 +2588,10 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParsedState) -> Result<KeySeqsToFK
             }
             sequences.insert(
                 keycode_seq,
-                s.fake_keys
-                    .get(fake_key)
+                s.virtual_keys
+                    .get(vkey)
                     .map(|(y, _)| get_fake_key_coords(*y))
-                    .expect("fk exists, checked earlier"),
+                    .expect("vk exists, checked earlier"),
             );
         }
     }
@@ -2950,54 +2904,6 @@ fn parse_sequence_start(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
     ))))
-}
-
-fn parse_on_idle_fakekey(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str =
-        "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
-    if ac_params.len() != 3 {
-        bail!("{ERR_MSG}");
-    }
-    let y = match s.fake_keys.get(ac_params[0].atom(s.vars()).ok_or_else(|| {
-        anyhow_expr!(
-            &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: a fake key name cannot be a list",
-        )
-    })?) {
-        Some((y, _)) => *y as u16, // cast should be safe; checked in `parse_fake_keys`
-        None => bail_expr!(
-            &ac_params[0],
-            "{ERR_MSG}\nInvalid first parameter: unknown fake key name {:?}",
-            &ac_params[0]
-        ),
-    };
-    let action = ac_params[1]
-        .atom(s.vars())
-        .and_then(|a| match a {
-            "tap" => Some(FakeKeyAction::Tap),
-            "press" => Some(FakeKeyAction::Press),
-            "release" => Some(FakeKeyAction::Release),
-            _ => None,
-        })
-        .ok_or_else(|| {
-            anyhow_expr!(
-                &ac_params[1],
-                "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
-            )
-        })?;
-    let idle_duration = parse_u16(&ac_params[2], s, "idle time").map_err(|mut e| {
-        e.msg = format!("{ERR_MSG}\nInvalid third parameter: {}", e.msg);
-        e
-    })?;
-    let (x, y) = get_fake_key_coords(y);
-    let coord = Coord { x, y };
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
-        CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
-            coord,
-            action,
-            idle_duration,
-        }),
-    )))))
 }
 
 fn parse_unmod(

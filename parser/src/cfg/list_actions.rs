@@ -63,6 +63,9 @@ pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 pub const LIVE_RELOAD_NUM: &str = "lrld-num";
 pub const LIVE_RELOAD_FILE: &str = "lrld-file";
+pub const ON_PRESS: &str = "on-press";
+pub const ON_RELEASE: &str = "on-release";
+pub const ON_IDLE: &str = "on-idle";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -127,6 +130,9 @@ pub fn is_list_action(ac: &str) -> bool {
         UNSHIFT,
         LIVE_RELOAD_NUM,
         LIVE_RELOAD_FILE,
+        ON_PRESS,
+        ON_RELEASE,
+        ON_IDLE,
     ];
     LIST_ACTIONS.contains(&ac)
 }
