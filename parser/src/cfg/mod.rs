@@ -48,7 +48,7 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
-mod list_actions;
+pub mod list_actions;
 use list_actions::*;
 
 mod defcfg;
@@ -1307,6 +1307,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParsedState) -> Result<&'static KanataAct
         ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
         CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
+        PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
         CAPS_WORD => parse_caps_word(&ac[1..], s),
         CAPS_WORD_CUSTOM => parse_caps_word_custom(&ac[1..], s),
@@ -1856,6 +1857,38 @@ fn test_collect_strings() {
         &strings,
         &["gah", "squish", "squash", "splish", "splosh", "bah mah", "dah"]
     );
+}
+
+fn parse_push_message(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+    if ac_params.is_empty() {
+        bail!(
+             "{PUSH_MESSAGE} expects at least one item, an item can be a list or an atom, found 0, none"
+        );
+    }
+    let message = to_simple_expr(ac_params, s);
+    custom(CustomAction::PushMessage(message), &s.a)
+}
+
+fn to_simple_expr(params: &[SExpr], s: &ParsedState) -> Vec<SimpleSExpr> {
+    let mut result: Vec<SimpleSExpr> = Vec::new();
+    for param in params {
+        if let Some(a) = param.atom(s.vars()) {
+            result.push(SimpleSExpr::Atom(a.trim_matches('"').to_owned()));
+        } else {
+            // unwrap: this must be a list, since it's not an atom.
+            let sexps = param.list(s.vars()).unwrap();
+            let value = to_simple_expr(sexps, s);
+            let list = SimpleSExpr::List(value);
+            result.push(list);
+        }
+    }
+    result
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SimpleSExpr {
+    Atom(String),
+    List(Vec<SimpleSExpr>),
 }
 
 fn parse_one_shot(

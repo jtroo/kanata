@@ -8,6 +8,7 @@ pub enum ServerMessage {
     CurrentLayerInfo { name: String, cfg_text: String },
     ConfigFileReload { new: String },
     CurrentLayerName { name: String },
+    MessagePush { message: serde_json::Value },
     Error { msg: String },
 }
 

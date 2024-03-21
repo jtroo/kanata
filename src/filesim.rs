@@ -156,7 +156,7 @@ fn main_impl() -> Result<()> {
                 match pair.split_once(':') {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
-                            k.tick_ms(str::parse::<u128>(val)?)?;
+                            k.tick_ms(str::parse::<u128>(val)?, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             k.handle_input_event(&KeyEvent {
