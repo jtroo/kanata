@@ -40,58 +40,54 @@ fn try_send_panic(tx:&Sender<KeyEvent>, kev:KeyEvent) {
 }
 
 fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
-  #[derive(Debug,Clone,Copy,PartialEq)]enum LctlState {Pressed,Released,Pending,PendingReleased, None,}
+  #[derive(Debug,Clone,Copy,PartialEq)] enum LctlState {Pressed,Released,Pending,PendingReleased, None,}
 
-  std::thread::spawn(move || {
-    let mut lctl_state = LctlState::None;
-    loop {
-      match preprocess_rx.try_recv() {
-        Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
-          (AltGrBehaviour::DoNothing, _) => try_send_panic(&process_tx, kev),
-          (AltGrBehaviour::AddLctlRelease, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_RIGHTALT,..}) => {
-            log::debug!("altgr add: adding lctl release");
-            try_send_panic(&process_tx,kev);
-            try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
-            PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);}
-          (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_LEFTCTRL,..}) => {
-            log::debug!("altgr cancel: lctl state->pressed");
-            lctl_state = LctlState::Pressed;}
-          (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_LEFTCTRL,..}) => match lctl_state {
-            LctlState::Pressed => {log::debug!("altgr cancel: lctl state->released");
-              lctl_state = LctlState::Released;}
-            LctlState::Pending => {log::debug!("altgr cancel: lctl state->pending-released");
+  std::thread::spawn(move || { let mut lctl_state = LctlState::None;
+    loop { match preprocess_rx.try_recv() {
+      Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
+        (AltGrBehaviour::DoNothing, _) => try_send_panic(&process_tx, kev),
+        (AltGrBehaviour::AddLctlRelease, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_RIGHTALT,..}) => {
+          log::debug!("altgr add: adding lctl release");
+          try_send_panic(&process_tx,kev);
+          try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
+          PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);}
+        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_LEFTCTRL,..}) => {
+          log::debug!("altgr cancel: lctl state->pressed");
+          lctl_state = LctlState::Pressed;}
+        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_LEFTCTRL,..}) => match lctl_state {
+          LctlState::Pressed => {log::debug!("altgr cancel: lctl state->released");
+            lctl_state = LctlState::Released;}
+          LctlState::Pending => {log::debug!("altgr cancel: lctl state->pending-released");
+            lctl_state = LctlState::PendingReleased;}
+          LctlState::None    => try_send_panic(&process_tx, kev),
+          _                  => {}},
+        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_RIGHTALT,..},) => {
+          log::debug!("altgr cancel: lctl state->none");
+          lctl_state = LctlState::None;
+          try_send_panic(&process_tx, kev);}
+        (_, _) => try_send_panic(&process_tx, kev),
+      },
+      Err(TryRecvError::Empty) => {
+        if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
+          match lctl_state {
+            LctlState::Pressed         => {log::debug!("altgr cancel: lctl state->pending");
+              lctl_state = LctlState::Pending;}
+            LctlState::Released        => {log::debug!("altgr cancel: lctl state->pending-released");
               lctl_state = LctlState::PendingReleased;}
-            LctlState::None    => try_send_panic(&process_tx, kev),
-            _                  => {}},
-          (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_RIGHTALT,..},) => {
-            log::debug!("altgr cancel: lctl state->none");
-            lctl_state = LctlState::None;
-            try_send_panic(&process_tx, kev);}
-          (_, _) => try_send_panic(&process_tx, kev),
-        },
-        Err(TryRecvError::Empty) => {
-          if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
-            match lctl_state {
-              LctlState::Pressed         => {log::debug!("altgr cancel: lctl state->pending");
-                lctl_state = LctlState::Pending;}
-              LctlState::Released        => {log::debug!("altgr cancel: lctl state->pending-released");
-                lctl_state = LctlState::PendingReleased;}
-              LctlState::Pending         => {log::debug!("altgr cancel: lctl state->send");
-                try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),);
-                lctl_state = LctlState::None;}
-              LctlState::PendingReleased => {log::debug!("altgr cancel: lctl state->send+release");
-                try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),);
-                try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
-                lctl_state = LctlState::None;}
-              _ => {}
-            }
+            LctlState::Pending         => {log::debug!("altgr cancel: lctl state->send");
+              try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),);
+              lctl_state = LctlState::None;}
+            LctlState::PendingReleased => {log::debug!("altgr cancel: lctl state->send+release");
+              try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),);
+              try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
+              lctl_state = LctlState::None;}
+            _ => {}
           }
-          std::thread::sleep(time::Duration::from_millis(1));
         }
-        Err(TryRecvError::Disconnected) => {
-          panic!("channel disconnected")
-        }
+        std::thread::sleep(time::Duration::from_millis(1));
       }
+      Err(TryRecvError::Disconnected) => {panic!("channel disconnected (exthook event_preproces)")}
     }
+  }
   });
 }
