@@ -42,6 +42,7 @@ which map to the binaries
 * Without `process-unmapped-keys yes`, having arrow keys in `defsrc`
 without also having the shift keys will break shift highlighting
 ** https://github.com/jtroo/kanata/issues/858
+** Workaround: add shift keys to `defsrc` or use `process-unmapped-keys yes` in `defcfg`
 
 == Windows 10+11 Interception
 
