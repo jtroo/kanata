@@ -1,7 +1,12 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
+#[cfg(feature = "simulated_output")]
+use anyhow::{anyhow, bail};
 use clap::Parser;
+#[cfg(feature = "simulated_output")]
 use kanata_parser::keys::str_to_oscode;
+#[cfg(feature = "simulated_output")]
 use kanata_state_machine::{oskbd::*, *};
+#[cfg(feature = "simulated_output")]
 use simplelog::*;
 
 use std::path::PathBuf;
@@ -35,6 +40,7 @@ pub fn default_sim() -> Vec<PathBuf> {
 /// - interpreting them with kanata
 /// - printing out which actions or key/mouse events kanata would execute if the keys were
 /// pressed by a user
+/// - (optionally) saving the result to a file for reference
 struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -79,8 +85,12 @@ test/sim.txt in the current working directory and
     )]
     #[arg(short = 's', long, verbatim_doc_comment)]
     sim: Option<Vec<PathBuf>>,
+    /// Save output to the simulation file's path with its name appended by the value of this argument
+    #[arg(short = 'o', long, verbatim_doc_comment)]
+    out: Option<String>,
 }
 
+#[cfg(feature = "simulated_output")]
 fn log_init() {
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
@@ -97,10 +107,12 @@ fn log_init() {
 }
 
 /// Parse CLI arguments
-fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
+#[cfg(feature = "simulated_output")]
+fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
     let sim_paths = args.sim.unwrap_or_else(default_sim);
+    let sim_appendix = args.out;
 
     log::info!("kanata_filesim v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
@@ -110,21 +122,14 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
-            bail!(
-                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                cfg_paths[0].to_str().unwrap_or("?")
-            )
+            bail!("Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",cfg_paths[0].to_str().unwrap_or("?"))
         }
     } else {
         bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
-
     if let Some(config_sim_file) = sim_paths.first() {
         if !config_sim_file.exists() {
-            bail!(
-                "Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                sim_paths[0].to_str().unwrap_or("?")
-            )
+            bail!("Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",sim_paths[0].to_str().unwrap_or("?"))
         }
     } else {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
@@ -140,12 +145,14 @@ fn cli_init() -> Result<(ValidatedArgs, Vec<PathBuf>)> {
             nodelay: true,
         },
         sim_paths,
+        sim_appendix,
     ))
 }
 
+#[cfg(feature = "simulated_output")]
 fn main_impl() -> Result<()> {
     log_init();
-    let (args, sim_paths) = cli_init()?;
+    let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
 
     for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
@@ -156,26 +163,34 @@ fn main_impl() -> Result<()> {
                 match pair.split_once(':') {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
-                            k.tick_ms(str::parse::<u128>(val)?, &None)?;
+                            let tick = str::parse::<u128>(val)?;
+                            k.kbd_out.log.in_tick(tick);
+                            k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Press,
                             })?;
                         }
                         "release" | "↑" | "u" | "up" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Release,
                             })?;
                         }
                         "repeat" | "⟳" | "r" => {
+                            let key_code =
+                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
-                                code: str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?,
+                                code: key_code,
                                 value: KeyValue::Repeat,
                             })?;
                         }
@@ -185,11 +200,17 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
+        k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
     Ok(())
 }
 
+#[cfg(not(feature = "simulated_output"))]
+fn main() -> Result<()> {
+    Ok(())
+}
+#[cfg(feature = "simulated_output")]
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {

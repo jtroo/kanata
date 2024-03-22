@@ -1100,6 +1100,18 @@ pub enum OsCode {
     KEY_MAX = 767,
 }
 
+use core::fmt;
+impl fmt::Display for OsCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let self_dbg = format!("{self:?}");
+        if let Some(key) = self_dbg.strip_prefix("KEY_") {
+            write!(f, "{}", key)
+        } else {
+            write!(f, "{:?}", self)
+        }
+    }
+}
+
 #[test]
 fn parser_key_max_lt_keyberon_key_max() {
     assert!(u16::from(OsCode::KEY_MAX) < KEY_MAX);
