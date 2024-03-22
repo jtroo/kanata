@@ -463,3 +463,10 @@ impl From<KeyEvent> for InputEvent {
         }
     }
 }
+
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+impl From<KeyEvent> for InputEvent {
+    fn from(_item: KeyEvent) -> Self {
+        unimplemented!()
+    }
+}
