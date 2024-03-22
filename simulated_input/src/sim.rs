@@ -1,12 +1,8 @@
 use anyhow::Result;
-#[cfg(feature = "simulated_output")]
 use anyhow::{anyhow, bail};
 use clap::Parser;
-#[cfg(feature = "simulated_output")]
 use kanata_parser::keys::str_to_oscode;
-#[cfg(feature = "simulated_output")]
 use kanata_state_machine::{oskbd::*, *};
-#[cfg(feature = "simulated_output")]
 use simplelog::*;
 
 use std::path::PathBuf;
@@ -81,12 +77,12 @@ test/sim.txt in the current working directory and
     )]
     #[arg(short = 's', long, verbatim_doc_comment)]
     sim: Option<Vec<PathBuf>>,
-    /// Save output to the simulation file's path with its name appended by the value of this argument
+    /// Save output to the simulation file's path with its name appended by the value of this argument.
+    /// This flag generates an error if the binary is compiled without simulated output.
     #[arg(short = 'o', long, verbatim_doc_comment)]
     out: Option<String>,
 }
 
-#[cfg(feature = "simulated_output")]
 fn log_init() {
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
@@ -103,7 +99,6 @@ fn log_init() {
 }
 
 /// Parse CLI arguments
-#[cfg(feature = "simulated_output")]
 fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
@@ -148,10 +143,15 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     ))
 }
 
-#[cfg(feature = "simulated_output")]
 fn main_impl() -> Result<()> {
     log_init();
     let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
+    #[cfg(not(feature = "simulated_output"))]
+    {
+        if sim_appendix.is_some() {
+            bail!("The program was compiled without simulated output. The -o|--out flag is unsupported");
+        }
+    }
 
     for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
@@ -163,12 +163,14 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_tick(tick);
                             k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -178,6 +180,7 @@ fn main_impl() -> Result<()> {
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -187,6 +190,7 @@ fn main_impl() -> Result<()> {
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -199,17 +203,13 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
+        #[cfg(feature = "simulated_output")]
         k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
     Ok(())
 }
 
-#[cfg(not(feature = "simulated_output"))]
-fn main() -> Result<()> {
-    Ok(())
-}
-#[cfg(feature = "simulated_output")]
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {
