@@ -1,18 +1,11 @@
 use anyhow::Result;
-#[cfg(feature = "simulated_output")]
 use anyhow::{anyhow, bail};
 use clap::Parser;
-#[cfg(feature = "simulated_output")]
 use kanata_parser::keys::str_to_oscode;
-#[cfg(feature = "simulated_output")]
 use kanata_state_machine::{oskbd::*, *};
-#[cfg(feature = "simulated_output")]
 use simplelog::*;
 
 use std::path::PathBuf;
-
-#[cfg(test)]
-mod tests;
 
 pub fn default_sim() -> Vec<PathBuf> {
     let mut cfgs = Vec::new();
@@ -34,8 +27,7 @@ pub fn default_sim() -> Vec<PathBuf> {
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
-///
-/// kanata_filesim: a cli tool that helps debug kanata's user configuration by:
+/// kanata_simulated_input: a cli tool that helps debug kanata's user configuration by:
 /// - reading a text file with a sequence of key events, including key delays
 /// - interpreting them with kanata
 /// - printing out which actions or key/mouse events kanata would execute if the keys were
@@ -67,30 +59,30 @@ kanata.kbd in the current working directory and
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
         target_os = "windows",
-        doc = r"Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = r"Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test\sim.txt in the current working directory and
 'C:\Users\user\AppData\Roaming\kanata\test\sim.txt'"
     )]
     #[cfg_attr(
         target_os = "macos",
-        doc = "Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = "Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test/sim.txt in the current working directory and
 '$HOME/Library/Application Support/kanata/test/sim.txt.'"
     )]
     #[cfg_attr(
         not(any(target_os = "macos", target_os = "windows")),
-        doc = "Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = "Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test/sim.txt in the current working directory and
 '$XDG_CONFIG_HOME/kanata/test/sim.txt'"
     )]
     #[arg(short = 's', long, verbatim_doc_comment)]
     sim: Option<Vec<PathBuf>>,
-    /// Save output to the simulation file's path with its name appended by the value of this argument
+    /// Save output to the simulation file's path with its name appended by the value of this argument.
+    /// This flag generates an error if the binary is compiled without simulated output.
     #[arg(short = 'o', long, verbatim_doc_comment)]
     out: Option<String>,
 }
 
-#[cfg(feature = "simulated_output")]
 fn log_init() {
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
@@ -107,14 +99,16 @@ fn log_init() {
 }
 
 /// Parse CLI arguments
-#[cfg(feature = "simulated_output")]
 fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let args = Args::parse();
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
     let sim_paths = args.sim.unwrap_or_else(default_sim);
     let sim_appendix = args.out;
 
-    log::info!("kanata_filesim v{} starting", env!("CARGO_PKG_VERSION"));
+    log::info!(
+        "kanata_simulated_input v{} starting",
+        env!("CARGO_PKG_VERSION")
+    );
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     log::info!("using LLHOOK+SendInput for keyboard IO");
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -149,10 +143,15 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     ))
 }
 
-#[cfg(feature = "simulated_output")]
 fn main_impl() -> Result<()> {
     log_init();
     let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
+    #[cfg(not(feature = "simulated_output"))]
+    {
+        if sim_appendix.is_some() {
+            bail!("The program was compiled without simulated output. The -o|--out flag is unsupported");
+        }
+    }
 
     for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
@@ -164,12 +163,14 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_tick(tick);
                             k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -179,6 +180,7 @@ fn main_impl() -> Result<()> {
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -188,6 +190,7 @@ fn main_impl() -> Result<()> {
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            #[cfg(feature = "simulated_output")]
                             k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -200,17 +203,13 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
+        #[cfg(feature = "simulated_output")]
         k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
     Ok(())
 }
 
-#[cfg(not(feature = "simulated_output"))]
-fn main() -> Result<()> {
-    Ok(())
-}
-#[cfg(feature = "simulated_output")]
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {

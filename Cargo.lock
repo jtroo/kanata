@@ -523,6 +523,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanata-sim"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dirs",
+ "kanata",
+ "kanata-parser",
+ "log",
+ "simplelog",
+]
+
+[[package]]
 name = "kanata-tcp-protocol"
 version = "0.160.1"
 dependencies = [

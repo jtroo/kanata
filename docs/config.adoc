@@ -3001,14 +3001,22 @@ https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example c
 === Test your config
 <<table-of-contents,Back to ToC>>
 
-Kanata has a `+kanata_filesim+` tool to help test your configuration in a predictable manner: instead of physically
-typing to test something and wondering whether you didn't get the expected result because your config is wrong or
-whether you mistyped something, you can write a sequence of key presses in a `+sim.txt+` file, run the tool with
-your config and get a "timeline" view of input/output events that can help understand how kanata translates
-your input into various key/mouse presses (the format of this view may change; also, it currently doesn't show
-timings of output events and emoji output may break vertical alignment)
+Kanata has a `+kanata_simulated_input+` tool
+to help test your configuration in a predictable manner.
+The code can be found under link:../simulated_input/[simulated_input].
 
-For more details download the files below and run `kanata_filesim -c sim.kbd -s sim.txt` +
+Instead of physically typing to test something
+and wondering whether you didn't get the expected result because your config is wrong or
+because you mistyped something,
+you can write a sequence of key presses in a `+sim.txt+` file,
+run the tool with your config
+and get a "timeline" view of input/output events that can help understand how kanata translates
+your input into various key/mouse presses.
+
+WARNING: The format of this view may change.
+It currently doesn't show timings of output events and emoji output may break vertical alignment.
+
+For more details download the files below and run `kanata_simulated_input -c sim.kbd -s sim.txt` +
   - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim.kbd[example config] with simple home row mod bindings +
   - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim.txt[example input sequence] +
   - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim_out.txt[example output sequence] +

@@ -1,0 +1,30 @@
+[package]
+name = "kanata-sim"
+version = "0.1.0"
+authors = ["jtroo <j.andreitabs@gmail.com>"]
+description = "Simulated input using kanata"
+keywords = ["kanata", "input", "simulated"]
+homepage = "https://github.com/jtroo/kanata"
+repository = "https://github.com/jtroo/kanata"
+readme = "README.md"
+license = "LGPL-3.0"
+edition = "2021"
+
+[[bin]]
+name = "kanata_simulated_input"
+path = "src/sim.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
+dirs = "5.0.1"
+log = { version = "0.4.8", default_features = false }
+simplelog = "0.12.0"
+
+kanata = { path = ".." , default_features = false }
+kanata-parser = { path = "../parser" }
+
+[features]
+default = ["simulated_output", "tcp_server"]
+simulated_output = ["kanata/simulated_output"]
+tcp_server = ["kanata/tcp_server"]
