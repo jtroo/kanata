@@ -39,6 +39,9 @@ which map to the binaries
 ** https://github.com/jtroo/kanata/issues/78
 ** https://github.com/jtroo/kanata/issues/667
 ** Workaround: use the correct https://github.com/jtroo/kanata/discussions/354[numlock state]
+* Without `process-unmapped-keys yes`, having arrow keys in `defsrc`
+without also having the shift keys will break shift highlighting
+** https://github.com/jtroo/kanata/issues/858
 
 == Windows 10+11 Interception
 
