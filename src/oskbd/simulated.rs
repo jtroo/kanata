@@ -463,9 +463,3 @@ impl From<KeyEvent> for InputEvent {
         }
     }
 }
-#[cfg(target_os = "macos")]
-impl KeyEvent {
-    pub fn new(code: OsCode, value: KeyValue) -> Self {
-        Self { code, value }
-    }
-}
