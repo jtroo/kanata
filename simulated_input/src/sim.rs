@@ -11,9 +11,6 @@ use simplelog::*;
 
 use std::path::PathBuf;
 
-#[cfg(test)]
-mod tests;
-
 pub fn default_sim() -> Vec<PathBuf> {
     let mut cfgs = Vec::new();
 
@@ -34,8 +31,7 @@ pub fn default_sim() -> Vec<PathBuf> {
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
-///
-/// kanata_filesim: a cli tool that helps debug kanata's user configuration by:
+/// kanata_simulated_input: a cli tool that helps debug kanata's user configuration by:
 /// - reading a text file with a sequence of key events, including key delays
 /// - interpreting them with kanata
 /// - printing out which actions or key/mouse events kanata would execute if the keys were
@@ -67,19 +63,19 @@ kanata.kbd in the current working directory and
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
         target_os = "windows",
-        doc = r"Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = r"Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test\sim.txt in the current working directory and
 'C:\Users\user\AppData\Roaming\kanata\test\sim.txt'"
     )]
     #[cfg_attr(
         target_os = "macos",
-        doc = "Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = "Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test/sim.txt in the current working directory and
 '$HOME/Library/Application Support/kanata/test/sim.txt.'"
     )]
     #[cfg_attr(
         not(any(target_os = "macos", target_os = "windows")),
-        doc = "Simulation file(s) to use with kanata_filesim. If not specified, defaults to
+        doc = "Simulation file(s) to use with kanata_simulated_input. If not specified, defaults to
 test/sim.txt in the current working directory and
 '$XDG_CONFIG_HOME/kanata/test/sim.txt'"
     )]
@@ -114,7 +110,10 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     let sim_paths = args.sim.unwrap_or_else(default_sim);
     let sim_appendix = args.out;
 
-    log::info!("kanata_filesim v{} starting", env!("CARGO_PKG_VERSION"));
+    log::info!(
+        "kanata_simulated_input v{} starting",
+        env!("CARGO_PKG_VERSION")
+    );
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     log::info!("using LLHOOK+SendInput for keyboard IO");
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
