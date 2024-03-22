@@ -154,7 +154,6 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     // sent the injected event.
     let ignore_count = EVENTS_TO_IGNORE_COUNT.load(SeqCst);
     if is_injected && EVENTS_TO_IGNORE_COUNT.load(SeqCst) > 0 {
-        eprintln!("ignore count: {ignore_count}");
         if EVENTS_TO_IGNORE_COUNT.fetch_sub(1, SeqCst) == 0 {
             let _ = EVENTS_TO_IGNORE_COUNT.compare_exchange(-1, 0, SeqCst, SeqCst);
         }
