@@ -3003,7 +3003,7 @@ https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example c
 
 Kanata has a `+kanata_simulated_input+` tool
 to help test your configuration in a predictable manner.
-The code can be found under ../simulated_input/[simulated_input].
+The code can be found under link:../simulated_input/[simulated_input].
 
 Instead of physically typing to test something
 and wondering whether you didn't get the expected result because your config is wrong or
