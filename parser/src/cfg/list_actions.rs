@@ -52,6 +52,7 @@ pub const DYNAMIC_MACRO_RECORD: &str = "dynamic-macro-record";
 pub const DYNAMIC_MACRO_PLAY: &str = "dynamic-macro-play";
 pub const ARBITRARY_CODE: &str = "arbitrary-code";
 pub const CMD: &str = "cmd";
+pub const PUSH_MESSAGE: &str = "push-msg";
 pub const CMD_OUTPUT_KEYS: &str = "cmd-output-keys";
 pub const FORK: &str = "fork";
 pub const CAPS_WORD: &str = "caps-word";
@@ -63,6 +64,9 @@ pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 pub const LIVE_RELOAD_NUM: &str = "lrld-num";
 pub const LIVE_RELOAD_FILE: &str = "lrld-file";
+pub const ON_PRESS: &str = "on-press";
+pub const ON_RELEASE: &str = "on-release";
+pub const ON_IDLE: &str = "on-idle";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -117,6 +121,7 @@ pub fn is_list_action(ac: &str) -> bool {
         ARBITRARY_CODE,
         CMD,
         CMD_OUTPUT_KEYS,
+        PUSH_MESSAGE,
         FORK,
         CAPS_WORD,
         CAPS_WORD_CUSTOM,
@@ -127,6 +132,9 @@ pub fn is_list_action(ac: &str) -> bool {
         UNSHIFT,
         LIVE_RELOAD_NUM,
         LIVE_RELOAD_FILE,
+        ON_PRESS,
+        ON_RELEASE,
+        ON_IDLE,
     ];
     LIST_ACTIONS.contains(&ac)
 }

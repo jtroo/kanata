@@ -10,6 +10,8 @@ use std::sync::Arc;
 #[cfg(feature = "tcp_server")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 #[cfg(feature = "tcp_server")]
+use kanata_parser::cfg::SimpleSExpr;
+#[cfg(feature = "tcp_server")]
 use std::io::{Read, Write};
 #[cfg(feature = "tcp_server")]
 use std::net::{TcpListener, TcpStream};
@@ -140,13 +142,13 @@ impl TcpServer {
                                                 }
                                                 ClientMessage::ActOnFakeKey { name, action } => {
                                                     let mut k = kanata.lock();
-                                                    let index = match k.fake_keys.get(&name) {
+                                                    let index = match k.virtual_keys.get(&name) {
                                                         Some(index) => Some(*index as u16),
                                                         None => {
                                                             if let Err(e) = stream.write_all(
                                                                 &ServerMessage::Error {
                                                                     msg: format!(
-                                                                        "unknown fake key: {name}"
+                                                                        "unknown virtual/fake key: {name}"
                                                                     ),
                                                                 }
                                                                 .as_bytes(),
@@ -259,4 +261,18 @@ impl TcpServer {
 
     #[cfg(not(feature = "tcp_server"))]
     pub fn start(&mut self, _kanata: Arc<Mutex<Kanata>>) {}
+}
+
+#[cfg(feature = "tcp_server")]
+pub fn simple_sexpr_to_json_array(exprs: &[SimpleSExpr]) -> serde_json::Value {
+    let mut result = Vec::new();
+
+    for expr in exprs.iter() {
+        match expr {
+            SimpleSExpr::Atom(s) => result.push(serde_json::Value::String(s.clone())),
+            SimpleSExpr::List(list) => result.push(simple_sexpr_to_json_array(list)),
+        }
+    }
+
+    serde_json::Value::Array(result)
 }

@@ -165,7 +165,7 @@ fn main_impl() -> Result<()> {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
                             k.kbd_out.log.in_tick(tick);
-                            k.tick_ms(tick)?;
+                            k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =

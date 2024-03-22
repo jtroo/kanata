@@ -469,6 +469,7 @@ dependencies = [
  "radix_trie",
  "rustc-hash",
  "sd-notify",
+ "serde_json",
  "signal-hook",
  "simplelog",
  "winapi",

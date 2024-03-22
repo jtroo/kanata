@@ -665,6 +665,11 @@ You can release a held key or layer via these actions:
 * `release-key`: release a key, accepts `defsrc` compatible names
 * `release-layer`: release a while-held layer
 
+NOTE:
+A lower-level detail of these actions is that they operate on output states
+as opposed to virtually releasing an input key.
+This does have some practical significance but for the most part it is not important.
+
 An example practical use case for `release-key` is seen in the `multi` section
 directly below.
 
@@ -1207,7 +1212,7 @@ The actions supported in `+macro+` are:
 * <<mouse-actions,mouse actions>>
 * <<repeat-key,repeat>>
 * <<live-reload,live reload>>
-* <<fake-keys,fake keys>>
+* <<fake-keys,virtual keys/fake keys>>
 * <<sequences,sequence leader>>
 * <<arbitrary-code,arbitrary keycode>>
 * <<dynamic-macro,dynamic macro>>
@@ -2180,24 +2185,99 @@ a non-applicable operating system.
 == Advanced/weird features[[advanced-weird-features]]
 
 [[fake-keys]]
-=== Fake keys
+=== Virtual keys (a.k.a. fake keys)
 <<table-of-contents,Back to ToC>>
 
-You can define up to 767 fake keys. These keys are not directly mapped to any
-physical key presses and can only be activated via these actions:
+You can define up to 767 virtual keys.
+These keys are not directly mapped to any physical key presses or releases.
+Virtual keys can be activated via special actions:
 
-* `+(on-press-fakekey <fake key name> <key action>)+`: Activate a fake key
+* `(on-press    <action> <virtual key name>)`:
+Activate a virtual key action when pressing the associated input key.
+* `(on-release  <action> <virtual key name>)`:
+Activate a virtual key action when releasing the associated input key.
+* `(on-idle <milliseconds> <action> <virtual key name>)`:
+Activate a virtual key action when kanata has been idle
+for at least `idle time` milliseconds.
+
+The `<action>` parameter can be one of:
+
+* `tap-virtualkey     | tap-vkey`:
+Press the virtual key. It will not be released until another action triggers a release or tap.
+* `press-virtualkey   | press-vkey`:
+Release the virtual key. If it is not already pressed, this does nothing.
+* `release-virtualkey | release-vkey`:
+Press and release the virtual key. If the key is already pressed, this only releases it.
+* `toggle-virtualkey  | toggle-vkey`:
+Press the virtual key if it is not already pressed, otherwise release it.
+
+A virtual key can be defined in a `defvirtualkeys` configuration entry.
+Configuring this entry is similar to `+defalias+`,
+but you cannot make use of aliases inside to shorten an action.
+You can refer to previously defined virtual keys.
+
+Expanding on the `on-idle` action some more,
+the wording that "kanata" has been idle is important.
+Even if the keyboard is idle, kanata may not yet be idle.
+For example, if a long-running macro is playing,
+or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
+kanata is not yet idle, and the tick count for the `<idle time>` parameter
+will not yet be counting even if you no longer have any keyboard keys pressed.
+
+.Example:
+[source]
+----
+(defvirtualkeys
+  ;; Define some virtual keys that perform modifier actions
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+
+  ;; A virtual key that toggles all modifier virtual keys above
+  tal (multi
+        (on-press toggle-virtualkey ctl)
+        (on-press toggle-virtualkey sft)
+        (on-press toggle-virtualkey met)
+        (on-press toggle-virtualkey alt)
+      )
+
+  ;; Virtual key that activates a macro
+  vkmacro (macro h e l l o spc w o r l d)
+)
+
+(defalias
+  psf (on-press press-virtualkey   sft)
+  rsf (on-press release-virtualkey sft)
+
+  tal (on-press tap-vkey tal)
+  mac (on-press tap-vkey vkmacro)
+
+  isf (on-idle 1000 tap-vkey sft)
+)
+
+(deflayer use-fake-keys
+  @psf @rsf @tal @mac a s d f @isf
+)
+----
+
+.Older fake keys documentation
+[%collapsible]
+====
+The older configuration style of fake keys are still supported
+but the new style is preferred due to (hopefully) clearer naming.
+
+Fake keys can be defined inside of `deffakekeys`.
+
+The actions are:
+
+* `+(on-press-fakekey <fake key name> <action>)+`: Activate a fake key
   action when pressing the key mapped to this action.
-* `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
+* `+(on-release-fakekey <fake key name> <action>)+`: Activate a fake key
   action when releasing the key mapped to this action.
-* `+(on-idle-fakekey <fake key name> <key action> <idle time>)+`:
+* `+(on-idle-fakekey <fake key name> <action> <idle time>)+`:
   Activate a fake key action when kanata has been idle
   for at least `idle time` milliseconds.
-
-A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
-this entry is similar to `+defalias+`, but you cannot make use of aliases
-inside of `+deffakekeys+` to shorten an action. You can however refer to
-previously defined fake keys.
 
 The aforementioned `+<key action>+` can be one of four values:
 
@@ -2206,14 +2286,6 @@ The aforementioned `+<key action>+` can be one of four values:
 * `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
 * `+toggle+`: Press the fake key if not already pressed, otherwise release it.
-
-Expanding on the `on-idle-fakekey` action some more,
-the wording that "kanata" has been idle is important.
-Even if the keyboard is idle, kanata may not yet be idle.
-For example, if a long-running macro is playing,
-or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
-kanata is not yet idle, and the tick count for the `<idle time>` parameter
-will not yet be counting even if you no longer have any keyboard keys pressed.
 
 .Example:
 [source]
@@ -2226,7 +2298,7 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
 
   ;; Press all modifiers
   pal (multi
-        (on-press-fakekey ctl press)
+        (on-press fakekey ctl press)
         (on-press-fakekey sft press)
         (on-press-fakekey met press)
         (on-press-fakekey alt press)
@@ -2256,24 +2328,15 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
 )
 ----
 
+====
 
 For more context, you can read the
-https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
+https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of virtual keys].
 
-Something notable about fake keys is that they don't always interrupt the state
+Something notable about virtual keys is that they don't always interrupt the state
 of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
 key, this won't interrupt a tap dance. However, most other action types,
 notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
-
-==== Aside: broken delay action
-
-The implementation of the following actions are broken in many use cases:
-`on-press-fakekey-delay`, `on-release-fakekey-delay`.
-
-Because these actions exist and might otherwise be discovered anyway,
-it seems better to warn about it here in the documentation.
-You should use the `macro` action instead.
-The `macro` action can operate on fake keys.
 
 [[sequences]]
 === Sequences
@@ -2289,11 +2352,11 @@ but are saved until one of the following happens:
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
 
 Sequences are configured similarly to `+deffakekeys+`. The first parameter of a
-pair must be a defined fake key name. The second parameter is a list of keys
-that will activate a fake key tap when typed in the defined order. More
+pair must be a defined virtual key name. The second parameter is a list of keys
+that will activate a virtual key tap when typed in the defined order. More
 precisely, the action triggered is:
 
-`+(on-press-fakekey <fake key name> tap)+`
+`+(on-press-fakekey <virtual key name> tap)+`
 
 .Example:
 [source]

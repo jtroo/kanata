@@ -162,7 +162,7 @@ pub fn parse_switch_case_bool(
                             .ok_or_else(|| anyhow_expr!(op_expr, "invalid input key name"))?,
                     ),
                     InputType::Virtual => {
-                        let vk = s.fake_keys.get(input).ok_or_else(|| {
+                        let vk = s.virtual_keys.get(input).ok_or_else(|| {
                             anyhow_expr!(op_expr, "virtual key name is not defined")
                         })?;
                         assert!(vk.0 < usize::from(KEY_MAX));
@@ -195,7 +195,7 @@ pub fn parse_switch_case_bool(
                             .ok_or_else(|| anyhow_expr!(op_expr, "invalid input key name"))?,
                     ),
                     InputType::Virtual => {
-                        let vk = s.fake_keys.get(input).ok_or_else(|| {
+                        let vk = s.virtual_keys.get(input).ok_or_else(|| {
                             anyhow_expr!(op_expr, "virtual key name is not defined")
                         })?;
                         assert!(vk.0 < usize::from(KEY_MAX));

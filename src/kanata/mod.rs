@@ -14,6 +14,8 @@ use std::sync::Arc;
 use std::time;
 
 use crate::oskbd::{KeyEvent, *};
+#[cfg(feature = "tcp_server")]
+use crate::tcp_server::simple_sexpr_to_json_array;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
@@ -23,6 +25,8 @@ use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;
 use dynamic_macro::*;
+
+use kanata_parser::cfg::list_actions::*;
 
 #[cfg(feature = "cmd")]
 mod cmd;
@@ -165,9 +169,11 @@ pub struct Kanata {
     last_pressed_key: KeyCode,
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
-    pub fake_keys: HashMap<String, usize>,
+    pub virtual_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
+    #[cfg(feature = "tcp_server")]
+    tcp_server_port: Option<i32>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -330,8 +336,10 @@ impl Kanata {
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
             #[cfg(feature = "tcp_server")]
-            fake_keys: cfg.fake_keys,
+            virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_port: args.port,
         })
     }
 
@@ -366,7 +374,7 @@ impl Kanata {
         };
         #[cfg(feature = "tcp_server")]
         {
-            self.fake_keys = cfg.fake_keys;
+            self.virtual_keys = cfg.fake_keys;
         }
         self.switch_max_key_timing = cfg.switch_max_key_timing;
 
@@ -456,7 +464,7 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
-        self.tick_ms(ms_elapsed)?;
+        self.tick_ms(ms_elapsed, tx)?;
 
         self.last_tick = match ms_elapsed {
             0 => self.last_tick,
@@ -500,10 +508,10 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128) -> Result<()> {
+    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.tick_states()?;
+            self.tick_states(_tx)?;
             if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -514,7 +522,7 @@ impl Kanata {
             }
         }
         for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-            self.tick_states()?;
+            self.tick_states(_tx)?;
             if tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -528,8 +536,8 @@ impl Kanata {
         Ok(())
     }
 
-    fn tick_states(&mut self) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes()?;
+    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -695,7 +703,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -1180,6 +1188,36 @@ impl Kanata {
                                     }
                                 }
                             }
+                        }
+                        CustomAction::PushMessage(_message) => {
+                            log::debug!("Action push-msg");
+                            #[cfg(feature = "tcp_server")]
+                            if let Some(tx) = _tx {
+                                let message = simple_sexpr_to_json_array(_message);
+                                log::debug!("Action push-msg message: {}", message);
+                                match tx.try_send(ServerMessage::MessagePush { message }) {
+                                    Ok(_) => {}
+                                    Err(error) => {
+                                        log::error!(
+                                            "could not send {} event notification: {}",
+                                            PUSH_MESSAGE,
+                                            error
+                                        );
+                                    }
+                                }
+                            }
+                            #[cfg(feature = "tcp_server")]
+                            match self.tcp_server_port {
+                                None => {
+                                    log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
+                                }
+                                Some(_) => {}
+                            }
+                            #[cfg(not(feature = "tcp_server"))]
+                            log::warn!(
+                                "{} was used, but Kanata was compiled with TCP server disabled.",
+                                PUSH_MESSAGE
+                            );
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);

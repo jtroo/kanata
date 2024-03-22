@@ -7,12 +7,13 @@ use anyhow::{anyhow, Result};
 use core::fmt;
 use kanata_keyberon::key_code::KeyCode;
 
-use crate::keys::OsCode;
+use crate::{cfg::SimpleSExpr, keys::OsCode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
     CmdOutputKeys(Vec<String>),
+    PushMessage(Vec<SimpleSExpr>),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
