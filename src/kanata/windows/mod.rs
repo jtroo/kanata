@@ -6,9 +6,9 @@ use crate::kanata::*;
 
 #[cfg(all(not(feature="simulated_input"),not(feature="interception_driver")))]
 mod llhook;
-#[cfg(        feature="simulated_input")]
+#[cfg(all(    feature="simulated_input" ,not(feature="interception_driver")))]
 mod exthook;
-#[cfg(                                       feature="interception_driver")]
+#[cfg(all(not(feature="simulated_input"),    feature="interception_driver"))]
 mod interception;
 
 pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
