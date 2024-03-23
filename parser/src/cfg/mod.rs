@@ -494,13 +494,13 @@ pub fn parse_cfg_raw_string(
     }
     let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
-    let deflayer_names = [DEFLAYER, DEFLAYER_MAPPED];
+    let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
         if exprs.t.is_empty() {
             return false;
         }
         if let SExpr::Atom(atom) = &exprs.t[0] {
-            deflayer_names.contains(&atom.t.as_str())
+            deflayer_labels.contains(&atom.t.as_str())
         } else {
             false
         }
@@ -511,7 +511,7 @@ pub fn parse_cfg_raw_string(
         .cloned()
         .map(|e| match e.t[0].atom(None).unwrap() {
             DEFLAYER => SpannedLayerExprs::DefsrcMapping(e.clone()),
-            DEFLAYER_MAPPED => SpannedLayerExprs::ManualMapping(e.clone()),
+            DEFLAYER_MAPPED => SpannedLayerExprs::CustomMapping(e.clone()),
             _ => unreachable!(),
         })
         .collect::<Vec<_>>();
@@ -543,7 +543,7 @@ pub fn parse_cfg_raw_string(
             return false;
         }
         if let SExpr::Atom(atom) = &exprs[0] {
-            deflayer_names.contains(&atom.t.as_str())
+            deflayer_labels.contains(&atom.t.as_str())
         } else {
             false
         }
@@ -572,7 +572,7 @@ pub fn parse_cfg_raw_string(
             return false;
         }
         if let SExpr::Atom(atom) = &exprs[0] {
-            deflayer_names.contains(&atom.t.as_str())
+            deflayer_labels.contains(&atom.t.as_str())
         } else {
             false
         }
@@ -890,22 +890,44 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
 fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
-    for (i, expr) in exprs.iter().enumerate() {
-        let (mut subexprs, expr, do_element_count_check) = match expr {
+    for (i, expr_type) in exprs.iter().enumerate() {
+        let (mut subexprs, expr, do_element_count_check) = match expr_type {
             SpannedLayerExprs::DefsrcMapping(e) => {
                 (check_first_expr(e.t.iter(), DEFLAYER)?, e, true)
             }
-            SpannedLayerExprs::ManualMapping(e) => {
+            SpannedLayerExprs::CustomMapping(e) => {
                 (check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)
             }
         };
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
-        let layer_name = layer_expr
-            .atom(None)
-            .ok_or_else(|| anyhow_expr!(layer_expr, "layer name after deflayer must be a string"))?
-            .to_owned();
+        let layer_name = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(_) => layer_expr
+                .atom(None)
+                .ok_or_else(|| {
+                    anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
+                })?
+                .to_owned(),
+            SpannedLayerExprs::CustomMapping(_) => {
+                let list = layer_expr
+                    .list(None)
+                    .ok_or_else(|| {
+                        anyhow_expr!(
+                            layer_expr,
+                            "layer name after {DEFLAYER_MAPPED} must be in parentheses"
+                        )
+                    })?
+                    .to_owned();
+                if list.len() != 1 {
+                    bail_expr!(
+                        layer_expr,
+                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
+                    );
+                }
+                list[0].atom(None).ok_or_else(|| anyhow_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"))?.to_owned()
+            }
+        };
         if layer_indexes.get(&layer_name).is_some() {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
@@ -962,7 +984,7 @@ enum LayerExprs {
 #[derive(Debug, Clone)]
 enum SpannedLayerExprs {
     DefsrcMapping(Spanned<Vec<SExpr>>),
-    ManualMapping(Spanned<Vec<SExpr>>),
+    CustomMapping(Spanned<Vec<SExpr>>),
 }
 
 #[derive(Debug)]

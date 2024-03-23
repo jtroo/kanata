@@ -2012,7 +2012,7 @@ fn test_new_layer_type() {
 
     let source = r#"
 (defsrc a b l)
-(deflayer-custom-map base
+(deflayer-custom-map (blah)
   d      ->  (macro a b c)
   e maps-to  e
   f       :  0
