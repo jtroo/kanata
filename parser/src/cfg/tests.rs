@@ -2018,6 +2018,8 @@ fn test_new_layer_type() {
   f       :  0
   j       →  1
   k       =  2
+  l       🞂  3
+  m      >>  4
 )
 "#;
     let mut s = ParsedState::default();

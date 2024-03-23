@@ -167,9 +167,20 @@ An example complete configuration that maps Caps Lock to Escape is:
 ----
 
 The input key takes the same role as `defsrc` keys.
-The map string is an arbitrary string of your liking;
-it exists for ease of visual differentiation.
-The output action takes the role that all items in the normal `deflayer` have.
+The output action takes the role that items in the normal `deflayer` have.
+
+The map string can be any of the following strings, to your liking:
+
+[source]
+----
+=
+:
+->
+>>
+maps-to
+→
+🞂
+----
 
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries

@@ -583,7 +583,7 @@ pub fn parse_cfg_raw_string(
         .cloned()
         .map(|e| match e[0].atom(None).unwrap() {
             DEFLAYER => LayerExprs::DefsrcMapping(e.clone()),
-            DEFLAYER_MAPPED => LayerExprs::ManualMapping(e.clone()),
+            DEFLAYER_MAPPED => LayerExprs::CustomMapping(e.clone()),
             _ => unreachable!(),
         })
         .collect::<Vec<_>>();
@@ -978,7 +978,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
 #[derive(Debug, Clone)]
 enum LayerExprs {
     DefsrcMapping(Vec<SExpr>),
-    ManualMapping(Vec<SExpr>),
+    CustomMapping(Vec<SExpr>),
 }
 
 #[derive(Debug, Clone)]
@@ -2629,7 +2629,7 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *ac;
                 }
             }
-            LayerExprs::ManualMapping(layer) => {
+            LayerExprs::CustomMapping(layer) => {
                 // Parse actions as input -> output triplets
                 let mut triplets = layer[2..].chunks_exact(3);
                 let mut layer_mapped_keys = HashSet::default();
@@ -2645,9 +2645,20 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     if !layer_mapped_keys.insert(input_key) {
                         bail_expr!(input, "input key must not be repeated within a layer")
                     }
-                    mapstr.atom(s.vars())
-                        .ok_or_else(|| anyhow_expr!(mapstr, "mapping string must not be a list\n\
-                                                    suggested strings: = | : | -> | >> | maps-to | → | 🞂"))?;
+                    let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                    mapstr
+                        .atom(s.vars())
+                        .and_then(|s| match mapstrs.contains(&s) {
+                            true => Some(()),
+                            false => None,
+                        })
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                mapstr,
+                                "map string must be one of the following strings:\n\
+                                = | : | -> | >> | maps-to | → | 🞂"
+                            )
+                        })?;
                     let action = parse_action(action, s)?;
                     layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
                     layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
@@ -2658,11 +2669,11 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     1 => {
                         bail_expr!(
                             &rem[0],
-                            "an input must be followed by a mapping string and an action"
+                            "an input must be followed by a map string and an action"
                         );
                     }
                     2 => {
-                        bail_expr!(&rem[1], "a mapping string must be followed by an action");
+                        bail_expr!(&rem[1], "map string must be followed by an action");
                     }
                     _ => unreachable!(),
                 }
