@@ -1826,15 +1826,17 @@ fn parse_mods_held_for_submacro<'a>(
     Ok((mod_keys, unparsed_str))
 }
 
-static KEYMODI: [(&str, KeyCode); 22] = [
+static KEYMODI: [(&str, KeyCode); 25] = [
     ("S-", KeyCode::LShift),
     ("‹⇧", KeyCode::LShift),
     ("⇧›", KeyCode::RShift),
+    ("RS-", KeyCode::RShift),
     ("C-", KeyCode::LCtrl),
     ("‹⎈", KeyCode::LCtrl),
     ("‹⌃", KeyCode::LCtrl),
     ("⎈›", KeyCode::RCtrl),
     ("⌃›", KeyCode::RCtrl),
+    ("RC-", KeyCode::RCtrl),
     ("M-", KeyCode::LGui),
     ("‹◆", KeyCode::LGui),
     ("‹⌘", KeyCode::LGui),
@@ -1842,6 +1844,7 @@ static KEYMODI: [(&str, KeyCode); 22] = [
     ("◆›", KeyCode::RGui),
     ("⌘›", KeyCode::RGui),
     ("❖›", KeyCode::RGui),
+    ("RM-", KeyCode::RGui),
     ("‹⎇", KeyCode::LAlt),
     ("A-", KeyCode::LAlt),
     ("‹⌥", KeyCode::LAlt),
