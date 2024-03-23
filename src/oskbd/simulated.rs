@@ -295,7 +295,7 @@ impl LogFmt {
             self.raw_down,
             self.combo
         );
-        println!("{}", table_out);
+        eprintln!("{}", table_out);
         if let Some(appendix_s) = appendix {
             let out_path = append_file_name(in_path, appendix_s);
             let out_path_s = out_path.display();
@@ -305,7 +305,7 @@ impl LogFmt {
             };
             match out_file.write_all(table_out.as_bytes()) {
                 Err(e) => panic!("✗ Couldn't write to {}: {}", out_path_s, e),
-                Ok(_) => println!("Saved output → {}", out_path_s),
+                Ok(_) => eprintln!("Saved output → {}", out_path_s),
             }
         }
     }

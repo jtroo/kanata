@@ -155,7 +155,7 @@ fn main_impl() -> Result<()> {
 
     for config_sim_file in &sim_paths {
         let mut k = Kanata::new(&args)?;
-        println!("Evaluating simulation file = {:?}", config_sim_file);
+        log::info!("Evaluating simulation file = {:?}", config_sim_file);
         let s = std::fs::read_to_string(config_sim_file)?;
         for l in s.lines() {
             for pair in l.split_whitespace() {
