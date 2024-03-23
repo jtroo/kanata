@@ -150,17 +150,18 @@ The very first item must be the layer name,
 but the layer name must be in parentheses unlike before.
 The reason for this is for better error messages when forgetting the name.
 After the layer name, the layer is configured via triples of items:
-- input key
-- map string
-- output action
 
-An example, complete and minimal config that maps Caps Lock to Escape is:
+* input key
+* map string
+* output action
+
+An example complete configuration that maps Caps Lock to Escape is:
 
 [source]
 ----
 ;; defsrc is still necessary
 (defsrc spc)
-(deflayer-custom-map base-layer
+(deflayer-custom-map (base-layer)
   caps : esc
 )
 ----
