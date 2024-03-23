@@ -2624,7 +2624,7 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                         bail_expr!(input, "input key must not be repeated within a layer")
                     }
                     mapstr.atom(s.vars())
-                        .ok_or_else(|| anyhow_expr!(input, "mapping string must not be a list\n\
+                        .ok_or_else(|| anyhow_expr!(mapstr, "mapping string must not be a list\n\
                                                     suggested strings: = | : | -> | >> | maps-to | → | 🞂"))?;
                     let action = parse_action(action, s)?;
                     layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
