@@ -494,7 +494,7 @@ pub fn parse_cfg_raw_string(
     }
     let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
-    let deflayer_names =[DEFLAYER, DEFLAYER_MAPPED];
+    let deflayer_names = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
         if exprs.t.is_empty() {
             return false;
@@ -894,7 +894,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         let (mut subexprs, expr, do_element_count_check) = match expr {
             SpannedLayerExprs::DefsrcMapping(e) => {
                 (check_first_expr(e.t.iter(), DEFLAYER)?, e, true)
-            },
+            }
             SpannedLayerExprs::ManualMapping(e) => {
                 (check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)
             }
@@ -944,7 +944,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                     layer_name,
                     num_actions,
                     expected_len
-                    )
+                )
             }
         }
         layer_indexes.insert(layer_name, i);
@@ -2597,7 +2597,7 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
     let mut layers_cfg = new_layers(s.layer_exprs.len());
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         match layer {
-        // The skip is done to skip the the `deflayer` and layer name tokens.
+            // The skip is done to skip the the `deflayer` and layer name tokens.
             LayerExprs::DefsrcMapping(layer) => {
                 // Parse actions in the layer and place them appropriately according
                 // to defsrc mapping order.
@@ -2615,7 +2615,8 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     let input = &triplet[0];
                     let mapstr = &triplet[1];
                     let action = &triplet[2];
-                    let input_key = input.atom(s.vars())
+                    let input_key = input
+                        .atom(s.vars())
                         .and_then(str_to_oscode)
                         .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
                     mapped_keys.insert(input_key);
@@ -2631,14 +2632,17 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                 }
                 let rem = triplets.remainder();
                 match rem.len() {
-                    0 => {},
+                    0 => {}
                     1 => {
-                        bail_expr!(&rem[0], "an input must be followed by a mapping string and an action");
+                        bail_expr!(
+                            &rem[0],
+                            "an input must be followed by a mapping string and an action"
+                        );
                     }
                     2 => {
                         bail_expr!(&rem[1], "a mapping string must be followed by an action");
-                    },
-                    _ => unreachable!()
+                    }
+                    _ => unreachable!(),
                 }
             }
         }

@@ -2017,6 +2017,7 @@ fn test_new_layer_type() {
   e maps-to  e
   f       :  0
   j       →  1
+  k       =  2
 )
 "#;
     let mut s = ParsedState::default();
