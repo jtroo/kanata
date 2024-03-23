@@ -203,6 +203,10 @@ An example minimal configuration is:
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
 certainly undesirable but is a valid configuration.
 
+NOTE: Please have a read through link:./platform-known-issues.adoc[the known platform issues]
+because they may have implications on what you should include/exclude in `defsrc`.
+The Windows LLHOOK I/O mechanism has the most issues by far.
+
 [[non-us-keyboards]]
 == Non-US keyboards
 <<table-of-contents,Back to ToC>>
