@@ -401,7 +401,7 @@ fn expand_includes(
 }
 
 const DEFLAYER: &str = "deflayer";
-const DEFLAYER_MAPPED: &str = "deflayer-mapped";
+const DEFLAYER_MAPPED: &str = "deflayer-custom-map";
 
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
