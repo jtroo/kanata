@@ -142,6 +142,46 @@ would be:
 )
 ----
 
+==== deflayer-custom-map
+
+An alternative method for defining a layer exists: `deflayer-custom-map`.
+This method does not rely on `defsrc`.
+The very first item must be the layer name,
+but the layer name must be in parentheses unlike before.
+The reason for this is for better error messages when forgetting the name.
+After the layer name, the layer is configured via triples of items:
+
+* input key
+* map string
+* output action
+
+An example complete configuration that maps Caps Lock to Escape is:
+
+[source]
+----
+;; defsrc is still necessary
+(defsrc spc)
+(deflayer-custom-map (base-layer)
+  caps : esc
+)
+----
+
+The input key takes the same role as `defsrc` keys.
+The output action takes the role that items in the normal `deflayer` have.
+
+The map string can be any of the following strings, to your liking:
+
+[source]
+----
+=
+:
+->
+>>
+maps-to
+→
+🞂
+----
+
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
 <<table-of-contents,Back to ToC>>

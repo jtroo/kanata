@@ -400,6 +400,9 @@ fn expand_includes(
     })
 }
 
+const DEFLAYER: &str = "deflayer";
+const DEFLAYER_MAPPED: &str = "deflayer-custom-map";
+
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
     text: &str,
@@ -489,13 +492,28 @@ pub fn parse_cfg_raw_string(
             "Exactly one defsrc is allowed, found more. Delete the extras."
         )
     }
-    let (src, mapping_order) = parse_defsrc(src_expr, &cfg)?;
+    let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
-    let deflayer_filter = gen_first_atom_filter("deflayer");
+    let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
+    let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
+        if exprs.t.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &exprs.t[0] {
+            deflayer_labels.contains(&atom.t.as_str())
+        } else {
+            false
+        }
+    };
     let layer_exprs = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_filter_spanned("deflayer"))
+        .filter(deflayer_spanned_filter)
         .cloned()
+        .map(|e| match e.t[0].atom(None).unwrap() {
+            DEFLAYER => SpannedLayerExprs::DefsrcMapping(e.clone()),
+            DEFLAYER_MAPPED => SpannedLayerExprs::CustomMapping(e.clone()),
+            _ => unreachable!(),
+        })
         .collect::<Vec<_>>();
     if layer_exprs.is_empty() {
         bail!("No deflayer expressions exist. At least one layer must be defined.")
@@ -520,6 +538,16 @@ pub fn parse_cfg_raw_string(
         })
         .collect::<Vec<_>>();
 
+    let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
+        if exprs.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &exprs[0] {
+            deflayer_labels.contains(&atom.t.as_str())
+        } else {
+            false
+        }
+    };
     let layer_strings = spanned_root_exprs
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
@@ -537,12 +565,27 @@ pub fn parse_cfg_raw_string(
         .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
         .collect();
 
-    let defsrc_layer = parse_defsrc_layer(src_expr, &mapping_order, s);
+    let defsrc_layer = create_defsrc_layer();
 
+    let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
+        if exprs.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &exprs[0] {
+            deflayer_labels.contains(&atom.t.as_str())
+        } else {
+            false
+        }
+    };
     let layer_exprs = root_exprs
         .iter()
-        .filter(&deflayer_filter)
+        .filter(deflayer_filter)
         .cloned()
+        .map(|e| match e[0].atom(None).unwrap() {
+            DEFLAYER => LayerExprs::DefsrcMapping(e.clone()),
+            DEFLAYER_MAPPED => LayerExprs::CustomMapping(e.clone()),
+            _ => unreachable!(),
+        })
         .collect::<Vec<_>>();
 
     *s = ParsedState {
@@ -610,7 +653,7 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s)?;
 
-    let mut klayers = parse_layers(s)?;
+    let mut klayers = parse_layers(s, &mut mapped_keys)?;
 
     resolve_chord_groups(&mut klayers, s)?;
 
@@ -636,7 +679,7 @@ pub fn parse_cfg_raw_string(
 
     Ok(IntermediateCfg {
         options: cfg,
-        mapped_keys: src,
+        mapped_keys,
         layer_info,
         klayers: s.a.bref_slice(klayers),
         sequences,
@@ -660,7 +703,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defalias"
                 | "defaliasenvcond"
                 | "defsrc"
-                | "deflayer"
+                | DEFLAYER
+                | DEFLAYER_MAPPED
                 | "defoverrides"
                 | "deflocalkeys-macos"
                 | "deflocalkeys-linux"
@@ -844,17 +888,46 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// - All layers have the same number of items as the defsrc,
 /// - There are no duplicate layer names
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
-fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Result<LayerIndexes> {
+fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
-    for (i, expr) in exprs.iter().enumerate() {
-        let mut subexprs = check_first_expr(expr.t.iter(), "deflayer")?;
+    for (i, expr_type) in exprs.iter().enumerate() {
+        let (mut subexprs, expr, do_element_count_check) = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(e) => {
+                (check_first_expr(e.t.iter(), DEFLAYER)?, e, true)
+            }
+            SpannedLayerExprs::CustomMapping(e) => {
+                (check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)
+            }
+        };
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
-        let layer_name = layer_expr
-            .atom(None)
-            .ok_or_else(|| anyhow_expr!(layer_expr, "layer name after deflayer must be a string"))?
-            .to_owned();
+        let layer_name = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(_) => layer_expr
+                .atom(None)
+                .ok_or_else(|| {
+                    anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
+                })?
+                .to_owned(),
+            SpannedLayerExprs::CustomMapping(_) => {
+                let list = layer_expr
+                    .list(None)
+                    .ok_or_else(|| {
+                        anyhow_expr!(
+                            layer_expr,
+                            "layer name after {DEFLAYER_MAPPED} must be in parentheses"
+                        )
+                    })?
+                    .to_owned();
+                if list.len() != 1 {
+                    bail_expr!(
+                        layer_expr,
+                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
+                    );
+                }
+                list[0].atom(None).ok_or_else(|| anyhow_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"))?.to_owned()
+            }
+        };
         if layer_indexes.get(&layer_name).is_some() {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
@@ -884,15 +957,17 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
                 }
             }
         }
-        let num_actions = expr.t.len() - 2;
-        if num_actions != expected_len {
-            bail_span!(
-                expr,
-                "Layer {} has {} item(s), but requires {} to match defsrc",
-                layer_name,
-                num_actions,
-                expected_len
-            )
+        if do_element_count_check {
+            let num_actions = expr.t.len() - 2;
+            if num_actions != expected_len {
+                bail_span!(
+                    expr,
+                    "Layer {} has {} item(s), but requires {} to match defsrc",
+                    layer_name,
+                    num_actions,
+                    expected_len
+                )
+            }
         }
         layer_indexes.insert(layer_name, i);
     }
@@ -900,9 +975,21 @@ fn parse_layer_indexes(exprs: &[Spanned<Vec<SExpr>>], expected_len: usize) -> Re
     Ok(layer_indexes)
 }
 
+#[derive(Debug, Clone)]
+enum LayerExprs {
+    DefsrcMapping(Vec<SExpr>),
+    CustomMapping(Vec<SExpr>),
+}
+
+#[derive(Debug, Clone)]
+enum SpannedLayerExprs {
+    DefsrcMapping(Spanned<Vec<SExpr>>),
+    CustomMapping(Spanned<Vec<SExpr>>),
+}
+
 #[derive(Debug)]
 pub struct ParsedState {
-    layer_exprs: Vec<Vec<SExpr>>,
+    layer_exprs: Vec<LayerExprs>,
     aliases: Aliases,
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
@@ -2004,17 +2091,13 @@ fn parse_release_layer(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static 
     ))))
 }
 
-fn parse_defsrc_layer(
-    defsrc: &[SExpr],
-    mapping_order: &[usize],
-    s: &ParsedState,
-) -> [KanataAction; KEYS_IN_ROW] {
+fn create_defsrc_layer() -> [KanataAction; KEYS_IN_ROW] {
     let mut layer = [KanataAction::Trans; KEYS_IN_ROW];
 
-    // These can be default (empty) since the defsrc layer definitely won't use it.
-    for (i, ac) in defsrc.iter().skip(1).enumerate() {
-        let ac = parse_action(ac, s).expect("prechecked valid key names");
-        layer[mapping_order[i]] = *ac;
+    for (i, ac) in layer.iter_mut().enumerate() {
+        *ac = OsCode::from_u16(i as u16)
+            .map(|osc| Action::KeyCode(osc.into()))
+            .unwrap_or(Action::Trans);
     }
     layer
 }
@@ -2530,17 +2613,71 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stat
     )))))
 }
 
-fn parse_layers(s: &mut ParsedState) -> Result<IntermediateLayers> {
+fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<IntermediateLayers> {
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers(s.layer_exprs.len());
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
-        // The skip is done to skip the the `deflayer` and layer name tokens.
-        for (i, ac) in layer.iter().skip(2).enumerate() {
-            // Parse actions in the layer and place them appropriately.
-            let ac = parse_action(ac, s)?;
-            layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *ac;
-            layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *ac;
+        match layer {
+            // The skip is done to skip the the `deflayer` and layer name tokens.
+            LayerExprs::DefsrcMapping(layer) => {
+                // Parse actions in the layer and place them appropriately according
+                // to defsrc mapping order.
+                for (i, ac) in layer.iter().skip(2).enumerate() {
+                    let ac = parse_action(ac, s)?;
+                    layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *ac;
+                    layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *ac;
+                }
+            }
+            LayerExprs::CustomMapping(layer) => {
+                // Parse actions as input -> output triplets
+                let mut triplets = layer[2..].chunks_exact(3);
+                let mut layer_mapped_keys = HashSet::default();
+                for triplet in triplets.by_ref() {
+                    let input = &triplet[0];
+                    let mapstr = &triplet[1];
+                    let action = &triplet[2];
+                    let input_key = input
+                        .atom(s.vars())
+                        .and_then(str_to_oscode)
+                        .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
+                    mapped_keys.insert(input_key);
+                    if !layer_mapped_keys.insert(input_key) {
+                        bail_expr!(input, "input key must not be repeated within a layer")
+                    }
+                    let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                    mapstr
+                        .atom(s.vars())
+                        .and_then(|s| match mapstrs.contains(&s) {
+                            true => Some(()),
+                            false => None,
+                        })
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                mapstr,
+                                "map string must be one of the following strings:\n\
+                                = | : | -> | >> | maps-to | → | 🞂"
+                            )
+                        })?;
+                    let action = parse_action(action, s)?;
+                    layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
+                    layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                }
+                let rem = triplets.remainder();
+                match rem.len() {
+                    0 => {}
+                    1 => {
+                        bail_expr!(
+                            &rem[0],
+                            "an input must be followed by a map string and an action"
+                        );
+                    }
+                    2 => {
+                        bail_expr!(&rem[1], "map string must be followed by an action");
+                    }
+                    _ => unreachable!(),
+                }
+            }
         }
         for (i, (layer_action, defsrc_action)) in layers_cfg[layer_level * 2][0]
             .iter_mut()

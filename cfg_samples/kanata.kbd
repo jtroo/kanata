@@ -319,6 +319,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   lctl lmet lalt           spc           @ralt rmet @rcl
 )
 
+;; This is an alternative to deflayer and does not rely on defsrc.
+;; It has the advantage of simpler config if only remapping a few keys.
+;; You might still prefer the standard deflayer for its visual printing in
+;; the log as you are learning a new configuration.
+(deflayer-custom-map (custom-map-example)
+  caps : esc
+  esc  : caps
+)
+
 ;; defvar can be used to declare commonly-used values
 (defvar
   tap-timeout   100

@@ -2002,3 +2002,38 @@ fn parse_template_7() {
     })
     .expect("parses");
 }
+
+#[test]
+fn test_new_layer_type() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a b l)
+(deflayer-custom-map (blah)
+  d      ->  (macro a b c)
+  e maps-to  e
+  f       :  0
+  j       →  1
+  k       =  2
+  l       🞂  3
+  m      >>  4
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
