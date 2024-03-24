@@ -49,14 +49,20 @@ static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that our
 }
 
 fn send_out_ev(in_ev:InputEvent) -> Result<()> { // ext callback accepts vk:i64,sc:i64,up:i64
-  debug!("✗1 send_out_ev");
+  #[cfg(feature="perf_logging")] let start = std::time::Instant::now();
+  let key_event	= KeyEvent::try_from(in_ev); //{code:KEY_0,value:Press} //todo remove
   let vk:i64 = in_ev.code.into();
   let sc:i64 = 0;
   let up:i64 = in_ev.up.into();
   if let Some(fn_out_ev_wrapper) = OUTEVWRAP.get() {
     let handled = (&fn_out_ev_wrapper.cb)(vk,sc,up);
-    if handled != 0 {debug!("✓fnHook vk{} sc{} up{}",vk,sc,up);Ok(())} else {bail!("✗fnHook vk{} sc{} up{}",vk,sc,up)}
-  } else {debug!("unavailable");bail!("fnHook isn't available yet!")}
+    if handled != 0 {
+      #[cfg(    feature="perf_logging") ]
+      debug!("🕐{}μs   ←←←✓fnHook {:?} {vk} {sc} {up}",(start.elapsed()).as_micros(),key_event);
+      #[cfg(not(feature="perf_logging"))]
+      debug!("   ←←←✓fnHook {:?} {vk} {sc} {up}",key_event);
+      Ok(())} else {bail!("✗fnHook vk{} sc{} up{}",vk,sc,up)}
+  } else {error!("✗✗✗unavailable");bail!("fnHook isn't available yet!")}
 }
 
 /// Handle for writing keys to the simulated input provider.
