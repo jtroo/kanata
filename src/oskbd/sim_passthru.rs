@@ -74,30 +74,30 @@ impl KbdOut {
     #[cfg(target_os = "linux")]
     pub fn new(_: &Option<String>) -> Result<Self, io::Error> {Ok(Self {})}
     #[cfg(target_os = "linux")]
-    pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {self.log.write_raw(event);debug!("out-raw:{event:?}");Ok(())}
+    pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {self.log.write_raw(event);trace!("out-raw:{event:?}");Ok(())}
     pub fn write    (&mut self, event: InputEvent) -> Result<(),io::Error> {
       let _ = send_out_ev(event);
-      debug!("out:{event}");Ok(())}
+      trace!("out:{event}");Ok(())}
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let event = {#[cfg(    target_os = "macos" )]{key_ev.try_into().unwrap()}
                      #[cfg(not(target_os = "macos"))]{key_ev.into()             }  };
         self.write(event)
       }
-    pub fn write_code  (&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {debug!("out-code:{code};{value:?}");Ok(())}
+    pub fn write_code  (&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {trace!("out-code:{code};{value:?}");Ok(())}
     pub fn press_key   (&mut self, key: OsCode) -> Result<(),io::Error> {self.write_key(key,KeyValue::Press  )}
     pub fn release_key (&mut self, key: OsCode) -> Result<(),io::Error> {self.write_key(key,KeyValue::Release)}
-    pub fn send_unicode(&mut self, c  : char  ) -> Result<(),io::Error> {debug!("outU:{c}");Ok(())}
-    pub fn click_btn   (&mut self, btn: Btn   ) -> Result<(),io::Error> {debug!("out🖰:↓{btn:?}");Ok(())}
-    pub fn release_btn (&mut self, btn: Btn   ) -> Result<(),io::Error> {debug!("out🖰:↑{btn:?}");Ok(())}
+    pub fn send_unicode(&mut self, c  : char  ) -> Result<(),io::Error> {trace!("outU:{c}");Ok(())}
+    pub fn click_btn   (&mut self, btn: Btn   ) -> Result<(),io::Error> {trace!("out🖰:↓{btn:?}");Ok(())}
+    pub fn release_btn (&mut self, btn: Btn   ) -> Result<(),io::Error> {trace!("out🖰:↑{btn:?}");Ok(())}
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
-        debug!("scroll:{direction:?},{distance:?}");Ok(())}
+        trace!("scroll:{direction:?},{distance:?}");Ok(())}
     pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
                          let (direction, distance) = ( mv.direction,  mv.distance);
-            debug!("out🖰:move {direction:?},{distance:?}");Ok(())}
+            trace!("out🖰:move {direction:?},{distance:?}");Ok(())}
     pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
         for mv in moves {let (direction, distance) = (&mv.direction, &mv.distance);
-            debug!("out🖰:move {direction:?},{distance:?}");}Ok(())}
+            trace!("out🖰:move {direction:?},{distance:?}");}Ok(())}
     pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {log::info!("out🖰:@{x},{y}");Ok(())}
 }
 
