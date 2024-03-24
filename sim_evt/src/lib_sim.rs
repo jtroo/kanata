@@ -29,17 +29,8 @@ use std::path::PathBuf;
 /// Parse CLI arguments
 fn cli_init() -> Result<ValidatedArgs> {
   let cfg_file = PathBuf::from(r#"./sim.kbd"#);
-  let sim_file = PathBuf::from(r#"./sim.txt"#);
-
   if !cfg_file.exists() {bail!("Could not find the config file ({:?})"    ,cfg_file)}
-  if !sim_file.exists() {bail!("Could not find the simulation file ({:?})",sim_file)}
-  Ok(ValidatedArgs {
-    paths       	: vec![cfg_file],
-    nodelay     	: true,
-    sim_paths   	: vec![sim_file],
-    sim_appendix	: None,
-    },
-  )
+  Ok(ValidatedArgs {paths:vec![cfg_file], nodelay:true},)
 }
 
 fn lib_impl() -> Result<()> {
