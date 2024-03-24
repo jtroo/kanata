@@ -18,7 +18,7 @@ static CFG:OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
 
 use winapi::shared::minwindef::*;
 #[no_mangle] pub extern "C" fn reset_kanata_state() -> LRESULT {
-  debug!("                   ext →→→ reset_kanata_state");
+  debug!("                               ext →→→ reset_kanata_state");
   if let Some(cfg) = CFG.get() {
     if kanata::clean_state(&cfg).is_err()	{debug!("✗ @ reset_kanata_state"        );return 1};
   } else                                 	{debug!("✗ @ reset_kanata_state, no CFG");return 2};
