@@ -37,6 +37,7 @@ fn lib_impl() -> Result<()> {
   log_init();
   let args = cli_init()?;
   let cfg_arc = Kanata::new_arc(&args)?; // new configuration from a file
+  if CFG.set(cfg_arc.clone()).is_err() {warn!("Someone else set our ‘CFG’");}; // store a clone of cfg so that we can ask it to reset itself
 
   // Start a processing loop in another thread and run the event loop in this thread
   // The reason for two different event loops is that the "event loop" only listens for keyboard events, which it sends to the "processing loop". The processing loop handles keyboard events while also maintaining `tick()` calls to keyberon.
