@@ -20,7 +20,7 @@ impl Kanata {
       check_for_exit(&key_event);
       let oscode = OsCode::from(input_event.code);
       if ! MAPPED_KEYS.lock().contains(&oscode) {return false;}
-      log::debug!("event loop: {:?}", key_event);
+      log::debug!("event loop: {}", key_event);
       match key_event.value { // Unlike Linux, Windows does not use a separate value for repeat. However, our code needs to differentiate between initial press and repeat press.
         KeyValue::Release	=> {                       PRESSED_KEYS.lock().remove(&key_event.code);}
         KeyValue::Press  	=> {let mut pressed_keys = PRESSED_KEYS.lock();
