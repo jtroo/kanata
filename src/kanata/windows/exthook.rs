@@ -17,7 +17,6 @@ impl Kanata {
       let mut key_event = match KeyEvent::try_from(input_event) { // InputEvent{code:u32      , up   :bool}
         Ok(ev)	=> ev,                                            // KeyEvent  {code:OsCode   , value:KeyValue}
         _     	=> return false,};                                // Some(OsCode::KEY_0)←0x30        Release0 Press1 Repeat2 Tap WakeUp
-      check_for_exit(&key_event);
       let oscode = OsCode::from(input_event.code);
       if ! MAPPED_KEYS.lock().contains(&oscode) {return false;}
       log::debug!("event loop: {}", key_event);
