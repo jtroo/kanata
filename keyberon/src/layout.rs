@@ -924,7 +924,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter(),
+                &mut self.active_layers_including_default().into_iter().skip(1),
             )
         } else {
             CustomEvent::NoEvent
@@ -944,7 +944,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter(),
+                &mut self.active_layers_including_default().into_iter().skip(1),
             );
             if let Some(pq) = pq {
                 if matches!(
@@ -959,14 +959,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     // the input chord remains held. The behaviour of these actions is correct in
                     // the case of repeating do_action, so there is currently no harm in doing
                     // this. Other action types are more problematic though.
+                    let layer_stack = self.active_layers_including_default().into_iter().skip(1);
                     for other_coord in pq.iter().copied() {
-                        self.do_action(
-                            tap,
-                            other_coord,
-                            delay,
-                            false,
-                            &mut self.active_layers_including_default().into_iter(),
-                        );
+                        self.do_action(tap, other_coord, delay, false, &mut layer_stack.clone());
                     }
                 }
             }
@@ -996,7 +991,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter(),
+                &mut self.active_layers_including_default().into_iter().skip(1),
             )
         } else {
             CustomEvent::NoEvent
@@ -1021,7 +1016,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 0,
                 false,
-                &mut self.active_layers_including_default().into_iter(),
+                &mut self.active_layers_including_default().into_iter().skip(1),
             );
         }
         self.states = self.states.iter().filter_map(State::tick).collect();
@@ -1208,7 +1203,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
 
             Press(i, j) => {
-                let layer_stack = &mut self.active_layers_including_default().into_iter();
+                let mut layer_stack = self.active_layers_including_default().into_iter();
                 if let Some(tde) = self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let custom = self.do_action(
@@ -1216,26 +1211,22 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                             (i, j),
                             queue.since,
                             false,
-                            layer_stack,
+                            &mut layer_stack.skip(1),
                         );
                         // unwrap is here because tde cannot be ref mut
                         self.tap_dance_eager.as_mut().expect("some").incr_taps();
                         custom
-
-                    // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
-                    // interrupt tap-dance-eager if real key.
-                    } else if i == 0 {
-                        // unwrap is here because tde cannot be ref mut
-                        self.tap_dance_eager.as_mut().expect("some").set_expired();
-                        let action = self.resolve_coord((i, j), layer_stack);
-                        self.do_action(action, (i, j), queue.since, false, layer_stack)
                     } else {
-                        let action = self.resolve_coord((i, j), layer_stack);
-                        self.do_action(action, (i, j), queue.since, false, layer_stack)
+                        // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
+                        // interrupt tap-dance-eager if real key.
+                        if i == 0 {
+                            // unwrap is here because tde cannot be ref mut
+                            self.tap_dance_eager.as_mut().expect("some").set_expired();
+                        }
+                        self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
                     }
                 } else {
-                    let action = self.resolve_coord((i, j), layer_stack);
-                    self.do_action(action, (i, j), queue.since, false, layer_stack)
+                    self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
                 }
             }
         }
@@ -1247,6 +1238,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             self.dequeue(queued);
         }
     }
+    /// Resolve coordinate to first non-Trans actions.
+    ///
+    /// TODO: for Trans on base layer, resolve to key from defsrc.  
     fn resolve_coord(
         &self,
         coord: KCoord,
@@ -1275,6 +1269,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         is_oneshot: bool,
         layer_stack: &mut (impl Iterator<Item = usize> + Clone), // used to resolve Trans action
     ) -> CustomEvent<'a, T> {
+        let mut action = action;
+        if let Trans = action {
+            action = self.resolve_coord(coord, layer_stack);
+        }
+        let action = action;
+
         self.clear_and_handle_waiting(action);
         if self.last_press_tracker.coord != coord {
             self.last_press_tracker.tap_hold_timeout = 0;
@@ -1293,13 +1293,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 self.rpt_action = Some(action);
             }
             Trans => {
-                return self.do_action(
-                    self.resolve_coord(coord, layer_stack),
-                    coord,
-                    delay,
-                    is_oneshot,
-                    layer_stack,
-                );
+                // Transparent action should be resolved to non-transparent one near the top
+                // of `do_action`.
+                unreachable!("Trans action should have been resolved earlier")
             }
             Repeat => {
                 // Notes around repeat:
@@ -1351,6 +1347,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
                 } else {
                     self.last_press_tracker.tap_hold_timeout = 0;
+                    layer_stack.next();
                     custom.update(self.do_action(tap, coord, delay, is_oneshot, layer_stack));
                 }
                 // Need to set tap_hold_tracker coord AFTER the checks.
@@ -1415,6 +1412,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                                 }
                             }
                         };
+                        // layer_stack.next();
                         self.do_action(td.actions[0], coord, delay, false, layer_stack);
                     }
                 }
@@ -1517,6 +1515,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
                 let mut custom = CustomEvent::NoEvent;
+                layer_stack.next();
                 for action in *v {
                     custom.update(self.do_action(
                         action,
@@ -1614,6 +1613,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 self.rpt_action = Some(action);
             }
             Fork(fcfg) => {
+                layer_stack.next();
                 let ret = match self.states.iter().any(|s| match s {
                     NormalKey { keycode, .. } | FakeKey { keycode } => {
                         fcfg.right_triggers.contains(keycode)
@@ -1684,7 +1684,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter(),
+                &mut self.active_layers_including_default().into_iter().skip(1),
             );
         };
     }
@@ -3653,5 +3653,185 @@ mod test {
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[A], layout.keycodes());
+    }
+
+    // Tests the new Trans behavior.
+    // https://github.com/jtroo/kanata/issues/738
+    #[test]
+    fn test_trans_in_stacked_held_layers() {
+        static LAYERS: Layers<2, 1, 4> = [
+            [[Layer(1), k(A)]],
+            [[Layer(2), k(B)]],
+            [[Layer(2), Trans]],
+            [[NoOp, Trans]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        // change to layer 2
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // change to layer 3
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // change to layer 4
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // pressing Trans should press a key in 2nd layer, compared to previous behavior,
+        // where a key in 1st layer would be pressed
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_taphold_tap() {
+        static LAYERS: Layers<2, 1, 3> = [
+            [[Layer(1), k(A)]],
+            [[Layer(2), k(B)]],
+            [[
+                NoOp,
+                HoldTap(&HoldTapAction {
+                    timeout: 50,
+                    hold: k(Space),
+                    timeout_action: k(Space),
+                    tap: Trans,
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 200,
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1)); // press th
+        for _ in 0..10 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Release(0, 1)); // release th
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes()); // B is resolved from Trans
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_taphold_hold() {
+        static LAYERS: Layers<2, 1, 3> = [
+            [[Layer(1), k(A)]],
+            [[Layer(2), k(B)]],
+            [[
+                NoOp,
+                HoldTap(&HoldTapAction {
+                    timeout: 50,
+                    hold: Trans,
+                    timeout_action: Trans,
+                    tap: k(Space),
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 200,
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1)); // press th
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        for _ in 0..70 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[B], layout.keycodes()); // B is resolved from Trans
+        }
+        layout.event(Release(0, 1)); // release th
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_tapdance_lazy() {
+        static LAYERS: Layers<2, 1, 3> = [
+            [[Layer(1), k(A)]],
+            [[Layer(2), k(B)]],
+            [[
+                NoOp,
+                TapDance(&crate::action::TapDance {
+                    timeout: 100,
+                    actions: &[&Trans, &k(X)],
+                    config: TapDanceConfig::Lazy,
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        for _ in 0..10 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Release(0, 1));
+        for _ in 0..90 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_tapdance_eager() {
+        static LAYERS: Layers<2, 1, 3> = [
+            [[Layer(1), k(A)]],
+            [[Layer(2), k(B)]],
+            [[
+                NoOp,
+                TapDance(&crate::action::TapDance {
+                    timeout: 100,
+                    actions: &[&Trans, &k(X)],
+                    config: TapDanceConfig::Eager,
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        for _ in 0..10 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[B], layout.keycodes());
+        }
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
     }
 }
