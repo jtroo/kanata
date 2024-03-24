@@ -3847,4 +3847,29 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
+
+    #[test]
+    fn test_trans_in_multi() {
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
+            [[NoOp, NoOp, MultipleActions(&[Trans, k(X)].as_slice())]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        for _ in 0..10 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[B, X], layout.keycodes());
+        }
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
 }
