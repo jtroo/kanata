@@ -12,6 +12,19 @@ fn log_init() {
   log::set_max_level(log::LevelFilter::Trace);
 }
 
+use std::sync::{Arc,OnceLock};
+use parking_lot::Mutex;
+static CFG:OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
+
+use winapi::shared::minwindef::*;
+#[no_mangle] pub extern "C" fn reset_kanata_state() -> LRESULT {
+  debug!("                   ext →→→ reset_kanata_state");
+  if let Some(cfg) = CFG.get() {
+    if kanata::clean_state(&cfg).is_err()	{debug!("✗ @ reset_kanata_state"        );return 1};
+  } else                                 	{debug!("✗ @ reset_kanata_state, no CFG");return 2};
+  0
+}
+
 use std::path::PathBuf;
 /// Parse CLI arguments
 fn cli_init() -> Result<ValidatedArgs> {
