@@ -627,13 +627,13 @@ You may want to remap a key to automatically be pressed in combination with
 modifiers such as Control or Shift. You can achieve this by prefixing the
 normal key name with one or more of:
 
-* `+C-+`: Left Control (also `+‹⎈+` `+‹⌃+`)
+* `+C-+`: Left Control (also `+‹⎈+` `+‹⌃+` or without the `+‹+` side indicator)
 * `+RC-+`: Right Control (also `+⎈›+` `+⌃›+`)
-* `+A-+`: Left Alt (also `+‹⎇+` `+‹⌥+`)
+* `+A-+`: Left Alt (also `+‹⎇+` `+‹⌥+` or without the `+‹+` side indicator))
 * `+RA-+`: Right Alt, a.k.a. AltGr (also `+AG+` `+⎇›+` `+⌥›+`)
-* `+S-+`: Left Shift (also `+‹⇧+`)
+* `+S-+`: Left Shift (also `+‹⇧+` or without the `+‹+` side indicator))
 * `+RS-+`: Right Shift (also `+⇧›+`)
-* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super (also `+‹⌘+` `+‹❖+` `+‹◆+`)
+* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super (also `+‹⌘+` `+‹❖+` `+‹◆+` or without the `+‹+` side indicator))
 * `+RM-+`: Right Meta (also `+⌘›+` `+❖›+` `+◆›+`)
 
 These modifiers may be combined together if desired.
