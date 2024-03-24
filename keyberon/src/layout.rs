@@ -3659,11 +3659,11 @@ mod test {
     // https://github.com/jtroo/kanata/issues/738
     #[test]
     fn test_trans_in_stacked_held_layers() {
-        static LAYERS: Layers<2, 1, 4> = [
-            [[Layer(1), k(A)]],
-            [[Layer(2), k(B)]],
-            [[Layer(2), Trans]],
-            [[NoOp, Trans]],
+        static LAYERS: Layers<4, 1, 4> = [
+            [[Layer(1), NoOp, NoOp, k(A)]],
+            [[NoOp, Layer(2), NoOp, k(B)]],
+            [[NoOp, NoOp, Layer(3), Trans]],
+            [[NoOp, NoOp, NoOp, Trans]],
         ];
         let mut layout = Layout::new(&LAYERS);
 
@@ -3672,29 +3672,30 @@ mod test {
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         // change to layer 3
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         // change to layer 4
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        // pressing Trans should press a key in 2nd layer, compared to previous behavior,
-        // where a key in 1st layer would be pressed
-        layout.event(Press(0, 1));
+        // pressing Trans should press a key in layer 2, compared to previous behavior,
+        // where a key in layer 1 would be pressed
+        layout.event(Press(0, 3));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[B], layout.keycodes());
-        layout.event(Release(0, 1));
+        layout.event(Release(0, 3));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
 
     #[test]
     fn test_trans_in_taphold_tap() {
-        static LAYERS: Layers<2, 1, 3> = [
-            [[Layer(1), k(A)]],
-            [[Layer(2), k(B)]],
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
             [[
+                NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
                     timeout: 50,
@@ -3711,27 +3712,37 @@ mod test {
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 1)); // press th
+        layout.event(Press(0, 2)); // press th
         for _ in 0..10 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
         }
-        layout.event(Release(0, 1)); // release th
+        layout.event(Release(0, 2)); // release th
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[B], layout.keycodes()); // B is resolved from Trans
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // test tap action repeat
+        layout.event(Press(0, 2));
+        for _ in 0..30 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[B], layout.keycodes());
+        }
+        layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
 
     #[test]
     fn test_trans_in_taphold_hold() {
-        static LAYERS: Layers<2, 1, 3> = [
-            [[Layer(1), k(A)]],
-            [[Layer(2), k(B)]],
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
             [[
+                NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
                     timeout: 50,
@@ -3748,10 +3759,10 @@ mod test {
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 1)); // press th
+        layout.event(Press(0, 2)); // press th
         for _ in 0..50 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
@@ -3760,17 +3771,18 @@ mod test {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[B], layout.keycodes()); // B is resolved from Trans
         }
-        layout.event(Release(0, 1)); // release th
+        layout.event(Release(0, 2)); // release th
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
 
     #[test]
     fn test_trans_in_tapdance_lazy() {
-        static LAYERS: Layers<2, 1, 3> = [
-            [[Layer(1), k(A)]],
-            [[Layer(2), k(B)]],
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
             [[
+                NoOp,
                 NoOp,
                 TapDance(&crate::action::TapDance {
                     timeout: 100,
@@ -3784,15 +3796,15 @@ mod test {
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 1));
+        layout.event(Press(0, 2));
         for _ in 0..10 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
         }
-        layout.event(Release(0, 1));
+        layout.event(Release(0, 2));
         for _ in 0..90 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
@@ -3805,10 +3817,11 @@ mod test {
 
     #[test]
     fn test_trans_in_tapdance_eager() {
-        static LAYERS: Layers<2, 1, 3> = [
-            [[Layer(1), k(A)]],
-            [[Layer(2), k(B)]],
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
             [[
+                NoOp,
                 NoOp,
                 TapDance(&crate::action::TapDance {
                     timeout: 100,
@@ -3822,15 +3835,15 @@ mod test {
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 0));
+        layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 1));
+        layout.event(Press(0, 2));
         for _ in 0..10 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[B], layout.keycodes());
         }
-        layout.event(Release(0, 1));
+        layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
