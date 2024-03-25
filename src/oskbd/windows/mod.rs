@@ -127,6 +127,10 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
                 kb_input.wScan =
                     osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
             }
+            if kb_input.wScan == 0 {
+                kb_input.dwFlags &= !KEYEVENTF_SCANCODE;
+                kb_input.wVk = code;
+            }
 
             let is_extended_key: bool = code < 0xff && EXTENDED_KEYS.contains(&(code as u8));
             if is_extended_key {
