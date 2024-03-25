@@ -4,7 +4,7 @@ pub mod kanata;
 pub mod oskbd;
 pub mod tcp_server;
 
-pub use kanata::Kanata;
+pub use kanata::*;
 pub use tcp_server::TcpServer;
 
 type CfgPath = PathBuf;

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use anyhow::{anyhow, bail};
 use clap::Parser;
-use kanata_parser::keys::str_to_oscode;
 use kanata_state_machine::{oskbd::*, *};
 use simplelog::*;
 

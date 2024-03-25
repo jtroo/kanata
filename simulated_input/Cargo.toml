@@ -22,7 +22,6 @@ log = { version = "0.4.8", default_features = false }
 simplelog = "0.12.0"
 
 kanata = { path = ".." , default_features = false }
-kanata-parser = { path = "../parser" }
 
 [features]
 default = ["simulated_output", "tcp_server"]

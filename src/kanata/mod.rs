@@ -20,7 +20,7 @@ use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
-use kanata_parser::keys::*;
+pub use kanata_parser::keys::*;
 use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;
