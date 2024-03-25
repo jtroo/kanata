@@ -1,7 +1,9 @@
 [package]
 name = "kanata-tcp-protocol"
-version = "0.160.1"
+version = "0.160.2"
 edition = "2021"
+description = "TCP protocol for kanata. This does not follow semver."
+license = "LGPL-3.0-only"
 
 [dependencies]
 serde = { version = "1", features = ["alloc", "derive"], default_features = false }
