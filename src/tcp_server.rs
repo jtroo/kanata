@@ -133,7 +133,7 @@ impl TcpServer {
                                                             .map(|info| info.name.clone())
                                                             .collect::<Vec<_>>(),
                                                     };
-                                                    match stream.write(&msg.as_bytes()) {
+                                                    match stream.write_all(&msg.as_bytes()) {
                                                         Ok(_) => {}
                                                         Err(err) => log::error!(
                                                             "server could not send response: {err}"
@@ -208,7 +208,7 @@ impl TcpServer {
                                                             .clone(),
                                                     };
                                                     drop(k);
-                                                    match stream.write(&msg.as_bytes()) {
+                                                    match stream.write_all(&msg.as_bytes()) {
                                                         Ok(_) => {}
                                                         Err(err) => log::error!(
                                                             "Error writing response to RequestCurrentLayerInfo: {err}"
@@ -222,7 +222,7 @@ impl TcpServer {
                                                         name: k.layer_info[cur_layer].name.clone(),
                                                     };
                                                     drop(k);
-                                                    match stream.write(&msg.as_bytes()) {
+                                                    match stream.write_all(&msg.as_bytes()) {
                                                         Ok(_) => {}
                                                         Err(err) => log::error!(
                                                             "Error writing response to RequestCurrentLayerName: {err}"
