@@ -1570,7 +1570,9 @@ impl Kanata {
                                     log::debug!("layer change notification sent");
                                 }
                                 Err(e) => {
-                                    log::warn!("removing tcp client where write failed: {id}, {e:?}");
+                                    log::warn!(
+                                        "removing tcp client where write failed: {id}, {e:?}"
+                                    );
                                     // the client is no longer connected, let's remove them
                                     stale_clients.push(id.clone());
                                 }
