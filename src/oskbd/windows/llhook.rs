@@ -89,6 +89,7 @@ impl fmt::Display for InputEvent {
 }
 
 impl InputEvent {
+    #[rustfmt::skip]
     fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
         let code = if lparam.vkCode == (VK_RETURN as u32) {
             match lparam.flags & 0x1 {
@@ -96,7 +97,31 @@ impl InputEvent {
                 _ => u32::from(VK_KPENTER_FAKE),
             }
         } else {
-            lparam.vkCode
+            #[cfg(not(feature = "win_llhook_read_scancodes"))]
+            {
+                lparam.vkCode
+            }
+            #[cfg(feature = "win_llhook_read_scancodes")]
+            {
+                // https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#scan-codes
+                //
+                // All the lower bytes that can potentially have E1/E0 as an upper byte
+                // If scancode is *potentially* extended it's probably not layout dependent right?
+                // So use vkCode.
+                // Because MapVirtualKeyA does not do scanCode->vkCode correctly for extended keys.
+                // There are some repeats so that have `(len % 16) == 0`.
+                if  [
+                    0x5E, 0x5F, 0x63, 0x37, 0x1D, 0x46, 0x52, 0x47, 0x49, 0x53, 0x4F, 0x51,
+                    0x4D, 0x4B, 0x50, 0x48, 0x45, 0x35, 0x1C, 0x5D, 0x5E, 0x5B, 0x1D, 0x38,
+                    0x5C, 0x19, 0x10, 0x24, 0x22, 0x20, 0x30, 0x2E, 0x6D, 0x6C, 0x21, 0x6B,
+                    0x65, 0x32, 0x6A, 0x69, 0x68, 0x67, 0x66, 0x45, 0x37, 0x66, 0x66, 0x66,
+                ].contains(&((lparam.scanCode & 0xff) as u8)) {
+                    lparam.vkCode
+                } else {
+                    // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-mapvirtualkeya
+                    unsafe { MapVirtualKeyA(lparam.scanCode, 1) }
+                }
+            }
         };
         Self {
             code,
