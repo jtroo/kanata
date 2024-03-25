@@ -16,6 +16,10 @@ mod llhook;
 #[cfg(not(feature = "interception_driver"))]
 pub use llhook::*;
 
+mod scancode_to_usvk;
+#[allow(unused)]
+pub(crate) use scancode_to_usvk::*;
+
 #[cfg(feature = "interception_driver")]
 mod interception;
 #[cfg(feature = "interception_driver")]
@@ -75,7 +79,7 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
             kb_input.dwFlags |= KEYEVENTF_KEYUP;
         }
 
-        #[cfg(feature = "win_sendinput_send_scancodes")]
+        #[cfg(all(feature = "win_sendinput_send_scancodes"))]
         {
             /*
             Credit to @VictorLemosR from GitHub for the code here 🙂:
@@ -114,7 +118,15 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
 
             let code_u32 = code as u32;
             kb_input.dwFlags |= KEYEVENTF_SCANCODE;
-            kb_input.wScan = MapVirtualKeyA(code_u32, 0) as u16;
+            #[cfg(not(feature = "win_llhook_read_scancodes"))]
+            {
+                kb_input.wScan = MapVirtualKeyA(code_u32, 0) as u16;
+            }
+            #[cfg(feature = "win_llhook_read_scancodes")]
+            {
+                kb_input.wScan =
+                    osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
+            }
 
             let is_extended_key: bool = code < 0xff && EXTENDED_KEYS.contains(&(code as u8));
             if is_extended_key {
