@@ -103,13 +103,15 @@ impl InputEvent {
             }
             #[cfg(feature = "win_llhook_read_scancodes")]
             {
+                // The array below contains the lower bytes that can potentially have E1/E0 as an upper byte:
                 // https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#scan-codes
                 //
-                // All the lower bytes that can potentially have E1/E0 as an upper byte
                 // If scancode is *potentially* extended it's probably not layout dependent right?
-                // So use vkCode.
-                // Because MapVirtualKeyA does not do scanCode->vkCode correctly for extended keys.
-                // There are some repeats so that have `(len % 16) == 0`.
+                // Thus use vkCode, because MapVirtualKeyA does not do
+                // scanCode->vkCode correctly for extended keys.
+                //
+                // There are some repeats so that we can have `(len % 16) == 0`.
+                // Contains operates on two usize`s of data at a time.`
                 if  [
                     0x5E, 0x5F, 0x63, 0x37, 0x1D, 0x46, 0x52, 0x47, 0x49, 0x53, 0x4F, 0x51,
                     0x4D, 0x4B, 0x50, 0x48, 0x45, 0x35, 0x1C, 0x5D, 0x5E, 0x5B, 0x1D, 0x38,
