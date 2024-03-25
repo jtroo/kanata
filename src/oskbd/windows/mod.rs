@@ -79,7 +79,7 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
             kb_input.dwFlags |= KEYEVENTF_KEYUP;
         }
 
-        #[cfg(all(feature = "win_sendinput_send_scancodes"))]
+        #[cfg(feature = "win_sendinput_send_scancodes")]
         {
             /*
             Credit to @VictorLemosR from GitHub for the code here 🙂:
