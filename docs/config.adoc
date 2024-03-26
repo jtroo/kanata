@@ -6,6 +6,18 @@
 This document describes how to create a kanata configuration file. The kanata
 configuration file will determine your keyboard behaviour upon running kanata.
 
+NOTE: The configuration guide you are reading
+may have content not applicable to the version you are using.
+See below for links to specific guide versions.
+
+.Links to specific guide versions
+[%collapsible]
+====
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-2/docs/config.adoc[v1.6.0-prerelease-2]
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-1/docs/config.adoc[v1.6.0-prerelease-1]
+* https://github.com/jtroo/kanata/blob/v1.5.0/docs/config.adoc[v1.5.0]
+====
+
 The configuration file uses S-expression syntax from Lisps. If you are not
 familiar with any Lisp-like programming language, do not be too worried. This
 document will hopefully be a sufficient guide to help you customize your
