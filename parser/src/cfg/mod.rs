@@ -58,7 +58,6 @@ mod deftemplate;
 pub use deftemplate::*;
 
 mod switch;
-use log::debug;
 pub use switch::*;
 
 use crate::custom_action::*;
