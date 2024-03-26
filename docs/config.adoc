@@ -212,8 +212,29 @@ The Windows LLHOOK I/O mechanism has the most issues by far.
 <<table-of-contents,Back to ToC>>
 
 For non-US keyboard users, you may have some keys on your keyboard with characters
-that are not allowed in `defsrc` by default, at least according to the symbol
-shown. You can use `deflocalkeys` to define additional key names that can be
+that are not allowed in `defsrc` by default, at least according to the symbol shown
+on the physical keys.
+The two sections below can help you understand how to remap all your keys.
+
+=== Browser event.code
+
+Ensure kanata and other key remapping programs are **not** running.
+Then you can use https://www.toptal.com/developers/keycode[this link]
+and press the key.
+The `event.code` field tells you the key name.
+Alternatively, you can read through
+https://www.w3.org/TR/uievents-code/[this reference].
+Due to the lengthy key names,
+you may want to use `deflayer-custom-map` if remapping using these key names.
+
+WARNING: On Windows, you should use either `kanata_winIOv2.exe`
+or Interception when using key names according to the browser `event.code`.
+The default `kanata.exe` does do remappings according to the browser `event.code`
+keys.
+
+=== deflocalkeys
+
+You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
 There are four variants of deflocalkeys:
@@ -223,14 +244,21 @@ There are four variants of deflocalkeys:
 - `deflocalkeys-linux`
 - `deflocalkeys-macos`
 
+WARNING: On Windows,
+`kanata_winIOv2.exe` does not work using the values from `win-keycode-tester`.
+In other words, `kanata.exe` and `kanata_winIOv2.exe` both use
+`deflocalkeys-win` but do not agree.
+The latest keycode tester program works correctly for the default `kanata.exe`.
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
 applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
 are both ignored when using the default Windows kanata binary.
 
-You can find configurations that others have made in https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this
-document]. If you do not see your keyboard there and are not confident in using
-the available tools, please feel welcome to ask for help in a discussion or issue.
+You can find configurations that others have made in
+https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document].
+If you do not see your keyboard there and are not confident in using
+the available tools,
+please feel welcome to ask for help in a discussion or issue.
 Please contribute to the document if you are able!
 
 .Example:
@@ -272,8 +300,8 @@ keys may agree but others may not; do be aware that they are **not** compatible!
 
 Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and
-help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document] is very welcome so that future
-users can have an easier time 🙂.
+help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document]
+is very welcome so that future users can have an easier time 🙂.
 
 [[introduction-defcfg]]
 == Introduction to defcfg
