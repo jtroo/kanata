@@ -2642,18 +2642,37 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                 // Parse actions as input -> output triplets
                 let mut triplets = layer[2..].chunks_exact(3);
                 let mut layer_mapped_keys = HashSet::default();
+                let mut anykey_assigned = false;
                 for triplet in triplets.by_ref() {
                     let input = &triplet[0];
                     let mapstr = &triplet[1];
                     let action = &triplet[2];
+                    let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                    mapstr
+                        .atom(s.vars())
+                        .and_then(|s| match mapstrs.contains(&s) {
+                            true => Some(()),
+                            false => None,
+                        })
+                        .ok_or_else(|| {
+                            anyhow_expr!(
+                                mapstr,
+                                "map string must be one of the following strings:\n\
+                                = | : | -> | >> | maps-to | → | 🞂"
+                            )
+                        })?;
+                    let action = parse_action(action, s)?;
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
-                        let action = parse_action(action, s)?;
+                        if anykey_assigned {
+                            bail_expr!(input, "must have only one within a layer")
+                        }
                         for (i, _) in s.mapping_order.iter().enumerate() {
                             if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
                                 layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
                                 layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
                             }
                         }
+                        anykey_assigned = true;
                     } else {
                         let input_key = input
                             .atom(s.vars())
@@ -2663,21 +2682,6 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                         if !layer_mapped_keys.insert(input_key) {
                             bail_expr!(input, "input key must not be repeated within a layer")
                         }
-                        let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
-                        mapstr
-                            .atom(s.vars())
-                            .and_then(|s| match mapstrs.contains(&s) {
-                                true => Some(()),
-                                false => None,
-                            })
-                            .ok_or_else(|| {
-                                anyhow_expr!(
-                                    mapstr,
-                                    "map string must be one of the following strings:\n\
-                                = | : | -> | >> | maps-to | → | 🞂"
-                                )
-                            })?;
-                        let action = parse_action(action, s)?;
                         layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
                         layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
                     }
