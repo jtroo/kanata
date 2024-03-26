@@ -58,6 +58,7 @@ mod deftemplate;
 pub use deftemplate::*;
 
 mod switch;
+use log::debug;
 pub use switch::*;
 
 use crate::custom_action::*;
@@ -2646,31 +2647,39 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     let input = &triplet[0];
                     let mapstr = &triplet[1];
                     let action = &triplet[2];
-                    let input_key = input
-                        .atom(s.vars())
-                        .and_then(str_to_oscode)
-                        .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
-                    mapped_keys.insert(input_key);
-                    if !layer_mapped_keys.insert(input_key) {
-                        bail_expr!(input, "input key must not be repeated within a layer")
-                    }
-                    let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
-                    mapstr
-                        .atom(s.vars())
-                        .and_then(|s| match mapstrs.contains(&s) {
-                            true => Some(()),
-                            false => None,
-                        })
-                        .ok_or_else(|| {
-                            anyhow_expr!(
-                                mapstr,
-                                "map string must be one of the following strings:\n\
+                    if input.atom(s.vars()).is_some_and(|x| x == "_") {
+                        let action = parse_action(action, s)?;
+                        for (i, _) in s.mapping_order.iter().enumerate() {
+                            layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
+                            layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
+                        }
+                    } else {
+                        let input_key = input
+                            .atom(s.vars())
+                            .and_then(str_to_oscode)
+                            .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
+                        mapped_keys.insert(input_key);
+                        if !layer_mapped_keys.insert(input_key) {
+                            bail_expr!(input, "input key must not be repeated within a layer")
+                        }
+                        let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                        mapstr
+                            .atom(s.vars())
+                            .and_then(|s| match mapstrs.contains(&s) {
+                                true => Some(()),
+                                false => None,
+                            })
+                            .ok_or_else(|| {
+                                anyhow_expr!(
+                                    mapstr,
+                                    "map string must be one of the following strings:\n\
                                 = | : | -> | >> | maps-to | → | 🞂"
-                            )
-                        })?;
-                    let action = parse_action(action, s)?;
-                    layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
-                    layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                                )
+                            })?;
+                        let action = parse_action(action, s)?;
+                        layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
+                        layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                    }
                 }
                 let rem = triplets.remainder();
                 match rem.len() {
