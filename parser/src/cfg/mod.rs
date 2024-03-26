@@ -2649,13 +2649,9 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
                         let action = parse_action(action, s)?;
                         for (i, _) in s.mapping_order.iter().enumerate() {
-                            match layers_cfg[layer_level * 2][0][s.mapping_order[i]] {
-                                Action::Trans => {
-                                    layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
-                                    layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] =
-                                        *action;
-                                }
-                                _ => {}
+                            if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
+                                layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
                             }
                         }
                     } else {
