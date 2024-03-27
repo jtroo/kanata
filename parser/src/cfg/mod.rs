@@ -2666,10 +2666,10 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                         if anykey_assigned {
                             bail_expr!(input, "must have only one within a layer")
                         }
-                        for (i, _) in s.mapping_order.iter().enumerate() {
-                            if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
-                                layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
-                                layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
+                        for i in 0..layers_cfg[0][0].len() {
+                            if layers_cfg[layer_level * 2][0][i] == Action::Trans {
+                                layers_cfg[layer_level * 2][0][i] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
                             }
                         }
                         anykey_assigned = true;
