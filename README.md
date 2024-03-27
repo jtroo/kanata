@@ -23,6 +23,8 @@ the features:
 - cross-platform human readable configuration file
 
 To see all of the features, see the [configuration guide](./docs/config.adoc).
+The configuration guide aims to be up-to-date with main and may have features not in your version.
+See the applicable link in the [releases page](https://github.com/jtroo/kanata/releases).
 
 The most similar project is [kmonad](https://github.com/kmonad/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
