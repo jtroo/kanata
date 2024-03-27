@@ -653,7 +653,7 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s)?;
 
-    let mut klayers = parse_layers(s, &mut mapped_keys)?;
+    let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
 
     resolve_chord_groups(&mut klayers, s)?;
 
@@ -2622,7 +2622,11 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stat
     )))))
 }
 
-fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<IntermediateLayers> {
+fn parse_layers(
+    s: &mut ParsedState,
+    mapped_keys: &mut MappedKeys,
+    defcfg: &CfgOptions,
+) -> Result<IntermediateLayers> {
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers(s.layer_exprs.len());
@@ -2642,7 +2646,9 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                 // Parse actions as input -> output triplets
                 let mut triplets = layer[2..].chunks_exact(3);
                 let mut layer_mapped_keys = HashSet::default();
-                let mut anykey_assigned = false;
+                let mut defsrc_anykey_used = false;
+                let mut unmapped_anykey_used = false;
+                let mut both_anykey_used = false;
                 for triplet in triplets.by_ref() {
                     let input = &triplet[0];
                     let mapstr = &triplet[1];
@@ -2663,8 +2669,56 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                         })?;
                     let action = parse_action(action, s)?;
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
-                        if anykey_assigned {
-                            bail_expr!(input, "must have only one within a layer")
+                        if defsrc_anykey_used {
+                            bail_expr!(input, "must have only one use of _ within a layer")
+                        }
+                        if both_anykey_used {
+                            bail_expr!(input, "must either use _ or ___ within a layer, not both")
+                        }
+                        for i in 0..s.mapping_order.len() {
+                            if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
+                                layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
+                            }
+                        }
+                        defsrc_anykey_used = true;
+                    } else if input.atom(s.vars()).is_some_and(|x| x == "__") {
+                        if unmapped_anykey_used {
+                            bail_expr!(input, "must have only one use of __ within a layer")
+                        }
+                        if !defcfg.process_unmapped_keys {
+                            bail_expr!(
+                                input,
+                                "must set process-unmapped-keys to yes to use __ to map unmapped keys"
+                            );
+                        }
+                        if both_anykey_used {
+                            bail_expr!(input, "must either use __ or ___ within a layer, not both")
+                        }
+                        for i in 0..layers_cfg[0][0].len() {
+                            if layers_cfg[layer_level * 2][0][i] == Action::Trans
+                                && !s.mapping_order.contains(&i)
+                            {
+                                layers_cfg[layer_level * 2][0][i] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
+                            }
+                        }
+                        unmapped_anykey_used = true;
+                    } else if input.atom(s.vars()).is_some_and(|x| x == "___") {
+                        if both_anykey_used {
+                            bail_expr!(input, "must have only one use of ___ within a layer")
+                        }
+                        if defsrc_anykey_used {
+                            bail_expr!(input, "must either use _ or ___ within a layer, not both")
+                        }
+                        if unmapped_anykey_used {
+                            bail_expr!(input, "must either use __ or ___ within a layer, not both")
+                        }
+                        if !defcfg.process_unmapped_keys {
+                            bail_expr!(
+                                input,
+                                "must set process-unmapped-keys to yes to use ___ to also map unmapped keys"
+                            );
                         }
                         for i in 0..layers_cfg[0][0].len() {
                             if layers_cfg[layer_level * 2][0][i] == Action::Trans {
@@ -2672,7 +2726,7 @@ fn parse_layers(s: &mut ParsedState, mapped_keys: &mut MappedKeys) -> Result<Int
                                 layers_cfg[layer_level * 2 + 1][0][i] = *action;
                             }
                         }
-                        anykey_assigned = true;
+                        both_anykey_used = true;
                     } else {
                         let input_key = input
                             .atom(s.vars())
