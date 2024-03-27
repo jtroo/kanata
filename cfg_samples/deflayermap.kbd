@@ -1,4 +1,4 @@
-;; A configuration showcasing deflayer-custom-map.
+;; A configuration showcasing deflayermap.
 ;;
 ;; The process-unmapped-keys defcfg item is not used
 ;; and the lctl and ralt keys are unmapped
@@ -13,12 +13,12 @@
        lmet lalt           spc                 rmet rctl
 )
 
-(deflayer-custom-map (base)
+(deflayermap (base)
   caps : (tap-hold 200 200 (caps-word 2000) lctl)
   spc  : (tap-hold 200 200 spc (layer-while-held nav))
 )
 
-(deflayer-custom-map (nav)
+(deflayermap (nav)
   i : up
   j : left
   k : down
