@@ -268,7 +268,7 @@ fn parse_cfg(
     let mut s = ParsedState::default();
     let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
-    let mut layout = create_layout(klayers, s.a);
+    let mut layout = create_layout(Box::new(s.defsrc_layer), klayers, s.a);
     layout.bm().quick_tap_hold_timeout = cfg.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = cfg.rapid_event_delay;
     Ok((cfg, src, layer_info, key_outputs, layout, seqs, overrides))
@@ -921,7 +921,7 @@ impl Default for ParsedState {
             aliases: Default::default(),
             layer_idxs: Default::default(),
             mapping_order: Default::default(),
-            defsrc_layer: [KanataAction::Trans; KEYS_IN_ROW],
+            defsrc_layer: [KanataAction::NoOp; KEYS_IN_ROW],
             fake_keys: Default::default(),
             chord_groups: Default::default(),
             vars: Default::default(),
@@ -2008,7 +2008,7 @@ fn parse_defsrc_layer(
     mapping_order: &[usize],
     s: &ParsedState,
 ) -> [KanataAction; KEYS_IN_ROW] {
-    let mut layer = [KanataAction::Trans; KEYS_IN_ROW];
+    let mut layer = [KanataAction::NoOp; KEYS_IN_ROW];
 
     // These can be default (empty) since the defsrc layer definitely won't use it.
     for (i, ac) in defsrc.iter().skip(1).enumerate() {
@@ -2575,10 +2575,11 @@ fn parse_live_reload_num(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stati
     )))
 }
 
-fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
+fn parse_layers(s: &ParsedState) -> Result<Box<KanataLayers>> {
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers();
+    let mut defsrc_layer = s.defsrc_layer;
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         // The skip is done to skip the the `deflayer` and layer name tokens.
         for (i, ac) in layer.iter().skip(2).enumerate() {
@@ -2589,7 +2590,7 @@ fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
         }
         for (i, (layer_action, defsrc_action)) in layers_cfg[layer_level * 2][0]
             .iter_mut()
-            .zip(s.defsrc_layer)
+            .zip(defsrc_layer)
             .enumerate()
         {
             // Set transparent actions in the "layer-switch" version of the layer according to
@@ -2606,7 +2607,7 @@ fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
                             KeyCode::No => None,
                             kc => Some(Action::KeyCode(kc)),
                         })
-                        .unwrap_or(Action::Trans);
+                        .unwrap_or(Action::NoOp);
                 }
             }
         }
@@ -2620,7 +2621,7 @@ fn parse_layers(s: &mut ParsedState) -> Result<Box<KanataLayers>> {
         // (as opposed to delegation to defsrc), replace the defsrc actions with the actions from
         // the first layer.
         if layer_level == 0 && s.delegate_to_first_layer {
-            for (defsrc_ac, default_layer_ac) in s.defsrc_layer.iter_mut().zip(layers_cfg[0][0]) {
+            for (defsrc_ac, default_layer_ac) in defsrc_layer.iter_mut().zip(layers_cfg[0][0]) {
                 *defsrc_ac = default_layer_ac;
             }
         }
@@ -3322,6 +3323,13 @@ fn add_kc_output(
 }
 
 /// Create a layout from `layers::LAYERS`.
-fn create_layout(layers: Box<KanataLayers>, a: Arc<Allocations>) -> KanataLayout {
-    KanataLayout::new(Layout::new(a.bref(layers)), a)
+fn create_layout(
+    src_keys: Box<[KanataAction; KEYS_IN_ROW]>,
+    layers: Box<KanataLayers>,
+    a: Arc<Allocations>,
+) -> KanataLayout {
+    KanataLayout::new(
+        Layout::new_with_src_keys(a.bref(src_keys), a.bref(layers)),
+        a,
+    )
 }

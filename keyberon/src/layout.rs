@@ -30,6 +30,8 @@ use heapless::Vec;
 use State::*;
 
 /// The coordinate type.
+/// First item is either 0 or 1 denoting real key or virtual key, respectively.
+/// Second item is the position in layout.
 pub type KCoord = (u8, u16);
 
 /// The Layers type.
@@ -71,6 +73,8 @@ pub struct Layout<'a, const C: usize, const R: usize, const L: usize, T = core::
 where
     T: 'a + std::fmt::Debug,
 {
+    /// Fallback for transparent keys inside actions that are on `default_layer`.
+    pub src_keys: &'a [Action<'a, T>; C],
     pub layers: &'a [[[Action<'a, T>; C]; R]; L],
     pub default_layer: usize,
     /// Key states.
@@ -877,7 +881,9 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
 {
     /// Creates a new `Layout` object.
     pub fn new(layers: &'a [[[Action<T>; C]; R]; L]) -> Self {
+        let src_keys = &[Action::NoOp; C];
         Self {
+            src_keys,
             layers,
             default_layer: 0,
             states: Vec::new(),
@@ -902,6 +908,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
         }
+    }
+    pub fn new_with_src_keys(
+        src_keys: &'a [Action<T>; C],
+        layers: &'a [[[Action<T>; C]; R]; L],
+    ) -> Self {
+        let mut new = Self::new(layers);
+        new.src_keys = src_keys;
+        new
     }
     /// Iterates on the key codes of the current state.
     pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
@@ -1239,8 +1253,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         }
     }
     /// Resolve coordinate to first non-Trans actions.
-    ///
-    /// TODO: for Trans on base layer, resolve to key from defsrc.  
+    /// Trans on base layer, resolves to key from defsrc.  
     fn resolve_coord(
         &self,
         coord: KCoord,
@@ -1259,7 +1272,11 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 action => return action,
             }
         }
-        &NoOp
+        if x == 0 {
+            &self.src_keys[y]
+        } else {
+            &NoOp
+        }
     }
     fn do_action(
         &mut self,
@@ -3690,6 +3707,26 @@ mod test {
     }
 
     #[test]
+    fn test_trans_in_action_on_first_layer() {
+        static DEFSRC_LAYER: [Action; 2] = [NoOp, k(X)];
+        static LAYERS: Layers<2, 1, 2> = [
+            [[Layer(1), Trans]],
+            [[NoOp, MultipleActions(&[Trans].as_slice())]],
+        ];
+        let mut layout = Layout::new_with_src_keys(&DEFSRC_LAYER, &LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[X], layout.keycodes());
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
     fn test_trans_in_taphold_tap() {
         static LAYERS: Layers<3, 1, 3> = [
             [[Layer(1), NoOp, k(A)]],
@@ -3869,6 +3906,38 @@ mod test {
             assert_keys(&[B, X], layout.keycodes());
         }
         layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_chords() {
+        const GROUP: ChordsGroup<core::convert::Infallible> = ChordsGroup {
+            coords: &[((0, 2), 1), ((0, 3), 2)],
+            chords: &[(1, &Trans), (2, &Trans), (3, &KeyCode(X))],
+            timeout: 100,
+        };
+        static LAYERS: Layers<4, 1, 3> = [
+            [[Layer(1), NoOp, k(A), k(B)]],
+            [[NoOp, Layer(2), k(C), k(D)]],
+            [[NoOp, NoOp, Chords(&GROUP), Chords(&GROUP)]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        for _ in 0..10 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[C], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
