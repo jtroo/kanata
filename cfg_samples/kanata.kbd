@@ -326,6 +326,17 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 (deflayer-custom-map (custom-map-example)
   caps : esc
   esc  : caps
+  
+  ;; you can use _ , __ or ___ instead of specifying a key name to map all
+  ;; ..keys that are not explicitly mapped in the layer, like esc and caps above.
+  ;; _ maps only keys that are in defsrc.
+  ;; __ excludes mapping keys that are in defsrc.
+  ;; ___ maps both, keys that are in `defsrc`, and keys that are not.
+  
+  ___ : XX ;; maps all keys that are not mapped explicitly in the layer
+  ;;      ... (like esc and caps above). mapping to a No-op to disable the key.
+  _ : XX   ;; maps all keys that are in defsrc and are not mapped in the layer
+  __ : XX  ;; maps all keys that are NOT in defsrc and are not mapped in the layer
 )
 
 ;; defvar can be used to declare commonly-used values
