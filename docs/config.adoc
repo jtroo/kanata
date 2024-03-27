@@ -154,9 +154,9 @@ would be:
 )
 ----
 
-==== deflayer-custom-map
+==== deflayermap
 
-An alternative method for defining a layer exists: `deflayer-custom-map`.
+An alternative method for defining a layer exists: `deflayermap`.
 This method does not rely on `defsrc`.
 The very first item must be the layer name,
 but the layer name must be in parentheses unlike before.
@@ -173,7 +173,7 @@ An example complete configuration that maps Caps Lock to Escape is:
 ----
 ;; defsrc is still necessary
 (defsrc spc)
-(deflayer-custom-map (base-layer)
+(deflayermap (base-layer)
   caps : esc
 )
 ----
@@ -237,7 +237,7 @@ The `event.code` field tells you the key name.
 Alternatively, you can read through
 https://www.w3.org/TR/uievents-code/[this reference].
 Due to the lengthy key names,
-you may want to use `deflayer-custom-map` if remapping using these key names.
+you may want to use `deflayermap` if remapping using these key names.
 
 WARNING: On Windows, you should use either `kanata_winIOv2.exe`
 or Interception when using key names according to the browser `event.code`.

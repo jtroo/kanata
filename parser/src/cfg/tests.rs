@@ -2004,7 +2004,7 @@ fn parse_template_7() {
 }
 
 #[test]
-fn test_new_layer_type() {
+fn test_deflayermap() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -2012,7 +2012,7 @@ fn test_new_layer_type() {
 
     let source = r#"
 (defsrc a b l)
-(deflayer-custom-map (blah)
+(deflayermap (blah)
   d      ->  (macro a b c)
   e maps-to  e
   f       :  0
