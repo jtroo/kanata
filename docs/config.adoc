@@ -187,7 +187,9 @@ the keys that are not explicitly mapped in the layer
 (`caps` in the example above). 
 
 `&#95;` maps only keys that are in defsrc.
+
 `&#95;&#95;` excludes mapping keys that are in defsrc.
+
 `&#95;&#95;&#95;` maps all keys that are not explicitly mapped in the layer.
 
 
