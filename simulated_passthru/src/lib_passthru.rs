@@ -83,17 +83,5 @@ fn lib_kanata_passthru(cb_addr:c_longlong) -> LRESULT {
   if reg == 1 {error!("couldn't register external key out event callback"); return 1}
   let ret = lib_impl();
   if let Err(ref e) = ret {error!("{e}\n"); return 1}
-  // ret
-  // let result = catch_unwind(|| {
-  //   panic!("Oops!");
-  // });
-  // match result {
-  //   Ok(_) => dbgwin(&format!("successfully caught unwind")),
-  //   Err(cause) => dbgwin(&format!("panic! cause={:?}",cause)),
-  // }
-
-  // let key_code = str_to_oscode("val").unwrap_or(OsCode::KEY_RESERVED);
-  // debug!("key_code={key_code:?}");
-  debug!("✗✗✗ sim_evt finished");
   0
 }
