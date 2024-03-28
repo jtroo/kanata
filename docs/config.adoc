@@ -182,13 +182,15 @@ The input key takes the same role as `defsrc` keys.
 The output action takes the role that items in the normal `deflayer` have.
 
 Instead of specifying an input key,
-you can use either `_`, `__`, or `___` to map all
+you can use either `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
 the keys that are not explicitly mapped in the layer
 (`caps` in the example above). 
 
-* `_` maps only keys that are in defsrc.
-* `__` excludes mapping keys that are in defsrc.
-* `___` maps all keys that are not explicitly mapped in the layer.
+`&#95;` maps only keys that are in defsrc.
+
+`&#95;&#95;` excludes mapping keys that are in defsrc.
+
+`&#95;&#95;&#95;` maps all keys that are not explicitly mapped in the layer.
 
 
 The map string can be any of the following strings, to your liking:
