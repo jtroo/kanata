@@ -16,8 +16,9 @@ use std::sync::{Arc,OnceLock};
 use parking_lot::Mutex;
 static CFG:OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
 
+use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
-#[no_mangle] pub extern "C" fn reset_kanata_state() -> LRESULT {
+#[no_mangle] pub extern "win64" fn reset_kanata_state(tick:c_longlong) -> LRESULT {
   debug!("                               ext →→→ reset_kanata_state");
   if let Some(cfg) = CFG.get() {
     if kanata::clean_state(&cfg).is_err()	{debug!("✗ @ reset_kanata_state"        );return 1};
