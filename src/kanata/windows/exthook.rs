@@ -45,12 +45,12 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
     loop { match preprocess_rx.try_recv() {
       Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
         (AltGrBehaviour::DoNothing, _) => try_send_panic(&process_tx, kev),
-        (AltGrBehaviour::AddLctlRelease, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_RIGHTALT,..}) => {
+        (AltGrBehaviour::AddLctlRelease , KeyEvent {value:KeyValue::Release, code:OsCode::KEY_RIGHTALT,..}) => {
           log::debug!("altgr add: adding lctl release");
           try_send_panic(&process_tx,kev);
           try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
           PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);}
-        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_LEFTCTRL,..}) => {
+        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press  , code:OsCode::KEY_LEFTCTRL,..}) => {
           log::debug!("altgr cancel: lctl state->pressed");
           lctl_state = LctlState::Pressed;}
         (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Release, code:OsCode::KEY_LEFTCTRL,..}) => match lctl_state {
@@ -60,13 +60,12 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
             lctl_state = LctlState::PendingReleased;}
           LctlState::None    => try_send_panic(&process_tx, kev),
           _                  => {}},
-        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press, code:OsCode::KEY_RIGHTALT,..},) => {
+        (AltGrBehaviour::CancelLctlPress, KeyEvent {value:KeyValue::Press  , code:OsCode::KEY_RIGHTALT,..},) => {
           log::debug!("altgr cancel: lctl state->none");
           lctl_state = LctlState::None;
           try_send_panic(&process_tx, kev);}
-        (_, _) => try_send_panic(&process_tx, kev),
-      },
-      Err(TryRecvError::Empty) => {
+        (_, _) => try_send_panic(&process_tx, kev),  },
+      Err(TryRecvError::Empty       ) => {
         if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
           match lctl_state {
             LctlState::Pressed         => {log::debug!("altgr cancel: lctl state->pending");
@@ -81,10 +80,8 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
               try_send_panic(&process_tx,KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),);
               lctl_state = LctlState::None;}
             _ => {}
-          }
-        }
-        std::thread::sleep(time::Duration::from_millis(1));
-      }
+          }  }
+        std::thread::sleep(time::Duration::from_millis(1));   }
       Err(TryRecvError::Disconnected) => {panic!("channel disconnected (exthook event_preproces)")}
     }
   }
