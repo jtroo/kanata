@@ -154,6 +154,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; windows-altgr configuration item above for context.
   ;;
   ;; process-unmapped-keys yes
+  
+  ;; We need to set it to yes in this kanata.kbd example config to allow the use of __ and ___
+  ;; in the deflayer-custom-map example below in the file
+  process-unmapped-keys yes
 
   ;; Disable all keys not mapped in defsrc.
   ;; Only works if process-unmapped-keys is also yes.
@@ -326,6 +330,22 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 (deflayermap (custom-map-example)
   caps : esc
   esc  : caps
+  
+  ;; You can use _ , __ or ___ instead of specifying a key name to map all
+  ;; keys that are not explicitly mapped in the layer.
+  ;; E.g. esc and caps above will not be overwritten.
+  ;;
+  ;; _    maps only keys that are in defsrc.
+  ;; __   excludes mapping keys that are in defsrc.
+  ;; ___  maps both, keys that are in `defsrc`, and keys that are not.
+  ;;
+  ;; The two- and three-underscore variants require
+  ;; "process-unmapped-keys yes" in defcfg to work.
+  
+  ;; ___ : XX ;; maps all keys that are not mapped explicitly in the layer
+  ;;          ;; (i.e. esc and caps above) to "no-op" to disable the key.
+  _ : XX   ;; maps all keys that are in defsrc and are not mapped in the layer
+  __ : XX  ;; maps all keys that are NOT in defsrc and are not mapped in the layer
 )
 
 ;; defvar can be used to declare commonly-used values

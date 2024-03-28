@@ -181,6 +181,16 @@ An example complete configuration that maps Caps Lock to Escape is:
 The input key takes the same role as `defsrc` keys.
 The output action takes the role that items in the normal `deflayer` have.
 
+Instead of specifying an input key,
+you can use either `_`, `__`, or `___` to map all
+the keys that are not explicitly mapped in the layer
+(`caps` in the example above). 
+
+* `_` maps only keys that are in defsrc.
+* `__` excludes mapping keys that are in defsrc.
+* `___` maps all keys that are not explicitly mapped in the layer.
+
+
 The map string can be any of the following strings, to your liking:
 
 [source]
