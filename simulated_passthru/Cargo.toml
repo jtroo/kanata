@@ -1,11 +1,11 @@
 [package]
-name   	= "sim_evt"
+name   	= "simulated_passthru"
 version	= "0.0.1"
 edition	= "2021"
 
 [lib]
-name      	= "kanata_sim_evt"
-path      	= "src/lib_sim.rs"
+name      	= "kanata_passthru"
+path      	= "src/lib_passthru.rs"
 crate-type	= ['lib','cdylib']
 
 [dependencies]
