@@ -1532,7 +1532,6 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             &MultipleActions(v) => {
                 self.last_press_tracker.coord = coord;
                 let mut custom = CustomEvent::NoEvent;
-                layer_stack.next();
                 for action in *v {
                     custom.update(self.do_action(
                         action,
@@ -1630,7 +1629,6 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 self.rpt_action = Some(action);
             }
             Fork(fcfg) => {
-                layer_stack.next();
                 let ret = match self.states.iter().any(|s| match s {
                     NormalKey { keycode, .. } | FakeKey { keycode } => {
                         fcfg.right_triggers.contains(keycode)
@@ -3938,6 +3936,71 @@ mod test {
         layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[C], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_fork() {
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
+            [[
+                NoOp,
+                NoOp,
+                Fork(&ForkConfig {
+                    left: Trans,
+                    right: Trans,
+                    right_triggers: &[Space],
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_trans_in_switch() {
+        static LAYERS: Layers<3, 1, 3> = [
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
+            [[
+                NoOp,
+                NoOp,
+                Switch(&switch::Switch {
+                    cases: &[(&[], &Trans, BreakOrFallthrough::Break)],
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 2));
+        // No idea why we have to wait 2 ticks here. Is this a bug in switch?
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+
+        layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
