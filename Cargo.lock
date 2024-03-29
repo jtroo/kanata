@@ -439,9 +439,9 @@ dependencies = [
  "indoc",
  "inotify",
  "kanata-interception",
- "kanata-keyberon 0.160.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-parser 0.160.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-tcp-protocol 0.160.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
+ "kanata-parser",
+ "kanata-tcp-protocol",
  "karabiner-driverkit",
  "log",
  "miette",
@@ -481,17 +481,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-keyberon"
-version = "0.160.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b42ee279f9e22d52ebef2d5f0abbd97ee60357f735b02a06aad1d83cea309fc"
-dependencies = [
- "arraydeque",
- "heapless",
- "kanata-keyberon-macros",
-]
-
-[[package]]
 name = "kanata-keyberon-macros"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -507,25 +496,7 @@ version = "0.160.3"
 dependencies = [
  "anyhow",
  "itertools",
- "kanata-keyberon 0.160.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "log",
- "miette",
- "once_cell",
- "parking_lot",
- "radix_trie",
- "rustc-hash",
- "thiserror",
-]
-
-[[package]]
-name = "kanata-parser"
-version = "0.160.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d36624951dc5ec533e851dbdbfbf43fdf9a122e280c601a1c796f5d1a24e70"
-dependencies = [
- "anyhow",
- "itertools",
- "kanata-keyberon 0.160.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
  "log",
  "miette",
  "once_cell",
@@ -557,23 +528,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-tcp-protocol"
-version = "0.160.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b624df938afd7c6e99cd2dbbd358909d2f875e06684442144869356d3fdb4f37"
-dependencies = [
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "kanata_example_tcp_client"
 version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "kanata-tcp-protocol 0.160.3",
+ "kanata-tcp-protocol",
  "log",
  "serde_json",
  "simplelog",
