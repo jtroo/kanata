@@ -103,7 +103,12 @@ impl InputEvent {
             }
             #[cfg(feature = "win_llhook_read_scancodes")]
             {
-                crate::oskbd::u16_to_osc(lparam.scanCode as u16).map(Into::into).unwrap_or(lparam.vkCode)
+                let extended = if lparam.flags & 0x1 == 0x1 {
+                    0xE000
+                } else {
+                    0
+                };
+                crate::oskbd::u16_to_osc((lparam.scanCode as u16) | extended).map(Into::into).unwrap_or(lparam.vkCode)
             }
         };
         Self {
