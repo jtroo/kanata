@@ -345,6 +345,7 @@ pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     tap: &'a Action<'a, T>,
     timeout_action: &'a Action<'a, T>,
     config: WaitingConfig<'a, T>,
+    layer_stack: std::vec::Vec<usize>,
 }
 
 /// Actions that can be triggered for a key configured for HoldTap.
@@ -929,17 +930,12 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
+            let layer_stack = w.layer_stack.clone();
             self.waiting = None;
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
             }
-            self.do_action(
-                hold,
-                coord,
-                delay,
-                false,
-                &mut self.active_layers_including_default().into_iter().skip(1),
-            )
+            self.do_action(hold, coord, delay, false, &mut layer_stack.into_iter())
         } else {
             CustomEvent::NoEvent
         }
@@ -952,13 +948,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
+            let layer_stack = w.layer_stack.clone();
             self.waiting = None;
             let ret = self.do_action(
                 tap,
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter().skip(1),
+                &mut layer_stack.clone().into_iter(),
             );
             if let Some(pq) = pq {
                 if matches!(
@@ -973,9 +970,14 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     // the input chord remains held. The behaviour of these actions is correct in
                     // the case of repeating do_action, so there is currently no harm in doing
                     // this. Other action types are more problematic though.
-                    let layer_stack = self.active_layers_including_default().into_iter().skip(1);
                     for other_coord in pq.iter().copied() {
-                        self.do_action(tap, other_coord, delay, false, &mut layer_stack.clone());
+                        self.do_action(
+                            tap,
+                            other_coord,
+                            delay,
+                            false,
+                            &mut layer_stack.clone().into_iter(),
+                        );
                     }
                 }
             }
@@ -996,6 +998,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
             };
+            let layer_stack = w.layer_stack.clone();
             self.waiting = None;
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
@@ -1005,7 +1008,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter().skip(1),
+                &mut layer_stack.into_iter(),
             )
         } else {
             CustomEvent::NoEvent
@@ -1359,6 +1362,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                         tap,
                         timeout_action,
                         config: WaitingConfig::HoldTap(*config),
+                        layer_stack: layer_stack.collect(),
                     };
                     self.waiting = Some(waiting);
                     self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
@@ -1403,6 +1407,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                                 timeout: td.timeout,
                                 num_taps: 1,
                             }),
+                            layer_stack: layer_stack.collect(),
                         });
                     }
                     TapDanceConfig::Eager => {
@@ -1444,6 +1449,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
                     config: WaitingConfig::Chord(chords),
+                    layer_stack: layer_stack.collect(),
                 });
             }
             &KeyCode(keycode) => {
@@ -4002,5 +4008,71 @@ mod test {
         layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_multiple_taphold_trans() {
+        static LAYERS: Layers<4, 1, 4> = [
+            [[Layer(1), NoOp, NoOp, k(A)]],
+            [[
+                NoOp,
+                Layer(2),
+                NoOp,
+                HoldTap(&HoldTapAction {
+                    timeout: 50,
+                    hold: k(B),
+                    timeout_action: k(B),
+                    tap: Trans,
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 200,
+                }),
+            ]],
+            [[
+                NoOp,
+                NoOp,
+                Layer(3),
+                HoldTap(&HoldTapAction {
+                    timeout: 50,
+                    hold: k(C),
+                    timeout_action: k(C),
+                    tap: Trans,
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 200,
+                }),
+            ]],
+            [[
+                NoOp,
+                NoOp,
+                NoOp,
+                HoldTap(&HoldTapAction {
+                    timeout: 50,
+                    hold: k(D),
+                    timeout_action: k(D),
+                    tap: Trans,
+                    config: HoldTapConfig::Default,
+                    tap_hold_interval: 200,
+                }),
+            ]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Release(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Release(0, 3));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
     }
 }
