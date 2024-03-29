@@ -172,7 +172,15 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     //   dwExtraInfo:ULONG_PTR Additional info
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
-    log::trace!("{code}, {wparam:?}, {is_injected}");
+    log::trace!("{code} {} {is_injected}", {
+        match wparam as u32 {
+            WM_KEYDOWN => "↓256",
+            WM_KEYUP => "↑257",
+            WM_SYSKEYDOWN => "↓260sys",
+            WM_SYSKEYUP => "↑261sys",
+            _ => "?",
+        }
+    });
     if code != HC_ACTION {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
