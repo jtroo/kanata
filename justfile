@@ -31,3 +31,15 @@ test:
 
 fmt:
   cargo fmt --all
+
+use_cratesio_deps:
+  sed -i 's/^# \(kanata-\(keyberon\|parser\|tcp-protocol\) = ".*\)$/\1/' Cargo.toml parser/Cargo.toml
+  sed -i 's/^\(kanata-\(keyberon\|parser\|tcp-protocol\) = .*path.*\)$/# \1/' Cargo.toml parser/Cargo.toml
+
+use_local_deps:
+  sed -i 's/^\(kanata-\(keyberon\|parser\|tcp-protocol\) = ".*\)$/# \1/' Cargo.toml parser/Cargo.toml
+  sed -i 's/^# \(kanata-\(keyberon\|parser\|tcp-protocol\) = .*path.*\)$/\1/' Cargo.toml parser/Cargo.toml
+
+change_subcrate_versions version:
+  sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
+  sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\)\) = ".*$/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
