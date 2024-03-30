@@ -289,8 +289,21 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     })
 }
 
-#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+#[cfg(all(
+    not(feature = "interception_driver"),
+    any(
+        not(feature = "win_llhook_read_scancodes"),
+        not(feature = "win_sendinput_send_scancodes")
+    ),
+    target_os = "windows"
+))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
+#[cfg(all(
+    feature = "win_llhook_read_scancodes",
+    feature = "win_sendinput_send_scancodes",
+    target_os = "windows"
+))]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-winiov2";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
 #[cfg(target_os = "macos")]
@@ -430,6 +443,7 @@ pub fn parse_cfg_raw_string(
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in [
         "deflocalkeys-win",
+        "deflocalkeys-winiov2",
         "deflocalkeys-wintercept",
         "deflocalkeys-linux",
         "deflocalkeys-macos",
@@ -709,6 +723,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deflocalkeys-macos"
                 | "deflocalkeys-linux"
                 | "deflocalkeys-win"
+                | "deflocalkeys-winiov2"
                 | "deflocalkeys-wintercept"
                 | "deffakekeys"
                 | "defvirtualkeys"

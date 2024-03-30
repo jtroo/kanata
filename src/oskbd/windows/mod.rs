@@ -18,7 +18,7 @@ pub use llhook::*;
 
 mod scancode_to_usvk;
 #[allow(unused)]
-pub(crate) use scancode_to_usvk::*;
+pub use scancode_to_usvk::*;
 
 #[cfg(feature = "interception_driver")]
 mod interception;

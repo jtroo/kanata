@@ -253,26 +253,21 @@ you may want to use `deflayermap` if remapping using these key names.
 
 WARNING: On Windows, you should use either `kanata_winIOv2.exe`
 or Interception when using key names according to the browser `event.code`.
-The default `kanata.exe` does do remappings according to the browser `event.code`
-keys.
+The default `kanata.exe` does not do mappings according to the browser `event.code`
+key names.
 
 === deflocalkeys
 
 You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
-There are four variants of deflocalkeys:
+There are five variants of deflocalkeys:
 
 - `deflocalkeys-win`
+- `deflocalkeys-winiov2`
 - `deflocalkeys-wintercept`
 - `deflocalkeys-linux`
 - `deflocalkeys-macos`
-
-WARNING: On Windows,
-`kanata_winIOv2.exe` does not work using the values from `win-keycode-tester`.
-In other words, `kanata.exe` and `kanata_winIOv2.exe` both use
-`deflocalkeys-win` but do not agree.
-The latest keycode tester program works correctly for the default `kanata.exe`.
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
 applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
@@ -289,6 +284,10 @@ Please contribute to the document if you are able!
 [source]
 ----
 (deflocalkeys-win
+  ì 187
+)
+
+(deflocalkeys-winiov2
   ì 187
 )
 
@@ -315,12 +314,19 @@ base 10. This differs between Windows-hooks, Windows-interception, and Linux.
 In Linux, `evtest` will give the correct number for the physical key you press.
 
 In Windows using the default hook mechanism, the non-interception version of the
-keyboard tester in the kanata repository will give the correct number.
+keyboard tester in the kanata repository will give the correct number
+in the `code: <number>` section.
 (https://github.com/jtroo/kanata/releases/tag/win-keycode-tester-v0.2.0[prebuilt binary])
 
+In Windows uning `winIOv2`, the winIOv2 executable variant
+will give the correct number in the `code: <number>` section.
+
 In Windows using Interception, the interception version of the keyboard tester
-will give the correct number. Between the hook and interception versions, some
+will give the correct number i the `num: <number>` section.
+Between the hook and interception versions, some
 keys may agree but others may not; do be aware that they are **not** compatible!
+
+However, Interception and winIOv2 should generally agree with each other.
 
 Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and

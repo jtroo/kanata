@@ -1,6 +1,6 @@
 use anyhow::Result;
-use interception as ic;
-use interception::{KeyState, ScanCode, Stroke};
+use kanata_interception as ic;
+use kanata_interception::{KeyState, ScanCode, Stroke};
 
 pub fn start() -> Result<()> {
     let intrcptn = ic::Interception::new().expect(

@@ -1,7 +1,7 @@
 use kanata_parser::keys::OsCode;
 
 #[allow(unused)]
-pub(crate) fn u16_to_osc(input: u16) -> Option<OsCode> {
+pub fn u16_to_osc(input: u16) -> Option<OsCode> {
     Some(if input < 0xE000 {
         match input {
             0x01 => OsCode::KEY_ESC,

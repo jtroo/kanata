@@ -48,9 +48,22 @@ pub struct InputEvent {
 }
 
 impl InputEvent {
+    #[cfg(not(feature = "winiov2"))]
     fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
         Self {
             code: lparam.vkCode,
+            up: lparam.flags & LLKHF_UP != 0,
+        }
+    }
+
+    #[cfg(feature = "winiov2")]
+    fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
+        let extended = if lparam.flags & 0x1 == 0x1 { 0xE000 } else { 0 };
+        let code = kanata_state_machine::oskbd::u16_to_osc((lparam.scanCode as u16) | extended)
+            .map(Into::into)
+            .unwrap_or(lparam.vkCode);
+        Self {
+            code,
             up: lparam.flags & LLKHF_UP != 0,
         }
     }
