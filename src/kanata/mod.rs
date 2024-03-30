@@ -355,8 +355,7 @@ impl Kanata {
         let cfg = match cfg::new_from_str(cfg) {
             Ok(c) => c,
             Err(e) => {
-                log::error!("{e:?}");
-                bail!("failed to parse file");
+                bail!("{e:?}");
             }
         };
 
