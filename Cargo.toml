@@ -8,6 +8,7 @@ members = [
     "simulated_input",
     "windows_key_tester",
 ]
+exclude = ["wasm_state_machine"]
 
 [package]
 name = "kanata"

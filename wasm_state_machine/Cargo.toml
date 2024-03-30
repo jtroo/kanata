@@ -1,0 +1,14 @@
+[workspace]
+members = ["."]
+
+[package]
+name = "wasm_state_machine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = [ "cdylib", "rlib" ]
+
+[dependencies]
+wasm-bindgen = "0.2.92"
+kanata = { path = ".." , default_features = false, features = ["simulated_output"]}

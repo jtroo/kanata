@@ -44,6 +44,9 @@ mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 
+#[cfg(target_os = "unknown")]
+mod unknown;
+
 mod caps_word;
 pub use caps_word::*;
 

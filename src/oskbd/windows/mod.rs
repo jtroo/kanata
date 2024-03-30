@@ -29,8 +29,6 @@ pub use self::interception::*;
 #[cfg(feature = "interception_driver")]
 pub use interception_convert::*;
 
-pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
-
 fn send_uc(c: char, up: bool) {
     log::debug!("sending unicode {c}");
     let mut inputs: [INPUT; 2] = unsafe { mem::zeroed() };
