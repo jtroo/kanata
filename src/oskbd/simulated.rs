@@ -329,16 +329,20 @@ pub struct KbdOut {
 }
 
 impl KbdOut {
-    #[cfg(not(target_os = "linux"))]
-    pub fn new() -> Result<Self, io::Error> {
+    fn new_actual() -> Result<Self, io::Error> {
         Ok(Self {
             log: LogFmt::new(),
             outputs: vec![],
         })
     }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn new() -> Result<Self, io::Error> {
+        Self::new_actual()
+    }
     #[cfg(target_os = "linux")]
-    pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
-        Self::new()
+    pub fn new(_s: &Option<String>) -> Result<Self, io::Error> {
+        Self::new_actual()
     }
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
