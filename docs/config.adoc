@@ -6,14 +6,28 @@
 This document describes how to create a kanata configuration file. The kanata
 configuration file will determine your keyboard behaviour upon running kanata.
 
+NOTE: The configuration guide you are reading
+may have content not applicable to the version you are using.
+See below for links to specific guide versions.
+
+.Links to specific guide versions
+[%collapsible]
+====
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-2/docs/config.adoc[v1.6.0-prerelease-2]
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-1/docs/config.adoc[v1.6.0-prerelease-1]
+* https://github.com/jtroo/kanata/blob/v1.5.0/docs/config.adoc[v1.5.0]
+====
+
 The configuration file uses S-expression syntax from Lisps. If you are not
 familiar with any Lisp-like programming language, do not be too worried. This
 document will hopefully be a sufficient guide to help you customize your
 keyboard behaviour to your exact liking.
 
-If you have any questions or confusions, feel free to file an issue or start a
-discussion. If you have ideas for how to improve this document or any other
-part of the project, please be welcome to make a pull request or file an issue.
+If you have any questions, confusions, suggestions, etc., feel free to
+https://github.com/jtroo/kanata/discussions/new/choose[start a discussion]
+or https://github.com/jtroo/kanata/issues/new/choose[file an issue].
+If you have ideas for how to improve this document or any other part of the project,
+please be welcome to make a pull request or file an issue.
 
 '''
 
@@ -116,7 +130,7 @@ physical key in the same sequence position defined in `+defsrc+`.
 
 The first layer defined in your configuration file will be the starting layer
 when kanata runs. Other layers can be temporarily activated or switched to
-using actions. There is currently a maximum of 25 layers allowed.
+using actions.
 
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
@@ -140,6 +154,46 @@ would be:
 )
 ----
 
+==== deflayer-custom-map
+
+An alternative method for defining a layer exists: `deflayer-custom-map`.
+This method does not rely on `defsrc`.
+The very first item must be the layer name,
+but the layer name must be in parentheses unlike before.
+The reason for this is for better error messages when forgetting the name.
+After the layer name, the layer is configured via triples of items:
+
+* input key
+* map string
+* output action
+
+An example complete configuration that maps Caps Lock to Escape is:
+
+[source]
+----
+;; defsrc is still necessary
+(defsrc spc)
+(deflayer-custom-map (base-layer)
+  caps : esc
+)
+----
+
+The input key takes the same role as `defsrc` keys.
+The output action takes the role that items in the normal `deflayer` have.
+
+The map string can be any of the following strings, to your liking:
+
+[source]
+----
+=
+:
+->
+>>
+maps-to
+→
+🞂
+----
+
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
 <<table-of-contents,Back to ToC>>
@@ -161,13 +215,38 @@ An example minimal configuration is:
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
 certainly undesirable but is a valid configuration.
 
+NOTE: Please have a read through link:./platform-known-issues.adoc[the known platform issues]
+because they may have implications on what you should include/exclude in `defsrc`.
+The Windows LLHOOK I/O mechanism has the most issues by far.
+
 [[non-us-keyboards]]
 == Non-US keyboards
 <<table-of-contents,Back to ToC>>
 
 For non-US keyboard users, you may have some keys on your keyboard with characters
-that are not allowed in `defsrc` by default, at least according to the symbol
-shown. You can use `deflocalkeys` to define additional key names that can be
+that are not allowed in `defsrc` by default, at least according to the symbol shown
+on the physical keys.
+The two sections below can help you understand how to remap all your keys.
+
+=== Browser event.code
+
+Ensure kanata and other key remapping programs are **not** running.
+Then you can use https://www.toptal.com/developers/keycode[this link]
+and press the key.
+The `event.code` field tells you the key name.
+Alternatively, you can read through
+https://www.w3.org/TR/uievents-code/[this reference].
+Due to the lengthy key names,
+you may want to use `deflayer-custom-map` if remapping using these key names.
+
+WARNING: On Windows, you should use either `kanata_winIOv2.exe`
+or Interception when using key names according to the browser `event.code`.
+The default `kanata.exe` does do remappings according to the browser `event.code`
+keys.
+
+=== deflocalkeys
+
+You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
 There are four variants of deflocalkeys:
@@ -177,14 +256,21 @@ There are four variants of deflocalkeys:
 - `deflocalkeys-linux`
 - `deflocalkeys-macos`
 
+WARNING: On Windows,
+`kanata_winIOv2.exe` does not work using the values from `win-keycode-tester`.
+In other words, `kanata.exe` and `kanata_winIOv2.exe` both use
+`deflocalkeys-win` but do not agree.
+The latest keycode tester program works correctly for the default `kanata.exe`.
 
 Only one of each deflocalkeys-* variant is allowed. The variants that are not
 applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
 are both ignored when using the default Windows kanata binary.
 
-You can find configurations that others have made in https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this
-document]. If you do not see your keyboard there and are not confident in using
-the available tools, please feel welcome to ask for help in a discussion or issue.
+You can find configurations that others have made in
+https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document].
+If you do not see your keyboard there and are not confident in using
+the available tools,
+please feel welcome to ask for help in a discussion or issue.
 Please contribute to the document if you are able!
 
 .Example:
@@ -226,8 +312,8 @@ keys may agree but others may not; do be aware that they are **not** compatible!
 
 Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and
-help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document] is very welcome so that future
-users can have an easier time 🙂.
+help with https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document]
+is very welcome so that future users can have an easier time 🙂.
 
 [[introduction-defcfg]]
 == Introduction to defcfg
@@ -512,16 +598,17 @@ key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
 while-held layer. When `+_+` is pressed on the active base layer, the key will
 default to the corresponding `defsrc` key. If `+_+` is pressed on the active
 while-held layer, the base layer's behaviour will activate.
+(alternatively you can use `+‗+` `+≝+`)
 
 .Example:
 [source]
 ----
 (defsrc
-  a b c
+  a b c d
 )
 
 (deflayer remap-only-c-to-d
-  _ _ d
+  _ ‗ d ≝
 )
 ----
 
@@ -533,12 +620,13 @@ You may use the action `+XX+` as a "no operation" key, meaning pressing the key
 will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
 will do nothing as opposed to typing a letter.
+(alternatively you can use `+✗+` `+∅+` `+•+`)
 
 .Example:
 [source]
 ----
 (deflayer contains-no-op
-  XX a s d f
+  XX ✗ • f
 )
 ----
 
@@ -546,10 +634,12 @@ will do nothing as opposed to typing a letter.
 === Unicode
 <<table-of-contents,Back to ToC>>
 
-The `+unicode+` action accepts a single unicode character. The character will
-not be repeatedly typed if you hold the key down.
+The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
+a composed character, so 🤲, but not 🤲🏿). The character will not be repeatedly
+typed if you hold the key down.
 
-You may use a unicode character as an alias if desired.
+You may use a unicode character as an alias if desired or in its simplified form `+🔣😀+`
+(vs the usual `+(🔣 😀)+`).
 
 NOTE: The unicode action may not be correctly accepted by the active
 application.
@@ -561,10 +651,11 @@ NOTE: If using Linux, make sure to look at the
 ----
 (defalias
   sml (unicode 😀)
+  😀 (🔣 😀)
   🙁 (unicode 🙁)
 )
 (deflayer has-happy-sad
-  @sml @🙁 a s d f
+  @sml @🙁 @😀 🔣😀 d f
 )
 ----
 
@@ -576,11 +667,14 @@ You may want to remap a key to automatically be pressed in combination with
 modifiers such as Control or Shift. You can achieve this by prefixing the
 normal key name with one or more of:
 
-* `+C-+`: Left Control
-* `+A-+`: Left Alt
-* `+S-+`: Left Shift
-* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super
-* `+RA-+` or `+AG+`: Right Alt, a.k.a. AltGr
+* `+C-+`: Left Control (also `+‹⎈+` `+‹⌃+` or without the `+‹+` side indicator)
+* `+RC-+`: Right Control (also `+⎈›+` `+⌃›+`)
+* `+A-+`: Left Alt (also `+‹⎇+` `+‹⌥+` or without the `+‹+` side indicator))
+* `+RA-+`: Right Alt, a.k.a. AltGr (also `+AG+` `+⎇›+` `+⌥›+`)
+* `+S-+`: Left Shift (also `+‹⇧+` or without the `+‹+` side indicator))
+* `+RS-+`: Right Shift (also `+⇧›+`)
+* `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super (also `+‹⌘+` `+‹❖+` `+‹◆+` or without the `+‹+` side indicator))
+* `+RM-+`: Right Meta (also `+⌘›+` `+❖›+` `+◆›+`)
 
 These modifiers may be combined together if desired.
 
@@ -654,6 +748,11 @@ You can release a held key or layer via these actions:
 
 * `release-key`: release a key, accepts `defsrc` compatible names
 * `release-layer`: release a while-held layer
+
+NOTE:
+A lower-level detail of these actions is that they operate on output states
+as opposed to virtually releasing an input key.
+This does have some practical significance but for the most part it is not important.
 
 An example practical use case for `release-key` is seen in the `multi` section
 directly below.
@@ -734,6 +833,10 @@ The mouse button actions are:
 * `mbck`: backward mouse button
 
 The mouse button will be held while the key mapped to it is held.
+Using Linux and Windows-Interception,
+the above actions are also usable in `defsrc`
+to enable remapping specified mouse actions in your layers,
+like you would with keyboard keys.
 
 If there are multiple mouse click actions within a single multi action, e.g.
 
@@ -1193,7 +1296,7 @@ The actions supported in `+macro+` are:
 * <<mouse-actions,mouse actions>>
 * <<repeat-key,repeat>>
 * <<live-reload,live reload>>
-* <<fake-keys,fake keys>>
+* <<fake-keys,virtual keys/fake keys>>
 * <<sequences,sequence leader>>
 * <<arbitrary-code,arbitrary keycode>>
 * <<dynamic-macro,dynamic macro>>
@@ -1799,10 +1902,14 @@ If you are negatively impacted by the latency increase of these events
 and your environment is not impacted by increased rapidity,
 you can set reduce the value to a number 0 to 4.
 
+.Example:
+[source]
+----
 (defcfg
   ;; If your environment is particularly buggy, might need to delay even more
   rapid-event-delay 20
 )
+----
 
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
@@ -2051,7 +2158,7 @@ the mouse device, kanata will print its hwid in the log; you can then
 copy-paste that into this configuration entry. If this defcfg item is not
 defined, the log will not print.
 
-Hwids in Kanata are byte array representations of a concatenation of the 
+Hwids in Kanata are byte array representations of a concatenation of the
 ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
 they are an arbitrary length and can be very long.
 
@@ -2065,6 +2172,25 @@ https://github.com/jtroo/kanata/issues/108[Relevant issue].
 )
 ----
 
+=== Windows only: windows-interception-mouse-hwids[[windows-only-windows-interception-mouse-hwids]]
+<<table-of-contents,Back to ToC>>
+
+This item has a similar purpose as the singular version documented above,
+but is instead a list of strings that allows multiple mice to be intercepted.
+
+If both the singular and list items are used,
+the singular version will behave as if added to the list.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-mouse-hwids (
+    "70, 0, 60, 0"
+    "71, 0, 62, 0"
+  )
+)
+----
 
 === Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
 <<table-of-contents,Back to ToC>>
@@ -2080,7 +2206,7 @@ kanata will print its hwid in the log.
 You can then copy-paste that into this configuration entry.
 If this defcfg item is not defined, the log will not print.
 
-Hwids in Kanata are byte array representations of a concatenation of the 
+Hwids in Kanata are byte array representations of a concatenation of the
 ASCII hardware ids, which can be seen in Device Manager on Windows. As such,
 they are an arbitrary length and can be very long.
 
@@ -2143,24 +2269,99 @@ a non-applicable operating system.
 == Advanced/weird features[[advanced-weird-features]]
 
 [[fake-keys]]
-=== Fake keys
+=== Virtual keys (a.k.a. fake keys)
 <<table-of-contents,Back to ToC>>
 
-You can define up to 767 fake keys. These keys are not directly mapped to any
-physical key presses and can only be activated via these actions:
+You can define up to 767 virtual keys.
+These keys are not directly mapped to any physical key presses or releases.
+Virtual keys can be activated via special actions:
 
-* `+(on-press-fakekey <fake key name> <key action>)+`: Activate a fake key
+* `(on-press    <action> <virtual key name>)`:
+Activate a virtual key action when pressing the associated input key.
+* `(on-release  <action> <virtual key name>)`:
+Activate a virtual key action when releasing the associated input key.
+* `(on-idle <milliseconds> <action> <virtual key name>)`:
+Activate a virtual key action when kanata has been idle
+for at least `idle time` milliseconds.
+
+The `<action>` parameter can be one of:
+
+* `tap-virtualkey     | tap-vkey`:
+Press the virtual key. It will not be released until another action triggers a release or tap.
+* `press-virtualkey   | press-vkey`:
+Release the virtual key. If it is not already pressed, this does nothing.
+* `release-virtualkey | release-vkey`:
+Press and release the virtual key. If the key is already pressed, this only releases it.
+* `toggle-virtualkey  | toggle-vkey`:
+Press the virtual key if it is not already pressed, otherwise release it.
+
+A virtual key can be defined in a `defvirtualkeys` configuration entry.
+Configuring this entry is similar to `+defalias+`,
+but you cannot make use of aliases inside to shorten an action.
+You can refer to previously defined virtual keys.
+
+Expanding on the `on-idle` action some more,
+the wording that "kanata" has been idle is important.
+Even if the keyboard is idle, kanata may not yet be idle.
+For example, if a long-running macro is playing,
+or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
+kanata is not yet idle, and the tick count for the `<idle time>` parameter
+will not yet be counting even if you no longer have any keyboard keys pressed.
+
+.Example:
+[source]
+----
+(defvirtualkeys
+  ;; Define some virtual keys that perform modifier actions
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+
+  ;; A virtual key that toggles all modifier virtual keys above
+  tal (multi
+        (on-press toggle-virtualkey ctl)
+        (on-press toggle-virtualkey sft)
+        (on-press toggle-virtualkey met)
+        (on-press toggle-virtualkey alt)
+      )
+
+  ;; Virtual key that activates a macro
+  vkmacro (macro h e l l o spc w o r l d)
+)
+
+(defalias
+  psf (on-press press-virtualkey   sft)
+  rsf (on-press release-virtualkey sft)
+
+  tal (on-press tap-vkey tal)
+  mac (on-press tap-vkey vkmacro)
+
+  isf (on-idle 1000 tap-vkey sft)
+)
+
+(deflayer use-fake-keys
+  @psf @rsf @tal @mac a s d f @isf
+)
+----
+
+.Older fake keys documentation
+[%collapsible]
+====
+The older configuration style of fake keys are still supported
+but the new style is preferred due to (hopefully) clearer naming.
+
+Fake keys can be defined inside of `deffakekeys`.
+
+The actions are:
+
+* `+(on-press-fakekey <fake key name> <action>)+`: Activate a fake key
   action when pressing the key mapped to this action.
-* `+(on-release-fakekey <fake key name> <key action>)+`: Activate a fake key
+* `+(on-release-fakekey <fake key name> <action>)+`: Activate a fake key
   action when releasing the key mapped to this action.
-* `+(on-idle-fakekey <fake key name> <key action> <idle time>)+`:
+* `+(on-idle-fakekey <fake key name> <action> <idle time>)+`:
   Activate a fake key action when kanata has been idle
   for at least `idle time` milliseconds.
-
-A fake key can be defined in a `+deffakekeys+` configuration entry. Configuring
-this entry is similar to `+defalias+`, but you cannot make use of aliases
-inside of `+deffakekeys+` to shorten an action. You can however refer to
-previously defined fake keys.
 
 The aforementioned `+<key action>+` can be one of four values:
 
@@ -2169,14 +2370,6 @@ The aforementioned `+<key action>+` can be one of four values:
 * `+release+`: Release the fake key. If it's not already pressed, this does nothing.
 * `+tap+`: Press and release the fake key. If it's already pressed, this only releases it.
 * `+toggle+`: Press the fake key if not already pressed, otherwise release it.
-
-Expanding on the `on-idle-fakekey` action some more,
-the wording that "kanata" has been idle is important.
-Even if the keyboard is idle, kanata may not yet be idle.
-For example, if a long-running macro is playing,
-or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
-kanata is not yet idle, and the tick count for the `<idle time>` parameter
-will not yet be counting even if you no longer have any keyboard keys pressed.
 
 .Example:
 [source]
@@ -2189,7 +2382,7 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
 
   ;; Press all modifiers
   pal (multi
-        (on-press-fakekey ctl press)
+        (on-press fakekey ctl press)
         (on-press-fakekey sft press)
         (on-press-fakekey met press)
         (on-press-fakekey alt press)
@@ -2219,24 +2412,15 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
 )
 ----
 
+====
 
 For more context, you can read the
-https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of fake keys].
+https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of virtual keys].
 
-Something notable about fake keys is that they don't always interrupt the state
+Something notable about virtual keys is that they don't always interrupt the state
 of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
 key, this won't interrupt a tap dance. However, most other action types,
 notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
-
-==== Aside: broken delay action
-
-The implementation of the following actions are broken in many use cases:
-`on-press-fakekey-delay`, `on-release-fakekey-delay`.
-
-Because these actions exist and might otherwise be discovered anyway,
-it seems better to warn about it here in the documentation.
-You should use the `macro` action instead.
-The `macro` action can operate on fake keys.
 
 [[sequences]]
 === Sequences
@@ -2252,11 +2436,11 @@ but are saved until one of the following happens:
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
 
 Sequences are configured similarly to `+deffakekeys+`. The first parameter of a
-pair must be a defined fake key name. The second parameter is a list of keys
-that will activate a fake key tap when typed in the defined order. More
+pair must be a defined virtual key name. The second parameter is a list of keys
+that will activate a virtual key tap when typed in the defined order. More
 precisely, the action triggered is:
 
-`+(on-press-fakekey <fake key name> tap)+`
+`+(on-press-fakekey <virtual key name> tap)+`
 
 .Example:
 [source]
@@ -2278,8 +2462,7 @@ precisely, the action triggered is:
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 You may also be interested in
-https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[
-the document describing chords is sequences]
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[the document describing chords in sequences]
 to read about how chords in sequences behave.
 
 ==== Override the global timeout and input mode
@@ -2373,6 +2556,8 @@ the input chord have been released.
 In other words, if even one key is held for the input chord
 then the output action will be continued to be held,
 but only for the mentioned action categories.
+The behaviour also applies to the actions mentioned above
+when used inside of `multi` but not within any other action.
 
 An exception to the behaviour described above
 for the action categories that would normally apply
@@ -2466,7 +2651,7 @@ The default use of keys check behaves similarly to fork.
 For example, the keys check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
-The keys check also accepts the boolean operators `and|or` to allow more
+The keys check also accepts the boolean operators `and|or|not` to allow more
 complex use cases.
 
 The order of cases matters.
@@ -2520,11 +2705,11 @@ No other action will activate since `break` is used.
 
 Case 2's key check behaves like that of `fork`, i.e.
 
-   (or a b c)
+    (or a b c)
 
 or for some other common languages:
 
-   a || b || c
+    a || b || c
 
 If this keys check passes and the case 1 does not pass,
 the action `@ac2` will activate first.
@@ -2533,11 +2718,22 @@ Since the keys check of case 3 always passes, `@ac3` will activate next.
 If neither case 1 or case 2 pass their keys checks,
 case 3 will always activate with `@ac3`.
 
-==== key-history
+[[key-history-and-key-timing]]
+==== key-history and key-timing
 
-In addition to simple keys,
-you can use the `key-history` list item within a case.
-This accepts, in order, a key and the key recency.
+In addition to simple keys there are two list items
+that can be used within the case keys check
+that compare against your typed key history:
+
+* `key-history`
+* `key-timing`
+
+The `key-history` item compares the order that keys were typed.
+It accepts, in order:
+
+* a key
+* the key recency
+
 The key recency must be in the range 1-8,
 where 1 is the most recent key that was pressed
 and 8 is 8th most recent key pressed.
@@ -2556,6 +2752,109 @@ and 8 is 8th most recent key pressed.
 )
 ----
 
+The `key-timing` compares how long ago recent key typing events occurred.
+It accepts, in order,
+
+* the key recency
+* a comparison string, which is one of: `less-than|greater-than|lt|gt`
+* number of milliseconds to compare against
+
+The key recency must be in the range 1-8,
+where 1 is the most recent key that was pressed
+and 8 is 8th most recent key pressed.
+Most use cases are expected to use a value of 1 for this parameter,
+but perhaps you can find a creative use for the other values.
+
+The comparison string determines how the actual key event timing
+will be compared to the provided timing.
+
+The number of milliseconds must be 0-65535.
+
+WARNING: The maximum milliseconds value of this configuration item
+across your whole configuration
+will be a lower bound of how long it takes for kanata to become idle
+and stop processing its state machine every approxmately 1ms.
+
+.Example:
+[source]
+----
+(defalias
+  swh (switch
+    ((key-timing 1 less-than 200)) S-a break
+    ((key-timing 1 greater-than 500)) S-b break
+    ((key-timing 2 lt 1000)) S-c break
+    ((key-timing 8 gt 2000)) (macro d d d) break
+    () XX break
+  )
+)
+----
+
+==== not
+
+The examples presented so far have not included the `not` boolean operator.
+This operator will now be discussed.
+Syntactically, the `not` operator is used similarly to `or|and`.
+Functionally, it means "not **any** of" the list elements.
+
+.Example:
+[source]
+----
+(defalias
+  swn (switch
+    ((not x y z)) S-a break
+    ;; the above and below cases are equivalent in logic
+    ((not (or x y z))) S-a break
+  )
+)
+----
+
+In potentially more familiar notation, both cases have the logic:
+
+    !(x || y || z)
+
+==== input
+
+Until now, all `switch` logic has been associated to key code outputs.
+It is also possible to operate on inputs.
+Inputs can be either real keys or "virtual" (fake) keys.
+
+.Example:
+[source]
+----
+(defalias switch-input-example
+  (switch
+    ((input real lctl)) $ac1 break
+    ((input virtual vk1)) $ac2 break
+    () $ac3 break
+  )
+)
+----
+
+Similar to `key-history` for regular active keys,
+`input-history` also exists.
+
+NOTE:
+A perhaps surprising (but hopefully logical) behaviour of input-history
+when compared to key-history is that, at the time of switch activation,
+the history of `input-history` for recency `1` will be the just-pressed input.
+Whereas with `key-history` for example, the key that will be next outputted
+is of course still undetermined, so is not in the history.
+The consequence of this is that you should use a recency of `2`
+when referring to the previously pressed input
+because the current input is in the recency `1` slot.
+
+.Example:
+[source]
+----
+(defalias switch-input-history-example
+  (switch
+    ((input-history real lsft 2)) $var1 break
+    ((input-history virtual vk2 2)) $var1 break
+    () $ac3 break
+  )
+)
+----
+
 [[templates]]
 === Templates
 <<table-of-contents,Back to ToC>>
@@ -2570,7 +2869,6 @@ The parameters to `deftemplate` in order are:
 * List of template variables
 * Template content (any combination of lists / strings)
 
-Template expansion happens after file includes and before any other parsing.
 Within the template content, variable names prefixed with `$`
 will be substituted with the expression passed into `template-expand`.
 
@@ -2581,7 +2879,34 @@ Its parameters in order are:
 * template name
 * parameters to substitute into the template
 
-.Example 1:
+NOTE: Template expansion happens after file includes and before any other parsing.
+One consequence of this early parsing is that variables defined in `defvar`
+are **not** substituted when used inside of `template-expand`.
+This has consequences for condtional content, e.g. with `if-equal`.
+This is discussed further in Example 5.
+
+Example 1:
+
+In a simple example, let's say you wanted to set a large group of keys
+to do something different when you're holding alt. Yes, this could also
+be handled with remapping alt to a layer shift, but there are cases where
+you wouldn't want this. Rather than retyping the code with `fork` and
+`unmod` (to release alt) a bunch of times, you could template it like so:
+[source]
+----
+(deftemplate alt-fork (original-action new-action)
+  (fork $original-action (multi (unmod ralt lalt) $new-action) (lalt ralt))
+)
+(defsrc 1 2 3)
+(defalias fn1 (template-expand alt-fork 1 f1))
+;; Templates are a simple text substitution, so the above is exactly equivalent to:
+;; (defalias fn1 (fork 1 (multi (unmod ralt lalt) f1) (lalt ralt)))
+(defalias fn2 (template-expand alt-fork 2 f2))
+(defalias fn3 (template-expand alt-fork 3 f3))
+(deflayer default (@fn1 @fn2 @fn3))
+----
+
+.Example 2:
 [source]
 ----
 (defvar chord-timeout 200)
@@ -2615,7 +2940,7 @@ Its parameters in order are:
 (deflayer qwerty @qwa @qws @qwd @qwf)
 ----
 
-.Example 2:
+.Example 3:
 [source]
 ----
 ;; This template defines a home row that customizes a single key's behaviour
@@ -2642,6 +2967,89 @@ Its parameters in order are:
 )
 ----
 
+==== if-equal
+
+Within a template you can use the list item `if-equal`
+to have condiditionally-used items within a template.
+
+It accepts a minimum of 2 parameters.
+The first two parameters must be strings and are compared
+against each other.
+If they match, the following parameters are inserted into
+the template in place of the `if-equal` list.
+Otherwise if the strings do not match
+then the whole `if-equal` list is removed from the template.
+
+.Example 4:
+----
+(deftemplate home-row (version)
+  a s d f g h
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j lctl))
+   k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v1)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v2)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+Similar to `if-equal` are three more conditional operators for templates:
+
+* `if-not-equal`
+** the content is used if the first two string parameters are not equal
+* `if-in-list`
+** the content is used if the first string parameter exists in
+the second list-of-strings parameter
+* `if-not-in-list`
+** the content is used if the first string parameter does not exist in
+the second list-of-strings parameter
+
+.Example 5:
+----
+;; defvar is parsed AFTER template expansion occurs.
+(defvar a hello)
+
+(deftemplate template1 (var1)
+  a (if-equal hello $var1 b) c
+)
+
+;; Below will expand to: `a c` because the string
+;; $a itself is compared against the string hello
+;; and they are not equal.
+(expand-template template1 $a)
+
+(deftemplate template2 (var1)
+  a (if-equal $a $var1 b) c
+)
+
+;; Below will expand to: `a b c` because the string
+;; $a is compared against the string $a and they are equal.
+;; But note that the variable $a is still not substituted
+;; with its defvar value of: hello.
+(expand-template template2 $a)
+----
+
+[[concat-in-deftemplate]]
+==== concat in deftemplate
+
+Like <<concat-in-defvar,concat in defvar>>,
+a list beginning with `concat` within the content of `deftemplate`
+will be replaced with a single string that consists of
+all the subsequent items in the list concatenated to each other.
+
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
 <<table-of-contents,Back to ToC>>
@@ -2657,3 +3065,51 @@ doesn't make full use of the power of this functionality.
 
 For more context, you can read the
 https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behaviour].
+
+
+[[fancy-key-symbols]]
+=== Fancy key symbols
+<<table-of-contents,Back to ToC>>
+
+Instead of using the same `+a-z+` letters for special keys, e.g., `+lsft+` for `+LeftShift+`
+you can use much shorter, yet more visible, key symbols like `+‹⇧+`.
+
+For more details see
+https://github.com/jtroo/kanata/blob/main/docs/fancy_symbols.md[symbol list] and
+https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example config], which not only uses these symbols in layer definitions, but also repurposes `+⎇›+` and `+⇧›+` `+⎇›+` keys into "symbol" keys that allow you to insert these fancy symbols by pressing the key, e.g.,
+
+* hold `+⎇›+` and tap `+Delete+` would insert `+␡+`
+
+
+[[test-your-config]]
+=== Test your config
+<<table-of-contents,Back to ToC>>
+
+Kanata has a `+kanata_simulated_input+` tool
+to help test your configuration in a predictable manner.
+The code can be found under link:../simulated_input/[simulated_input].
+
+Instead of physically typing to test something
+and wondering whether you didn't get the expected result because your config is wrong or
+because you mistyped something,
+you can write a sequence of key presses in a `+sim.txt+` file,
+run the tool with your config
+and get a "timeline" view of input/output events that can help understand how kanata translates
+your input into various key/mouse presses.
+
+WARNING: The format of this view may change.
+It currently doesn't show timings of output events and emoji output may break vertical alignment.
+
+For more details download the files below and run `kanata_simulated_input -c sim.kbd -s sim.txt` +
+  - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim.kbd[example config] with simple home row mod bindings +
+  - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim.txt[example input sequence] +
+  - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim_out.txt[example output sequence] +
+
+Input sequence file format: whitespace insensitive list of `prefix:key` pairs where prefix is one of: +
+  - `🕐`, `t`, or `tick` to add time between key events in `ms` +
+  - `↓`, `d`, `down`, or `press` +
+  - `↑`, `u`, `up`, or `release` +
+  - `⟳`, `r`, or `repeat` +
+
+And key names are defined in the https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode function],
+for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1

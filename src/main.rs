@@ -1,49 +1,14 @@
 use anyhow::{bail, Result};
 use clap::Parser;
 use kanata_parser::cfg;
+use kanata_state_machine::*;
 use log::info;
 use simplelog::*;
 
 use std::path::PathBuf;
 
-mod kanata;
-mod oskbd;
-mod tcp_server;
-
-use kanata::Kanata;
-use tcp_server::TcpServer;
-
 #[cfg(test)]
 mod tests;
-
-type CfgPath = PathBuf;
-
-pub struct ValidatedArgs {
-    paths: Vec<CfgPath>,
-    #[cfg(feature = "tcp_server")]
-    port: Option<i32>,
-    #[cfg(target_os = "linux")]
-    symlink_path: Option<String>,
-    nodelay: bool,
-}
-
-fn default_cfg() -> Vec<PathBuf> {
-    let mut cfgs = Vec::new();
-
-    let default = PathBuf::from("kanata.kbd");
-    if default.is_file() {
-        cfgs.push(default);
-    }
-
-    if let Some(config_dir) = dirs::config_dir() {
-        let fallback = config_dir.join("kanata").join("kanata.kbd");
-        if fallback.is_file() {
-            cfgs.push(fallback);
-        }
-    }
-
-    cfgs
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
@@ -207,7 +172,7 @@ fn main_impl() -> Result<()> {
     let kanata_arc = Kanata::new_arc(&args)?;
 
     if !args.nodelay {
-        info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
+        info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
         std::thread::sleep(std::time::Duration::from_secs(2));
     }
 
@@ -216,6 +181,8 @@ fn main_impl() -> Result<()> {
     // The reason for two different event loops is that the "event loop" only listens for keyboard
     // events, which it sends to the "processing loop". The processing loop handles keyboard events
     // while also maintaining `tick()` calls to keyberon.
+
+    let (tx, rx) = std::sync::mpsc::sync_channel(100);
 
     let (server, ntx, nrx) = if let Some(port) = {
         #[cfg(feature = "tcp_server")]
@@ -227,7 +194,7 @@ fn main_impl() -> Result<()> {
             None
         }
     } {
-        let mut server = TcpServer::new(port);
+        let mut server = TcpServer::new(port, tx.clone());
         server.start(kanata_arc.clone());
         let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
         (Some(server), Some(ntx), Some(nrx))
@@ -235,7 +202,6 @@ fn main_impl() -> Result<()> {
         (None, None, None)
     };
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(100);
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {

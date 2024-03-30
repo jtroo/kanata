@@ -3,9 +3,14 @@
 // This file is taken from kbremap with minor modifications.
 // https://github.com/timokroeger/kbremap
 
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
+use core::fmt;
 use std::cell::Cell;
 use std::io;
-use std::time::Instant;
 use std::{mem, ptr};
 
 use winapi::ctypes::*;
@@ -15,8 +20,11 @@ use winapi::um::winuser::*;
 
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::{KeyEvent, KeyValue};
+use kanata_keyberon::key_code::KeyCode;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
+
+pub const LLHOOK_IDLE_TIME_CLEAR_INPUTS: u64 = 60;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 
@@ -72,15 +80,39 @@ pub struct InputEvent {
     pub up: bool,
 }
 
+impl fmt::Display for InputEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let direction = if self.up { "↑" } else { "↓" };
+        let key_name = KeyCode::from(OsCode::from(self.code));
+        write!(f, "{}{:?}", direction, key_name)
+    }
+}
+
 impl InputEvent {
+    #[rustfmt::skip]
     fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
+        let code = if lparam.vkCode == (VK_RETURN as u32) {
+            match lparam.flags & 0x1 {
+                0 => VK_RETURN as u32,
+                _ => u32::from(VK_KPENTER_FAKE),
+            }
+        } else {
+            #[cfg(not(feature = "win_llhook_read_scancodes"))]
+            {
+                lparam.vkCode
+            }
+            #[cfg(feature = "win_llhook_read_scancodes")]
+            {
+                crate::oskbd::u16_to_osc(lparam.scanCode as u16).map(Into::into).unwrap_or(lparam.vkCode)
+            }
+        };
         Self {
-            code: lparam.vkCode,
+            code,
             up: lparam.flags & LLKHF_UP != 0,
         }
     }
 
-    fn from_oscode(code: OsCode, val: KeyValue) -> Self {
+    pub fn from_oscode(code: OsCode, val: KeyValue) -> Self {
         Self {
             code: code.into(),
             up: val.into(),
@@ -148,21 +180,18 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 /// Handle for writing keys to the OS.
-pub struct KbdOut {
-    pub last_action_time: Instant,
-}
+pub struct KbdOut {}
 
+#[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        Ok(Self {
-            last_action_time: Instant::now(),
-        })
+        Ok(Self {})
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         super::send_key_sendinput(event.code as u16, event.up);
-        self.last_action_time = Instant::now();
         Ok(())
     }
 

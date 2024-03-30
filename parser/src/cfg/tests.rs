@@ -235,7 +235,7 @@ fn parse_delegate_to_default_layer_yes() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::B),
     );
 }
@@ -264,7 +264,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
     );
 }
@@ -293,7 +293,7 @@ fn parse_delegate_to_default_layer_no() {
     )
     .unwrap();
     assert_eq!(
-        res.3[2][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[2][0][OsCode::KEY_A.as_u16() as usize],
         Action::KeyCode(KeyCode::A),
     );
 }
@@ -305,13 +305,14 @@ fn parse_transparent_default() {
         Err(poisoned) => poisoned.into_inner(),
     };
     let mut s = ParsedState::default();
-    let (_, _, layer_strings, layers, _, _) = parse_cfg_raw(
+    let icfg = parse_cfg_raw(
         &std::path::PathBuf::from("./test_cfgs/transparent_default.kbd"),
         &mut s,
     )
     .unwrap();
+    let layers = icfg.klayers;
 
-    assert_eq!(layer_strings.len(), 4);
+    assert_eq!(icfg.layer_info.len(), 4);
 
     assert_eq!(
         layers[0][0][usize::from(OsCode::KEY_F13)],
@@ -777,13 +778,26 @@ fn parse_switch() {
     let source = r#"
 (defvar var1 a)
 (defsrc a)
+(deffakekeys vk1 XX)
+(defvirtualkeys vk2 XX)
 (deflayer base
   (switch
     ((and a b (or c d) (or e f))) XX break
+    ((not (and a b (not (or c (not d))) (or e f)))) XX break
     () _ fallthrough
     (a b c) $var1 fallthrough
     ((or (or (or (or (or (or (or (or))))))))) $var1 fallthrough
     ((key-history a 1) (key-history b 5) (key-history c 8)) $var1 fallthrough
+    ((not
+      (key-timing 1 less-than 200)
+      (key-timing 4 greater-than 500)
+      (key-timing 7 lt 1000)
+      (key-timing 8 gt 20000)
+    )) $var1 fallthrough
+    ((input virtual vk1)) $var1 break
+    ((input real lctl)) $var1 break
+    ((input-history virtual vk2 1)) $var1 break
+    ((input-history real lsft 8)) $var1 break
   )
 )
 "#;
@@ -797,8 +811,13 @@ fn parse_switch() {
         DEF_LOCAL_KEYS,
     )
     .unwrap();
+    let (op1, op2) = OpCode::new_active_input((FAKE_KEY_ROW, 0));
+    let (op3, op4) = OpCode::new_active_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTCTRL)));
+    let (op5, op6) = OpCode::new_historical_input((FAKE_KEY_ROW, 1), 0);
+    let (op7, op8) =
+        OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
     assert_eq!(
-        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
             cases: &[
                 (
@@ -810,6 +829,24 @@ fn parse_switch() {
                         OpCode::new_key(KeyCode::C),
                         OpCode::new_key(KeyCode::D),
                         OpCode::new_bool(Or, 9),
+                        OpCode::new_key(KeyCode::E),
+                        OpCode::new_key(KeyCode::F),
+                    ],
+                    &Action::NoOp,
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[
+                        OpCode::new_bool(Not, 12),
+                        OpCode::new_bool(And, 12),
+                        OpCode::new_key(KeyCode::A),
+                        OpCode::new_key(KeyCode::B),
+                        OpCode::new_bool(Not, 9),
+                        OpCode::new_bool(Or, 9),
+                        OpCode::new_key(KeyCode::C),
+                        OpCode::new_bool(Not, 9),
+                        OpCode::new_key(KeyCode::D),
+                        OpCode::new_bool(Or, 12),
                         OpCode::new_key(KeyCode::E),
                         OpCode::new_key(KeyCode::F),
                     ],
@@ -849,6 +886,37 @@ fn parse_switch() {
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Fallthrough
                 ),
+                (
+                    &[
+                        OpCode::new_bool(Not, 5),
+                        OpCode::new_ticks_since_lt(0, 200),
+                        OpCode::new_ticks_since_gt(3, 500),
+                        OpCode::new_ticks_since_lt(6, 1000),
+                        OpCode::new_ticks_since_gt(7, 20000),
+                    ],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Fallthrough
+                ),
+                (
+                    &[op1, op2],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[op3, op4],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[op5, op6],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
+                (
+                    &[op7, op8],
+                    &Action::KeyCode(KeyCode::A),
+                    BreakOrFallthrough::Break
+                ),
             ]
         })
     );
@@ -887,7 +955,7 @@ fn parse_switch_exceed_depth() {
 }
 
 #[test]
-fn parse_on_idle_fakekey() {
+fn parse_virtualkeys() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -895,10 +963,26 @@ fn parse_on_idle_fakekey() {
     let mut s = ParsedState::default();
     let source = r#"
 (defvar var1 a)
-(defsrc a)
+(defsrc a b c d e f g h i j k l m n o p)
 (deffakekeys hello a)
+(defvirtualkeys bye a)
 (deflayer base
-  (on-idle-fakekey hello tap 200)
+  (on-press   press-virtualkey hello)
+  (on-press release-virtualkey hello)
+  (on-press  toggle-virtualkey hello)
+  (on-press     tap-virtualkey hello)
+  (on-press   press-vkey bye)
+  (on-press release-vkey bye)
+  (on-press  toggle-vkey bye)
+  (on-press     tap-vkey bye)
+  (on-release   press-virtualkey hello)
+  (on-release release-virtualkey hello)
+  (on-release  toggle-virtualkey hello)
+  (on-release     tap-virtualkey hello)
+  (on-release   press-vkey bye)
+  (on-release release-vkey bye)
+  (on-release  toggle-vkey bye)
+  (on-release     tap-vkey bye)
 )
 "#;
     let res = parse_cfg_raw_string(
@@ -910,13 +994,93 @@ fn parse_on_idle_fakekey() {
         },
         DEF_LOCAL_KEYS,
     )
-    .map_err(|_e| {
-        eprintln!("{:?}", _e);
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
         ""
     })
     .unwrap();
     assert_eq!(
-        res.3[0][0][OsCode::KEY_A.as_u16() as usize],
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKey {
+                coord: Coord { x: 1, y: 0 },
+                action: FakeKeyAction::Press,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_F.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKey {
+                coord: Coord { x: 1, y: 1 },
+                action: FakeKeyAction::Release,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_K.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKeyOnRelease {
+                coord: Coord { x: 1, y: 0 },
+                action: FakeKeyAction::Toggle,
+            }]
+            .as_ref()
+        ),
+    );
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_P.as_u16() as usize],
+        Action::Custom(
+            &[&CustomAction::FakeKeyOnRelease {
+                coord: Coord { x: 1, y: 1 },
+                action: FakeKeyAction::Tap,
+            }]
+            .as_ref()
+        ),
+    );
+}
+
+#[test]
+fn parse_on_idle_fakekey() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(defvar var1 a)
+(defsrc a b c d e f g h i)
+(deffakekeys hello a)
+(defvirtualkeys bye a)
+(deflayer base
+  (on-idle-fakekey hello tap 200)
+  (on-idle 100   press-virtualkey hello)
+  (on-idle 100 release-virtualkey hello)
+  (on-idle 100  toggle-virtualkey hello)
+  (on-idle 100     tap-virtualkey hello)
+  (on-idle 100   press-vkey bye)
+  (on-idle 100 release-vkey bye)
+  (on-idle 100  toggle-vkey bye)
+  (on-idle 200     tap-vkey bye)
+)
+"#;
+    let res = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+        ""
+    })
+    .unwrap();
+    assert_eq!(
+        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
                 coord: Coord { x: 1, y: 0 },
@@ -1328,6 +1492,7 @@ fn parse_all_defcfg() {
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
+  windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
   windows-interception-keyboard-hwids ("0, 0, 0" "1, 1, 1")
 )
 (defsrc a)
@@ -1475,12 +1640,12 @@ fn parse_defvar_concat() {
 (deflayer base a)
 (defvar
     x (concat a b c)
-    y (concat d (concat e f))
+    y (concat d (e f))
     z (squish squash (splish splosh))
     xx (concat $x $y)
-    xy (concat $x (concat $y))
+    xy (concat $x ($y))
     xz (notconcat a b " " c " d")
-    yx (concat a b " " c " d" (concat "efg" " hij ") "kl")
+    yx (concat a b " " c " d" ("efg" " hij ") "kl")
     yz (concat "abc"def"ghi""jkl")
 
     rootpath "/home/myuser/mysubdir"
@@ -1538,17 +1703,31 @@ fn parse_defvar_concat() {
 }
 
 #[test]
-fn parse_defvar_concat_err1() {
+fn parse_template_1() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
 
     let source = r#"
-(defsrc a)
-(deflayer base a)
-(defvar
-    x (concat a b c (not nested concat))
+(deftemplate home-row (j-behaviour)
+  a s d f g h $j-behaviour k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row j)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row (tap-hold 200 200 j lctl))    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
     let mut s = ParsedState::default();
@@ -1561,22 +1740,95 @@ fn parse_defvar_concat_err1() {
         },
         DEF_LOCAL_KEYS,
     )
-    .expect_err("fails");
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
 }
 
 #[test]
-fn parse_defvar_concat_err2() {
+fn parse_template_2() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
 
     let source = r#"
-(defsrc a)
-(deflayer base a)
-(defvar
-    x (list var uh oh)
-    y (concat a b c $x)
+(defvar chord-timeout 200)
+(defcfg process-unmapped-keys yes)
+
+;; This template defines a chord group and aliases that use the chord group.
+;; The purpose is to easily define the same chord position behaviour
+;; for multiple layers that have different underlying keys.
+(deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
+  (defalias
+    $alias1 (chord $chordgroupname $k1)
+    $alias2 (chord $chordgroupname $k2)
+    $alias3 (chord $chordgroupname $k3)
+    $alias4 (chord $chordgroupname $k4)
+  )
+  (defchords $chordgroupname $chord-timeout
+    ($k1) $k1
+    ($k2) $k2
+    ($k3) $k3
+    ($k4) $k4
+    ($k1 $k2) lctl
+    ($k3 $k4) lsft
+  )
+)
+
+(template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
+(template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)
+
+(defsrc a s d f)
+(deflayer dvorak @dva @dvo @dve @dvu)
+(deflayer qwerty @qwa @qws @qwd @qwf)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_3() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j (if-equal $version v2 k)))
+   k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v1)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v2)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
     let mut s = ParsedState::default();
@@ -1589,5 +1841,199 @@ fn parse_defvar_concat_err2() {
         },
         DEF_LOCAL_KEYS,
     )
-    .expect_err("fails");
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_4() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-not-equal $version v2 j)
+  (if-not-equal $version v1 (tap-hold 200 200 j (if-not-equal $version v1 k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_5() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-in-list $version (v0 v3 v1 v4) j)
+  (if-in-list $version (v0 v2 v3 v4) (tap-hold 200 200 j (if-in-list $version (v0 v3 v4 v2) k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_6() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-not-in-list $version (v2 v3 v4) j)
+  (if-not-in-list $version (v1 v3 v4) (tap-hold 200 200 j (if-not-in-list $version (v1 v3 v4) k)))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn parse_template_7() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-in-list $version (v0 v3 (concat v (((1)))) v4) (concat j))
+  (if-in-list $version ((concat v 0) (concat v (2)) v3 v4) (tap-hold 200 200 (concat j) (if-in-list $version (v0 v3 v4 v2) (concat "k"))))
+   k l ; '
+)
+
+(defsrc
+  (template-expand home-row v1)
+)
+
+(deflayer base
+  (template-expand home-row v2)
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
+fn test_new_layer_type() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let source = r#"
+(defsrc a b l)
+(deflayer-custom-map (blah)
+  d      ->  (macro a b c)
+  e maps-to  e
+  f       :  0
+  j       →  1
+  k       =  2
+  l       🞂  3
+  m      >>  4
+)
+"#;
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
 }

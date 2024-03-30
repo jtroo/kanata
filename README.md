@@ -23,6 +23,8 @@ the features:
 - cross-platform human readable configuration file
 
 To see all of the features, see the [configuration guide](./docs/config.adoc).
+The configuration guide aims to be up-to-date with main and may have features not in your version.
+See the applicable link in the [releases page](https://github.com/jtroo/kanata/releases).
 
 The most similar project is [kmonad](https://github.com/kmonad/kmonad),
 which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
@@ -203,11 +205,6 @@ otherwise.
 
 [*]: https://www.gnu.org/licenses/identify-licenses-clearly.html
 
-If you want to test changes in the keyberon library code,
-you should change the top-level `Cargo.toml` file.
-Look at the comments around the `kanata-keyberon` dependency
-to understand what changes to make.
-
 ## How you can help
 
 - Try it out and let me know what you think. Feel free to file an issue or
@@ -223,8 +220,12 @@ to understand what changes to make.
 ## Community projects related to kanata
 
 - [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
-- [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi)
+- [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi) (Windows)
 - [kanata-tray](https://github.com/rszyma/kanata-tray): Control kanata from a tray icon
+- Application-aware layer switching:
+   - [qanata (Linux)](https://github.com/veyxov/qanata)
+   - [kanawin (Windows)](https://github.com/Aqaao/kanawin)
+   - [window_tools (Windows)](https://github.com/reidprichard/window_tools)
 
 ## What does the name mean?
 
@@ -302,6 +303,7 @@ exists.
 - [capsicain](https://github.com/cajhin/capsicain): Windows-only key remapper with driver-level key interception
 - [keyd](https://github.com/rvaiya/keyd): Linux-only key remapper very similar to QMK, kmonad, and kanata
 - [xremap](https://github.com/k0kubun/xremap): Linux-only application-aware key remapper inspired more by Emacs key sequences vs. QMK layers/Vim modes
+- [keymapper](https://github.com/houmain/keymapper): Context-aware cross-platform key remapper with a different transformation model (Linux, Windows, Mac)
 
 ### Why the list?
 

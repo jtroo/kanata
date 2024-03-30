@@ -1,0 +1,30 @@
+(defcfg
+  process-unmapped-keys	yes	;;|no| enable processing of keys that are not in defsrc, useful if mapping a few keys in defsrc instead of most of the keys on your keyboard. Without this, the tap-hold-release and tap-hold-press actions will not activate for keys that are not in defsrc. Disabled because some keys may not work correctly if they are intercepted. E.g. rctl/altgr on Windows; see the windows-altgr configuration item above for context.
+  log-layer-changes    	yes	;;|no| overhead
+)
+(defvar ;; declare commonly-used values. prefix with $ to call them. They are refered with `$<var name>`
+  tap-timeout 	1000 ;;|500|
+  hold-timeout	1500 ;;|500|
+  🕐↕          	$tap-timeout
+  🕐🠿          	$hold-timeout
+)
+(defalias
+  ;; home row mods ↕tap 🠿hold
+  ;; pinky ring middle index | index middle ring pinky
+  ;; 	          timeout ↕tap 🠿hold¦↕tap 🠿hold action
+  ⌂‹◆	(tap-hold-release $🕐↕ $🕐🠿 a ‹◆)	;;
+  ⌂‹⎇	(tap-hold-release $🕐↕ $🕐🠿 s ‹⎇)	;;
+  ⌂‹⎈	(tap-hold-release $🕐↕ $🕐🠿 d ‹⎈)	;;
+  ⌂‹⇧	(tap-hold-release $🕐↕ $🕐🠿 f ‹⇧)	;;
+  ⌂⇧›	(tap-hold-release $🕐↕ $🕐🠿 j ⇧›)	;; same actions for the right side
+  ⌂⎈›	(tap-hold-release $🕐↕ $🕐🠿 k ⎈›)	;;
+  ⌂⎇›	(tap-hold-release $🕐↕ $🕐🠿 l ⎇›)	;;
+  ⌂◆›	(tap-hold-release $🕐↕ $🕐🠿 ; ◆›)	;;
+)
+
+(defsrc
+` 1 2
+a	s	d	f			j	k	l	;)
+(deflayer ⌂ ;; modtap layer for home row mods and 1 printing a 🤲🏿 char (will appear as 🤲 until kanata's unicode feature is extended)
+  ‗ 🔣🤲🏿 ‗
+  @⌂‹◆ @⌂‹⎇ @⌂‹⎈ @⌂‹⇧        @⌂⇧› @⌂⎈› @⌂⎇› @⌂◆›)

@@ -14,15 +14,19 @@ use std::sync::Arc;
 use std::time;
 
 use crate::oskbd::{KeyEvent, *};
-use crate::tcp_server::ServerMessage;
+#[cfg(feature = "tcp_server")]
+use crate::tcp_server::simple_sexpr_to_json_array;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
-use kanata_parser::keys::*;
+pub use kanata_parser::keys::*;
+use kanata_tcp_protocol::ServerMessage;
 
 mod dynamic_macro;
 use dynamic_macro::*;
+
+use kanata_parser::cfg::list_actions::*;
 
 #[cfg(feature = "cmd")]
 mod cmd;
@@ -126,7 +130,7 @@ pub struct Kanata {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
-    intercept_mouse_hwid: Option<[u8; HWID_ARR_SZ]>,
+    intercept_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
@@ -163,6 +167,13 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
+    #[cfg(feature = "tcp_server")]
+    /// Names of fake keys mapped to their index in the fake keys row
+    pub virtual_keys: HashMap<String, usize>,
+    /// The maximum value of switch's key-timing item in the configuration.
+    pub switch_max_key_timing: u16,
+    #[cfg(feature = "tcp_server")]
+    tcp_server_port: Option<i32>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -261,10 +272,10 @@ impl Kanata {
             );
         }
 
-        update_kbd_out(&cfg.items, &kbd_out)?;
+        update_kbd_out(&cfg.options, &kbd_out)?;
 
         #[cfg(target_os = "windows")]
-        set_win_altgr_behaviour(cfg.items.windows_altgr);
+        set_win_altgr_behaviour(cfg.options.windows_altgr);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
 
@@ -283,7 +294,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
-            sequence_backtrack_modcancel: cfg.items.sequence_backtrack_modcancel,
+            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: time::Instant::now(),
@@ -292,38 +303,43 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
-            include_names: cfg.items.macos_dev_names_include,
+            include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.items.linux_dev,
+            kbd_in_paths: cfg.options.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.items.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.items.linux_dev_names_include,
+            include_names: cfg.options.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.items.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwid: cfg.items.windows_interception_mouse_hwid,
+            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.items.windows_interception_keyboard_hwids,
+            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.items.log_layer_changes,
+            log_layer_changes: cfg.options.log_layer_changes,
             caps_word: None,
-            movemouse_smooth_diagonals: cfg.items.movemouse_smooth_diagonals,
-            movemouse_inherit_accel_state: cfg.items.movemouse_inherit_accel_state,
-            dynamic_macro_max_presses: cfg.items.dynamic_macro_max_presses,
+            movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
-                delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+                delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.items.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "tcp_server")]
+            virtual_keys: cfg.fake_keys,
+            switch_max_key_timing: cfg.switch_max_key_timing,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_port: args.port,
         })
     }
 
@@ -332,7 +348,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    fn do_live_reload(&mut self) -> Result<()> {
+    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -340,32 +356,69 @@ impl Kanata {
                 bail!("failed to parse config file");
             }
         };
-        update_kbd_out(&cfg.items, &self.kbd_out)?;
+        update_kbd_out(&cfg.options, &self.kbd_out)?;
         #[cfg(target_os = "windows")]
-        set_win_altgr_behaviour(cfg.items.windows_altgr);
-        self.sequence_backtrack_modcancel = cfg.items.sequence_backtrack_modcancel;
+        set_win_altgr_behaviour(cfg.options.windows_altgr);
+        self.sequence_backtrack_modcancel = cfg.options.sequence_backtrack_modcancel;
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes = cfg.items.log_layer_changes;
-        self.movemouse_smooth_diagonals = cfg.items.movemouse_smooth_diagonals;
-        self.movemouse_inherit_accel_state = cfg.items.movemouse_inherit_accel_state;
-        self.dynamic_macro_max_presses = cfg.items.dynamic_macro_max_presses;
+        self.log_layer_changes = cfg.options.log_layer_changes;
+        self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
+        self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
+        self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
-            delay: cfg.items.dynamic_macro_replay_delay_behaviour,
+            delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
+        #[cfg(feature = "tcp_server")]
+        {
+            self.virtual_keys = cfg.fake_keys;
+        }
+        self.switch_max_key_timing = cfg.switch_max_key_timing;
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
-        Kanata::set_repeat_rate(cfg.items.linux_x11_repeat_delay_rate)?;
+        Kanata::set_repeat_rate(cfg.options.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
+        #[cfg(feature = "tcp_server")]
+        if let Some(tx) = _tx {
+            match tx.try_send(ServerMessage::ConfigFileReload {
+                new: self.cfg_paths[self.cur_cfg_idx]
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!(
+                        "could not send ConfigFileReload event notification: {}",
+                        error
+                    );
+                }
+            }
+        }
+
+        let cur_layer = self.layout.bm().current_layer();
+        self.prev_layer = cur_layer;
+        self.print_layer(cur_layer);
+
+        #[cfg(feature = "tcp_server")]
+        if let Some(tx) = _tx {
+            let new = self.layer_info[cur_layer].name.clone();
+            match tx.try_send(ServerMessage::LayerChange { new }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send LayerChange event notification: {}", error);
+                }
+            }
+        }
         Ok(())
     }
 
     /// Update keyberon layout state for press/release, handle repeat separately
-    fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
+    pub fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;
@@ -393,6 +446,9 @@ impl Kanata {
                 self.layout.bm().event(Event::Release(0, evc));
                 return Ok(());
             }
+            KeyValue::WakeUp => {
+                return Ok(());
+            }
         };
         self.layout.bm().event(kbrn_ev);
         Ok(())
@@ -408,49 +464,22 @@ impl Kanata {
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
         self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
 
-        let mut extra_ticks: u16 = 0;
-        for _ in 0..ms_elapsed {
-            self.tick_states()?;
-            if let Some(event) = tick_replay_state(
-                &mut self.dynamic_macro_replay_state,
-                self.dynamic_macro_replay_behaviour,
-            ) {
-                self.layout.bm().event(event.key_event());
-                extra_ticks = extra_ticks.saturating_add(event.delay());
-                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
-            }
-        }
+        self.tick_ms(ms_elapsed, tx)?;
 
-        if ms_elapsed > 0 {
-            for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-                self.tick_states()?;
-                if tick_replay_state(
-                    &mut self.dynamic_macro_replay_state,
-                    self.dynamic_macro_replay_behaviour,
-                )
-                .is_some()
-                {
-                    log::error!("overshot to next event at iteration #{i}, the code is broken!");
-                    break;
-                }
-            }
+        self.last_tick = match ms_elapsed {
+            0 => self.last_tick,
+            1..=10 => now,
+            // If too many ms elapsed, probably doing a tight loop of something that's quite
+            // expensive, e.g. click spamming. To avoid a growing ms_elapsed due to trying and
+            // failing to catch up, reset last_tick to the "actual now" instead the "past now"
+            // even though that means ticks will be missed - meaning there will be fewer than
+            // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
+            // ticks in 1ms when running expensive operations, this just avoids having tens to
+            // thousands of ticks all happening as soon as the expensive operations end.
+            _ => time::Instant::now(),
+        };
 
-            self.last_tick = match ms_elapsed {
-                0..=10 => now,
-                // If too many ms elapsed, probably doing a tight loop of something that's quite
-                // expensive, e.g. click spamming. To avoid a growing ms_elapsed due to trying and
-                // failing to catch up, reset last_tick to the "actual now" instead the "past now"
-                // even though that means ticks will be missed - meaning there will be fewer than
-                // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
-                // ticks in 1ms when running expensive operations, this just avoids having tens to
-                // thousands of ticks all happening as soon as the expensive operations end.
-                _ => time::Instant::now(),
-            };
-
-            // Handle layer change outside the loop. I don't see any practical scenario where it
-            // would make a difference, so may as well reduce the amount of processing.
-            self.check_handle_layer_change(tx);
-        }
+        self.check_handle_layer_change(tx);
 
         if self.live_reload_requested
             && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
@@ -466,7 +495,7 @@ impl Kanata {
             // activate. Having this fallback allows live reload to happen which resets the
             // kanata states.
             self.live_reload_requested = false;
-            if let Err(e) = self.do_live_reload() {
+            if let Err(e) = self.do_live_reload(tx) {
                 log::error!("live reload failed {e}");
             }
         }
@@ -479,8 +508,36 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    fn tick_states(&mut self) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes()?;
+    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        let mut extra_ticks: u16 = 0;
+        for _ in 0..ms_elapsed {
+            self.tick_states(_tx)?;
+            if let Some(event) = tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            ) {
+                self.layout.bm().event(event.key_event());
+                extra_ticks = extra_ticks.saturating_add(event.delay());
+                log::debug!("dyn macro extra ticks: {extra_ticks}, ms_elapsed: {ms_elapsed}");
+            }
+        }
+        for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
+            self.tick_states(_tx)?;
+            if tick_replay_state(
+                &mut self.dynamic_macro_replay_state,
+                self.dynamic_macro_replay_behaviour,
+            )
+            .is_some()
+            {
+                log::error!("overshot to next event at iteration #{i}, the code is broken!");
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -646,7 +703,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -956,6 +1013,29 @@ impl Kanata {
                                 }
                             }
                         }
+                        CustomAction::LiveReloadFile(path) => {
+                            let path = PathBuf::from(path);
+
+                            let result = self
+                                .cfg_paths
+                                .iter()
+                                .enumerate()
+                                .find(|(_idx, fpath)| **fpath == path);
+
+                            match result {
+                                Some((index, _path)) => {
+                                    log::info!(
+                                        "Requested live reload of file with path: {}",
+                                        path.display(),
+                                    );
+                                    live_reload_requested = true;
+                                    self.cur_cfg_idx = index;
+                                }
+                                None => {
+                                    log::error!("Requested live reload of file with path {}, but no such path was passed as an argument to Kanata", path.display());
+                                }
+                            }
+                        }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
                             if let Some(pbtn) = prev_mouse_btn {
@@ -1108,6 +1188,36 @@ impl Kanata {
                                     }
                                 }
                             }
+                        }
+                        CustomAction::PushMessage(_message) => {
+                            log::debug!("Action push-msg");
+                            #[cfg(feature = "tcp_server")]
+                            if let Some(tx) = _tx {
+                                let message = simple_sexpr_to_json_array(_message);
+                                log::debug!("Action push-msg message: {}", message);
+                                match tx.try_send(ServerMessage::MessagePush { message }) {
+                                    Ok(_) => {}
+                                    Err(error) => {
+                                        log::error!(
+                                            "could not send {} event notification: {}",
+                                            PUSH_MESSAGE,
+                                            error
+                                        );
+                                    }
+                                }
+                            }
+                            #[cfg(feature = "tcp_server")]
+                            match self.tcp_server_port {
+                                None => {
+                                    log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
+                                }
+                                Some(_) => {}
+                            }
+                            #[cfg(not(feature = "tcp_server"))]
+                            log::warn!(
+                                "{} was used, but Kanata was compiled with TCP server disabled.",
+                                PUSH_MESSAGE
+                            );
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
@@ -1460,11 +1570,14 @@ impl Kanata {
                         let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
-                            match client.write(&notification) {
+                            match client.write_all(&notification) {
                                 Ok(_) => {
                                     log::debug!("layer change notification sent");
                                 }
-                                Err(_) => {
+                                Err(e) => {
+                                    log::warn!(
+                                        "removing tcp client where write failed: {id}, {e:?}"
+                                    );
                                     // the client is no longer connected, let's remove them
                                     stale_clients.push(id.clone());
                                 }
@@ -1519,6 +1632,11 @@ impl Kanata {
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
             );
 
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            let mut idle_clear_happened = false;
+            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            let mut last_input_time = time::Instant::now();
+
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
@@ -1535,7 +1653,15 @@ impl Kanata {
                         #[cfg(feature = "perf_logging")]
                         log::info!("ticks since idle: {}", k.ticks_since_idle);
                     }
-                    is_idle && !counting_idle_ticks
+                    let passed_max_switch_timing_check = k
+                        .layout
+                        .b()
+                        .historical_keys
+                        .iter_hevents()
+                        .next()
+                        .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
+                        .unwrap_or(true);
+                    is_idle && !counting_idle_ticks && passed_max_switch_timing_check
                 };
                 if can_block {
                     log::trace!("blocking on channel");
@@ -1565,30 +1691,14 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (now - k.kbd_out.last_action_time)
-                                    > time::Duration::from_secs(60)
+                                if (now - last_input_time)
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
                                 {
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            }
-                                        )
-                                    });
+                                    let layout = k.layout.bm();
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
                                 }
                             }
@@ -1599,6 +1709,20 @@ impl Kanata {
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = now;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -1634,6 +1758,20 @@ impl Kanata {
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                last_input_time = std::time::Instant::now();
+                            }
+                            #[cfg(all(
+                                not(feature = "interception_driver"),
+                                target_os = "windows"
+                            ))]
+                            {
+                                idle_clear_happened = false;
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -1689,32 +1827,17 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (std::time::Instant::now() - (k.kbd_out.last_action_time))
-                                    > time::Duration::from_secs(60)
+                                if (std::time::Instant::now() - (last_input_time))
+                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
+                                    && !idle_clear_happened
                                 {
+                                    idle_clear_happened = true;
                                     log::debug!(
                                         "clearing keyberon normal key states due to inactivity"
                                     );
-                                    k.layout.bm().states.retain(|s| {
-                                        !matches!(
-                                            s,
-                                            State::NormalKey {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::LayerModifier {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::Custom {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            } | State::RepeatingSequence {
-                                                coord: (NORMAL_KEY_ROW, _),
-                                                ..
-                                            }
-                                        )
-                                    });
+                                    let layout = k.layout.bm();
+                                    release_normalkey_states(layout);
                                     PRESSED_KEYS.lock().clear();
-                                    dbg!(&k.layout.bm().states);
                                 }
                             }
 
@@ -1844,7 +1967,7 @@ fn check_for_exit(event: &KeyEvent) {
 }
 
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
-    #[cfg(target_os = "linux")]
+    #[cfg(all(not(feature = "simulated_output"), target_os = "linux"))]
     {
         _kbd_out.update_unicode_termination(_cfg.linux_unicode_termination);
         _kbd_out.update_unicode_u_code(_cfg.linux_unicode_u_code);
@@ -1867,9 +1990,9 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
     Ok(())
 }
 
-fn handle_fakekey_action<'a, const C: usize, const R: usize, const L: usize, T>(
+pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
     action: FakeKeyAction,
-    layout: &mut Layout<'a, C, R, L, T>,
+    layout: &mut Layout<'a, C, R, T>,
     x: u8,
     y: u16,
 ) where
@@ -1899,4 +2022,38 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
         | State::RepeatingSequence { coord, .. } => *coord == (x, y),
         _ => false,
     })
+}
+
+#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+fn release_normalkey_states<'a, const C: usize, const R: usize, T>(layout: &mut Layout<'a, C, R, T>)
+where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    let mut coords_to_release = vec![];
+    for state in layout.states.iter().copied() {
+        match state {
+            State::NormalKey {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::LayerModifier {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::Custom {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            }
+            | State::RepeatingSequence {
+                coord: (NORMAL_KEY_ROW, y),
+                ..
+            } => {
+                coords_to_release.push((NORMAL_KEY_ROW, y));
+            }
+            _ => {}
+        }
+    }
+    for coord in coords_to_release.into_iter() {
+        layout.event(Event::Release(coord.0, coord.1));
+    }
 }

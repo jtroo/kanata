@@ -15,6 +15,11 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::*;
 
+#[cfg(feature = "simulated_output")]
+mod simulated;
+#[cfg(feature = "simulated_output")]
+pub use simulated::*;
+
 // ------------------ KeyValue --------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -23,6 +28,7 @@ pub enum KeyValue {
     Press = 1,
     Repeat = 2,
     Tap,
+    WakeUp,
 }
 
 impl From<i32> for KeyValue {
@@ -59,8 +65,7 @@ pub struct KeyEvent {
     pub value: KeyValue,
 }
 
-#[cfg(not(all(feature = "interception_driver", target_os = "windows")))]
-#[cfg(not(target_os = "macos"))]
+#[allow(dead_code, unused)]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }

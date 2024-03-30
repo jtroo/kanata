@@ -1,0 +1,26 @@
+;; A configuration showcasing deflayer-custom-map.
+;;
+;; The process-unmapped-keys defcfg item is not used
+;; and the lctl and ralt keys are unmapped
+;; because mapping them can cause problems on Windows
+;; with non-US layouts.
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+       lmet lalt           spc                 rmet rctl
+)
+
+(deflayer-custom-map (base)
+  caps : (tap-hold 200 200 (caps-word 2000) lctl)
+  spc  : (tap-hold 200 200 spc (layer-while-held nav))
+)
+
+(deflayer-custom-map (nav)
+  i : up
+  j : left
+  k : down
+  l : right
+)

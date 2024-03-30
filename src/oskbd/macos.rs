@@ -1,4 +1,10 @@
 //! Contains the input/output code for keyboards on Macos.
+
+#![cfg_attr(
+    feature = "simulated_output",
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
+
 use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
@@ -13,9 +19,9 @@ pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
-    value: u64,
-    page: u32,
-    code: u32,
+    pub value: u64,
+    pub page: u32,
+    pub code: u32,
 }
 
 impl InputEvent {
@@ -105,6 +111,23 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+use std::fmt;
+impl fmt::Display for InputEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use kanata_keyberon::key_code::KeyCode;
+        let ke = KeyEvent::try_from(*self).unwrap();
+        let direction = match ke.value {
+            KeyValue::Press => "↓",
+            KeyValue::Release => "↑",
+            KeyValue::Repeat => "⟳",
+            KeyValue::Tap => "↕",
+            KeyValue::WakeUp => "!",
+        };
+        let key_name = KeyCode::from(ke.code);
+        write!(f, "{}{:?}", direction, key_name)
+    }
+}
+
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
 
@@ -147,8 +170,10 @@ impl TryFrom<KeyEvent> for InputEvent {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
 pub struct KbdOut {}
 
+#[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {})

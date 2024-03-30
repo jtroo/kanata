@@ -23,12 +23,12 @@ jobs:
       run: |
         mkdir -p artifacts
         cargo build --release
-        mv target/release/kanata artifacts/kanata_macos
+        mv target/release/kanata artifacts/kanata_macos_x86
         cargo build --release --features cmd
-        mv target/release/kanata artifacts/kanata_macos_cmd_allowed
+        mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x86
     - uses: actions/upload-artifact@v3
       with:
         name: macos-binaries
         path: |
-          artifacts/kanata_macos
-          artifacts/kanata_macos_cmd_allowed
+          artifacts/kanata_macos_x86
+          artifacts/kanata_macos_cmd_allowed_x86
