@@ -2305,11 +2305,12 @@ for at least `idle time` milliseconds.
 The `<action>` parameter can be one of:
 
 * `tap-virtualkey     | tap-vkey`:
-Press the virtual key. It will not be released until another action triggers a release or tap.
-* `press-virtualkey   | press-vkey`:
-Release the virtual key. If it is not already pressed, this does nothing.
-* `release-virtualkey | release-vkey`:
 Press and release the virtual key. If the key is already pressed, this only releases it.
+* `press-virtualkey   | press-vkey`:
+Press the virtual key. It will not be released until another action triggers a release or tap.
+If the key is already pressed, this does nothing.
+* `release-virtualkey | release-vkey`:
+Release the virtual key. If it is not already pressed, this does nothing.
 * `toggle-virtualkey  | toggle-vkey`:
 Press the virtual key if it is not already pressed, otherwise release it.
 
