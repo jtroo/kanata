@@ -359,7 +359,7 @@ impl Kanata {
 
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
-            None,
+            &None,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
