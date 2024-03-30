@@ -148,51 +148,59 @@ impl From<KeyEvent> for InputEvent {
 }
 
 /// The actual WinAPI compatible callback.
+/// code: determines how to process the message
+/// source: https://learn.microsoft.com/windows/win32/winmsg/lowlevelkeyboardproc
+///   <0 : must pass the message to CallNextHookEx without further processing
+///    and should return the value returned by CallNextHookEx
+///   HC_ACTION (=0) : wParam and lParam parameters contain information about the message
+///
+/// wparam: ID keyboard message
+/// source: https://learn.microsoft.com/windows/win32/winmsg/lowlevelkeyboardproc
+///   WM_KEY(DOWN|UP) Posted to kb-focused window when a nonsystem key is pressed
+///   WM_SYSKEYDOWN¦UP Posted to kb-focused window when a F10 (activate menu bar)
+///     or ⎇X⃣ or posted to active window if no win has kb focus (check context code in lParam)
+///
+/// lparam: pointer to a KBDLLHOOKSTRUCT struct
+/// source: https://learn.microsoft.com/windows/win32/api/winuser/ns-winuser-kbdllhookstruct
+///   vkCode     :DWORD key's virtual code (1–254)
+///   scanCode   :DWORD key's hardware scan code
+///   flags      :DWORD flags (extended-key, event-injected, transition-state), context code
+///     Bits (2-3 6 reserved)                        Description
+///     7 KF_UP       >> 8 LLKHF_UP                  transition state: 0=key↓  1=key↑
+///                                                           (being pressed)  (being released)
+///     5 KF_ALTDOWN  >> 8 LLKHF_ALTDOWN             context code    : 1=alt↓  0=alt↑
+///     4 0x10             LLKHF_INJECTED            event was injected: 1=yes, 0=no
+///     1 0x02             LLKHF_LOWER_IL_INJECTED   injected by proc with lower integrity level
+//                                                   1=yes 0=no (bit 4 will also set)
+///     0 KF_EXTENDED >> 8 LLKHF_EXTENDED            extended key (Fn, numpad): 1=yes, 0=no
+///   time       :DWORD time stamp = GetMessageTime
+///   dwExtraInfo:ULONG_PTR Additional info
 unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    // code → determines how to process the message
-    //   <0: must pass the message             to CallNextHookEx without further processing
-    //    and should return the value returned by CallNextHookEx
-    //    0=HC_ACTION: wParam and lParam parameters contain information about the message
-    // wparam → ID keyboard message:
-    //   WM_KEYDOWN   ¦UP Posted to kb-focused window when a nonsystem key is pressed (⎇ is ↑)
-    //   WM_SYSKEYDOWN¦UP Posted to kb-focused window when a F10 (activate menu bar) or ⎇X⃣ or posted to active window if no win has kb focus (check context code in lParam)
-    //     (unavailable in LLhook) wParam virtual-key code of the key
-    //     (unavailable in LLhook) lParam repeat count, scan code, extended-key flag, context code, previous key-state flag, and transition-state flag
-    // lparam → pointer to a KBDLLHOOKSTRUCT struct
-    //   vkCode     :DWORD key's virtual code (1–254)
-    //   scanCode   :DWORD key's hardware scan code
-    //   flags      :DWORD flags (extended-key, event-injected, transition-state), context code
-    //     Bits (2-3 6 reserved)                        Description
-    //     7 KF_UP       >> 8 LLKHF_UP                  transition state: 0=key↓  1=key↑ (being released)
-    //     5 KF_ALTDOWN  >> 8 LLKHF_ALTDOWN             context code    : 1=⎇↓   0=⎇↑
-    //     0 KF_EXTENDED >> 8 LLKHF_EXTENDED            extended key (Fn, numpad): 1=yes, 0=no
-    //     4 0x10             LLKHF_INJECTED            event was injected (from any proc): 1=yes, 0=no (1₂ may be unset)
-    //     1 0x02             LLKHF_LOWER_IL_INJECTED   event was injected (from a   proc@lower integrity level) 1=yes 0=no (4₂ also set)
-    //   time       :DWORD time stamp = GetMessageTime
-    //   dwExtraInfo:ULONG_PTR Additional info
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
-    log::trace!("{code} {} {is_injected}", {
+    log::trace!("{code} {}{wparam} {is_injected}", {
         match wparam as u32 {
-            WM_KEYDOWN => "↓256",
-            WM_KEYUP => "↑257",
-            WM_SYSKEYDOWN => "↓260sys",
-            WM_SYSKEYUP => "↑261sys",
+            WM_KEYDOWN => "↓",
+            WM_KEYUP => "↑",
+            WM_SYSKEYDOWN => "sys↓",
+            WM_SYSKEYUP => "sys↑",
             _ => "?",
         }
     });
-    if code != HC_ACTION {
+
+    // Regarding code check:
+    // If code is non-zero (technically <0, but 0 is the only valid value anyway),
+    // then it must be forwarded.
+    // Source: https://learn.microsoft.com/windows/win32/winmsg/lowlevelkeyboardproc
+    //
+    // Regarding in_injected check:
+    // `SendInput()` internally calls the hook function.
+    // Filter out injected events to prevent infinite recursion.
+    if code != HC_ACTION || is_injected {
         return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
     }
 
     let key_event = InputEvent::from_hook_lparam(hook_lparam);
-
-    // `SendInput()` internally calls the hook function. Filter out injected events
-    // to prevent recursion and potential stack overflows if our remapping logic
-    // sent the injected event.
-    if is_injected {
-        return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
-    }
 
     let mut handled = false;
     HOOK.with(|state| {
