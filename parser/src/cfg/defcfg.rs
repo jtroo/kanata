@@ -361,7 +361,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "rapid-event-delay" => {
                         cfg.rapid_event_delay = parse_cfg_val_u16(val, label, false)?
                     }
-                    "trans-resolution" => {
+                    "transparent-key-resolution" => {
                         let v = sexpr_to_str_or_err(val, label)?;
                         cfg.legacy_trans_action = match v {
                             "to-base-layer" => true,
