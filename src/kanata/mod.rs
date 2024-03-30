@@ -348,6 +348,92 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
+    pub fn new_from_str(cfg: &str) -> Result<Self> {
+        let cfg = match cfg::new_from_str(cfg) {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("{e:?}");
+                bail!("failed to parse file");
+            }
+        };
+
+        let kbd_out = match KbdOut::new(
+            #[cfg(target_os = "linux")]
+            &args.symlink_path,
+        ) {
+            Ok(kbd_out) => kbd_out,
+            Err(err) => {
+                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
+                bail!(err)
+            }
+        };
+
+        *MAPPED_KEYS.lock() = cfg.mapped_keys;
+
+        Ok(Self {
+            kbd_out,
+            cfg_paths: vec!["config string".into()],
+            cur_cfg_idx: 0,
+            key_outputs: cfg.key_outputs,
+            layout: cfg.layout,
+            layer_info: cfg.layer_info,
+            cur_keys: Vec::new(),
+            prev_keys: Vec::new(),
+            prev_layer: 0,
+            scroll_state: None,
+            hscroll_state: None,
+            move_mouse_state_vertical: None,
+            move_mouse_state_horizontal: None,
+            move_mouse_speed_modifiers: Vec::new(),
+            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_state: None,
+            sequences: cfg.sequences,
+            last_tick: time::Instant::now(),
+            time_remainder: 0,
+            live_reload_requested: false,
+            overrides: cfg.overrides,
+            override_states: OverrideStates::new(),
+            #[cfg(target_os = "macos")]
+            include_names: cfg.options.macos_dev_names_include,
+            #[cfg(target_os = "linux")]
+            kbd_in_paths: cfg.options.linux_dev,
+            #[cfg(target_os = "linux")]
+            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            #[cfg(target_os = "linux")]
+            include_names: cfg.options.linux_dev_names_include,
+            #[cfg(target_os = "linux")]
+            exclude_names: cfg.options.linux_dev_names_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            dynamic_macro_replay_state: None,
+            dynamic_macro_record_state: None,
+            dynamic_macros: Default::default(),
+            log_layer_changes: cfg.options.log_layer_changes,
+            caps_word: None,
+            movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
+            dynamic_macro_replay_behaviour: ReplayBehaviour {
+                delay: cfg.options.dynamic_macro_replay_delay_behaviour,
+            },
+            #[cfg(target_os = "linux")]
+            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            waiting_for_idle: HashSet::default(),
+            ticks_since_idle: 0,
+            movemouse_buffer: None,
+            unmodded_keys: vec![],
+            unshifted_keys: vec![],
+            last_pressed_key: KeyCode::No,
+            #[cfg(feature = "tcp_server")]
+            virtual_keys: cfg.fake_keys,
+            switch_max_key_timing: cfg.switch_max_key_timing,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_port: None,
+        })
+    }
+
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
