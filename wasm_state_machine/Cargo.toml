@@ -12,3 +12,4 @@ crate-type = [ "cdylib", "rlib" ]
 [dependencies]
 wasm-bindgen = "0.2.92"
 kanata = { path = ".." , default_features = false, features = ["simulated_output"]}
+anyhow = "1.0.81"
