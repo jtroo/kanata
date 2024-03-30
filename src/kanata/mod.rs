@@ -110,7 +110,7 @@ pub struct Kanata {
     pub override_states: OverrideStates,
     /// Time of the last tick to know how many tick iterations to run, to achieve a 1ms tick
     /// interval more closely.
-    last_tick: time::Instant,
+    last_tick: instant::Instant,
     /// Tracks the non-whole-millisecond gaps between ticks to know when to do another tick
     /// iteration without sleeping, to achive a 1ms tick interval more closely.
     time_remainder: u128,
@@ -300,7 +300,7 @@ impl Kanata {
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            last_tick: time::Instant::now(),
+            last_tick: instant::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
@@ -391,7 +391,7 @@ impl Kanata {
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            last_tick: time::Instant::now(),
+            last_tick: instant::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
@@ -547,7 +547,7 @@ impl Kanata {
     /// Returns the number of ticks that elapsed.
     fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
-        let now = time::Instant::now();
+        let now = instant::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
         let ns_elapsed_with_rem = ns_elapsed + self.time_remainder;
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
@@ -565,7 +565,7 @@ impl Kanata {
             // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
             // ticks in 1ms when running expensive operations, this just avoids having tens to
             // thousands of ticks all happening as soon as the expensive operations end.
-            _ => time::Instant::now(),
+            _ => instant::Instant::now(),
         };
 
         self.check_handle_layer_change(tx);
@@ -1319,7 +1319,7 @@ impl Kanata {
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
                         }
                         CustomAction::SequenceCancel => {
                             if self.sequence_state.is_some() {
@@ -1483,7 +1483,7 @@ impl Kanata {
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
                             pbtn
                         }
                         CustomAction::FakeKeyOnRelease { coord, action } => {
@@ -1719,7 +1719,7 @@ impl Kanata {
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut idle_clear_happened = false;
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-            let mut last_input_time = time::Instant::now();
+            let mut last_input_time = instant::Instant::now();
 
             let err = loop {
                 let can_block = {
@@ -1752,7 +1752,7 @@ impl Kanata {
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
-                            let now = time::Instant::now()
+                            let now = instant::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
                                 .expect("subtract 1ms from current time");
 
@@ -1789,7 +1789,7 @@ impl Kanata {
                             k.last_tick = now;
 
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -1815,7 +1815,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1838,7 +1838,7 @@ impl Kanata {
                     match rx.try_recv() {
                         Ok(kev) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -1848,7 +1848,7 @@ impl Kanata {
                                 target_os = "windows"
                             ))]
                             {
-                                last_input_time = std::time::Instant::now();
+                                last_input_time = instant::Instant::now();
                             }
                             #[cfg(all(
                                 not(feature = "interception_driver"),
@@ -1864,7 +1864,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1879,7 +1879,7 @@ impl Kanata {
                         }
                         Err(TryRecvError::Empty) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1911,7 +1911,7 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (std::time::Instant::now() - (last_input_time))
+                                if (instant::Instant::now() - (last_input_time))
                                     > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
                                     && !idle_clear_happened
                                 {

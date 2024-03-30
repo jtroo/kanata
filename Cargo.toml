@@ -37,6 +37,7 @@ anyhow = "1"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
 dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }
+instant = { version = "0.1.12", default_features = false }
 log = { version = "0.4.8", default_features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
@@ -87,6 +88,7 @@ win_llhook_read_scancodes = []
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
+wasm = [ "instant/wasm-bindgen" ]
 
 [profile.release]
 opt-level = "z"

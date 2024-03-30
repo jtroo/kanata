@@ -2,9 +2,22 @@ use kanata_state_machine::{*, oskbd::*};
 use wasm_bindgen::prelude::*;
 use anyhow::{anyhow, bail, Result};
 
+use std::sync::Once;
+
+static INIT: Once = Once::new();
+
+#[wasm_bindgen]
+pub fn init() {
+    INIT.call_once(|| {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        wasm_logger::init(wasm_logger::Config::default());
+    });
+}
+
 #[wasm_bindgen]
 pub fn check_config(cfg: &str) -> JsValue {
     let res = Kanata::new_from_str(cfg);
+    log::info!("hi out of kanata");
     JsValue::from_str(&match res {
         Ok(_) => "Config is good!".to_owned(),
         Err(e) => format!("Config has error.\n\n{e:?}"),
