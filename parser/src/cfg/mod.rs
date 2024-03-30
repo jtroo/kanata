@@ -248,6 +248,42 @@ pub fn new_from_file(p: &Path) -> MResult<Cfg> {
     parse_cfg(p)
 }
 
+pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
+    let mut s = ParsedState::default();
+    let icfg = parse_cfg_raw_string(
+        cfg_text,
+        &mut s,
+        &PathBuf::from("config text"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| Err("include is not supported".into()),
+        },
+        DEF_LOCAL_KEYS,
+    )?;
+    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides);
+    let switch_max_key_timing = s.switch_max_key_timing.get();
+    let mut layout = KanataLayout::new(Layout::new(icfg.klayers), s.a);
+    layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
+    layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
+    let mut fake_keys: HashMap<String, usize> = s
+        .virtual_keys
+        .iter()
+        .map(|(k, v)| (k.clone(), v.0))
+        .collect();
+    fake_keys.shrink_to_fit();
+    log::info!("config file is valid");
+    Ok(Cfg {
+        options: icfg.options,
+        mapped_keys: icfg.mapped_keys,
+        layer_info: icfg.layer_info,
+        key_outputs,
+        layout,
+        sequences: icfg.sequences,
+        overrides: icfg.overrides,
+        fake_keys,
+        switch_max_key_timing,
+    })
+}
+
 pub type MappedKeys = HashSet<OsCode>;
 // Note: this uses a Vec inside the HashMap instead of a HashSet because ordering matters, e.g. for
 // chords like `S-b`, we want to ensure that `b` is checked first because key repeat for `b` is
