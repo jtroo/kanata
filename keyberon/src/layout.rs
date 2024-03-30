@@ -90,6 +90,7 @@ where
     pub historical_keys: ArrayDeque<[KeyCode; 8], arraydeque::behavior::Wrapping>,
     pub quick_tap_hold_timeout: bool,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
+    trans_resolution_behavior_v2: bool,
 }
 
 /// An event on the key matrix.
@@ -881,6 +882,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
     Layout<'a, C, R, L, T>
 {
     /// Creates a new `Layout` object.
+    ///
     pub fn new(layers: &'a [[[Action<T>; C]; R]; L]) -> Self {
         let src_keys = &[Action::NoOp; C];
         Self {
@@ -908,16 +910,20 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             historical_keys: ArrayDeque::new(),
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
+            trans_resolution_behavior_v2: true,
         }
     }
-    pub fn new_with_src_keys(
+    pub fn new_with_trans_action_settings(
         src_keys: &'a [Action<T>; C],
         layers: &'a [[[Action<T>; C]; R]; L],
+        trans_resolution_behavior_v2: bool,
     ) -> Self {
         let mut new = Self::new(layers);
         new.src_keys = src_keys;
+        new.trans_resolution_behavior_v2 = trans_resolution_behavior_v2;
         new
     }
+
     /// Iterates on the key codes of the current state.
     pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
         self.states.iter().filter_map(State::keycode)
@@ -1033,7 +1039,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 0,
                 false,
-                &mut self.active_layers_including_default().into_iter().skip(1),
+                &mut self.trans_resolution_layer_order().into_iter().skip(1),
             );
         }
         self.states = self.states.iter().filter_map(State::tick).collect();
@@ -1220,7 +1226,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
             }
 
             Press(i, j) => {
-                let mut layer_stack = self.active_layers_including_default().into_iter();
+                let mut layer_stack = self.trans_resolution_layer_order().into_iter();
                 if let Some(tde) = self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let custom = self.do_action(
@@ -1704,7 +1710,7 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
                 coord,
                 delay,
                 false,
-                &mut self.active_layers_including_default().into_iter().skip(1),
+                &mut self.trans_resolution_layer_order().into_iter().skip(1),
             );
         };
     }
@@ -1722,10 +1728,15 @@ impl<'a, const C: usize, const R: usize, const L: usize, T: 'a + Copy + std::fmt
         self.states.iter().filter_map(State::get_layer).rev()
     }
 
-    pub fn active_layers_including_default(&self) -> std::vec::Vec<usize> {
-        self.active_held_layers()
-            .chain([self.default_layer])
-            .collect()
+    /// Returns a list indices of layers that should be used for [`Action::Trans`] resolution.
+    pub fn trans_resolution_layer_order(&self) -> std::vec::Vec<usize> {
+        if self.trans_resolution_behavior_v2 {
+            self.active_held_layers()
+                .chain([self.default_layer])
+                .collect()
+        } else {
+            vec![self.default_layer]
+        }
     }
 
     /// Sets the default layer for the layout
@@ -3716,7 +3727,7 @@ mod test {
             [[Layer(1), Trans]],
             [[NoOp, MultipleActions(&[Trans].as_slice())]],
         ];
-        let mut layout = Layout::new_with_src_keys(&DEFSRC_LAYER, &LAYERS);
+        let mut layout = Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, true);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());

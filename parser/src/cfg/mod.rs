@@ -268,7 +268,12 @@ fn parse_cfg(
     let mut s = ParsedState::default();
     let (cfg, src, layer_info, klayers, seqs, overrides) = parse_cfg_raw(p, &mut s)?;
     let key_outputs = create_key_outputs(&klayers, &overrides);
-    let mut layout = create_layout(Box::new(s.defsrc_layer), klayers, s.a);
+    let mut layout = create_layout(
+        Box::new(s.defsrc_layer),
+        klayers,
+        !cfg.legacy_trans_action,
+        s.a,
+    );
     layout.bm().quick_tap_hold_timeout = cfg.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = cfg.rapid_event_delay;
     Ok((cfg, src, layer_info, key_outputs, layout, seqs, overrides))
@@ -3326,10 +3331,15 @@ fn add_kc_output(
 fn create_layout(
     src_keys: Box<[KanataAction; KEYS_IN_ROW]>,
     layers: Box<KanataLayers>,
+    trans_resolution_behavior_v2: bool,
     a: Arc<Allocations>,
 ) -> KanataLayout {
     KanataLayout::new(
-        Layout::new_with_src_keys(a.bref(src_keys), a.bref(layers)),
+        Layout::new_with_trans_action_settings(
+            a.bref(src_keys),
+            a.bref(layers),
+            trans_resolution_behavior_v2,
+        ),
         a,
     )
 }
