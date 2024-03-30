@@ -343,7 +343,7 @@ impl KbdOut {
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
         self.log.write_raw(event);
-        self.output_events.push(format!("out-raw:{event:?}"));
+        self.outputs.push(format!("out-raw:{event:?}"));
         Ok(())
     }
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
