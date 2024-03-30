@@ -10,7 +10,7 @@ use llhook::*;
 #[cfg(feature = "interception_driver")]
 mod interception;
 #[cfg(feature = "interception_driver")]
-use crate::interception::*;
+use interception::*;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]

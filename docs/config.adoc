@@ -322,8 +322,11 @@ In Windows uning `winIOv2`, the winIOv2 executable variant
 will give the correct number in the `code: <number>` section.
 
 In Windows using Interception, the interception version of the keyboard tester
-will give the correct number. Between the hook and interception versions, some
+will give the correct number i the `num: <number>` section.
+Between the hook and interception versions, some
 keys may agree but others may not; do be aware that they are **not** compatible!
+
+However, Interception and winIOv2 should generally agree with each other.
 
 Ideas for improving the user-friendliness of this system are welcome! As
 mentioned before, please ask for help in an issue or discussion if needed, and
