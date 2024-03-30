@@ -28,7 +28,3 @@ kanata = { path = "..", optional = true }
 [features]
 interception_driver = [ "kanata-interception" ]
 winiov2 = [ "kanata" ]
-
-[profile.release]
-opt-level = "z"
-lto = "fat"

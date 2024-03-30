@@ -316,7 +316,7 @@ In Linux, `evtest` will give the correct number for the physical key you press.
 In Windows using the default hook mechanism, the non-interception version of the
 keyboard tester in the kanata repository will give the correct number
 in the `code: <number>` section.
-(https://github.com/jtroo/kanata/releases/tag/win-keycode-tester-v0.2.0[prebuilt binary])
+(https://github.com/jtroo/kanata/releases/tag/win-keycode-tester-v0.3.0[prebuilt binary])
 
 In Windows uning `winIOv2`, the winIOv2 executable variant
 will give the correct number in the `code: <number>` section.
