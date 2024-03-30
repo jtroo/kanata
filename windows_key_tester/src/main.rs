@@ -7,17 +7,21 @@ use log::info;
 use simplelog::*;
 
 use clap::Parser;
-
+#[cfg(target_os = "windows")]
 #[cfg(not(feature = "interception_driver"))]
 mod llhook;
+#[cfg(target_os = "windows")]
 #[cfg(not(feature = "interception_driver"))]
 use llhook::*;
 
+#[cfg(target_os = "windows")]
 #[cfg(feature = "interception_driver")]
 mod interception;
+#[cfg(target_os = "windows")]
 #[cfg(feature = "interception_driver")]
 use crate::interception::*;
 
+#[cfg(target_os = "windows")]
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -30,6 +34,7 @@ struct Args {
     trace: bool,
 }
 
+#[cfg(target_os = "windows")]
 /// Parse CLI arguments and initialize logging.
 fn cli_init() {
     let args = Args::parse();
@@ -54,6 +59,7 @@ fn cli_init() {
     log::info!("windows_key_tester v{} starting", env!("CARGO_PKG_VERSION"));
 }
 
+#[cfg(target_os = "windows")]
 fn main_impl() -> Result<()> {
     cli_init();
     info!("Sleeping for 2s. Please release all keys and don't press additional ones.");
@@ -62,6 +68,7 @@ fn main_impl() -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {
@@ -70,4 +77,9 @@ fn main() -> Result<()> {
     eprintln!("\nPress any key to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
     ret
+}
+
+#[cfg(not(target_os = "windows"))]
+fn main() {
+    print!("Hello world! Wrong OS. Doing nothing.");
 }
