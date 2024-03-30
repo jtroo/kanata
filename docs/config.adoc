@@ -261,9 +261,10 @@ keys.
 You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer` and anywhere else in the configuration.
 
-There are four variants of deflocalkeys:
+There are five variants of deflocalkeys:
 
 - `deflocalkeys-win`
+- `deflocalkeys-winiov2`
 - `deflocalkeys-wintercept`
 - `deflocalkeys-linux`
 - `deflocalkeys-macos`
@@ -289,6 +290,10 @@ Please contribute to the document if you are able!
 [source]
 ----
 (deflocalkeys-win
+  ì 187
+)
+
+(deflocalkeys-winiov2
   ì 187
 )
 
