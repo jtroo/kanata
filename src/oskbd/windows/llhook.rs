@@ -108,7 +108,9 @@ impl InputEvent {
                 } else {
                     0
                 };
-                crate::oskbd::u16_to_osc((lparam.scanCode as u16) | extended).map(Into::into).unwrap_or(lparam.vkCode)
+                crate::oskbd::u16_to_osc((lparam.scanCode as u16) | extended)
+                    .map(Into::into)
+                    .unwrap_or(lparam.vkCode)
             }
         };
         Self {

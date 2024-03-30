@@ -1333,6 +1333,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1515e9a29e5bed743cb4415a9ecf5dfca648ce85ee42e15873c3cd8610ff8e02"
 
 [[package]]
+name = "windows_key_tester"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "kanata",
+ "kanata-interception",
+ "log",
+ "native-windows-gui",
+ "simplelog",
+ "winapi",
+]
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

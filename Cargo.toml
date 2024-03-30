@@ -6,6 +6,7 @@ members = [
     "example_tcp_client",
     "tcp_protocol",
     "simulated_input",
+    "windows_key_tester",
 ]
 
 [package]
