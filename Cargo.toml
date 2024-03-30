@@ -6,11 +6,12 @@ members = [
     "example_tcp_client",
     "tcp_protocol",
     "simulated_input",
+    "windows_key_tester",
 ]
 
 [package]
 name = "kanata"
-version = "1.6.0-prerelease-2"
+version = "1.6.0-prerelease-3"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["cli", "linux", "windows", "keyboard", "layout"]
@@ -44,9 +45,9 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["alloc"], default_features = false, optional = true }
 
-# kanata-keyberon = "0.160.2"
-# kanata-parser = "0.160.2"
-# kanata-tcp-protocol = "0.160.2"
+# kanata-keyberon = "0.160.3"
+# kanata-parser = "0.160.3"
+# kanata-tcp-protocol = "0.160.3"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.

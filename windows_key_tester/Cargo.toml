@@ -1,6 +1,6 @@
 [package]
 name = "windows_key_tester"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Windows keycode tester"
 keywords = []
@@ -11,8 +11,8 @@ readme = "README.md"
 license = "LGPL-3.0"
 edition = "2021"
 
-[dependencies]
-clap = { version = "3", features = [ "derive" ] }
+[target.'cfg(target_os = "windows")'.dependencies]
+clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
 log = "0.4.8"
 simplelog = "0.12.0"
 anyhow = "1"
@@ -21,13 +21,10 @@ winapi = { version = "0.3.9", features = [
     "timeapi",
     "mmsystem",
 ] }
-native-windows-gui = "1.0.12"
-interception = { version = "0.1.2", optional = true }
+native-windows-gui = { version = "1.0.12", default_features = false }
+kanata-interception = { version = "0.2.0", optional = true }
+kanata = { path = "..", optional = true }
 
 [features]
-cmd = []
-interception_driver = [ "interception" ]
-
-[profile.release]
-opt-level = "z"
-lto = "fat"
+interception_driver = [ "kanata-interception" ]
+winiov2 = [ "kanata" ]

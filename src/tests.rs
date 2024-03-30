@@ -22,15 +22,12 @@ fn parse_minimal() {
 }
 
 #[test]
-fn parse_deflayer_custom_map() {
+fn parse_deflayermap() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from(
-        "./cfg_samples/deflayer-custom-map.kbd",
-    ))
-    .unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/deflayermap.kbd")).unwrap();
 }
 
 #[test]

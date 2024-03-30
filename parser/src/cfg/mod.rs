@@ -296,8 +296,21 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     })
 }
 
-#[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+#[cfg(all(
+    not(feature = "interception_driver"),
+    any(
+        not(feature = "win_llhook_read_scancodes"),
+        not(feature = "win_sendinput_send_scancodes")
+    ),
+    target_os = "windows"
+))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
+#[cfg(all(
+    feature = "win_llhook_read_scancodes",
+    feature = "win_sendinput_send_scancodes",
+    target_os = "windows"
+))]
+const DEF_LOCAL_KEYS: &str = "deflocalkeys-winiov2";
 #[cfg(all(feature = "interception_driver", target_os = "windows"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
 #[cfg(target_os = "macos")]
@@ -408,7 +421,7 @@ fn expand_includes(
 }
 
 const DEFLAYER: &str = "deflayer";
-const DEFLAYER_MAPPED: &str = "deflayer-custom-map";
+const DEFLAYER_MAPPED: &str = "deflayermap";
 
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
@@ -437,6 +450,7 @@ pub fn parse_cfg_raw_string(
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in [
         "deflocalkeys-win",
+        "deflocalkeys-winiov2",
         "deflocalkeys-wintercept",
         "deflocalkeys-linux",
         "deflocalkeys-macos",
@@ -660,7 +674,7 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s)?;
 
-    let mut klayers = parse_layers(s, &mut mapped_keys)?;
+    let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
 
     resolve_chord_groups(&mut klayers, s)?;
 
@@ -716,6 +730,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deflocalkeys-macos"
                 | "deflocalkeys-linux"
                 | "deflocalkeys-win"
+                | "deflocalkeys-winiov2"
                 | "deflocalkeys-wintercept"
                 | "deffakekeys"
                 | "defvirtualkeys"
@@ -2629,7 +2644,11 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParsedState) -> Result<&'stat
     )))))
 }
 
-fn parse_layers(s: &ParsedState, mapped_keys: &mut MappedKeys) -> Result<IntermediateLayers> {
+fn parse_layers(
+    s: &ParsedState,
+    mapped_keys: &mut MappedKeys,
+    defcfg: &CfgOptions,
+) -> Result<IntermediateLayers> {
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers(s.layer_exprs.len());
@@ -2650,18 +2669,13 @@ fn parse_layers(s: &ParsedState, mapped_keys: &mut MappedKeys) -> Result<Interme
                 // Parse actions as input -> output triplets
                 let mut triplets = layer[2..].chunks_exact(3);
                 let mut layer_mapped_keys = HashSet::default();
+                let mut defsrc_anykey_used = false;
+                let mut unmapped_anykey_used = false;
+                let mut both_anykey_used = false;
                 for triplet in triplets.by_ref() {
                     let input = &triplet[0];
                     let mapstr = &triplet[1];
                     let action = &triplet[2];
-                    let input_key = input
-                        .atom(s.vars())
-                        .and_then(str_to_oscode)
-                        .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
-                    mapped_keys.insert(input_key);
-                    if !layer_mapped_keys.insert(input_key) {
-                        bail_expr!(input, "input key must not be repeated within a layer")
-                    }
                     let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
                     mapstr
                         .atom(s.vars())
@@ -2677,8 +2691,77 @@ fn parse_layers(s: &ParsedState, mapped_keys: &mut MappedKeys) -> Result<Interme
                             )
                         })?;
                     let action = parse_action(action, s)?;
-                    layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
-                    layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                    if input.atom(s.vars()).is_some_and(|x| x == "_") {
+                        if defsrc_anykey_used {
+                            bail_expr!(input, "must have only one use of _ within a layer")
+                        }
+                        if both_anykey_used {
+                            bail_expr!(input, "must either use _ or ___ within a layer, not both")
+                        }
+                        for i in 0..s.mapping_order.len() {
+                            if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
+                                layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
+                            }
+                        }
+                        defsrc_anykey_used = true;
+                    } else if input.atom(s.vars()).is_some_and(|x| x == "__") {
+                        if unmapped_anykey_used {
+                            bail_expr!(input, "must have only one use of __ within a layer")
+                        }
+                        if !defcfg.process_unmapped_keys {
+                            bail_expr!(
+                                input,
+                                "must set process-unmapped-keys to yes to use __ to map unmapped keys"
+                            );
+                        }
+                        if both_anykey_used {
+                            bail_expr!(input, "must either use __ or ___ within a layer, not both")
+                        }
+                        for i in 0..layers_cfg[0][0].len() {
+                            if layers_cfg[layer_level * 2][0][i] == Action::Trans
+                                && !s.mapping_order.contains(&i)
+                            {
+                                layers_cfg[layer_level * 2][0][i] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
+                            }
+                        }
+                        unmapped_anykey_used = true;
+                    } else if input.atom(s.vars()).is_some_and(|x| x == "___") {
+                        if both_anykey_used {
+                            bail_expr!(input, "must have only one use of ___ within a layer")
+                        }
+                        if defsrc_anykey_used {
+                            bail_expr!(input, "must either use _ or ___ within a layer, not both")
+                        }
+                        if unmapped_anykey_used {
+                            bail_expr!(input, "must either use __ or ___ within a layer, not both")
+                        }
+                        if !defcfg.process_unmapped_keys {
+                            bail_expr!(
+                                input,
+                                "must set process-unmapped-keys to yes to use ___ to also map unmapped keys"
+                            );
+                        }
+                        for i in 0..layers_cfg[0][0].len() {
+                            if layers_cfg[layer_level * 2][0][i] == Action::Trans {
+                                layers_cfg[layer_level * 2][0][i] = *action;
+                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
+                            }
+                        }
+                        both_anykey_used = true;
+                    } else {
+                        let input_key = input
+                            .atom(s.vars())
+                            .and_then(str_to_oscode)
+                            .ok_or_else(|| anyhow_expr!(input, "input must be a key name"))?;
+                        mapped_keys.insert(input_key);
+                        if !layer_mapped_keys.insert(input_key) {
+                            bail_expr!(input, "input key must not be repeated within a layer")
+                        }
+                        layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
+                        layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                    }
                 }
                 let rem = triplets.remainder();
                 match rem.len() {

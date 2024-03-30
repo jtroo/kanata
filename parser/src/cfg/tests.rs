@@ -1256,6 +1256,25 @@ yen 314
 ¥   315
 new 316
 )
+(deflocalkeys-winiov2
++   300
+[   301
+]   302
+{   303
+}   304
+/   305
+;   306
+`   307
+=   308
+-   309
+'   310
+,   311
+.   312
+\   313
+yen 314
+¥   315
+new 316
+)
 (deflocalkeys-wintercept
 +   300
 [   301
@@ -2004,7 +2023,7 @@ fn parse_template_7() {
 }
 
 #[test]
-fn test_new_layer_type() {
+fn test_deflayermap() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -2012,7 +2031,7 @@ fn test_new_layer_type() {
 
     let source = r#"
 (defsrc a b l)
-(deflayer-custom-map (blah)
+(deflayermap (blah)
   d      ->  (macro a b c)
   e maps-to  e
   f       :  0

@@ -58,17 +58,26 @@ jobs:
         shared-key: "persist-cross-job"
         workspaces: ./
     - run: rustup component add clippy
+
     - name: Run tests no features
       run: cargo test --all --no-default-features
     - name: Run clippy no features
       run: cargo clippy --all --no-default-features -- -D warnings
+
     - name: Run tests default features
       run: cargo test --all
     - name: Run clippy default features
       run: cargo clippy --all -- -D warnings
+
+    - name: Run tests winIOv2
+      run: cargo test --all --features=cmd,win_llhook_read_scancodes,win_sendinput_send_scancodes
+    - name: Run clippy all winIOv2
+      run: cargo clippy --all --features=cmd,win_llhook_read_scancodes,win_sendinput_send_scancodes -- -D warnings
+
     - name: Run tests all features
       run: cargo test --all --features=cmd,interception_driver,win_sendinput_send_scancodes
     - name: Run clippy all features
       run: cargo clippy --all --features=cmd,interception_driver,win_sendinput_send_scancodes -- -D warnings
-    - name: Run check simulated output
+
+    - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
