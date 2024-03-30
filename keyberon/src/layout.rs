@@ -1061,7 +1061,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     }
     pub fn new_with_trans_action_settings(
         src_keys: &'a [Action<T>; C],
-        layers: &'a [[[Action<T>; C]; R]; L],
+        layers: &'a [[[Action<T>; C]; R]],
         trans_resolution_behavior_v2: bool,
     ) -> Self {
         let mut new = Self::new(layers);
@@ -1159,7 +1159,13 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                     | Action::Layer(_)
                             ) {
                                 for other_coord in pq.iter().copied() {
-                                    self.do_action(ac, other_coord, delay, false);
+                                    self.do_action(
+                                        ac,
+                                        other_coord,
+                                        delay,
+                                        false,
+                                        &mut layer_stack.clone().into_iter(),
+                                    );
                                 }
                             }
                         }
@@ -3956,7 +3962,7 @@ mod test {
     // https://github.com/jtroo/kanata/issues/738
     #[test]
     fn test_trans_in_stacked_held_layers() {
-        static LAYERS: Layers<4, 1, 4> = [
+        static LAYERS: Layers<4, 1> = &[
             [[Layer(1), NoOp, NoOp, k(A)]],
             [[NoOp, Layer(2), NoOp, k(B)]],
             [[NoOp, NoOp, Layer(3), Trans]],
@@ -3989,7 +3995,7 @@ mod test {
     #[test]
     fn test_trans_in_action_on_first_layer() {
         static DEFSRC_LAYER: [Action; 2] = [NoOp, k(X)];
-        static LAYERS: Layers<2, 1, 2> = [
+        static LAYERS: Layers<2, 1> = &[
             [[Layer(1), Trans]],
             [[NoOp, MultipleActions(&[Trans].as_slice())]],
         ];
@@ -4008,7 +4014,7 @@ mod test {
 
     #[test]
     fn test_trans_in_taphold_tap() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4055,7 +4061,7 @@ mod test {
 
     #[test]
     fn test_trans_in_taphold_hold() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4095,7 +4101,7 @@ mod test {
 
     #[test]
     fn test_trans_in_tapdance_lazy() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4134,7 +4140,7 @@ mod test {
 
     #[test]
     fn test_trans_in_tapdance_eager() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4167,7 +4173,7 @@ mod test {
 
     #[test]
     fn test_trans_in_multi() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[NoOp, NoOp, MultipleActions(&[Trans, k(X)].as_slice())]],
@@ -4197,7 +4203,7 @@ mod test {
             chords: &[(1, &Trans), (2, &Trans), (3, &KeyCode(X))],
             timeout: 100,
         };
-        static LAYERS: Layers<4, 1, 3> = [
+        static LAYERS: Layers<4, 1> = &[
             [[Layer(1), NoOp, k(A), k(B)]],
             [[NoOp, Layer(2), k(C), k(D)]],
             [[NoOp, NoOp, Chords(&GROUP), Chords(&GROUP)]],
@@ -4224,7 +4230,7 @@ mod test {
 
     #[test]
     fn test_trans_in_fork() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4255,7 +4261,7 @@ mod test {
 
     #[test]
     fn test_trans_in_switch() {
-        static LAYERS: Layers<3, 1, 3> = [
+        static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[
@@ -4289,7 +4295,7 @@ mod test {
 
     #[test]
     fn test_multiple_taphold_trans() {
-        static LAYERS: Layers<4, 1, 4> = [
+        static LAYERS: Layers<4, 1> = &[
             [[Layer(1), NoOp, NoOp, k(A)]],
             [[
                 NoOp,
