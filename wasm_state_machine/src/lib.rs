@@ -1,6 +1,6 @@
-use kanata_state_machine::{*, oskbd::*};
-use wasm_bindgen::prelude::*;
 use anyhow::{anyhow, bail, Result};
+use kanata_state_machine::{oskbd::*, *};
+use wasm_bindgen::prelude::*;
 
 use std::sync::Once;
 
@@ -17,7 +17,6 @@ pub fn init() {
 #[wasm_bindgen]
 pub fn check_config(cfg: &str) -> JsValue {
     let res = Kanata::new_from_str(cfg);
-    log::info!("hi out of kanata");
     JsValue::from_str(&match res {
         Ok(_) => "Config is good!".to_owned(),
         Err(e) => format!("{e:?}"),
@@ -25,7 +24,7 @@ pub fn check_config(cfg: &str) -> JsValue {
 }
 
 #[wasm_bindgen]
-pub fn simulate(cfg: &str, sim: &str)-> JsValue {
+pub fn simulate(cfg: &str, sim: &str) -> JsValue {
     JsValue::from_str(&match simulate_impl(cfg, sim) {
         Ok(s) => s,
         Err(e) => format!("Config or simulation input has error.\n\n{e:?}"),
@@ -39,12 +38,13 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
             match pair.split_once(':') {
                 Some((kind, val)) => match kind {
                     "tick" | "🕐" | "t" => {
-                        let tick = str::parse::<u128>(val)?;
+                        let tick = str::parse::<u128>(val)
+                            .map_err(|e| anyhow!("line: {l}\ninvalid number in {kind}:{val}\n{e}"))?;
                         k.tick_ms(tick, &None)?;
                     }
                     "press" | "↓" | "d" | "down" => {
                         let key_code =
-                            str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Press,
@@ -52,7 +52,7 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                     }
                     "release" | "↑" | "u" | "up" => {
                         let key_code =
-                            str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                        str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Release,
@@ -60,15 +60,15 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                     }
                     "repeat" | "⟳" | "r" => {
                         let key_code =
-                            str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                        str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Repeat,
                         })?;
                     }
-                    _ => bail!("invalid pair prefix: {kind}"),
+                    _ => bail!("line: {l}\ninvalid action: {kind}\nvalid actions:\nu | up\nd | down\nt | tick"),
                 },
-                None => bail!("invalid pair: {l}"),
+                None => bail!("line: {l}\ninvalid item: {pair}\nexpected format: action:item"),
             }
         }
     }
