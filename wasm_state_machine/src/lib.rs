@@ -20,7 +20,7 @@ pub fn check_config(cfg: &str) -> JsValue {
     log::info!("hi out of kanata");
     JsValue::from_str(&match res {
         Ok(_) => "Config is good!".to_owned(),
-        Err(e) => format!("Config has error.\n\n{e:?}"),
+        Err(e) => format!("{e:?}"),
     })
 }
 
