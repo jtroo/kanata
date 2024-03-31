@@ -1,0 +1,18 @@
+[workspace]
+members = ["."]
+
+[package]
+name = "kanata-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = [ "cdylib", "rlib" ]
+
+[dependencies]
+wasm-bindgen = "0.2.92"
+kanata = { path = ".." , default_features = false, features = [ "simulated_output", "wasm" ] }
+anyhow = "1.0.81"
+log = "0.4.21"
+wasm-logger = "0.2.0"
+console_error_panic_hook = "0.1.7"

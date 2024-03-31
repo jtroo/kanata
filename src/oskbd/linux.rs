@@ -322,8 +322,6 @@ pub struct KbdOut {
     pub unicode_u_code: Cell<OsCode>,
 }
 
-pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
-
 #[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
     pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {

@@ -15,8 +15,6 @@ use karabiner_driverkit::*;
 use std::convert::TryFrom;
 use std::io;
 
-pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
-
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
     pub value: u64,

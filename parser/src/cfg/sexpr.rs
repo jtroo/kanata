@@ -505,7 +505,7 @@ use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
-#[error("Error in configuration file syntax")]
+#[error("Error in configuration syntax")]
 #[diagnostic()]
 pub struct LexError {
     // Snippets and highlights can be included in the diagnostic!
