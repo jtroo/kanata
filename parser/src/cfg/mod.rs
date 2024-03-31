@@ -270,7 +270,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         Layout::new_with_trans_action_settings(
             s.a.sref(s.defsrc_layer),
             icfg.klayers,
-            icfg.options.legacy_trans_action,
+            icfg.options.trans_resolution_behavior_v2,
         ),
         s.a,
     );

@@ -22,7 +22,7 @@ pub struct CfgOptions {
     pub dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour,
     pub concurrent_tap_hold: bool,
     pub rapid_event_delay: u16,
-    pub legacy_trans_action: bool,
+    pub trans_resolution_behavior_v2: bool,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -70,7 +70,7 @@ impl Default for CfgOptions {
             dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
             rapid_event_delay: 5,
-            legacy_trans_action: false,
+            trans_resolution_behavior_v2: true,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -422,9 +422,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "transparent-key-resolution" => {
                         let v = sexpr_to_str_or_err(val, label)?;
-                        cfg.legacy_trans_action = match v {
-                            "to-base-layer" => true,
-                            "layer-stack" => false,
+                        cfg.trans_resolution_behavior_v2 = match v {
+                            "to-base-layer" => false,
+                            "layer-stack" => true,
                             _ => bail_expr!(
                                 val,
                                 "{label} got {}. It accepts: 'to-base-layer' or 'layer-stack'",
