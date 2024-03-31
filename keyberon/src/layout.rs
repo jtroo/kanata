@@ -1947,7 +1947,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 .chain([self.default_layer])
                 .collect()
         } else {
-            vec![self.default_layer]
+            vec![self.current_layer(), self.default_layer]
         }
     }
 
@@ -4357,5 +4357,43 @@ mod test {
         layout.event(Release(0, 3));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[A], layout.keycodes());
+    }
+
+    #[test]
+    fn test_old_trans_behavior() {
+        static LAYERS: Layers<3, 1> = &[
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
+            [[NoOp, NoOp, Trans]],
+        ];
+        let mut layout = Layout::new(&LAYERS);
+        layout.trans_resolution_behavior_v2 = false;
+
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes()); // new behavior would resolve to 'B' here.
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
     }
 }
