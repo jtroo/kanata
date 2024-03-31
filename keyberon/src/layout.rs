@@ -870,9 +870,11 @@ type ReleasedOneShotKeys = Vec<KCoord, ONE_SHOT_MAX_ACTIVE>;
 pub const MAX_LAYERS: usize = 60000;
 
 // Use heapless Vec for perf - avoid pointer indirections.
-// Use u16 for more efficient cache. 16*u16 = 4*u64 = 32 bytes.
+// Use u16 for more efficient cache. 12*u16 = 3*u64 = 24 bytes.
+// Then there is a usize for the length, totaling 32 bytes.
 // Cache line is typically 64 bytes, so this takes half a cache line.
-pub const MAX_ACTIVE_LAYERS: usize = 16;
+// Above all assumes x86-64.
+pub const MAX_ACTIVE_LAYERS: usize = 12;
 type LayerStack = Vec<u16, MAX_ACTIVE_LAYERS>;
 
 /// Contains the state of one shot keys that are currently active.
