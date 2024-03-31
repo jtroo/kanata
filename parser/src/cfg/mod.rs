@@ -2652,6 +2652,9 @@ fn parse_layers(
     // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
     // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers(s.layer_exprs.len());
+    if s.layer_exprs.len() > MAX_LAYERS / 2 {
+        bail!("Maximum number of layers ({}) exceeded.", MAX_LAYERS / 2);
+    }
     let mut defsrc_layer = s.defsrc_layer;
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         match layer {

@@ -443,7 +443,7 @@ pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     tap: &'a Action<'a, T>,
     timeout_action: &'a Action<'a, T>,
     config: WaitingConfig<'a, T>,
-    layer_stack: std::vec::Vec<usize>,
+    layer_stack: LayerStack,
     prev_queue_len: QueueLen,
 }
 
@@ -865,6 +865,16 @@ pub struct SequenceState<'a, T: 'a> {
 
 type ReleasedOneShotKeys = Vec<KCoord, ONE_SHOT_MAX_ACTIVE>;
 
+// Using a u16 for indices instead of usize.
+// Need to check against this value in code that creates layers.
+pub const MAX_LAYERS: usize = 60000;
+
+// Use heapless Vec for perf - avoid pointer indirections.
+// Use u16 for more efficient cache. 16*u16 = 4*u64 = 32 bytes.
+// Cache line is typically 64 bytes, so this takes half a cache line.
+pub const MAX_ACTIVE_LAYERS: usize = 16;
+type LayerStack = Vec<u16, MAX_ACTIVE_LAYERS>;
+
 /// Contains the state of one shot keys that are currently active.
 pub struct OneShotState {
     /// KCoordinates of one shot keys that are active
@@ -1029,6 +1039,7 @@ impl LastPressTracker {
 impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<'a, C, R, T> {
     /// Creates a new `Layout` object.
     pub fn new(layers: &'a [[[Action<T>; C]; R]]) -> Self {
+        assert!(layers.len() < MAX_LAYERS);
         Self {
             src_keys: &[Action::NoOp; C],
             layers,
@@ -1502,11 +1513,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
     }
     /// Resolve coordinate to first non-Trans actions.
-    /// Trans on base layer, resolves to key from defsrc.  
+    /// Trans on base layer, resolves to key from defsrc.
     fn resolve_coord(
         &self,
         coord: KCoord,
-        layer_stack: &mut (impl Iterator<Item = usize> + Clone),
+        layer_stack: &mut (impl Iterator<Item = u16> + Clone),
     ) -> &'a Action<'a, T> {
         use crate::action::Action::*;
         let x = coord.0 as usize;
@@ -1514,8 +1525,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         assert!(x <= self.layers[0].len());
         assert!(y <= self.layers[0][0].len());
         for layer in layer_stack {
-            assert!(layer <= self.layers.len());
-            let action = &self.layers[layer][x][y];
+            assert!(usize::from(layer) <= self.layers.len());
+            let action = &self.layers[usize::from(layer)][x][y];
             match action {
                 Trans => continue,
                 action => return action,
@@ -1533,7 +1544,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         coord: KCoord,
         delay: u16,
         is_oneshot: bool,
-        layer_stack: &mut (impl Iterator<Item = usize> + Clone), // used to resolve Trans action
+        layer_stack: &mut (impl Iterator<Item = u16> + Clone), // used to resolve Trans action
     ) -> CustomEvent<'a, T> {
         let mut action = action;
         if let Trans = action {
@@ -1684,7 +1695,6 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                 }
                             }
                         };
-                        // layer_stack.next();
                         self.do_action(td.actions[0], coord, delay, false, layer_stack);
                     }
                 }
@@ -1936,18 +1946,24 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             .unwrap_or(self.default_layer)
     }
 
-    pub fn active_held_layers(&self) -> impl Iterator<Item = usize> + Clone + '_ {
-        self.states.iter().filter_map(State::get_layer).rev()
+    pub fn active_held_layers(&self) -> impl Iterator<Item = u16> + Clone + '_ {
+        self.states
+            .iter()
+            .filter_map(|s| State::get_layer(s).map(|l| l as u16))
+            .rev()
     }
 
     /// Returns a list indices of layers that should be used for [`Action::Trans`] resolution.
-    pub fn trans_resolution_layer_order(&self) -> std::vec::Vec<usize> {
+    pub fn trans_resolution_layer_order(&self) -> LayerStack {
         if self.trans_resolution_behavior_v2 {
             self.active_held_layers()
-                .chain([self.default_layer])
+                .chain([self.default_layer as u16])
                 .collect()
         } else {
-            vec![self.current_layer(), self.default_layer]
+            let mut v = Vec::new();
+            let _ = v.push(self.current_layer() as u16);
+            let _ = v.push(self.default_layer as u16);
+            v
         }
     }
 

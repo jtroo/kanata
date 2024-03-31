@@ -1465,7 +1465,7 @@ impl Kanata {
         let mut held_layer_active = false;
         for layer in active_held_layers {
             held_layer_active = true;
-            if let Some(outputs_for_key) = self.key_outputs[layer].get(&event.code) {
+            if let Some(outputs_for_key) = self.key_outputs[usize::from(layer)].get(&event.code) {
                 log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
                 for osc in outputs_for_key.iter().rev().copied() {
                     let kc = osc.into();
