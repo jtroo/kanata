@@ -463,6 +463,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanata-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "console_error_panic_hook",
+ "kanata",
+ "log",
+ "wasm-bindgen",
+ "wasm-logger",
+]
+
+[[package]]
 name = "karabiner-driverkit"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1131,18 +1143,6 @@ dependencies = [
  "log",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "wasm_state_machine"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "console_error_panic_hook",
- "kanata",
- "log",
- "wasm-bindgen",
- "wasm-logger",
 ]
 
 [[package]]

@@ -253,7 +253,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
     let icfg = parse_cfg_raw_string(
         cfg_text,
         &mut s,
-        &PathBuf::from("config text"),
+        &PathBuf::from("configuration"),
         &mut FileContentProvider {
             get_file_content_fn: &mut |_| Err("include is not supported".into()),
         },
