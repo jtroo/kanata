@@ -33,6 +33,7 @@ pub fn simulate(cfg: &str, sim: &str) -> JsValue {
 
 pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
     let mut k = Kanata::new_from_str(cfg)?;
+    let mut accumulated_ticks = 0;
     for l in sim.lines() {
         for pair in l.split_whitespace() {
             match pair.split_once(':') {
@@ -40,7 +41,14 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                     "tick" | "🕐" | "t" => {
                         let tick = str::parse::<u128>(val)
                             .map_err(|e| anyhow!("line: {l}\ninvalid number in {kind}:{val}\n{e}"))?;
+                        if tick > 60000 {
+                            bail!("line: {l}\nmax tick is 60000: {kind}:{val}")
+                        }
                         k.tick_ms(tick, &None)?;
+                        accumulated_ticks += tick;
+                        if accumulated_ticks > 3600000 {
+                            bail!("You are trying to simulate over an hour's worth of time.\nAborting to avoid wasting your CPU cycles.")
+                        }
                     }
                     "press" | "↓" | "d" | "down" => {
                         let key_code =
