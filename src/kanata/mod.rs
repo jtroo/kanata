@@ -44,6 +44,9 @@ mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 
+#[cfg(target_os = "unknown")]
+mod unknown;
+
 mod caps_word;
 pub use caps_word::*;
 
@@ -107,7 +110,7 @@ pub struct Kanata {
     pub override_states: OverrideStates,
     /// Time of the last tick to know how many tick iterations to run, to achieve a 1ms tick
     /// interval more closely.
-    last_tick: time::Instant,
+    last_tick: instant::Instant,
     /// Tracks the non-whole-millisecond gaps between ticks to know when to do another tick
     /// iteration without sleeping, to achive a 1ms tick interval more closely.
     time_remainder: u128,
@@ -297,7 +300,7 @@ impl Kanata {
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_state: None,
             sequences: cfg.sequences,
-            last_tick: time::Instant::now(),
+            last_tick: instant::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
@@ -346,6 +349,91 @@ impl Kanata {
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
     pub fn new_arc(args: &ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
+    }
+
+    pub fn new_from_str(cfg: &str) -> Result<Self> {
+        let cfg = match cfg::new_from_str(cfg) {
+            Ok(c) => c,
+            Err(e) => {
+                bail!("{e:?}");
+            }
+        };
+
+        let kbd_out = match KbdOut::new(
+            #[cfg(target_os = "linux")]
+            &None,
+        ) {
+            Ok(kbd_out) => kbd_out,
+            Err(err) => {
+                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
+                bail!(err)
+            }
+        };
+
+        *MAPPED_KEYS.lock() = cfg.mapped_keys;
+
+        Ok(Self {
+            kbd_out,
+            cfg_paths: vec!["config string".into()],
+            cur_cfg_idx: 0,
+            key_outputs: cfg.key_outputs,
+            layout: cfg.layout,
+            layer_info: cfg.layer_info,
+            cur_keys: Vec::new(),
+            prev_keys: Vec::new(),
+            prev_layer: 0,
+            scroll_state: None,
+            hscroll_state: None,
+            move_mouse_state_vertical: None,
+            move_mouse_state_horizontal: None,
+            move_mouse_speed_modifiers: Vec::new(),
+            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_state: None,
+            sequences: cfg.sequences,
+            last_tick: instant::Instant::now(),
+            time_remainder: 0,
+            live_reload_requested: false,
+            overrides: cfg.overrides,
+            override_states: OverrideStates::new(),
+            #[cfg(target_os = "macos")]
+            include_names: cfg.options.macos_dev_names_include,
+            #[cfg(target_os = "linux")]
+            kbd_in_paths: cfg.options.linux_dev,
+            #[cfg(target_os = "linux")]
+            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            #[cfg(target_os = "linux")]
+            include_names: cfg.options.linux_dev_names_include,
+            #[cfg(target_os = "linux")]
+            exclude_names: cfg.options.linux_dev_names_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            dynamic_macro_replay_state: None,
+            dynamic_macro_record_state: None,
+            dynamic_macros: Default::default(),
+            log_layer_changes: cfg.options.log_layer_changes,
+            caps_word: None,
+            movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
+            dynamic_macro_replay_behaviour: ReplayBehaviour {
+                delay: cfg.options.dynamic_macro_replay_delay_behaviour,
+            },
+            #[cfg(target_os = "linux")]
+            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            waiting_for_idle: HashSet::default(),
+            ticks_since_idle: 0,
+            movemouse_buffer: None,
+            unmodded_keys: vec![],
+            unshifted_keys: vec![],
+            last_pressed_key: KeyCode::No,
+            #[cfg(feature = "tcp_server")]
+            virtual_keys: cfg.fake_keys,
+            switch_max_key_timing: cfg.switch_max_key_timing,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_port: None,
+        })
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
@@ -458,7 +546,7 @@ impl Kanata {
     /// Returns the number of ticks that elapsed.
     fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
-        let now = time::Instant::now();
+        let now = instant::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
         let ns_elapsed_with_rem = ns_elapsed + self.time_remainder;
         let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
@@ -476,7 +564,7 @@ impl Kanata {
             // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
             // ticks in 1ms when running expensive operations, this just avoids having tens to
             // thousands of ticks all happening as soon as the expensive operations end.
-            _ => time::Instant::now(),
+            _ => instant::Instant::now(),
         };
 
         self.check_handle_layer_change(tx);
@@ -1230,7 +1318,7 @@ impl Kanata {
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
                         }
                         CustomAction::SequenceCancel => {
                             if self.sequence_state.is_some() {
@@ -1394,7 +1482,7 @@ impl Kanata {
                         }
                         CustomAction::Delay(delay) => {
                             log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(std::time::Duration::from_millis((*delay).into()));
+                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
                             pbtn
                         }
                         CustomAction::FakeKeyOnRelease { coord, action } => {
@@ -1635,7 +1723,7 @@ impl Kanata {
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut idle_clear_happened = false;
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-            let mut last_input_time = time::Instant::now();
+            let mut last_input_time = instant::Instant::now();
 
             let err = loop {
                 let can_block = {
@@ -1668,7 +1756,7 @@ impl Kanata {
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
-                            let now = time::Instant::now()
+                            let now = instant::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
                                 .expect("subtract 1ms from current time");
 
@@ -1705,7 +1793,7 @@ impl Kanata {
                             k.last_tick = now;
 
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -1731,7 +1819,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1754,7 +1842,7 @@ impl Kanata {
                     match rx.try_recv() {
                         Ok(kev) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -1764,7 +1852,7 @@ impl Kanata {
                                 target_os = "windows"
                             ))]
                             {
-                                last_input_time = std::time::Instant::now();
+                                last_input_time = instant::Instant::now();
                             }
                             #[cfg(all(
                                 not(feature = "interception_driver"),
@@ -1780,7 +1868,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1795,7 +1883,7 @@ impl Kanata {
                         }
                         Err(TryRecvError::Empty) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = std::time::Instant::now();
+                            let start = instant::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -1827,7 +1915,7 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (std::time::Instant::now() - (last_input_time))
+                                if (instant::Instant::now() - (last_input_time))
                                     > time::Duration::from_secs(LLHOOK_IDLE_TIME_CLEAR_INPUTS)
                                     && !idle_clear_happened
                                 {

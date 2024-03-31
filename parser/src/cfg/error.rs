@@ -65,7 +65,7 @@ impl From<ParseError> for miette::Error {
 }
 
 #[derive(Error, Debug, Diagnostic, Clone)]
-#[error("Error in configuration file")]
+#[error("Error in configuration")]
 #[diagnostic()]
 struct CfgError {
     // Snippets and highlights can be included in the diagnostic!

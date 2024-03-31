@@ -20,6 +20,8 @@ mod simulated;
 #[cfg(feature = "simulated_output")]
 pub use simulated::*;
 
+pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
+
 // ------------------ KeyValue --------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
