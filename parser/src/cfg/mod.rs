@@ -261,7 +261,14 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
     )?;
     let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides);
     let switch_max_key_timing = s.switch_max_key_timing.get();
-    let mut layout = KanataLayout::new(Layout::new(icfg.klayers), s.a);
+    let mut layout = KanataLayout::new(
+        Layout::new_with_trans_action_settings(
+            s.a.sref(s.defsrc_layer),
+            icfg.klayers,
+            icfg.options.trans_resolution_behavior_v2,
+        ),
+        s.a,
+    );
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
     let mut fake_keys: HashMap<String, usize> = s

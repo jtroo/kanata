@@ -1040,7 +1040,7 @@ impl LastPressTracker {
 
 impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<'a, C, R, T> {
     /// Creates a new `Layout` object.
-    pub fn new(layers: &'a [[[Action<T>; C]; R]]) -> Self {
+    fn new(layers: &'a [[[Action<T>; C]; R]]) -> Self {
         assert!(layers.len() < MAX_LAYERS);
         Self {
             src_keys: &[Action::NoOp; C],
