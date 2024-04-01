@@ -47,6 +47,7 @@ fn span_works_with_unicode_characters() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect_err("should be an error because @😊 is not defined")
     .span
@@ -85,6 +86,7 @@ fn test_multiline_error_span() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect_err("should error on unknown top level block")
     .span
@@ -115,6 +117,7 @@ fn test_span_of_an_unterminated_block_comment_error() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect_err("should be an unterminated comment error")
     .span
@@ -207,6 +210,7 @@ fn parse_action_vars() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .unwrap();
 }
@@ -232,6 +236,7 @@ fn parse_delegate_to_default_layer_yes() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .unwrap();
     assert_eq!(
@@ -261,6 +266,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .unwrap();
     assert_eq!(
@@ -290,6 +296,7 @@ fn parse_delegate_to_default_layer_no() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .unwrap();
     assert_eq!(
@@ -696,6 +703,7 @@ fn parse_bad_submacro() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -727,6 +735,7 @@ fn parse_bad_submacro_2() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -760,6 +769,7 @@ fn parse_nested_macro() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -809,6 +819,7 @@ fn parse_switch() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .unwrap();
     let (op1, op2) = OpCode::new_active_input((FAKE_KEY_ROW, 0));
@@ -945,6 +956,7 @@ fn parse_switch_exceed_depth() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -993,6 +1005,7 @@ fn parse_virtualkeys() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1073,6 +1086,7 @@ fn parse_on_idle_fakekey() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1115,6 +1129,7 @@ fn parse_on_idle_fakekey_errors() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // comment out to see what this looks like when running test
@@ -1139,6 +1154,7 @@ fn parse_on_idle_fakekey_errors() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -1163,6 +1179,7 @@ fn parse_on_idle_fakekey_errors() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -1187,6 +1204,7 @@ fn parse_on_idle_fakekey_errors() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|_e| {
         // uncomment to see what this looks like when running test
@@ -1344,6 +1362,7 @@ new 316
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
 }
@@ -1367,6 +1386,7 @@ fn use_default_overridable_mappings() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
 }
@@ -1393,6 +1413,7 @@ fn list_action_not_in_list_error_message_is_good() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         assert_eq!(
@@ -1526,6 +1547,7 @@ fn parse_all_defcfg() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
 }
@@ -1555,6 +1577,7 @@ fn parse_unmod() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
 }
@@ -1578,6 +1601,7 @@ fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect_err("should err");
     assert!(err
@@ -1604,6 +1628,7 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect_err("should err");
     assert!(err
@@ -1643,6 +1668,7 @@ fn parse_cmd() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
 }
@@ -1681,6 +1707,7 @@ fn parse_defvar_concat() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .expect("succeeds");
     match s.vars().unwrap().get("x").unwrap() {
@@ -1758,6 +1785,7 @@ fn parse_template_1() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1812,6 +1840,7 @@ fn parse_template_2() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1859,6 +1888,7 @@ fn parse_template_3() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1898,6 +1928,7 @@ fn parse_template_4() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1937,6 +1968,7 @@ fn parse_template_5() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -1976,6 +2008,7 @@ fn parse_template_6() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -2015,6 +2048,7 @@ fn parse_template_7() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
@@ -2050,9 +2084,78 @@ fn test_deflayermap() {
             get_file_content_fn: &mut |_| unimplemented!(),
         },
         DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
     )
     .map_err(|e| {
         eprintln!("{:?}", miette::Error::from(e));
     })
     .expect("parses");
+}
+
+#[test]
+fn test_defaliasenvcond() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let source = r#"
+(defsrc spc)
+(deflayer base _)
+(defaliasenvcond (ENV_TEST 1) a b)
+"#;
+
+    let env_var_err = "env vars not implemented";
+    let mut s = ParsedState::default();
+    let parse_err = parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err(env_var_err.into()),
+    )
+    .expect_err("should err");
+    assert_eq!(parse_err.msg, env_var_err);
+
+    // now test with env vars implemented
+
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Ok(vec![("ENV_TEST".into(), "1".into())]),
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+        ""
+    })
+    .expect("parses");
+    assert!(s.aliases["a"].key_codes().eq(vec![KeyCode::B]));
+
+    // test env var set but to a different value
+
+    let mut s = ParsedState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Ok(vec![("ENV_TEST".into(), "asdf".into())]),
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+        ""
+    })
+    .expect("parses");
+    assert!(s.aliases.get("a").is_none());
 }
