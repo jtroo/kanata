@@ -4,8 +4,6 @@ use clap::Parser;
 use kanata_state_machine::{oskbd::*, *};
 use simplelog::*;
 
-use crate::SocketAddrWrapper;
-
 use std::path::PathBuf;
 
 pub fn default_sim() -> Vec<PathBuf> {
