@@ -51,7 +51,7 @@ kanata.kbd in the current working directory and
     /// listened on.
     #[cfg(feature = "tcp_server")]
     #[arg(short, long, verbatim_doc_comment)]
-    port: Option<i32>,
+    port: Option<PortArg>,
 
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.
@@ -194,7 +194,13 @@ fn main_impl() -> Result<()> {
             None
         }
     } {
-        let mut server = TcpServer::new(port, tx.clone());
+        let address = match port {
+            PortArg::Number(port) => {
+                format!("127.0.0.1:{}", port)
+            }
+            PortArg::Address(address) => address,
+        };
+        let mut server = TcpServer::new(address, tx.clone());
         server.start(kanata_arc.clone());
         let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
         (Some(server), Some(ntx), Some(nrx))

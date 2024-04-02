@@ -37,7 +37,7 @@ fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
 
 #[cfg(feature = "tcp_server")]
 pub struct TcpServer {
-    pub port: i32,
+    pub address: std::net::SocketAddr,
     pub connections: Connections,
     pub wakeup_channel: Sender<KeyEvent>,
 }
@@ -49,16 +49,27 @@ pub struct TcpServer {
 
 impl TcpServer {
     #[cfg(feature = "tcp_server")]
-    pub fn new(port: i32, wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(address: String, wakeup_channel: Sender<KeyEvent>) -> Self {
+        use std::net::ToSocketAddrs;
+
         Self {
-            port,
+            address: address
+                .to_socket_addrs()
+                .unwrap_or_else(|_| panic!("Failed to resolve the specified address: {}", address))
+                .next()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Specified address {} resolved to no valid endpoints",
+                        address
+                    )
+                }),
             connections: Arc::new(Mutex::new(HashMap::default())),
             wakeup_channel,
         }
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_port: i32, _wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(_port: u16, _wakeup_channel: Sender<KeyEvent>) -> Self {
         Self { connections: () }
     }
 
@@ -70,8 +81,7 @@ impl TcpServer {
 
         use crate::kanata::handle_fakekey_action;
 
-        let listener =
-            TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
+        let listener = TcpListener::bind(self.address).expect("TCP server starts");
 
         let connections = self.connections.clone();
         let wakeup_channel = self.wakeup_channel.clone();

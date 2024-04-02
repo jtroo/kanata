@@ -16,6 +16,8 @@ use std::time;
 use crate::oskbd::{KeyEvent, *};
 #[cfg(feature = "tcp_server")]
 use crate::tcp_server::simple_sexpr_to_json_array;
+#[cfg(feature = "tcp_server")]
+use crate::PortArg;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
 use kanata_parser::cfg::*;
@@ -176,7 +178,7 @@ pub struct Kanata {
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
-    tcp_server_port: Option<i32>,
+    tcp_server_port: Option<PortArg>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -342,7 +344,7 @@ impl Kanata {
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
-            tcp_server_port: args.port,
+            tcp_server_port: args.port.clone(),
         })
     }
 
