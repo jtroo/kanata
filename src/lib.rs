@@ -1,5 +1,6 @@
 use anyhow::Error;
 use anyhow::Result;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -15,7 +16,7 @@ type CfgPath = PathBuf;
 pub struct ValidatedArgs {
     pub paths: Vec<CfgPath>,
     #[cfg(feature = "tcp_server")]
-    pub port: Option<PortArg>,
+    pub tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
@@ -39,25 +40,34 @@ pub fn default_cfg() -> Vec<PathBuf> {
     cfgs
 }
 
-#[derive(Clone, Debug)]
-pub enum PortArg {
-    Number(u16),
-    Address(String),
-}
+#[derive(Debug, Clone)]
+pub struct SocketAddrWrapper(SocketAddr);
 
-impl FromStr for PortArg {
+impl FromStr for SocketAddrWrapper {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(num) = s.parse::<u16>() {
-            Ok(PortArg::Number(num))
-        } else if is_address_format(s) {
-            Ok(PortArg::Address(s.to_string()))
-        } else {
-            Err(anyhow::Error::msg(
-                "specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081",
-            ))
+        let mut address = s.to_string();
+        if let Ok(port) = s.parse::<u16>() {
+            address = format!("127.0.0.1:{}", port);
+        } else if !is_address_format(s) {
+            return Err(anyhow::Error::msg(
+                "please specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081",
+            ));
         }
+        address
+            .parse::<SocketAddr>()
+            .map(SocketAddrWrapper)
+            .map_err(|e| e.into())
+    }
+}
+
+impl SocketAddrWrapper {
+    pub fn into_inner(self) -> SocketAddr {
+        self.0
+    }
+    pub fn get_ref(&self) -> &SocketAddr {
+        &self.0
     }
 }
 
@@ -66,7 +76,6 @@ fn is_address_format(addr: &str) -> bool {
         if host.is_empty() {
             return false;
         }
-
         if let Ok(port_num) = port.parse::<u16>() {
             return port_num > 0;
         }

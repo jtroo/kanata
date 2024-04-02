@@ -132,7 +132,7 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
         ValidatedArgs {
             paths: cfg_paths,
             #[cfg(feature = "tcp_server")]
-            port: None,
+            tcp_server_address: None,
             #[cfg(target_os = "linux")]
             symlink_path: None,
             nodelay: true,

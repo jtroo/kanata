@@ -4,6 +4,7 @@ use crate::Kanata;
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
 use parking_lot::Mutex;
+use std::net::SocketAddr;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
@@ -37,7 +38,7 @@ fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
 
 #[cfg(feature = "tcp_server")]
 pub struct TcpServer {
-    pub address: std::net::SocketAddr,
+    pub address: SocketAddr,
     pub connections: Connections,
     pub wakeup_channel: Sender<KeyEvent>,
 }
@@ -49,27 +50,16 @@ pub struct TcpServer {
 
 impl TcpServer {
     #[cfg(feature = "tcp_server")]
-    pub fn new(address: String, wakeup_channel: Sender<KeyEvent>) -> Self {
-        use std::net::ToSocketAddrs;
-
+    pub fn new(address: SocketAddr, wakeup_channel: Sender<KeyEvent>) -> Self {
         Self {
-            address: address
-                .to_socket_addrs()
-                .unwrap_or_else(|_| panic!("Failed to resolve the specified address: {}", address))
-                .next()
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Specified address {} resolved to no valid endpoints",
-                        address
-                    )
-                }),
+            address,
             connections: Arc::new(Mutex::new(HashMap::default())),
             wakeup_channel,
         }
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_address: String, _wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(_address: SocketAddr, _wakeup_channel: Sender<KeyEvent>) -> Self {
         Self { connections: () }
     }
 
