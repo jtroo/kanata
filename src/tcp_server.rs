@@ -69,7 +69,7 @@ impl TcpServer {
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_port: u16, _wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(address: String, _wakeup_channel: Sender<KeyEvent>) -> Self {
         Self { connections: () }
     }
 
