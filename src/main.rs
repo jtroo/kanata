@@ -195,7 +195,7 @@ fn main_impl() -> Result<()> {
         }
         #[cfg(not(feature = "tcp_server"))]
         {
-            None
+            None::<SocketAddrWrapper>
         }
     } {
         let mut server = TcpServer::new(address.into_inner(), tx.clone());
