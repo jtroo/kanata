@@ -635,6 +635,10 @@ impl Kanata {
         tick_record_state(&mut self.dynamic_macro_record_state);
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
+        #[cfg(feature = "simulated_output")]
+        {
+            self.kbd_out.tick();
+        }
         Ok(())
     }
 

@@ -322,17 +322,39 @@ use kanata_keyberon::key_code::KeyCode;
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 use std::fmt;
 
+pub struct Outputs {
+    pub events: Vec<String>,
+    ticks: u64,
+}
+
+impl Outputs {
+    fn new() -> Self {
+        Self {
+            events: vec![],
+            ticks: 0,
+        }
+    }
+
+    fn push(&mut self, event: impl AsRef<str>) {
+        if self.ticks > 0 {
+            self.events.push(format!("t:{}ms", self.ticks));
+        }
+        self.events.push(event.as_ref().to_string());
+        self.ticks = 0;
+    }
+}
+
 /// Handle for writing keys to the OS.
 pub struct KbdOut {
     pub log: LogFmt,
-    pub outputs: Vec<String>,
+    pub outputs: Outputs,
 }
 
 impl KbdOut {
     fn new_actual() -> Result<Self, io::Error> {
         Ok(Self {
             log: LogFmt::new(),
-            outputs: vec![],
+            outputs: Outputs::new(),
         })
     }
 
@@ -421,6 +443,9 @@ impl KbdOut {
         self.log.set_mouse(x, y);
         log::info!("out🖰:@{x},{y}");
         Ok(())
+    }
+    pub fn tick(&mut self) {
+        self.outputs.ticks += 1;
     }
 }
 

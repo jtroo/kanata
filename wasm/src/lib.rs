@@ -80,5 +80,10 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
             }
         }
     }
-    Ok(k.kbd_out.outputs.join("\n"))
+    Ok(k.kbd_out
+        .outputs
+        .events
+        .join("\n")
+        .replace('↓', "↓(press)")
+        .replace('↑', "↑(release)"))
 }
