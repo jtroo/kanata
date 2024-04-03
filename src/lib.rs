@@ -1,4 +1,7 @@
+use anyhow::{anyhow, Error, Result};
+use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub mod kanata;
 pub mod oskbd;
@@ -12,7 +15,7 @@ type CfgPath = PathBuf;
 pub struct ValidatedArgs {
     pub paths: Vec<CfgPath>,
     #[cfg(feature = "tcp_server")]
-    pub port: Option<i32>,
+    pub tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
@@ -34,4 +37,31 @@ pub fn default_cfg() -> Vec<PathBuf> {
     }
 
     cfgs
+}
+
+#[derive(Debug, Clone)]
+pub struct SocketAddrWrapper(SocketAddr);
+
+impl FromStr for SocketAddrWrapper {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut address = s.to_string();
+        if let Ok(port) = s.parse::<u16>() {
+            address = format!("127.0.0.1:{}", port);
+        }
+        address
+            .parse::<SocketAddr>()
+            .map(SocketAddrWrapper)
+            .map_err(|e| anyhow!("Please specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081.\n{e}"))
+    }
+}
+
+impl SocketAddrWrapper {
+    pub fn into_inner(self) -> SocketAddr {
+        self.0
+    }
+    pub fn get_ref(&self) -> &SocketAddr {
+        &self.0
+    }
 }

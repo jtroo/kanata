@@ -4,6 +4,7 @@ use crate::Kanata;
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
 use parking_lot::Mutex;
+use std::net::SocketAddr;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
@@ -37,7 +38,7 @@ fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
 
 #[cfg(feature = "tcp_server")]
 pub struct TcpServer {
-    pub port: i32,
+    pub address: SocketAddr,
     pub connections: Connections,
     pub wakeup_channel: Sender<KeyEvent>,
 }
@@ -49,16 +50,16 @@ pub struct TcpServer {
 
 impl TcpServer {
     #[cfg(feature = "tcp_server")]
-    pub fn new(port: i32, wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(address: SocketAddr, wakeup_channel: Sender<KeyEvent>) -> Self {
         Self {
-            port,
+            address,
             connections: Arc::new(Mutex::new(HashMap::default())),
             wakeup_channel,
         }
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_port: i32, _wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(_address: SocketAddr, _wakeup_channel: Sender<KeyEvent>) -> Self {
         Self { connections: () }
     }
 
@@ -70,8 +71,7 @@ impl TcpServer {
 
         use crate::kanata::handle_fakekey_action;
 
-        let listener =
-            TcpListener::bind(format!("0.0.0.0:{}", self.port)).expect("TCP server starts");
+        let listener = TcpListener::bind(self.address).expect("TCP server starts");
 
         let connections = self.connections.clone();
         let wakeup_channel = self.wakeup_channel.clone();

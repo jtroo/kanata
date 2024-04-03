@@ -47,12 +47,16 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
-    /// Port to run the optional TCP server on. If blank, no TCP port will be
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
     /// listened on.
     #[cfg(feature = "tcp_server")]
-    #[arg(short, long, verbatim_doc_comment)]
-    port: Option<i32>,
-
+    #[arg(
+        short = 'p',
+        long = "port",
+        value_name = "PORT or IP:PORT",
+        verbatim_doc_comment
+    )]
+    tcp_server_address: Option<SocketAddrWrapper>,
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.
     #[cfg(target_os = "linux")]
@@ -160,7 +164,7 @@ fn cli_init() -> Result<ValidatedArgs> {
     Ok(ValidatedArgs {
         paths: cfg_paths,
         #[cfg(feature = "tcp_server")]
-        port: args.port,
+        tcp_server_address: args.tcp_server_address,
         #[cfg(target_os = "linux")]
         symlink_path: args.symlink_path,
         nodelay: args.nodelay,
@@ -184,17 +188,17 @@ fn main_impl() -> Result<()> {
 
     let (tx, rx) = std::sync::mpsc::sync_channel(100);
 
-    let (server, ntx, nrx) = if let Some(port) = {
+    let (server, ntx, nrx) = if let Some(address) = {
         #[cfg(feature = "tcp_server")]
         {
-            args.port
+            args.tcp_server_address
         }
         #[cfg(not(feature = "tcp_server"))]
         {
-            None
+            None::<SocketAddrWrapper>
         }
     } {
-        let mut server = TcpServer::new(port, tx.clone());
+        let mut server = TcpServer::new(address.into_inner(), tx.clone());
         server.start(kanata_arc.clone());
         let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
         (Some(server), Some(ntx), Some(nrx))
