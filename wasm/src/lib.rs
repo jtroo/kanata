@@ -84,6 +84,6 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
         .outputs
         .events
         .join("\n")
-        .replace('↓', "↓(press)")
-        .replace('↑', "↑(release)"))
+        .replace('↓', "↓(press)   ")
+        .replace('↑', "↑(release) "))
 }
