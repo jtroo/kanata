@@ -1,5 +1,4 @@
-use anyhow::Error;
-use anyhow::Result;
+use anyhow::{anyhow, Error, Result};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -50,15 +49,11 @@ impl FromStr for SocketAddrWrapper {
         let mut address = s.to_string();
         if let Ok(port) = s.parse::<u16>() {
             address = format!("127.0.0.1:{}", port);
-        } else if !is_address_format(s) {
-            return Err(anyhow::Error::msg(
-                "please specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081",
-            ));
         }
         address
             .parse::<SocketAddr>()
             .map(SocketAddrWrapper)
-            .map_err(|e| e.into())
+            .map_err(|e| anyhow!("Please specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081.\n{e}"))
     }
 }
 
@@ -69,16 +64,4 @@ impl SocketAddrWrapper {
     pub fn get_ref(&self) -> &SocketAddr {
         &self.0
     }
-}
-
-fn is_address_format(addr: &str) -> bool {
-    if let Some((host, port)) = addr.split_once(':') {
-        if host.is_empty() {
-            return false;
-        }
-        if let Ok(port_num) = port.parse::<u16>() {
-            return port_num > 0;
-        }
-    }
-    false
 }
