@@ -22,6 +22,9 @@ the features:
 - advanced key behaviour customization (e.g. tap-hold, macros, unicode)
 - cross-platform human readable configuration file
 
+Check out the [examples directory](./cfg_samples)
+and the [online simulator](https://jtroo.github.io).
+
 To see all of the features, see the [configuration guide](./docs/config.adoc).
 The configuration guide aims to be up-to-date with main and may have features not in your version.
 See the applicable link in the [releases page](https://github.com/jtroo/kanata/releases).
