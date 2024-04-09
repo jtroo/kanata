@@ -2849,26 +2849,16 @@ fn parse_layers(
                 }
             }
         }
-        for (i, (layer_action, defsrc_action)) in layers_cfg[layer_level * 2][0]
-            .iter_mut()
-            .zip(defsrc_layer)
-            .enumerate()
+        for (layer_action, defsrc_action) in
+            layers_cfg[layer_level * 2][0].iter_mut().zip(defsrc_layer)
         {
             // Set transparent actions in the "layer-switch" version of the layer according to
             // defsrc action.
             if *layer_action == Action::Trans {
-                *layer_action = defsrc_action;
-            }
-            if !s.block_unmapped_keys {
-                // If there is no corresponding action in defsrc, default to the OsCode at the
-                // position. This is done so that `process-unmapped-keys` works correctly.
-                if *layer_action == Action::Trans {
-                    *layer_action = OsCode::from_u16(i as u16)
-                        .and_then(|osc| match KeyCode::from(osc) {
-                            KeyCode::No => None,
-                            kc => Some(Action::KeyCode(kc)),
-                        })
-                        .unwrap_or(Action::NoOp);
+                if s.block_unmapped_keys {
+                    *layer_action = Action::NoOp;
+                } else {
+                    *layer_action = defsrc_action;
                 }
             }
         }
