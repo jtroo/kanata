@@ -1,28 +1,5 @@
 //! Output that just prints text to stdout instead of actually doing anything OS-related.
-/*
-todo: add output ticks
-A sim.txt file:
-↓:j 🕐:1500 ↓:l 🕐:5000 ↓:1 🕐:50 ↑:1 🕐:50 ↓:1 🕐:50 ↑:1 🕐:50 ↑:j 🕐:50 ↑:l 🕐:50
-Will print the following output for a config with J,L mapped to home row mods tap-hold-release and 1 printing 🔣🤲🏿
-(not that Σin is identical to the sim.txt)
-🕐Δms│     1500     5000                     50           50     50           50     50             50
-In ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
- k↑ │                                                 1                   1      J              L
- k↓ │  J        L                        1                   1
- k⟳ │
-Σin │ ↓J 🕐1500 ↓L 🕐5000                 ↓1 🕐50       ↑1 🕐50 ↓1 🕐50       ↑1 🕐50 ↑J 🕐50         ↑L 🕐50
-Out———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
- k↑ │                                                                                   ⇧›             ⎇›
- k↓ │                    ⇧›      ⎇›
- 🖰↑ │
- 🖰↓ │
- 🖰  │
- 🔣  │                                           🤲                   🤲
- code│
- raw↑│
- raw↓│
-Σout│                   ↓⇧›     ↓⎇›             🤲                   🤲                  ↑⇧›            ↑⎇›
-*/
+//! See <../../docs/simulated_output/sim_out.txt> for an example output.
 use indoc::formatdoc;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -49,8 +26,13 @@ fn append_file_name(path: impl AsRef<Path>, appendix: impl AsRef<OsStr>) -> Path
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LogFmtT {
+    InKeyUp,
+    InKeyDown,
+    InKeyRep,
+    InTick,
     KeyUp,
     KeyDown,
+    Tick,
     MouseUp,
     MouseDown,
     MouseMove,
@@ -58,20 +40,18 @@ pub enum LogFmtT {
     Code,
     RawUp,
     RawDown,
-    InKeyUp,
-    InKeyDown,
-    InKeyRep,
-    InTick,
 }
 
 pub struct LogFmt {
-    time: String,
+    ticks: u64,
     //In       	//
+    in_time: String,
     in_key_up: String,
     in_key_down: String,
     in_key_rep: String,
     in_combo: String,
     //Out      	//
+    time: String,
     key_up: String,
     key_down: String,
     raw_up: String,
@@ -91,13 +71,15 @@ impl Default for LogFmt {
 impl LogFmt {
     pub fn new() -> Self {
         Self {
-            time: String::new(),
+            ticks: 0,
             //In       	//
+            in_time: String::new(),
             in_key_up: String::new(),
             in_key_down: String::new(),
             in_key_rep: String::new(),
             in_combo: String::new(),
             //Out      	//
+            time: String::new(),
             key_up: String::new(),
             key_down: String::new(),
             raw_up: String::new(),
@@ -111,10 +93,16 @@ impl LogFmt {
         }
     }
     pub fn fmt(&mut self, key: LogFmtT, value: String) {
-        let pad = value.len();
+        let mut pad = value.len();
+        let mut time = "".to_string();
+        if self.ticks > 0 {
+            pad = std::cmp::max(value.len(), self.ticks.to_string().len()); // add extra padding if event tick is wider
+            time = format!("  {: <pad$}", self.ticks);
+            self.ticks = 0;
+        }
         let blank = format!("  {: <pad$}", ""); //+␠ to allow combo log indicator
         let val = format!("  {: <pad$}", value);
-        self.time += if key == LogFmtT::InTick {
+        self.in_time += if key == LogFmtT::InTick {
             self.combo += &blank;
             self.in_combo += &format!(" 🕐{: <pad$}", value);
             &val
@@ -142,6 +130,7 @@ impl LogFmt {
         } else {
             &blank
         };
+        self.time += if time.len() > 0 { &time } else { &blank };
         self.key_up += if key == LogFmtT::KeyUp {
             self.in_combo += &blank;
             self.combo += &format!(" ↑{: <pad$}", value);
@@ -446,6 +435,7 @@ impl KbdOut {
     }
     pub fn tick(&mut self) {
         self.outputs.ticks += 1;
+        self.log.ticks += 1;
     }
 }
 
