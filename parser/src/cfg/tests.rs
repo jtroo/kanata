@@ -366,6 +366,15 @@ fn parse_multiline_comment() {
 }
 
 #[test]
+fn parse_file_with_utf8_bom() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/utf8bom.kbd")).unwrap();
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,

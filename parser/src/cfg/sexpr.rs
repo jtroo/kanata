@@ -421,6 +421,7 @@ pub fn parse_(
     file_name: &str,
     ignore_whitespace_and_comments: bool,
 ) -> Result<(Vec<TopLevel>, Vec<SExprMetaData>)> {
+    let cfg = strip_utf8_bom(cfg);
     parse_with(
         cfg,
         Lexer::new(cfg, file_name, ignore_whitespace_and_comments),
@@ -438,6 +439,13 @@ pub fn parse_(
             e
         }
     })
+}
+
+fn strip_utf8_bom(s: &str) -> &str {
+    match s.as_bytes().strip_prefix(&[0xef, 0xbb, 0xbf]) {
+        Some(stripped) => std::str::from_utf8(stripped).expect("valid input"),
+        None => s,
+    }
 }
 
 fn parse_with(

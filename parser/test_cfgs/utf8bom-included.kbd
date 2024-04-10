@@ -1,0 +1,12 @@
+﻿#|
+
+BOM should have been added via:
+
+  $f = Get-Content .\utf8bom-included.kbd
+  $f | Out-File -Encoding UTF8 .\utf8bom-included.kbd
+
+|#
+
+(deflayermap (layer-included)
+  y : (unicode 🚀)
+)
