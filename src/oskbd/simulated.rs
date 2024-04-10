@@ -130,7 +130,7 @@ impl LogFmt {
         } else {
             &blank
         };
-        self.time += if time.len() > 0 { &time } else { &blank };
+        self.time += if !time.is_empty() { &time } else { &blank };
         self.key_up += if key == LogFmtT::KeyUp {
             self.in_combo += &blank;
             self.combo += &format!(" ↑{: <pad$}", value);
