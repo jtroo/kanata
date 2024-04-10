@@ -3134,3 +3134,5 @@ Input sequence file format: whitespace insensitive list of `prefix:key` pairs wh
 
 And key names are defined in the https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode function],
 for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1
+
+Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
