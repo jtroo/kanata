@@ -3119,8 +3119,7 @@ run the tool with your config
 and get a "timeline" view of input/output events that can help understand how kanata translates
 your input into various key/mouse presses.
 
-WARNING: The format of this view may change.
-It currently doesn't show timings of output events and emoji output may break vertical alignment.
+WARNING: The format of this view may change. Emoji output may break vertical alignment.
 
 For more details download the files below and run `kanata_simulated_input -c sim.kbd -s sim.txt` +
   - https://github.com/jtroo/kanata/blob/main/docs/simulated_output/sim.kbd[example config] with simple home row mod bindings +
