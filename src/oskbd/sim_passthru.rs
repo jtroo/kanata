@@ -62,6 +62,7 @@ impl KbdOut {
         for mv in moves {let (direction, distance) = (&mv.direction, &mv.distance);
             trace!("out🖰:move {direction:?},{distance:?}");}Ok(())}
     pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {log::info!("out🖰:@{x},{y}");Ok(())}
+    pub fn tick(&mut self) {}
 }
 
 #[cfg(not(any(target_os="windows",target_os="macos")))]
