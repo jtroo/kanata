@@ -37,7 +37,7 @@ impl KbdOut {
     #[cfg(target_os = "linux")]
     pub fn new(_: &Option<String>) -> Result<Self, io::Error> {Ok(Self {})}
     #[cfg(target_os = "linux")]
-    pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {self.log.write_raw(event);trace!("out-raw:{event:?}");Ok(())}
+    pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {trace!("out-raw:{event:?}");Ok(())}
     pub fn write    (&mut self, event: InputEvent) -> Result<(),io::Error> {
       let _ = send_out_ev(event);
       trace!("out:{event}");Ok(())}
