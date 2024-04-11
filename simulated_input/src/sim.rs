@@ -142,6 +142,13 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
     ))
 }
 
+fn split_at_1(s: &str) -> (&str, &str) {
+    match s.chars().next() {
+        Some(c) => s.split_at(c.len_utf8()),
+        None => s.split_at(0),
+    }
+}
+
 fn main_impl() -> Result<()> {
     log_init();
     let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
@@ -196,9 +203,51 @@ fn main_impl() -> Result<()> {
                                 value: KeyValue::Repeat,
                             })?;
                         }
-                        _ => bail!("invalid pair prefix: {kind}"),
+                        _ => bail!("invalid pair: {kind}"),
                     },
-                    None => bail!("invalid pair: {l}"),
+                    None => {
+                        let (kind, val) = split_at_1(pair);
+                        match kind {
+                            //allow skipping : separator for unique non-key symbols
+                            "🕐" => {
+                                let tick = str::parse::<u128>(val)?;
+                                #[cfg(feature = "simulated_output")]
+                                k.kbd_out.log.in_tick(tick);
+                                k.tick_ms(tick, &None)?;
+                            }
+                            "↓" => {
+                                let key_code = str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                                #[cfg(feature = "simulated_output")]
+                                k.kbd_out.log.in_press_key(key_code);
+                                k.handle_input_event(&KeyEvent {
+                                    code: key_code,
+                                    value: KeyValue::Press,
+                                })?;
+                            }
+                            "↑" => {
+                                let key_code = str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                                #[cfg(feature = "simulated_output")]
+                                k.kbd_out.log.in_release_key(key_code);
+                                k.handle_input_event(&KeyEvent {
+                                    code: key_code,
+                                    value: KeyValue::Release,
+                                })?;
+                            }
+                            "⟳" => {
+                                let key_code = str_to_oscode(val)
+                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                                #[cfg(feature = "simulated_output")]
+                                k.kbd_out.log.in_repeat_key(key_code);
+                                k.handle_input_event(&KeyEvent {
+                                    code: key_code,
+                                    value: KeyValue::Repeat,
+                                })?;
+                            }
+                            _ => bail!("invalid pair: {l}"),
+                        }
+                    }
                 }
             }
         }
