@@ -246,7 +246,7 @@ impl LogFmt {
     }
 
     pub fn end(&self, in_path: &PathBuf, appendix: Option<String>) {
-        let pad = self.combo.len() - 3;
+        let pad = self.combo.len().saturating_sub(3);
         let table_out = formatdoc!(
             "🕐Δms│{}
           In───┼{:─<pad$}

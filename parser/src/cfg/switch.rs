@@ -2,7 +2,7 @@ use super::sexpr::*;
 use super::*;
 use crate::{anyhow_expr, bail, bail_expr};
 
-pub fn parse_switch(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
@@ -55,7 +55,7 @@ pub fn parse_switch_case_bool(
     depth: u8,
     op_expr: &SExpr,
     ops: &mut Vec<OpCode>,
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<()> {
     if ops.len() > MAX_OPCODE_LEN as usize {
         bail_expr!(
