@@ -138,10 +138,7 @@ fn sim_chord_overlapping_release() {
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a d:b t:100 u:a d:z t:300 u:b t:300",
     );
-    assert_eq!(
-        "t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:50ms\nout:↑C",
-        result
-    );
+    assert_eq!("t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:50ms\nout:↑C", result);
 }
 
 #[test]

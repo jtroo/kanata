@@ -1245,8 +1245,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             if let (qac @ Some(_), pause_input_processing) = chv2.get_action_chv2() {
                 self.action_queue.push_back(qac);
                 if pause_input_processing {
-                    self.oneshot.pause_input_processing_ticks =
-                        self.oneshot.on_press_release_delay;
+                    self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
                 }
             }
         }
