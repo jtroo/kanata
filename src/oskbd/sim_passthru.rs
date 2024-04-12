@@ -32,10 +32,14 @@ pub static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that
 pub struct KbdOut {}
 
 impl KbdOut {
-    #[cfg(not(target_os = "linux"))]
-    pub fn new() -> Result<Self, io::Error> {Ok(Self {})}
-    #[cfg(target_os = "linux")]
-    pub fn new(_: &Option<String>) -> Result<Self, io::Error> {Ok(Self {})}
+    #[cfg(all(not(target_os="linux"),not(feature="passthru_ahk")))]
+    pub fn new(                                                ) -> Result<Self, io::Error> {Ok(Self {          })}
+    #[cfg(all(not(target_os="linux"),    feature="passthru_ahk" ))]
+    pub fn new(                   tx:Option<Sender<InputEvent>>) -> Result<Self, io::Error> {Ok(Self {tx_kout:tx})}
+    #[cfg(all(    target_os="linux" ,not(feature="passthru_ahk")))]
+    pub fn new(_: &Option<String>                              ) -> Result<Self, io::Error> {Ok(Self {          })}
+    #[cfg(all(    target_os="linux" ,    feature="passthru_ahk" ))]
+    pub fn new(_: &Option<String>,tx:Option<Sender<InputEvent>>) -> Result<Self, io::Error> {Ok(Self {tx_kout:tx})}
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {trace!("out-raw:{event:?}");Ok(())}
     pub fn write    (&mut self, event: InputEvent) -> Result<(),io::Error> {
