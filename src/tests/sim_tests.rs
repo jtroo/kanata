@@ -61,14 +61,7 @@ fn sim_chord_basic_repeated_last_release() {
         d:a t:50 d:b t:50 u:a t:50 u:b t:50 ",
     );
     assert_eq!(
-        "t:51ms
-out:↓C
-t:100ms
-out:↑C
-t:100ms
-out:↓C
-t:100ms
-out:↑C",
+        "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓C\nt:101ms\nout:↑C",
         result
     );
 }
@@ -112,14 +105,7 @@ fn sim_chord_basic_repeated_first_release() {
         d:z t:50 d:b t:50 u:z t:50 u:b t:50 ",
     );
     assert_eq!(
-        "t:51ms
-out:↓D
-t:50ms
-out:↑D
-t:150ms
-out:↓D
-t:50ms
-out:↑D",
+        "t:50ms\nout:↓D\nt:51ms\nout:↑D\nt:149ms\nout:↓D\nt:51ms\nout:↑D",
         result
     );
 }
@@ -138,9 +124,9 @@ static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
 fn sim_chord_overlapping_timeout() {
     let result = simulate(SIMPLE_OVERLAPPING_CHORD_CFG, "d:a d:b t:201 d:z t:300");
     assert_eq!(
-        "t:201ms
+        "t:200ms
 out:↓C
-t:251ms
+t:252ms
 out:↓Z",
         result
     );
@@ -153,12 +139,7 @@ fn sim_chord_overlapping_release() {
         "d:a d:b t:100 u:a d:z t:300 u:b t:300",
     );
     assert_eq!(
-        "t:101ms
-out:↓C
-t:250ms
-out:↓Z
-t:50ms
-out:↑C",
+        "t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:50ms\nout:↑C",
         result
     );
 }
@@ -170,8 +151,7 @@ fn sim_presses_for_old_chord_repress_into_new_chord() {
         "d:a d:b t:50 u:a t:50 d:z t:50 u:b t:50 d:a d:b t:50 u:a t:50",
     );
     assert_eq!(
-        "t:51ms\nout:↓C\nt:100ms\nout:↑C\nt:100ms\nout:↓D\nt:2ms\n\
-        out:↑D",
+        "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓D\nt:7ms\nout:↑D",
         result
     );
 }
@@ -182,7 +162,7 @@ fn sim_chord_activate_largest_overlapping() {
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a t:50 d:b t:50 d:z t:50 d:y t:50 u:b t:50",
     );
-    assert_eq!("t:151ms\nout:↓E\nt:50ms\nout:↑E", result);
+    assert_eq!("t:150ms\nout:↓E\nt:51ms\nout:↑E", result);
 }
 
 static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\
@@ -207,7 +187,7 @@ fn sim_chord_layer_1_switch_disabled() {
         "d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:1ms\nout:↓A\nt:50ms\nout:↓B\nt:100ms\nout:↓Y\nt:100ms\nout:↓Z",
+        "t:1ms\nout:↓A\nt:50ms\nout:↓B\nt:99ms\nout:↓Y\nt:100ms\nout:↓Z",
         result
     );
 }
@@ -219,7 +199,7 @@ fn sim_chord_layer_2_switch_disabled() {
         "d:2 t:50 d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:101ms\nout:↓X\nt:50ms\nout:↓C\nt:50ms\nout:↓D\nt:100ms\nout:↓Z",
+        "t:100ms\nout:↓X\nt:51ms\nout:↓C\nt:50ms\nout:↓D\nt:99ms\nout:↓Z",
         result
     );
 }
@@ -231,7 +211,7 @@ fn sim_chord_layer_3_switch_disabled() {
         "d:3 t:50 d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:101ms\nout:↓X\nt:100ms\nout:↓Y\nt:50ms\nout:↓E\nt:50ms\nout:↓F",
+        "t:100ms\nout:↓X\nt:100ms\nout:↓Y\nt:51ms\nout:↓E\nt:50ms\nout:↓F",
         result
     );
 }
@@ -243,7 +223,7 @@ fn sim_chord_layer_1_held_disabled() {
         "d:3 t:50 d:1 t:50 d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:101ms\nout:↓A\nt:50ms\nout:↓B\nt:100ms\nout:↓Y\nt:100ms\nout:↓Z",
+        "t:101ms\nout:↓A\nt:50ms\nout:↓B\nt:99ms\nout:↓Y\nt:100ms\nout:↓Z",
         result
     );
 }
@@ -255,7 +235,7 @@ fn sim_chord_layer_2_held_disabled() {
         "d:3 t:50 d:2 t:50 d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:151ms\nout:↓X\nt:50ms\nout:↓C\nt:50ms\nout:↓D\nt:100ms\nout:↓Z",
+        "t:150ms\nout:↓X\nt:51ms\nout:↓C\nt:50ms\nout:↓D\nt:99ms\nout:↓Z",
         result
     );
 }
@@ -267,7 +247,28 @@ fn sim_chord_layer_3_held_disabled() {
         "d:2 t:50 d:3 t:50 d:a t:50 d:b t:50 d:c t:50 d:d t:50 d:e t:50 d:f t:50",
     );
     assert_eq!(
-        "t:151ms\nout:↓X\nt:100ms\nout:↓Y\nt:50ms\nout:↓E\nt:50ms\nout:↓F",
+        "t:150ms\nout:↓X\nt:100ms\nout:↓Y\nt:51ms\nout:↓E\nt:50ms\nout:↓F",
+        result
+    );
+}
+
+static CHORD_INTO_TAP_HOLD_CFG: &str = "\
+(defcfg process-unmapped-keys yes concurrent-tap-hold yes)
+(defsrc)
+(deflayer base)
+(defchordsv2-experimental
+  (a b) (tap-hold 200 200 x y) 200 last-release ()
+)";
+
+#[test]
+fn sim_chord_into_tap_hold() {
+    let result = simulate(
+        CHORD_INTO_TAP_HOLD_CFG,
+        "d:a t:50 d:b t:149 u:a u:b t:5 \
+         d:a t:50 d:b t:148 u:a u:b t:1000",
+    );
+    assert_eq!(
+        "t:199ms\nout:↓Y\nt:3ms\nout:↑Y\nt:200ms\nout:↓X\nt:8ms\nout:↑X",
         result
     );
 }

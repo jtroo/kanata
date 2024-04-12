@@ -108,7 +108,6 @@ where
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
     pub quick_tap_hold_timeout: bool,
-    // TODO: if below is Some(), quick_tap_hold_timeout should be true
     pub chords_v2: Option<ChordsV2<'a, T>>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
@@ -1240,13 +1239,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
     pub fn tick(&mut self) -> CustomEvent<'a, T> {
-        let active_layer = self
-            .trans_resolution_layer_order()
-            .into_iter()
-            .next()
-            .expect("there must always be an active layer");
+        let active_layer = self.current_layer() as u16;
         if let Some(chv2) = self.chords_v2.as_mut() {
             self.queue.extend(chv2.tick_chv2(active_layer).drain(0..));
+            if let (qac @ Some(_), pause_input_processing) = chv2.get_action_chv2() {
+                self.action_queue.push_back(qac);
+                if pause_input_processing {
+                    self.oneshot.pause_input_processing_ticks =
+                        self.oneshot.on_press_release_delay;
+                }
+            }
         }
         if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
@@ -1292,18 +1294,6 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             },
             None => {
                 if self.extra_waiting.is_empty() {
-                    // If no tap-holds, v2 chords, tap-dance waiting,
-                    // then can run chord actions.
-                    if let Some(ch) = self.chords_v2.as_mut() {
-                        if let (qac @ Some(_), pause_input_processing) = ch.get_action_chv2() {
-                            self.action_queue.push_back(qac);
-                            if pause_input_processing {
-                                self.oneshot.pause_input_processing_ticks =
-                                    self.oneshot.on_press_release_delay;
-                            }
-                        }
-                    }
-
                     // Due to the possible delay in the key release for EndOnFirstPress
                     // because some apps/DEs do not handle it properly if done too quickly,
                     // undesirable behaviour of extra presses making it in before
@@ -1634,11 +1624,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
                         timeout: if self.quick_tap_hold_timeout {
-                            timeout.saturating_sub(delay)
+                            dbg!(timeout.saturating_sub(delay))
                         } else {
                             *timeout
                         },
-                        delay,
+                        delay: if self.quick_tap_hold_timeout {
+                            // Note: don't want to double-count this.
+                            0
+                        } else {
+                            delay
+                        },
                         ticks: 0,
                         hold,
                         tap,

@@ -400,7 +400,7 @@ impl<'a, T> ChordsV2<'a, T> {
                         .all(|pk| accumulated_presses.contains(pk))
                     {
                         dbg!("got exact chord match");
-                        let ach = get_active_chord(cch, since, coord);
+                        let ach = get_active_chord(cch, since, coord, relevant_release_found);
                         let overflow = self.active_chords.push(ach);
                         assert!(overflow.is_ok(), "active chords has room");
                         break;
@@ -434,7 +434,7 @@ impl<'a, T> ChordsV2<'a, T> {
                     match completed_chord {
                         Some(cch) => {
                             let coord = self.next_coord();
-                            let ach = get_active_chord(cch, since, coord);
+                            let ach = get_active_chord(cch, since, coord, relevant_release_found);
                             let overflow = self.active_chords.push(ach);
                             assert!(overflow.is_ok(), "active chords has room");
                         }
@@ -486,7 +486,7 @@ impl<'a, T> ChordsV2<'a, T> {
             };
             match completed_chord {
                 Some(cch) => {
-                    let ach = get_active_chord(cch, since, self.next_coord());
+                    let ach = get_active_chord(cch, since, self.next_coord(), relevant_release_found);
                     let overflow = self.active_chords.push(ach);
                     assert!(overflow.is_ok(), "active chords has room");
                 }
@@ -498,7 +498,7 @@ impl<'a, T> ChordsV2<'a, T> {
 
         if let Some((chord, consumed_presses)) = timed_out_chord {
             self.queue.drain(0..usize::from(consumed_presses));
-            let ach = get_active_chord(chord, since, self.next_coord());
+            let ach = get_active_chord(chord, since, self.next_coord(), relevant_release_found);
             let overflow = self.active_chords.push(ach);
             assert!(overflow.is_ok(), "active chords has room");
         }
@@ -528,7 +528,7 @@ impl<'a, T> ChordsV2<'a, T> {
     }
 }
 
-fn get_active_chord<'a, T>(cch: &ChordV2<'a, T>, since: u16, coord: u16) -> ActiveChord<'a, T> {
+fn get_active_chord<'a, T>(cch: &ChordV2<'a, T>, since: u16, coord: u16, release_found: bool) -> ActiveChord<'a, T> {
     let mut remaining_keys_to_release = HVec::new();
     if cch.release_behaviour == ReleaseBehaviour::OnLastRelease {
         remaining_keys_to_release.extend(cch.participating_keys.iter().copied());
@@ -538,7 +538,11 @@ fn get_active_chord<'a, T>(cch: &ChordV2<'a, T>, since: u16, coord: u16) -> Acti
         remaining_keys_to_release,
         participating_keys: cch.participating_keys,
         action: cch.action,
-        status: ActiveChordStatus::Unread,
-        delay: since,
+        status: if release_found && cch.release_behaviour == ReleaseBehaviour::OnFirstRelease {
+            ActiveChordStatus::UnreadReleased
+        } else {
+            ActiveChordStatus::Unread
+        },
+        delay: dbg!(since),
     }
 }
