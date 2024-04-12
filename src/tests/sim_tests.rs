@@ -269,3 +269,22 @@ fn sim_chord_into_tap_hold() {
         result
     );
 }
+
+static CHORD_WITH_PENDING_UNDERLYING_TAP_HOLD: &str = "\
+(defcfg process-unmapped-keys yes concurrent-tap-hold yes)
+(defsrc)
+(deflayermap (base) a : (tap-hold 200 200 a b))
+(defchordsv2-experimental
+  (b c) d 100 last-release ()
+)";
+
+#[test]
+fn sim_chord_pending_tap_hold() {
+    let result = simulate(
+        CHORD_WITH_PENDING_UNDERLYING_TAP_HOLD,
+        "d:a t:10 d:b t:10 d:c t:300",
+    );
+    // unlike other actions, chordv2 activations
+    // are intentionally not delayed by waiting actions like tap-hold.
+    assert_eq!("t:20ms\nout:↓D\nt:179ms\nout:↓B", result);
+}
