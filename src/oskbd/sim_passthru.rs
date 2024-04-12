@@ -28,8 +28,12 @@ type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + Send + Sync + 'static;
 pub struct FnOutEvWrapper {pub cb:Arc<CbOutEvFn>} // wrapper struct to store our callback in a thread-shareable manner
 pub static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that our wrapper struct is created once (thread-safe)
 
+use std::sync::mpsc::{Receiver, SyncSender as Sender, Sender as ASender, TryRecvError, TrySendError, SendError};
 /// Handle for writing keys to the simulated input provider.
-pub struct KbdOut {}
+pub struct KbdOut {
+    #[cfg(    feature = "passthru_ahk")]
+    tx_kout :Option<ASender<InputEvent>> ,
+}
 
 impl KbdOut {
     #[cfg(all(not(target_os="linux"),not(feature="passthru_ahk")))]
