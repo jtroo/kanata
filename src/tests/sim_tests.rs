@@ -182,10 +182,7 @@ fn sim_chord_activate_largest_overlapping() {
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a t:50 d:b t:50 d:z t:50 d:y t:50 u:b t:50",
     );
-    assert_eq!(
-        "t:151ms\nout:↓E\nt:50ms\nout:↑E",
-        result
-    );
+    assert_eq!("t:151ms\nout:↓E\nt:50ms\nout:↑E", result);
 }
 
 static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\

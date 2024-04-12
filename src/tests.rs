@@ -1,7 +1,11 @@
 use kanata_parser::cfg::*;
 use std::sync::Mutex;
 
-#[cfg(all(feature = "simulated_output", not(target_os = "macos")))]
+#[cfg(all(
+    feature = "simulated_output",
+    not(target_os = "macos"),
+    not(feature = "interception_driver")
+))]
 mod sim_tests;
 
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
