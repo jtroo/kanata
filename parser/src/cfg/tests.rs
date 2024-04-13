@@ -2175,7 +2175,7 @@ fn parse_platform_specific() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (platform () (invalid config but is not used anywhere))
 (defsrc)
