@@ -35,6 +35,7 @@ pub struct KbdOut {
     tx_kout :Option<ASender<InputEvent>> ,
 }
 
+use std::io::{Error as IoErr, ErrorKind::NotConnected};
 impl KbdOut {
     #[cfg(all(not(target_os="linux"),not(feature="passthru_ahk")))]
     pub fn new(                                                ) -> Result<Self, io::Error> {Ok(Self {          })}
@@ -46,9 +47,14 @@ impl KbdOut {
     pub fn new(_: &Option<String>,tx:Option<ASender<InputEvent>>) -> Result<Self, io::Error> {Ok(Self {tx_kout:tx})}
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(),io::Error> {trace!("out-raw:{event:?}");Ok(())}
-    pub fn write    (&mut self, event: InputEvent) -> Result<(),io::Error> {
-      let _ = send_out_ev(event);
-      trace!("out:{event}");Ok(())}
+    pub fn write    (&mut self, event: InputEvent) -> Result<(),io::Error> {trace!("out:{event}");
+      if let Some(tx_kout) = &self.tx_kout { // Send key event msg → main thread so it can be polled to try receiving it after processing external input events
+        match tx_kout.send(event) { // send won't block for an async channel
+          Ok (res)             	=> {debug!("✓ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)");return Ok(res)}
+          Err(SendError(event))	=> {error!("✗ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)");return Err(IoErr::new(NotConnected,format!("Failed sending sending {event}")))}  }
+      } else {debug!("✗ tx_kout doesn't exist");}
+      Ok(())
+    }
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let event = {#[cfg(    target_os = "macos" )]{key_ev.try_into().unwrap()}
