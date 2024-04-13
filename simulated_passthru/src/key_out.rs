@@ -59,3 +59,20 @@ pub fn send_out_ev(in_ev:InputEvent) -> Result<()> { // ext callback accepts vk:
 }
 
 
+use std::sync::mpsc::TryRecvError;
+use crate::RX_KEY_EV_OUT; // thread_local Cell<Option<Receiver<InputEvent>>> // Stores receiver for key data to be sent out for the current thread
+/// Exported function: checks if processing thread has sent key output and sends it back to an external callback
+#[no_mangle] pub extern "win64" fn output_ev_check() -> LRESULT {
+  let mut res:isize = 0;
+  RX_KEY_EV_OUT.with(|state| {
+    if let Some(rx) = state.take() {
+      match rx.try_recv() {
+        Ok (in_ev)	=> {debug!("✓ rx_kout@key_out(dll) ‘{in_ev}’");
+          if let Ok(_) = send_out_ev(in_ev) {res=0;} else {res=-1;};}
+        Err(TryRecvError::Empty)       	=> {debug!("✗ rx_kout@key_out(dll) no data yet");res=-2}
+        Err(TryRecvError::Disconnected)	=> {debug!("✗ rx_kout@key_out(dll) Disconnected");res=-3}      }
+      state.set(Some(rx));
+    } else {debug!("✗ RX_KEY_EV_OUT@key_out(dll) empty");state.set(None);res=-4}
+  });
+  res
+}
