@@ -2168,3 +2168,64 @@ fn test_defaliasenvcond() {
     .expect("parses");
     assert!(s.aliases.get("a").is_none());
 }
+
+#[test]
+fn parse_platform_specific() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParsedState::default();
+    let source = r#"
+(platform () (invalid config but is not used anywhere))
+(defsrc)
+(deflayermap (base)
+  a : (layer-switch 2)
+)
+;; layer 2 must exist on all platforms, all in one list
+(platform (win winiov2 wintercept linux macos)
+  (deflayermap (2)
+    a : (layer-switch 3)
+  )
+)
+;; layer 3 must exist on all platforms, in individual lists
+;; Tests for no duplication.
+(platform (win)
+  (deflayermap (3)
+    a : (layer-switch 3)
+  )
+)
+(platform (winiov2)
+  (deflayermap (3)
+    a : (layer-switch 3)
+  )
+)
+(platform (wintercept)
+  (deflayermap (3)
+    a : (layer-switch 3)
+  )
+)
+(platform (linux)
+  (deflayermap (3)
+    a : (layer-switch 3)
+  )
+)
+(platform (macos)
+  (deflayermap (3)
+    a : (layer-switch 3)
+  )
+)
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )
+    .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+    .unwrap();
+}

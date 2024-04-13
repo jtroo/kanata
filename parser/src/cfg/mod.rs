@@ -75,6 +75,9 @@ mod fake_key;
 use fake_key::*;
 pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
 
+mod os_dependent;
+use os_dependent::*;
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -487,6 +490,13 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
+const DEFLOCALKEYS_VARIANTS: &[&str] = &[
+    "deflocalkeys-win",
+    "deflocalkeys-winiov2",
+    "deflocalkeys-wintercept",
+    "deflocalkeys-linux",
+    "deflocalkeys-macos",
+];
 
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
@@ -499,6 +509,7 @@ pub fn parse_cfg_raw_string(
 ) -> Result<IntermediateCfg> {
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider))
+        .and_then(|xs| filter_platform_specific_cfg(xs, def_local_keys_variant_to_apply))
         .and_then(expand_templates)?;
 
     if let Some(spanned) = spanned_root_exprs
@@ -514,20 +525,14 @@ pub fn parse_cfg_raw_string(
 
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
-    for def_local_keys_variant in [
-        "deflocalkeys-win",
-        "deflocalkeys-winiov2",
-        "deflocalkeys-wintercept",
-        "deflocalkeys-linux",
-        "deflocalkeys-macos",
-    ] {
+    for def_local_keys_variant in DEFLOCALKEYS_VARIANTS {
         if let Some(result) = root_exprs
             .iter()
             .find(gen_first_atom_filter(def_local_keys_variant))
             .map(|custom_keys| parse_deflocalkeys(def_local_keys_variant, custom_keys))
         {
             let mapping = result?;
-            if def_local_keys_variant == def_local_keys_variant_to_apply {
+            if def_local_keys_variant == &def_local_keys_variant_to_apply {
                 assert!(
                     local_keys.is_none(),
                     ">1 mutually exclusive deflocalkeys variants were parsed"

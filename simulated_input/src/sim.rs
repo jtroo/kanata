@@ -203,7 +203,7 @@ fn main_impl() -> Result<()> {
                                 value: KeyValue::Repeat,
                             })?;
                         }
-                        _ => bail!("invalid pair: {kind}"),
+                        _ => bail!("invalid pair prefix: {kind}"),
                     },
                     None => {
                         let (kind, val) = split_at_1(pair);
