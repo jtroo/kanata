@@ -288,3 +288,18 @@ fn sim_chord_pending_tap_hold() {
     // are intentionally not delayed by waiting actions like tap-hold.
     assert_eq!("t:20ms\nout:↓D\nt:179ms\nout:↓B", result);
 }
+
+static CHORD_WITH_TRANSPARENCY: &str = "\
+(defcfg process-unmapped-keys yes concurrent-tap-hold yes)
+(defsrc)
+(deflayer base)
+(defchordsv2-experimental
+  (a b) _ 100 last-release ()
+)";
+
+#[test]
+fn sim_denies_transparent() {
+    Kanata::new_from_str(CHORD_WITH_TRANSPARENCY)
+        .map(|_| ())
+        .expect_err("trans in defchordsv2 should error");
+}

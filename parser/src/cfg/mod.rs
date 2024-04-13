@@ -764,6 +764,7 @@ pub fn parse_cfg_raw_string(
         }
     };
 
+    s.trans_forbidden_reason = Some("Transparent action is forbidden within chordsv2");
     let chords_v2_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defchordsv2-experimental"))
@@ -786,6 +787,7 @@ pub fn parse_cfg_raw_string(
             )
         }
     };
+    s.trans_forbidden_reason = None;
     if chords_v2.is_some() && !cfg.concurrent_tap_hold {
         return Err(anyhow!(
             "With defchordsv2 defined, concurrent-tap-hold in defcfg must be true.\n\
@@ -1123,6 +1125,7 @@ pub struct ParserState {
     default_sequence_input_mode: SequenceInputMode,
     block_unmapped_keys: bool,
     switch_max_key_timing: Cell<u16>,
+    trans_forbidden_reason: Option<&'static str>,
     a: Arc<Allocations>,
 }
 
@@ -1150,6 +1153,7 @@ impl Default for ParserState {
             default_sequence_input_mode: default_cfg.sequence_input_mode,
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             switch_max_key_timing: Cell::new(0),
+            trans_forbidden_reason: None,
             a: unsafe { Allocations::new() },
         }
     }
@@ -1346,7 +1350,13 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         );
     }
     match ac {
-        "_" | "‗" | "≝" => return Ok(s.a.sref(Action::Trans)),
+        "_" | "‗" | "≝" => {
+            if let Some(trans_forbidden_reason) = s.trans_forbidden_reason {
+                bail_span!(ac_span, "{trans_forbidden_reason}");
+            } else {
+                return Ok(s.a.sref(Action::Trans));
+            }
+        }
         "XX" | "✗" | "∅" | "•" => return Ok(s.a.sref(Action::NoOp)),
         "lrld" => return custom(CustomAction::LiveReload, &s.a),
         "lrld-next" | "lrnx" => return custom(CustomAction::LiveReloadNext, &s.a),
