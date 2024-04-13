@@ -76,8 +76,6 @@ fn lib_kanata_passthru(cb_addr:c_longlong) -> LRESULT {
   log_init();
   let ret = set_out_ev_listener(cb_addr);
   if let Err(ref e) = ret {error!("couldn't register external key out event callback"); return 1};
-  let ret = set_send_out_ev_cb();
-  if let Err(ref e) = ret {error!("couldn't register internal key out event callback"); return 1};
   let ret = lib_impl();
   if let Err(ref e) = ret {error!("{e}\n"); return 1}
   0
