@@ -1,9 +1,15 @@
+use super::*;
+
 use kanata_state_machine::{
     oskbd::{KeyEvent, KeyValue},
     str_to_oscode, Kanata,
 };
 
 fn simulate(cfg: &str, sim: &str) -> String {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
     let mut k = Kanata::new_from_str(cfg).expect("failed to parse cfg");
     for pair in sim.split_whitespace() {
         match pair.split_once(':') {
@@ -58,7 +64,7 @@ fn sim_chord_basic_repeated_last_release() {
     let result = simulate(
         SIMPLE_NONOVERLAPPING_CHORD_CFG,
         "d:a t:50 d:b t:50 u:a t:50 u:b t:50 \
-        d:a t:50 d:b t:50 u:a t:50 u:b t:50 ",
+         d:b t:50 d:a t:50 u:b t:50 u:a t:50 ",
     );
     assert_eq!(
         "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓C\nt:101ms\nout:↑C",
