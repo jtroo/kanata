@@ -9,7 +9,7 @@ BOM should have been added via:
 
 (defsrc)
 (deflayermap (layer-name)
-  x : (unicode 🙂)
+  x (unicode 🙂)
 )
 
 (include utf8bom-included.kbd)

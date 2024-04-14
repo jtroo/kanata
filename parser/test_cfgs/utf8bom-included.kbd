@@ -8,5 +8,5 @@ BOM should have been added via:
 |#
 
 (deflayermap (layer-included)
-  y : (unicode 🚀)
+  y (unicode 🚀)
 )
