@@ -11,8 +11,6 @@ use std::sync::{Arc,OnceLock};
 use parking_lot::Mutex;
 use std::cell::Cell;
 
-// use crate::oskbd::OUTEVWRAP;
-// type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + Send + Sync + 'static;
 type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + 'static;
 thread_local! {static CBOUTEV_WRAP:Cell<Option<Box<CbOutEvFn>>> = Cell::default();} // Stores the hook callback for the current thread
 
