@@ -36,3 +36,26 @@ fn set_cb_out_ev(cb_addr:c_longlong) -> Result<()>  {debug!("✗✗✗✗ unimpl
   unimplemented!();
   Ok(())
 }
+
+use kanata_parser::keys::OsCode;
+
+pub fn send_out_ev(in_ev:InputEvent) -> Result<()> { // ext callback accepts vk:i64,sc:i64,up:i64
+  #[cfg(feature="perf_logging")] let start = std::time::Instant::now();
+  let key_event	= KeyEvent::try_from(in_ev); //{code:KEY_0,value:Press} //todo remove
+  debug!("@send_out_ev key_event={key_event:?}");
+  let vk:i64 = in_ev.code.into();
+  let sc:i64 = 0;
+  let up:i64 = in_ev.up.into();
+
+  let mut handled = 0i64;
+  CBOUTEV_WRAP.with(|state| {
+    if let Some(hook) = state.take() {handled = hook(vk,sc,up); state.set(Some(hook));}
+  });
+  #[cfg(    feature="perf_logging" )]debug!("🕐{}μs ←←←{} fnHookCC {key_event:?} {vk} {sc} {up}"
+    ,      (start.elapsed()).as_micros(),if handled==1{"✓"}else{"✗"});
+  #[cfg(not(feature="perf_logging"))]debug!(       "←←←{} fnHookCC {key_event:?} {vk} {sc} {up}"
+    ,                                    if handled==1{"✓"}else{"✗"});
+  Ok(())
+}
+
+
