@@ -935,12 +935,6 @@ fn parse_deflocalkeys(
         let key = key_expr.atom(None).ok_or_else(|| {
             anyhow_expr!(key_expr, "No lists are allowed in {def_local_keys_variant}")
         })?;
-        if str_to_oscode(key).is_some() {
-            bail_expr!(
-                key_expr,
-                "Cannot use {key} in {def_local_keys_variant} because it is a default key name"
-            );
-        }
         if localkeys.contains_key(key) {
             bail_expr!(
                 key_expr,
