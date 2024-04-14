@@ -1,5 +1,3 @@
-#![allow(unused_imports,unused_labels,unused_variables,unreachable_code,dead_code,non_upper_case_globals)]
-
 use anyhow::Result;
 use anyhow::{anyhow, bail};
 use clap::Parser;
