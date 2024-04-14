@@ -34,6 +34,7 @@ kanata-keyberon = { path = "../keyberon" }
 kanata-parser =   { path = "../parser" }
 kanata-tcp-protocol = { path = "../tcp_protocol" }
 lazy_static = "1.4.0"
+widestring = "1.1.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 signal-hook = "0.3.14"
