@@ -25,45 +25,8 @@ use std::sync::Arc;
 type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + Send + Sync + 'static; // Rust wrapper func around external callback (transmuted into this) Ahk accept only i64 arguments (vk,sc,up)
 #[cfg(not(feature="passthru_ahk"))]
 type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + Send + Sync + 'static;
-struct FnOutEvWrapper {pub cb:Arc<CbOutEvFn>} // wrapper struct to store our callback in a thread-shareable manner
-static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that our wrapper struct is created once (thread-safe)
-
-/// Exported function: receives the address of the callback AHK function that accepts simulated output events
-#[cfg(    feature = "passthru_ahk")]
-#[no_mangle] pub extern "win64" fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
-  // cbKanataOut(vk,sc,up) {return 1}: // All args are i64 (ahk doesn't support u64)
-  // address: pointer-sized integer, equivalent to Int64 on ahk64
-  // AHK uses x64 calling convention: todo: is this the same as win64? extern "C" also seems to work
-  log::trace!("@set_out_ev_listener: got func address {}",cb_addr);
-  let ptr_fn = cb_addr as *const (); // `as`-cast to a raw pointer before `transmute`ing to a function pointer. This avoids an integer-to-pointer `transmute`, which can be problematic. Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
-  let cb_out_ev = unsafe {std::mem::transmute::<*const (), fn(vk:i64,sc:i64,up:i64) -> i64>(ptr_fn)};
-  OUTEVWRAP.get_or_init(|| {FnOutEvWrapper {cb:Arc::new(cb_out_ev)}});
-  0
-}
-
-#[cfg(not(feature = "passthru_ahk"))]
-#[no_mangle] pub extern "C" fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
-  debug!("✗✗✗✗ unimplemented!");
-  unimplemented!();
-  0
-}
-
-fn send_out_ev(in_ev:InputEvent) -> Result<()> { // ext callback accepts vk:i64,sc:i64,up:i64
-  #[cfg(feature="perf_logging")] let start = std::time::Instant::now();
-  let key_event	= KeyEvent::try_from(in_ev); //{code:KEY_0,value:Press} //todo remove
-  let vk:i64 = in_ev.code.into();
-  let sc:i64 = 0;
-  let up:i64 = in_ev.up.into();
-  if let Some(fn_out_ev_wrapper) = OUTEVWRAP.get() {
-    let handled = (&fn_out_ev_wrapper.cb)(vk,sc,up);
-    if handled != 0 {
-      #[cfg(    feature="perf_logging") ]
-      debug!("🕐{}μs   ←←←✓fnHook {:?} {vk} {sc} {up}",(start.elapsed()).as_micros(),key_event);
-      #[cfg(not(feature="perf_logging"))]
-      debug!("   ←←←✓fnHook {:?} {vk} {sc} {up}",key_event);
-      Ok(())} else {bail!("✗fnHook vk{} sc{} up{}",vk,sc,up)}
-  } else {error!("✗✗✗unavailable");bail!("fnHook isn't available yet!")}
-}
+pub struct FnOutEvWrapper {pub cb:Arc<CbOutEvFn>} // wrapper struct to store our callback in a thread-shareable manner
+pub static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that our wrapper struct is created once (thread-safe)
 
 /// Handle for writing keys to the simulated input provider.
 pub struct KbdOut {}
