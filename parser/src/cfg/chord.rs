@@ -52,7 +52,7 @@ pub(crate) fn parse_defchordv2(
             .and_then(|r| {
                 Some(match r {
                     "first-release" => ReleaseBehaviour::OnFirstRelease,
-                    "last-release" => ReleaseBehaviour::OnLastRelease,
+                    "all-released" => ReleaseBehaviour::OnLastRelease,
                     _ => return None,
                 })
             })
@@ -60,7 +60,7 @@ pub(crate) fn parse_defchordv2(
                 anyhow_expr!(
                     &chunk[3],
                     "Chord release behaviour must be one of:\n\
-                first-release | last-release"
+                first-release | all-released"
                 )
             })?;
 

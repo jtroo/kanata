@@ -55,7 +55,7 @@ static SIMPLE_NONOVERLAPPING_CHORD_CFG: &str = "\
 (defsrc) \
 (deflayer base) \
 (defchordsv2-experimental \
-  (a b) c 200 last-release () \
+  (a b) c 200 all-released () \
   (b z) d 200 first-release () \
 )";
 
@@ -121,7 +121,7 @@ static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
 (defsrc)
 (deflayer base)
 (defchordsv2-experimental
-  (a b) c 200 last-release ()
+  (a b) c 200 all-released ()
   (a b z) d 250 first-release ()
   (a b z y) e 400 first-release ()
 )";
@@ -178,9 +178,9 @@ static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\
 (deflayermap (3) 2 : (layer-while-held 2)
                  1 : (layer-while-held 1))
 (defchordsv2-experimental
-  (a b) x 200 last-release (1)
-  (c d) y 200 last-release (2)
-  (e f) z 200 last-release (3)
+  (a b) x 200 all-released (1)
+  (c d) y 200 all-released (2)
+  (e f) z 200 all-released (3)
 )";
 
 #[test]
@@ -274,7 +274,7 @@ static CHORD_INTO_TAP_HOLD_CFG: &str = "\
 (defsrc)
 (deflayer base)
 (defchordsv2-experimental
-  (a b) (tap-hold 200 200 x y) 200 last-release ()
+  (a b) (tap-hold 200 200 x y) 200 all-released ()
 )";
 
 #[test]
@@ -295,7 +295,7 @@ static CHORD_WITH_PENDING_UNDERLYING_TAP_HOLD: &str = "\
 (defsrc)
 (deflayermap (base) a : (tap-hold 200 200 a b))
 (defchordsv2-experimental
-  (b c) d 100 last-release ()
+  (b c) d 100 all-released ()
 )";
 
 #[test]
@@ -314,7 +314,7 @@ static CHORD_WITH_TRANSPARENCY: &str = "\
 (defsrc)
 (deflayer base)
 (defchordsv2-experimental
-  (a b) _ 100 last-release ()
+  (a b) _ 100 all-released ()
 )";
 
 #[test]
