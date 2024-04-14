@@ -13,7 +13,7 @@ impl Kanata {
     let (preprocess_tx, preprocess_rx) = sync_channel(100);
     start_event_preprocessor(preprocess_rx, tx);
 
-    let _ = KeyboardHook::set_input_cb(move |input_event| { // This callback should return `false` if the input event is **not** handled by the callback and `true` if the input event **is** handled by the callback. Returning false informs the callback caller that the input event should be handed back to the OS for normal processing.
+    let _ = KeyboardHook::set_input_cb(move |input_event| { // →true if input event was handled, false otherwise, informs input_ev_listener whether to look for the output key event
       let mut key_event = match KeyEvent::try_from(input_event) { // InputEvent{code:u32      , up   :bool}
         Ok(ev)	=> ev,                                            // KeyEvent  {code:OsCode   , value:KeyValue}
         _     	=> return false,};                                // Some(OsCode::KEY_0)←0x30        Release0 Press1 Repeat2 Tap WakeUp
@@ -28,6 +28,8 @@ impl Kanata {
         _                 => {}
       }
       try_send_panic(&preprocess_tx, key_event); // Send input_events to the preprocessing loop. Panic if channel somehow gets full or if channel disconnects. Typing input should never trigger a panic based on the channel getting full, assuming regular operation of the program and some other bug isn't the problem. I've tried to crash the program by pressing as many keys on my keyboard at the same time as I could, but was unable to.
+      #[cfg(    feature="perf_logging") ]
+      debug!(" 🕐{}μs sent msg to tx→rx@start_processing_loop from event loop@KeyboardHook::set_input_cb",(start.elapsed()).as_micros());
       true
     });
     Ok(())
