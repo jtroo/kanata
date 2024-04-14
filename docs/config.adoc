@@ -158,14 +158,18 @@ would be:
 ==== deflayermap
 
 An alternative method for defining a layer exists: `deflayermap`.
-This method does not rely on `defsrc`.
-The very first item must be the layer name,
-but the layer name must be in parentheses unlike before.
-The reason for this is for better error messages when forgetting the name.
-After the layer name, the layer is configured via triples of items:
+This method maps inputs to actions by explicitly defined by input-output pairs
+instead of relying on matching the `defsrc` ordering.
+This has the advantage of terser configuration
+when only a few keys on a layer need to be mapped.
+When practicing a new configuration, the standard `deflayer` has an advantage
+of looking more like physical keyboard layout, which may be helpful to some.
+
+Within `deflayermap` the very first item must be the layer name.
+The layer name must be in parentheses unlike with `deflayer`.
+After the layer name, the layer is configured via pairs of items:
 
 * input key
-* map string
 * output action
 
 An example complete configuration that maps Caps Lock to Escape is:
@@ -173,9 +177,9 @@ An example complete configuration that maps Caps Lock to Escape is:
 [source]
 ----
 ;; defsrc is still necessary
-(defsrc spc)
+(defsrc)
 (deflayermap (base-layer)
-  caps : esc
+  caps esc
 )
 ----
 
@@ -184,8 +188,8 @@ The output action takes the role that items in the normal `deflayer` have.
 
 Instead of specifying an input key,
 you can use either `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
-the keys that are not explicitly mapped in the layer
-(`caps` in the example above).
+the keys that are not explicitly mapped in the layer,
+e.g. in the example above, these affect keys other than `caps`.
 
 `&#95;` maps only keys that are in defsrc.
 
@@ -193,19 +197,9 @@ the keys that are not explicitly mapped in the layer
 
 `&#95;&#95;&#95;` maps all keys that are not explicitly mapped in the layer.
 
-
-The map string can be any of the following strings, to your liking:
-
-[source]
-----
-=
-:
-->
->>
-maps-to
-→
-🞂
-----
+IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
+or map most of your keyboard keys within defsrc when using `deflayermap`.
+Otherwise actions such as `tap-hold` do not behave as intended.
 
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries

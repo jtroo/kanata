@@ -2791,30 +2791,28 @@ fn parse_layers(
                 }
             }
             LayerExprs::CustomMapping(layer) => {
-                // Parse actions as input -> output triplets
-                let mut triplets = layer[2..].chunks_exact(3);
+                // Parse actions as input output pairs
+                let mut pairs = layer[2..].chunks_exact(2);
                 let mut layer_mapped_keys = HashSet::default();
                 let mut defsrc_anykey_used = false;
                 let mut unmapped_anykey_used = false;
                 let mut both_anykey_used = false;
-                for triplet in triplets.by_ref() {
+                for triplet in pairs.by_ref() {
                     let input = &triplet[0];
-                    let mapstr = &triplet[1];
-                    let action = &triplet[2];
-                    let mapstrs = ["=", ":", "->", ">>", "maps-to", "→", "🞂"];
-                    mapstr
-                        .atom(s.vars())
-                        .and_then(|s| match mapstrs.contains(&s) {
-                            true => Some(()),
-                            false => None,
-                        })
-                        .ok_or_else(|| {
-                            anyhow_expr!(
-                                mapstr,
-                                "map string must be one of the following strings:\n\
-                                = | : | -> | >> | maps-to | → | 🞂"
-                            )
-                        })?;
+                    let action = &triplet[1];
+
+                    // TODO: remove me some time after April 2024 to reduce code bloat somewhat.
+                    const MAPSTRS: &[&str] = &["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                    const MAPSTR_ERR: &str = "Seems you are using a retired configuration style.\n\
+                            You should remove all mapping strings from deflayermap;\n\
+                            deflayermap now uses pairs instead of triples.";
+                    if input.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
+                        bail_expr!(input, "{MAPSTR_ERR}");
+                    }
+                    if action.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
+                        bail_expr!(action, "{MAPSTR_ERR}");
+                    }
+
                     let action = parse_action(action, s)?;
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
                         if defsrc_anykey_used {
@@ -2888,7 +2886,7 @@ fn parse_layers(
                         layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
                     }
                 }
-                let rem = triplets.remainder();
+                let rem = pairs.remainder();
                 match rem.len() {
                     0 => {}
                     1 => {

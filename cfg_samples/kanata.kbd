@@ -334,8 +334,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; You might still prefer the standard deflayer for its visual printing in
 ;; the log as you are learning a new configuration.
 (deflayermap (custom-map-example)
-  caps : esc
-  esc  : caps
+  caps esc
+  esc  caps
 
   ;; You can use _ , __ or ___ instead of specifying a key name to map all
   ;; keys that are not explicitly mapped in the layer.
@@ -348,10 +348,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; The two- and three-underscore variants require
   ;; "process-unmapped-keys yes" in defcfg to work.
 
-  ;; ___ : XX ;; maps all keys that are not mapped explicitly in the layer
+  ;; ___ XX ;; maps all keys that are not mapped explicitly in the layer
   ;;          ;; (i.e. esc and caps above) to "no-op" to disable the key.
-  _ : XX   ;; maps all keys that are in defsrc and are not mapped in the layer
-  __ : XX  ;; maps all keys that are NOT in defsrc and are not mapped in the layer
+  _ XX   ;; maps all keys that are in defsrc and are not mapped in the layer
+  __ XX  ;; maps all keys that are NOT in defsrc and are not mapped in the layer
 )
 
 ;; defvar can be used to declare commonly-used values

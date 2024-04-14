@@ -2075,13 +2075,13 @@ fn test_deflayermap() {
     let source = r#"
 (defsrc a b l)
 (deflayermap (blah)
-  d      ->  (macro a b c)
-  e maps-to  e
-  f       :  0
-  j       →  1
-  k       =  2
-  l       🞂  3
-  m      >>  4
+  d   (macro a b c)
+  e   e
+  f   0
+  j   1
+  k   2
+  l   3
+  m   4
 )
 "#;
     let mut s = ParserState::default();
@@ -2180,39 +2180,39 @@ fn parse_platform_specific() {
 (platform () (invalid config but is not used anywhere))
 (defsrc)
 (deflayermap (base)
-  a : (layer-switch 2)
+  a (layer-switch 2)
 )
 ;; layer 2 must exist on all platforms, all in one list
 (platform (win winiov2 wintercept linux macos)
   (deflayermap (2)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 ;; layer 3 must exist on all platforms, in individual lists
 ;; Tests for no duplication.
 (platform (win)
   (deflayermap (3)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 (platform (winiov2)
   (deflayermap (3)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 (platform (wintercept)
   (deflayermap (3)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 (platform (linux)
   (deflayermap (3)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 (platform (macos)
   (deflayermap (3)
-    a : (layer-switch 3)
+    a (layer-switch 3)
   )
 )
 "#;

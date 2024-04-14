@@ -171,12 +171,12 @@ fn sim_chord_activate_largest_overlapping() {
 static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
-(deflayermap (1) 2 : (layer-switch 2)
-                 3 : (layer-switch 3))
-(deflayermap (2) 3 : (layer-while-held 3)
-                 1 : (layer-while-held 1))
-(deflayermap (3) 2 : (layer-while-held 2)
-                 1 : (layer-while-held 1))
+(deflayermap (1) 2 (layer-switch 2)
+                 3 (layer-switch 3))
+(deflayermap (2) 3 (layer-while-held 3)
+                 1 (layer-while-held 1))
+(deflayermap (3) 2 (layer-while-held 2)
+                 1 (layer-while-held 1))
 (defchordsv2-experimental
   (a b) x 200 all-released (1)
   (c d) y 200 all-released (2)
@@ -293,7 +293,7 @@ fn sim_chord_into_tap_hold() {
 static CHORD_WITH_PENDING_UNDERLYING_TAP_HOLD: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
-(deflayermap (base) a : (tap-hold 200 200 a b))
+(deflayermap (base) a (tap-hold 200 200 a b))
 (defchordsv2-experimental
   (b c) d 100 all-released ()
 )";
