@@ -868,6 +868,38 @@ impl Kanata {
         // Release keys that do not exist in the current state but exist in the previous state.
         // This used to use a HashSet but it was changed to a Vec because the order of operations
         // matters.
+        //
+        // BUG(sequences):
+        //
+        // With hidden-delay-type or hidden-suppressed,
+        // sequences will unexpectedly send releases
+        // for the presses that would otherwise have happened.
+        // This is because the press is skipped but the keys make it
+        // into `self.prev_keys` and the OS release event is sent in the code below.
+        //
+        // There haven't been any reports of negative consequences of this behaviour,
+        // but it is unusual and ideally wouldn't happen, so I tried to fix it anyway.
+        // But I was unsuccessful. Approach tried:
+        //
+        // - clear `self.cur_keys` and `layout.states` of outputted keys
+        //   when a sequence is active, for the impacted sequence modes.
+        //
+        // This approach fails because it keeping `layout.states` intact
+        // is necessary to complete chorded sequences, e.g. `S-(a b c)`.
+        // Clearing the `lsft` means the above sequence is impossible to complete.
+        //
+        // Another approach that might work, which has not been attempted,
+        // is to keep track of oskbd events that have actually been sent.
+        // Then, a release can only be sent if an un-released corresponding press
+        // has been pressed in the past.
+        // However, this doesn't seem worth the:
+        //
+        // - runtime cost
+        // - work involved to add the code
+        // - ongoing burden of maintaining that code
+        //
+        // Given that there appears to be no practical negative consequences for this bug
+        // remaining.
         log::trace!("{:?}", &self.prev_keys);
         for k in &self.prev_keys {
             if cur_keys.contains(k) {

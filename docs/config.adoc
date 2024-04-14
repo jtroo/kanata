@@ -13,6 +13,7 @@ See below for links to specific guide versions.
 .Links to specific guide versions
 [%collapsible]
 ====
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-3/docs/config.adoc[v1.6.0-prerelease-3]
 * https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-2/docs/config.adoc[v1.6.0-prerelease-2]
 * https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-1/docs/config.adoc[v1.6.0-prerelease-1]
 * https://github.com/jtroo/kanata/blob/v1.5.0/docs/config.adoc[v1.5.0]
@@ -184,7 +185,7 @@ The output action takes the role that items in the normal `deflayer` have.
 Instead of specifying an input key,
 you can use either `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
 the keys that are not explicitly mapped in the layer
-(`caps` in the example above). 
+(`caps` in the example above).
 
 `&#95;` maps only keys that are in defsrc.
 
@@ -1659,6 +1660,53 @@ The included files also cannot contain includes themselves.
   ;; ...
 )
 ----
+
+[[platform]]
+== Platform-specific configuration
+<<table-of-contents,Back to ToC>>
+
+If you put any top-level configuration item
+within a list beginning with `platform`,
+it will become a platform-specific configuration
+that is only active for the specified platforms.
+
+.Syntax:
+[source]
+----
+(platform (applicable-platforms) ...)
+----
+
+The valid values for applicable platforms are:
+
+- `win`
+- `winiov2`
+- `wintercept`
+- `linux`
+- `macos`
+
+.Example:
+[source]
+----
+(platform (macos)
+  ;; Only on macos, use command arrows to jump/delete words
+  ;; because command is used for so many other things
+  ;; and it's weird that these cases use alt.
+  (defoverrides
+    (lmet bspc) (lalt bspc)
+    (lmet left) (lalt left)
+    (lmet right) (lalt right)
+  )
+)
+
+(platform (win winiov2 wintercept)
+  (defalias run-my-script (cmd #| something involving powershell |#))
+)
+
+(platform (macos linux)
+  (defalias run-my-script (cmd #| something involving bash |#))
+)
+----
+
 
 [[optional-defcfg-options]]
 == defcfg options
