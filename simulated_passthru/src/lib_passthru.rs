@@ -30,8 +30,8 @@ use winapi::shared::minwindef::*;
 
 use std::path::PathBuf;
 /// Parse CLI arguments
-fn cli_init() -> Result<ValidatedArgs> {
-  let cfg_file = PathBuf::from(r#"./sim.kbd"#);
+fn cli_init(cfg_path:&str) -> Result<ValidatedArgs> {
+  let cfg_file = PathBuf::from(&cfg_path);
   if !cfg_file.exists() {bail!("Could not find the config file ({:?})"    ,cfg_file)}
   Ok(ValidatedArgs {paths:vec![cfg_file], nodelay:true},)
 }
@@ -39,8 +39,8 @@ fn cli_init() -> Result<ValidatedArgs> {
 use std::sync::mpsc::{Receiver};
 thread_local! {pub static RX_KEY_EV_OUT:Cell<Option<Receiver<InputEvent>>> = Cell::default();} // Stores receiver for key data to be sent out for the current thread
 
-fn lib_impl() -> Result<()> {
-  let args = cli_init()?;
+fn lib_impl(cfg_path:&str) -> Result<()> {
+  let args = cli_init(cfg_path)?;
   let (tx_kout,rx_kout) = std::sync::mpsc::channel(); //async channel
   let cfg_arc = Kanata::new_arc(&args,Some(tx_kout))?; // new configuration from a file
   debug!("loaded {:?}",args.paths[0]);
@@ -68,15 +68,25 @@ mod key_in;
 mod key_out;
 use crate::key_in::*;
 use crate::key_out::*;
+use widestring::{U16Str,WideChar,u16cstr,
+  U16CString,U16CStr,	//   0 U16/U32-CString wide version of the standard CString type
+  Utf16Str   ,       	// no0 UTF-16 encoded, growable owned string
+};
 
 use log::*;
 mod log_win;
 #[no_mangle] pub extern "win64"
-fn lib_kanata_passthru(cb_addr:c_longlong) -> LRESULT {
+fn lib_kanata_passthru(cb_addr:c_longlong, cfg_path:&WideChar) -> LRESULT {
   log_init();
   let ret = set_cb_out_ev(cb_addr);
   if let Err(ref e) = ret {error!("couldn't register external key out event callback"); return 1};
-  let ret = lib_impl();
-  if let Err(ref e) = ret {error!("{e}\n"); return 1}
+  let cfg_path_wc	        	= unsafe {U16CStr::from_ptr_str(cfg_path)}; // Constructs a wide C string slice from a nul-terminated string pointer
+  let cfg_path_wx	:&U16Str	= cfg_path_wc.as_ustr(); // 16b wide string slice with undefined encoding
+  // reject invalid UTF16 (skip check with from_ustr_unchecked if certain input is valid UTF16)
+  let cfg_path_w	:&Utf16Str = match Utf16Str::from_ustr(cfg_path_wx){Ok(s)=>s, Err(_e)=>{error!("{_e}\n"); return -1}};
+  let cfg_path_s	:String = cfg_path_w.to_string(); // valid UTF16 → conversion is lossless & non-fallible
+
+  let ret = lib_impl(&cfg_path_s);
+  if let Err(ref e) = ret {error!("{e}\n"); return -2}
   0
 }
