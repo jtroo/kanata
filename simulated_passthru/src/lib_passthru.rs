@@ -1,15 +1,15 @@
-use std::time;
+
 use anyhow::Result;
-use anyhow::{anyhow, bail};
-use clap::Parser;
-use kanata_parser::keys::str_to_oscode;
+use anyhow::{bail};
+
+
 use kanata_state_machine::{oskbd::*, *};
 use log::*;
 
 
 fn log_init(max_lvl:&c_longlong) {
   let _ = log_win::init();
-  let a = log_win::set_thread_state(true);
+  let _a = log_win::set_thread_state(true);
   let log_lvl = match max_lvl {
     1 => log::LevelFilter::Error,
     2 => log::LevelFilter::Warn,
@@ -69,25 +69,24 @@ fn lib_impl(cfg_path:&str) -> Result<()> {
   Ok(())
 }
 
-use kanata_parser::keys::OsCode;
-use std::panic::catch_unwind;
+
+
 
 mod key_in;
 mod key_out;
-use crate::key_in::*;
+
 use crate::key_out::*;
-use widestring::{U16Str,WideChar,u16cstr,
-  U16CString,U16CStr,	//   0 U16/U32-CString wide version of the standard CString type
+use widestring::{U16Str,WideChar,U16CStr,	//   0 U16/U32-CString wide version of the standard CString type
   Utf16Str   ,       	// no0 UTF-16 encoded, growable owned string
 };
 
-use log::*;
+
 mod log_win;
 #[no_mangle] pub extern "win64"
 fn lib_kanata_passthru(cb_addr:c_longlong, cfg_path:&WideChar, max_lvl:c_longlong) -> LRESULT {
   log_init(&max_lvl);
   let ret = set_cb_out_ev(cb_addr);
-  if let Err(ref e) = ret {error!("couldn't register external key out event callback"); return 1};
+  if let Err(ref _e) = ret {error!("couldn't register external key out event callback"); return 1};
   let cfg_path_wc	        	= unsafe {U16CStr::from_ptr_str(cfg_path)}; // Constructs a wide C string slice from a nul-terminated string pointer
   let cfg_path_wx	:&U16Str	= cfg_path_wc.as_ustr(); // 16b wide string slice with undefined encoding
   // reject invalid UTF16 (skip check with from_ustr_unchecked if certain input is valid UTF16)

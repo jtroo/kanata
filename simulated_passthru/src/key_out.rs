@@ -1,14 +1,14 @@
 use anyhow::Result;
-use anyhow::{anyhow, bail};
-use clap::Parser;
-use kanata_parser::keys::str_to_oscode;
-use kanata_state_machine::{oskbd::*, *};
+
+
+
+use kanata_state_machine::{oskbd::*};
 use log::*;
 
 use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
-use std::sync::{Arc,OnceLock};
-use parking_lot::Mutex;
+
+
 use std::cell::Cell;
 
 type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + 'static;
@@ -33,7 +33,7 @@ fn set_cb_out_ev(cb_addr:c_longlong) -> Result<()>  {debug!("✗✗✗✗ unimpl
   Ok(())
 }
 
-use kanata_parser::keys::OsCode;
+
 
 pub fn send_out_ev(in_ev:InputEvent) -> Result<()> { // ext callback accepts vk:i64,sc:i64,up:i64
   #[cfg(feature="perf_logging")] let start = std::time::Instant::now();

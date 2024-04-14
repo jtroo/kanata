@@ -1,5 +1,5 @@
 //! A logger that prints to OutputDebugString (Windows only)
-use log::{Level,LevelFilter,Metadata,Record};
+use log::{Level,Metadata,Record};
 
 /// Implements `log::Log`, so can be used as a logging provider to forward log messages to the Windows `OutputDebugString` API
 pub struct WinDebugLogger;
@@ -44,7 +44,7 @@ fn clean_name(path:Option<&str>) -> String {
 
 #[cfg(target_os="windows")] use winapi::um::processthreadsapi::GetCurrentThreadId;
 impl log::Log for WinDebugLogger {
-  #[cfg(    windows) ]fn enabled(&self, metadata:&Metadata) -> bool {true }
+  #[cfg(    windows) ]fn enabled(&self, _metadata:&Metadata) -> bool {true }
   #[cfg(not(windows))]fn enabled(&self, metadata:&Metadata) -> bool {false}
   fn log(&self, record:&Record) {
     #[cfg(not(target_os="windows"))] let thread_id = "";
