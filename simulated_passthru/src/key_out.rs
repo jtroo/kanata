@@ -11,24 +11,28 @@ use winapi::ctypes::*;
 use winapi::shared::minwindef::*;
 use std::sync::{Arc,OnceLock};
 use parking_lot::Mutex;
+use std::cell::Cell;
 
-use crate::oskbd::OUTEVWRAP;
+// use crate::oskbd::OUTEVWRAP;
+// type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + Send + Sync + 'static;
+type CbOutEvFn = dyn Fn(i64,i64,i64) -> i64 + 'static;
+thread_local! {static CBOUTEV_WRAP:Cell<Option<Box<CbOutEvFn>>> = Cell::default();} // Stores the hook callback for the current thread
 
-/// Receives the address of the external app's callback function that accepts simulated output events and stores it in a static thread-safe OnceLock variable that can be then used by KbdOut which is called by the processing loop thread
-#[cfg(    feature = "passthru_ahk")]
-pub fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
-  // cbKanataOut(vk,sc,up) {return 1}: // All args are i64 (ahk doesn't support u64)
-  // address: pointer-sized integer, equivalent to Int64 on ahk64
-  // AHK uses x64 calling convention: todo: is this the same as win64? extern "C" also seems to work
-  log::trace!("@set_out_ev_listener: got func address {}",cb_addr);
-  let ptr_fn = cb_addr as *const (); // `as`-cast to a raw pointer before `transmute`ing to a function pointer. This avoids an integer-to-pointer `transmute`, which can be problematic. Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+/// - Get the address of AutoHotkey's callback function that accepts simulated output events (and sends them to the OS)
+///   - `cbKanataOut(vk,sc,up) {return 1}` All args are i64 (AHK doesn't support u64)
+/// - Store it in a static thread-local Cell (AHK is single-threaded, so we can only use this callback from the main thread). KbdOut will use a channel to send a message key event that will use call the fn from this Cell
+/// address: pointer-sized integer, equivalent to Int64 on ahk64 (c_longlong=i64). Will be `as`-cast to a raw pointer before `transmute`ing to a function pointer to avoid an integer-to-pointer `transmute`, which can be problematic. Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+/// AHK uses x64 calling convention: TODO: is this the same as win64? extern "C" also seems to work?
+#[cfg(    feature="passthru_ahk")]
+pub fn set_cb_out_ev(cb_addr:c_longlong) -> Result<()> {trace!("got func address {}",cb_addr);
+  let ptr_fn    = cb_addr as *const ();
   let cb_out_ev = unsafe {std::mem::transmute::<*const (), fn(vk:i64,sc:i64,up:i64) -> i64>(ptr_fn)};
-  OUTEVWRAP.get_or_init(|| {FnOutEvWrapper {cb:Arc::new(cb_out_ev)}});
-  0
+  CBOUTEV_WRAP.with(|state| {assert!(state.take().is_none(),"Only 1 callback can be registered per thread");
+    state.set(Some(Box::new(cb_out_ev)));});
+  Ok(())
 }
-#[cfg(not(feature = "passthru_ahk"))]
-fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
-  debug!("✗✗✗✗ unimplemented!");
+#[cfg(not(feature="passthru_ahk"))]
+fn set_cb_out_ev(cb_addr:c_longlong) -> Result<()>  {debug!("✗✗✗✗ unimplemented!");
   unimplemented!();
-  0
+  Ok(())
 }
