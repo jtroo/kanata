@@ -45,7 +45,7 @@ impl fmt::Display for InputEvent { fn fmt(&self, f: &mut fmt::Formatter) -> fmt:
 impl InputEvent {
   pub fn from_vk_sc(vk:c_uint, sc:c_uint, up:c_int) -> Self {
     let code = if vk == (VK_RETURN as u32) { // todo: do a proper check for numpad enter, maybe 0x11c isn't universal
-      match sc {0x11C => u32::from(vk_kpenter_fake)
+      match sc {0x11C => u32::from(VK_KPENTER_FAKE)
         ,       _     => VK_RETURN as u32,}
     } else {vk};
     Self {code,up:(up!=0)}}
