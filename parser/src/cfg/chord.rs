@@ -41,7 +41,7 @@ pub(crate) fn parse_defchordv2(
             bail_expr!(
                 keys,
                 "This chord has previously been defined.\n\
-                Only one set of chords must exist."
+                Only one set of chords must exist for one key combination."
             );
         }
 
