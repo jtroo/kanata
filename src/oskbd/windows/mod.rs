@@ -11,10 +11,13 @@ use encode_unicode::CharExt;
 
 use crate::oskbd::KeyValue;
 
-#[cfg(not(feature = "interception_driver"))]
+#[cfg(all(not(feature="interception_driver"),not(feature="simulated_input")))]
 mod llhook;
-#[cfg(not(feature = "interception_driver"))]
+#[cfg(all(not(feature="interception_driver"),not(feature="simulated_input")))]
 pub use llhook::*;
+
+#[cfg(feature="simulated_input"    )] mod exthook_os;
+#[cfg(feature="simulated_input"    )] pub use exthook_os::*;
 
 mod scancode_to_usvk;
 #[allow(unused)]
