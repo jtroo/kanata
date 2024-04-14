@@ -22,7 +22,7 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 regex = "1.10.3"
 
-kanata = {path="..", features=["simulated_output","simulated_input"], default_features=false}
+kanata = {path="..", features=["simulated_output","simulated_input","passthru_ahk"], default_features=false}
 
 # kanata-keyberon = "0.160.1"
 # kanata-parser = "0.160.1"
@@ -56,7 +56,7 @@ kanata-interception = { version = "0.2.0", optional = true }
 win_dbg_logger = "0.1.0"
 
 [features]
-default         	= ["simulated_input","simulated_output","autohotkey"]
+default         	= ["simulated_input","simulated_output","passthru_ahk"]
 simulated_output	= []
 simulated_input 	= []
-autohotkey      	= []
+passthru_ahk    	= []
