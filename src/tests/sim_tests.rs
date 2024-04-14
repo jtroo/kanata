@@ -255,6 +255,20 @@ fn sim_chord_layer_3_held_disabled() {
     );
 }
 
+#[test]
+fn sim_chord_layer_3_repeat() {
+    let result = simulate(
+        SIMPLE_DISABLED_LAYER_CHORD_CFG,
+        "d:3 t:50 d:a t:50 d:b t:50 r:b t:50 r:b t:50\n\
+         d:d t:50 d:c t:50 r:c t:50 r:d t:50",
+    );
+    assert_eq!(
+        "t:100ms\nout:↓X\nt:50ms\nout:↓X\nt:50ms\nout:↓X\n\
+         t:100ms\nout:↓Y\nt:50ms\nout:↓Y\nt:50ms\nout:↓Y",
+        result
+    );
+}
+
 static CHORD_INTO_TAP_HOLD_CFG: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
