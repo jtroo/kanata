@@ -268,7 +268,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
         DEF_LOCAL_KEYS,
         Err("environment variables are not supported".into()),
     )?;
-    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides);
+    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides, &icfg.chords_v2);
     let switch_max_key_timing = s.switch_max_key_timing.get();
     let mut layout = KanataLayout::new(
         Layout::new_with_trans_action_settings(
@@ -317,7 +317,7 @@ pub struct LayerInfo {
 fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParserState::default();
     let icfg = parse_cfg_raw(p, &mut s)?;
-    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides);
+    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides, &icfg.chords_v2);
     let switch_max_key_timing = s.switch_max_key_timing.get();
     let mut layout = KanataLayout::new(
         Layout::new_with_trans_action_settings(
@@ -3323,9 +3323,13 @@ fn parse_unmod(
 }
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
-fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutputs {
+fn create_key_outputs(
+    layers: &KanataLayers,
+    overrides: &Overrides,
+    chords_v2: &Option<ChordsV2<'static, KanataCustom>>,
+) -> KeyOutputs {
     let mut outs = KeyOutputs::new();
-    for layer in layers.iter() {
+    for (layer_idx, layer) in layers.iter().enumerate() {
         let mut layer_outputs = HashMap::default();
         for (i, action) in layer[0].iter().enumerate() {
             let osc_slot = match i.try_into() {
@@ -3333,6 +3337,13 @@ fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutput
                 Err(_) => continue,
             };
             add_key_output_from_action_to_key_pos(osc_slot, action, &mut layer_outputs, overrides);
+            add_chordsv2_output_for_key_pos(
+                osc_slot,
+                layer_idx,
+                chords_v2,
+                &mut layer_outputs,
+                overrides,
+            );
         }
         outs.push(layer_outputs);
     }
@@ -3344,6 +3355,27 @@ fn create_key_outputs(layers: &KanataLayers, overrides: &Overrides) -> KeyOutput
     }
     outs.shrink_to_fit();
     outs
+}
+
+fn add_chordsv2_output_for_key_pos(
+    osc_slot: OsCode,
+    layer_idx: usize,
+    chords_v2: &Option<ChordsV2<'static, KanataCustom>>,
+    outputs: &mut HashMap<OsCode, Vec<OsCode>>,
+    overrides: &Overrides,
+) {
+    assert!(layer_idx <= usize::from(u16::MAX));
+    let Some(chords_v2) = chords_v2.as_ref() else {
+        return;
+    };
+    let Some(chords_for_key) = chords_v2.chords().mapping.get(&u16::from(osc_slot)) else {
+        return;
+    };
+    for chord in chords_for_key.chords.iter() {
+        if !chord.disabled_layers.contains(&(layer_idx as u16)) {
+            add_key_output_from_action_to_key_pos(osc_slot, chord.action, outputs, overrides);
+        }
+    }
 }
 
 fn add_key_output_from_action_to_key_pos(

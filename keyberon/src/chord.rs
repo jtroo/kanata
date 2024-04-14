@@ -170,6 +170,10 @@ impl<'a, T> ChordsV2<'a, T> {
         self.queue.push_back(item)
     }
 
+    pub fn chords(&self) -> &ChordsForKeys<'a, T> {
+        &self.chords
+    }
+
     pub(crate) fn get_action_chv2(&mut self) -> (QueuedAction<'a, T>, bool) {
         match self
             .active_chords
