@@ -7,10 +7,18 @@ use kanata_state_machine::{oskbd::*, *};
 use log::*;
 
 
-fn log_init() {
+fn log_init(max_lvl:&c_longlong) {
   let _ = log_win::init();
   let a = log_win::set_thread_state(true);
-  log::set_max_level(log::LevelFilter::Trace);
+  let log_lvl = match max_lvl {
+    1 => log::LevelFilter::Error,
+    2 => log::LevelFilter::Warn,
+    3 => log::LevelFilter::Info,
+    4 => log::LevelFilter::Debug,
+    5 => log::LevelFilter::Trace,
+    _ => log::LevelFilter::Info,
+  };
+  log::set_max_level(log_lvl);
 }
 
 use std::cell::Cell;
@@ -76,8 +84,8 @@ use widestring::{U16Str,WideChar,u16cstr,
 use log::*;
 mod log_win;
 #[no_mangle] pub extern "win64"
-fn lib_kanata_passthru(cb_addr:c_longlong, cfg_path:&WideChar) -> LRESULT {
-  log_init();
+fn lib_kanata_passthru(cb_addr:c_longlong, cfg_path:&WideChar, max_lvl:c_longlong) -> LRESULT {
+  log_init(&max_lvl);
   let ret = set_cb_out_ev(cb_addr);
   if let Err(ref e) = ret {error!("couldn't register external key out event callback"); return 1};
   let cfg_path_wc	        	= unsafe {U16CStr::from_ptr_str(cfg_path)}; // Constructs a wide C string slice from a nul-terminated string pointer
