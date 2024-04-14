@@ -6,6 +6,7 @@ use crate::err_expr;
 pub(crate) fn filter_platform_specific_cfg(
     top_levels: Vec<TopLevel>,
     deflocalkeys_variant_to_apply: &str,
+    lsp_hint_inactive_code: &mut Vec<LspHintInactiveCode>,
 ) -> Result<Vec<TopLevel>> {
     let valid_platform_names = DEFLOCALKEYS_VARIANTS
         .iter()
@@ -58,6 +59,14 @@ pub(crate) fn filter_platform_specific_cfg(
 
             if applicable_platforms.contains(&current_platform) {
                 tles.push(configuration.clone());
+            } else {
+                lsp_hint_inactive_code.push(LspHintInactiveCode {
+                    span: tle.span.clone(),
+                    reason: format!(
+                        "Current platform \"{current_platform}\" doesn't match any of: {}",
+                        applicable_platforms.join(" ")
+                    ),
+                })
             }
 
             Ok(tles)
