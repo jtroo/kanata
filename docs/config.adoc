@@ -2069,6 +2069,16 @@ you can set reduce the value to a number 0 to 4.
 This configuration affects the timer during which chords processing is disabled.
 NOTE: For more info, see <<input-chords-v2>>.
 
+The default (and minimum) value is `5` and the unit is milliseconds.
+
+.Example:
+[source]
+----
+(defcfg
+  chords-v2-min-idle-experimental 200
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
