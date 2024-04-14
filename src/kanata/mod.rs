@@ -390,8 +390,6 @@ impl Kanata {
     pub fn new_arc(args: &ValidatedArgs                               ) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args   )?)))}
     #[cfg(    feature="passthru_ahk" )]
     pub fn new_arc(args: &ValidatedArgs, tx:Option<ASender<InputEvent>>) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args,tx)?)))}
-        Ok(Arc::new(Mutex::new(Self::new(args)?)))
-    }
 
     pub fn new_from_str(cfg: &str) -> Result<Self> {
         let cfg = match cfg::new_from_str(cfg) {
