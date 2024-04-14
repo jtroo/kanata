@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
-use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, SyncSender as Sender, Sender as ASender, TryRecvError};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
@@ -260,7 +260,7 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
 impl Kanata {
     #[cfg(    feature="passthru_ahk" )]
     /// Create a new configuration from a file.
-    pub fn new(args:&ValidatedArgs,tx:Option<Sender<InputEvent>>) -> Result<Self> {
+    pub fn new(args:&ValidatedArgs,tx:Option<ASender<InputEvent>>) -> Result<Self> {
       Kanata::new_both(args,tx)
     }
     #[cfg(not(feature="passthru_ahk"))]
@@ -268,7 +268,7 @@ impl Kanata {
     pub fn new(args:&ValidatedArgs,                             ) -> Result<Self> {
       Kanata::new_both(args,None)
     }
-    fn new_both(args:&ValidatedArgs,tx:Option<Sender<InputEvent>>) -> Result<Self> {
+    fn new_both(args:&ValidatedArgs,tx:Option<ASender<InputEvent>>) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {
@@ -389,7 +389,7 @@ impl Kanata {
     #[cfg(not(feature="passthru_ahk"))]
     pub fn new_arc(args: &ValidatedArgs                               ) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args   )?)))}
     #[cfg(    feature="passthru_ahk" )]
-    pub fn new_arc(args: &ValidatedArgs, tx:Option<Sender<InputEvent>>) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args,tx)?)))}
+    pub fn new_arc(args: &ValidatedArgs, tx:Option<ASender<InputEvent>>) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args,tx)?)))}
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
