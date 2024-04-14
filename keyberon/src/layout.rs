@@ -22,6 +22,7 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
+use crate::chord::*;
 use crate::key_code::KeyCode;
 use crate::{action::*, multikey_buffer::MultiKeyBuffer};
 use arraydeque::ArrayDeque;
@@ -56,7 +57,7 @@ fn check_queue_size() {
 /// The current event queue.
 ///
 /// Events can be retrieved by iterating over this struct and calling [Queued::event].
-type Queue = ArrayDeque<Queued, QUEUE_SIZE, arraydeque::behavior::Wrapping>;
+pub(crate) type Queue = ArrayDeque<Queued, QUEUE_SIZE, arraydeque::behavior::Wrapping>;
 
 /// A list of queued press events. Used for special handling of potentially multiple press events
 /// that occur during a Waiting event.
@@ -73,7 +74,7 @@ pub const ACTION_QUEUE_LEN: usize = 8;
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type Delay = u16;
-type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
+pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
 const EXTRA_WAITING_LEN: usize = 8;
@@ -107,6 +108,7 @@ where
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
     pub quick_tap_hold_timeout: bool,
+    pub chords_v2: Option<ChordsV2<'a, T>>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
 }
@@ -155,7 +157,7 @@ where
         }
     }
 
-    fn tick(&mut self) {
+    fn tick_hist(&mut self) {
         let ticks = self.ticks_since_occurrences.as_uninit_slice_mut();
         for tick_count in ticks {
             unsafe {
@@ -338,9 +340,6 @@ impl<'a, T: 'a> State<'a, T> {
             _ => None,
         }
     }
-    fn tick(&self) -> Option<Self> {
-        Some(*self)
-    }
     /// Returns None if the key has been released and Some otherwise.
     pub fn release(&self, c: KCoord, custom: &mut CustomEvent<'a, T>) -> Option<Self> {
         match *self {
@@ -408,7 +407,7 @@ pub struct TapDanceEagerState<'a, T: 'a> {
 }
 
 impl<'a, T> TapDanceEagerState<'a, T> {
-    fn tick(&mut self) {
+    fn tick_tde(&mut self) {
         self.timeout = self.timeout.saturating_sub(1);
     }
 
@@ -461,7 +460,7 @@ pub enum WaitingAction {
 }
 
 impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
-    fn tick(
+    fn tick_wt(
         &mut self,
         queued: &mut Queue,
         action_queue: &mut ActionQueue<'a, T>,
@@ -914,7 +913,7 @@ enum OneShotHandlePressKey {
 }
 
 impl OneShotState {
-    fn tick(&mut self) -> Option<ReleasedOneShotKeys> {
+    fn tick_osh(&mut self) -> Option<ReleasedOneShotKeys> {
         if self.keys.is_empty() {
             return None;
         }
@@ -1007,8 +1006,8 @@ impl<'a> Iterator for QueuedIter<'a> {
 /// An event, waiting in a queue to be processed.
 #[derive(Debug, Copy, Clone)]
 pub struct Queued {
-    event: Event,
-    since: u16,
+    pub(crate) event: Event,
+    pub(crate) since: u16,
 }
 impl From<Event> for Queued {
     fn from(event: Event) -> Self {
@@ -1016,7 +1015,7 @@ impl From<Event> for Queued {
     }
 }
 impl Queued {
-    fn tick(&mut self) {
+    pub(crate) fn tick_qd(&mut self) {
         self.since = self.since.saturating_add(1);
     }
 
@@ -1033,7 +1032,7 @@ pub struct LastPressTracker {
 }
 
 impl LastPressTracker {
-    fn tick(&mut self) {
+    fn tick_lpt(&mut self) {
         self.tap_hold_timeout = self.tap_hold_timeout.saturating_sub(1);
     }
 }
@@ -1070,6 +1069,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
             trans_resolution_behavior_v2: true,
+            chords_v2: None,
         }
     }
     pub fn new_with_trans_action_settings(
@@ -1239,6 +1239,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
     pub fn tick(&mut self) -> CustomEvent<'a, T> {
+        let active_layer = self.current_layer() as u16;
+        if let Some(chv2) = self.chords_v2.as_mut() {
+            self.queue.extend(chv2.tick_chv2(active_layer).drain(0..));
+            if let (qac @ Some(_), pause_input_processing) = chv2.get_action_chv2() {
+                self.action_queue.push_back(qac);
+                if pause_input_processing {
+                    self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
+                }
+            }
+        }
         if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
@@ -1250,22 +1260,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 &mut self.trans_resolution_layer_order().into_iter().skip(1),
             );
         }
-        self.states = self.states.iter().filter_map(State::tick).collect();
-        self.queue.iter_mut().for_each(Queued::tick);
-        self.last_press_tracker.tick();
+        self.queue.iter_mut().for_each(Queued::tick_qd);
+        self.last_press_tracker.tick_lpt();
         if let Some(ref mut tde) = self.tap_dance_eager {
-            tde.tick();
+            tde.tick_tde();
             if tde.is_expired() {
                 self.tap_dance_eager = None;
             }
         }
         self.process_sequences();
 
-        self.historical_keys.tick();
-        self.historical_inputs.tick();
+        self.historical_keys.tick_hist();
+        self.historical_inputs.tick_hist();
 
         let mut custom = CustomEvent::NoEvent;
-        if let Some(released_keys) = self.oneshot.tick() {
+        if let Some(released_keys) = self.oneshot.tick_osh() {
             for key in released_keys.iter() {
                 custom.update(self.dequeue(Queued {
                     event: Event::Release(key.0, key.1),
@@ -1275,7 +1284,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
 
         custom.update(match &mut self.waiting {
-            Some(w) => match w.tick(&mut self.queue, &mut self.action_queue) {
+            Some(w) => match w.tick_wt(&mut self.queue, &mut self.action_queue) {
                 Some((WaitingAction::Hold, _)) => self.waiting_into_hold(-1),
                 Some((WaitingAction::Tap, pq)) => self.waiting_into_tap(pq, -1),
                 Some((WaitingAction::Timeout, _)) => self.waiting_into_timeout(-1),
@@ -1406,17 +1415,17 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
         let mut waiting_action = (0, None);
         for (i, w) in self.extra_waiting.iter_mut().enumerate() {
-            match w.tick(&mut self.queue, &mut self.action_queue) {
+            match w.tick_wt(&mut self.queue, &mut self.action_queue) {
                 None => {}
                 wa => {
                     waiting_action = (i as isize, wa);
                     // break - only complete one at a time even if potentially multiple have
                     // completed, so that only one custom event is returned.
                     //
-                    // Theoretically if we could call the waiting_into_* function, we could do that
+                    // Theoretically if we could call the waiting_into_* functions, we could do that
                     // here and break only if custom is None, but that runs into mutability
-                    // problems. I don't expect any measurable improvements from being able to do
-                    // that too.
+                    // problems. I don't expect any perceptible degradation between from not doing
+                    // the above.
                     break;
                 }
             }
@@ -1507,11 +1516,15 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if let Event::Press(x, y) = event {
             self.historical_inputs.push_front((x, y));
         }
-        if let Some(queued) = self.queue.push_back(event.into()) {
+        if let Some(overflow) = if let Some(ch) = self.chords_v2.as_mut() {
+            ch.push_back_chv2(event.into())
+        } else {
+            self.queue.push_back(event.into())
+        } {
             for i in -1..(EXTRA_WAITING_LEN as i8) {
                 self.waiting_into_hold(i);
             }
-            self.dequeue(queued);
+            self.dequeue(overflow);
         }
     }
     /// Resolve coordinate to first non-Trans actions.
@@ -1610,11 +1623,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
                         timeout: if self.quick_tap_hold_timeout {
-                            timeout.saturating_sub(delay)
+                            dbg!(timeout.saturating_sub(delay))
                         } else {
                             *timeout
                         },
-                        delay,
+                        delay: if self.quick_tap_hold_timeout {
+                            // Note: don't want to double-count this.
+                            0
+                        } else {
+                            delay
+                        },
                         ticks: 0,
                         hold,
                         tap,

@@ -23,6 +23,7 @@ pub struct CfgOptions {
     pub concurrent_tap_hold: bool,
     pub rapid_event_delay: u16,
     pub trans_resolution_behavior_v2: bool,
+    pub chords_v2_min_idle: u16,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -71,6 +72,7 @@ impl Default for CfgOptions {
             concurrent_tap_hold: false,
             rapid_event_delay: 5,
             trans_resolution_behavior_v2: true,
+            chords_v2_min_idle: 5,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_dev: vec![],
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -431,6 +433,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 v
                             ),
                         };
+                    }
+                    "chords-v2-min-idle-experimental" => {
+                        let min_idle = parse_cfg_val_u16(val, label, true)?;
+                        if min_idle < 5 {
+                            bail_expr!(val, "{label} must be 5-65535");
+                        }
+                        cfg.chords_v2_min_idle = min_idle;
                     }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };

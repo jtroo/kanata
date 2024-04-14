@@ -223,7 +223,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; in time expire their timeout quicker. Without this, the timeout for the 2nd
   ;; tap-hold onwards will start from 0ms after the previous tap-hold expires.
   ;;
-  ;; concurrent-tap-hold yes
+  concurrent-tap-hold yes
 
   ;; This configuration makes the release of one-shot-press and of the tap in a tap-hold
   ;; by the defined number of milliseconds (approximate).
@@ -1229,4 +1229,24 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   (defoverrides
     (template-expand common-overrides)
   )
+)
+
+#|
+
+Global input chords.
+
+Syntax (5-tuples):
+
+    (defchordsv2-experimental
+      (participating-keys1) action1 timeout1 release-behaviour1 (disabled-layers1)
+        ...
+      (participating-keysN) actionN timeoutN release-behaviourN (disabled-layersN)
+    )
+
+|#
+
+(defchordsv2-experimental
+  (a b)      c                200 all-released  (arrows)
+  (a b z)   (macro h e l l o) 250 first-release (arrows)
+  (a b z y) (macro b y e)     400 first-release (arrows)
 )

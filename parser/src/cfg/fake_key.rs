@@ -4,7 +4,7 @@ use crate::{anyhow_expr, bail, bail_expr};
 
 pub(crate) fn parse_on_press_fake_key_op(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
     Ok(s.a.sref(Action::Custom(
@@ -14,7 +14,7 @@ pub(crate) fn parse_on_press_fake_key_op(
 
 pub(crate) fn parse_on_release_fake_key_op(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
     Ok(s.a.sref(Action::Custom(s.a.sref(
@@ -24,7 +24,7 @@ pub(crate) fn parse_on_release_fake_key_op(
 
 pub(crate) fn parse_on_idle_fakekey(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str =
         "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
@@ -77,7 +77,7 @@ pub(crate) fn parse_on_idle_fakekey(
 
 fn parse_fake_key_op_coord_action(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
     ac_name: &str,
 ) -> Result<(Coord, FakeKeyAction)> {
     const ERR_MSG: &str = "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
@@ -128,14 +128,14 @@ pub(crate) fn get_fake_key_coords<T: Into<usize>>(y: T) -> (u8, u16) {
 
 pub(crate) fn parse_fake_key_delay(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     parse_delay(ac_params, false, s)
 }
 
 pub(crate) fn parse_on_release_fake_key_delay(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     parse_delay(ac_params, true, s)
 }
@@ -143,7 +143,7 @@ pub(crate) fn parse_on_release_fake_key_delay(
 fn parse_delay(
     ac_params: &[SExpr],
     is_release: bool,
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "fakekey-delay expects a single number (ms, 0-65535)";
     log::warn!("The configuration contains a fakekey-delay action. This is broken for many use cases. It is recommended to use macro instead.");
@@ -159,7 +159,7 @@ fn parse_delay(
         })))))
 }
 
-fn parse_vkey_coord(param: &SExpr, s: &ParsedState) -> Result<Coord> {
+fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
     let name = param
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?;
@@ -171,7 +171,7 @@ fn parse_vkey_coord(param: &SExpr, s: &ParsedState) -> Result<Coord> {
     Ok(coord)
 }
 
-fn parse_vkey_action(param: &SExpr, s: &ParsedState) -> Result<FakeKeyAction> {
+fn parse_vkey_action(param: &SExpr, s: &ParserState) -> Result<FakeKeyAction> {
     let action = param
         .atom(s.vars())
         .and_then(|ac| {
@@ -195,7 +195,7 @@ fn parse_vkey_action(param: &SExpr, s: &ParsedState) -> Result<FakeKeyAction> {
 
 pub(crate) fn parse_on_press(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "on-press expects two parameters: <action> <key-name>";
     if ac_params.len() != 2 {
@@ -211,7 +211,7 @@ pub(crate) fn parse_on_press(
 
 pub(crate) fn parse_on_release(
     ac_params: &[SExpr],
-    s: &ParsedState,
+    s: &ParserState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "on-press expects two parameters: <action> <key-name>";
     if ac_params.len() != 2 {
@@ -225,7 +225,7 @@ pub(crate) fn parse_on_release(
     ))))
 }
 
-pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParsedState) -> Result<&'static KanataAction> {
+pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "on-idle expects three parameters: <timeout> <action> <key-name>";
     if ac_params.len() != 3 {
         bail!("{ERR_MSG}");

@@ -35,7 +35,7 @@ fn span_works_with_unicode_characters() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"(defsrc a) ;; 😊
 (deflayer base @😊)
 "#;
@@ -70,7 +70,7 @@ fn test_multiline_error_span() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"(defsrc a)
 (
   🍍
@@ -107,7 +107,7 @@ fn test_span_of_an_unterminated_block_comment_error() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"(defsrc a) |# I'm an unterminated block comment..."#;
     let span = parse_cfg_raw_string(
         source,
@@ -138,7 +138,7 @@ fn parse_action_vars() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar
   one 1
@@ -221,7 +221,7 @@ fn parse_delegate_to_default_layer_yes() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defcfg delegate-to-first-layer yes)
 (defsrc a)
@@ -251,7 +251,7 @@ fn parse_delegate_to_default_layer_yes_but_base_transparent() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defcfg delegate-to-first-layer yes)
 (defsrc a)
@@ -281,7 +281,7 @@ fn parse_delegate_to_default_layer_no() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defcfg delegate-to-first-layer no)
 (defsrc a)
@@ -311,7 +311,7 @@ fn parse_transparent_default() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let icfg = parse_cfg_raw(
         &std::path::PathBuf::from("./test_cfgs/transparent_default.kbd"),
         &mut s,
@@ -479,7 +479,7 @@ fn recursive_multi_is_flattened() {
             list!([atom!("multi"), atom!("c"), atom!("mrtp"),])
         ]),
     ];
-    let s = ParsedState::default();
+    let s = ParserState::default();
     if let KanataAction::MultipleActions(parsed_multi) = parse_multi(&params, &s).unwrap() {
         assert_eq!(parsed_multi.len(), 4);
         assert_eq!(parsed_multi[0], Action::KeyCode(KeyCode::A));
@@ -504,7 +504,7 @@ fn recursive_multi_is_flattened() {
 fn test_parse_sequence_a_b() {
     let seq = parse_sequence_keys(
         &parse("(a b)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 2);
@@ -516,7 +516,7 @@ fn test_parse_sequence_a_b() {
 fn test_parse_sequence_sa_b() {
     let seq = parse_sequence_keys(
         &parse("(S-a b)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 3);
@@ -529,7 +529,7 @@ fn test_parse_sequence_sa_b() {
 fn test_parse_sequence_sab() {
     let seq = parse_sequence_keys(
         &parse("(S-(a b))", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 3);
@@ -542,7 +542,7 @@ fn test_parse_sequence_sab() {
 fn test_parse_sequence_bigchord() {
     let seq = parse_sequence_keys(
         &parse("(AG-A-M-C-S-(a b) c)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 8);
@@ -560,7 +560,7 @@ fn test_parse_sequence_bigchord() {
 fn test_parse_sequence_inner_chord() {
     let seq = parse_sequence_keys(
         &parse("(S-(a b C-c) d)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 6);
@@ -576,7 +576,7 @@ fn test_parse_sequence_inner_chord() {
 fn test_parse_sequence_earlier_inner_chord() {
     let seq = parse_sequence_keys(
         &parse("(S-(a C-b c) d)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 6);
@@ -592,7 +592,7 @@ fn test_parse_sequence_earlier_inner_chord() {
 fn test_parse_sequence_numbers() {
     let seq = parse_sequence_keys(
         &parse("(0 1 2 3 4 5 6 7 8 9)", "test").expect("parses")[0].t,
-        &ParsedState::default(),
+        &ParserState::default(),
     )
     .expect("parses");
     assert_eq!(seq.len(), 10);
@@ -618,7 +618,7 @@ fn test_parse_macro_numbers() {
     let mut i = 1;
     while !expr_rem.is_empty() {
         let (macro_events, expr_rem_tmp) =
-            parse_macro_item(expr_rem, &ParsedState::default()).expect("parses");
+            parse_macro_item(expr_rem, &ParserState::default()).expect("parses");
         expr_rem = expr_rem_tmp;
         assert_eq!(macro_events.len(), 1);
         match &macro_events[0] {
@@ -629,7 +629,7 @@ fn test_parse_macro_numbers() {
     }
 
     let exprs = parse("(0)", "test").expect("parses")[0].t.clone();
-    parse_macro_item(exprs.as_slice(), &ParsedState::default()).expect_err("errors");
+    parse_macro_item(exprs.as_slice(), &ParserState::default()).expect_err("errors");
 }
 
 #[test]
@@ -697,7 +697,7 @@ fn parse_bad_submacro() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
 (deflayer base
@@ -729,7 +729,7 @@ fn parse_bad_submacro_2() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
 (deflayer base
@@ -761,7 +761,7 @@ fn parse_nested_macro() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar m1 (a b c))
 (defsrc a b)
@@ -793,7 +793,7 @@ fn parse_switch() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
 (defsrc a)
@@ -948,7 +948,7 @@ fn parse_switch_exceed_depth() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
 (deflayer base
@@ -981,7 +981,7 @@ fn parse_virtualkeys() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
 (defsrc a b c d e f g h i j k l m n o p)
@@ -1069,7 +1069,7 @@ fn parse_on_idle_fakekey() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
 (defsrc a b c d e f g h i)
@@ -1121,7 +1121,7 @@ fn parse_on_idle_fakekey_errors() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
 (defsrc a)
@@ -1225,7 +1225,7 @@ fn parse_on_idle_fakekey_errors() {
 
 #[test]
 fn parse_fake_keys_errors_on_too_many() {
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let mut checked_for_err = false;
     for n in 0..1000 {
         let exprs = [&vec![
@@ -1362,7 +1362,7 @@ new 316
 (defsrc + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
 (deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1386,7 +1386,7 @@ fn use_default_overridable_mappings() {
 (defsrc + [  ]  a  b  /  ;  `  =  -  '  ,  .  9  yen ¥  )
 (deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1406,7 +1406,7 @@ fn list_action_not_in_list_error_message_is_good() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
 (defalias hello
@@ -1547,7 +1547,7 @@ fn parse_all_defcfg() {
 (defsrc a)
 (deflayer base a)
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1577,7 +1577,7 @@ fn parse_unmod() {
   (unshift a b)
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1597,7 +1597,7 @@ fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a b)
 (deflayer base ( ))
@@ -1624,7 +1624,7 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (defsrc a b)
 (deflayer base \( \))
@@ -1668,7 +1668,7 @@ fn parse_cmd() {
     3 (cmd $x $y ($z))
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1707,7 +1707,7 @@ fn parse_defvar_concat() {
     otherpath (concat $rootpath "/helloworld")
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1785,7 +1785,7 @@ fn parse_template_1() {
   lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1840,7 +1840,7 @@ fn parse_template_2() {
 (deflayer dvorak @dva @dvo @dve @dvu)
 (deflayer qwerty @qwa @qws @qwd @qwf)
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1888,7 +1888,7 @@ fn parse_template_3() {
   lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1928,7 +1928,7 @@ fn parse_template_4() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -1968,7 +1968,7 @@ fn parse_template_5() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2008,7 +2008,7 @@ fn parse_template_6() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2048,7 +2048,7 @@ fn parse_template_7() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2084,7 +2084,7 @@ fn test_deflayermap() {
   m      >>  4
 )
 "#;
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2114,7 +2114,7 @@ fn test_defaliasenvcond() {
 "#;
 
     let env_var_err = "env vars not implemented";
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let parse_err = parse_cfg_raw_string(
         source,
         &mut s,
@@ -2130,7 +2130,7 @@ fn test_defaliasenvcond() {
 
     // now test with env vars implemented
 
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2150,7 +2150,7 @@ fn test_defaliasenvcond() {
 
     // test env var set but to a different value
 
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     parse_cfg_raw_string(
         source,
         &mut s,
@@ -2175,7 +2175,7 @@ fn parse_platform_specific() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut s = ParsedState::default();
+    let mut s = ParserState::default();
     let source = r#"
 (platform () (invalid config but is not used anywhere))
 (defsrc)

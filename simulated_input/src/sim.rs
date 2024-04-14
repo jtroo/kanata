@@ -89,7 +89,7 @@ fn log_init() {
     };
     log_cfg.set_time_format_rfc3339();
     CombinedLogger::init(vec![TermLogger::new(
-        LevelFilter::Debug,
+        LevelFilter::Info,
         log_cfg.build(),
         TerminalMode::Stderr,
         ColorChoice::AlwaysAnsi,
