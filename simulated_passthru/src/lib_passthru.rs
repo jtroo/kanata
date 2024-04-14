@@ -55,12 +55,34 @@ use kanata_parser::keys::OsCode;
 use std::panic::catch_unwind;
 
 
+use crate::oskbd::OUTEVWRAP;
+/// Receives the address of the external app's callback function that accepts simulated output events
+#[cfg(    feature = "passthru_ahk")]
+fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
+  // cbKanataOut(vk,sc,up) {return 1}: // All args are i64 (ahk doesn't support u64)
+  // address: pointer-sized integer, equivalent to Int64 on ahk64
+  // AHK uses x64 calling convention: todo: is this the same as win64? extern "C" also seems to work
+  log::trace!("@set_out_ev_listener: got func address {}",cb_addr);
+  let ptr_fn = cb_addr as *const (); // `as`-cast to a raw pointer before `transmute`ing to a function pointer. This avoids an integer-to-pointer `transmute`, which can be problematic. Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+  let cb_out_ev = unsafe {std::mem::transmute::<*const (), fn(vk:i64,sc:i64,up:i64) -> i64>(ptr_fn)};
+  OUTEVWRAP.get_or_init(|| {FnOutEvWrapper {cb:Arc::new(cb_out_ev)}});
+  0
+}
+#[cfg(not(feature = "passthru_ahk"))]
+fn set_out_ev_listener(cb_addr:c_longlong) -> LRESULT { //c_int = i32 c_longlong=i64
+  debug!("✗✗✗✗ unimplemented!");
+  unimplemented!();
+  0
+}
+
 use log::{debug, info};
 mod log_win;
-#[no_mangle] pub extern "C"
-fn sim_evt() -> bool {
+#[no_mangle] pub extern "win64"
+fn lib_kanata_passthru(cb_addr:c_longlong) -> LRESULT {
+  let reg = set_out_ev_listener(cb_addr);
+  if reg == 1 {error!("couldn't register external key out event callback"); return 1}
   let ret = lib_impl();
-  if let Err(ref e) = ret {log::error!("{e}\n"); return false}
+  if let Err(ref e) = ret {error!("{e}\n"); return 1}
   // ret
   // let result = catch_unwind(|| {
   //   panic!("Oops!");
@@ -73,5 +95,5 @@ fn sim_evt() -> bool {
   // let key_code = str_to_oscode("val").unwrap_or(OsCode::KEY_RESERVED);
   // debug!("key_code={key_code:?}");
   debug!("✗✗✗ sim_evt finished");
-  true
+  0
 }
