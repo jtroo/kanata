@@ -158,14 +158,18 @@ would be:
 ==== deflayermap
 
 An alternative method for defining a layer exists: `deflayermap`.
-This method does not rely on `defsrc`.
-The very first item must be the layer name,
-but the layer name must be in parentheses unlike before.
-The reason for this is for better error messages when forgetting the name.
-After the layer name, the layer is configured via triples of items:
+This method maps inputs to actions by explicitly defined by input-output pairs
+instead of relying on matching the `defsrc` ordering.
+This has the advantage of terser configuration
+when only a few keys on a layer need to be mapped.
+When practicing a new configuration, the standard `deflayer` has an advantage
+of looking more like physical keyboard layout, which may be helpful to some.
+
+Within `deflayermap` the very first item must be the layer name.
+The layer name must be in parentheses unlike with `deflayer`.
+After the layer name, the layer is configured via pairs of items:
 
 * input key
-* map string
 * output action
 
 An example complete configuration that maps Caps Lock to Escape is:
@@ -173,9 +177,9 @@ An example complete configuration that maps Caps Lock to Escape is:
 [source]
 ----
 ;; defsrc is still necessary
-(defsrc spc)
+(defsrc)
 (deflayermap (base-layer)
-  caps : esc
+  caps esc
 )
 ----
 
@@ -184,8 +188,8 @@ The output action takes the role that items in the normal `deflayer` have.
 
 Instead of specifying an input key,
 you can use either `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
-the keys that are not explicitly mapped in the layer
-(`caps` in the example above).
+the keys that are not explicitly mapped in the layer,
+e.g. in the example above, these affect keys other than `caps`.
 
 `&#95;` maps only keys that are in defsrc.
 
@@ -193,19 +197,9 @@ the keys that are not explicitly mapped in the layer
 
 `&#95;&#95;&#95;` maps all keys that are not explicitly mapped in the layer.
 
-
-The map string can be any of the following strings, to your liking:
-
-[source]
-----
-=
-:
-->
->>
-maps-to
-→
-🞂
-----
+IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
+or map most of your keyboard keys within defsrc when using `deflayermap`.
+Otherwise actions such as `tap-hold` do not behave as intended.
 
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
@@ -1707,6 +1701,91 @@ The valid values for applicable platforms are:
 )
 ----
 
+[[input-chords-v2]]
+== Input chords / combos (v2)
+<<table-of-contents,Back to ToC>>
+
+You may define a single `+defchordsv2-experimental+` configuration item.
+This enables you to define global input chord behaviour.
+One might also find this functionality called another name of "combos"
+in other projects.
+
+Input chords enables you to press
+
+WARNING: As the name suggests, this is a new feature.
+Using this feature puts you at higher risk
+of encountering bugs or future breaking changes.
+
+The `+defchordsv2-experimental+` feature is configured as shown below:
+
+.Syntax example
+[source]
+----
+(defchordsv2-experimental
+  (participating-keys1) action1 timeout1 release-behaviour1 (disabled-layers1)
+    ...
+  (participating-keysN) actionN timeoutN release-behaviourN (disabled-layersN)
+)
+----
+
+The configuration is made up of 5-tuples of:
+
+[cols="1,2"]
+|===
+| 1. A list of participating keys
+| These are key names you would use in `defsrc`.
+A minimum of two keys must be defined per chord.
+The list must be unique per chord.
+
+| 2. Associated action
+| These are actions as you would configure in `deflayer` or `defalias`.
+The action activates if all participating keys are activated
+within the timeout.
+
+| 3. Timeout to fulfill the chord
+| The time (unit: milliseconds) within which,
+if all participating keys are pressed,
+the chord action will activate;
+otherwise the key presses are handled by the active layer.
+The time begins when the first participant is pressed.
+
+| 4. Release behaviour
+| This must be either `first-release` or `all-released`;
+`first-release` means the chord action will be released
+when the first participant is released,
+while `all-released` means the chord action will be released
+only when all of the participants have been released.
+
+|5. Disabled layers
+| A list of layer names on which this chord is disabled.
+|===
+
+Input chords have a related `defcfg` item: <<chords-v2-min-idle-experimental>>.
+When any non-chord activation happens,
+a timeout begins with duration configured by
+`chords-v2-min-idle-experimental` (unit: milliseconds).
+Until this timeout expires, all inputs will immediately skip
+chords processing and be processed by the active layer.
+
+IMPORTANT: When opting into input chords v2,
+you must enable `concurrent-tap-hold`.
+This is enforced for a more responsive `tap-hold` experience when
+activated by a chord.
+
+.Example
+[source]
+----
+(defcfg concurrent-tap-hold yes)
+(defchordsv2-experimental
+  (a s)    c                200 last-release  (non-chord-layer)
+  (a s d) (macro h e l l o) 250 first-release (non-chord-layer)
+  (s d f) (macro b y e)     400 first-release (non-chord-layer)
+)
+----
+
+
+NOTE: Also see <<input-chords,v1 chords>>,
+which are configured differently and can be defined per-layer.
 
 [[optional-defcfg-options]]
 == defcfg options
@@ -1974,6 +2053,23 @@ you can set reduce the value to a number 0 to 4.
 (defcfg
   ;; If your environment is particularly buggy, might need to delay even more
   rapid-event-delay 20
+)
+----
+
+[[chords-v2-min-idle-experimental]]
+=== chords-v2-min-idle-experimental
+<<table-of-contents,Back to ToC>>
+
+This configuration affects the timer during which chords processing is disabled.
+NOTE: For more info, see <<input-chords-v2>>.
+
+The default (and minimum) value is `5` and the unit is milliseconds.
+
+.Example:
+[source]
+----
+(defcfg
+  chords-v2-min-idle-experimental 200
 )
 ----
 

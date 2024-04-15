@@ -138,6 +138,9 @@ fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
 /// can stay clean.
 #[rustfmt::skip]
 pub fn str_to_oscode(s: &str) -> Option<OsCode> {
+    if let Some(osc) = CUSTOM_STRS_TO_OSCODES.lock().get(s) {
+        return Some(*osc);
+    }
     Some(match s {
         "Backquote" | "grv" | "ˋ" | "˜" => OsCode::KEY_GRAVE,
         "Digit1" | "1" => OsCode::KEY_1,
@@ -324,14 +327,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "powr" | "power" => OsCode::KEY_POWER,
         #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
-
-        _ => {
-            let custom_mappings = CUSTOM_STRS_TO_OSCODES.lock();
-            match custom_mappings.get(s) {
-                Some(osc) => *osc,
-                None => return None,
-            }
-        }
+        _ => return None,
     })
 }
 

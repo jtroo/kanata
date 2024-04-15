@@ -14,4 +14,5 @@ readme = "README.md"
 [dependencies]
 kanata-keyberon-macros = { version = "0.2.0" }
 heapless = "0.7.16"
+rustc-hash = "1.1.0"
 arraydeque = { version = "0.5.1", default-features = false }
