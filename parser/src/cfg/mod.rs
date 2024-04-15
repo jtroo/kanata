@@ -2948,7 +2948,8 @@ fn parse_layers(
                 *layer_action = Action::NoOp;
             }
         }
-        // Set fake keys on the `layer-switch` version of each layer.
+
+        // Set fake keys on every layer.
         for (y, action) in s.virtual_keys.values() {
             let (x, y) = get_fake_key_coords(*y);
             layers_cfg[layer_level][x as usize][y as usize] = **action;
