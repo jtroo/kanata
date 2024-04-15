@@ -216,6 +216,18 @@ fn parse_action_vars() {
 }
 
 #[test]
+fn parse_multiline_comment() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/multiline_comment.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn parse_file_with_utf8_bom() {
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
