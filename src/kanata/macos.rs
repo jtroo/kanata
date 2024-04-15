@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
-static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
+pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> = Lazy::new(|| Mutex::new(HashSet::default()));
 
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
