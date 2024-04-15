@@ -1944,6 +1944,8 @@ fn test_deflayermap() {
   k   2
   l   3
   m   4
+  =   a
+  a   =
 )
 "#;
     let mut s = ParserState::default();

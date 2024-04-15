@@ -2847,7 +2847,7 @@ fn parse_layers(
                     let action = &triplet[1];
 
                     // TODO: remove me some time after April 2024 to reduce code bloat somewhat.
-                    const MAPSTRS: &[&str] = &["=", ":", "->", ">>", "maps-to", "→", "🞂"];
+                    const MAPSTRS: &[&str] = &[":", "->", ">>", "maps-to", "→", "🞂"];
                     const MAPSTR_ERR: &str = "Seems you are using a retired configuration style.\n\
                             You should remove all mapping strings from deflayermap;\n\
                             deflayermap now uses pairs instead of triples.";
