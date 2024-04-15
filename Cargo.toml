@@ -49,15 +49,15 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["alloc"], default_features = false, optional = true }
 
-kanata-keyberon = "0.160.4"
-kanata-parser = "0.160.4"
-kanata-tcp-protocol = "0.160.4"
+# kanata-keyberon = "0.160.4"
+# kanata-parser = "0.160.4"
+# kanata-tcp-protocol = "0.160.4"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-# kanata-keyberon = { path = "keyberon" }
-# kanata-parser =   { path = "parser" }
-# kanata-tcp-protocol = { path = "tcp_protocol" }
+kanata-keyberon = { path = "keyberon" }
+kanata-parser =   { path = "parser" }
+kanata-tcp-protocol = { path = "tcp_protocol" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
