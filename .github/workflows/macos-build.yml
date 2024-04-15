@@ -9,6 +9,31 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  build-macos-aarch:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Do the stuff on arm64
+        shell: bash
+        run: |
+          mkdir -p artifacts-arm64
+          cargo build --release --target aarch64-apple-darwin
+          mv target/release/kanata artifacts-arm64/kanata_macos_arm64
+          cargo build --release --features cmd --target aarch64-apple-darwin
+          mv target/release/kanata artifacts-arm64/kanata_macos_cmd_allowed_arm64
+      - uses: actions/upload-artifact@v3
+        with:
+          name: macos-binaries-arm64
+          path: |
+            artifacts-arm64/kanata_macos_arm64
+            artifacts-arm64/kanata_macos_cmd_allowed_arm64
 
   build-macos:
     runs-on: macos-latest
@@ -18,17 +43,18 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
-    - name: Do the stuff
+    - name: Do the stuff on x86-64
       shell: bash
       run: |
         mkdir -p artifacts
         cargo build --release
-        mv target/release/kanata artifacts/kanata_macos_x86
+        mv target/release/kanata artifacts/kanata_macos_x86_64
         cargo build --release --features cmd
-        mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x86
+        mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x86_64
     - uses: actions/upload-artifact@v3
       with:
-        name: macos-binaries
+        name: macos-binaries-x86-64
         path: |
-          artifacts/kanata_macos_x86
-          artifacts/kanata_macos_cmd_allowed_x86
+          artifacts/kanata_macos_x86_64
+          artifacts/kanata_macos_cmd_allowed_x86_64
+      
