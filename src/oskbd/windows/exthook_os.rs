@@ -38,6 +38,7 @@ impl KeyboardHook {
         KeyboardHook {}
     }
 }
+#[cfg(not(feature = "passthru_ahk"))] // unused KeyboardHook will be dropped, breaking our hook, disable it
 impl Drop for KeyboardHook {
     fn drop(&mut self) {
         let mut cb_opt = HOOK_CB.lock();
