@@ -1600,9 +1600,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::DefaultLayer(
-        layer_idx(ac_params, &s.layer_idxs)?,
-    )))
+    Ok(s.a.sref(Action::DefaultLayer(layer_idx(ac_params, &s.layer_idxs)?)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
@@ -2285,9 +2283,11 @@ fn parse_release_key(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Ka
 }
 
 fn parse_release_layer(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::ReleaseState(ReleasableState::Layer(
-        layer_idx(ac_params, &s.layer_idxs)?,
-    ))))
+    Ok(s.a
+        .sref(Action::ReleaseState(ReleasableState::Layer(layer_idx(
+            ac_params,
+            &s.layer_idxs,
+        )?))))
 }
 
 fn create_defsrc_layer() -> [KanataAction; KEYS_IN_ROW] {
@@ -2813,7 +2813,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
 }
 
 fn parse_layers(
-    s: &ParserState,
+    s: &mut ParserState,
     mapped_keys: &mut MappedKeys,
     defcfg: &CfgOptions,
 ) -> Result<IntermediateLayers> {
@@ -2943,11 +2943,7 @@ fn parse_layers(
                 }
             }
         }
-        for (layer_action, defsrc_action) in
-            layers_cfg[layer_level][0].iter_mut().zip(defsrc_layer)
-        {
-            // Set transparent actions in the "layer-switch" version of the layer according to
-            // defsrc action.
+        for layer_action in layers_cfg[layer_level][0].iter_mut() {
             if *layer_action == Action::Trans && s.block_unmapped_keys {
                 *layer_action = Action::NoOp;
             }
@@ -2963,10 +2959,13 @@ fn parse_layers(
         // the first layer.
         if layer_level == 0 && s.delegate_to_first_layer {
             for (defsrc_ac, default_layer_ac) in defsrc_layer.iter_mut().zip(layers_cfg[0][0]) {
-                *defsrc_ac = default_layer_ac;
+                if default_layer_ac != Action::Trans {
+                    *defsrc_ac = default_layer_ac;
+                }
             }
         }
     }
+    s.defsrc_layer = defsrc_layer;
     Ok(layers_cfg)
 }
 
