@@ -17,7 +17,7 @@ pub type Row = [kanata_keyberon::action::Action<'static, &'static &'static [&'st
     KEYS_IN_ROW];
 
 pub fn new_layers(layers: usize) -> IntermediateLayers {
-    let actual_num_layers = layers * 2;
+    let actual_num_layers = layers;
     // Note: why construct it like this?
     // Because don't want to construct KanataLayers on the stack.
     // The stack will overflow because of lack of placement new.
