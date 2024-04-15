@@ -6,9 +6,9 @@ use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
-use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 #[cfg(feature = "passthru_ahk")]
-use std::sync::mpsc::{Sender as ASender};
+use std::sync::mpsc::Sender as ASender;
+use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
@@ -262,7 +262,10 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
 
 impl Kanata {
     /// Create a new configuration from a file.
-    pub fn new(args: &ValidatedArgs, #[cfg(feature = "passthru_ahk")] tx: Option<ASender<InputEvent>>) -> Result<Self> {
+    pub fn new(
+        args: &ValidatedArgs,
+        #[cfg(feature = "passthru_ahk")] tx: Option<ASender<InputEvent>>,
+    ) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {

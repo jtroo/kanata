@@ -164,7 +164,7 @@ fn main_impl() -> Result<()> {
     for config_sim_file in &sim_paths {
         #[cfg(not(feature = "passthru_ahk"))]
         let mut k = Kanata::new(&args)?;
-        #[cfg(   feature = "passthru_ahk" )]
+        #[cfg(feature = "passthru_ahk")]
         let mut k = Kanata::new(&args, None)?;
         log::info!("Evaluating simulation file = {:?}", config_sim_file);
         let s = std::fs::read_to_string(config_sim_file)?;
@@ -174,14 +174,20 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
-                            #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                            #[cfg(all(
+                                not(feature = "simulated_input"),
+                                feature = "simulated_output"
+                            ))]
                             k.kbd_out.log.in_tick(tick);
                             k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                            #[cfg(all(
+                                not(feature = "simulated_input"),
+                                feature = "simulated_output"
+                            ))]
                             k.kbd_out.log.in_press_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -191,7 +197,10 @@ fn main_impl() -> Result<()> {
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                            #[cfg(all(
+                                not(feature = "simulated_input"),
+                                feature = "simulated_output"
+                            ))]
                             k.kbd_out.log.in_release_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -201,7 +210,10 @@ fn main_impl() -> Result<()> {
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                            #[cfg(all(
+                                not(feature = "simulated_input"),
+                                feature = "simulated_output"
+                            ))]
                             k.kbd_out.log.in_repeat_key(key_code);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
@@ -216,14 +228,20 @@ fn main_impl() -> Result<()> {
                             //allow skipping : separator for unique non-key symbols
                             "🕐" => {
                                 let tick = str::parse::<u128>(val)?;
-                                #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                                #[cfg(all(
+                                    not(feature = "simulated_input"),
+                                    feature = "simulated_output"
+                                ))]
                                 k.kbd_out.log.in_tick(tick);
                                 k.tick_ms(tick, &None)?;
                             }
                             "↓" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                                #[cfg(all(
+                                    not(feature = "simulated_input"),
+                                    feature = "simulated_output"
+                                ))]
                                 k.kbd_out.log.in_press_key(key_code);
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
@@ -233,7 +251,10 @@ fn main_impl() -> Result<()> {
                             "↑" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                                #[cfg(all(
+                                    not(feature = "simulated_input"),
+                                    feature = "simulated_output"
+                                ))]
                                 k.kbd_out.log.in_release_key(key_code);
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
@@ -243,7 +264,10 @@ fn main_impl() -> Result<()> {
                             "⟳" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+                                #[cfg(all(
+                                    not(feature = "simulated_input"),
+                                    feature = "simulated_output"
+                                ))]
                                 k.kbd_out.log.in_repeat_key(key_code);
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
