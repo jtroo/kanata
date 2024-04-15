@@ -1710,7 +1710,12 @@ This enables you to define global input chord behaviour.
 One might also find this functionality called another name of "combos"
 in other projects.
 
-Input chords enables you to press
+Input chords enables you to press two or more keys in quick succession
+to activate a different action
+than would normally be associated with those keys.
+When activating a chord, the order of presses is not important;
+when all keys belonging to a chord are pressed,
+the action activates regardless of press order.
 
 WARNING: As the name suggests, this is a new feature.
 Using this feature puts you at higher risk
