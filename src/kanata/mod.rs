@@ -45,6 +45,8 @@ mod linux;
 
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+use macos::*;
 
 #[cfg(target_os = "unknown")]
 mod unknown;
@@ -493,6 +495,11 @@ impl Kanata {
         let cur_layer = self.layout.bm().current_layer();
         self.prev_layer = cur_layer;
         self.print_layer(cur_layer);
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            PRESSED_KEYS.lock().clear();
+        }
 
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
