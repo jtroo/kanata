@@ -498,6 +498,12 @@ const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-macos",
 ];
 
+#[derive(Debug, Clone)]
+pub struct LspHintInactiveCode {
+    pub span: Span,
+    pub reason: String,
+}
+
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
     text: &str,
@@ -507,9 +513,17 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
     env_vars: EnvVars,
 ) -> Result<IntermediateCfg> {
+    let mut lsp_hint_inactive_code: Vec<LspHintInactiveCode> = vec![];
+
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider))
-        .and_then(|xs| filter_platform_specific_cfg(xs, def_local_keys_variant_to_apply))
+        .and_then(|xs| {
+            filter_platform_specific_cfg(
+                xs,
+                def_local_keys_variant_to_apply,
+                &mut lsp_hint_inactive_code,
+            )
+        })
         .and_then(expand_templates)?;
 
     if let Some(spanned) = spanned_root_exprs
@@ -526,10 +540,15 @@ pub fn parse_cfg_raw_string(
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in DEFLOCALKEYS_VARIANTS {
-        if let Some(result) = root_exprs
+        if let Some((result, span)) = spanned_root_exprs
             .iter()
-            .find(gen_first_atom_filter(def_local_keys_variant))
-            .map(|custom_keys| parse_deflocalkeys(def_local_keys_variant, custom_keys))
+            .find(gen_first_atom_filter_spanned(def_local_keys_variant))
+            .map(|x| {
+                (
+                    parse_deflocalkeys(def_local_keys_variant, &x.t),
+                    x.span.clone(),
+                )
+            })
         {
             let mapping = result?;
             if def_local_keys_variant == &def_local_keys_variant_to_apply {
@@ -538,6 +557,13 @@ pub fn parse_cfg_raw_string(
                     ">1 mutually exclusive deflocalkeys variants were parsed"
                 );
                 local_keys = Some(mapping);
+            } else {
+                lsp_hint_inactive_code.push(LspHintInactiveCode {
+                    span,
+                    reason: format!(
+                        "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
+                    ),
+                })
             }
         }
 
@@ -706,6 +732,7 @@ pub fn parse_cfg_raw_string(
         default_sequence_timeout: cfg.sequence_timeout,
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
+        lsp_hint_inactive_code,
         ..Default::default()
     };
 
@@ -739,9 +766,9 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     let sequences = parse_sequences(&sequence_exprs, s)?;
 
-    let alias_exprs = root_exprs
+    let alias_exprs = spanned_root_exprs
         .iter()
-        .filter(gen_first_atom_start_filter("defalias"))
+        .filter(gen_first_atom_start_filter_spanned("defalias"))
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s, &env_vars)?;
 
@@ -875,13 +902,13 @@ fn gen_first_atom_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
 /// Return a closure that filters a root expression by the content of the first element. The
 /// closure returns true if the first element is an atom that starts with the input `a` and false
 /// otherwise.
-fn gen_first_atom_start_filter(a: &str) -> impl Fn(&&Vec<SExpr>) -> bool {
+fn gen_first_atom_start_filter_spanned(a: &str) -> impl Fn(&&Spanned<Vec<SExpr>>) -> bool {
     let a = a.to_owned();
     move |expr| {
-        if expr.is_empty() {
+        if expr.t.is_empty() {
             return false;
         }
-        if let SExpr::Atom(atom) = &expr[0] {
+        if let SExpr::Atom(atom) = &expr.t[0] {
             atom.t.starts_with(&a)
         } else {
             false
@@ -1125,6 +1152,7 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     switch_max_key_timing: Cell<u16>,
     trans_forbidden_reason: Option<&'static str>,
+    pub lsp_hint_inactive_code: Vec<LspHintInactiveCode>,
     a: Arc<Allocations>,
 }
 
@@ -1153,6 +1181,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             switch_max_key_timing: Cell::new(0),
             trans_forbidden_reason: None,
+            lsp_hint_inactive_code: Default::default(),
             a: unsafe { Allocations::new() },
         }
     }
@@ -1223,9 +1252,13 @@ fn push_all_atoms(exprs: &[SExpr], vars: &HashMap<String, SExpr>, pusheen: &mut 
 
 /// Parse alias->action mappings from multiple exprs starting with defalias.
 /// Mutates the input `s` by storing aliases inside.
-fn parse_aliases(exprs: &[&Vec<SExpr>], s: &mut ParserState, env_vars: &EnvVars) -> Result<()> {
+fn parse_aliases(
+    exprs: &[&Spanned<Vec<SExpr>>],
+    s: &mut ParserState,
+    env_vars: &EnvVars,
+) -> Result<()> {
     for expr in exprs {
-        handle_standard_defalias(expr, s)?;
+        handle_standard_defalias(&expr.t, s)?;
         handle_envcond_defalias(expr, s, env_vars)?;
     }
     Ok(())
@@ -1239,8 +1272,12 @@ fn handle_standard_defalias(expr: &[SExpr], s: &mut ParserState) -> Result<()> {
     read_alias_name_action_pairs(subexprs, s)
 }
 
-fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParserState, env_vars: &EnvVars) -> Result<()> {
-    let mut subexprs = match check_first_expr(expr.iter(), "defaliasenvcond") {
+fn handle_envcond_defalias(
+    exprs: &Spanned<Vec<SExpr>>,
+    s: &mut ParserState,
+    env_vars: &EnvVars,
+) -> Result<()> {
+    let mut subexprs = match check_first_expr(exprs.t.iter(), "defaliasenvcond") {
         Ok(exprs) => exprs,
         Err(_) => return Ok(()),
     };
@@ -1272,11 +1309,26 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParserState, env_vars: &EnvVa
             })?;
             match env_vars {
                 Ok(vars) => {
-                    if !vars
+                    let values_of_matching_vars: Vec<_> = vars
                         .iter()
-                        .any(|(name, value)| name == env_var_name && value == env_var_value)
-                    {
-                        log::info!("Did not find env var ({env_var_name} {env_var_value}), skipping associated aliases");
+                        .filter_map(|(k, v)| if k == env_var_name { Some(v) } else { None })
+                        .collect();
+                    if values_of_matching_vars.is_empty() {
+                        let msg = format!("Env var '{env_var_name}' is not set");
+                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
+                            span: exprs.span.clone(),
+                            reason: msg.clone(),
+                        });
+                        log::info!("{msg}, skipping associated aliases");
+                        return Ok(());
+                    } else if !values_of_matching_vars.iter().any(|&v| v == env_var_value) {
+                        let msg =
+                            format!("Env var '{env_var_name}' is set, but value doesn't match");
+                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
+                            span: exprs.span.clone(),
+                            reason: msg.clone(),
+                        });
+                        log::info!("{msg}, skipping associated aliases");
                         return Ok(());
                     }
                 }
@@ -1286,7 +1338,7 @@ fn handle_envcond_defalias(expr: &[SExpr], s: &mut ParserState, env_vars: &EnvVa
             }
             log::info!("Found env var ({env_var_name} {env_var_value}), using associated aliases");
         }
-        None => bail_expr!(&expr[0], "Missing a list item.\n{conderr}"),
+        None => bail_expr!(&exprs.t[0], "Missing a list item.\n{conderr}"),
     };
     read_alias_name_action_pairs(subexprs, s)
 }
