@@ -1629,6 +1629,7 @@ impl Kanata {
 
             info!("Starting kanata proper");
 
+            #[cfg(not(feature = "passthru_ahk"))]
             info!(
                 "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
