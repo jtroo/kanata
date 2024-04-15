@@ -74,8 +74,7 @@ pub(crate) fn parse_defchordv2(
                             .atom(s.vars())
                             .and_then(|l| s.layer_idxs.get(l))
                             .ok_or_else(|| anyhow_expr!(layer, "Not a known layer name."))?;
-                        layers.push((*l_idx * 2) as u16);
-                        layers.push((*l_idx * 2 + 1) as u16);
+                        layers.push((*l_idx) as u16);
                         Ok(layers)
                     })
             })

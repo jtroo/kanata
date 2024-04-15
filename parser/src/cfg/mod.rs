@@ -1600,13 +1600,11 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::DefaultLayer(
-        layer_idx(ac_params, &s.layer_idxs)? * 2,
-    )))
+    Ok(s.a.sref(Action::DefaultLayer(layer_idx(ac_params, &s.layer_idxs)?)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs)? * 2 + 1)))
+    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs)?)))
 }
 
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
@@ -2285,9 +2283,11 @@ fn parse_release_key(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Ka
 }
 
 fn parse_release_layer(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::ReleaseState(ReleasableState::Layer(
-        layer_idx(ac_params, &s.layer_idxs)? * 2 + 1,
-    ))))
+    Ok(s.a
+        .sref(Action::ReleaseState(ReleasableState::Layer(layer_idx(
+            ac_params,
+            &s.layer_idxs,
+        )?))))
 }
 
 fn create_defsrc_layer() -> [KanataAction; KEYS_IN_ROW] {
@@ -2813,7 +2813,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
 }
 
 fn parse_layers(
-    s: &ParserState,
+    s: &mut ParserState,
     mapped_keys: &mut MappedKeys,
     defcfg: &CfgOptions,
 ) -> Result<IntermediateLayers> {
@@ -2832,8 +2832,7 @@ fn parse_layers(
                 // to defsrc mapping order.
                 for (i, ac) in layer.iter().skip(2).enumerate() {
                     let ac = parse_action(ac, s)?;
-                    layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *ac;
-                    layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *ac;
+                    layers_cfg[layer_level][0][s.mapping_order[i]] = *ac;
                 }
             }
             LayerExprs::CustomMapping(layer) => {
@@ -2868,9 +2867,8 @@ fn parse_layers(
                             bail_expr!(input, "must either use _ or ___ within a layer, not both")
                         }
                         for i in 0..s.mapping_order.len() {
-                            if layers_cfg[layer_level * 2][0][s.mapping_order[i]] == Action::Trans {
-                                layers_cfg[layer_level * 2][0][s.mapping_order[i]] = *action;
-                                layers_cfg[layer_level * 2 + 1][0][s.mapping_order[i]] = *action;
+                            if layers_cfg[layer_level][0][s.mapping_order[i]] == Action::Trans {
+                                layers_cfg[layer_level][0][s.mapping_order[i]] = *action;
                             }
                         }
                         defsrc_anykey_used = true;
@@ -2888,11 +2886,10 @@ fn parse_layers(
                             bail_expr!(input, "must either use __ or ___ within a layer, not both")
                         }
                         for i in 0..layers_cfg[0][0].len() {
-                            if layers_cfg[layer_level * 2][0][i] == Action::Trans
+                            if layers_cfg[layer_level][0][i] == Action::Trans
                                 && !s.mapping_order.contains(&i)
                             {
-                                layers_cfg[layer_level * 2][0][i] = *action;
-                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
+                                layers_cfg[layer_level][0][i] = *action;
                             }
                         }
                         unmapped_anykey_used = true;
@@ -2913,9 +2910,8 @@ fn parse_layers(
                             );
                         }
                         for i in 0..layers_cfg[0][0].len() {
-                            if layers_cfg[layer_level * 2][0][i] == Action::Trans {
-                                layers_cfg[layer_level * 2][0][i] = *action;
-                                layers_cfg[layer_level * 2 + 1][0][i] = *action;
+                            if layers_cfg[layer_level][0][i] == Action::Trans {
+                                layers_cfg[layer_level][0][i] = *action;
                             }
                         }
                         both_anykey_used = true;
@@ -2928,8 +2924,7 @@ fn parse_layers(
                         if !layer_mapped_keys.insert(input_key) {
                             bail_expr!(input, "input key must not be repeated within a layer")
                         }
-                        layers_cfg[layer_level * 2][0][usize::from(input_key)] = *action;
-                        layers_cfg[layer_level * 2 + 1][0][usize::from(input_key)] = *action;
+                        layers_cfg[layer_level][0][usize::from(input_key)] = *action;
                     }
                 }
                 let rem = pairs.remainder();
@@ -2948,23 +2943,15 @@ fn parse_layers(
                 }
             }
         }
-        for (layer_action, defsrc_action) in
-            layers_cfg[layer_level * 2][0].iter_mut().zip(defsrc_layer)
-        {
-            // Set transparent actions in the "layer-switch" version of the layer according to
-            // defsrc action.
-            if *layer_action == Action::Trans {
-                if s.block_unmapped_keys {
-                    *layer_action = Action::NoOp;
-                } else {
-                    *layer_action = defsrc_action;
-                }
+        for layer_action in layers_cfg[layer_level][0].iter_mut() {
+            if *layer_action == Action::Trans && s.block_unmapped_keys {
+                *layer_action = Action::NoOp;
             }
         }
         // Set fake keys on the `layer-switch` version of each layer.
         for (y, action) in s.virtual_keys.values() {
             let (x, y) = get_fake_key_coords(*y);
-            layers_cfg[layer_level * 2][x as usize][y as usize] = **action;
+            layers_cfg[layer_level][x as usize][y as usize] = **action;
         }
 
         // If the user has configured delegation to the first (default) layer for transparent keys,
@@ -2972,10 +2959,13 @@ fn parse_layers(
         // the first layer.
         if layer_level == 0 && s.delegate_to_first_layer {
             for (defsrc_ac, default_layer_ac) in defsrc_layer.iter_mut().zip(layers_cfg[0][0]) {
-                *defsrc_ac = default_layer_ac;
+                if default_layer_ac != Action::Trans {
+                    *defsrc_ac = default_layer_ac;
+                }
             }
         }
     }
+    s.defsrc_layer = defsrc_layer;
     Ok(layers_cfg)
 }
 
