@@ -1,0 +1,17 @@
+;;Test config for kanata.dll use by AutoHotkey, only maps two keys (f,j) to left/right modtap home row mod Shifts
+(defcfg
+  process-unmapped-keys	yes	;;|no| enable processing of keys that are not in defsrc
+  log-layer-changes    	no 	;;|no| overhead
+)
+
+(defvar
+  🕐↕	1000 ;;|500| tap-timeout
+  🕐🠿	1500 ;;|500| hold-timeout
+  )
+(defalias	;;      timeout→ 	tap	  hold   ¦	 tap	 hold ←action
+  f⌂‹⇧   	(tap-hold-release	$🕐↕	$🕐🠿       	f   	‹⇧)
+  j⌂⇧›   	(tap-hold-release	$🕐↕	$🕐🠿       	j   	⇧›)
+  )
+
+(defsrc      f     j   )
+(deflayer ⌂ @f⌂‹⇧ @j⌂⇧›)
