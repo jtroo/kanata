@@ -2093,3 +2093,29 @@ fn parse_platform_specific() {
     .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
     .unwrap();
 }
+
+#[test]
+fn parse_nested_trans_delegate_to_base_layer_fails() {
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut s = ParserState::default();
+    let source = r#"
+(defcfg delegate-to-first-layer true)
+(defsrc q)
+(deflayer base (multi _))
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )
+    .map(||())
+    .unwrap_err();
+}
