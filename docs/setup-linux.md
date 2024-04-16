@@ -29,7 +29,7 @@ KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
 
 #### Machine reboot or run this to reload
 ```bash
-sudo sh -c 'udevadm control –reload; udevadm trigger -v –name-match uinput'
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
 #### Verify settings by following command:
