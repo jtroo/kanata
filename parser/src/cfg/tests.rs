@@ -2116,6 +2116,24 @@ fn parse_nested_trans_delegate_to_base_layer_fails() {
         DEF_LOCAL_KEYS,
         Err("env vars not implemented".into()),
     )
-    .map(||())
+    .map(|_| ())
+    .unwrap_err();
+    let mut s = ParserState::default();
+    let source = r#"
+(defcfg delegate-to-first-layer true)
+(defsrc)
+(deflayermap (base) a (multi _))
+"#;
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )
+    .map(|_| ())
     .unwrap_err();
 }
