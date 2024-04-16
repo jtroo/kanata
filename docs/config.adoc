@@ -3248,6 +3248,16 @@ https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example c
 
 * hold `+⎇›+` and tap `+Delete+` would insert `+␡+`
 
+[[windows-only-work-elevated]]
+=== Windows only: enable in elevated windows
+<<table-of-contents,Back to ToC>>
+
+The default `kanata.exe` binary doesn't work in elevated windows (run with administrative privileges),
+e.g., `Control Panel`. However, you can use AutoHotkey's "EnableUIAccess" script to self-sign the binary,
+move it to "Program Files", then launching kanata from there will also work in these elevated windows.
+See https://github.com/jtroo/kanata/blob/main/EnableUIAccess[EnableUIAccess] folder with the script
+and its requires libraries (needs https://www.autohotkey.com/download/ahk-install.exe[AutoHotkey v1] installed)
+
 
 [[test-your-config]]
 === Test your config
