@@ -2819,11 +2819,9 @@ fn parse_layers(
     mapped_keys: &mut MappedKeys,
     defcfg: &CfgOptions,
 ) -> Result<IntermediateLayers> {
-    // There are two copies/versions of each layer. One is used as the target of "layer-switch" and
-    // the other is the target of "layer-while-held".
     let mut layers_cfg = new_layers(s.layer_exprs.len());
-    if s.layer_exprs.len() > MAX_LAYERS / 2 {
-        bail!("Maximum number of layers ({}) exceeded.", MAX_LAYERS / 2);
+    if s.layer_exprs.len() > MAX_LAYERS {
+        bail!("Maximum number of layers ({}) exceeded.", MAX_LAYERS);
     }
     let mut defsrc_layer = s.defsrc_layer;
     let mut error_on_nested_trans = s.delegate_to_first_layer;
