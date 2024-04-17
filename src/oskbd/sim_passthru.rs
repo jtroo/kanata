@@ -1,16 +1,8 @@
-#![allow(
-    unused_imports,
-    unused_labels,
-    unused_variables,
-    unreachable_code,
-    dead_code,
-    non_upper_case_globals
-)]
 //! Redirects output to the function provided by the entity supplying simulated input (e.g., AHK)
 // todo: allow sharing numpad status to differentiate between vk enter and vk numpad enter
 // todo: only press/release_key is implemented
 use super::*;
-use anyhow::{bail, Error, Result};
+use anyhow::Result;
 use log::*;
 
 use crate::kanata::CalculatedMouseMove;
@@ -20,11 +12,6 @@ use std::io;
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 use std::fmt;
-
-use winapi::ctypes::*;
-use winapi::shared::minwindef::*;
-use winapi::shared::windef::*;
-use winapi::um::winuser::*;
 
 use std::sync::Arc;
 use std::sync::OnceLock;
@@ -37,9 +24,7 @@ pub struct FnOutEvWrapper {
 } // wrapper struct to store our callback in a thread-shareable manner
 pub static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that our wrapper struct is created once (thread-safe)
 
-use std::sync::mpsc::{
-    Receiver, SendError, Sender as ASender, SyncSender as Sender, TryRecvError, TrySendError,
-};
+use std::sync::mpsc::{SendError, Sender as ASender};
 /// Handle for writing keys to the simulated input provider.
 pub struct KbdOut {
     #[cfg(feature = "passthru_ahk")]
