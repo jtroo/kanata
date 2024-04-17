@@ -651,11 +651,6 @@ pub fn parse_cfg_raw_string(
     let layer_names = sorted_idxs
         .into_iter()
         .map(|(name, _)| (*name).clone())
-        .flat_map(|s| {
-            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
-            // two versions of each layer.
-            std::iter::repeat(s).take(2)
-        })
         .collect::<Vec<_>>();
 
     let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
@@ -672,11 +667,6 @@ pub fn parse_cfg_raw_string(
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
         .map(|expr| expr.span.file_content()[expr.span.clone()].to_string())
-        .flat_map(|s| {
-            // Duplicate the same layer for `layer_strings` because the keyberon layout itself has
-            // two versions of each layer.
-            std::iter::repeat(s).take(2)
-        })
         .collect::<Vec<_>>();
 
     let layer_info: Vec<LayerInfo> = layer_names

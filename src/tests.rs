@@ -53,7 +53,7 @@ fn parse_jtroo() {
         Err(poisoned) => poisoned.into_inner(),
     };
     let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
-    assert_eq!(cfg.layer_info.len(), 16);
+    assert_eq!(cfg.layer_info.len(), 8);
 }
 
 #[test]
