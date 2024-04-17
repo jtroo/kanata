@@ -111,6 +111,7 @@ where
     pub chords_v2: Option<ChordsV2<'a, T>>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
+    delegate_to_first_layer: bool,
 }
 
 pub struct History<T> {
@@ -1069,6 +1070,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
             trans_resolution_behavior_v2: true,
+            delegate_to_first_layer: false,
             chords_v2: None,
         }
     }
@@ -1076,10 +1078,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         src_keys: &'a [Action<T>; C],
         layers: &'a [[[Action<T>; C]; R]],
         trans_resolution_behavior_v2: bool,
+        delegate_to_first_layer: bool,
     ) -> Self {
         let mut new = Self::new(layers);
         new.src_keys = src_keys;
         new.trans_resolution_behavior_v2 = trans_resolution_behavior_v2;
+        new.delegate_to_first_layer = delegate_to_first_layer;
         new
     }
 
@@ -1975,14 +1979,20 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
     /// Returns a list indices of layers that should be used for [`Action::Trans`] resolution.
     pub fn trans_resolution_layer_order(&self) -> LayerStack {
+        let current_layer = self.current_layer();
         if self.trans_resolution_behavior_v2 {
-            self.active_held_layers()
-                .chain([self.default_layer as u16])
-                .collect()
+            let mut v = self.active_held_layers().collect::<LayerStack>();
+            let _ = v.push(self.default_layer as u16);
+            if self.delegate_to_first_layer && current_layer != 0 && self.default_layer != 0 {
+                let _ = v.push(0);
+            }
+            v
         } else {
             let mut v = Vec::new();
-            let _ = v.push(self.current_layer() as u16);
-            let _ = v.push(self.default_layer as u16);
+            let _ = v.push(current_layer as u16);
+            if self.delegate_to_first_layer && current_layer != 0 {
+                let _ = v.push(0);
+            }
             v
         }
     }
@@ -4035,7 +4045,7 @@ mod test {
             [[Layer(1), Trans]],
             [[NoOp, MultipleActions(&[Trans].as_slice())]],
         ];
-        let mut layout = Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, true);
+        let mut layout = Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, true, true);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4396,14 +4406,15 @@ mod test {
     }
 
     #[test]
-    fn test_old_trans_behavior() {
+    fn test_old_trans_behavior_with_delegate_to_first_layer() {
+        static DEFSRC_LAYER: [Action; 3] = [NoOp, NoOp, k(X)];
         static LAYERS: Layers<3, 1> = &[
             [[Layer(1), NoOp, k(A)]],
             [[NoOp, Layer(2), k(B)]],
             [[NoOp, NoOp, Trans]],
         ];
-        let mut layout = Layout::new(&LAYERS);
-        layout.trans_resolution_behavior_v2 = false;
+        let mut layout =
+            Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, false, true);
 
         layout.event(Press(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4428,6 +4439,45 @@ mod test {
         layout.event(Press(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[A], layout.keycodes()); // new behavior would resolve to 'B' here.
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn test_old_trans_behavior_with_delegate_to_src() {
+        static DEFSRC_LAYER: [Action; 3] = [NoOp, NoOp, k(X)];
+        static LAYERS: Layers<3, 1> = &[
+            [[Layer(1), NoOp, k(A)]],
+            [[NoOp, Layer(2), k(B)]],
+            [[NoOp, NoOp, Trans]],
+        ];
+        let mut layout =
+            Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, false, false);
+
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[X], layout.keycodes()); // new behavior would resolve to 'B' here.
         layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());

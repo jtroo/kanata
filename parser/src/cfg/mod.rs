@@ -275,6 +275,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
             s.a.sref(s.defsrc_layer),
             icfg.klayers,
             icfg.options.trans_resolution_behavior_v2,
+            icfg.options.delegate_to_first_layer,
         ),
         s.a,
     );
@@ -324,6 +325,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
             s.a.sref(s.defsrc_layer),
             icfg.klayers,
             icfg.options.trans_resolution_behavior_v2,
+            icfg.options.delegate_to_first_layer,
         ),
         s.a,
     );
@@ -2813,7 +2815,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
 }
 
 fn parse_layers(
-    s: &mut ParserState,
+    s: &ParserState,
     mapped_keys: &mut MappedKeys,
     defcfg: &CfgOptions,
 ) -> Result<IntermediateLayers> {
@@ -2966,7 +2968,6 @@ fn parse_layers(
             }
         }
     }
-    s.defsrc_layer = defsrc_layer;
     Ok(layers_cfg)
 }
 
