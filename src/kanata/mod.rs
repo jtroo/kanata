@@ -1968,6 +1968,7 @@ fn apply_speed_modifiers() {
 pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     let mut k = kanata.lock();
     let layout = k.layout.bm();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     release_normalkey_states(layout);
     k.tick_ms(tick, &None)?;
     #[cfg(not(target_os = "linux"))]
