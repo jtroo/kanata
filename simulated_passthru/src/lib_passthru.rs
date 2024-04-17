@@ -95,7 +95,7 @@ use widestring::{
     WideChar,
 };
 
-mod log_win;
+pub mod log_win;
 #[no_mangle]
 pub extern "win64" fn lib_kanata_passthru(
     cb_addr: c_longlong,

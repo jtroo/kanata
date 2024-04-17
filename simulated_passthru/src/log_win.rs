@@ -6,6 +6,7 @@ pub struct WinDebugLogger;
 
 /// Static instance of `WinDebugLogger`, can be directly registered using `log::set_logger`<br>
 /// ```
+/// use kanata_passthru::log_win;
 /// let _ = log_win::init(); // Init
 /// log::set_max_level(log::LevelFilter::Debug);
 /// use log::debug; // Use
