@@ -147,6 +147,7 @@ pub struct InputEvent {
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use kanata_keyberon::key_code::KeyCode;
         let direction = if self.up { "↑" } else { "↓" };
         let key_name = KeyCode::from(OsCode::from(self.code));
         write!(f, "{}{:?}", direction, key_name)
