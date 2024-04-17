@@ -1967,6 +1967,7 @@ fn apply_speed_modifiers() {
 /// Clean kanata's state without exiting
 pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     let mut k = kanata.lock();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     let layout = k.layout.bm();
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     release_normalkey_states(layout);
