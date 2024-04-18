@@ -1975,7 +1975,6 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     #[cfg(not(target_os = "linux"))]
     {
         let mut k_pressed = PRESSED_KEYS.lock();
-        // debug!("  PRESSED {:?} tick {:?}", k_pressed, tick);
         for key_os in k_pressed.clone() {
             k.kbd_out.release_key(key_os)?;
         }
