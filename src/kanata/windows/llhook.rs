@@ -68,6 +68,8 @@ impl Kanata {
 
         // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
+        eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
+        let _ = std::io::stdin().read_line(&mut String::new());
         Ok(())
     }
 }
