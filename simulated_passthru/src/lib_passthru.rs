@@ -1,4 +1,4 @@
-#![cfg(feature = "passthru_ahk")]
+#![cfg(all(feature = "passthru_ahk", target_os = "windows"))]
 use anyhow::bail;
 use anyhow::Result;
 
