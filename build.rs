@@ -20,14 +20,16 @@ mod windows {
 
     pub(super) fn build() -> std::io::Result<()> {
         let manifest_path: &str = "./target/kanata.exe.manifest";
+
+        // Note about expected version format:
+        // MS says "Use the four-part version format: mmmmm.nnnnn.ooooo.ppppp"
+        // https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests
+
         let re_ver_build = Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+(?<vpos>\d+)$").unwrap();
-        let re_version4 = Regex::new(r"^(\d+\.){3}\d+$").unwrap(); // MS says "Use the four-part version format: mmmmm.nnnnn.ooooo.ppppp" https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests
         let re_version3 = Regex::new(r"^(\d+\.){2}\d+$").unwrap();
         let mut version: String = env!("CARGO_PKG_VERSION").to_string();
 
-        if re_version4.find(&version).is_some() {
-            // pb!("found 'n.n.n.n' version, leaving as is {}", version);
-        } else if re_version3.find(&version).is_some() {
+        if re_version3.find(&version).is_some() {
             version = format!("{}.0", version);
             // pb!("found 'n.n.n' version, adding the 4th number {}", version);
         } else if re_ver_build.find(&version).is_some() {
