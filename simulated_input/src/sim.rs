@@ -163,7 +163,7 @@ fn main_impl() -> Result<()> {
 
     for config_sim_file in &sim_paths {
         #[cfg(not(feature = "passthru_ahk"))]
-        let mut k = Kanata::new(&args)?;
+        let mut k = Kanata::new(&args, None)?;
         #[cfg(feature = "passthru_ahk")]
         let mut k = Kanata::new(&args, None)?;
         log::info!("Evaluating simulation file = {:?}", config_sim_file);
