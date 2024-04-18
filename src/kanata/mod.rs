@@ -6,7 +6,6 @@ use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
-#[cfg(feature = "passthru_ahk")]
 use std::sync::mpsc::Sender as ASender;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
