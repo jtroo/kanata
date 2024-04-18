@@ -176,6 +176,7 @@ fn main_impl() -> Result<()> {
                             let tick = str::parse::<u128>(val)?;
                             #[cfg(all(
                                 not(feature = "simulated_input"),
+                                not(feature = "passthru_ahk"),
                                 feature = "simulated_output"
                             ))]
                             k.kbd_out.log.in_tick(tick);
@@ -186,6 +187,7 @@ fn main_impl() -> Result<()> {
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             #[cfg(all(
                                 not(feature = "simulated_input"),
+                                not(feature = "passthru_ahk"),
                                 feature = "simulated_output"
                             ))]
                             k.kbd_out.log.in_press_key(key_code);
@@ -199,6 +201,7 @@ fn main_impl() -> Result<()> {
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             #[cfg(all(
                                 not(feature = "simulated_input"),
+                                not(feature = "passthru_ahk"),
                                 feature = "simulated_output"
                             ))]
                             k.kbd_out.log.in_release_key(key_code);
@@ -212,6 +215,7 @@ fn main_impl() -> Result<()> {
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             #[cfg(all(
                                 not(feature = "simulated_input"),
+                                not(feature = "passthru_ahk"),
                                 feature = "simulated_output"
                             ))]
                             k.kbd_out.log.in_repeat_key(key_code);
@@ -230,6 +234,7 @@ fn main_impl() -> Result<()> {
                                 let tick = str::parse::<u128>(val)?;
                                 #[cfg(all(
                                     not(feature = "simulated_input"),
+                                    not(feature = "passthru_ahk"),
                                     feature = "simulated_output"
                                 ))]
                                 k.kbd_out.log.in_tick(tick);
@@ -240,6 +245,7 @@ fn main_impl() -> Result<()> {
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
                                 #[cfg(all(
                                     not(feature = "simulated_input"),
+                                    not(feature = "passthru_ahk"),
                                     feature = "simulated_output"
                                 ))]
                                 k.kbd_out.log.in_press_key(key_code);
@@ -253,6 +259,7 @@ fn main_impl() -> Result<()> {
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
                                 #[cfg(all(
                                     not(feature = "simulated_input"),
+                                    not(feature = "passthru_ahk"),
                                     feature = "simulated_output"
                                 ))]
                                 k.kbd_out.log.in_release_key(key_code);
@@ -266,6 +273,7 @@ fn main_impl() -> Result<()> {
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
                                 #[cfg(all(
                                     not(feature = "simulated_input"),
+                                    not(feature = "passthru_ahk"),
                                     feature = "simulated_output"
                                 ))]
                                 k.kbd_out.log.in_repeat_key(key_code);
@@ -280,9 +288,17 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
-        #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+        #[cfg(all(
+            not(feature = "simulated_input"),
+            not(feature = "passthru_ahk"),
+            feature = "simulated_output"
+        ))]
         println!("{}", k.kbd_out.outputs.events.join("\n"));
-        #[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+        #[cfg(all(
+            not(feature = "simulated_input"),
+            not(feature = "passthru_ahk"),
+            feature = "simulated_output"
+        ))]
         k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
     }
 
