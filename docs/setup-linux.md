@@ -56,7 +56,7 @@ Run this command first:
 mkdir -p ~/.config/systemd/user
 ```
 
-Then add this to: `~/.config/systemd/user/kanata.service`
+Then add this to: `~/.config/systemd/user/kanata.service`:
 ```bash
 [Unit]
 Description=Kanata keyboard remapper
@@ -65,14 +65,19 @@ Documentation=https://github.com/jtroo/kanata
 [Service]
 Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
 Environment=DISPLAY=:0
-Environment=HOME=/$HOME
 Type=simple
-ExecStart=$(which kanata) --cfg $HOME/.config/kanata/config.kbd
+ExecStart=/usr/bin/sh -c 'exec $$(which kanata) --cfg $${HOME}/.config/kanata/config.kbd'
 Restart=no
 
 [Install]
 WantedBy=default.target
+```
 
+Make sure to update the executable location for sh in the snippet above.
+This would be the line starting with `ExecStart=/usr/bin/sh -c`.
+You can check the executable path with:
+```bash
+which sh
 ```
 
 Then run:
