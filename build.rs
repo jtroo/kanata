@@ -14,8 +14,8 @@ mod windows {
     use std::io::Write;
     extern crate embed_resource;
 
-    #[macro_export]
-    macro_rules! pb { // println! during build
+    // println! during build
+    macro_rules! pb {
       ($($tokens:tt)*) => {println!("cargo:warning={}", format!($($tokens)*))}}
 
     pub(super) fn build() -> std::io::Result<()> {
@@ -31,14 +31,12 @@ mod windows {
 
         if re_version3.find(&version).is_some() {
             version = format!("{}.0", version);
-            // pb!("found 'n.n.n' version, adding the 4th number {}", version);
         } else if re_ver_build.find(&version).is_some() {
             version = re_ver_build
                 .replace_all(&version, r"$vpre.$vpos")
                 .to_string();
-            // pb!("found 'n.n.n-Word-n' version, removing word '{}'", version);
         } else {
-            // pb!("unknown version format '{}', using '0.0.0.0'", version);
+            pb!("unknown version format '{}', using '0.0.0.0'", version);
             version = "0.0.0.0".to_string();
         }
 
