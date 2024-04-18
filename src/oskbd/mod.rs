@@ -15,13 +15,27 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::*;
 
-#[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+#[cfg(all(
+    not(feature = "simulated_input"),
+    feature = "simulated_output",
+    not(feature = "passthru_ahk")
+))]
 mod simulated;
-#[cfg(all(not(feature = "simulated_input"), feature = "simulated_output"))]
+#[cfg(all(
+    not(feature = "simulated_input"),
+    not(feature = "passthru_ahk"),
+    feature = "simulated_output"
+))]
 pub use simulated::*;
-#[cfg(all(feature = "simulated_input", feature = "simulated_output"))]
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    feature = "passthru_ahk"
+))]
 mod sim_passthru;
-#[cfg(all(feature = "simulated_input", feature = "simulated_output"))]
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    feature = "passthru_ahk"
+))]
 pub use sim_passthru::*;
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
