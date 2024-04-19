@@ -4410,80 +4410,74 @@ mod test {
     }
 
     #[test]
-    fn test_old_trans_behavior_with_delegate_to_first_layer() {
-        static DEFSRC_LAYER: [Action; 3] = [NoOp, NoOp, k(X)];
-        static LAYERS: Layers<3, 1> = &[
-            [[Layer(1), NoOp, k(A)]],
-            [[NoOp, Layer(2), k(B)]],
-            [[NoOp, NoOp, Trans]],
-        ];
-        let mut layout =
-            Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, false, true);
+    fn trans_in_multi_works_with_all_trans_settings() {
+        let permutations: &[(bool, bool)] =
+            &[(false, false), (false, true), (true, false), (true, true)];
 
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[A], layout.keycodes());
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
+        for &(trans_v2, delegate_to_1st) in permutations {
+            static DEFSRC_LAYER: [Action; 3] = [NoOp, NoOp, k(X)];
+            static LAYERS: Layers<3, 1> = &[
+                [[
+                    Layer(1),
+                    DefaultLayer(1),
+                    MultipleActions(&[Trans, k(Y)].as_slice()),
+                ]],
+                [[NoOp, Layer(2), k(B)]],
+                [[NoOp, NoOp, Trans]],
+            ];
+            for &do_layer_switch in &[false, true] {
+                let mut layout = Layout::new_with_trans_action_settings(
+                    &DEFSRC_LAYER,
+                    &LAYERS,
+                    trans_v2,
+                    delegate_to_1st,
+                );
 
-        layout.event(Press(0, 0));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[B], layout.keycodes());
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
+                layout.event(Press(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[X, Y], layout.keycodes());
+                layout.event(Release(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[], layout.keycodes());
 
-        layout.event(Press(0, 1));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[A], layout.keycodes()); // new behavior would resolve to 'B' here.
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-    }
+                if do_layer_switch {
+                    layout.event(Press(0, 1));
+                    assert_eq!(CustomEvent::NoEvent, layout.tick());
+                    assert_keys(&[], layout.keycodes());
+                    layout.event(Release(0, 1));
+                    assert_eq!(CustomEvent::NoEvent, layout.tick());
+                    assert_keys(&[], layout.keycodes());
+                    assert_eq!(layout.default_layer, 1);
+                } else {
+                    layout.event(Press(0, 0));
+                    assert_eq!(CustomEvent::NoEvent, layout.tick());
+                    assert_keys(&[], layout.keycodes());
+                }
 
-    #[test]
-    fn test_old_trans_behavior_with_delegate_to_src() {
-        static DEFSRC_LAYER: [Action; 3] = [NoOp, NoOp, k(X)];
-        static LAYERS: Layers<3, 1> = &[
-            [[Layer(1), NoOp, k(A)]],
-            [[NoOp, Layer(2), k(B)]],
-            [[NoOp, NoOp, Trans]],
-        ];
-        let mut layout =
-            Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, false, false);
+                layout.event(Press(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[B], layout.keycodes());
+                layout.event(Release(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[], layout.keycodes());
 
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[A], layout.keycodes());
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-
-        layout.event(Press(0, 0));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[B], layout.keycodes());
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-
-        layout.event(Press(0, 1));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
-        layout.event(Press(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[X], layout.keycodes()); // new behavior would resolve to 'B' here.
-        layout.event(Release(0, 2));
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
+                layout.event(Press(0, 1));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[], layout.keycodes());
+                layout.event(Press(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(
+                    match (trans_v2, delegate_to_1st) {
+                        (false, false) => &[X],
+                        (false, true) => &[X, Y],
+                        (true, _) => &[B],
+                    },
+                    layout.keycodes(),
+                );
+                layout.event(Release(0, 2));
+                assert_eq!(CustomEvent::NoEvent, layout.tick());
+                assert_keys(&[], layout.keycodes());
+            }
+        }
     }
 }
