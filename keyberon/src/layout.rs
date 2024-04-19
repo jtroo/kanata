@@ -875,6 +875,10 @@ pub const MAX_LAYERS: usize = 60000;
 // Cache line is typically 64 bytes, so this takes half a cache line.
 // Above all assumes x86-64.
 pub const MAX_ACTIVE_LAYERS: usize = 12;
+
+/// Because we only need a read-only stack and efficient iteration over contained
+/// items, LayerStack items are in reverse order over usual back-to-front order
+/// of items in array-based stack implementations.
 type LayerStack = Vec<u16, MAX_ACTIVE_LAYERS>;
 
 /// Contains the state of one shot keys that are currently active.
