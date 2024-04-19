@@ -1084,7 +1084,7 @@ Some of the intended use cases are:
 * switch to another layer for exactly one following key press
 
 If a `+one-shot+` key is held then it will act as the regular key. E.g. holding
-a key assigned with `+@os1+` in the example below will keep Left Shift held for
+a key assigned with `+@os2+` in the example below will keep Left Shift held for
 every key, not just one, as long as it's still physically pressed.
 
 Pressing multiple `+one-shot+` keys in a row within the timeout will combine
