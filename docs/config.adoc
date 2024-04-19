@@ -3197,7 +3197,7 @@ the second list-of-strings parameter
 ;; Below will expand to: `a c` because the string
 ;; $a itself is compared against the string hello
 ;; and they are not equal.
-(expand-template template1 $a)
+(template-expand template1 $a)
 
 (deftemplate template2 (var1)
   a (if-equal $a $var1 b) c
@@ -3207,7 +3207,7 @@ the second list-of-strings parameter
 ;; $a is compared against the string $a and they are equal.
 ;; But note that the variable $a is still not substituted
 ;; with its defvar value of: hello.
-(expand-template template2 $a)
+(template-expand template2 $a)
 ----
 
 [[concat-in-deftemplate]]
