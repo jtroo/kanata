@@ -116,6 +116,40 @@ Commented out since doc is short enough without a ToC for the time being.
 ----
 ====
 
+== ISO German QWERTZ (MacOS)[[german]]
+
+=== Using `deflocalkeys-macos`:[[german-defmac]]
+
+[%collapsible]
+====
+----
+(deflocalkeys-macos
+  ß    12
+  ´    13
+  z    21
+  ü    26
+  +    27
+  ö    39
+  ä    40
+  <    41
+  #    43
+  y    44
+  -    53
+  ^    86
+)
+
+(defsrc
+  ⎋         f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12
+  ^         1    2    3    4    5    6    7    8    9    0    ß    ´    ⌫
+  ↹         q    w    e    r    t    z    u    i    o    p    ü    +
+  ⇪         a    s    d    f    g    h    j    k    l    ö    ä    #    ↩
+ ‹⇧   <     y    x    c    v    b    n    m    ,    .    -         ▲    ⇧›
+  fn       ‹⌃   ‹⌥   ‹⌘              ␣              ⌘›   ⌥›   ◀    ▼    ▶
+)
+----
+====
+
+
 == ISO French AZERTY (Windows, non-interception)[[french]]
 
 NOTE: This is for the https://kbdlayout.info/kbdfr?arrangement=ISO105[French AZERTY layout] (ISO105 arrangement). Tested on Windows only.
