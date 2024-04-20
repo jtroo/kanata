@@ -262,7 +262,7 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 impl Kanata {
-    fn new(args: &ValidatedArgs) -> Result<Self> {
+    pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {
@@ -478,10 +478,10 @@ impl Kanata {
     pub fn new_with_output_channel(
         args: &ValidatedArgs,
         tx: Option<ASender<InputEvent>>,
-    ) -> Result<Self> {
+    ) -> Result<Arc<Mutex<Self>>> {
         let mut k = Self::new(args)?;
         k.kbd_out.tx_kout = tx;
-        Ok(k)
+        Ok(Arc::new(Mutex::new(k)))
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {

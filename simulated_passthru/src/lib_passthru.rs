@@ -60,7 +60,7 @@ thread_local! {pub static RX_KEY_EV_OUT:Cell<Option<Receiver<InputEvent>>> = Cel
 fn lib_impl(cfg_path: &str) -> Result<()> {
     let args = cli_init(cfg_path)?;
     let (tx_kout, rx_kout) = std::sync::mpsc::channel(); //async channel
-    let cfg_arc = Kanata::new_arc(&args, Some(tx_kout))?; // new configuration from a file
+    let cfg_arc = Kanata::new_with_output_channel(&args, Some(tx_kout))?; // new configuration from a file
     debug!("loaded {:?}", args.paths[0]);
     if CFG.set(cfg_arc.clone()).is_err() {
         warn!("Someone else set our ‘CFG’");

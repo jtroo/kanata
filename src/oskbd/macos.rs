@@ -168,10 +168,10 @@ impl TryFrom<KeyEvent> for InputEvent {
     }
 }
 
-#[cfg(any(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {}
 
-#[cfg(any(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {})

@@ -16,15 +16,15 @@ mod macos;
 pub use macos::*;
 
 #[cfg(all(
-    feature = "simulated_output",
     not(feature = "simulated_input"),
     not(feature = "passthru_ahk"),
+    feature = "simulated_output",
 ))]
 mod simulated;
 #[cfg(all(
-    feature = "simulated_output",
     not(feature = "simulated_input"),
     not(feature = "passthru_ahk"),
+    feature = "simulated_output",
 ))]
 pub use simulated::*;
 #[cfg(any(
