@@ -3244,7 +3244,7 @@ you can use much shorter, yet more visible, key symbols like `+‹⇧+`.
 
 For more details see
 https://github.com/jtroo/kanata/blob/main/docs/fancy_symbols.md[symbol list] and
-https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.md[example config], which not only uses these symbols in layer definitions, but also repurposes `+⎇›+` and `+⇧›+` `+⎇›+` keys into "symbol" keys that allow you to insert these fancy symbols by pressing the key, e.g.,
+https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.kbd[example config], which not only uses these symbols in layer definitions, but also repurposes `+⎇›+` and `+⇧›+` `+⎇›+` keys into "symbol" keys that allow you to insert these fancy symbols by pressing the key, e.g.,
 
 * hold `+⎇›+` and tap `+Delete+` would insert `+␡+`
 
