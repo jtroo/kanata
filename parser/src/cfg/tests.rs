@@ -3,9 +3,16 @@ use super::*;
 use crate::cfg::sexpr::{parse, Span};
 use kanata_keyberon::action::BooleanOperator::*;
 
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
+
+fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
+    match lk.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
 
 #[test]
 fn sizeof_action_is_two_usizes() {
@@ -31,10 +38,7 @@ fn test_span_absolute_ranges() {
 
 #[test]
 fn span_works_with_unicode_characters() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"(defsrc a) ;; 😊
 (deflayer base @😊)
@@ -66,10 +70,7 @@ fn span_works_with_unicode_characters() {
 
 #[test]
 fn test_multiline_error_span() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"(defsrc a)
 (
@@ -103,10 +104,7 @@ fn test_multiline_error_span() {
 
 #[test]
 fn test_span_of_an_unterminated_block_comment_error() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"(defsrc a) |# I'm an unterminated block comment..."#;
     let span = parse_cfg_raw_string(
@@ -134,10 +132,7 @@ fn test_span_of_an_unterminated_block_comment_error() {
 
 #[test]
 fn parse_action_vars() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar
@@ -217,10 +212,7 @@ fn parse_action_vars() {
 
 #[test]
 fn parse_multiline_comment() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/multiline_comment.kbd",
     ))
@@ -229,19 +221,13 @@ fn parse_multiline_comment() {
 
 #[test]
 fn parse_file_with_utf8_bom() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from("./test_cfgs/utf8bom.kbd")).unwrap();
 }
 
 #[test]
 fn disallow_nested_tap_hold() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
         .map_err(|e| format!("{}", e.help().unwrap()))
     {
@@ -252,10 +238,7 @@ fn disallow_nested_tap_hold() {
 
 #[test]
 fn disallow_ancestor_seq() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
         .map_err(|e| format!("{e:?}"))
     {
@@ -266,10 +249,7 @@ fn disallow_ancestor_seq() {
 
 #[test]
 fn disallow_descendent_seq() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
         .map_err(|e| format!("{e:?}"))
     {
@@ -280,10 +260,7 @@ fn disallow_descendent_seq() {
 
 #[test]
 fn disallow_multiple_waiting_actions() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/bad_multi.kbd"))
         .map_err(|e| format!("{}", e.help().unwrap()))
     {
@@ -294,10 +271,7 @@ fn disallow_multiple_waiting_actions() {
 
 #[test]
 fn chord_in_macro_dont_panic() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/macro-chord-dont-panic.kbd",
     ))
@@ -307,10 +281,7 @@ fn chord_in_macro_dont_panic() {
 
 #[test]
 fn unknown_defcfg_item_fails() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from(
         "./test_cfgs/unknown_defcfg_opt.kbd",
     ))
@@ -496,19 +467,13 @@ fn test_parse_macro_numbers() {
 
 #[test]
 fn test_include_good() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from("./test_cfgs/include-good.kbd")).unwrap();
 }
 
 #[test]
 fn test_include_bad_has_filename_included() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let err = format!(
         "{:?}",
         new_from_file(
@@ -528,10 +493,7 @@ fn test_include_bad_has_filename_included() {
 
 #[test]
 fn test_include_bad2_has_original_filename() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let err = format!(
         "{:?}",
         new_from_file(
@@ -555,10 +517,7 @@ fn test_include_bad2_has_original_filename() {
 #[test]
 fn parse_bad_submacro() {
     // Test exists since it used to crash. It should not crash.
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
@@ -587,10 +546,7 @@ fn parse_bad_submacro() {
 #[test]
 fn parse_bad_submacro_2() {
     // Test exists since it used to crash. It should not crash.
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
@@ -619,10 +575,7 @@ fn parse_bad_submacro_2() {
 #[test]
 fn parse_nested_macro() {
     // Test exists since it used to crash. It should not crash.
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar m1 (a b c))
@@ -651,10 +604,7 @@ fn parse_nested_macro() {
 
 #[test]
 fn parse_switch() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
@@ -806,10 +756,7 @@ fn parse_switch() {
 
 #[test]
 fn parse_switch_exceed_depth() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
@@ -839,10 +786,7 @@ fn parse_switch_exceed_depth() {
 
 #[test]
 fn parse_virtualkeys() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
@@ -927,10 +871,7 @@ fn parse_virtualkeys() {
 
 #[test]
 fn parse_on_idle_fakekey() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
@@ -979,10 +920,7 @@ fn parse_on_idle_fakekey() {
 
 #[test]
 fn parse_on_idle_fakekey_errors() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
@@ -1121,10 +1059,7 @@ fn parse_fake_keys_errors_on_too_many() {
 
 #[test]
 fn parse_deflocalkeys_overridden() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (deflocalkeys-win
 +   300
@@ -1240,10 +1175,7 @@ new 316
 
 #[test]
 fn use_default_overridable_mappings() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (defsrc + [  ]  a  b  /  ;  `  =  -  '  ,  .  9  yen ¥  )
 (deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
@@ -1264,10 +1196,7 @@ fn use_default_overridable_mappings() {
 
 #[test]
 fn list_action_not_in_list_error_message_is_good() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a)
@@ -1376,10 +1305,7 @@ fn test_parse_dev() {
 
 #[test]
 fn parse_all_defcfg() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (defcfg
   process-unmapped-keys yes
@@ -1425,10 +1351,7 @@ fn parse_all_defcfg() {
 
 #[test]
 fn parse_unmod() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (defsrc a b c d)
@@ -1455,10 +1378,7 @@ fn parse_unmod() {
 
 #[test]
 fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a b)
@@ -1482,10 +1402,7 @@ fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
 
 #[test]
 fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (defsrc a b)
@@ -1510,10 +1427,7 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
 #[test]
 #[cfg(feature = "cmd")]
 fn parse_cmd() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (defcfg danger-enable-cmd yes)
@@ -1546,10 +1460,7 @@ fn parse_cmd() {
 
 #[test]
 fn parse_defvar_concat() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (defsrc a)
@@ -1621,10 +1532,7 @@ fn parse_defvar_concat() {
 
 #[test]
 fn parse_template_1() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (j-behaviour)
@@ -1666,10 +1574,7 @@ fn parse_template_1() {
 
 #[test]
 fn parse_template_2() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (defvar chord-timeout 200)
@@ -1721,10 +1626,7 @@ fn parse_template_2() {
 
 #[test]
 fn parse_template_3() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (version)
@@ -1769,10 +1671,7 @@ fn parse_template_3() {
 
 #[test]
 fn parse_template_4() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (version)
@@ -1809,10 +1708,7 @@ fn parse_template_4() {
 
 #[test]
 fn parse_template_5() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (version)
@@ -1849,10 +1745,7 @@ fn parse_template_5() {
 
 #[test]
 fn parse_template_6() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (version)
@@ -1889,10 +1782,7 @@ fn parse_template_6() {
 
 #[test]
 fn parse_template_7() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (deftemplate home-row (version)
@@ -1929,10 +1819,7 @@ fn parse_template_7() {
 
 #[test]
 fn test_deflayermap() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
 
     let source = r#"
 (defsrc a b l)
@@ -1967,10 +1854,7 @@ fn test_deflayermap() {
 
 #[test]
 fn test_defaliasenvcond() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (defsrc spc)
 (deflayer base _)
@@ -2035,10 +1919,7 @@ fn test_defaliasenvcond() {
 
 #[test]
 fn parse_platform_specific() {
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     let source = r#"
 (platform () (invalid config but is not used anywhere))
