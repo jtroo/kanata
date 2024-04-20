@@ -31,7 +31,7 @@ use std::io::{Error as IoErr, ErrorKind::NotConnected};
 impl KbdOut {
     #[cfg(not(target_os = "linux"))]
     pub fn new() -> Result<Self, io::Error> {
-        Ok(Self {})
+        Ok(Self { tx_kout: None })
     }
     #[cfg(target_os = "linux")]
     pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
