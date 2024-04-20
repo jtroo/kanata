@@ -994,9 +994,9 @@ pub enum OsCode {
     KEY_653 = 653,
     KEY_654 = 654,
     KEY_655 = 655,
-    KEY_656 = 656,
-    KEY_657 = 657,
-    KEY_658 = 658,
+    KEY_656 = 656, // 0x290 : KEY_MACRO1:
+    KEY_657 = 657, // https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
+    KEY_658 = 658, // ...
     KEY_659 = 659,
     KEY_660 = 660,
     KEY_661 = 661,
@@ -1022,8 +1022,8 @@ pub enum OsCode {
     KEY_681 = 681,
     KEY_682 = 682,
     KEY_683 = 683,
-    KEY_684 = 684,
-    KEY_685 = 685,
+    KEY_684 = 684, // ...
+    KEY_685 = 685, // 0x2ad: KEY_MACRO30
     KEY_686 = 686,
     KEY_687 = 687,
     KEY_688 = 688,

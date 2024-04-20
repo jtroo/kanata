@@ -183,6 +183,43 @@ pub struct Kanata {
     tcp_server_address: Option<SocketAddrWrapper>,
 }
 
+// Functions to send keys except those that fall in the ignorable range.
+// Some keys are ignored because they are *probably* unused,
+// or otherwise are probably in an unergonomic, far away key position,
+// so if you're using kanata, you can now stop using those keys and
+// do something better!
+//
+// I should probably let people turn this off if they really want to,
+// but I don't like how that would require extra code.
+// I'll defer to YAGNI and add docs, and let people report problems if
+// they want a fix instead 🐝.
+const KEY_IGNORE_MIN: u16 = 0x2a4; // KEY_MACRO21
+const KEY_IGNORE_MAX: u16 = 0x2ad; // KEY_MACRO30
+fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io::Error> {
+    match u16::from(osc) {
+        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
+            Ok(())
+        }
+        _ => kb.write_key(osc, val)
+    }
+}
+fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    match u16::from(osc) {
+        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
+            Ok(())
+        }
+        _ => kb.press_key(osc)
+    }
+}
+fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    match u16::from(osc) {
+        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
+            Ok(())
+        }
+        _ => kb.release_key(osc)
+    }
+}
+
 #[derive(PartialEq, Clone, Copy)]
 pub enum Axis {
     Vertical,
@@ -1607,7 +1644,7 @@ impl Kanata {
                         || self.unmodded_keys.contains(&kc)
                     {
                         log::debug!("repeat    {:?}", KeyCode::from(osc));
-                        if let Err(e) = self.kbd_out.write_key(osc, KeyValue::Repeat) {
+                        if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
                             bail!("could not write key {:?}", e)
                         }
                         return Ok(());
@@ -1638,7 +1675,7 @@ impl Kanata {
                 || self.unmodded_keys.contains(&kc)
             {
                 log::debug!("repeat    {:?}", KeyCode::from(osc));
-                if let Err(e) = self.kbd_out.write_key(osc, KeyValue::Repeat) {
+                if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
                     bail!("could not write key {:?}", e)
                 }
                 return Ok(());
