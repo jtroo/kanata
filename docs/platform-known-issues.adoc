@@ -4,8 +4,12 @@
 
 This document contains a list of known issues
 which are unique to a given platform.
-The officially supported platforms today
-are Windows 10/11 and Linux.
+The platform supported by the core maintainer (jtroo)
+are Windows 11 and Linux.
+Windows 10 is expected to work fine,
+but as Windows 10 end-of-support is approaching in 2025,
+jtroo no longer has any devices with it installed.
+
 On Windows, there are two backing mechanisms that can be used
 for keyboard input/output and they have different issues.
 These will be differentiated by the words "LLHOOK" and "Interception",
@@ -27,6 +31,7 @@ which map to the binaries
 ** https://github.com/jtroo/kanata/issues/192
 ** https://github.com/jtroo/kanata/discussions/428
 * OS-level key remapping behaves differently vs. Linux or Interception
+** Does not affect winiov2 variant
 ** https://github.com/jtroo/kanata/issues/152
 * Certain applications that also use the LLHOOK mechanism may not behave correctly
 ** https://github.com/jtroo/kanata/issues/55
@@ -36,11 +41,13 @@ which map to the binaries
 * AltGr can misbehave
 ** https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
 * NumLock state can mess with arrow keys in unexpected ways
+** Does not affect winiov2 variant
 ** https://github.com/jtroo/kanata/issues/78
 ** https://github.com/jtroo/kanata/issues/667
 ** Workaround: use the correct https://github.com/jtroo/kanata/discussions/354[numlock state]
 * Without `process-unmapped-keys yes`, using arrow keys
 without also having the shift keys in `defsrc` will break shift highlighting
+** Does not affect winiov2 variant
 ** https://github.com/jtroo/kanata/issues/858
 ** Workaround: add shift keys to `defsrc` or use `process-unmapped-keys yes` in `defcfg`
 
