@@ -2,7 +2,6 @@
 members = [
     "./",
     "parser",
-    "simulated_passthru",
     "keyberon",
     "example_tcp_client",
     "tcp_protocol",
