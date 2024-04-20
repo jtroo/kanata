@@ -2603,28 +2603,49 @@ but are saved until one of the following happens:
 * A key is typed that does not match any sequence
 * `+sequence-timeout+` milliseconds elapses since the most recent key press
 
-Sequences are configured similarly to `+deffakekeys+`. The first parameter of a
+Sequences are configured similarly to `+defvirtualkeys+`. The first parameter of a
 pair must be a defined virtual key name. The second parameter is a list of keys
 that will activate a virtual key tap when typed in the defined order. More
 precisely, the action triggered is:
 
-`+(on-press-fakekey <virtual key name> tap)+`
+`+(on-press tap-vkey <virtual key name>)+`
 
 .Example:
 [source]
 ----
 (defseq git-status (g s t))
-(deffakekeys git-status (macro g i t spc s t a t u s))
+(defvirtualkeys git-status (macro g i t spc s t a t u s))
 (defalias rcl (tap-hold-release 200 200 sldr rctl))
 
 (defseq
     dotcom (. S-3)
     dotorg (. S-4)
 )
-(deffakekeys
+(defvirtualkeys
     dotcom (macro . c o m)
     dotorg (macro . o r g)
 )
+----
+
+There are 10 special keys with names `seq0-seq9` which kanata treats specially.
+Kanata will never send OS events for these keys
+but they can still participate in sequences.
+
+See an example of using the special seq keys and
+use of templates to conveniently define sequences below.
+
+.Example:
+[source]
+----
+(defsrc f7   f8   f9   f10)
+(deflayer base
+        sldr seq0 seq1 seq2)
+(deftemplate seq (vk-name input-keys output-action)
+  (defvirtualkeys $vk-name $output-action)
+  (defseq $vk-name $input-keys)
+)
+(template-expand seq dotcom (seq0 seq1) (macro . c o m))
+(template-expand seq dotorg (seq0 seq2) (macro . o r g))
 ----
 
 For more context, you can read the
