@@ -42,8 +42,6 @@ pub mod sexpr;
 mod alloc;
 use alloc::*;
 
-mod action_visitor;
-
 mod key_override;
 use kanata_keyberon::chord::ChordsV2;
 pub use key_override::*;
@@ -277,6 +275,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
             s.a.sref(s.defsrc_layer),
             icfg.klayers,
             icfg.options.trans_resolution_behavior_v2,
+            icfg.options.delegate_to_first_layer,
         ),
         s.a,
     );
@@ -326,6 +325,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
             s.a.sref(s.defsrc_layer),
             icfg.klayers,
             icfg.options.trans_resolution_behavior_v2,
+            icfg.options.delegate_to_first_layer,
         ),
         s.a,
     );
@@ -2805,7 +2805,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
 }
 
 fn parse_layers(
-    s: &mut ParserState,
+    s: &ParserState,
     mapped_keys: &mut MappedKeys,
     defcfg: &CfgOptions,
 ) -> Result<IntermediateLayers> {
@@ -2814,25 +2814,14 @@ fn parse_layers(
         bail!("Maximum number of layers ({}) exceeded.", MAX_LAYERS);
     }
     let mut defsrc_layer = s.defsrc_layer;
-    let mut error_on_nested_trans = s.delegate_to_first_layer;
-    let nested_trans_errmsg = "This nested transparent action is forbidden on the first\n\
-                               defined layer when delegate-to-first-layer is enabled";
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         match layer {
             // The skip is done to skip the the `deflayer` and layer name tokens.
             LayerExprs::DefsrcMapping(layer) => {
                 // Parse actions in the layer and place them appropriately according
                 // to defsrc mapping order.
-                for (i, ac_expr) in layer.iter().skip(2).enumerate() {
-                    let ac = parse_action(ac_expr, s)?;
-                    if error_on_nested_trans && !matches!(ac, Action::Trans) {
-                        action_visitor::visit_nested_actions(ac, &mut |ac| {
-                            if matches!(ac, Action::Trans) {
-                                bail_expr!(ac_expr, "{nested_trans_errmsg}");
-                            }
-                            Ok(())
-                        })?;
-                    }
+                for (i, ac) in layer.iter().skip(2).enumerate() {
+                    let ac = parse_action(ac, s)?;
                     layers_cfg[layer_level][0][s.mapping_order[i]] = *ac;
                 }
             }
@@ -2845,7 +2834,7 @@ fn parse_layers(
                 let mut both_anykey_used = false;
                 for triplet in pairs.by_ref() {
                     let input = &triplet[0];
-                    let action_expr = &triplet[1];
+                    let action = &triplet[1];
 
                     // TODO: remove me some time after April 2024 to reduce code bloat somewhat.
                     const MAPSTRS: &[&str] = &[":", "->", ">>", "maps-to", "→", "🞂"];
@@ -2855,22 +2844,11 @@ fn parse_layers(
                     if input.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
                         bail_expr!(input, "{MAPSTR_ERR}");
                     }
-                    if action_expr
-                        .atom(s.vars())
-                        .is_some_and(|x| MAPSTRS.contains(&x))
-                    {
-                        bail_expr!(action_expr, "{MAPSTR_ERR}");
+                    if action.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
+                        bail_expr!(action, "{MAPSTR_ERR}");
                     }
 
-                    let action = parse_action(action_expr, s)?;
-                    if error_on_nested_trans && !matches!(action, Action::Trans) {
-                        action_visitor::visit_nested_actions(action, &mut |ac| {
-                            if matches!(ac, Action::Trans) {
-                                bail_expr!(action_expr, "{nested_trans_errmsg}");
-                            }
-                            Ok(())
-                        })?;
-                    }
+                    let action = parse_action(action, s)?;
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
                         if defsrc_anykey_used {
                             bail_expr!(input, "must have only one use of _ within a layer")
@@ -2977,9 +2955,7 @@ fn parse_layers(
                 }
             }
         }
-        error_on_nested_trans = false;
     }
-    s.defsrc_layer = defsrc_layer;
     Ok(layers_cfg)
 }
 
@@ -3426,8 +3402,6 @@ fn add_chordsv2_output_for_key_pos(
     }
 }
 
-// TODO: refactor - define in terms of action_visitor::visit.
-// But need to generate a test that they add all the same outputs
 fn add_key_output_from_action_to_key_pos(
     osc_slot: OsCode,
     action: &KanataAction,
