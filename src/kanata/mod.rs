@@ -184,6 +184,8 @@ pub struct Kanata {
 }
 
 // Functions to send keys except those that fall in the ignorable range.
+//
+// POTENTIAL PROBLEM - G-keys:
 // Some keys are ignored because they are *probably* unused,
 // or otherwise are probably in an unergonomic, far away key position,
 // so if you're using kanata, you can now stop using those keys and
@@ -192,31 +194,37 @@ pub struct Kanata {
 // I should probably let people turn this off if they really want to,
 // but I don't like how that would require extra code.
 // I'll defer to YAGNI and add docs, and let people report problems if
-// they want a fix instead 🐝.
+// they want a fix 🐝.
+//
+// The keys ignored are intentionally the upper numbers of KEY_MACROX.
+// The Linux input-event-codes.h file mentions G1-G18 and S1-S30
+// as keys that might use these codes.
+//
+// Logitech still makes devices with G-keys
+// but the S-keys are apparently from the
+// "Microsoft SideWinder X6 Keyboard"
+// which appears to no longer be in production.
+//
+// Thus based on my reading, 18 is the highest macro key
+// that can be assumed to be used by devices still in production.
 const KEY_IGNORE_MIN: u16 = 0x2a4; // KEY_MACRO21
 const KEY_IGNORE_MAX: u16 = 0x2ad; // KEY_MACRO30
 fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io::Error> {
     match u16::from(osc) {
-        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
-            Ok(())
-        }
-        _ => kb.write_key(osc, val)
+        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
+        _ => kb.write_key(osc, val),
     }
 }
 fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
     match u16::from(osc) {
-        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
-            Ok(())
-        }
-        _ => kb.press_key(osc)
+        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
+        _ => kb.press_key(osc),
     }
 }
 fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
     match u16::from(osc) {
-        KEY_IGNORE_MIN ..= KEY_IGNORE_MAX => {
-            Ok(())
-        }
-        _ => kb.release_key(osc)
+        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
+        _ => kb.release_key(osc),
     }
 }
 
@@ -950,7 +958,7 @@ impl Kanata {
                 continue;
             }
             log::debug!("key release   {:?}", k);
-            if let Err(e) = self.kbd_out.release_key(k.into()) {
+            if let Err(e) = release_key(&mut self.kbd_out, k.into()) {
                 bail!("failed to release key: {:?}", e);
             }
         }
@@ -975,7 +983,7 @@ impl Kanata {
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);
-                    if let Err(e) = self.kbd_out.press_key(k.into()) {
+                    if let Err(e) = press_key(&mut self.kbd_out, k.into()) {
                         bail!("failed to press key: {:?}", e);
                     }
                 }
@@ -1005,7 +1013,7 @@ impl Kanata {
                     state.sequence.push(pushed_into_seq);
                     match state.sequence_input_mode {
                         SequenceInputMode::VisibleBackspaced => {
-                            self.kbd_out.press_key(osc)?;
+                            press_key(&mut self.kbd_out, osc)?;
                         }
                         SequenceInputMode::HiddenSuppressed
                         | SequenceInputMode::HiddenDelayType => {}
@@ -1043,8 +1051,8 @@ impl Kanata {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
                                         if let Some(osc) = OsCode::from_u16(code) {
-                                            self.kbd_out.press_key(osc)?;
-                                            self.kbd_out.release_key(osc)?;
+                                            press_key(&mut self.kbd_out, osc)?;
+                                            release_key(&mut self.kbd_out, osc)?;
                                         }
                                     }
                                 }
@@ -1070,7 +1078,7 @@ impl Kanata {
                                     State::NormalKey { keycode, .. } => {
                                         // Ignore the error, ugly to return it from retain, and
                                         // this is very unlikely to happen anyway.
-                                        let _ = self.kbd_out.release_key(keycode.into());
+                                        let _ = release_key(&mut self.kbd_out, keycode.into());
                                         false
                                     }
                                     _ => true,
@@ -1080,8 +1088,7 @@ impl Kanata {
                                     // those since they don't output characters that can be
                                     // backspaced.
                                     let kc = OsCode::from(*k & MASK_KEYCODES);
-                                    if matches!(
-                                        kc,
+                                    match kc {
                                         // Known bug: most non-characters-outputting keys are not
                                         // listed. I'm too lazy to list them all. Just use
                                         // character-outputting keys (and modifiers) in sequences
@@ -1093,19 +1100,25 @@ impl Kanata {
                                         // probably be the list of keys that **do** output
                                         // characters than those that don't.
                                         OsCode::KEY_LEFTSHIFT
-                                            | OsCode::KEY_RIGHTSHIFT
-                                            | OsCode::KEY_LEFTMETA
-                                            | OsCode::KEY_RIGHTMETA
-                                            | OsCode::KEY_LEFTCTRL
-                                            | OsCode::KEY_RIGHTCTRL
-                                            | OsCode::KEY_LEFTALT
-                                            | OsCode::KEY_RIGHTALT
-                                    ) {
-                                        continue;
+                                        | OsCode::KEY_RIGHTSHIFT
+                                        | OsCode::KEY_LEFTMETA
+                                        | OsCode::KEY_RIGHTMETA
+                                        | OsCode::KEY_LEFTCTRL
+                                        | OsCode::KEY_RIGHTCTRL
+                                        | OsCode::KEY_LEFTALT
+                                        | OsCode::KEY_RIGHTALT => continue,
+                                        osc if matches!(
+                                            u16::from(osc),
+                                            KEY_IGNORE_MIN..=KEY_IGNORE_MAX
+                                        ) =>
+                                        {
+                                            continue
+                                        }
+                                        _ => {
+                                            self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
+                                            self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                                        }
                                     }
-
-                                    self.kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
-                                    self.kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
                                 }
                             }
                         }
@@ -1353,8 +1366,8 @@ impl Kanata {
                             {
                                 for (key_action, osc) in keys_for_cmd_output(_cmd) {
                                     match key_action {
-                                        KeyAction::Press => self.kbd_out.press_key(osc)?,
-                                        KeyAction::Release => self.kbd_out.release_key(osc)?,
+                                        KeyAction::Press => press_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Release => release_key(&mut self.kbd_out, osc)?,
                                     }
                                 }
                             }
@@ -1436,14 +1449,14 @@ impl Kanata {
                                     cw.maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
                                         do_caps_word = true;
-                                        self.kbd_out.press_key(OsCode::KEY_LEFTSHIFT)?;
+                                        press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
                                     }
                                 }
                             }
                             // Release key in case the most recently pressed key is still pressed.
-                            self.kbd_out.release_key(osc)?;
-                            self.kbd_out.press_key(osc)?;
-                            self.kbd_out.release_key(osc)?;
+                            release_key(&mut self.kbd_out, osc)?;
+                            press_key(&mut self.kbd_out, osc)?;
+                            release_key(&mut self.kbd_out, osc)?;
                             if do_caps_word {
                                 self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
                             }
@@ -2150,8 +2163,8 @@ fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
         SequenceInputMode::HiddenDelayType => {
             for code in state.sequence.iter().copied() {
                 if let Some(osc) = OsCode::from_u16(code) {
-                    kbd_out.press_key(osc)?;
-                    kbd_out.release_key(osc)?;
+                    press_key(kbd_out, osc)?;
+                    release_key(kbd_out, osc)?;
                 }
             }
         }
