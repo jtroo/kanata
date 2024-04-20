@@ -73,6 +73,11 @@ without also having the shift keys in `defsrc` will break shift highlighting
 ** https://github.com/jtroo/kanata/discussions/733
 ** https://github.com/jtroo/kanata/issues/740
 ** adjusting https://github.com/jtroo/kanata/blob/main/docs/config.adoc#rapid-event-delay[rapid-event-delay] can potentially be a workaround
+* Macro keys on certain gaming keyboards might stop being processed
+** Context: search for `POTENTIAL PROBLEM - G-keys` in
+link:../src/kanata/mod.rs[the code].
+** Workaround: leave `process-unmapped-keys` disabled
+and explicitly map keys in `defsrc` instead
 
 == MacOS
 
