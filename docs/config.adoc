@@ -2648,7 +2648,31 @@ use of templates to conveniently define sequences below.
 (template-expand seq dotorg (seq0 seq2) (macro . o r g))
 ----
 
-For more context, you can read the
+If 10 special sequence keys do not seem sufficient,
+you can get creative with your sequences and treat some as a prefix modifier.
+For example, you can get 28 "keys" by treating `seq0-seq6` as normal
+while treating `seq7-seq9` as prefixes:
+
+.Example:
+[source]
+----
+(defalias
+  seq0 seq0
+  ;; ...
+  seq6 seq6
+  seq7 (macro seq7 seq0)
+  ;; ...
+  seq13 (macro seq7 seq6)
+  seq14 (macro seq8 seq0)
+  ;; ...
+  seq20 (macro seq8 seq6)
+  seq21 (macro seq9 seq0)
+  ;; ...
+  seq27 (macro seq9 seq6)
+)
+----
+
+For more context about sequences, you can read the
 https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
 You may also be interested in
 https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[the document describing chords in sequences]
