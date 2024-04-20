@@ -3258,6 +3258,12 @@ move it to "Program Files", then launching kanata from there will also work in t
 See https://github.com/jtroo/kanata/blob/main/EnableUIAccess[EnableUIAccess] folder with the script
 and its requires libraries (needs https://www.autohotkey.com/download/ahk-install.exe[AutoHotkey v1] installed)
 
+If compiling yourself, you should add the feature flag `win_manifest`
+to enable the use of the `EnableUIAccess` script:
+
+```
+cargo build --win_manifest
+```
 
 [[test-your-config]]
 === Test your config
