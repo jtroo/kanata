@@ -17,18 +17,16 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
 fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
-    Ok(
-        parse_cfg_raw_string(
-            cfg,
-            &mut s,
-            &PathBuf::from("test"),
-            &mut FileContentProvider {
-                get_file_content_fn: &mut |_| unimplemented!(),
-            },
-            DEF_LOCAL_KEYS,
-            Err("env vars not implemented".into()),
-        )?,
-    )
+    Ok(parse_cfg_raw_string(
+        cfg,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )?)
 }
 
 #[test]

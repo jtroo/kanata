@@ -56,8 +56,7 @@ impl KanataLayers {
         }
     }
 
-    pub(crate) fn get(&self) -> (KLayers, Arc<Allocations>)
-    {
+    pub(crate) fn get(&self) -> (KLayers, Arc<Allocations>) {
         (self.layers, self._allocations.clone())
     }
 }
