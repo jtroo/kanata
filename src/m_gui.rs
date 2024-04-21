@@ -145,9 +145,9 @@ fn cli_init() -> Result<ValidatedArgs> {
   let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
   let log_lvl = match (args.debug, args.trace) {
-    (_, true) => LevelFilter::Trace,
-    (true, false) => LevelFilter::Debug,
-    (false, false) => LevelFilter::Info,
+    (_    , true )	=> LevelFilter::Trace,
+    (true , false)	=> LevelFilter::Debug,
+    (false, false)	=> LevelFilter::Info,
   };
 
   let mut log_cfg = ConfigBuilder::new();
@@ -267,19 +267,19 @@ fn log_init(max_lvl: &i8) {
 
 use once_cell::sync::Lazy;
 static IS_TERM:Lazy<bool> = Lazy::new(||stdout().is_terminal());
+static IS_CONSOLE:Lazy<bool> = Lazy::new(|| unsafe{
+  if AttachConsole(ATTACH_PARENT_PROCESS)== 0i32 {return false} else {return true}});
 
 use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
 use winapi::shared::minwindef::BOOL;
 use std::io::{stdout, IsTerminal};
 pub fn main_gui() {
-  let is_attached:BOOL; // doesn't attach in GUI launch mode
-  unsafe {is_attached = AttachConsole(ATTACH_PARENT_PROCESS);};
   if *IS_TERM	{
-    println!("println terminal; is_attached console = {:?}",is_attached); // GUI launch will have no console
-    log::info!("log::info terminal; is_attached console = {:?}",is_attached); // isn't ready yet
+    println!("println terminal; is_attached console = {}",*IS_CONSOLE); // GUI launch will have no console
+    info!("info! terminal; is_attached console = {}",*IS_CONSOLE); // isn't ready yet
   } else {
-    log_init(&4);
-    info!("I'm not a terminal");
+    log_init(&5);
+    info!("info! I'm not a terminal, is_attached console = {}",*IS_CONSOLE);trace!("trace");debug!("debug");
   }
   let ret = main_impl();
   if let Err(ref e) = ret {log::error!("{e}\n");}
