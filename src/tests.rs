@@ -10,6 +10,28 @@ mod sim_tests;
 
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
+fn init_log() {
+    use simplelog::*;
+    use std::sync::OnceLock;
+    static LOG_INIT: OnceLock<()> = OnceLock::new();
+    LOG_INIT.get_or_init(|| {
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_rfc3339();
+        CombinedLogger::init(vec![TermLogger::new(
+            // Note: set to a different level to see logs in tests.
+            // Also, not all tests call init_log so you might have to add the call there too.
+            LevelFilter::Off,
+            log_cfg.build(),
+            TerminalMode::Stderr,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+    });
+}
+
 #[test]
 fn parse_simple() {
     let _lk = match CFG_PARSE_LOCK.lock() {

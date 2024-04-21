@@ -9,6 +9,7 @@ mod layer_sim_tests;
 mod seq_sim_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),

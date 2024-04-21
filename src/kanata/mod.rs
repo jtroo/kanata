@@ -995,12 +995,12 @@ impl Kanata {
                         // Transform to OsCode and convert modifiers other than altgr/ralt
                         // (same key different names) to the left version, since that's
                         // how chords get transformed when building up sequences.
-                        let mut base = match osc {
+                        let mut base = u16::from(match osc {
                             OsCode::KEY_RIGHTSHIFT => OsCode::KEY_LEFTSHIFT,
                             OsCode::KEY_RIGHTMETA => OsCode::KEY_LEFTMETA,
                             OsCode::KEY_RIGHTCTRL => OsCode::KEY_LEFTCTRL,
                             osc => osc,
-                        } as u16;
+                        });
 
                         // Modify the upper unused bits of the u16 to signify that the key
                         // is activated alongside a modifier.
@@ -1032,9 +1032,9 @@ impl Kanata {
                             let mut no_valid_seqs = true;
                             // If applicable, check again with modifier bits unset.
                             for i in (0..state.sequence.len()).rev() {
-                                // Safety: proper bounds are immediately above.
-                                // Note - can't use iter_mut due to borrowing issues.
-                                *unsafe { state.sequence.get_unchecked_mut(i) } &= MASK_KEYCODES;
+                                // Note: proper bounds are immediately above.
+                                // Can't use iter_mut due to borrowing issues.
+                                *(&mut state.sequence[i]) &= MASK_KEYCODES;
                                 res = self.sequences.get_or_descendant_exists(&state.sequence);
                                 if res != NotInTrie {
                                     no_valid_seqs = false;
