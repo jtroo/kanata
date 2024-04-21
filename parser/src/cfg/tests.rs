@@ -14,22 +14,19 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
     }
 }
 
-fn parse_cfg(cfg: &str) -> Result<(IntermediateCfg, ParserState)> {
+fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
-    Ok((
-        parse_cfg_raw_string(
-            cfg,
-            &mut s,
-            &PathBuf::from("test"),
-            &mut FileContentProvider {
-                get_file_content_fn: &mut |_| unimplemented!(),
-            },
-            DEF_LOCAL_KEYS,
-            Err("env vars not implemented".into()),
-        )?,
-        s,
-    ))
+    Ok(parse_cfg_raw_string(
+        cfg,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )?)
 }
 
 #[test]
@@ -641,8 +638,9 @@ fn parse_switch() {
     let (op5, op6) = OpCode::new_historical_input((FAKE_KEY_ROW, 1), 0);
     let (op7, op8) =
         OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
+    let (klayers, _) = res.klayers.get();
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Switch(&Switch {
             cases: &[
                 (
@@ -820,8 +818,9 @@ fn parse_virtualkeys() {
         ""
     })
     .unwrap();
+    let (klayers, _) = res.klayers.get();
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKey {
                 coord: Coord { x: 1, y: 0 },
@@ -831,7 +830,7 @@ fn parse_virtualkeys() {
         ),
     );
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_F.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_F.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKey {
                 coord: Coord { x: 1, y: 1 },
@@ -841,7 +840,7 @@ fn parse_virtualkeys() {
         ),
     );
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_K.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_K.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnRelease {
                 coord: Coord { x: 1, y: 0 },
@@ -851,7 +850,7 @@ fn parse_virtualkeys() {
         ),
     );
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_P.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_P.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnRelease {
                 coord: Coord { x: 1, y: 1 },
@@ -884,8 +883,9 @@ fn parse_on_idle_fakekey() {
     let res = parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("parses");
+    let (klayers, _) = res.klayers.get();
     assert_eq!(
-        res.0.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
                 coord: Coord { x: 1, y: 0 },
