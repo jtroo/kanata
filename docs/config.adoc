@@ -2634,8 +2634,8 @@ There are 10 special keys with names `nop0-nop9` which kanata treats specially.
 Kanata will never send OS events for these keys
 but they can still participate in sequences.
 
-See an example of using the special seq keys and
-use of templates to conveniently define sequences below.
+See an example of using the nop keys
+alongside templates to define sequences below.
 
 .Example:
 [source]
@@ -2651,7 +2651,7 @@ use of templates to conveniently define sequences below.
 (template-expand seq dotorg (nop0 nop2) (macro . o r g))
 ----
 
-If 10 special sequence keys do not seem sufficient,
+If 10 special nop keys do not seem sufficient,
 you can get creative with your sequences and treat some as a prefix modifier.
 For example, you can get 28 "keys" by treating `nop0-nop6` as normal
 while treating `nop7-nop9` as prefixes:
