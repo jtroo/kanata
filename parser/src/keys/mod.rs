@@ -327,6 +327,20 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "powr" | "power" => OsCode::KEY_POWER,
         #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
+
+        // Keys that behave as no-ops but can be used in sequences.
+        // Also see: POTENTIAL PROBLEM - G-keys
+        "nop0" => OsCode::KEY_676,
+        "nop1" => OsCode::KEY_677,
+        "nop2" => OsCode::KEY_678,
+        "nop3" => OsCode::KEY_679,
+        "nop4" => OsCode::KEY_680,
+        "nop5" => OsCode::KEY_681,
+        "nop6" => OsCode::KEY_682,
+        "nop7" => OsCode::KEY_683,
+        "nop8" => OsCode::KEY_684,
+        "nop9" => OsCode::KEY_685,
+
         _ => return None,
     })
 }
@@ -994,9 +1008,9 @@ pub enum OsCode {
     KEY_653 = 653,
     KEY_654 = 654,
     KEY_655 = 655,
-    KEY_656 = 656,
-    KEY_657 = 657,
-    KEY_658 = 658,
+    KEY_656 = 656, // 0x290 : KEY_MACRO1:
+    KEY_657 = 657, // https://github.com/torvalds/linux/commit/b5625db9d23e58a573eb10a7f6d0c2ae060bc0e8
+    KEY_658 = 658, // ...
     KEY_659 = 659,
     KEY_660 = 660,
     KEY_661 = 661,
@@ -1014,7 +1028,7 @@ pub enum OsCode {
     KEY_673 = 673,
     KEY_674 = 674,
     KEY_675 = 675,
-    KEY_676 = 676,
+    KEY_676 = 676, // 0x2a4: KEY_MACRO21
     KEY_677 = 677,
     KEY_678 = 678,
     KEY_679 = 679,
@@ -1022,8 +1036,8 @@ pub enum OsCode {
     KEY_681 = 681,
     KEY_682 = 682,
     KEY_683 = 683,
-    KEY_684 = 684,
-    KEY_685 = 685,
+    KEY_684 = 684, // ...
+    KEY_685 = 685, // 0x2ad: KEY_MACRO30
     KEY_686 = 686,
     KEY_687 = 687,
     KEY_688 = 688,

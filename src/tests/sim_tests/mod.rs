@@ -6,6 +6,7 @@ use kanata_state_machine::{
 
 mod chord_sim_tests;
 mod layer_sim_tests;
+mod seq_sim_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
     let _lk = match CFG_PARSE_LOCK.lock() {

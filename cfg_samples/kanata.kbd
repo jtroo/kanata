@@ -1087,6 +1087,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 (defalias dot-sequence (macro (sequence 250) 10 .))
 (defalias dot-sequence-inputmode (macro (sequence 250 hidden-delay-type) 10 .))
 
+;; There are special keys that you can assign in your actions which will
+;; never output events to your operating system, but which you can use
+;; in sequences. They are named: nop0-nop9.
+(defseq
+    dotcom (nop0 nop1)
+    dotorg (nop8 nop9)
+)
+
 ;; Input chording.
 ;;
 ;; Not to be confused with output chords (like C-S-a or the chords layer
