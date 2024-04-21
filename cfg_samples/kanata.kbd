@@ -1089,10 +1089,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 
 ;; There are special keys that you can assign in your actions which will
 ;; never output events to your operating system, but which you can use
-;; in sequences. They are named: seq0-seq9.
+;; in sequences. They are named: nop0-nop9.
 (defseq
-    dotcom (seq0 seq1)
-    dotorg (seq8 seq9)
+    dotcom (nop0 nop1)
+    dotorg (nop8 nop9)
 )
 
 ;; Input chording.

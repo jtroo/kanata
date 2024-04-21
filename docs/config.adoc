@@ -1441,6 +1441,9 @@ if any of the keys in the third parameter (right-trigger-keys) are currently act
 )
 ----
 
+TIP: the keys `nop0-nop9` can be used as no-op outputs that
+can still be checked within `fork`, unlike what `XX` does.
+
 [[caps-word]]
 === caps-word
 <<table-of-contents,Back to ToC>>
@@ -2627,7 +2630,7 @@ precisely, the action triggered is:
 )
 ----
 
-There are 10 special keys with names `seq0-seq9` which kanata treats specially.
+There are 10 special keys with names `nop0-nop9` which kanata treats specially.
 Kanata will never send OS events for these keys
 but they can still participate in sequences.
 
@@ -2639,36 +2642,36 @@ use of templates to conveniently define sequences below.
 ----
 (defsrc f7   f8   f9   f10)
 (deflayer base
-        sldr seq0 seq1 seq2)
+        sldr nop0 nop1 nop2)
 (deftemplate seq (vk-name input-keys output-action)
   (defvirtualkeys $vk-name $output-action)
   (defseq $vk-name $input-keys)
 )
-(template-expand seq dotcom (seq0 seq1) (macro . c o m))
-(template-expand seq dotorg (seq0 seq2) (macro . o r g))
+(template-expand seq dotcom (nop0 nop1) (macro . c o m))
+(template-expand seq dotorg (nop0 nop2) (macro . o r g))
 ----
 
 If 10 special sequence keys do not seem sufficient,
 you can get creative with your sequences and treat some as a prefix modifier.
-For example, you can get 28 "keys" by treating `seq0-seq6` as normal
-while treating `seq7-seq9` as prefixes:
+For example, you can get 28 "keys" by treating `nop0-nop6` as normal
+while treating `nop7-nop9` as prefixes:
 
 .Example:
 [source]
 ----
 (defalias
-  seq0 seq0
+  nop0 nop0
   ;; ...
-  seq6 seq6
-  seq7 (macro seq7 seq0)
+  nop6 nop6
+  nop7 (macro nop7 nop0)
   ;; ...
-  seq13 (macro seq7 seq6)
-  seq14 (macro seq8 seq0)
+  nop13 (macro nop7 nop6)
+  nop14 (macro nop8 nop0)
   ;; ...
-  seq20 (macro seq8 seq6)
-  seq21 (macro seq9 seq0)
+  nop20 (macro nop8 nop6)
+  nop21 (macro nop9 nop0)
   ;; ...
-  seq27 (macro seq9 seq6)
+  nop27 (macro nop9 nop6)
 )
 ----
 
@@ -2863,6 +2866,9 @@ The default use of keys check behaves similarly to fork.
 
 For example, the keys check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
+
+TIP: the keys `nop0-nop9` can be used as no-op outputs that
+can still be checked within `switch`, unlike what `XX` does.
 
 The keys check also accepts the boolean operators `and|or|not` to allow more
 complex use cases.

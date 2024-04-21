@@ -330,16 +330,16 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
 
         // Keys that behave as no-ops but can be used in sequences.
         // Also see: POTENTIAL PROBLEM - G-keys
-        "seq0" => OsCode::KEY_676,
-        "seq1" => OsCode::KEY_677,
-        "seq2" => OsCode::KEY_678,
-        "seq3" => OsCode::KEY_679,
-        "seq4" => OsCode::KEY_680,
-        "seq5" => OsCode::KEY_681,
-        "seq6" => OsCode::KEY_682,
-        "seq7" => OsCode::KEY_683,
-        "seq8" => OsCode::KEY_684,
-        "seq9" => OsCode::KEY_685,
+        "nop0" => OsCode::KEY_676,
+        "nop1" => OsCode::KEY_677,
+        "nop2" => OsCode::KEY_678,
+        "nop3" => OsCode::KEY_679,
+        "nop4" => OsCode::KEY_680,
+        "nop5" => OsCode::KEY_681,
+        "nop6" => OsCode::KEY_682,
+        "nop7" => OsCode::KEY_683,
+        "nop8" => OsCode::KEY_684,
+        "nop9" => OsCode::KEY_685,
 
         _ => return None,
     })

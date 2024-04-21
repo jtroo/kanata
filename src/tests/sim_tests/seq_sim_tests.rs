@@ -5,9 +5,9 @@ fn special_seq_keys() {
     let result = simulate(
         "(defcfg sequence-input-mode visible-backspaced)
          (defsrc a b c d e)
-         (deflayer base sldr seq0 c seq9 0)
+         (deflayer base sldr nop0 c nop9 0)
          (defvirtualkeys s1 (macro h i))
-         (defseq s1 (seq0 c seq9))
+         (defseq s1 (nop0 c nop9))
         ",
         "d:b d:d t:50 u:b u:d t:50
          d:a d:b d:c t:50 u:a u:b u:c t:50 d:d t:50",
