@@ -990,20 +990,19 @@ impl Kanata {
                 Some(state) => {
                     state.ticks_until_timeout = state.sequence_timeout;
 
-                    // Transform to OsCode and convert modifiers other than altgr/ralt (same key
-                    // different names) to the left version, since that's how chords get
-                    // transformed when building up sequences.
-                    let osc = match OsCode::from(*k) {
-                        OsCode::KEY_RIGHTSHIFT => OsCode::KEY_LEFTSHIFT,
-                        OsCode::KEY_RIGHTMETA => OsCode::KEY_LEFTMETA,
-                        OsCode::KEY_RIGHTCTRL => OsCode::KEY_LEFTCTRL,
-                        osc => osc,
-                    };
-
-                    // Modify the upper unused bits of the u16 to signify that the key is activated
-                    // alongside a modifier.
                     let pushed_into_seq = {
-                        let mut base = u16::from(osc);
+                        // Transform to OsCode and convert modifiers other than altgr/ralt
+                        // (same key different names) to the left version, since that's
+                        // how chords get transformed when building up sequences.
+                        let mut base = match osc {
+                            OsCode::KEY_RIGHTSHIFT => OsCode::KEY_LEFTSHIFT,
+                            OsCode::KEY_RIGHTMETA => OsCode::KEY_LEFTMETA,
+                            OsCode::KEY_RIGHTCTRL => OsCode::KEY_LEFTCTRL,
+                            osc => osc,
+                        } as u16;
+
+                        // Modify the upper unused bits of the u16 to signify that the key
+                        // is activated alongside a modifier.
                         for k in cur_keys.iter().copied() {
                             base |= mod_mask_for_keycode(k);
                         }
