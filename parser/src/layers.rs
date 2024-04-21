@@ -1,8 +1,11 @@
 use kanata_keyberon::layout::*;
 
+use crate::cfg::alloc::*;
 use crate::cfg::KanataAction;
 use crate::custom_action::*;
 use crate::keys::OsCode;
+
+use std::sync::Arc;
 
 // OsCode::KEY_MAX is the biggest OsCode
 pub const KEYS_IN_ROW: usize = OsCode::KEY_MAX as usize;
@@ -10,8 +13,19 @@ pub const LAYER_ROWS: usize = 2;
 
 pub type IntermediateLayers = Box<[[Row; LAYER_ROWS]]>;
 
-pub type KanataLayers =
+pub type KLayers =
     Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>;
+
+pub struct KanataLayers {
+    layers: Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>,
+    _allocations: Arc<Allocations>,
+}
+
+impl std::fmt::Debug for KanataLayers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KanataLayers").finish()
+    }
+}
 
 pub type Row = [kanata_keyberon::action::Action<'static, &'static &'static [&'static CustomAction]>;
     KEYS_IN_ROW];
@@ -29,4 +43,20 @@ pub fn new_layers(layers: usize) -> IntermediateLayers {
         ]);
     }
     layers.into_boxed_slice()
+}
+
+impl KanataLayers {
+    /// # Safety
+    ///
+    /// The allocations must hold all of the &'static pointers found in layers.
+    pub(crate) unsafe fn new(layers: KLayers, allocations: Arc<Allocations>) -> Self {
+        Self {
+            layers,
+            _allocations: allocations,
+        }
+    }
+
+    pub(crate) fn get(&self) -> (KLayers, Arc<Allocations>) {
+        (self.layers, self._allocations.clone())
+    }
 }

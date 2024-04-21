@@ -16,7 +16,7 @@
   |⏎ ↩ ⌤ ␤       	|`return_or_enter`                         	|
   |︔ ⸴ ．⁄        	|`semicolon` / `comma` / `period` / `slash`	|
   |⧵ ＼           	|`backslash`                               	|
-  |﹨             	|`non_us_backslash`                        	|
+  |﹨ <           	|`non_us_backslash`                        	|
   |【 「 〔 ⎡       	|`open_bracket`                            	|
   |】 」 〕 ⎣       	|`close_bracket`                           	|
   |ˋ ˜           	|`grave_accent_and_tilde`                  	|

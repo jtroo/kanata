@@ -216,7 +216,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "NumpadComma" | "kp," | "🔢⸴" =>OsCode::KEY_KPCOMMA,
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
         // Typically the Non-US backslash, near the left shift key
-        "IntlBackslash" | "102d" | "lsgt" | "nubs" | "nonusbslash" | "﹨" => OsCode::KEY_102ND,
+        "IntlBackslash" | "102d" | "lsgt" | "nubs" | "nonusbslash" | "﹨" | "<" => OsCode::KEY_102ND,
         "ScrollLock" | "scrlck" | "slck" | "⇳🔒" => OsCode::KEY_SCROLLLOCK,
         "Pause" | "pause" | "break" | "brk" => OsCode::KEY_PAUSE,
         "WakeUp" | "wkup" => OsCode::KEY_WAKEUP,

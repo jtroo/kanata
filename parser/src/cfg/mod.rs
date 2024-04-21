@@ -39,7 +39,7 @@
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 pub mod sexpr;
 
-mod alloc;
+pub(crate) mod alloc;
 use alloc::*;
 
 mod key_override;
@@ -268,16 +268,17 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
         DEF_LOCAL_KEYS,
         Err("environment variables are not supported".into()),
     )?;
-    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides, &icfg.chords_v2);
+    let (layers, allocations) = icfg.klayers.get();
+    let key_outputs = create_key_outputs(&layers, &icfg.overrides, &icfg.chords_v2);
     let switch_max_key_timing = s.switch_max_key_timing.get();
     let mut layout = KanataLayout::new(
         Layout::new_with_trans_action_settings(
             s.a.sref(s.defsrc_layer),
-            icfg.klayers,
+            layers,
             icfg.options.trans_resolution_behavior_v2,
             icfg.options.delegate_to_first_layer,
         ),
-        s.a,
+        allocations,
     );
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
@@ -318,16 +319,17 @@ pub struct LayerInfo {
 fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParserState::default();
     let icfg = parse_cfg_raw(p, &mut s)?;
-    let key_outputs = create_key_outputs(&icfg.klayers, &icfg.overrides, &icfg.chords_v2);
+    let (layers, allocations) = icfg.klayers.get();
+    let key_outputs = create_key_outputs(&layers, &icfg.overrides, &icfg.chords_v2);
     let switch_max_key_timing = s.switch_max_key_timing.get();
     let mut layout = KanataLayout::new(
         Layout::new_with_trans_action_settings(
             s.a.sref(s.defsrc_layer),
-            icfg.klayers,
+            layers,
             icfg.options.trans_resolution_behavior_v2,
             icfg.options.delegate_to_first_layer,
         ),
-        s.a,
+        allocations,
     );
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
@@ -819,12 +821,13 @@ pub fn parse_cfg_raw_string(
         )
         .into());
     }
-
+    let layers = s.a.bref_slice(klayers);
+    let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
         options: cfg,
         mapped_keys,
         layer_info,
-        klayers: s.a.bref_slice(klayers),
+        klayers,
         sequences,
         overrides,
         chords_v2,
@@ -3348,7 +3351,7 @@ fn parse_unmod(
 
 /// Creates a `KeyOutputs` from `layers::LAYERS`.
 fn create_key_outputs(
-    layers: &KanataLayers,
+    layers: &KLayers,
     overrides: &Overrides,
     chords_v2: &Option<ChordsV2<'static, KanataCustom>>,
 ) -> KeyOutputs {
