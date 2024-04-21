@@ -14,19 +14,22 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
     }
 }
 
-fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
+fn parse_cfg(cfg: &str) -> Result<(IntermediateCfg, ParserState)> {
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        cfg,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
+    Ok((
+        parse_cfg_raw_string(
+            cfg,
+            &mut s,
+            &PathBuf::from("test"),
+            &mut FileContentProvider {
+                get_file_content_fn: &mut |_| unimplemented!(),
+            },
+            DEF_LOCAL_KEYS,
+            Err("env vars not implemented".into()),
+        )?,
+        s,
+    ))
 }
 
 #[test]
@@ -882,7 +885,7 @@ fn parse_on_idle_fakekey() {
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("parses");
     assert_eq!(
-        res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        res.0.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
             &[&CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
                 coord: Coord { x: 1, y: 0 },
