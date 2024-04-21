@@ -14,6 +14,21 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
     }
 }
 
+fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let mut s = ParserState::default();
+    parse_cfg_raw_string(
+        cfg,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )
+}
+
 #[test]
 fn sizeof_action_is_two_usizes() {
     assert_eq!(
@@ -574,9 +589,6 @@ fn parse_bad_submacro_2() {
 
 #[test]
 fn parse_nested_macro() {
-    // Test exists since it used to crash. It should not crash.
-    let _lk = lock(&CFG_PARSE_LOCK);
-    let mut s = ParserState::default();
     let source = r#"
 (defvar m1 (a b c))
 (defsrc a b)
@@ -585,21 +597,9 @@ fn parse_nested_macro() {
   (macro bspc bspc $m1)
 )
 "#;
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-        ""
-    })
-    .unwrap();
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
@@ -871,8 +871,6 @@ fn parse_virtualkeys() {
 
 #[test]
 fn parse_on_idle_fakekey() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-    let mut s = ParserState::default();
     let source = r#"
 (defvar var1 a)
 (defsrc a b c d e f g h i)
@@ -890,21 +888,9 @@ fn parse_on_idle_fakekey() {
   (on-idle 200     tap-vkey bye)
 )
 "#;
-    let res = parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-        ""
-    })
-    .unwrap();
+    let res = parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
     assert_eq!(
         res.klayers[0][0][OsCode::KEY_A.as_u16() as usize],
         Action::Custom(
@@ -1059,7 +1045,6 @@ fn parse_fake_keys_errors_on_too_many() {
 
 #[test]
 fn parse_deflocalkeys_overridden() {
-    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (deflocalkeys-win
 +   300
@@ -1159,39 +1144,20 @@ new 316
 (defsrc + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
 (deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥ new)
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .expect("succeeds");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn use_default_overridable_mappings() {
-    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (defsrc + [  ]  a  b  /  ;  `  =  -  '  ,  .  9  yen ¥  )
 (deflayer base + [  ]  {  }  /  ;  `  =  -  '  ,  .  \  yen ¥  )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .expect("succeeds");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
@@ -1305,7 +1271,6 @@ fn test_parse_dev() {
 
 #[test]
 fn parse_all_defcfg() {
-    let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"
 (defcfg
   process-unmapped-keys yes
@@ -1335,24 +1300,13 @@ fn parse_all_defcfg() {
 (defsrc a)
 (deflayer base a)
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .expect("succeeds");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_unmod() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (defsrc a b c d)
 (deflayer base
@@ -1362,18 +1316,9 @@ fn parse_unmod() {
   (unshift a b)
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .expect("succeeds");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
@@ -1427,8 +1372,6 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
 #[test]
 #[cfg(feature = "cmd")]
 fn parse_cmd() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (defcfg danger-enable-cmd yes)
 (defsrc a)
@@ -1444,24 +1387,14 @@ fn parse_cmd() {
     3 (cmd $x $y ($z))
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .expect("succeeds");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_defvar_concat() {
     let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (defsrc a)
 (deflayer base a)
@@ -1532,8 +1465,6 @@ fn parse_defvar_concat() {
 
 #[test]
 fn parse_template_1() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (j-behaviour)
   a s d f g h $j-behaviour k l ; '
@@ -1555,27 +1486,13 @@ fn parse_template_1() {
   lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_2() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (defvar chord-timeout 200)
 (defcfg process-unmapped-keys yes)
@@ -1607,27 +1524,13 @@ fn parse_template_2() {
 (deflayer dvorak @dva @dvo @dve @dvu)
 (deflayer qwerty @qwa @qws @qwd @qwf)
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_3() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
@@ -1652,27 +1555,13 @@ fn parse_template_3() {
   lctl lmet lalt           spc            ralt rmet rctl
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_4() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
@@ -1689,27 +1578,13 @@ fn parse_template_4() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_5() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
@@ -1726,27 +1601,13 @@ fn parse_template_5() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_6() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
@@ -1763,27 +1624,13 @@ fn parse_template_6() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn parse_template_7() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (deftemplate home-row (version)
   a s d f g h
@@ -1800,27 +1647,13 @@ fn parse_template_7() {
   (template-expand home-row v2)
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
 fn test_deflayermap() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-
     let source = r#"
 (defsrc a b l)
 (deflayermap (blah)
@@ -1835,21 +1668,9 @@ fn test_deflayermap() {
   a   =
 )
 "#;
-    let mut s = ParserState::default();
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| {
-        eprintln!("{:?}", miette::Error::from(e));
-    })
-    .expect("parses");
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
@@ -1919,8 +1740,6 @@ fn test_defaliasenvcond() {
 
 #[test]
 fn parse_platform_specific() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-    let mut s = ParserState::default();
     let source = r#"
 (platform () (invalid config but is not used anywhere))
 (defsrc)
@@ -1961,16 +1780,7 @@ fn parse_platform_specific() {
   )
 )
 "#;
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
-    .unwrap();
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
