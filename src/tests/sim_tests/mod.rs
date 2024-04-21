@@ -1,3 +1,9 @@
+//! Contains tests that use simulated inputs.
+//!
+//! One way to write tests is to write the configuration, write the simulated input, and then let
+//! the test fail by comparing the output to an empty string. Run the test then inspect the failure
+//! and see if the real output looks sensible according to what is expected.
+
 use crate::tests::*;
 use kanata_state_machine::{
     oskbd::{KeyEvent, KeyValue},
@@ -9,6 +15,7 @@ mod layer_sim_tests;
 mod seq_sim_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),

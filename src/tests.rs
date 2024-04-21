@@ -10,8 +10,31 @@ mod sim_tests;
 
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
+fn init_log() {
+    use simplelog::*;
+    use std::sync::OnceLock;
+    static LOG_INIT: OnceLock<()> = OnceLock::new();
+    LOG_INIT.get_or_init(|| {
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_rfc3339();
+        CombinedLogger::init(vec![TermLogger::new(
+            // Note: set to a different level to see logs in tests.
+            // Also, not all tests call init_log so you might have to add the call there too.
+            LevelFilter::Off,
+            log_cfg.build(),
+            TerminalMode::Stderr,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+    });
+}
+
 #[test]
 fn parse_simple() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -21,6 +44,7 @@ fn parse_simple() {
 
 #[test]
 fn parse_minimal() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -30,6 +54,7 @@ fn parse_minimal() {
 
 #[test]
 fn parse_deflayermap() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -39,6 +64,7 @@ fn parse_deflayermap() {
 
 #[test]
 fn parse_default() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -48,6 +74,7 @@ fn parse_default() {
 
 #[test]
 fn parse_jtroo() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -58,6 +85,7 @@ fn parse_jtroo() {
 
 #[test]
 fn parse_f13_f24() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -67,6 +95,7 @@ fn parse_f13_f24() {
 
 #[test]
 fn parse_all_keys() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -79,6 +108,7 @@ fn parse_all_keys() {
 
 #[test]
 fn parse_home_row_mods() {
+    init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -95,6 +125,7 @@ fn parse_home_row_mods() {
 
 #[test]
 fn sizeof_state() {
+    init_log();
     assert_eq!(
         std::mem::size_of::<
             kanata_keyberon::layout::State<
