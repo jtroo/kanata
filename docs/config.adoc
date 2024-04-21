@@ -13,6 +13,7 @@ See below for links to specific guide versions.
 .Links to specific guide versions
 [%collapsible]
 ====
+* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-4/docs/config.adoc[v1.6.0-prerelease-4]
 * https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-3/docs/config.adoc[v1.6.0-prerelease-3]
 * https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-2/docs/config.adoc[v1.6.0-prerelease-2]
 * https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-1/docs/config.adoc[v1.6.0-prerelease-1]
@@ -2623,10 +2624,17 @@ precisely, the action triggered is:
 (defseq
     dotcom (. S-3)
     dotorg (. S-4)
+
+             ;; The shifted letters in parentheses means a single press of lsft
+             ;; must remain held while both h and then s are pressed.
+             ;; This is not the same as S-h S-s, which means that the lsft key
+             ;; must be released and repressed between the h and s presses.
+    https (. S-(h s))
 )
 (defvirtualkeys
     dotcom (macro . c o m)
     dotorg (macro . o r g)
+    https (macro h t t p s S-; / /)
 )
 ----
 

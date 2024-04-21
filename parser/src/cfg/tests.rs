@@ -147,8 +147,6 @@ fn test_span_of_an_unterminated_block_comment_error() {
 
 #[test]
 fn parse_action_vars() {
-    let _lk = lock(&CFG_PARSE_LOCK);
-    let mut s = ParserState::default();
     let source = r#"
 (defvar
   one 1
@@ -212,17 +210,9 @@ fn parse_action_vars() {
 (defchords $e $one $1 $two)
 (defchords $e2 $one ($one) $two)
 "#;
-    parse_cfg_raw_string(
-        source,
-        &mut s,
-        &PathBuf::from("test"),
-        &mut FileContentProvider {
-            get_file_content_fn: &mut |_| unimplemented!(),
-        },
-        DEF_LOCAL_KEYS,
-        Err("env vars not implemented".into()),
-    )
-    .unwrap();
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
 }
 
 #[test]
