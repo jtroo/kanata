@@ -1,3 +1,9 @@
+//! Contains tests that use simulated inputs.
+//!
+//! One way to write tests is to write the configuration, write the simulated input, and then let
+//! the test fail by comparing the output to an empty string. Run the test then inspect the failure
+//! and see if the real output looks sensible according to what is expected.
+
 use crate::tests::*;
 use kanata_state_machine::{
     oskbd::{KeyEvent, KeyValue},

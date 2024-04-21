@@ -29,12 +29,12 @@ fn chorded_keys() {
          (defvirtualkeys s1 z)
          (defseq s1 (S-(a b)))
         ",
-        "d:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b u:0 t:500
-         d:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b u:0 t:500
-         d:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b u:0 t:500",
+        "d:0 u:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b t:500
+         d:0 u:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b t:500
+         d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
     );
     assert_eq!(
-    "t:1ms\nout:↓LShift\nt:49ms\nout:↓A\nt:1ms\nout:↓B\nout:↑LShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:548ms\nout:↓RShift\nt:49ms\nout:↓A\nt:1ms\nout:↓B\nout:↑RShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑ BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑RShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z"
+        "t:2ms\nout:↓LShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↑LShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↑RShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑RShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↑RShift\nt:49ms\nout:↓B\nt:1ms\nout:↑A\nt:1ms\nout:↑B",
         result
     );
 }
