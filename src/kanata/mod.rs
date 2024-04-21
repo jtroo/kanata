@@ -991,6 +991,7 @@ impl Kanata {
                     state.ticks_until_timeout = state.sequence_timeout;
 
                     let osc = OsCode::from(*k);
+
                     let pushed_into_seq = {
                         // Transform to OsCode and convert modifiers other than altgr/ralt
                         // (same key different names) to the left version, since that's
@@ -1001,7 +1002,6 @@ impl Kanata {
                             OsCode::KEY_RIGHTCTRL => OsCode::KEY_LEFTCTRL,
                             osc => osc,
                         });
-
                         // Modify the upper unused bits of the u16 to signify that the key
                         // is activated alongside a modifier.
                         for k in cur_keys.iter().copied() {
