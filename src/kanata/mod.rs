@@ -1034,7 +1034,7 @@ impl Kanata {
                             for i in (0..state.sequence.len()).rev() {
                                 // Note: proper bounds are immediately above.
                                 // Can't use iter_mut due to borrowing issues.
-                                *(&mut state.sequence[i]) &= MASK_KEYCODES;
+                                state.sequence[i] &= MASK_KEYCODES;
                                 res = self.sequences.get_or_descendant_exists(&state.sequence);
                                 if res != NotInTrie {
                                     no_valid_seqs = false;
