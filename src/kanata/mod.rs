@@ -1052,6 +1052,7 @@ impl Kanata {
                                     for code in state.sequence.iter().copied() {
                                         let code = code & MASK_KEYCODES;
                                         if let Some(osc) = OsCode::from_u16(code) {
+                                            // BUG: chorded_hidden_delay_type
                                             press_key(&mut self.kbd_out, osc)?;
                                             release_key(&mut self.kbd_out, osc)?;
                                         }

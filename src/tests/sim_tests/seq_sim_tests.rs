@@ -21,7 +21,7 @@ fn special_nop_keys() {
 }
 
 #[test]
-fn chorded_keys() {
+fn chorded_keys_visible_backspaced() {
     let result = simulate(
         "(defcfg sequence-input-mode visible-backspaced)
          (defsrc 0)
@@ -38,3 +38,33 @@ fn chorded_keys() {
         result
     );
 }
+
+/* BUG: chorded_hidden_delay_type
+ *
+ * Enable this test when fixing.
+ *
+ * Backtracking currently destroys information about held modifiers before finally outputting the
+ * invalid sequence characters. There is also no logic to keep modifier keys held for the
+ * appropriate duration according to the modifier bits information, even if the information was
+ * preserved. Seems like a complicated low-value edge-case bug to fix so for now will just document
+ * it... Nobody has reported it yet anyway. And visible-backspaced seems preferable in most cases
+ * anyway.
+#[test]
+fn chorded_keys_hidden_delaytype() {
+    let result = simulate(
+        "(defcfg sequence-input-mode hidden-delay-type)
+         (defsrc 0)
+         (deflayer base sldr)
+         (defvirtualkeys s1 z)
+         (defseq s1 (S-(a b)))
+        ",
+        "d:0 u:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b t:500
+         d:0 u:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b t:500
+         d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
+    );
+    assert_eq!(
+        "",
+        result
+    );
+}
+*/
