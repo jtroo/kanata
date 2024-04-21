@@ -221,7 +221,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "Pause" | "pause" | "break" | "brk" => OsCode::KEY_PAUSE,
         "WakeUp" | "wkup" => OsCode::KEY_WAKEUP,
         "Escape" | "esc" | "⎋" => OsCode::KEY_ESC,
-        "RightShift" | "rshift" | "rshft" | "rsft" | "⇧›" => OsCode::KEY_RIGHTSHIFT,
+        "ShiftRight" | "RightShift" | "rshift" | "rshft" | "rsft" | "⇧›" => OsCode::KEY_RIGHTSHIFT,
         "ControlLeft" | "lctrl" | "lctl" | "ctl" | "‹⎈" | "‹⌃" => OsCode::KEY_LEFTCTRL,
         "AltLeft" | "lalt" | "alt" | "‹⎇" | "‹⌥" => OsCode::KEY_LEFTALT,
         "Space" | "spc" | "␠" | "␣" => OsCode::KEY_SPACE,
