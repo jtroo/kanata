@@ -990,6 +990,7 @@ impl Kanata {
                 Some(state) => {
                     state.ticks_until_timeout = state.sequence_timeout;
 
+                    let osc = OsCode::from(*k);
                     let pushed_into_seq = {
                         // Transform to OsCode and convert modifiers other than altgr/ralt
                         // (same key different names) to the left version, since that's
@@ -1049,6 +1050,7 @@ impl Kanata {
                             match state.sequence_input_mode {
                                 SequenceInputMode::HiddenDelayType => {
                                     for code in state.sequence.iter().copied() {
+                                        let code = code & MASK_KEYCODES;
                                         if let Some(osc) = OsCode::from_u16(code) {
                                             press_key(&mut self.kbd_out, osc)?;
                                             release_key(&mut self.kbd_out, osc)?;
