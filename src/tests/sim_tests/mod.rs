@@ -13,6 +13,7 @@ use kanata_state_machine::{
 mod chord_sim_tests;
 mod layer_sim_tests;
 mod seq_sim_tests;
+mod block_keys_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
     init_log();

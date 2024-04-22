@@ -1,12 +1,8 @@
 pub(crate) fn is_a_button(osc: u16) -> bool {
     if cfg!(target_os = "windows") {
-        matches!(osc,
-        1..=6 | 256..=337 | 544..=547 | 704..=748,
-        )
+        matches!(osc, 1..=6 | 256..)
     } else {
-        matches!(osc,
-        256..=337 | 544..=547 | 704..=748,
-        )
+        osc >= 256
     }
 }
 
