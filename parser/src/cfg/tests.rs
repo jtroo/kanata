@@ -5,6 +5,8 @@ use kanata_keyberon::action::BooleanOperator::*;
 
 use std::sync::{Mutex, MutexGuard};
 
+mod ambiguous;
+
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {

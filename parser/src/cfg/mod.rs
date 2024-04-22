@@ -78,6 +78,9 @@ pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
 mod os_dependent;
 use os_dependent::*;
 
+mod is_a_button;
+use is_a_button::*;
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -2936,8 +2939,8 @@ fn parse_layers(
                 }
             }
         }
-        for layer_action in layers_cfg[layer_level][0].iter_mut() {
-            if *layer_action == Action::Trans && s.block_unmapped_keys {
+        for (osc, layer_action) in layers_cfg[layer_level][0].iter_mut().enumerate() {
+            if s.block_unmapped_keys && *layer_action == Action::Trans && !is_a_button(osc as u16) {
                 *layer_action = Action::NoOp;
             }
         }
