@@ -113,7 +113,9 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
             .collect();
         visit_validate_all_atoms(&content, &mut |s| match s.t.as_str() {
             "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
-            "template-expand" => err_span!(s, "template-expand is not allowed within deftemplate"),
+            "template-expand" | "t!" => {
+                err_span!(s, "template-expand is not allowed within deftemplate")
+            }
             s => {
                 if let Some(count) = var_usage_counts.get_mut(s) {
                     *count += 1;
@@ -175,7 +177,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
             SExpr::List(l) => {
                 if !matches!(
                     l.t.first().and_then(|expr| expr.atom(None)),
-                    Some("template-expand")
+                    Some("template-expand") | Some("t!")
                 ) {
                     expand(&mut l.t, templates)?;
                     continue;

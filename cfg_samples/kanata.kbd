@@ -1192,7 +1192,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 (defvar chord-timeout 200)
 
 (template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
-(template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)
+;; You can use t! as a short form of template-expand
+(t! left-hand-chords dvorak a o e u dva dvo dve dvu)
 
 (deflayer template-example
   _    _    _    _    _    _    _    _    _    _    _    _    _    _

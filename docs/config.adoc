@@ -3129,7 +3129,8 @@ you wouldn't want this. Rather than retyping the code with `fork` and
 ;; Templates are a simple text substitution, so the above is exactly equivalent to:
 ;; (defalias fn1 (fork 1 (multi (unmod ralt lalt) f1) (lalt ralt)))
 (defalias fn2 (template-expand alt-fork 2 f2))
-(defalias fn3 (template-expand alt-fork 3 f3))
+;; You can use t! as a short form of template-expand
+(defalias fn3 (t! alt-fork 3 f3))
 (deflayer default (@fn1 @fn2 @fn3))
 ----
 

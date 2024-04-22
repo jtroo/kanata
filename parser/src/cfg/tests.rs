@@ -1646,6 +1646,44 @@ fn parse_template_7() {
 }
 
 #[test]
+fn parse_template_8() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+
+    let source = r#"
+(deftemplate home-row (version)
+  a s d f g h
+  (if-in-list $version (v0 v3 (concat v (((1)))) v4) (concat j))
+  (if-in-list $version ((concat v 0) (concat v (2)) v3 v4) (tap-hold 200 200 (concat j) (if-in-list $version (v0 v3 v4 v2) (concat "k"))))
+   k l ; '
+)
+(deftemplate var () (defvar num 200))
+(defsrc
+  (t! home-row v1)
+)
+(deflayer base
+  (t! home-row v2)
+)
+(t! var)
+(defalias a (tap-dance $num (a)))
+"#;
+    let mut s = ParserState::default();
+    parse_cfg_raw_string(
+        source,
+        &mut s,
+        &PathBuf::from("test"),
+        &mut FileContentProvider {
+            get_file_content_fn: &mut |_| unimplemented!(),
+        },
+        DEF_LOCAL_KEYS,
+        Err("env vars not implemented".into()),
+    )
+    .map_err(|e| {
+        eprintln!("{:?}", miette::Error::from(e));
+    })
+    .expect("parses");
+}
+
+#[test]
 fn test_deflayermap() {
     let source = r#"
 (defsrc a b l)
