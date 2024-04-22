@@ -1094,16 +1094,13 @@ fn bool_evaluation_test_not_0() {
         OpCode::new_key(KeyCode::F),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+    ));
 }
 
 #[test]
@@ -1115,16 +1112,13 @@ fn bool_evaluation_test_not_1() {
         OpCode::new_key(KeyCode::B),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1136,16 +1130,13 @@ fn bool_evaluation_test_not_2() {
         OpCode::new_key(KeyCode::Y),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        true,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1156,16 +1147,13 @@ fn bool_evaluation_test_not_3() {
         OpCode::new_key(KeyCode::D),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1183,16 +1171,13 @@ fn bool_evaluation_test_not_4() {
         OpCode::new_key(KeyCode::F),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1204,16 +1189,13 @@ fn bool_evaluation_test_not_5() {
         OpCode::new_key(KeyCode::D),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        true,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1226,16 +1208,13 @@ fn bool_evaluation_test_not_6() {
         OpCode::new_key(KeyCode::D),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1247,16 +1226,13 @@ fn bool_evaluation_test_or_equivalency_not_6() {
         OpCode::new_key(KeyCode::D),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1268,16 +1244,13 @@ fn bool_evaluation_test_not_7() {
         OpCode::new_key(KeyCode::E),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1289,16 +1262,13 @@ fn bool_evaluation_test_or_equivalency_not_7() {
         OpCode::new_key(KeyCode::E),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1310,16 +1280,13 @@ fn bool_evaluation_test_not_8() {
         OpCode::new_key(KeyCode::A),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        false,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(!evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
@@ -1331,16 +1298,13 @@ fn bool_evaluation_test_not_9() {
         OpCode::new_key(KeyCode::C),
     ];
     let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert_eq!(
-        true,
-        evaluate_boolean(
-            opcodes.as_slice(),
-            keycodes.iter().copied(),
-            [].iter().copied(),
-            [].iter().copied(),
-            [].iter().copied()
-        )
-    );
+    assert!(evaluate_boolean(
+        opcodes.as_slice(),
+        keycodes.iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied()
+    ));
 }
 
 #[test]
