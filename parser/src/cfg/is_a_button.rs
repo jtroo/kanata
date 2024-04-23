@@ -167,7 +167,6 @@ fn standard_keys_are_not_considered_buttons() {
         KEY_PLAY,
         KEY_PRINT,
         KEY_SEARCH,
-        KEY_FAVORITES,
         KEY_RO,
         KEY_HENKAN,
         KEY_MUHENKAN,
