@@ -98,9 +98,9 @@ mod windows {
             r#"<?xml version="1.0" encoding="utf-8" standalone="yes"?>
                <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:v3="urn:schemas-microsoft-com:asm.v3">
                  <assemblyIdentity name="kanata.exe" version="{}" type="win32"></assemblyIdentity>
-                 <v3:trustInfo><security>
-                   <requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false"></requestedExecutionLevel></requestedPrivileges>
-                 </security></v3:trustInfo>
+                 <v3:trustInfo><v3:security>
+                   <v3:requestedPrivileges><v3:requestedExecutionLevel level="asInvoker" uiAccess="false"></v3:requestedExecutionLevel></v3:requestedPrivileges>
+                 </v3:security></v3:trustInfo>
                  <v3:application>
                    <v3:windowsSettings>
                      <dpiAware     xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
