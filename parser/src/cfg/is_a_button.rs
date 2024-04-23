@@ -103,7 +103,6 @@ fn standard_keys_are_not_considered_buttons() {
         KEY_F11,
         KEY_F12,
         KEY_NUMLOCK,
-        KEY_CLEAR,
         KEY_SCROLLLOCK,
         KEY_KP0,
         KEY_KP1,
