@@ -408,6 +408,7 @@ impl KbdOut {
         Ok(())
     }
     pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+        self.log.scroll(direction, distance);
         self.outputs
             .push(format!("scroll:{direction:?},{distance:?}"));
         Ok(())

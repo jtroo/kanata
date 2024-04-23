@@ -10,6 +10,7 @@ use kanata_state_machine::{
     str_to_oscode, Kanata,
 };
 
+mod block_keys_tests;
 mod chord_sim_tests;
 mod layer_sim_tests;
 mod seq_sim_tests;

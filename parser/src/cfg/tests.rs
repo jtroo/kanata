@@ -5,6 +5,8 @@ use kanata_keyberon::action::BooleanOperator::*;
 
 use std::sync::{Mutex, MutexGuard};
 
+mod ambiguous;
+
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
@@ -17,7 +19,7 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
 fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
-    Ok(parse_cfg_raw_string(
+    parse_cfg_raw_string(
         cfg,
         &mut s,
         &PathBuf::from("test"),
@@ -26,7 +28,7 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
         },
         DEF_LOCAL_KEYS,
         Err("env vars not implemented".into()),
-    )?)
+    )
 }
 
 #[test]

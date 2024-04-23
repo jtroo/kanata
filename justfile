@@ -26,7 +26,7 @@ sha256sums output_dir:
   cd {{output_dir}}; sha256sum * > sha256sums
 
 test:
-  cargo test --verbose -p kanata -p kanata-parser -p kanata-keyberon -- --nocapture
+  cargo test -p kanata -p kanata-parser -p kanata-keyberon -- --nocapture
   cargo clippy --all
 
 fmt:

@@ -48,6 +48,9 @@ mod macos;
 #[cfg(target_os = "macos")]
 use macos::*;
 
+mod output_logic;
+use output_logic::*;
+
 #[cfg(target_os = "unknown")]
 mod unknown;
 #[cfg(target_os = "unknown")]
@@ -183,51 +186,6 @@ pub struct Kanata {
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
-}
-
-// Functions to send keys except those that fall in the ignorable range.
-//
-// POTENTIAL PROBLEM - G-keys:
-// Some keys are ignored because they are *probably* unused,
-// or otherwise are probably in an unergonomic, far away key position,
-// so if you're using kanata, you can now stop using those keys and
-// do something better!
-//
-// I should probably let people turn this off if they really want to,
-// but I don't like how that would require extra code.
-// I'll defer to YAGNI and add docs, and let people report problems if
-// they want a fix 🐝.
-//
-// The keys ignored are intentionally the upper numbers of KEY_MACROX.
-// The Linux input-event-codes.h file mentions G1-G18 and S1-S30
-// as keys that might use these codes.
-//
-// Logitech still makes devices with G-keys
-// but the S-keys are apparently from the
-// "Microsoft SideWinder X6 Keyboard"
-// which appears to no longer be in production.
-//
-// Thus based on my reading, 18 is the highest macro key
-// that can be assumed to be used by devices still in production.
-const KEY_IGNORE_MIN: u16 = 0x2a4; // KEY_MACRO21
-const KEY_IGNORE_MAX: u16 = 0x2ad; // KEY_MACRO30
-fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io::Error> {
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.write_key(osc, val),
-    }
-}
-fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.press_key(osc),
-    }
-}
-fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.release_key(osc),
-    }
 }
 
 #[derive(PartialEq, Clone, Copy)]

@@ -851,6 +851,10 @@ fn haphazard_osc_to_kc_mappings(osc: OsCode) -> KeyCode {
         OsCode::BTN_TRIGGER_HAPPY38 => KeyCode::K741,
         OsCode::BTN_TRIGGER_HAPPY39 => KeyCode::K742,
         OsCode::BTN_TRIGGER_HAPPY40 => KeyCode::K743,
+        OsCode::MouseWheelUp => KeyCode::MWU,
+        OsCode::MouseWheelDown => KeyCode::MWD,
+        OsCode::MouseWheelLeft => KeyCode::MWL,
+        OsCode::MouseWheelRight => KeyCode::MWR,
         OsCode::BTN_MAX => KeyCode::K744,
         _ => KeyCode::No,
     }
@@ -1351,6 +1355,10 @@ fn haphazard_kc_to_osc_mappings(kc: KeyCode) -> OsCode {
         KeyCode::K742 => OsCode::BTN_TRIGGER_HAPPY39,
         KeyCode::K743 => OsCode::BTN_TRIGGER_HAPPY40,
         KeyCode::K744 => OsCode::BTN_MAX,
+        KeyCode::MWU => OsCode::MouseWheelUp,
+        KeyCode::MWD => OsCode::MouseWheelDown,
+        KeyCode::MWL => OsCode::MouseWheelLeft,
+        KeyCode::MWR => OsCode::MouseWheelRight,
         _ => OsCode::KEY_UNKNOWN,
     }
 }

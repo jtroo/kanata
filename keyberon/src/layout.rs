@@ -1631,7 +1631,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
                         timeout: if self.quick_tap_hold_timeout {
-                            dbg!(timeout.saturating_sub(delay))
+                            timeout.saturating_sub(delay)
                         } else {
                             *timeout
                         },
@@ -2050,7 +2050,7 @@ mod test {
             ]],
             [[Trans, MultipleKeyCodes(&[LCtrl, Enter].as_slice())]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         layout.event(Press(0, 1));
@@ -2102,7 +2102,7 @@ mod test {
             ]],
             [[Trans, MultipleKeyCodes(&[LCtrl, Enter].as_slice())]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         layout.event(Press(0, 1));
@@ -2151,7 +2151,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         layout.event(Press(0, 0));
@@ -2193,7 +2193,7 @@ mod test {
             }),
             k(Enter),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Press another key before timeout
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2251,7 +2251,7 @@ mod test {
             }),
             k(Enter),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Press and release another key before timeout
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2306,7 +2306,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.quick_tap_hold_timeout = true;
 
         // Press and release another key before timeout
@@ -2344,7 +2344,7 @@ mod test {
             [[MultipleActions(&[l(1), k(LShift)].as_slice()), k(F)]],
             [[Trans, k(E)]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
         layout.event(Press(0, 0));
@@ -2364,7 +2364,7 @@ mod test {
     #[test]
     fn custom() {
         static LAYERS: Layers<1, 1, i32> = &[[[Action::Custom(42)]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
@@ -2391,7 +2391,7 @@ mod test {
             [[l(0), k(B)]],
             [[k(C), k(D)]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_eq!(0, layout.current_layer());
         assert_keys(&[], layout.keycodes());
@@ -2494,7 +2494,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
 
@@ -2568,7 +2568,7 @@ mod test {
             }),
             k(Enter),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // press and release the HT key, expect tap action
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2631,7 +2631,7 @@ mod test {
                 tap_hold_interval: 200,
             }),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // press and release the HT key, expect tap action
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2743,7 +2743,7 @@ mod test {
             config: HoldTapConfig::Default,
             tap_hold_interval: 200,
         })]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // press and hold the HT key, expect hold action
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -2795,7 +2795,7 @@ mod test {
                 tap_hold_interval: 200,
             }),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // press HT1, press HT2, release HT1 after hold timeout, release HT2, press HT2
         layout.event(Press(0, 0));
@@ -2836,7 +2836,7 @@ mod test {
             k(A),
             k(B),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.oneshot.on_press_release_delay = 1;
 
         // Test:
@@ -2948,7 +2948,7 @@ mod test {
             k(A),
             k(B),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.oneshot.on_press_release_delay = 1;
 
         // Test:
@@ -3102,7 +3102,7 @@ mod test {
             k(A),
             k(B),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Test:
         // 1. press one-shot
@@ -3259,7 +3259,7 @@ mod test {
             ]],
             [[k(A), k(B), k(C), k(D)]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.oneshot.on_press_release_delay = 1;
 
         layout.event(Press(0, 0));
@@ -3315,7 +3315,7 @@ mod test {
             ]],
             [[k(A), k(B), k(C)]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.oneshot.on_press_release_delay = 1;
 
         layout.event(Press(0, 0));
@@ -3383,7 +3383,7 @@ mod test {
             ],
             [k(B), k(C)],
         ]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Test: tap-dance first key, timeout
         layout.event(Press(0, 0));
@@ -3508,7 +3508,7 @@ mod test {
             ],
             [k(B), k(C)],
         ]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Test: tap-dance-eager first key
         layout.event(Press(0, 0));
@@ -3597,7 +3597,7 @@ mod test {
             ]],
         ];
 
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -3652,7 +3652,7 @@ mod test {
             Chords(&GROUP),
         ]]];
 
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.event(Press(0, 2));
         // timeout on non-terminal chord
         for _ in 0..50 {
@@ -3781,7 +3781,7 @@ mod test {
             Chords(&GROUP),
         ]]];
 
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.event(Press(0, 2));
         // timeout on non-terminal chord
         for _ in 0..50 {
@@ -3833,7 +3833,7 @@ mod test {
         };
         static LAYERS: Layers<2, 1> = &[[[Chords(&GROUP), Chords(&GROUP)]]];
 
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.quick_tap_hold_timeout = true;
         layout.event(Press(0, 0));
         layout.event(Press(0, 1));
@@ -3867,7 +3867,7 @@ mod test {
             }),
             k(Space),
         ]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -3908,7 +3908,7 @@ mod test {
                 Layer(1),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // Press a key
         layout.event(Press(0, 0));
@@ -3998,7 +3998,7 @@ mod test {
     #[test]
     fn test_clear_multiple_keycodes() {
         static LAYERS: Layers<2, 1> = &[[[k(A), MultipleKeyCodes(&[LCtrl, Enter].as_slice())]]];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
         layout.event(Press(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LCtrl, Enter], layout.keycodes());
@@ -4018,7 +4018,7 @@ mod test {
             [[NoOp, NoOp, Layer(3), Trans]],
             [[NoOp, NoOp, NoOp, Trans]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         // change to layer 2
         layout.event(Press(0, 0));
@@ -4049,7 +4049,7 @@ mod test {
             [[Layer(1), Trans]],
             [[NoOp, MultipleActions(&[Trans].as_slice())]],
         ];
-        let mut layout = Layout::new_with_trans_action_settings(&DEFSRC_LAYER, &LAYERS, true, true);
+        let mut layout = Layout::new_with_trans_action_settings(&DEFSRC_LAYER, LAYERS, true, true);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4080,7 +4080,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4127,7 +4127,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4164,7 +4164,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4203,7 +4203,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4228,7 +4228,7 @@ mod test {
             [[NoOp, Layer(2), k(B)]],
             [[NoOp, NoOp, MultipleActions(&[Trans, k(X)].as_slice())]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4258,7 +4258,7 @@ mod test {
             [[NoOp, Layer(2), k(C), k(D)]],
             [[NoOp, NoOp, Chords(&GROUP), Chords(&GROUP)]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4293,7 +4293,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4322,7 +4322,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4387,7 +4387,7 @@ mod test {
                 }),
             ]],
         ];
-        let mut layout = Layout::new(&LAYERS);
+        let mut layout = Layout::new(LAYERS);
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4428,7 +4428,7 @@ mod test {
             for &do_layer_switch in &[false, true] {
                 let mut layout = Layout::new_with_trans_action_settings(
                     &DEFSRC_LAYER,
-                    &LAYERS,
+                    LAYERS,
                     trans_v2,
                     delegate_to_1st,
                 );
