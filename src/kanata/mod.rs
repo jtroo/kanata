@@ -186,6 +186,7 @@ pub struct Kanata {
 }
 
 // Functions to send keys except those that fall in the ignorable range.
+// And also have been repurposed to have additional logic to send mouse events, out of convenience.
 //
 // POTENTIAL PROBLEM - G-keys:
 // Some keys are ignored because they are *probably* unused,
@@ -226,6 +227,10 @@ fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
                 let btn = osc_to_btn(osc);
                 kb.click_btn(btn)
             }
+            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
+                let direction = osc_to_wheel_direction(osc);
+                kb.scroll(direction, HI_RES_SCROLL_UNITS_IN_LO_RES)
+            }
             _ => kb.press_key(osc),
         },
     }
@@ -238,6 +243,11 @@ fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
             BTN_LEFT | BTN_RIGHT | BTN_MIDDLE | BTN_SIDE | BTN_EXTRA => {
                 let btn = osc_to_btn(osc);
                 kb.release_btn(btn)
+            }
+            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
+                // no-op: these are handled as scroll events in the press but scroll has no notion
+                // of release.
+                Ok(())
             }
             _ => kb.release_key(osc),
         },
@@ -253,6 +263,17 @@ fn osc_to_btn(osc: OsCode) -> Btn {
         BTN_EXTRA => Forward,
         BTN_SIDE => Backward,
         _ => unreachable!("called osc_to_btn with bad value {osc}"),
+    }
+}
+fn osc_to_wheel_direction(osc: OsCode) -> MWheelDirection {
+    use MWheelDirection::*;
+    use OsCode::*;
+    match osc {
+        MouseWheelUp => Up,
+        MouseWheelDown => Down,
+        MouseWheelLeft => Left,
+        MouseWheelRight => Right,
+        _ => unreachable!("called osc_to_wheel_direction with bad value {osc}"),
     }
 }
 

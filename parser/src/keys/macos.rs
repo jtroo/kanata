@@ -2011,6 +2011,11 @@ impl OsCode {
             742 => Some(OsCode::BTN_TRIGGER_HAPPY39),
             743 => Some(OsCode::BTN_TRIGGER_HAPPY40),
             744 => Some(OsCode::BTN_MAX),
+            745 => Some(OsCode::MouseWheelUp),
+            746 => Some(OsCode::MouseWheelDown),
+            747 => Some(OsCode::MouseWheelLeft),
+            748 => Some(OsCode::MouseWheelRight),
+            744 => Some(OsCode::BTN_MAX),
             767 => Some(OsCode::KEY_MAX),
             _ => None,
         }

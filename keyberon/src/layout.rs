@@ -1631,7 +1631,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
                         timeout: if self.quick_tap_hold_timeout {
-                            dbg!(timeout.saturating_sub(delay))
+                            timeout.saturating_sub(delay)
                         } else {
                             *timeout
                         },

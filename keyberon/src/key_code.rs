@@ -817,6 +817,10 @@ pub enum KeyCode {
     K742,
     K743,
     K744,
+    MWU,
+    MWD,
+    MWL,
+    MWR,
     KeyMax,
 }
 

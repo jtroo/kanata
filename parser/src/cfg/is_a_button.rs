@@ -23,8 +23,8 @@ fn mouse_inputs_most_care_about_are_considered_buttons() {
         BTN_BACK,
     ];
     for input in MOUSE_INPUTS.iter().copied() {
-        dbg!(input);
-        assert!(is_a_button(dbg!(input.into())));
+        log::debug!("{input}");
+        assert!(is_a_button(input.into()));
     }
 }
 
@@ -174,7 +174,7 @@ fn standard_keys_are_not_considered_buttons() {
         KEY_MUHENKAN,
     ];
     for input in KEY_INPUTS.iter().copied() {
-        dbg!(input);
-        assert!(!is_a_button(dbg!(input.into())));
+        log::debug!("{input}");
+        assert!(!is_a_button(input.into()));
     }
 }

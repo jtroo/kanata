@@ -305,13 +305,9 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "mfwd" | "mouseforward" | "🖰5" => OsCode::BTN_EXTRA,
 
         // NOTE: these are linux and interception-only due to missing implementation for LLHOOK
-        #[cfg(any(target_os = "linux", target_os = "unknown", feature = "interception_driver"))]
         "mwu" | "mousewheelup" => OsCode::MouseWheelUp,
-        #[cfg(any(target_os = "linux", target_os = "unknown", feature = "interception_driver"))]
         "mwd" | "mousewheeldown" => OsCode::MouseWheelDown,
-        #[cfg(any(target_os = "linux", target_os = "unknown", feature = "interception_driver"))]
         "mwl" | "mousewheelleft" => OsCode::MouseWheelLeft,
-        #[cfg(any(target_os = "linux", target_os = "unknown", feature = "interception_driver"))]
         "mwr" | "mousewheelright" => OsCode::MouseWheelRight,
 
         "hmpg" | "homepage" => OsCode::KEY_HOMEPAGE,
