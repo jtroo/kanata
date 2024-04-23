@@ -218,15 +218,41 @@ fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io:
     }
 }
 fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    use OsCode::*;
     match u16::from(osc) {
         KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.press_key(osc),
+        _ => match osc {
+            BTN_LEFT | BTN_RIGHT | BTN_MIDDLE | BTN_SIDE | BTN_EXTRA => {
+                let btn = osc_to_btn(osc);
+                kb.click_btn(btn)
+            }
+            _ => kb.press_key(osc),
+        },
     }
 }
 fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    use OsCode::*;
     match u16::from(osc) {
         KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.release_key(osc),
+        _ => match osc {
+            BTN_LEFT | BTN_RIGHT | BTN_MIDDLE | BTN_SIDE | BTN_EXTRA => {
+                let btn = osc_to_btn(osc);
+                kb.release_btn(btn)
+            }
+            _ => kb.release_key(osc),
+        },
+    }
+}
+fn osc_to_btn(osc: OsCode) -> Btn {
+    use Btn::*;
+    use OsCode::*;
+    match osc {
+        BTN_LEFT => Left,
+        BTN_RIGHT => Right,
+        BTN_MIDDLE => Mid,
+        BTN_EXTRA => Forward,
+        BTN_SIDE => Backward,
+        _ => unreachable!("called osc_to_btn with bad value {osc}"),
     }
 }
 

@@ -310,7 +310,6 @@ impl<'a, T> ChordsV2<'a, T> {
             return;
         };
         let Some(possible_chords) = self.chords.mapping.get(starting_press) else {
-            dbg!("no chord activations");
             no_chord_activations!(self, "no chords for key");
             return;
         };
@@ -403,7 +402,6 @@ impl<'a, T> ChordsV2<'a, T> {
                         .iter()
                         .all(|pk| accumulated_presses.contains(pk))
                     {
-                        dbg!("got exact chord match");
                         let ach = get_active_chord(cch, since, coord, relevant_release_found);
                         let overflow = self.active_chords.push(ach);
                         assert!(overflow.is_ok(), "active chords has room");
@@ -448,7 +446,7 @@ impl<'a, T> ChordsV2<'a, T> {
                 }
                 _ => {}
             }
-            self.ticks_until_next_state_change = dbg!(min_timeout.saturating_sub(since));
+            self.ticks_until_next_state_change = min_timeout.saturating_sub(since);
             prev_count = count_possible;
         }
         if self.ticks_until_next_state_change == 0 || relevant_release_found {
@@ -553,6 +551,6 @@ fn get_active_chord<'a, T>(
         } else {
             ActiveChordStatus::Unread
         },
-        delay: dbg!(since),
+        delay: since,
     }
 }
