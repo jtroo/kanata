@@ -2015,7 +2015,6 @@ impl OsCode {
             746 => Some(OsCode::MouseWheelDown),
             747 => Some(OsCode::MouseWheelLeft),
             748 => Some(OsCode::MouseWheelRight),
-            744 => Some(OsCode::BTN_MAX),
             767 => Some(OsCode::KEY_MAX),
             _ => None,
         }
