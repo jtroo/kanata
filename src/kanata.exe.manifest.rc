@@ -1,2 +1,3 @@
 #define RT_MANIFEST 24
 1 RT_MANIFEST "./target/kanata.exe.manifest"
+iconMain ICON "../assets/kanata.ico"
