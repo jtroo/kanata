@@ -1935,14 +1935,16 @@ fn check_for_exit(event: &KeyEvent) {
     }
     const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
     if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
-        #[cfg(not(target_os = "linux"))]
+        log::info!("{EXIT_MSG}");
+        #[cfg(all(target_os = "windows", feature = "gui"))]{
+            native_windows_gui::stop_thread_dispatch();
+        }
+        #[cfg(all(not(target_os = "linux"),not(target_os = "windows"),not(feature = "gui")))]
         {
-            log::info!("{EXIT_MSG}");
             panic!("{EXIT_MSG}");
         }
         #[cfg(target_os = "linux")]
         {
-            log::info!("{EXIT_MSG}");
             signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
         }
     }
