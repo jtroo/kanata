@@ -17,9 +17,8 @@ use crate::{
 // Ownership rules make this difficult to do as a regular fn,
 // because impl function calls don't understand split borrowing.
 macro_rules! no_chord_activations {
-    ($v:expr, $l:expr) => {{
+    ($v:expr) => {{
         $v.ticks_to_ignore_chord = $v.configured_ticks_to_ignore_chord;
-        eprintln!($l);
     }};
 }
 
@@ -166,6 +165,10 @@ impl<'a, T> ChordsV2<'a, T> {
         self.queue.is_empty() && self.active_chords.is_empty()
     }
 
+    pub fn accepts_chords_chv2(&self) -> bool {
+        self.ticks_to_ignore_chord == 0
+    }
+
     pub fn push_back_chv2(&mut self, item: Queued) -> Option<Queued> {
         self.queue.push_back(item)
     }
@@ -219,9 +222,6 @@ impl<'a, T> ChordsV2<'a, T> {
     fn drain_inputs(&mut self, drainq: &mut SmolQueue, active_layer: u16) {
         if self.ticks_to_ignore_chord > 0 {
             drainq.extend(self.queue.drain(0..));
-            if !drainq.is_empty() {
-                eprintln!("drained keys {drainq:?}");
-            }
             return;
         }
         if self.ticks_until_next_state_change > 0
@@ -310,7 +310,7 @@ impl<'a, T> ChordsV2<'a, T> {
             return;
         };
         let Some(possible_chords) = self.chords.mapping.get(starting_press) else {
-            no_chord_activations!(self, "no chords for key");
+            no_chord_activations!(self);
             return;
         };
 
@@ -415,7 +415,6 @@ impl<'a, T> ChordsV2<'a, T> {
                     // - activate a chord if one completed
                     // - clear the input queue otherwise
                     let _ = accumulated_presses.pop();
-                    eprintln!("zero chord candidates left");
                     chord_candidates.clear();
                     let completed_chord = possible_chords
                         .chords
@@ -440,7 +439,7 @@ impl<'a, T> ChordsV2<'a, T> {
                             let overflow = self.active_chords.push(ach);
                             assert!(overflow.is_ok(), "active chords has room");
                         }
-                        None => no_chord_activations!(self, "0 possible chords remaining"),
+                        None => no_chord_activations!(self),
                     }
                     break;
                 }
@@ -494,7 +493,7 @@ impl<'a, T> ChordsV2<'a, T> {
                     assert!(overflow.is_ok(), "active chords has room");
                 }
                 None => {
-                    no_chord_activations!(self, "no completed chord found in no ticks state change")
+                    no_chord_activations!(self)
                 }
             }
         }

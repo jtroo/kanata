@@ -1798,6 +1798,9 @@ impl Kanata {
                         #[cfg(feature = "perf_logging")]
                         log::info!("ticks since idle: {}", k.ticks_since_idle);
                     }
+                    // NOTE: this check must not be part of `is_idle` because its falsiness
+                    // does not mean that kanata is in a non-idle state, just that we
+                    // haven't done enough ticks yet to properly compute key-timing.
                     let passed_max_switch_timing_check = k
                         .layout
                         .b()
@@ -1806,7 +1809,17 @@ impl Kanata {
                         .next()
                         .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
                         .unwrap_or(true);
-                    is_idle && !counting_idle_ticks && passed_max_switch_timing_check
+                    let chordsv2_accepts_chords = k
+                        .layout
+                        .b()
+                        .chords_v2
+                        .as_ref()
+                        .map(|cv2| cv2.accepts_chords_chv2())
+                        .unwrap_or(true);
+                    is_idle
+                        && !counting_idle_ticks
+                        && passed_max_switch_timing_check
+                        && chordsv2_accepts_chords
                 };
                 if can_block {
                     log::trace!("blocking on channel");
@@ -2021,6 +2034,13 @@ impl Kanata {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
             })
+            && self
+                .layout
+                .b()
+                .chords_v2
+                .as_ref()
+                .map(|cv2| cv2.is_idle_chv2())
+                .unwrap_or(true)
     }
 }
 
