@@ -14,10 +14,10 @@ exclude = [
 
 [package]
 name = "kanata"
-version = "1.6.0-prerelease-4"
+version = "1.6.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
-keywords = ["cli", "linux", "windows", "keyboard", "layout"]
+keywords = ["keyboard", "layout", "remapping"]
 categories = ["command-line-utilities"]
 homepage = "https://github.com/jtroo/kanata"
 repository = "https://github.com/jtroo/kanata"
@@ -49,15 +49,15 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default_features = false, optional = true }
 
-# kanata-keyberon = "0.160.4"
-# kanata-parser = "0.160.4"
-# kanata-tcp-protocol = "0.160.4"
+kanata-keyberon = "0.160.5"
+kanata-parser = "0.160.5"
+kanata-tcp-protocol = "0.160.5"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-kanata-keyberon = { path = "keyberon" }
-kanata-parser =   { path = "parser" }
-kanata-tcp-protocol = { path = "tcp_protocol" }
+# kanata-keyberon = { path = "keyberon" }
+# kanata-parser =   { path = "parser" }
+# kanata-tcp-protocol = { path = "tcp_protocol" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
