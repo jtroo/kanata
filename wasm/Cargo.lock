@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.6.0-prerelease-4"
+version = "1.6.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.160.4"
+version = "0.160.5"
 dependencies = [
  "arraydeque",
  "heapless",
@@ -440,7 +440,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-parser"
-version = "0.160.4"
+version = "0.160.5"
 dependencies = [
  "anyhow",
  "itertools",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-tcp-protocol"
-version = "0.160.4"
+version = "0.160.5"
 dependencies = [
  "serde",
  "serde_derive",
