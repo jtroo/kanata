@@ -3,10 +3,12 @@ use super::*;
 static SIMPLE_NONOVERLAPPING_CHORD_CFG: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes) \
 (defsrc) \
+(defalias c c)
+(defvar d d)
 (deflayer base) \
 (defchordsv2-experimental \
-  (a b) c 200 all-released () \
-  (b z) d 200 first-release () \
+  (a b) @c 200 all-released () \
+  (b z) $d 200 first-release () \
 )";
 
 #[test]
