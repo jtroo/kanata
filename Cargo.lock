@@ -491,9 +491,9 @@ dependencies = [
  "inotify",
  "instant",
  "kanata-interception",
- "kanata-keyberon 0.160.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-parser 0.160.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-tcp-protocol 0.160.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
+ "kanata-parser",
+ "kanata-tcp-protocol",
  "karabiner-driverkit",
  "log",
  "miette",
@@ -535,18 +535,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-keyberon"
-version = "0.160.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8afe8b1dbc31a7b1094201ee2c60e3210dfcf4b08b0778c3f489b58670ff5baa"
-dependencies = [
- "arraydeque",
- "heapless",
- "kanata-keyberon-macros",
- "rustc-hash",
-]
-
-[[package]]
 name = "kanata-keyberon-macros"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -562,25 +550,7 @@ version = "0.160.5"
 dependencies = [
  "anyhow",
  "itertools",
- "kanata-keyberon 0.160.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log",
- "miette",
- "once_cell",
- "parking_lot",
- "radix_trie",
- "rustc-hash",
- "thiserror",
-]
-
-[[package]]
-name = "kanata-parser"
-version = "0.160.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e36b2bc9bf2323a6e5601874337850f4291a0fd604d7feeecbd9940ea76b6a4"
-dependencies = [
- "anyhow",
- "itertools",
- "kanata-keyberon 0.160.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
  "log",
  "miette",
  "once_cell",
@@ -612,23 +582,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-tcp-protocol"
-version = "0.160.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "348f648156811aaf54763ee2dd9dd55569c6aebf61323a3ce92256f7ab7a0e98"
-dependencies = [
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "kanata_example_tcp_client"
 version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "kanata-tcp-protocol 0.160.5",
+ "kanata-tcp-protocol",
  "log",
  "serde_json",
  "simplelog",

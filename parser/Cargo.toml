@@ -21,11 +21,11 @@ rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
-kanata-keyberon = "0.160.5"
+# kanata-keyberon = "0.160.5"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-# kanata-keyberon = { path = "../keyberon" }
+kanata-keyberon = { path = "../keyberon" }
 
 [features]
 cmd = []
