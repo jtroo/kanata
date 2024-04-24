@@ -89,6 +89,7 @@ pub mod system_tray_ui {
       let handle_events = move |evt, _evt_data, handle| {
         if let Some(evt_ui) = evt_ui.upgrade() {
           match evt {
+            E::OnWindowClose                                  	=> if &handle == &evt_ui.window {SystemTray::exit  (&evt_ui);}
             E::OnMousePress(MousePressEvent::MousePressLeftUp)	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
             E::OnContextMenu/*🖰›*/                            	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
             E::OnMenuItemSelected =>
