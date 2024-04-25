@@ -456,9 +456,21 @@ impl Kanata {
     }
 
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub fn request_live_reload(&mut self) -> Result<()> {
+    pub fn request_live_reload(&mut self) {
         self.live_reload_requested = true;
-        Ok(())
+    }
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub fn request_live_reload_n(&mut self,n:usize) { // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
+        self.live_reload_requested = true;
+        match self.cfg_paths.get(n) {
+            Some(path) => {
+                self.cur_cfg_idx = n;
+                log::info!("Requested live reload of file: {}", path.display(),);
+            }
+            None => {
+                log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
+            }
+        }
     }
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
