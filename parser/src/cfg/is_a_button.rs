@@ -172,7 +172,6 @@ fn standard_keys_are_not_considered_buttons() {
         KEY_MUHENKAN,
     ];
     for input in KEY_INPUTS.iter().copied() {
-        println!("{input}");
         assert!(!is_a_button(input.into()));
     }
 }

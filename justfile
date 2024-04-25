@@ -27,6 +27,7 @@ sha256sums output_dir:
 
 test:
   cargo test -p kanata -p kanata-parser -p kanata-keyberon -- --nocapture
+  cargo test --features=simulated_output sim_tests
   cargo clippy --all
 
 fmt:
