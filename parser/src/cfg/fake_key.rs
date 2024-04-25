@@ -213,7 +213,7 @@ pub(crate) fn parse_on_release(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "on-press expects two parameters: <action> <key-name>";
+    const ERR_MSG: &str = "on-release expects two parameters: <action> <key-name>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
