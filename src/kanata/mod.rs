@@ -20,6 +20,7 @@ use crate::tcp_server::simple_sexpr_to_json_array;
 use crate::SocketAddrWrapper;
 use crate::ValidatedArgs;
 use kanata_parser::cfg;
+use kanata_parser::cfg::list_actions::*;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
@@ -28,7 +29,7 @@ use kanata_tcp_protocol::ServerMessage;
 mod dynamic_macro;
 use dynamic_macro::*;
 
-use kanata_parser::cfg::list_actions::*;
+mod key_repeat;
 
 #[cfg(feature = "cmd")]
 mod cmd;
@@ -1578,85 +1579,6 @@ impl Kanata {
 
         self.check_release_non_physical_shift()?;
         Ok(live_reload_requested)
-    }
-
-    /// This compares the active keys in the keyberon layout against the potential key outputs for
-    /// corresponding physical key in the configuration. If any of keyberon active keys match any
-    /// potential physical key output, write the repeat event to the OS.
-    fn handle_repeat(&mut self, event: &KeyEvent) -> Result<()> {
-        let ret = self.handle_repeat_actual(event);
-        // The cur_keys Vec is re-used for processing, for efficiency reasons to avoid allocation.
-        // Unlike prev_keys which has useful info for the next call to handle_time_ticks, cur_keys
-        // can be reused and cleared — it just needs to be empty for the next handle_time_ticks
-        // call.
-        self.cur_keys.clear();
-        ret
-    }
-
-    fn handle_repeat_actual(&mut self, event: &KeyEvent) -> Result<()> {
-        if self.sequence_state.is_some() {
-            // While in sequence mode, don't send key repeats. I can't imagine it's a helpful use
-            // case for someone trying to type in a sequence that they want to rely on key repeats
-            // to finish a sequence. I suppose one might want to do repeat in order to try and
-            // cancel an input sequence... I'll wait for a user created issue to deal with this.
-            return Ok(());
-        }
-        self.cur_keys.extend(self.layout.bm().keycodes());
-        self.overrides
-            .override_keys(&mut self.cur_keys, &mut self.override_states);
-
-        // Prioritize checking the active layer in case a layer-while-held is active.
-        let active_held_layers = self.layout.bm().active_held_layers();
-        let mut held_layer_active = false;
-        for layer in active_held_layers {
-            held_layer_active = true;
-            if let Some(outputs_for_key) = self.key_outputs[usize::from(layer)].get(&event.code) {
-                log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
-                for osc in outputs_for_key.iter().rev().copied() {
-                    let kc = osc.into();
-                    if self.cur_keys.contains(&kc)
-                        || self.unshifted_keys.contains(&kc)
-                        || self.unmodded_keys.contains(&kc)
-                    {
-                        log::debug!("repeat    {:?}", KeyCode::from(osc));
-                        if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
-                            bail!("could not write key {:?}", e)
-                        }
-                        return Ok(());
-                    }
-                }
-            }
-        }
-        if held_layer_active {
-            log::debug!("empty layer-while-held outputs, probably transparent");
-        }
-
-        // Try matching a key on the default layer.
-        //
-        // This code executes in two cases:
-        // 1. current layer is the default layer
-        // 2. current layer is layer-while-held but did not find a match in the code above, e.g. a
-        //    transparent key was pressed.
-        let outputs_for_key =
-            match self.key_outputs[self.layout.bm().default_layer].get(&event.code) {
-                None => return Ok(()),
-                Some(v) => v,
-            };
-        log::debug!("key outs for default layer: {outputs_for_key:?};");
-        for osc in outputs_for_key.iter().rev().copied() {
-            let kc = osc.into();
-            if self.cur_keys.contains(&kc)
-                || self.unshifted_keys.contains(&kc)
-                || self.unmodded_keys.contains(&kc)
-            {
-                log::debug!("repeat    {:?}", KeyCode::from(osc));
-                if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
-                    bail!("could not write key {:?}", e)
-                }
-                return Ok(());
-            }
-        }
-        Ok(())
     }
 
     #[cfg(feature = "tcp_server")]
