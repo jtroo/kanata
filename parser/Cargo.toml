@@ -1,6 +1,6 @@
 [package]
 name = "kanata-parser"
-version = "0.160.5"
+version = "0.161.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "A parser for configuration language of kanata, a keyboard remapper."
 keywords = ["kanata", "parser"]
@@ -21,11 +21,11 @@ rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
-# kanata-keyberon = "0.160.5"
+kanata-keyberon = "0.161.0"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-kanata-keyberon = { path = "../keyberon" }
+# kanata-keyberon = { path = "../keyberon" }
 
 [features]
 cmd = []
