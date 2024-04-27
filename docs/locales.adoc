@@ -149,6 +149,41 @@ Commented out since doc is short enough without a ToC for the time being.
 ----
 ====
 
+== ISO French Azerty (MacOS)[[french]]
+
+=== Using `deflocalkeys-macos`:[[french-defmac]]
+
+[%collapsible]
+====
+----
+(deflocalkeys-macos
+  @    50
+  par  12 ;; Close parentheses
+  -    13
+  ^    73
+  $    164
+  ù    85
+  `    192
+  <    41
+  /    191
+  =    53
+  a    16
+  q    30
+  z    17
+  w    44
+  m    39
+)
+
+(defsrc
+  ⎋         f1   f2   f3   f4   f5   f6   f7   f8   f9  f10   f11  f12
+  @         1    2    3    4    5    6    7    8    9    0    par   -    ⌫
+  ↹         a    z    e    r    t    y    u    i    o    p     ^    $
+  ⇪         q    s    d    f    g    h    j    k    l    m     ù    `    ↩
+ ‹⇧   <     w    x    c    v    b    n    ,    .    /    =          ▲    ⇧›
+  fn       ‹⌃   ‹⌥   ‹⌘              ␣              ⌘›   ⌥›    ◀    ▼    ▶
+)
+----
+====
 
 == ISO French AZERTY (Windows, non-interception)[[french]]
 
