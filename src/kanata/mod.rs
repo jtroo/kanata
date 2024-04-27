@@ -462,11 +462,13 @@ impl Kanata {
     }
 
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub fn request_live_reload(&mut self) {
+    pub fn live_reload(&mut self) -> Result<()> {
         self.live_reload_requested = true;
+        self.do_live_reload(&None)?;
+        Ok(())
     }
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub fn request_live_reload_n(&mut self,n:usize) { // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
+    pub fn live_reload_n(&mut self,n:usize) -> Result<()> { // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
         self.live_reload_requested = true;
         match self.cfg_paths.get(n) {
             Some(path) => {
@@ -477,6 +479,8 @@ impl Kanata {
                 log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
             }
         }
+      self.do_live_reload(&None)?;
+      Ok(())
     }
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
@@ -510,6 +514,9 @@ impl Kanata {
             self.virtual_keys = cfg.fake_keys;
         }
         self.switch_max_key_timing = cfg.switch_max_key_timing;
+        #[cfg(all(target_os = "windows", feature = "gui"))] {
+        self.win_tray_icon = cfg.options.win_tray_icon;
+        }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
