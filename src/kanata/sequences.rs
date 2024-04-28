@@ -25,6 +25,11 @@ pub(super) fn get_mod_mask_for_cur_keys(cur_keys: &[KeyCode]) -> u16 {
         .fold(0, |a, v| a | mod_mask_for_keycode(v))
 }
 
+pub(super) enum EndSequenceType {
+    Standard,
+    Overlap,
+}
+
 pub(super) fn do_sequence_press_logic(
     state: &mut SequenceState,
     k: &KeyCode,
@@ -158,9 +163,16 @@ pub(super) fn do_sequence_press_logic(
             res = sequences.get_or_descendant_exists(&state.sequence);
         }
         (true, true) => {
-            log::debug!("got invalid seq; exiting seq mode");
-            cancel_sequence(state, kbd_out)?;
-            clear_sequence_state = true;
+            // One more try for backtracking: check for a validity by removing from the front
+            while res == NotInTrie && !state.sequence.is_empty() {
+                state.sequence.remove(0);
+                res = sequences.get_or_descendant_exists(&state.sequence);
+            }
+            if res == NotInTrie {
+                log::debug!("got invalid seq; exiting seq mode");
+                cancel_sequence(state, kbd_out)?;
+                clear_sequence_state = true;
+            }
         }
     }
 
@@ -169,16 +181,16 @@ pub(super) fn do_sequence_press_logic(
         // First, check for a valid simultaneous completion.
         // Simultaneous completion should take priority.
         clear_sequence_state = true;
-        do_successful_sequence_termination(kbd_out, state, layout, i, j)?;
+        do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Overlap)?;
     } else if let HasValue((i, j)) = res {
         clear_sequence_state = true;
         // Try terminating the overlapping and check if simultaneous termination worked.
         // Simultaneous completion should take priority.
         state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
         if let HasValue((oi, oj)) = sequences.get_or_descendant_exists(&state.overlapped_sequence) {
-            do_successful_sequence_termination(kbd_out, state, layout, oi, oj)?;
+            do_successful_sequence_termination(kbd_out, state, layout, oi, oj, EndSequenceType::Overlap)?;
         } else {
-            do_successful_sequence_termination(kbd_out, state, layout, i, j)?;
+            do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Standard)?;
         }
     }
     Ok(clear_sequence_state)
@@ -192,8 +204,13 @@ pub(super) fn do_successful_sequence_termination(
     layout: &mut Layout<'_, 767, 2, &&[&CustomAction]>,
     i: u8,
     j: u16,
+    seq_type: EndSequenceType,
 ) -> Result<(), anyhow::Error> {
     log::debug!("sequence complete; tapping fake key");
+    let sequence = match seq_type {
+        EndSequenceType::Standard => &state.sequence,
+        EndSequenceType::Overlap => &state.overlapped_sequence,
+    };
     match state.sequence_input_mode {
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::HiddenDelayType => {}
         SequenceInputMode::VisibleBackspaced => {
@@ -211,7 +228,7 @@ pub(super) fn do_successful_sequence_termination(
                 }
                 _ => true,
             });
-            for k in state.sequence.iter().copied() {
+            for k in sequence.iter().copied() {
                 // Check for pressed modifiers and don't input backspaces for
                 // those since they don't output characters that can be
                 // backspaced.
@@ -247,7 +264,7 @@ pub(super) fn do_successful_sequence_termination(
             }
         }
     }
-    for k in state.sequence.iter().copied() {
+    for k in sequence.iter().copied() {
         if k == KEY_OVERLAP_MARKER {
             continue;
         };

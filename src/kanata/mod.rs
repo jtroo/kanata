@@ -930,7 +930,7 @@ impl Kanata {
                     .get_or_descendant_exists(&state.overlapped_sequence)
                 {
                     HasValue((i, j)) => {
-                        do_successful_sequence_termination(&mut self.kbd_out, state, layout, i, j)?;
+                        do_successful_sequence_termination(&mut self.kbd_out, state, layout, i, j, EndSequenceType::Overlap)?;
                         self.sequence_state = None;
                     }
                     NotInTrie => {
