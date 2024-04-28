@@ -1,3 +1,4 @@
+use core::cell::RefCell;
 use anyhow::Context;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -7,15 +8,15 @@ use std::time;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
-#[cfg(feature = "gui")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 use crate::m_gui_win::*;
-#[cfg(feature = "gui")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 extern crate native_windows_gui    as nwg;
-#[cfg(feature = "gui")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 extern crate native_windows_derive as nwd;
-#[cfg(feature = "gui")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 use nwd::NwgUi;
-#[cfg(feature = "gui")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 use nwg::NativeUi;
 
 impl Kanata {
@@ -23,6 +24,7 @@ impl Kanata {
     /// and run the native_windows_gui event loop.
     pub fn event_loop(_kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         // Display debug and panic output when launched from a terminal.
+        #[cfg(not(feature = "gui"))]
         unsafe {
             use winapi::um::wincon::*;
             if AttachConsole(ATTACH_PARENT_PROCESS) != 0 {
@@ -76,13 +78,14 @@ impl Kanata {
             try_send_panic(&preprocess_tx, key_event);
             true
         });
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        let _ui = build_tray(&_cfg)?;
 
-        #[cfg(feature = "gui")]
-        let _ui = SystemTray::build_ui(Default::default()).context("Failed to build UI")?;
-        // The event loop is also required for the low-level keyboard hook to work.
-        native_windows_gui::dispatch_thread_events();
-        eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
-        let _ = std::io::stdin().read_line(&mut String::new());
+        native_windows_gui::dispatch_thread_events(); // The event loop is also required for the low-level keyboard hook to work.
+        // if *IS_TERM  {
+          // eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
+          // let _ = std::io::stdin().read_line(&mut String::new());
+        // }
         Ok(())
     }
 }
