@@ -34,7 +34,137 @@ fn chorded_keys_visible_backspaced() {
          d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
     );
     assert_eq!(
-        "t:2ms\nout:↓LShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↑LShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↑RShift\nout:↑A\nout:↑B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑RShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↑RShift\nt:49ms\nout:↓B\nt:1ms\nout:↑A\nt:1ms\nout:↑B",
+        "t:2ms\nout:↓LShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:47ms\nout:↑RShift\nt:502ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↑RShift\nt:49ms\nout:↓B\nt:1ms\nout:↑A\nt:1ms\nout:↑B",
+        result
+    );
+}
+
+const OVERLAP_CFG: &str = "
+    (defcfg sequence-input-mode visible-backspaced)
+    (defsrc 0)
+    (deflayer base sldr)
+    (defvirtualkeys s1 y)
+    (defvirtualkeys s2 z)
+    (defvirtualkeys s3 l)
+    (defvirtualkeys s4 m)
+    (defvirtualkeys s5 n)
+    (defvirtualkeys s6 o)
+    (defvirtualkeys s7 p)
+    (defvirtualkeys s8 q)
+    (defseq s1 (O-(a b)))
+    (defseq s2 (a b))
+    (defseq s3 (O-(c d) e))
+    (defseq s4 (c d e))
+    (defseq s5 (O-(c d) O-(f g)))
+    (defseq s6 (O-(c d) f g))
+    (defseq s7 (c d O-(f g)))
+    ;; (defseq s8 (c d f g)) KNOWN BUGGY CASE! breaks s6 detection
+    ";
+
+#[test]
+fn overlapping_activate_overlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:a d:b t:100 u:a u:b u:0");
+    assert_eq!(
+        "t:1ms\nout:↓A\nt:1ms\nout:↓B\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑A\nout:↑B\n\
+         out:↓Y\nt:1ms\nout:↑Y",
+        result
+    );
+}
+
+#[test]
+fn overlapping_activate_nonoverlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:a t:10 u:a t:10 d:b t:10 u:b t:10 u:0");
+    assert_eq!(
+        "t:1ms\nout:↓A\nt:9ms\nout:↑A\nt:10ms\nout:↓B\n\
+        out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+        t:1ms\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_nonoverlap_activate_overlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d d:e t:100 u:c u:d u:e u:0");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↓E\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑C\nout:↑D\nout:↑E\nout:↓L\nt:1ms\nout:↑L",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_nonoverlap_activate_non_overlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c u:c d:d d:e t:100 u:d u:e u:0");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↑C\nt:1ms\nout:↓D\nt:1ms\nout:↓E\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑D\nout:↑E\nout:↓M\nt:1ms\nout:↑M",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_overlap_activate_overlap1() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d d:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↓F\nt:1ms\nout:↓G\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑C\nout:↑D\nout:↑F\nout:↑G\nout:↓N\nt:1ms\nout:↑N",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_overlap_activate_overlap2() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d d:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↑C\nt:1ms\nout:↑D\nt:1ms\nout:↓F\nt:1ms\nout:↓G\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑F\nout:↑G\nout:↓N\nt:1ms\nout:↑N",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_overlap_activate_overlap3() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↑C\nt:1ms\nout:↑D\nt:6ms\nout:↓F\nt:1ms\nout:↓G\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑F\nout:↑G\nout:↓N\nt:1ms\nout:↑N",
+        result
+    );
+}
+
+#[test]
+fn overlapping_then_overlap_activate_nonoverlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f u:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↑C\nt:1ms\nout:↑D\nt:6ms\nout:↓F\nt:1ms\nout:↑F\nt:1ms\nout:↓G\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑G\nout:↓O\nt:1ms\nout:↑O",
+        result
+    );
+}
+
+#[test]
+fn non_overlapping_then_overlap_activate_overlap() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c u:c d:d u:d d:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↑C\nt:1ms\nout:↓D\nt:1ms\nout:↑D\nt:1ms\nout:↓F\nt:1ms\nout:↓G\n\
+         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
+         t:1ms\nout:↑F\nout:↑G\nout:↓P\nt:1ms\nout:↑P",
+        result
+    );
+}
+
+#[test]
+fn non_overlapping_then_overlap_activate_nothing() {
+    let result = simulate(OVERLAP_CFG, "d:0 d:c u:c d:d u:d d:f u:f d:g t:100");
+    assert_eq!(
+        "t:1ms\nout:↓C\nt:1ms\nout:↑C\nt:1ms\nout:↓D\nt:1ms\nout:↑D\nt:1ms\nout:↓F\nt:1ms\nout:↑F\nt:1ms\nout:↓G",
         result
     );
 }

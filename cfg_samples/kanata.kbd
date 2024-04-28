@@ -1095,6 +1095,12 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     dotorg (nop8 nop9)
 )
 
+;; A key list within O-(...) signifies simultaneous presses.
+(defseq
+    dotcom (O-(. c m))
+    dotorg (O-(. r g))
+)
+
 ;; Input chording.
 ;;
 ;; Not to be confused with output chords (like C-S-a or the chords layer

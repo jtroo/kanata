@@ -43,6 +43,7 @@ pub(crate) mod alloc;
 use alloc::*;
 
 mod key_override;
+use crate::sequences::*;
 use kanata_keyberon::chord::ChordsV2;
 pub use key_override::*;
 
@@ -83,6 +84,9 @@ use is_a_button::*;
 
 mod key_outputs;
 pub use key_outputs::*;
+
+mod permutations;
+use permutations::*;
 
 use crate::trie::Trie;
 use anyhow::anyhow;
@@ -1503,6 +1507,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             })?
             .into(),
     );
+    if keys.contains(&KEY_OVERLAP) {
+        bail!("O- is only valid in sequences for lists of keys");
+    }
     Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref(s.a.sref_vec(keys)))))
 }
 
@@ -1847,6 +1854,14 @@ fn parse_macro(
         (events, params_remainder) = parse_macro_item(params_remainder, s)?;
         all_events.append(&mut events);
     }
+    if all_events.iter().any(|e| match e {
+        SequenceEvent::Tap(kc) | SequenceEvent::Press(kc) | SequenceEvent::Release(kc) => {
+            *kc == KEY_OVERLAP
+        }
+        _ => false,
+    }) {
+        bail!("macro contains O- which is only valid within defseq")
+    }
     all_events.push(SequenceEvent::Complete);
     all_events.shrink_to_fit();
     match repeat {
@@ -2011,7 +2026,7 @@ fn parse_mods_held_for_submacro<'a>(
     Ok((mod_keys, unparsed_str))
 }
 
-static KEYMODI: [(&str, KeyCode); 31] = [
+static KEYMODI: &[(&str, KeyCode)] = &[
     ("S-", KeyCode::LShift),
     ("‹⇧", KeyCode::LShift),
     ("⇧›", KeyCode::RShift),
@@ -2043,6 +2058,7 @@ static KEYMODI: [(&str, KeyCode); 31] = [
     ("◆", KeyCode::LGui),
     ("⌘", KeyCode::LGui),
     ("❖", KeyCode::LGui),
+    ("O-", KEY_OVERLAP),
 ];
 
 /// Parses mod keys like `C-S-`. Returns the `KeyCode`s for the modifiers parsed and the unparsed
@@ -2052,7 +2068,7 @@ pub fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
     let mut rem = mods;
     loop {
         let mut found_none = true;
-        for (key_s, key_code) in &KEYMODI {
+        for (key_s, key_code) in KEYMODI {
             if let Some(rest) = rem.strip_prefix(key_s) {
                 if key_stack.contains(key_code) {
                     bail!("Redundant \"{key_code:?}\" in {mods:?}");
@@ -2990,30 +3006,80 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
             if key_seq.is_empty() {
                 bail_expr!(key_seq_expr, "{SEQ_ERR}\nkey_list cannot be empty");
             }
+
             let keycode_seq = parse_sequence_keys(key_seq, s)?;
-            if sequences.ancestor_exists(&keycode_seq) {
-                bail_expr!(
-                    key_seq_expr,
-                    "Sequence has a conflict: its sequence contains an earlier defined sequence"
+
+            // Generate permutations of sequences for overlapping keys.
+            let mut permutations = vec![vec![]];
+            let mut vals = keycode_seq.iter().copied();
+            while let Some(val) = vals.next() {
+                if val & KEY_OVERLAP_MARKER == 0 {
+                    for p in permutations.iter_mut() {
+                        p.push(val);
+                    }
+                    continue;
+                }
+
+                if val == 0x0400 {
+                    bail_expr!(
+                        key_seq_expr,
+                        "O-(...) lists must have a minimum of 2 elements"
+                    );
+                }
+                let mut values_to_permute = vec![val];
+                for val in vals.by_ref() {
+                    if val == 0x0400 {
+                        break;
+                    }
+                    values_to_permute.push(val);
+                }
+
+                if values_to_permute.len() < 2 {
+                    bail_expr!(
+                        key_seq_expr,
+                        "O-(...) lists must have a minimum of 2 elements"
+                    );
+                }
+                let ps = gen_permutations(&values_to_permute[..]);
+
+                let mut new_permutations: Vec<Vec<u16>> = vec![];
+                for p in permutations.iter() {
+                    for p2 in ps.iter() {
+                        new_permutations.push(
+                            p.iter()
+                                .copied()
+                                .chain(p2.iter().copied().chain([KEY_OVERLAP_MARKER]))
+                                .collect(),
+                        );
+                    }
+                }
+                permutations = new_permutations;
+            }
+
+            for p in permutations.into_iter() {
+                if sequences.ancestor_exists(&p) {
+                    bail_expr!(
+                        key_seq_expr,
+                        "Sequence has a conflict: its sequence contains an earlier defined sequence"
+                        );
+                }
+                if sequences.descendant_exists(&p) {
+                    bail_expr!(key_seq_expr, "Sequence has a conflict: its sequence is contained within an earlier defined seqence");
+                }
+                sequences.insert(
+                    p,
+                    s.virtual_keys
+                        .get(vkey)
+                        .map(|(y, _)| get_fake_key_coords(*y))
+                        .expect("vk exists, checked earlier"),
                 );
             }
-            if sequences.descendant_exists(&keycode_seq) {
-                bail_expr!(key_seq_expr, "Sequence has a conflict: its sequence is contained within an earlier defined seqence");
-            }
-            sequences.insert(
-                keycode_seq,
-                s.virtual_keys
-                    .get(vkey)
-                    .map(|(y, _)| get_fake_key_coords(*y))
-                    .expect("vk exists, checked earlier"),
-            );
         }
     }
     Ok(sequences)
 }
 
 fn parse_sequence_keys(exprs: &[SExpr], s: &ParserState) -> Result<Vec<u16>> {
-    use crate::sequences::*;
     use SequenceEvent::*;
 
     // Reuse macro parsing but do some other processing since sequences don't support everything
@@ -3065,9 +3131,23 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParserState) -> Result<Vec<u16>> {
                                 for modk in mods_currently_held.iter().copied() {
                                     seq_num |= mod_mask_for_keycode(modk);
                                 }
-                                seq.push(seq_num);
+                                if seq_num & KEY_OVERLAP_MARKER == KEY_OVERLAP_MARKER
+                                    && seq_num & MASK_MODDED != KEY_OVERLAP_MARKER
+                                {
+                                    bail_expr!(
+                                        &exprs_remaining[0],
+                                        "O-(...) lists cannot be combined with other modifiers."
+                                    );
+                                }
+                                if *pressed != KEY_OVERLAP {
+                                    // Note: key overlap item is special and goes at the end, not the beginning
+                                    seq.push(seq_num);
+                                }
                             }
                             Release(released) => {
+                                if *released == KEY_OVERLAP {
+                                    seq.push(KEY_OVERLAP_MARKER);
+                                }
                                 if do_release_mod {
                                     mods_currently_held.remove(
                                         mods_currently_held
