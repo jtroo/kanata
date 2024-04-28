@@ -1,21 +1,19 @@
 #[cfg(feature = "gui")]
 use kanata_state_machine::m_gui::main_gui;
 
-#[cfg(not(feature = "gui"))]
-pub mod m_cli;
-#[cfg(not(feature = "gui"))]
-use crate::m_cli::main_cli;
+#[cfg(not(feature = "gui"))] use kanata_state_machine::lib_main::lib_main_cli;
+#[cfg(    feature = "gui" )] use kanata_state_machine::lib_main::lib_main_gui;
 
 use anyhow::{Result};
 #[cfg(not(feature = "gui"))]
 use anyhow::{Result};
 #[cfg(not(feature = "gui"))]
 fn main() -> Result<()> {
-    let ret = main_cli();
+    let ret = lib_main_cli();
     ret
 }
 
 #[cfg(feature = "gui")]
 fn main() {
-    main_gui();
+    lib_main_gui();
 }
