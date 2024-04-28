@@ -150,12 +150,24 @@ fn split_at_1(s: &str) -> (&str, &str) {
         None => s.split_at(0),
     }
 }
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LogFmtT {
+    // partial dupe of @simulated since otherwise no-features clippy fails when features are disabled since even though the function body is conditional and doesn't use the enum, the ↓ function signature still uses it, so will warn
+    InKeyUp,
+    InKeyDown,
+    InKeyRep,
+    InTick,
+}
 fn kbd_out_log(
     _kbd_out: &mut KbdOut,
     _log_type: LogFmtT,
     _key_code: Option<OsCode>,
     _tick: Option<u128>,
 ) {
+    let a = LogFmtT::InTick;
+    if a == LogFmtT::InTick {
+        println!("{}", 42)
+    };
     #[cfg(all(
         not(feature = "simulated_input"),
         not(feature = "passthru_ahk"),
@@ -183,7 +195,6 @@ fn kbd_out_log(
                     _kbd_out.log.in_repeat_key(key_code);
                 }
             }
-            _ => {}
         }
     }
 }
