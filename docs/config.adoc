@@ -2394,8 +2394,8 @@ they are an arbitrary length and can be very long.
 === Windows only: win-tray-icon
 <<table-of-contents,Back to ToC>>
 
-Show a custom tray icon file for a gui-enabled build of kanata on Windows.
-Accepts either the full path (including the file name with extension) to the icon file
+Show a custom tray icon file for a <<windows-only-win-tray>> gui-enabled build of kanata on Windows.
+Accepts either the full path (including the file name with an extension) to the icon file
 or just the file name, which is then searched in the following locations:
 
 * Default parent folders:
@@ -2405,7 +2405,7 @@ or just the file name, which is then searched in the following locations:
 * Default image subfolders (optional): `icon` `img` `icons`
 * Supported image file formats: `ico` `jpg` `jpeg` `png` `bmp` `dds` `tiff`
 
-If not specified, ttries to load any icon file from the same locations with the name matching
+If not specified, tries to load any icon file from the same locations with the name matching
 config name with extension replaced by one of the supported ones.
 
 .Example:
@@ -3428,6 +3428,22 @@ to enable the use of the `EnableUIAccess` script:
 ```
 cargo build --win_manifest
 ```
+
+[[windows-only-win-tray]]
+=== Windows only: win-tray
+<<table-of-contents,Back to ToC>>
+
+Kanata can be compiled as a Windows GUI tray app with the feature flag `gui`.
+This can simplify launching the app on user login by placing a `.lnk`
+at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`, show custom icon indicator per config
+(see <<windows-only-win-tray-icon>>). It also supports (re)loading configs.
+
+Currently the only configuration supported is tray icon per profile, all other configuration should
+be done by passing cli flags in the `Target` field of `.lnk`, e.g., `"C:\Program Files\kanata\kanata.exe" -d -n`
+to launch kanata without a delay in a debug mode
+
+When launched from a command line, the app outputs log to the console, but otherwise the logs are currently
+only available via an app capable of viewing `OutputDebugString` debugs, e.g., https://github.com/smourier/TraceSpy[TraceSpy].
 
 [[test-your-config]]
 === Test your config
