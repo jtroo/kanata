@@ -2699,6 +2699,57 @@ For an example, `O-(a b c)` is equivalent to `O-(c b a)`.
 (defseq hello (O-(h l o)))
 ----
 
+.Sample of more advanced usage
+[%collapsible]
+====
+
+The configuration below showcases context-dependent chording
+with auto-space and auto-deleted spaces from typing punctuation.
+
+For example, chording `(d a y)` and then `(t u e)` will output
+`Tuesday`, while chording `(t u e)` by itself does nothing.
+
+.Example configuration:
+[source]
+----
+(defsrc f1)
+(deflayer base lrld)
+(defcfg process-unmapped-keys yes
+	sequence-input-mode visible-backspaced
+	concurrent-tap-hold true)
+(deftemplate seq (vk-name in out)
+	(defvirtualkeys $vk-name $out)
+	(defseq $vk-name $in))
+
+(defvirtualkeys rls-sft (multi (release-key lsft)(release-key rsft)))
+(defvar rls-sft (on-press tap-vkey rls-sft))
+(deftemplate rls-sft () $rls-sft 5)
+
+(defchordsv2-experimental
+	(d a y) (macro sldr d (t! rls-sft) a y spc nop0) 200 first-release ()
+	(h l o) (macro h (t! rls-sft) e l l o sldr spc nop0) 200 first-release ()
+)
+(t! seq Monday (d a y spc nop0 O-(m o n)) (macro S-m $rls-sft o n d a y nop9 sldr spc nop0))
+(t! seq Tuesday (d a y spc nop0 O-(t u e)) (macro S-t $rls-sft u e s d a y nop9 sldr spc nop0))
+(t! seq DelSpace_. (spc nop0 .) (macro .))
+(t! seq DelSpace_; (spc nop0 ;) (macro ;))
+----
+
+.Try using the above configuration to type the text:
+[source]
+----
+day;
+Day;
+Tuesday.
+day hello
+hello day
+Hello day.
+hello Tuesday
+Hello Monday;
+----
+
+====
+
 ==== Override the global timeout and input mode
 
 An alternative to using `sldr` is the `sequence` action.
