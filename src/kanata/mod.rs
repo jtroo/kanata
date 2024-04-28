@@ -1282,7 +1282,7 @@ impl Kanata {
                         }
                         CustomAction::SequenceCancel => {
                             if let Some(state) = self.sequence_state.get_active() {
-                                log::debug!("exiting sequence");
+                                log::debug!("pressed cancel sequence key");
                                 cancel_sequence(state, &mut self.kbd_out)?;
                             }
                         }

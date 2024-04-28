@@ -216,13 +216,13 @@ pub(super) fn do_sequence_press_logic(
             res = sequences.get_or_descendant_exists(&state.sequence);
         }
         (true, true) => {
-            // One more try for backtracking: check for a validity by removing from the front
+            // One more try for backtracking: check for validity by removing from the front
             while res == NotInTrie && !state.sequence.is_empty() {
                 state.sequence.remove(0);
                 res = sequences.get_or_descendant_exists(&state.sequence);
             }
-            if res == NotInTrie {
-                log::debug!("got invalid seq; exiting seq mode");
+            if res == NotInTrie || state.sequence.is_empty() {
+                log::debug!("invalid keys for seq");
                 cancel_sequence(state, kbd_out)?;
             }
         }
@@ -271,6 +271,7 @@ pub(super) fn do_successful_sequence_termination(
     seq_type: EndSequenceType,
 ) -> Result<(), anyhow::Error> {
     log::debug!("sequence complete; tapping fake key");
+    state.activity = Inactive;
     let sequence = match seq_type {
         EndSequenceType::Standard => &state.sequence,
         EndSequenceType::Overlap => &state.overlapped_sequence,
@@ -340,11 +341,12 @@ pub(super) fn do_successful_sequence_termination(
     }
     layout.event(Event::Press(i, j));
     layout.event(Event::Release(i, j));
-    state.activity = Inactive;
     Ok(())
 }
 
 pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+    state.activity = Inactive;
+    log::debug!("sequence cancelled");
     match state.sequence_input_mode {
         SequenceInputMode::HiddenDelayType => {
             for code in state.sequence.iter().copied() {
@@ -358,6 +360,5 @@ pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -
         }
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
-    state.activity = Inactive;
     Ok(())
 }
