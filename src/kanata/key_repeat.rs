@@ -15,12 +15,20 @@ impl Kanata {
     }
 
     pub(super) fn handle_repeat_actual(&mut self, event: &KeyEvent) -> Result<()> {
-        if self.sequence_state.is_some() {
-            // While in sequence mode, don't send key repeats. I can't imagine it's a helpful use
-            // case for someone trying to type in a sequence that they want to rely on key repeats
-            // to finish a sequence. I suppose one might want to do repeat in order to try and
-            // cancel an input sequence... I'll wait for a user created issue to deal with this.
-            return Ok(());
+        if let Some(state) = self.sequence_state.get_active() {
+            // While in non-visible sequence mode, don't send key repeats. I can't imagine it's a
+            // helpful use case for someone trying to type in a sequence that they want to rely on
+            // key repeats to finish a sequence. I suppose one might want to do repeat in order to
+            // try and cancel an input sequence... I'll wait for a user created issue to deal with
+            // this.
+            //
+            // It should be noted that even with visible-backspaced, key repeat does not interact
+            // with the sequence; the key is output with repeat as normal. Which might be
+            // surprising/unexpected. It's technically fixable but I don't want to add the code to
+            // do that if nobody needs it.
+            if state.sequence_input_mode != SequenceInputMode::VisibleBackspaced {
+                return Ok(());
+            }
         }
         self.cur_keys.extend(self.layout.bm().keycodes());
         self.overrides

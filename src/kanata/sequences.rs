@@ -1,5 +1,13 @@
 use super::*;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SequenceActivity {
+    Inactive,
+    Active,
+}
+
+use SequenceActivity::*;
+
 pub struct SequenceState {
     /// Keeps track of standard sequence state.
     /// This includes regular keys, e.g. `a b c`
@@ -16,6 +24,52 @@ pub struct SequenceState {
     pub ticks_until_timeout: u16,
     /// User-configured sequence timeout setting.
     pub sequence_timeout: u16,
+    /// Whether the sequence is active or not.
+    pub activity: SequenceActivity,
+}
+
+impl SequenceState {
+    pub fn new() -> Self {
+        Self {
+            sequence: vec![],
+            overlapped_sequence: vec![],
+            sequence_input_mode: SequenceInputMode::HiddenSuppressed,
+            ticks_until_timeout: 0,
+            sequence_timeout: 0,
+            activity: Inactive,
+        }
+    }
+
+    /// Updates the sequence state parameters, clears buffers, and sets the state to active.
+    pub fn activate(&mut self, input_mode: SequenceInputMode, timeout: u16) {
+        self.sequence_input_mode = input_mode;
+        self.sequence_timeout = timeout;
+        self.ticks_until_timeout = timeout;
+        self.sequence.clear();
+        self.overlapped_sequence.clear();
+        self.activity = Active;
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.activity == Active
+    }
+
+    pub fn get_active(&mut self) -> Option<&mut Self> {
+        match self.activity {
+            Active => Some(self),
+            Inactive => None,
+        }
+    }
+
+    pub fn is_inactive(&self) -> bool {
+        self.activity == Inactive
+    }
+}
+
+impl Default for SequenceState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub(super) fn get_mod_mask_for_cur_keys(cur_keys: &[KeyCode]) -> u16 {
@@ -38,8 +92,7 @@ pub(super) fn do_sequence_press_logic(
     sequences: &kanata_parser::trie::Trie,
     sequence_backtrack_modcancel: bool,
     layout: &mut BorrowedKLayout,
-) -> Result<bool, anyhow::Error> {
-    let mut clear_sequence_state = false;
+) -> Result<(), anyhow::Error> {
     state.ticks_until_timeout = state.sequence_timeout;
     let osc = OsCode::from(*k);
     use kanata_parser::trie::GetOrDescendentExistsResult::*;
@@ -163,15 +216,14 @@ pub(super) fn do_sequence_press_logic(
             res = sequences.get_or_descendant_exists(&state.sequence);
         }
         (true, true) => {
-            // One more try for backtracking: check for a validity by removing from the front
+            // One more try for backtracking: check for validity by removing from the front
             while res == NotInTrie && !state.sequence.is_empty() {
                 state.sequence.remove(0);
                 res = sequences.get_or_descendant_exists(&state.sequence);
             }
-            if res == NotInTrie {
-                log::debug!("got invalid seq; exiting seq mode");
+            if res == NotInTrie || state.sequence.is_empty() {
+                log::debug!("invalid keys for seq");
                 cancel_sequence(state, kbd_out)?;
-                clear_sequence_state = true;
             }
         }
     }
@@ -180,10 +232,8 @@ pub(super) fn do_sequence_press_logic(
     if let HasValue((i, j)) = res_overlapped {
         // First, check for a valid simultaneous completion.
         // Simultaneous completion should take priority.
-        clear_sequence_state = true;
         do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Overlap)?;
     } else if let HasValue((i, j)) = res {
-        clear_sequence_state = true;
         // Try terminating the overlapping and check if simultaneous termination worked.
         // Simultaneous completion should take priority.
         state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
@@ -207,7 +257,7 @@ pub(super) fn do_sequence_press_logic(
             )?;
         }
     }
-    Ok(clear_sequence_state)
+    Ok(())
 }
 
 use kanata_keyberon::key_code::KeyCode::*;
@@ -221,6 +271,7 @@ pub(super) fn do_successful_sequence_termination(
     seq_type: EndSequenceType,
 ) -> Result<(), anyhow::Error> {
     log::debug!("sequence complete; tapping fake key");
+    state.activity = Inactive;
     let sequence = match seq_type {
         EndSequenceType::Standard => &state.sequence,
         EndSequenceType::Overlap => &state.overlapped_sequence,
@@ -293,7 +344,9 @@ pub(super) fn do_successful_sequence_termination(
     Ok(())
 }
 
-pub(super) fn cancel_sequence(state: &SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+    state.activity = Inactive;
+    log::debug!("sequence cancelled");
     match state.sequence_input_mode {
         SequenceInputMode::HiddenDelayType => {
             for code in state.sequence.iter().copied() {
