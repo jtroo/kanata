@@ -53,6 +53,8 @@ pub struct CfgOptions {
     pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub win_tray_icon: Option<String>,
 }
 
 impl Default for CfgOptions {
@@ -105,6 +107,8 @@ impl Default for CfgOptions {
             windows_interception_keyboard_hwids: None,
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            win_tray_icon: None,
         }
     }
 }
@@ -387,6 +391,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 log::warn!("macos-dev-names-include is empty");
                             }
                             cfg.macos_dev_names_include = Some(dev_names);
+                        }
+                    }
+                    "win-tray-icon" => {
+                        #[cfg(all(target_os = "windows", feature = "gui"))]
+                        {
+                            let icon_path = sexpr_to_str_or_err(val, label)?;
+                            if icon_path.is_empty() {
+                                log::warn!("win-tray-icon is empty");
+                            }
+                            cfg.win_tray_icon = Some(icon_path.to_string());
                         }
                     }
 
