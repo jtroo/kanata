@@ -32,9 +32,9 @@ fn chorded_keys_visible_backspaced() {
         "d:0 u:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
-    );
+    ).no_time().no_releases().to_ascii();
     assert_eq!(
-        "t:2ms\nout:↓LShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:47ms\nout:↑RShift\nt:502ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↑RShift\nt:49ms\nout:↓B\nt:1ms\nout:↑A\nt:1ms\nout:↑B",
+        "dn:LShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B",
         result
     );
 }

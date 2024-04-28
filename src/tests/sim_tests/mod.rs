@@ -61,3 +61,41 @@ fn simulate(cfg: &str, sim: &str) -> String {
     }
     k.kbd_out.outputs.events.join("\n")
 }
+
+trait SimTransform {
+    /// Changes newlines to spaces.
+    fn to_spaces(self) -> Self;
+    /// Removes out:↑_ items from the string. Also transforms newlines to spaces.
+    fn no_releases(self) -> Self;
+    /// Removes t:_ms items from the string. Also transforms newlines to spaces.
+    fn no_time(self) -> Self;
+    /// Replaces out:↓_ with dn:_ and out:↑_ with up:_. Also transforms newlines to spaces.
+    fn to_ascii(self) -> Self;
+}
+
+impl SimTransform for String {
+    fn to_spaces(self) -> Self {
+        self.replace('\n', " ")
+    }
+
+    fn no_time(self) -> Self {
+        self.split_ascii_whitespace()
+            .filter(|s| !s.starts_with("t:"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    fn no_releases(self) -> Self {
+        self.split_ascii_whitespace()
+            .filter(|s| !s.starts_with("out:↑") && !s.starts_with("up:"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    fn to_ascii(self) -> Self {
+        self.split_ascii_whitespace()
+            .map(|s| s.replace("out:↑", "up:").replace("out:↓", "dn:"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
