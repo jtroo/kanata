@@ -115,6 +115,15 @@ pub mod system_tray_ui {
   impl Deref    for SystemTrayUi {type Target = SystemTray;fn deref    (&    self) -> &    Self::Target {&    self.inner}}
 }
 
+pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
+  let k       	= cfg.lock();
+  let paths   	= &k.cfg_paths;
+  let path_cur	= &paths[0];
+  let app_data	= SystemTrayData {tooltip:path_cur.display().to_string()};
+  let app     	= SystemTray {app_data:RefCell::new(app_data), ..Default::default()};
+  SystemTray::build_ui(app).context("Failed to build UI")
+}
+
 pub use log::*;
 pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
 pub use winapi::shared::minwindef::BOOL;
