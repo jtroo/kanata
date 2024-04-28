@@ -184,6 +184,8 @@ pub(super) fn do_sequence_press_logic(
     Ok(clear_sequence_state)
 }
 
+use kanata_keyberon::key_code::KeyCode::*;
+
 pub(super) fn do_successful_sequence_termination(
     kbd_out: &mut KbdOut,
     state: &mut SequenceState,
@@ -195,15 +197,17 @@ pub(super) fn do_successful_sequence_termination(
     match state.sequence_input_mode {
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::HiddenDelayType => {}
         SequenceInputMode::VisibleBackspaced => {
-            // Release all keys since they might modify the behaviour of
-            // backspace into an undesirable behaviour, for example deleting
-            // more characters than it should.
+            // Release mod keys and backspace because they can cause backspaces to mess up.
             layout.states.retain(|s| match s {
                 State::NormalKey { keycode, .. } => {
-                    // Ignore the error, ugly to return it from retain, and
-                    // this is very unlikely to happen anyway.
-                    let _ = release_key(kbd_out, keycode.into());
-                    false
+                    if matches!(keycode, LCtrl | RCtrl | LAlt | RAlt | LGui | RGui) {
+                        // Ignore the error, ugly to return it from retain, and
+                        // this is very unlikely to happen anyway.
+                        let _ = release_key(kbd_out, keycode.into());
+                        false
+                    } else {
+                        true
+                    }
                 }
                 _ => true,
             });
