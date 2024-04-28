@@ -7,12 +7,13 @@ pub mod kanata;
 pub mod oskbd;
 pub mod tcp_server;
 pub mod lib_main;
-#[cfg(feature = "gui")]
-pub mod m_gui;
-#[cfg(feature = "gui")]
-pub use m_gui::*;
+#[cfg(all(target_os = "windows", feature = "gui"))]
+pub mod m_gui_win;
+#[cfg(all(target_os = "windows", feature = "gui"))]
+pub use m_gui_win::*;
 #[cfg(feature = "gui")]
 pub use win_dbg_logger as log_win;
+#[cfg(feature = "gui")]
 pub use win_dbg_logger::WINDBG_LOGGER;
 
 pub use kanata::*;

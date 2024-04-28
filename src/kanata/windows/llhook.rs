@@ -7,7 +7,7 @@ use std::time;
 use super::PRESSED_KEYS;
 use crate::kanata::*;
 #[cfg(feature = "gui")]
-use crate::m_gui;
+use crate::m_gui_win::*;
 #[cfg(feature = "gui")]
 extern crate native_windows_gui    as nwg;
 #[cfg(feature = "gui")]
@@ -77,7 +77,7 @@ impl Kanata {
         });
 
         #[cfg(feature = "gui")]
-        let _ui = m_gui::SystemTray::build_ui(Default::default()).expect("Failed to build UI");
+        let _ui = SystemTray::build_ui(Default::default()).expect("Failed to build UI");
         // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
         eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
