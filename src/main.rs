@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "gui", windows_subsystem = "windows")] //disable console on Windows
 #[cfg(feature = "gui")]
 use kanata_state_machine::m_gui::main_gui;
 
