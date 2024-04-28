@@ -248,7 +248,6 @@ EnableUIAccess_SignFile(ExePath, CertCtx, Name) {
   hr := DllCall("MSSign32\SignerSign"
     , "ptr",subject_info, "ptr",cert_info, "ptr",sig_info
     , "ptr",0, "ptr",0, "ptr",0, "ptr",0, "hresult") ; pProviderInfo pwszHttpTimeStamp psRequest pSipData
-  msgbox(' hr= ' hr)
 
   struct(args*) => (
     args.Push(b := Buffer(args[2], 0)),
