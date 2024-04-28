@@ -188,9 +188,23 @@ pub(super) fn do_sequence_press_logic(
         // Simultaneous completion should take priority.
         state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
         if let HasValue((oi, oj)) = sequences.get_or_descendant_exists(&state.overlapped_sequence) {
-            do_successful_sequence_termination(kbd_out, state, layout, oi, oj, EndSequenceType::Overlap)?;
+            do_successful_sequence_termination(
+                kbd_out,
+                state,
+                layout,
+                oi,
+                oj,
+                EndSequenceType::Overlap,
+            )?;
         } else {
-            do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Standard)?;
+            do_successful_sequence_termination(
+                kbd_out,
+                state,
+                layout,
+                i,
+                j,
+                EndSequenceType::Standard,
+            )?;
         }
     }
     Ok(clear_sequence_state)
