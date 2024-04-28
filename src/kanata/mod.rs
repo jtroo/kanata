@@ -455,6 +455,11 @@ impl Kanata {
         })
     }
 
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub fn request_live_reload(&mut self) -> Result<()> {
+        self.live_reload_requested = true;
+        Ok(())
+    }
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
