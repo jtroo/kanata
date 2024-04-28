@@ -105,6 +105,12 @@ pub struct Kanata {
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
+    /// The user configuration for sequences be permanently on.
+    pub sequence_always_on: bool,
+    /// Default sequence input mode for use with always-on.
+    pub sequence_input_mode: SequenceInputMode,
+    /// Default sequence timeout for use with always-on.
+    pub sequence_timeout: u16,
     /// Tracks sequence progress. Is Some(...) when in sequence mode and None otherwise.
     pub sequence_state: Option<SequenceState>,
     /// Valid sequences defined in the user configuration.
@@ -305,6 +311,9 @@ impl Kanata {
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_always_on: cfg.options.sequence_always_on,
+            sequence_input_mode: cfg.options.sequence_input_mode,
+            sequence_timeout: cfg.options.sequence_timeout,
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: instant::Instant::now(),
@@ -395,6 +404,9 @@ impl Kanata {
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_always_on: cfg.options.sequence_always_on,
+            sequence_input_mode: cfg.options.sequence_input_mode,
+            sequence_timeout: cfg.options.sequence_timeout,
             sequence_state: None,
             sequences: cfg.sequences,
             last_tick: instant::Instant::now(),
@@ -455,6 +467,9 @@ impl Kanata {
         #[cfg(target_os = "windows")]
         set_win_altgr_behaviour(cfg.options.windows_altgr);
         self.sequence_backtrack_modcancel = cfg.options.sequence_backtrack_modcancel;
+        self.sequence_always_on = cfg.options.sequence_always_on;
+        self.sequence_input_mode = cfg.options.sequence_input_mode;
+        self.sequence_timeout = cfg.options.sequence_timeout;
         self.layout = cfg.layout;
         self.key_outputs = cfg.key_outputs;
         self.layer_info = cfg.layer_info;
@@ -969,6 +984,17 @@ impl Kanata {
             // allocations and logic.
             self.prev_keys.push(*k);
             self.last_pressed_key = *k;
+
+            if self.sequence_always_on && self.sequence_state.is_some() {
+                self.sequence_state = Some(SequenceState {
+                    sequence: vec![],
+                    overlapped_sequence: vec![],
+                    sequence_input_mode: self.sequence_input_mode,
+                    ticks_until_timeout: self.sequence_timeout,
+                    sequence_timeout: self.sequence_timeout,
+                });
+            }
+
             match &mut self.sequence_state {
                 None => {
                     log::debug!("key press     {:?}", k);

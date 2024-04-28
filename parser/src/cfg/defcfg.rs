@@ -14,6 +14,7 @@ pub struct CfgOptions {
     pub sequence_timeout: u16,
     pub sequence_input_mode: SequenceInputMode,
     pub sequence_backtrack_modcancel: bool,
+    pub sequence_always_on: bool,
     pub log_layer_changes: bool,
     pub delegate_to_first_layer: bool,
     pub movemouse_inherit_accel_state: bool,
@@ -63,6 +64,7 @@ impl Default for CfgOptions {
             sequence_timeout: 1000,
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
             sequence_backtrack_modcancel: true,
+            sequence_always_on: false,
             log_layer_changes: true,
             delegate_to_first_layer: false,
             movemouse_inherit_accel_state: false,
@@ -136,6 +138,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         let v = sexpr_to_str_or_err(val, label)?;
                         cfg.sequence_input_mode = SequenceInputMode::try_from_str(v)
                             .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
+                    }
+                    "sequence-always-on" => {
+                        cfg.sequence_always_on = parse_defcfg_val_bool(val, label)?
                     }
                     "dynamic-macro-max-presses" => {
                         cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, label, false)?;
