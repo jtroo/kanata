@@ -37,7 +37,9 @@ fn chorded_keys_visible_backspaced() {
     .no_releases()
     .to_ascii();
     assert_eq!(
-        "dn:LShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B",
+        "dn:LShift dn:A dn:B dn:BSpace dn:BSpace dn:Z \
+         dn:RShift dn:A dn:B dn:BSpace dn:BSpace dn:Z \
+         dn:RShift dn:A dn:B",
         result
     );
 }
