@@ -1,3 +1,4 @@
+use anyhow::Context;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
@@ -28,7 +29,7 @@ impl Kanata {
                 panic!("Could not attach to console");
             }
         };
-        native_windows_gui::init()?;
+        native_windows_gui::init().context("Failed to init Native Windows GUI")?;
 
         let (preprocess_tx, preprocess_rx) = sync_channel(100);
         start_event_preprocessor(preprocess_rx, tx);
@@ -77,7 +78,7 @@ impl Kanata {
         });
 
         #[cfg(feature = "gui")]
-        let _ui = SystemTray::build_ui(Default::default()).expect("Failed to build UI");
+        let _ui = SystemTray::build_ui(Default::default()).context("Failed to build UI")?;
         // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
         eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
