@@ -103,7 +103,7 @@ cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["native-windows-derive", "embed-resource", "indoc", "regex","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared"]
+gui = ["win_manifest","native-windows-derive", "embed-resource", "indoc", "regex","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared"]
 
 [profile.release]
 opt-level = "z"
