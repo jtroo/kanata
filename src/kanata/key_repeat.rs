@@ -21,6 +21,11 @@ impl Kanata {
             // key repeats to finish a sequence. I suppose one might want to do repeat in order to
             // try and cancel an input sequence... I'll wait for a user created issue to deal with
             // this.
+            //
+            // It should be noted that even with visible-backspaced, key repeat does not interact
+            // with the sequence; the key is output with repeat as normal. Which might be
+            // surprising/unexpected. It's technically fixable but I don't want to add the code to
+            // do that if nobody needs it.
             if state.sequence_input_mode != SequenceInputMode::VisibleBackspaced {
                 return Ok(());
             }
