@@ -44,7 +44,7 @@ fn heaps_alg<T: Clone>(k: usize, a: &mut [T], outs: &mut Vec<Vec<T>>) {
             } else {
                 a.swap(0, k - 1);
             }
-            heaps_alg(k-1, a, outs);
+            heaps_alg(k - 1, a, outs);
         }
     }
 }
