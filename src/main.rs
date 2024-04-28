@@ -1,17 +1,15 @@
 #![cfg_attr(feature = "gui", windows_subsystem = "windows")] //disable console on Windows
-#[cfg(feature = "gui")]
-use kanata_state_machine::m_gui::main_gui;
 
-#[cfg(not(feature = "gui"))] use kanata_state_machine::lib_main::lib_main_cli;
-#[cfg(    feature = "gui" )] use kanata_state_machine::lib_main::lib_main_gui;
-
-use anyhow::{Result};
 #[cfg(not(feature = "gui"))]
-use anyhow::{Result};
+use kanata_state_machine::lib_main::lib_main_cli;
+#[cfg(feature = "gui")]
+use kanata_state_machine::lib_main::lib_main_gui;
+
+#[cfg(not(feature = "gui"))]
+use anyhow::Result;
 #[cfg(not(feature = "gui"))]
 fn main() -> Result<()> {
-    let ret = lib_main_cli();
-    ret
+    lib_main_cli()
 }
 
 #[cfg(feature = "gui")]

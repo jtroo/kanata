@@ -1,4 +1,3 @@
-use core::cell::RefCell;
 use anyhow::Context;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -11,13 +10,9 @@ use crate::kanata::*;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 use crate::m_gui_win::*;
 #[cfg(all(target_os = "windows", feature = "gui"))]
-extern crate native_windows_gui    as nwg;
-#[cfg(all(target_os = "windows", feature = "gui"))]
 extern crate native_windows_derive as nwd;
 #[cfg(all(target_os = "windows", feature = "gui"))]
-use nwd::NwgUi;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-use nwg::NativeUi;
+extern crate native_windows_gui as nwg;
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
@@ -79,13 +74,13 @@ impl Kanata {
             true
         });
         #[cfg(all(target_os = "windows", feature = "gui"))]
-        let _ui = build_tray(&_cfg)?;
+        let _ui = build_tray(&_kanata)?;
 
         native_windows_gui::dispatch_thread_events(); // The event loop is also required for the low-level keyboard hook to work.
-        // if *IS_TERM  {
-          // eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
-          // let _ = std::io::stdin().read_line(&mut String::new());
-        // }
+                                                      // if *IS_TERM  {
+                                                      // eprintln!("\nPress enter to exit"); // moved from main to not panic on a disconnected channel
+                                                      // let _ = std::io::stdin().read_line(&mut String::new());
+                                                      // }
         Ok(())
     }
 }

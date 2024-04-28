@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 pub mod kanata;
-pub mod oskbd;
-pub mod tcp_server;
 pub mod lib_main;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub mod m_gui_win;
+pub mod oskbd;
+pub mod tcp_server;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub use m_gui_win::*;
 #[cfg(all(target_os = "windows", feature = "gui"))]

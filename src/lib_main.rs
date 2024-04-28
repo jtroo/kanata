@@ -1,9 +1,9 @@
+use crate::*;
 use anyhow::{bail, Result};
 use clap::Parser;
 #[cfg(all(target_os = "windows", feature = "gui"))]
-use clap::{CommandFactory,error::ErrorKind};
+use clap::{error::ErrorKind, CommandFactory};
 use kanata_parser::cfg;
-use crate::*;
 use log::info;
 use simplelog::{format_description, *};
 use std::path::PathBuf;
@@ -98,26 +98,38 @@ kanata.kbd in the current working directory and
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
-    #[cfg(all(not(target_os = "windows"), not(feature = "gui")))]
+    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
     let args = Args::parse();
-    #[cfg(all(    target_os = "windows",      feature = "gui" ))]
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     let args = match Args::try_parse() {
-        Ok (args )      => args,
-        Err(e)          => {
-            if *IS_TERM   { // init loggers without config so '-help' "error" or real ones can be printed
+        Ok(args) => args,
+        Err(e) => {
+            if *IS_TERM {
+                // init loggers without config so '-help' "error" or real ones can be printed
                 let mut log_cfg = ConfigBuilder::new();
-                CombinedLogger::init(vec![TermLogger::new(LevelFilter::Debug,log_cfg.build(),TerminalMode::Mixed,ColorChoice::AlwaysAnsi,),
-                    log_win::windbg_simple_combo(LevelFilter::Debug),]).expect("logger can init");
-            } else {log_win::init();log::set_max_level(LevelFilter::Debug);} // doesn't panic
+                CombinedLogger::init(vec![
+                    TermLogger::new(
+                        LevelFilter::Debug,
+                        log_cfg.build(),
+                        TerminalMode::Mixed,
+                        ColorChoice::AlwaysAnsi,
+                    ),
+                    log_win::windbg_simple_combo(LevelFilter::Debug),
+                ])
+                .expect("logger can init");
+            } else {
+                log_win::init();
+                log::set_max_level(LevelFilter::Debug);
+            } // doesn't panic
             match e.kind() {
-                ErrorKind::DisplayHelp  => {
+                ErrorKind::DisplayHelp => {
                     let mut cmd = lib_main::Args::command();
                     let help = cmd.render_help();
                     info!("{help}");
                     log::set_max_level(LevelFilter::Off);
-                    return Err(anyhow!(""))
-                },
-                _   => return Err(e.into()),
+                    return Err(anyhow!(""));
+                }
+                _ => return Err(e.into()),
             }
         }
     };
@@ -141,14 +153,29 @@ fn cli_init() -> Result<ValidatedArgs> {
         eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
     log_cfg.set_time_format_rfc3339();
-    #[cfg(all(not(target_os = "windows"), not(feature = "gui")))]
-        CombinedLogger::init(vec![TermLogger::new(log_lvl,log_cfg.build(),TerminalMode::Mixed,ColorChoice::AlwaysAnsi,
-        )]).expect("logger can init");
-    #[cfg(all(    target_os = "windows",      feature = "gui" ))]
-    if *IS_TERM   {
-        CombinedLogger::init(vec![TermLogger::new(log_lvl,log_cfg.build(),TerminalMode::Mixed,ColorChoice::AlwaysAnsi,),
-            log_win::windbg_simple_combo(log_lvl),]).expect("logger can init");
-    } else {CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl),]).expect("logger can init");}
+    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
+    CombinedLogger::init(vec![TermLogger::new(
+        log_lvl,
+        log_cfg.build(),
+        TerminalMode::Mixed,
+        ColorChoice::AlwaysAnsi,
+    )])
+    .expect("logger can init");
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    if *IS_TERM {
+        CombinedLogger::init(vec![
+            TermLogger::new(
+                log_lvl,
+                log_cfg.build(),
+                TerminalMode::Mixed,
+                ColorChoice::AlwaysAnsi,
+            ),
+            log_win::windbg_simple_combo(log_lvl),
+        ])
+        .expect("logger can init");
+    } else {
+        CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl)]).expect("logger can init");
+    }
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     log::info!("using LLHOOK+SendInput for keyboard IO");
@@ -199,8 +226,10 @@ fn main_impl() -> Result<()> {
     let args = cli_init()?;
     let kanata_arc = Kanata::new_arc(&args)?;
 
-    #[cfg(all(    target_os = "windows",      feature = "gui" ))]
-    if CFG.set(kanata_arc.clone()).is_err() {warn!("Someone else set our ‘CFG’");}; // store a clone of cfg so that we can ask it to reset itself
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    if CFG.set(kanata_arc.clone()).is_err() {
+        warn!("Someone else set our ‘CFG’");
+    }; // store a clone of cfg so that we can ask it to reset itself
 
     if !args.nodelay {
         info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
@@ -256,22 +285,26 @@ pub fn lib_main_cli() -> Result<()> {
     let _ = std::io::stdin().read_line(&mut String::new());
     ret
 }
-#[cfg(all(    target_os = "windows",      feature = "gui" ))]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 use parking_lot::Mutex;
-#[cfg(all(    target_os = "windows",      feature = "gui" ))]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 use std::sync::{Arc, OnceLock};
-#[cfg(all(    target_os = "windows",      feature = "gui" ))]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 pub static CFG: OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
 
-#[cfg(all(    target_os = "windows",      feature = "gui" ))]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 pub fn lib_main_gui() {
-  let _attach_console = *IS_CONSOLE;
-  let ret = main_impl();
-  if let Err(ref e) = ret {log::error!("{e}\n");}
-  // if *IS_TERM    {
+    let _attach_console = *IS_CONSOLE;
+    let ret = main_impl();
+    if let Err(ref e) = ret {
+        log::error!("{e}\n");
+    }
+    // if *IS_TERM    {
     // eprintln!("\nPress enter to exit");
     // let _ = std::io::stdin().read_line(&mut String::new()); // TODO: panics on Err(TryRecvError::Disconnected) @ Win/llhook, move to llhook OR coordinate with exit(&self) {nwg::stop_thread_dispatch();}? OR just ignore, why do we need this at all?
-  // }
+    // }
 
-  unsafe {FreeConsole();}
+    unsafe {
+        FreeConsole();
+    }
 }

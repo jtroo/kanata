@@ -1,12 +1,12 @@
 fn main() -> std::io::Result<()> {
-    #[cfg(all(target_os = "windows", any(feature = "win_manifest",feature = "gui")))]
+    #[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
     {
         windows::build()?;
     }
     Ok(())
 }
 
-#[cfg(all(target_os = "windows", any(feature = "win_manifest",feature = "gui")))]
+#[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
 mod windows {
     use indoc::formatdoc;
     use regex::Regex;
