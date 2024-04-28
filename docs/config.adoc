@@ -2625,11 +2625,11 @@ precisely, the action triggered is:
     dotcom (. S-3)
     dotorg (. S-4)
 
-             ;; The shifted letters in parentheses means a single press of lsft
-             ;; must remain held while both h and then s are pressed.
-             ;; This is not the same as S-h S-s, which means that the lsft key
-             ;; must be released and repressed between the h and s presses.
-    https (. S-(h s))
+    ;;     The shifted letters in parentheses means a single press of lsft
+    ;;     must remain held while both h and then s are pressed.
+    ;;     This is not the same as S-h S-s, which means that the lsft key
+    ;;     must be released and repressed between the h and s presses.
+    https (S-(h s))
 )
 (defvirtualkeys
     dotcom (macro . c o m)
@@ -2652,11 +2652,12 @@ alongside templates to define sequences below.
 (deflayer base
         sldr nop0 nop1 nop2)
 (deftemplate seq (vk-name input-keys output-action)
-  (defvirtualkeys $vk-name $output-action)
-  (defseq $vk-name $input-keys)
+        sldr(defvirtualkeys $vk-name $output-action)
+        sldr(defseq $vk-name $input-keys)
 )
-(template-expand seq dotcom (nop0 nop1) (macro . c o m))
-(template-expand seq dotorg (nop0 nop2) (macro . o r g))
+;; template-expand has a shortened form: t!
+(t! seq dotcom (nop0 nop1) (macro . c o m))
+(t! seq dotorg (nop0 nop2) (macro . o r g))
 ----
 
 If 10 special nop keys do not seem sufficient,
@@ -2683,11 +2684,20 @@ while treating `nop7-nop9` as prefixes:
 )
 ----
 
-For more context about sequences, you can read the
-https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
-You may also be interested in
-https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[the document describing chords in sequences]
-to read about how chords in sequences behave.
+==== Overlapping keys in any order
+
+Within the key list of `defseq` configuration items,
+the special `O-` list prefix can be used to denote a set of keys that must
+all be pressed before any are released in order to match the sequence.
+
+For an example, `O-(a b c)` is equivalent to `O-(c b a)`.
+
+.Example:
+[source]
+----
+(defvirtualkey hello (macro h (unshift e l) 5 (unshift l o)))
+(defseq hello (O-(h l o)))
+----
 
 ==== Override the global timeout and input mode
 
@@ -2713,6 +2723,14 @@ The second parameter is an override for `sequence-input-mode`:
 ;; Enter sequence mode and input . with a timeout of 250 and using hidden-delay-type
 (defalias dot-sequence (macro (sequence 250 hidden-delay-type) 10 .))
 ----
+
+==== More about sequences
+
+For more context about sequences, you can read the
+https://github.com/jtroo/kanata/issues/97[design and motivation of sequences].
+You may also be interested in
+https://github.com/jtroo/kanata/blob/main/docs/sequence-adding-chords-ideas.md[the document describing chords in sequences]
+to read about how chords in sequences behave.
 
 [[input-chords]]
 === Input chords
@@ -3089,6 +3107,7 @@ because the current input is in the recency `1` slot.
 The top-level configuration item `deftemplate`
 declares a template that can be expanded multiple times
 via the list item `template-expand`.
+The short form of `template-expand` is `t!`.
 
 The parameters to `deftemplate` in order are:
 
@@ -3161,7 +3180,8 @@ you wouldn't want this. Rather than retyping the code with `fork` and
 )
 
 (template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
-(template-expand left-hand-chords dvorak a o e u dva dvo dve dvu)
+;; t! is short for template-expand
+(t! left-hand-chords dvorak a o e u dva dvo dve dvu)
 
 (defsrc a s d f)
 (deflayer dvorak @dva @dvo @dve @dvu)
@@ -3180,7 +3200,7 @@ you wouldn't want this. Rather than retyping the code with `fork` and
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
        ;; usable even inside defsrc
-  caps (template-expand home-row j)                            ret
+  caps (t! home-row j)                            ret
   lsft z    x    c    v    b    n    m    ,    .    /    rsft
   lctl lmet lalt           spc            ralt rmet rctl
 )
@@ -3189,7 +3209,7 @@ you wouldn't want this. Rather than retyping the code with `fork` and
   grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
   tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
                                  ;; lists can be passed in too!
-  caps (template-expand home-row (tap-hold 200 200 j lctl))    ret
+  caps (t! home-row (tap-hold 200 200 j lctl))    ret
   lsft z    x    c    v    b    n    m    ,    .    /    rsft
   lctl lmet lalt           spc            ralt rmet rctl
 )
