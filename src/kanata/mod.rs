@@ -807,7 +807,6 @@ impl Kanata {
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
                 cancel_sequence(state, &mut self.kbd_out)?;
-                state.activity = SequenceActivity::Inactive;
             }
         }
         Ok(())
