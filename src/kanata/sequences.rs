@@ -29,6 +29,17 @@ pub struct SequenceState {
 }
 
 impl SequenceState {
+    pub fn new() -> Self {
+        Self {
+            sequence: vec![],
+            overlapped_sequence: vec![],
+            sequence_input_mode: SequenceInputMode::HiddenSuppressed,
+            ticks_until_timeout: 0,
+            sequence_timeout: 0,
+            activity: Inactive,
+        }
+    }
+
     /// Updates the sequence state parameters, clears buffers, and sets the state to active.
     pub fn activate(&mut self, input_mode: SequenceInputMode, timeout: u16) {
         self.sequence_input_mode = input_mode;
@@ -52,6 +63,12 @@ impl SequenceState {
 
     pub fn is_inactive(&self) -> bool {
         self.activity == Inactive
+    }
+}
+
+impl Default for SequenceState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
