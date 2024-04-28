@@ -32,7 +32,10 @@ fn chorded_keys_visible_backspaced() {
         "d:0 u:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
-    ).no_time().no_releases().to_ascii();
+    )
+    .no_time()
+    .no_releases()
+    .to_ascii();
     assert_eq!(
         "dn:LShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B dn:BSpace dn:BSpace dn:Z dn:RShift dn:A dn:B",
         result
