@@ -112,7 +112,7 @@ pub struct Kanata {
     /// Default sequence timeout for use with always-on.
     pub sequence_timeout: u16,
     /// Tracks sequence progress. Is Some(...) when in sequence mode and None otherwise.
-    pub sequence_state: Option<SequenceState>,
+    pub sequence_state: SequenceState,
     /// Valid sequences defined in the user configuration.
     pub sequences: cfg::KeySeqsToFKeys,
     /// Stores the user recored dynamic macros.
@@ -314,7 +314,14 @@ impl Kanata {
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
-            sequence_state: None,
+            sequence_state: SequenceState {
+                sequence: vec![],
+                overlapped_sequence: vec![],
+                sequence_input_mode: cfg.options.sequence_input_mode,
+                ticks_until_timeout: cfg.options.sequence_timeout,
+                sequence_timeout: cfg.options.sequence_timeout,
+                activity: SequenceActivity::Inactive,
+            },
             sequences: cfg.sequences,
             last_tick: instant::Instant::now(),
             time_remainder: 0,
@@ -407,7 +414,14 @@ impl Kanata {
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
-            sequence_state: None,
+            sequence_state: SequenceState {
+                sequence: vec![],
+                overlapped_sequence: vec![],
+                sequence_input_mode: cfg.options.sequence_input_mode,
+                ticks_until_timeout: cfg.options.sequence_timeout,
+                sequence_timeout: cfg.options.sequence_timeout,
+                activity: SequenceActivity::Inactive,
+            },
             sequences: cfg.sequences,
             last_tick: instant::Instant::now(),
             time_remainder: 0,
@@ -788,12 +802,12 @@ impl Kanata {
     }
 
     fn tick_sequence_state(&mut self) -> Result<()> {
-        if let Some(state) = &mut self.sequence_state {
+        if let Some(state) = self.sequence_state.get_active() {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
                 cancel_sequence(state, &mut self.kbd_out)?;
-                self.sequence_state = None;
+                state.activity = SequenceActivity::Inactive;
             }
         }
         Ok(())
@@ -937,7 +951,7 @@ impl Kanata {
         }
 
         if cur_keys.is_empty() && !self.prev_keys.is_empty() {
-            if let Some(state) = &mut self.sequence_state {
+            if let Some(state) = self.sequence_state.get_active() {
                 use kanata_parser::trie::GetOrDescendentExistsResult::*;
                 state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
                 match self
@@ -953,7 +967,6 @@ impl Kanata {
                             j,
                             EndSequenceType::Overlap,
                         )?;
-                        self.sequence_state = None;
                     }
                     NotInTrie => {
                         // Overwrite overlapped with non-overlapped tracking
@@ -985,36 +998,25 @@ impl Kanata {
             self.prev_keys.push(*k);
             self.last_pressed_key = *k;
 
-            if self.sequence_always_on && self.sequence_state.is_some() {
-                self.sequence_state = Some(SequenceState {
-                    sequence: vec![],
-                    overlapped_sequence: vec![],
-                    sequence_input_mode: self.sequence_input_mode,
-                    ticks_until_timeout: self.sequence_timeout,
-                    sequence_timeout: self.sequence_timeout,
-                });
+            if self.sequence_always_on && self.sequence_state.is_inactive() {
+                self.sequence_state
+                    .activate(self.sequence_input_mode, self.sequence_timeout);
             }
 
-            match &mut self.sequence_state {
-                None => {
-                    log::debug!("key press     {:?}", k);
-                    if let Err(e) = press_key(&mut self.kbd_out, k.into()) {
-                        bail!("failed to press key: {:?}", e);
-                    }
-                }
-                Some(state) => {
-                    let clear_sequence_state = do_sequence_press_logic(
-                        state,
-                        k,
-                        get_mod_mask_for_cur_keys(cur_keys),
-                        &mut self.kbd_out,
-                        &self.sequences,
-                        self.sequence_backtrack_modcancel,
-                        layout,
-                    )?;
-                    if clear_sequence_state {
-                        self.sequence_state = None;
-                    }
+            if let Some(state) = self.sequence_state.get_active() {
+                do_sequence_press_logic(
+                    state,
+                    k,
+                    get_mod_mask_for_cur_keys(cur_keys),
+                    &mut self.kbd_out,
+                    &self.sequences,
+                    self.sequence_backtrack_modcancel,
+                    layout,
+                )?;
+            } else {
+                log::debug!("key press     {:?}", k);
+                if let Err(e) = press_key(&mut self.kbd_out, k.into()) {
+                    bail!("failed to press key: {:?}", e);
                 }
             }
         }
@@ -1294,26 +1296,18 @@ impl Kanata {
                             std::thread::sleep(time::Duration::from_millis((*delay).into()));
                         }
                         CustomAction::SequenceCancel => {
-                            if self.sequence_state.is_some() {
+                            if let Some(state) = self.sequence_state.get_active() {
                                 log::debug!("exiting sequence");
-                                let state = self.sequence_state.as_ref().unwrap();
                                 cancel_sequence(state, &mut self.kbd_out)?;
-                                self.sequence_state = None;
                             }
                         }
                         CustomAction::SequenceLeader(timeout, input_mode) => {
-                            if self.sequence_state.is_none()
-                                || self.sequence_state.as_ref().unwrap().sequence_input_mode
-                                    == SequenceInputMode::HiddenSuppressed
-                            {
+                            if self.sequence_state.is_inactive() {
                                 log::debug!("entering sequence mode");
-                                self.sequence_state = Some(SequenceState {
-                                    sequence: vec![],
-                                    overlapped_sequence: vec![],
-                                    sequence_input_mode: *input_mode,
-                                    ticks_until_timeout: *timeout,
-                                    sequence_timeout: *timeout,
-                                });
+                                self.sequence_state.activate(*input_mode, *timeout);
+                            } else if *input_mode == SequenceInputMode::HiddenSuppressed {
+                                log::debug!("retriggering sequence mode");
+                                self.sequence_state.activate(*input_mode, *timeout);
                             }
                         }
                         CustomAction::Repeat => {
@@ -1861,7 +1855,7 @@ impl Kanata {
             && self.layout.b().active_sequences.is_empty()
             && self.layout.b().tap_dance_eager.is_none()
             && self.layout.b().action_queue.is_empty()
-            && self.sequence_state.is_none()
+            && self.sequence_state.is_inactive()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
