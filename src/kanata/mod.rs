@@ -15,8 +15,6 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
 use std::path::PathBuf;
-#[cfg(not(feature = "passthru_ahk"))]
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
@@ -1980,6 +1978,7 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
 fn check_for_exit(_event: &KeyEvent) {
     #[cfg(not(feature = "passthru_ahk"))]
     {
+        use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
         static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
         static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
         static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
