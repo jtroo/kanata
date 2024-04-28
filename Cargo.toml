@@ -81,7 +81,7 @@ winapi = { version = "0.3.9", features = [
     "mmsystem",
 ] }
 win_dbg_logger = { path = "win_dbg_logger", optional = true }
-native-windows-gui = { version = "1.0.12", default_features = false, features=["tray-notification","message-window","menu","cursor"] }
+native-windows-gui = { version = "1.0.13", default_features = false, features=["tray-notification","message-window","menu","cursor","high-dpi","embed-resource","image-decoder"] }
 native-windows-derive = { version = "1.0.5", default_features = false, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
 regex = { version = "1.10.4", optional = true }
