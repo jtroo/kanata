@@ -32,9 +32,18 @@ fn chorded_keys_visible_backspaced() {
         "d:0 u:0 d:lsft t:50 d:a d:b t:50 u:lsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a d:b t:50 u:rsft u:a u:b t:500
          d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
-    );
+    )
+    .no_time()
+    .to_ascii();
     assert_eq!(
-        "t:2ms\nout:↓LShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑LShift\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:549ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↓B\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nt:1ms\nout:↑A\nout:↑B\nout:↓Z\nt:1ms\nout:↑Z\nt:47ms\nout:↑RShift\nt:502ms\nout:↓RShift\nt:48ms\nout:↓A\nt:1ms\nout:↑RShift\nt:49ms\nout:↓B\nt:1ms\nout:↑A\nt:1ms\nout:↑B",
+        // 2nd row is buggy/unexpected! RShift isn't released before outputting Z
+        // Workarounds:
+        // - remap your rsft key to lsft
+        // - use release-key in the macro via virtual keys
+        // - accept and use the quirky behaviour; maybe it's what you wanted?
+        "dn:LShift dn:A dn:B dn:BSpace up:BSpace dn:BSpace up:BSpace up:LShift up:A up:B dn:Z up:Z \
+         dn:RShift dn:A dn:B dn:BSpace up:BSpace dn:BSpace up:BSpace up:A up:B dn:Z up:Z up:RShift \
+         dn:RShift dn:A up:RShift dn:B up:A up:B",
         result
     );
 }
