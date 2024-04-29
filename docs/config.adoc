@@ -2699,6 +2699,14 @@ For an example, `O-(a b c)` is equivalent to `O-(c b a)`.
 (defseq hello (O-(h l o)))
 ----
 
+WARNING: The way that sequences implements this functionality behind the scenes
+is by generating a sequence for every permutation of the overlapping keys.
+This can make kanata use up a lot of memory.
+Due to this, the maximum keys allowed in a given `O-(...)` list is 6,
+but you are still permitted to add more to the sequence,
+including more `O-(...)` lists.
+Doing the above can balloon kanata's memory consumption.
+
 .Sample of more advanced usage
 [%collapsible]
 ====
