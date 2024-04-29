@@ -34,12 +34,16 @@ fn chorded_keys_visible_backspaced() {
          d:0 u:0 d:rsft t:50 d:a u:rsft t:50 d:b u:a u:b t:500",
     )
     .no_time()
-    .no_releases()
     .to_ascii();
     assert_eq!(
-        "dn:LShift dn:A dn:B dn:BSpace dn:BSpace dn:Z \
-         dn:RShift dn:A dn:B dn:BSpace dn:BSpace dn:Z \
-         dn:RShift dn:A dn:B",
+        // 2nd row is buggy/unexpected! RShift isn't released before outputting Z
+        // Workarounds:
+        // - remap your rsft key to lsft
+        // - use release-key in the macro via virtual keys
+        // - accept and use the quirky behaviour; maybe it's what you wanted?
+        "dn:LShift dn:A dn:B dn:BSpace up:BSpace dn:BSpace up:BSpace up:LShift up:A up:B dn:Z up:Z \
+         dn:RShift dn:A dn:B dn:BSpace up:BSpace dn:BSpace up:BSpace up:A up:B dn:Z up:Z up:RShift \
+         dn:RShift dn:A up:RShift dn:B up:A up:B",
         result
     );
 }
