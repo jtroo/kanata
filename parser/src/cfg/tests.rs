@@ -1817,3 +1817,30 @@ fn parse_platform_specific() {
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("parses");
 }
+
+#[test]
+fn parse_defseq_overlap_limits() {
+    let source = r#"
+(defsrc)
+(deflayer base)
+(defvirtualkeys v v)
+(defseq v (O-(a b c d e f)))
+(defseq v (O-(a b)))
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
+fn parse_defseq_overlap_too_many() {
+    let source = r#"
+(defsrc)
+(deflayer base)
+(defvirtualkeys v v)
+(defseq v (O-(a b c d e f g)))
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect_err("fails");
+}

@@ -3034,13 +3034,17 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
                     values_to_permute.push(val);
                 }
 
-                if values_to_permute.len() < 2 {
-                    bail_expr!(
+                let ps = match values_to_permute.len() {
+                    0 | 1 => bail_expr!(
                         key_seq_expr,
                         "O-(...) lists must have a minimum of 2 elements"
-                    );
-                }
-                let ps = gen_permutations(&values_to_permute[..]);
+                    ),
+                    2..=6 => gen_permutations(&values_to_permute[..]),
+                    _ => bail_expr!(
+                        key_seq_expr,
+                        "O-(...) lists must have a maximum of 6 elements"
+                    ),
+                };
 
                 let mut new_permutations: Vec<Vec<u16>> = vec![];
                 for p in permutations.iter() {
