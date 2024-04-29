@@ -16,7 +16,7 @@ log = { version = "0.4.8", default_features = false }
 anyhow = "1"
 parking_lot = "0.12"
 once_cell = "1"
-radix_trie = "0.2"
+patricia_tree = "0.8"
 rustc-hash = "1.1.0"
 miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
@@ -26,6 +26,7 @@ thiserror = "1.0.38"
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
 kanata-keyberon = { path = "../keyberon" }
+bytemuck = "1.15.0"
 
 [features]
 cmd = []
