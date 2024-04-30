@@ -81,7 +81,7 @@ winapi = { version = "0.3.9", features = [
     "mmsystem",
 ] }
 win_dbg_logger = { path = "win_dbg_logger", optional = true }
-native-windows-gui = { version = "1.0.13", default_features = false, features=["tray-notification","message-window","menu","cursor","high-dpi","embed-resource","image-decoder"] }
+native-windows-gui = { version = "1.0.13", default_features = false}
 native-windows-derive = { version = "1.0.5", default_features = false, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
 regex = { version = "1.10.4", optional = true }
@@ -103,7 +103,7 @@ cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["win_manifest","native-windows-derive","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui"]
+gui = ["win_manifest","native-windows-derive","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder"]
 
 [profile.release]
 opt-level = "z"
