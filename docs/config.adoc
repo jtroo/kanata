@@ -3420,7 +3420,7 @@ The default `kanata.exe` binary doesn't work in elevated windows (run with admin
 e.g., `Control Panel`. However, you can use AutoHotkey's "EnableUIAccess" script to self-sign the binary,
 move it to "Program Files", then launching kanata from there will also work in these elevated windows.
 See https://github.com/jtroo/kanata/blob/main/EnableUIAccess[EnableUIAccess] folder with the script
-and its requires libraries (needs https://www.autohotkey.com/download/ahk-v2.exe[AutoHotkey v2] installed)
+and its required libraries (needs https://www.autohotkey.com/download/[AutoHotkey v2] installed)
 
 If compiling yourself, you should add the feature flag `win_manifest`
 to enable the use of the `EnableUIAccess` script:
