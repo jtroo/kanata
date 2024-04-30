@@ -3,10 +3,10 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub mod kanata;
-pub mod lib_main;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub mod gui_win;
+pub mod kanata;
+pub mod lib_main;
 pub mod oskbd;
 pub mod tcp_server;
 #[cfg(test)]
