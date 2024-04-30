@@ -8,7 +8,7 @@ use std::time;
 use super::PRESSED_KEYS;
 use crate::kanata::*;
 #[cfg(feature = "gui")]
-use crate::m_gui_win::*;
+use crate::gui_win::*;
 #[cfg(feature = "gui")]
 crate native_windows_derive as nwd;
 #[cfg(feature = "gui")]
