@@ -2,7 +2,6 @@ use crate::Kanata;
 use anyhow::{Context, Result};
 use core::cell::RefCell;
 use log::Level::Debug;
-use native_windows_derive as nwd;
 use native_windows_gui as nwg;
 use parking_lot::Mutex;
 use std::collections::HashMap;

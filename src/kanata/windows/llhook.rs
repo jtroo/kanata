@@ -9,10 +9,6 @@ use super::PRESSED_KEYS;
 #[cfg(feature = "gui")]
 use crate::gui_win::*;
 use crate::kanata::*;
-#[cfg(feature = "gui")]
-use native_windows_derive as nwd;
-#[cfg(feature = "gui")]
-use native_windows_gui as nwg;
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
