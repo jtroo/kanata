@@ -10,9 +10,9 @@ use crate::kanata::*;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 use crate::m_gui_win::*;
 #[cfg(all(target_os = "windows", feature = "gui"))]
-extern crate native_windows_derive as nwd;
+crate native_windows_derive as nwd;
 #[cfg(all(target_os = "windows", feature = "gui"))]
-extern crate native_windows_gui as nwg;
+crate native_windows_gui as nwg;
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events

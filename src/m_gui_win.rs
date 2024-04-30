@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::env::{current_exe, var_os};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-extern crate native_windows_derive as nwd;
-extern crate native_windows_gui as nwg;
+crate native_windows_derive as nwd;
+crate native_windows_gui as nwg;
 use core::cell::RefCell;
 use std::sync::Arc;
 
