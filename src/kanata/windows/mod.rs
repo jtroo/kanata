@@ -127,4 +127,27 @@ impl Kanata {
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         Ok(())
     }
+
+    #[cfg(feature = "gui")]
+    pub fn live_reload(&mut self) -> Result<()> {
+        self.live_reload_requested = true;
+        self.do_live_reload(&None)?;
+        Ok(())
+    }
+    #[cfg(feature = "gui")]
+    pub fn live_reload_n(&mut self, n: usize) -> Result<()> {
+        // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
+        self.live_reload_requested = true;
+        match self.cfg_paths.get(n) {
+            Some(path) => {
+                self.cur_cfg_idx = n;
+                log::info!("Requested live reload of file: {}", path.display(),);
+            }
+            None => {
+                log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
+            }
+        }
+        self.do_live_reload(&None)?;
+        Ok(())
+    }
 }
