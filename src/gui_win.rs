@@ -80,13 +80,14 @@ impl SystemTray {
             .unwrap_or_else(|| OsStr::new(""))
             .to_string_lossy()
             .to_string();
-        let is_icn_ext_valid = if !IMG_EXT.iter().any(|&i| i == icn_ext) {
-            warn!("user extension \"{}\" isn't valid!", icn_ext);
-            false
-        } else {
-            trace!("icn_ext={:?}", icn_ext);
-            true
-        };
+        let is_icn_ext_valid =
+            if !IMG_EXT.iter().any(|&i| i == icn_ext) && icn_p.extension().is_some() {
+                warn!("user extension \"{}\" isn't valid!", icn_ext);
+                false
+            } else {
+                trace!("icn_ext={:?}", icn_ext);
+                true
+            };
         let parents = [
             Path::new(""),
             pre_p,
