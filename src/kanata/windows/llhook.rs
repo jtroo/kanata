@@ -7,11 +7,11 @@ use std::time;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
-#[cfg(all(target_os = "windows", feature = "gui"))]
+#[cfg(feature = "gui")]
 use crate::m_gui_win::*;
-#[cfg(all(target_os = "windows", feature = "gui"))]
+#[cfg(feature = "gui")]
 crate native_windows_derive as nwd;
-#[cfg(all(target_os = "windows", feature = "gui"))]
+#[cfg(feature = "gui")]
 crate native_windows_gui as nwg;
 
 impl Kanata {
@@ -73,7 +73,7 @@ impl Kanata {
             try_send_panic(&preprocess_tx, key_event);
             true
         });
-        #[cfg(all(target_os = "windows", feature = "gui"))]
+        #[cfg(feature = "gui")]
         let _ui = build_tray(&_kanata)?;
 
         // The event loop is also required for the low-level keyboard hook to work.
