@@ -154,6 +154,10 @@ would be:
 )
 ----
 
+A <<windows-only-tray-icon,Windows tray menu build>> also allows specifying
+layer icons in `+deflayer+` and `+deflayermap+` to show in the tray menu on layer activation,
+see https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config]
+
 ==== deflayermap
 
 An alternative method for defining a layer exists: `deflayermap`.
@@ -2390,8 +2394,8 @@ they are an arbitrary length and can be very long.
 )
 ----
 
-[[windows-only-win-tray-icon]]
-=== Windows only: win-tray-icon
+[[windows-only-tray-icon]]
+=== Windows only: tray-icon
 <<table-of-contents,Back to ToC>>
 
 Show a custom tray icon file for a <<windows-only-win-tray>> gui-enabled build of kanata on Windows.
@@ -2407,15 +2411,24 @@ or just the file name, which is then searched in the following locations:
 
 If not specified, tries to load any icon file from the same locations with the name matching
 config name with extension replaced by one of the supported ones.
+See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
 
 .Example:
 [source]
 ----
 ;; in a config file C:\Users\<U>\AppData\Roaming\kanata\kanata.kbd
 (defcfg
-  win-tray-icon base.png ;; will load C:\Users\<U>\AppData\Roaming\kanata\base.png
+  tray-icon base.png ;; will load C:\Users\<U>\AppData\Roaming\kanata\base.png
 )
 ----
+
+[[windows-only-icon-match-layer-name]]
+=== Windows only: icon-match-layer-name
+<<table-of-contents,Back to ToC>>
+
+Show a custom tray icon that matches the name of the active layer if it doesn't specify an explicit icon.
+Otherwise <<tray-icon>> will be used. Defaults to true. File search rules are the same as in <<tray-icon>>.
+See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
 
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
