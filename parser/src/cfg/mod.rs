@@ -1092,7 +1092,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                         bail!("deflayer with a list as its 3rd element expects it to start with one of {DEFLAYER_ICON:?}, not {third_list_1st_s}");
                     } else {
                         if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
-                            icon = Some(third_list_2nd_s.to_string());
+                            icon = Some(third_list_2nd_s.trim_matches('"').to_string());
                         } else {
                             bail!("deflayer failed to parse an icon name in its 3rd element");
                         }
