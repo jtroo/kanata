@@ -103,7 +103,7 @@ cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["win_manifest","native-windows-derive","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder"]
+gui = ["win_manifest","native-windows-derive","lazy_static","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice"]
 
 [profile.release]
 opt-level = "z"
