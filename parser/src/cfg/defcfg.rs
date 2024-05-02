@@ -414,11 +414,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
                             feature = "gui"
-                        ))] {
-                        cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
+                        ))]
+                        {
+                            cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
                         }
                     }
-
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?

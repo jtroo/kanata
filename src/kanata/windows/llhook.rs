@@ -1,4 +1,3 @@
-use anyhow::Context;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
@@ -6,8 +5,6 @@ use std::sync::Arc;
 use std::time;
 
 use super::PRESSED_KEYS;
-#[cfg(feature = "gui")]
-use crate::gui_win::*;
 use crate::kanata::*;
 
 impl Kanata {

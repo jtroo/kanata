@@ -259,20 +259,19 @@ fn main_impl() -> Result<()> {
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    use crate native_windows_gui    as nwg;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     use anyhow::Context;
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    use native_windows_gui as nwg;
     #[cfg(all(target_os = "windows", feature = "gui"))]
     native_windows_gui::init().context("Failed to init Native Windows GUI")?;
     #[cfg(all(target_os = "windows", feature = "gui"))]
     let ui = build_tray(&kanata_arc)?;
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    let noticer:&nwg::Notice = &ui.layer_notice;
+    let noticer: &nwg::Notice = &ui.layer_notice;
     #[cfg(all(target_os = "windows", feature = "gui"))]
     let gui_tx = noticer.sender();
     #[cfg(all(target_os = "windows", feature = "gui"))]
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
-
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         #[allow(clippy::unit_arg)]

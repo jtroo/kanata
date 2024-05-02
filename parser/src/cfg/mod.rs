@@ -501,7 +501,7 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
-const DEFLAYER_ICON: [&str;3] = ["icon","🖻","🖼"];
+const DEFLAYER_ICON: [&str; 3] = ["icon", "🖻", "🖼"];
 const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-win",
     "deflocalkeys-winiov2",
@@ -649,7 +649,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let (layer_idxs,layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let (layer_idxs, layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -682,7 +682,11 @@ pub fn parse_cfg_raw_string(
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
         .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name: name.clone(), cfg_text, icon: layer_icons.get(&name).unwrap_or(&None).clone()})
+        .map(|(name, cfg_text)| LayerInfo {
+            name: name.clone(),
+            cfg_text,
+            icon: layer_icons.get(&name).unwrap_or(&None).clone(),
+        })
         .collect();
 
     let defsrc_layer = create_defsrc_layer();
@@ -1040,15 +1044,23 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// - All layers have the same number of items as the defsrc,
 /// - There are no duplicate layer names
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
-fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<(LayerIndexes,LayerIcons)> {
+fn parse_layer_indexes(
+    exprs: &[SpannedLayerExprs],
+    expected_len: usize,
+) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
     let mut layer_icons = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
-        let mut icon:Option<String> = None;
+        let mut icon: Option<String> = None;
         let (mut subexprs, expr, do_element_count_check) = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER)?.peekable(), e, true)}
-            SpannedLayerExprs::CustomMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?.peekable(), e, false)
+            SpannedLayerExprs::DefsrcMapping(e) => {
+                (check_first_expr(e.t.iter(), DEFLAYER)?.peekable(), e, true)
             }
+            SpannedLayerExprs::CustomMapping(e) => (
+                check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?.peekable(),
+                e,
+                false,
+            ),
         };
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
@@ -1082,13 +1094,13 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         if layer_indexes.contains_key(&layer_name) {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
-        let mut cfg_third =  0;
+        let mut cfg_third = 0;
         if let Some(third) = subexprs.peek() {
             if let Some(third_list) = third.list(None) {
                 cfg_third = 1;
                 let third_list_1st = &third_list[0];
                 if let Some(third_list_1st_s) = &third_list[0].atom(None) {
-                    if ! DEFLAYER_ICON.iter().any(|&i| {i==*third_list_1st_s}) {
+                    if !DEFLAYER_ICON.iter().any(|&i| i == *third_list_1st_s) {
                         bail!("deflayer with a list as its 3rd element expects it to start with one of {DEFLAYER_ICON:?}, not {third_list_1st_s}");
                     } else {
                         if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
@@ -1131,7 +1143,11 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         }
         if do_element_count_check {
             let num_actions = expr.t.len() - 2 - cfg_third;
-            let dbg_cfg_third = if cfg_third == 1 {" (excluding 1 config)"} else {""};
+            let dbg_cfg_third = if cfg_third == 1 {
+                " (excluding 1 config)"
+            } else {
+                ""
+            };
             if num_actions != expected_len {
                 bail_span!(
                     expr,
@@ -1141,12 +1157,13 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                     dbg_cfg_third,
                     expected_len
                 )
-            }        }
+            }
+        }
         layer_indexes.insert(layer_name.clone(), i);
         layer_icons.insert(layer_name, icon);
     }
 
-    Ok((layer_indexes,layer_icons))
+    Ok((layer_indexes, layer_icons))
 }
 
 #[derive(Debug, Clone)]
@@ -1416,13 +1433,13 @@ fn parse_action(expr: &SExpr, s: &ParserState) -> Result<&'static KanataAction> 
 fn parse_action_as_cfg(expr: &SExpr) -> bool {
     if let Some(expr_list) = expr.list(None) {
         if let Some(expr_list_1st) = &expr_list[0].atom(None) {
-            if ! DEFLAYER_ICON.iter().any(|&i| {i==*expr_list_1st}) {
-                return false
+            if !DEFLAYER_ICON.iter().any(|&i| i == *expr_list_1st) {
+                return false;
             } else {
                 if expr_list[1].atom(None).is_some() {
-                    return true
+                    return true;
                 } else {
-                    return false
+                    return false;
                 }
             }
         }
@@ -2884,15 +2901,23 @@ fn parse_layers(
             LayerExprs::DefsrcMapping(layer) => {
                 // Parse actions in the layer and place them appropriately according
                 // to defsrc mapping order.
-                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {3} else {2}; // skip the 3rd list that's used to configure a layer rather than define an action
+                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {
+                    3
+                } else {
+                    2
+                }; // skip the 3rd list that's used to configure a layer rather than define an action
                 for (i, ac) in layer.iter().skip(skip).enumerate() {
                     let ac = parse_action(ac, s)?;
                     layers_cfg[layer_level][0][s.mapping_order[i]] = *ac;
                 }
             }
             LayerExprs::CustomMapping(layer) => {
-                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {3} else {2}; // skip the 3rd list that's used to configure a layer rather than define an action
-                // Parse actions as input -> output triplets
+                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {
+                    3
+                } else {
+                    2
+                }; // skip the 3rd list that's used to configure a layer rather than define an action
+                   // Parse actions as input -> output triplets
                 let mut pairs = layer[skip..].chunks_exact(2);
                 let mut layer_mapped_keys = HashSet::default();
                 let mut defsrc_anykey_used = false;

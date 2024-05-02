@@ -469,8 +469,11 @@ impl Kanata {
         })
     }
 
-    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx:nwg::NoticeSender) -> Result<()> {
+    fn do_live_reload(
+        &mut self,
+        _tx: &Option<Sender<ServerMessage>>,
+        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+    ) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -593,8 +596,11 @@ impl Kanata {
 
     /// Advance keyberon layout state and send events based on changes to its state.
     /// Returns the number of ticks that elapsed.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx:nwg::NoticeSender) -> Result<u16> {
+    fn handle_time_ticks(
+        &mut self,
+        tx: &Option<Sender<ServerMessage>>,
+        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+    ) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
         let now = instant::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
@@ -620,7 +626,7 @@ impl Kanata {
         #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
         self.check_handle_layer_change(tx);
         #[cfg(all(target_os = "windows", feature = "gui"))]
-        self.check_handle_layer_change(tx,gui_tx);
+        self.check_handle_layer_change(tx, gui_tx);
 
         if self.live_reload_requested
             && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
@@ -637,9 +643,13 @@ impl Kanata {
             // kanata states.
             self.live_reload_requested = false;
             #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
-            if let Err(e) = self.do_live_reload(tx) {log::error!("live reload failed {e}");}
+            if let Err(e) = self.do_live_reload(tx) {
+                log::error!("live reload failed {e}");
+            }
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            if let Err(e) = self.do_live_reload(tx,gui_tx) {log::error!("live reload failed {e}");}
+            if let Err(e) = self.do_live_reload(tx, gui_tx) {
+                log::error!("live reload failed {e}");
+            }
         }
 
         #[cfg(feature = "perf_logging")]
@@ -1516,8 +1526,11 @@ impl Kanata {
     #[allow(unused_variables)]
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
-    fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx:nwg::NoticeSender) {
+    fn check_handle_layer_change(
+        &mut self,
+        tx: &Option<Sender<ServerMessage>>,
+        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+    ) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
@@ -1598,8 +1611,7 @@ impl Kanata {
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
         tx: Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))]
-        gui_tx: nwg::NoticeSender,
+        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
         nodelay: bool,
     ) {
         info!("entering the processing loop");
@@ -1743,7 +1755,7 @@ impl Kanata {
                             #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
                             let res_time_tick = k.handle_time_ticks(&tx);
                             #[cfg(all(target_os = "windows", feature = "gui"))]
-                            let res_time_tick = k.handle_time_ticks(&tx,gui_tx);
+                            let res_time_tick = k.handle_time_ticks(&tx, gui_tx);
                             match res_time_tick {
                                 Ok(ms) => ms_elapsed = ms,
                                 Err(e) => break e,
@@ -1796,7 +1808,7 @@ impl Kanata {
                             #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
                             let res_time_tick = k.handle_time_ticks(&tx);
                             #[cfg(all(target_os = "windows", feature = "gui"))]
-                            let res_time_tick = k.handle_time_ticks(&tx,gui_tx);
+                            let res_time_tick = k.handle_time_ticks(&tx, gui_tx);
                             match res_time_tick {
                                 Ok(ms) => ms_elapsed = ms,
                                 Err(e) => break e,
@@ -1815,7 +1827,7 @@ impl Kanata {
                             #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
                             let res_time_tick = k.handle_time_ticks(&tx);
                             #[cfg(all(target_os = "windows", feature = "gui"))]
-                            let res_time_tick = k.handle_time_ticks(&tx,gui_tx);
+                            let res_time_tick = k.handle_time_ticks(&tx, gui_tx);
                             match res_time_tick {
                                 Ok(ms) => ms_elapsed = ms,
                                 Err(e) => break e,
