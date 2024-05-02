@@ -214,8 +214,8 @@ impl SystemTray {
                 .to_string_lossy()
                 .to_string();
             if log_enabled!(Debug) {
-                let cfg_icon = &k.win_tray_icon;
-                debug!("pre reload win_tray_icon={:?}", cfg_icon);
+                let cfg_icon = &k.tray_icon;
+                debug!("pre reload tray_icon={:?}", cfg_icon);
             }
             match i {
                 Some(idx) => {
@@ -251,8 +251,8 @@ impl SystemTray {
                     }
                 }
             };
-            let cfg_icon = &k.win_tray_icon;
-            debug!("pos reload win_tray_icon={:?}", cfg_icon);
+            let cfg_icon = &k.tray_icon;
+            debug!("pos reload tray_icon={:?}", cfg_icon);
             let mut app_data = self.app_data.borrow_mut();
             app_data.cfg_icon = cfg_icon.clone();
             // self.tray.set_visibility(false); // flash the icon, but might be confusing as the app isn't restarting, just reloading
@@ -533,7 +533,7 @@ pub mod system_tray_ui {
 pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
     let k = cfg.lock();
     let paths = &k.cfg_paths;
-    let cfg_icon = &k.win_tray_icon;
+    let cfg_icon = &k.tray_icon;
     let path_cur = &paths[0];
     let app_data = SystemTrayData {
         tooltip: path_cur.display().to_string(),

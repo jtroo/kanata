@@ -397,7 +397,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.macos_dev_names_include = Some(dev_names);
                         }
                     }
-                    "win-tray-icon" => {
+                    "tray-icon" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
                             feature = "gui"
@@ -407,7 +407,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if icon_path.is_empty() {
                                 log::warn!("tray-icon is empty");
                             }
-                            cfg.win_tray_icon = Some(icon_path.to_string());
+                            cfg.tray_icon = Some(icon_path.to_string());
                         }
                     }
                     "icon-match-layer-name" => {
