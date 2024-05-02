@@ -1097,23 +1097,20 @@ fn parse_layer_indexes(
         let mut cfg_third = 0;
         if let Some(third) = subexprs.peek() {
             if let Some(third_list) = third.list(None) {
-                cfg_third = 1;
-                let third_list_1st = &third_list[0];
-                if let Some(third_list_1st_s) = &third_list[0].atom(None) {
-                    if !DEFLAYER_ICON.iter().any(|&i| i == *third_list_1st_s) {
-                        bail!("deflayer with a list as its 3rd element expects it to start with one of {DEFLAYER_ICON:?}, not {third_list_1st_s}");
-                    } else {
-                        if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
-                            icon = Some(third_list_2nd_s.trim_matches('"').to_string());
-                        } else {
-                            bail!("deflayer failed to parse an icon name in its 3rd element");
+                if third_list.len() > 0 {
+                    if let Some(third_list_1st_s) = &third_list[0].atom(None) {
+                        if DEFLAYER_ICON.iter().any(|&i| i == *third_list_1st_s) {
+                            cfg_third = 1;
+                            if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
+                                icon = Some(third_list_2nd_s.trim_matches('"').to_string());
+                                subexprs.next(); // advance over the 3rd list
+                            } else {
+                                bail!("deflayer failed to parse an icon name in its 3rd element");
+                            }
                         }
                     }
-                } else {
-                    bail!("deflayer with a list as its 3rd element expects it to start with one of {DEFLAYER_ICON:?}, not {third_list_1st:?}");
                 }
             }
-            subexprs.next(); // advance over the 3rd list
         }
         // Check if user tried to use parentheses directly - `(` and `)`
         // or escaped them like in kmonad - `\(` and `\)`.
