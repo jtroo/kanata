@@ -198,7 +198,11 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub win_tray_icon: Option<String>,
+    /// File name / path to the tray icon file.
+    pub tray_icon: Option<String>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// Whether to match layer names to icon files without an explicit 'icon' field
+    pub icon_match_layer_name: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -362,7 +366,9 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            win_tray_icon: cfg.options.win_tray_icon,
+            tray_icon: cfg.options.tray_icon,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
     }
 
@@ -457,7 +463,9 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            win_tray_icon: None,
+            tray_icon: None,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            icon_match_layer_name: true,
         })
     }
 
@@ -496,7 +504,8 @@ impl Kanata {
         self.switch_max_key_timing = cfg.switch_max_key_timing;
         #[cfg(all(target_os = "windows", feature = "gui"))]
         {
-            self.win_tray_icon = cfg.options.win_tray_icon;
+            self.tray_icon = cfg.options.tray_icon;
+            self.icon_match_layer_name = cfg.options.icon_match_layer_name;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;

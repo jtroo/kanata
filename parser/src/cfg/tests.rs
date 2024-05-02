@@ -1287,7 +1287,8 @@ fn parse_all_defcfg() {
   linux-unicode-u-code v
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
-  win-tray-icon symbols.ico
+  tray-icon symbols.ico
+  icon-match-layer-name no
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
   windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")

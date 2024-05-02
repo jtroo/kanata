@@ -54,7 +54,9 @@ pub struct CfgOptions {
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub win_tray_icon: Option<String>,
+    pub tray_icon: Option<String>,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub icon_match_layer_name: bool,
 }
 
 impl Default for CfgOptions {
@@ -108,7 +110,9 @@ impl Default for CfgOptions {
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
             #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
-            win_tray_icon: None,
+            tray_icon: None,
+            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            icon_match_layer_name: true,
         }
     }
 }
@@ -401,11 +405,20 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             let icon_path = sexpr_to_str_or_err(val, label)?;
                             if icon_path.is_empty() {
-                                log::warn!("win-tray-icon is empty");
+                                log::warn!("tray-icon is empty");
                             }
                             cfg.win_tray_icon = Some(icon_path.to_string());
                         }
                     }
+                    "icon-match-layer-name" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))] {
+                        cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
