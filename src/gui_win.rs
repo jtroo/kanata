@@ -229,7 +229,7 @@ impl SystemTray {
                                     continue 'p;
                                 }
                             } else {
-                                info!("✓ found icon file: {}", icon_file.display().to_string());
+                                debug!("✓ found icon file: {}", icon_file.display().to_string());
                                 return Some(icon_file.display().to_string());
                             }
                         }
@@ -469,7 +469,7 @@ impl SystemTray {
                 self.tray.set_icon(&icon);
                 *icon_active = Some(cfg_layer_pkey);
             } else {
-                info!(
+                debug!(
                     "no icon found, using default for config+layer = {}",
                     cfg_layer_pkey_s
                 );
@@ -491,7 +491,7 @@ impl SystemTray {
                     .strict(false)
                     .build(&mut temp_icon_bitmap)
                 {
-                    info!(
+                    debug!(
                         "✓ Using an icon from this config+layer: {}",
                         cfg_layer_pkey_s
                     );
@@ -524,7 +524,7 @@ impl SystemTray {
                 self.tray.set_icon(&icon);
                 *icon_active = Some(path_cur_cc);
             } else {
-                info!(
+                debug!(
                     "no icon found, using default for config: {}",
                     path_cur_cc.display().to_string()
                 );
@@ -551,7 +551,7 @@ impl SystemTray {
                     .strict(false)
                     .build(&mut temp_icon_bitmap)
                 {
-                    info!(
+                    debug!(
                         "✓ Using an icon from this config: {}",
                         path_cur_cc.display().to_string()
                     );
@@ -711,7 +711,7 @@ pub mod system_tray_ui {
                                     let temp_icon = temp_icon_bitmap.copy_as_icon();
                                     d.tray.set_icon(&temp_icon);
                                 } else {
-                                    info!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
+                                    debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
                                     let _ = icon_dyn.insert(cfg_layer_pkey, None);
                                 }
                             } else {
