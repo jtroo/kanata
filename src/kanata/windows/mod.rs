@@ -10,6 +10,9 @@ mod llhook;
 #[cfg(feature = "interception_driver")]
 mod interception;
 
+cfg(feature = "gui")]
+use crate native_windows_gui    as nwg;
+
 pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
 
@@ -129,13 +132,13 @@ impl Kanata {
     }
 
     #[cfg(feature = "gui")]
-    pub fn live_reload(&mut self) -> Result<()> {
+    pub fn live_reload(&mut self,gui_tx:nwg::NoticeSender) -> Result<()> {
         self.live_reload_requested = true;
-        self.do_live_reload(&None)?;
+        self.do_live_reload(&None,gui_tx)?;
         Ok(())
     }
     #[cfg(feature = "gui")]
-    pub fn live_reload_n(&mut self, n: usize) -> Result<()> {
+    pub fn live_reload_n(&mut self,n:usize,gui_tx:nwg::NoticeSender) -> Result<()> {
         // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
         self.live_reload_requested = true;
         match self.cfg_paths.get(n) {
@@ -147,7 +150,7 @@ impl Kanata {
                 log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
             }
         }
-        self.do_live_reload(&None)?;
+        self.do_live_reload(&None,gui_tx)?;
         Ok(())
     }
 }
