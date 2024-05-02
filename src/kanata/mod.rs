@@ -472,7 +472,8 @@ impl Kanata {
     fn do_live_reload(
         &mut self,
         _tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        gui_tx: native_windows_gui::NoticeSender,
     ) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
@@ -599,7 +600,8 @@ impl Kanata {
     fn handle_time_ticks(
         &mut self,
         tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        gui_tx: native_windows_gui::NoticeSender,
     ) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
         let now = instant::Instant::now();
@@ -1529,7 +1531,8 @@ impl Kanata {
     fn check_handle_layer_change(
         &mut self,
         tx: &Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        gui_tx: native_windows_gui::NoticeSender,
     ) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
@@ -1611,7 +1614,8 @@ impl Kanata {
         kanata: Arc<Mutex<Self>>,
         rx: Receiver<KeyEvent>,
         tx: Option<Sender<ServerMessage>>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] gui_tx: native_windows_gui::NoticeSender,
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        gui_tx: native_windows_gui::NoticeSender,
         nodelay: bool,
     ) {
         info!("entering the processing loop");

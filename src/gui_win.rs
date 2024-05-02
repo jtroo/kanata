@@ -1,14 +1,14 @@
 use crate::Kanata;
 use anyhow::{Context, Result};
+use core::cell::RefCell;
 use log::Level::*;
+
+use native_windows_gui as nwg;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::env::{current_exe, var_os};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use native_windows_derive as nwd;
-use native_windows_gui as nwg;
-use core::cell::RefCell;
 
 use nwg::{ControlHandle, NativeUi};
 use std::sync::Arc;
