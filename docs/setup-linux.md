@@ -49,7 +49,7 @@ You may need to run this command whenever you start kanata for the first time:
 ```
 sudo modprobe uinput
 ```
-### 5. To create and enable a daemon service
+### 5a. To create and enable a systemd daemon service
 
 Run this command first:
 ```bash
@@ -87,6 +87,28 @@ systemctl --user enable kanata.service
 systemctl --user start kanata.service
 systemctl --user status kanata.service   # check whether the service is running
 ```
+### 5b. To create and enable an OpenRC daemon service
+Edit new file `/etc/init.d/kanata` as root, replacing \<username\> as appropriate:
+```bash
+#!/sbin/openrc-run
+
+command="/home/<username>/.cargo/bin/kanata"
+#command_args="--config=/home/<username>/.config/kanata/kanata.kbd"
+
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+
+command_user="<username>"
+```
+
+Then run:
+```
+sudo chmod +x /etc/init.d/kanata # script must be executable
+sudo rc-service kanata start
+rc-status # check that kanata isn't listed as [ crashed ]
+sudo rc-update add kanata default # start the service automatically at boot
+```
+
 # Credits
 
 The original text was taken and adapted from: https://github.com/kmonad/kmonad/blob/master/doc/faq.md#linux
