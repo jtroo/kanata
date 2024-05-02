@@ -31,6 +31,7 @@ pub struct SystemTray {
     pub embed: nwg::EmbedResource,
     pub icon: nwg::Icon,
     pub window: nwg::MessageWindow,
+  pub layer_notice	: nwg::Notice,
     pub tray: nwg::TrayNotification,
     pub tray_menu: nwg::Menu,
     pub tray_1cfg_m: nwg::Menu,
@@ -358,7 +359,10 @@ pub mod system_tray_ui {
                 .build(&mut d.icon)?;
 
             // Controls
-            nwg::MessageWindow::builder().build(&mut d.window)?;
+      nwg::MessageWindow	::builder()
+        .               	  build(       &mut d.window	)?	;
+      nwg::Notice       	::builder().parent(&d.window)
+        .               	  build(       &mut d.layer_notice	)?	;
             nwg::TrayNotification::builder()
                 .parent(&d.window)
                 .icon(Some(&d.icon))
@@ -470,6 +474,7 @@ pub mod system_tray_ui {
             let handle_events = move |evt, _evt_data, handle| {
                 if let Some(evt_ui) = evt_ui.upgrade() {
                     match evt {
+            E::OnNotice                                       	=> if &handle == &evt_ui.layer_notice {info!("got noticed layer_notice");}
             E::OnWindowClose                                  	=> if &handle == &evt_ui.window {SystemTray::exit  (&evt_ui);}
             E::OnMousePress(MousePressEvent::MousePressLeftUp)	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
             E::OnContextMenu/*🖰›*/                            	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
