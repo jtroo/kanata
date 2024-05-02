@@ -75,7 +75,7 @@ pub fn get_xdg_home() -> Option<PathBuf> {
 const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow checking directly for user passed values
 const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
-const PRE_LAYER: &str = "🗍: "; // : invalid path marker, so should be safe to use as a separator
+const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 use crate::lib_main::CFG;
 
 impl SystemTray {
