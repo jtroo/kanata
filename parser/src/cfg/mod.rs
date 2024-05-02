@@ -502,7 +502,7 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
-const DEFLAYER_ICON: &str = "icon";
+const DEFLAYER_ICON: [&str;3] = ["icon","🖻","🖼"];
 const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-win",
     "deflocalkeys-winiov2",
@@ -1096,8 +1096,8 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                 third_list_count = 1;
                 let third_list_1st = &third_list[0];
                 if let Some(third_list_1st_s) = &third_list[0].atom(None) {
-                    if *third_list_1st_s != DEFLAYER_ICON {
-                        bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON} as its 1st element, not {third_list_1st_s}");
+                    if ! DEFLAYER_ICON.iter().any(|&i| {i==*third_list_1st_s}) {
+                        bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON:?} as its 1st element, not {third_list_1st_s}");
                     } else {
                         if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
                             icon = Some(third_list_2nd_s.to_string());
@@ -1106,7 +1106,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                         }
                     }
                 } else {
-                    bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON} as its 1st element, not {third_list_1st:?}");
+                    bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON:?} as its 1st element, not {third_list_1st:?}");
                 }
             }
             subexprs.next(); // advance over the 3rd list
@@ -1417,6 +1417,24 @@ fn parse_action(expr: &SExpr, s: &ParserState) -> Result<&'static KanataAction> 
             };
             e
         })
+}
+
+/// Check if an `SExpr` is a layer config.
+fn parse_action_as_cfg(expr: &SExpr) -> bool {
+    if let Some(expr_list) = expr.list(None) {
+        if let Some(expr_list_1st) = &expr_list[0].atom(None) {
+            if ! DEFLAYER_ICON.iter().any(|&i| {i==*expr_list_1st}) {
+                return false
+            } else {
+                if expr_list[1].atom(None).is_some() {
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Returns a single custom action in the proper wrapped type.
@@ -2873,6 +2891,14 @@ fn parse_layers(
             LayerExprs::DefsrcMapping(layer) => {
                 // Parse actions in the layer and place them appropriately according
                 // to defsrc mapping order.
+                #[cfg(all(target_os = "windows", feature = "gui"))]
+                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {3} else {2}; // skip the 3rd list that's used to configure a layer rather than define an action
+                #[cfg(all(target_os = "windows", feature = "gui"))]
+                for (i, ac) in layer.iter().skip(skip).enumerate() {
+                    let ac = parse_action(ac, s)?;
+                    layers_cfg[layer_level][0][s.mapping_order[i]] = *ac;
+                }
+                #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
                 for (i, ac) in layer.iter().skip(2).enumerate() {
                     let ac = parse_action(ac, s)?;
                     layers_cfg[layer_level][0][s.mapping_order[i]] = *ac;
@@ -2880,6 +2906,12 @@ fn parse_layers(
             }
             LayerExprs::CustomMapping(layer) => {
                 // Parse actions as input output pairs
+                #[cfg(all(target_os = "windows", feature = "gui"))]
+                let skip = if layer.len() >= 3 && parse_action_as_cfg(&layer[2]) {3} else {2}; // skip the 3rd list that's used to configure a layer rather than define an action
+                // Parse actions as input -> output triplets
+                #[cfg(all(target_os = "windows", feature = "gui"))]
+                let mut pairs = layer[skip..].chunks_exact(2);
+                #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
                 let mut pairs = layer[2..].chunks_exact(2);
                 let mut layer_mapped_keys = HashSet::default();
                 let mut defsrc_anykey_used = false;
