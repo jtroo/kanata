@@ -420,7 +420,7 @@ impl SystemTray {
                         .to_string();
                     let cfg_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
                     let layer_icon_s = cfg_icon.clone().unwrap_or("✗".to_string());
-                    info!(
+                    debug!(
                         "✓ layer changed to ‘{}’ with icon ‘{}’ @ ‘{}’ tray_icon ‘{}’",
                         layer_name, layer_icon_s, cfg_name, cfg_icon_s
                     );
