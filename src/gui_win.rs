@@ -32,7 +32,6 @@ impl PathExt for PathBuf {
 
 #[derive(Default, Debug, Clone)]
 pub struct SystemTrayData {
-    // todo: check that on config reload this is updated from the new config data
     pub tooltip: String,
     pub cfg_p: Vec<PathBuf>,
     pub cfg_icon: Option<String>,
@@ -369,6 +368,9 @@ impl SystemTray {
             {
                 let mut app_data = self.app_data.borrow_mut();
                 app_data.cfg_icon = cfg_icon.clone();
+                app_data.layer0_name = k.layer_info[0].name.clone();
+                app_data.layer0_icon = Some(k.layer_info[0].name.clone());
+                app_data.icon_match_layer_name = k.icon_match_layer_name;
                 // self.tray.set_visibility(false); // flash the icon, but might be confusing as the app isn't restarting, just reloading
                 self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
                                                       // self.tray.set_visibility(true);
