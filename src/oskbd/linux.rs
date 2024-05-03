@@ -324,7 +324,7 @@ pub struct KbdOut {
 
 #[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
-    pub fn new(symlink_path: &Option<String>, trackpoint:bool) -> Result<Self, io::Error> {
+    pub fn new(symlink_path: &Option<String>, trackpoint: bool) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
         // TODO investigate the rare possibility that a device is e.g. a Joystick and a Keyboard or a Mouse at the same time, which could lead to lost events
 
