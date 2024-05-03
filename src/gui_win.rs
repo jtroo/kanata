@@ -245,29 +245,51 @@ impl SystemTray {
         let (x, y) = nwg::GlobalCursor::position();
         self.tray_menu.popup(x, y);
     }
+    /// Add a ✓ (or highlight the icon) to the currently active config. Runs on opening of the list of configs menu
+    fn update_tray_icon_cfg(&self,menu_item_cfg:&mut nwg::MenuItem,cfg_p:&PathBuf,is_active:bool) -> Result<()> {
+      let mut img_dyn = self.img_dyn.borrow_mut();
+      if img_dyn.contains_key(cfg_p) { // check if menu group icon needs to be updated to match active
+        if is_active {
+          if let Some(cfg_icon_bitmap) = img_dyn.get(cfg_p) {
+            self.tray_1cfg_m.set_bitmap(cfg_icon_bitmap.as_ref());
+          }
+        }
+      } else {trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
+        if let Ok(cfg) = cfg::new_from_file(&cfg_p) {
+          if let Some(cfg_icon_s) = cfg.options.tray_icon {debug!("loaded config without a tray icon {cfg_p:?}");
+            if let Some(cfg_icon_bitmap) = set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, &cfg_p) {
+              if is_active {self.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap));} // update currently active config's icon in the combo menu
+                    debug!("✓set icon {cfg_p:?}");
+              let _ = img_dyn.insert(cfg_p.clone(),Some(cfg_icon_bitmap));
+            } else {bail!("✗couldn't get a valid icon")}
+          } else   {bail!("✗icon not configured")}
+        } else     {bail!("✗couldn't load config")}
+      }
+      Ok(())
+    }
     fn check_active(&self) {
-        if let Some(cfg) = CFG.get() {
-            let k = cfg.lock();
-            let idx_cfg = k.cur_cfg_idx;
-            let tray_item_dyn = &self.tray_item_dyn.borrow(); //
-            for (i, h_cfg_i) in tray_item_dyn.iter().enumerate() {
-                if h_cfg_i.checked() {
-                    trace!(
-                        "✓checked {} active {} eq? {} !eq? {}",
-                        i,
-                        idx_cfg,
-                        i == idx_cfg,
-                        !(i == idx_cfg)
-                    );
-                }
-                if h_cfg_i.checked() && !(i == idx_cfg) {
+        if let Some(cfg) = CFG.get() {let k = cfg.lock();
+          let     idx_cfg       = k.cur_cfg_idx;
+          let mut tray_item_dyn = self.tray_item_dyn    .borrow_mut();
+          for (i, mut h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
+            // 1 if missing an icon, read config to get one
+            let cfg_p = &k.cfg_paths[i]; trace!("     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}",h_cfg_i.handle); // change to trace todo
+            let is_active = i==idx_cfg;
+            if let Err(e) = self.update_tray_icon_cfg(&mut h_cfg_i,&cfg_p,is_active){
+              info!("{e:?} {cfg_p:?}");
+              let mut img_dyn   = self.img_dyn.borrow_mut();
+              img_dyn.insert(cfg_p.clone(),None);
+              if i==idx_cfg {self.tray_1cfg_m.set_bitmap(None);} // update currently active config's icon in the combo menu
+            };
+            // 2 if wrong GUI checkmark, correct it
+                if h_cfg_i.checked() && !is_active {
                     debug!("uncheck i{} act{}", i, idx_cfg);
                     h_cfg_i.set_checked(false);
-                } // uncheck inactive
-                if !h_cfg_i.checked() && i == idx_cfg {
+                }
+                if !h_cfg_i.checked() && is_active {
                     debug!("  check i{} act{}", i, idx_cfg);
                     h_cfg_i.set_checked(true);
-                } //   check   active
+                }
             }
         } else {
             error!("no CFG var that contains active kanata config");
