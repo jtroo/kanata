@@ -1,5 +1,7 @@
 use super::*;
+
 use crate::anyhow_expr;
+use crate::bail_expr;
 use crate::bail_span;
 use crate::err_expr;
 
@@ -67,6 +69,87 @@ pub(crate) fn filter_platform_specific_cfg(
                         applicable_platforms.join(" ")
                     ),
                 })
+            }
+
+            Ok(tles)
+        })
+}
+
+pub(crate) fn filter_env_specific_cfg(
+    top_levels: Vec<TopLevel>,
+    env: &EnvVars,
+    lsp_hint_inactive_code: &mut Vec<LspHintInactiveCode>,
+) -> Result<Vec<TopLevel>> {
+    top_levels
+        .into_iter()
+        .try_fold(vec![], |mut tles, tle| -> Result<Vec<TopLevel>> {
+            if !matches!(
+                tle.t.first().and_then(|m| m.atom(None)),
+                Some("environment")
+            ) {
+                tles.push(tle);
+                return Ok(tles);
+            }
+            let env = match env.as_ref() {
+                Ok(v) => v,
+                Err(e) => Err(anyhow!("{e}"))?,
+            };
+            if tle.t.len() != 3 {
+                bail_span!(
+                    &tle,
+                    "environment requires exactly two parameters:\n\
+                     varname-varvalue, configuration-item"
+                );
+            }
+
+            let configuration = tle.t[2]
+                .span_list(None)
+                .ok_or_else(|| anyhow_expr!(&tle.t[2], "configuration-item must be a list"))?;
+
+            let (env_var_name, env_var_val) = tle.t[1]
+                .list(None)
+                .ok_or_else(|| anyhow_expr!(&tle.t[1], "varname-varvalue must be a list"))
+                .and_then(|varnameval| {
+                    if varnameval.len() != 2 {
+                        bail_expr!(
+                            &tle.t[1],
+                            "varname-varvalue must be a list of two elements:\n\
+                                               varname, varvalue"
+                        );
+                    }
+                    Ok((
+                        varnameval[0].atom(None).ok_or_else(|| {
+                            anyhow_expr!(&varnameval[0], "varname must be a string")
+                        })?,
+                        varnameval[1].atom(None).ok_or_else(|| {
+                            anyhow_expr!(&varnameval[1], "varvalue must be a string")
+                        })?,
+                    ))
+                })?;
+            let env_var_val = env_var_val.trim_matches('"');
+            match (
+                env.iter().find_map(|(name, val)| {
+                    if name == env_var_name {
+                        Some(val)
+                    } else {
+                        None
+                    }
+                }),
+                env_var_val.is_empty(),
+            ) {
+                (None, false) => {}
+                (None, true) => {
+                    tles.push(configuration.clone());
+                }
+                (Some(val), true) if val.is_empty() => {
+                    tles.push(configuration.clone());
+                }
+                (Some(_), true) => {}
+                (Some(val), false) => {
+                    if val == env_var_val {
+                        tles.push(configuration.clone());
+                    }
+                }
             }
 
             Ok(tles)
