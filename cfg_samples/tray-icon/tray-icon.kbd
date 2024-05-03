@@ -13,7 +13,7 @@
 
 (defsrc     	           	                             	1  	2  	3  	4  	5  	6)
 (deflayer   	⌂          	(icon base.png)              	@l1	@l2	@l3	@l4	@l5	@l6)	;; find in the 'icon'  subfolder
-(deflayer   	1emoji     	(🖻 1symbols.ico)             	q  	q  	q  	q  	q  	q)  	;; find in the 'icons' subfolder
+(deflayer   	1emoji     	(🖻 1symbols.png)             	q  	q  	q  	q  	q  	q)  	;; find in the 'icons' subfolder
 (deflayer   	2icon-quote	(🖻 "2Nav Num.png")           	w  	w  	w  	w  	w  	w)  	;; find in the 'img'   subfolder
 (deflayer   	3emoji_alt 	(🖼 3trans.parent)            	e  	e  	e  	e  	e  	e)  	;; find '.png'
 (deflayermap	(4my-lmap) 	(🖻 "..\..\assets\kanata.ico")	1 r	2 r	3 r	4 r	5 r	6 r) ;; find in relative path
