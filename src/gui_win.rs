@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 use nwg::{ControlHandle, NativeUi};
 use std::sync::Arc;
+use core::cell::{Cell,RefCell};
 
 trait PathExt {
     fn add_ext(&mut self, ext_o: impl AsRef<std::path::Path>);
@@ -60,6 +61,8 @@ pub struct SystemTray {
     pub tray_1cfg_m: nwg::Menu,
     pub tray_2reload: nwg::MenuItem,
     pub tray_3exit: nwg::MenuItem,
+    pub img_reload	: nwg::Bitmap,
+    pub img_exit  	: nwg::Bitmap,
 }
 pub fn get_appdata() -> Option<PathBuf> {
     var_os("APPDATA").map(PathBuf::from)
@@ -593,6 +596,9 @@ pub mod system_tray_ui {
     use super::*;
     use core::cmp;
     use native_windows_gui::{self as nwg, MousePressEvent};
+    use crate::gui_nwg_ext::{BitmapEx, MenuItemEx, MenuEx};
+    use windows_sys::Win32::UI::{Controls::LVSCW_AUTOSIZE_USEHEADER,
+      Shell::{SIID_SHIELD,SIID_DELETE,SIID_DOCASSOC}};
     use std::cell::RefCell;
     use std::ops::Deref;
     use std::rc::Rc;
@@ -645,6 +651,15 @@ pub mod system_tray_ui {
                 .parent(&d.tray_menu)
                 .text("&X Exit\t‹⎈␠⎋") //
                 .build(&mut d.tray_3exit)?;
+
+            let mut tmp_bitmap = Default::default();
+            nwg::Bitmap::builder().source_embed(Some(&d.embed)).source_embed_str(Some("imgReload")).strict(true).size(Some((24,24)))
+              .build(&mut tmp_bitmap)?;
+            let img_exit    = nwg::Bitmap::from_system_icon(SIID_DELETE);
+            d.tray_2reload  .set_bitmap(Some(&tmp_bitmap));
+            d.tray_3exit    .set_bitmap(Some(&img_exit));
+            d.img_reload    = tmp_bitmap;
+            d.img_exit      = img_exit;
 
             {
                 let mut tray_item_dyn = d.tray_item_dyn.borrow_mut(); //extra scope to drop borrowed mut
