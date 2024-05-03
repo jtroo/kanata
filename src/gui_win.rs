@@ -691,11 +691,6 @@ pub mod system_tray_ui {
             nwg::Notice::builder()
                 .parent(&d.window)
                 .build(&mut d.layer_notice)?;
-            nwg::TrayNotification::builder()
-                .parent(&d.window)
-                .icon(Some(&d.icon))
-                .tip(Some(&app_data.tooltip))
-                .build(&mut d.tray)?;
             nwg::Menu::builder()
                 .parent(&d.window)
                 .popup(true) /*context menu*/	//
@@ -722,6 +717,8 @@ pub mod system_tray_ui {
             d.img_reload    = tmp_bitmap;
             d.img_exit      = img_exit;
 
+            let mut main_tray_icon_l = Default::default();
+            let mut main_tray_icon_is = false;
             {
                 let mut tray_item_dyn = d.tray_item_dyn.borrow_mut(); //extra scope to drop borrowed mut
                 let mut icon_dyn = d.icon_dyn.borrow_mut();
@@ -785,7 +782,8 @@ pub mod system_tray_ui {
                                     let temp_icon = cfg_icon_bitmap.copy_as_icon();
                                     let _ = icon_dyn.insert(cfg_layer_pkey, Some(temp_icon));
                                     let temp_icon = cfg_icon_bitmap.copy_as_icon();
-                                    d.tray.set_icon(&temp_icon);
+                                    main_tray_icon_l = temp_icon;
+                                    main_tray_icon_is = true;
                                 } else {
                                     debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
                                     let _ = icon_dyn.insert(cfg_layer_pkey, None);
@@ -814,6 +812,11 @@ pub mod system_tray_ui {
                     warn!("Didn't get any config paths from Kanata!")
                 }
             }
+            let main_tray_icon = match main_tray_icon_is {
+              true  => Some(&main_tray_icon_l),
+              false => Some(&d.icon),};
+            nwg::TrayNotification   ::builder().parent(&d.window)   .icon(main_tray_icon)   .tip(Some(&app_data.tooltip))
+              .                       build(       &mut d.tray      )?                      ;
 
             let ui = SystemTrayUi {
                 // Wrap-up
