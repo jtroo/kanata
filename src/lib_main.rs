@@ -255,23 +255,8 @@ fn main_impl() -> Result<()> {
         (None, None, None)
     };
 
-    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
+    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]{
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
-
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    use anyhow::Context;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    use native_windows_gui as nwg;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    native_windows_gui::init().context("Failed to init Native Windows GUI")?;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    let ui = build_tray(&kanata_arc)?;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    let noticer: &nwg::Notice = &ui.layer_notice;
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    let gui_tx = noticer.sender();
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         #[allow(clippy::unit_arg)]
@@ -282,6 +267,23 @@ fn main_impl() -> Result<()> {
     sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
     Kanata::event_loop(kanata_arc, tx)?;
+    }
+
+    #[cfg(all(target_os = "windows", feature = "gui"))] {
+    use anyhow::Context;
+    use native_windows_gui as nwg;
+    native_windows_gui::init().context("Failed to init Native Windows GUI")?;
+    let ui = build_tray(&kanata_arc)?;
+    let gui_tx = ui.layer_notice.sender();
+    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
+
+    if let (Some(server), Some(nrx)) = (server, nrx) {
+        #[allow(clippy::unit_arg)]
+        Kanata::start_notification_loop(nrx, server.connections);
+    }
+
+    Kanata::event_loop(kanata_arc, tx, ui)?;
+    }
 
     Ok(())
 }
