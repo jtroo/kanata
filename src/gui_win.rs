@@ -257,6 +257,7 @@ fn set_menu_item_cfg_icon(menu_item:&mut nwg::MenuItem, cfg_icon_s:&str, cfg_p:&
 
 impl SystemTray {
     fn show_menu(&self) {
+        self.update_tray_icon_cfg_group(false);
         let (x, y) = nwg::GlobalCursor::position();
         self.tray_menu.popup(x, y);
     }
@@ -281,6 +282,25 @@ impl SystemTray {
         } else     {bail!("✗couldn't load config")}
       }
       Ok(())
+    }
+    fn update_tray_icon_cfg_group(&self,force:bool) {
+      if let Some(cfg) = CFG.get() {if let Some(k) = cfg.try_lock() {
+        let     idx_cfg         = k.cur_cfg_idx;
+        let mut tray_item_dyn   = self.tray_item_dyn    .borrow_mut();
+        let h_cfg_i = &mut tray_item_dyn[idx_cfg];
+        let is_check = h_cfg_i.checked();
+        if ! is_check || force {
+          let cfg_p = &k.cfg_paths[idx_cfg]; debug!("✗ mismatch idx_cfg={idx_cfg:?} {} {:?} cfg_p={cfg_p:?}",if is_check {"✓"}else{"✗"},    h_cfg_i.handle);
+          h_cfg_i.set_checked(true);
+          if let Err(e) = self.update_tray_icon_cfg(h_cfg_i,&cfg_p,true){
+            debug!("{e:?} {cfg_p:?}");
+            let mut img_dyn = self.img_dyn.borrow_mut();
+            img_dyn.insert(cfg_p.clone(),None);
+            self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo menu icon
+          };
+        } else {debug!("gui cfg selection matches active config");};
+      } else {debug!("✗ kanata config is locked, can't get current config (likely the gui changed the layer and is still holding the lock, it will update the icon)");}
+      };
     }
     fn check_active(&self) {
         if let Some(cfg) = CFG.get() {let k = cfg.lock();
@@ -810,12 +830,12 @@ pub mod system_tray_ui {
             E::OnMenuHover =>
               if        &handle == &evt_ui.tray_1cfg_m	{SystemTray::check_active(&evt_ui);}
             E::OnMenuItemSelected =>
-              if        &handle == &evt_ui.tray_2reload {let _ = SystemTray::reload_cfg(&evt_ui,None);
+              if        &handle == &evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
               } else if &handle == &evt_ui.tray_3exit	{SystemTray::exit  (&evt_ui);
               } else {
                 match handle {
                   ControlHandle::MenuItem(_parent, _id) => {
-                    let tray_item_dyn	= &evt_ui.tray_item_dyn.borrow(); //
+                    {let tray_item_dyn  = &evt_ui.tray_item_dyn.borrow(); //
                     for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
                       // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
                         for (_j, h_cfg_j) in tray_item_dyn.iter().enumerate() {
@@ -825,6 +845,8 @@ pub mod system_tray_ui {
                       // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
                       }
                     }
+                    }
+                    SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
                   },
                   _	=> {},
                 }
