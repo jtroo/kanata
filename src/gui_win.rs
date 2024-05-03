@@ -82,168 +82,168 @@ const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 use crate::lib_main::CFG;
 
-impl SystemTray {
-    fn show_menu(&self) {
-        let (x, y) = nwg::GlobalCursor::position();
-        self.tray_menu.popup(x, y);
-    }
-    /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p` or a config file name at various locations (where config file is, where executable is, in user config folders)
-    fn get_icon_p<S1, S2, S3, P>(
-        &self,
-        lyr_icn: S1,
-        lyr_nm: S2,
-        cfg_icn: S3,
-        cfg_p: P,
-        match_name: &bool,
-    ) -> Option<String>
-    where
-        S1: AsRef<str>,
-        S2: AsRef<str>,
-        S3: AsRef<str>,
-        P: AsRef<Path>,
-    {
-        self.get_icon_p_impl(
-            lyr_icn.as_ref(),
-            lyr_nm.as_ref(),
-            cfg_icn.as_ref(),
-            cfg_p.as_ref(),
-            match_name,
-        )
-    }
-    fn get_icon_p_impl(
-        &self,
-        lyr_icn: &str,
-        lyr_nm: &str,
-        cfg_icn: &str,
-        p: &Path,
-        match_name: &bool,
-    ) -> Option<String> {
-        trace!("lyr_icn={lyr_icn} lyr_nm={lyr_nm} cfg_icn={cfg_icn} cfg_p={p:?} match_name={match_name}");
-        let mut icon_file = PathBuf::new();
-        let blank_p = Path::new("");
-        let lyr_icn_p = Path::new(&lyr_icn);
-        let lyr_nm_p = Path::new(&lyr_nm);
-        let cfg_icn_p = Path::new(&cfg_icn);
-        let cfg_stem = &p.file_stem().unwrap_or_else(|| OsStr::new(""));
-        let cfg_name = &p.file_name().unwrap_or_else(|| OsStr::new(""));
-        let f_name = [
-            lyr_icn_p.as_os_str(),
-            if *match_name {
-                lyr_nm_p.as_os_str()
-            } else {
-                OsStr::new("")
-            },
-            cfg_icn_p.as_os_str(),
-            cfg_stem,
-            cfg_name,
-        ]
-        .into_iter();
-        let f_ext = [
-            lyr_icn_p.extension(),
-            if *match_name {
-                lyr_nm_p.extension()
-            } else {
-                None
-            },
-            cfg_icn_p.extension(),
-            None,
-            None,
-        ];
-        let pre_p = p.parent().unwrap_or_else(|| Path::new(""));
-        let cur_exe = current_exe().unwrap_or_else(|_| PathBuf::new());
-        let xdg_cfg = get_xdg_home().unwrap_or_else(|| PathBuf::new());
-        let app_data = get_appdata().unwrap_or_else(|| PathBuf::new());
-        let mut user_cfg = get_user_home().unwrap_or_else(|| PathBuf::new());
-        user_cfg.push(".config");
-        let parents = [
-            Path::new(""),
-            pre_p,
-            &cur_exe,
-            &xdg_cfg,
-            &app_data,
-            &user_cfg,
-        ]; // empty path to allow no prefixes when icon path is explictily set in case it's a full path already
+/// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p` or a config file name at various locations (where config file is, where executable is, in user config folders)
+fn get_icon_p<S1, S2, S3, P>(
+    &self,
+    lyr_icn: S1,
+    lyr_nm: S2,
+    cfg_icn: S3,
+    cfg_p: P,
+    match_name: &bool,
+) -> Option<String>
+where
+    S1: AsRef<str>,
+    S2: AsRef<str>,
+    S3: AsRef<str>,
+    P: AsRef<Path>,
+{
+    self.get_icon_p_impl(
+        lyr_icn.as_ref(),
+        lyr_nm.as_ref(),
+        cfg_icn.as_ref(),
+        cfg_p.as_ref(),
+        match_name,
+    )
+}
+fn get_icon_p_impl(
+    &self,
+    lyr_icn: &str,
+    lyr_nm: &str,
+    cfg_icn: &str,
+    p: &Path,
+    match_name: &bool,
+) -> Option<String> {
+    trace!("lyr_icn={lyr_icn} lyr_nm={lyr_nm} cfg_icn={cfg_icn} cfg_p={p:?} match_name={match_name}");
+    let mut icon_file = PathBuf::new();
+    let blank_p = Path::new("");
+    let lyr_icn_p = Path::new(&lyr_icn);
+    let lyr_nm_p = Path::new(&lyr_nm);
+    let cfg_icn_p = Path::new(&cfg_icn);
+    let cfg_stem = &p.file_stem().unwrap_or_else(|| OsStr::new(""));
+    let cfg_name = &p.file_name().unwrap_or_else(|| OsStr::new(""));
+    let f_name = [
+        lyr_icn_p.as_os_str(),
+        if *match_name {
+            lyr_nm_p.as_os_str()
+        } else {
+            OsStr::new("")
+        },
+        cfg_icn_p.as_os_str(),
+        cfg_stem,
+        cfg_name,
+    ]
+    .into_iter();
+    let f_ext = [
+        lyr_icn_p.extension(),
+        if *match_name {
+            lyr_nm_p.extension()
+        } else {
+            None
+        },
+        cfg_icn_p.extension(),
+        None,
+        None,
+    ];
+    let pre_p = p.parent().unwrap_or_else(|| Path::new(""));
+    let cur_exe = current_exe().unwrap_or_else(|_| PathBuf::new());
+    let xdg_cfg = get_xdg_home().unwrap_or_else(|| PathBuf::new());
+    let app_data = get_appdata().unwrap_or_else(|| PathBuf::new());
+    let mut user_cfg = get_user_home().unwrap_or_else(|| PathBuf::new());
+    user_cfg.push(".config");
+    let parents = [
+        Path::new(""),
+        pre_p,
+        &cur_exe,
+        &xdg_cfg,
+        &app_data,
+        &user_cfg,
+    ]; // empty path to allow no prefixes when icon path is explictily set in case it's a full path already
 
-        for (i, nm) in f_name.enumerate() {
-            trace!("{}nm={:?}", "", nm);
-            if nm.is_empty() {
-                trace!("no file name to test, skip");
+    for (i, nm) in f_name.enumerate() {
+        trace!("{}nm={:?}", "", nm);
+        if nm.is_empty() {
+            trace!("no file name to test, skip");
+            continue;
+        }
+        let mut is_full_p = false;
+        if nm == lyr_icn_p {
+            is_full_p = true
+        }; // user configs can have full paths, so test them even if all parent folders are emtpy
+        if nm == cfg_icn_p {
+            is_full_p = true
+        };
+        let icn_ext = &f_ext[i]
+            .unwrap_or_else(|| OsStr::new(""))
+            .to_string_lossy()
+            .to_string();
+        let is_icn_ext_valid = if !IMG_EXT.iter().any(|&i| i == icn_ext) && f_ext[i].is_some() {
+            warn!(
+                "user icon extension \"{}\" might be invalid (or just not an extension)!",
+                icn_ext
+            );
+            false
+        } else {
+            trace!("icn_ext={:?}", icn_ext);
+            true
+        };
+        'p: for p_par in parents {
+            trace!("{}p_par={:?}", "  ", p_par);
+            if p_par == blank_p && !is_full_p {
+                trace!("blank parent for non-user, skip");
                 continue;
             }
-            let mut is_full_p = false;
-            if nm == lyr_icn_p {
-                is_full_p = true
-            }; // user configs can have full paths, so test them even if all parent folders are emtpy
-            if nm == cfg_icn_p {
-                is_full_p = true
-            };
-            let icn_ext = &f_ext[i]
-                .unwrap_or_else(|| OsStr::new(""))
-                .to_string_lossy()
-                .to_string();
-            let is_icn_ext_valid = if !IMG_EXT.iter().any(|&i| i == icn_ext) && f_ext[i].is_some() {
-                warn!(
-                    "user icon extension \"{}\" might be invalid (or just not an extension)!",
-                    icn_ext
-                );
-                false
-            } else {
-                trace!("icn_ext={:?}", icn_ext);
-                true
-            };
-            'p: for p_par in parents {
-                trace!("{}p_par={:?}", "  ", p_par);
-                if p_par == blank_p && !is_full_p {
-                    trace!("blank parent for non-user, skip");
-                    continue;
-                }
-                for p_kan in CFG_FD {
-                    trace!("{}p_kan={:?}", "    ", p_kan);
-                    for p_icn in ASSET_FD {
-                        trace!("{}p_icn={:?}", "      ", p_icn);
-                        for ext in IMG_EXT {
-                            trace!("{}  ext={:?}", "        ", ext);
-                            if !(p_par == blank_p) {
-                                icon_file.push(p_par);
-                            } // folders
-                            if !p_kan.is_empty() {
-                                icon_file.push(p_kan);
+            for p_kan in CFG_FD {
+                trace!("{}p_kan={:?}", "    ", p_kan);
+                for p_icn in ASSET_FD {
+                    trace!("{}p_icn={:?}", "      ", p_icn);
+                    for ext in IMG_EXT {
+                        trace!("{}  ext={:?}", "        ", ext);
+                        if !(p_par == blank_p) {
+                            icon_file.push(p_par);
+                        } // folders
+                        if !p_kan.is_empty() {
+                            icon_file.push(p_kan);
+                        }
+                        if !p_icn.is_empty() {
+                            icon_file.push(p_icn);
+                        }
+                        if !nm.is_empty() {
+                            icon_file.push(nm);
+                        }
+                        if !is_full_p {
+                            icon_file.set_extension(ext); // no icon name passed, iterate extensions
+                        } else if !is_icn_ext_valid {
+                            icon_file.add_ext(ext);
+                        } else {
+                            trace!("skip ext");
+                        } // replace invalid icon extension
+                        trace!("testing icon file {:?}", icon_file);
+                        if !icon_file.is_file() {
+                            icon_file.clear();
+                            if p_par == blank_p
+                                && p_kan.is_empty()
+                                && p_icn.is_empty()
+                                && is_full_p
+                            {
+                                trace!("skipping further sub-iters on an empty parent with user config {:?}",nm);
+                                continue 'p;
                             }
-                            if !p_icn.is_empty() {
-                                icon_file.push(p_icn);
-                            }
-                            if !nm.is_empty() {
-                                icon_file.push(nm);
-                            }
-                            if !is_full_p {
-                                icon_file.set_extension(ext); // no icon name passed, iterate extensions
-                            } else if !is_icn_ext_valid {
-                                icon_file.add_ext(ext);
-                            } else {
-                                trace!("skip ext");
-                            } // replace invalid icon extension
-                            trace!("testing icon file {:?}", icon_file);
-                            if !icon_file.is_file() {
-                                icon_file.clear();
-                                if p_par == blank_p
-                                    && p_kan.is_empty()
-                                    && p_icn.is_empty()
-                                    && is_full_p
-                                {
-                                    trace!("skipping further sub-iters on an empty parent with user config {:?}",nm);
-                                    continue 'p;
-                                }
-                            } else {
-                                debug!("✓ found icon file: {}", icon_file.display().to_string());
-                                return Some(icon_file.display().to_string());
-                            }
+                        } else {
+                            debug!("✓ found icon file: {}", icon_file.display().to_string());
+                            return Some(icon_file.display().to_string());
                         }
                     }
                 }
             }
         }
-        debug!("✗ no icon file found");
-        return None;
+    }
+    debug!("✗ no icon file found");
+    return None;
+}
+impl SystemTray {
+    fn show_menu(&self) {
+        let (x, y) = nwg::GlobalCursor::position();
+        self.tray_menu.popup(x, y);
     }
     fn check_active(&self) {
         if let Some(cfg) = CFG.get() {
@@ -483,7 +483,7 @@ impl SystemTray {
             }
         } else if let Some(layer_icon) = layer_icon {
             // 1b cfg+layer path hasn't been checked, but layer has an icon configured, so check it
-            if let Some(ico_p) = &self.get_icon_p(
+            if let Some(ico_p) = get_icon_p(
                 &layer_icon,
                 &layer_name,
                 "",
@@ -543,7 +543,7 @@ impl SystemTray {
             } else {
                 ""
             };
-            if let Some(ico_p) = &self.get_icon_p(
+            if let Some(ico_p) = get_icon_p(
                 "",
                 &layer_name,
                 &cfg_icon_p,
@@ -705,7 +705,7 @@ pub mod system_tray_ui {
                         }
                         if i == 0 {
                             // add icons if exists, hashed by config path (for active config, others will create on load)
-                            if let Some(ico_p) = &d.get_icon_p(
+                            if let Some(ico_p) = get_icon_p(
                                 &layer0_icon_s,
                                 &app_data.layer0_name,
                                 &cfg_icon_s,
