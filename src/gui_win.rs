@@ -743,6 +743,7 @@ pub mod system_tray_ui {
                                 *icon_active = Some(cfg_p.clone());
                                 // Set tray menu config item icons, ignores layers since these are per config
                                 if let Some(cfg_icon_bitmap) = set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p) {
+                                  d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently active config's icon in the combo menu
                                   let _ = img_dyn.insert(cfg_p.clone(),Some(cfg_icon_bitmap));
                                 } else {
                                   let _ = img_dyn.insert(cfg_p.clone(),None);
