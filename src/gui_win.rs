@@ -1,5 +1,5 @@
 use crate::Kanata;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use core::cell::RefCell;
 use log::Level::*;
 
@@ -274,7 +274,7 @@ impl SystemTray {
         };
     }
     /// Reload config file, currently active (`i=None`) or matching a given `i` index
-    fn reload_cfg(&self, i: Option<usize>) {
+    fn reload_cfg(&self, i:Option<usize>) -> Result<()> {
         use nwg::TrayNotificationFlags as f_tray;
         let mut msg_title = "".to_string();
         let mut msg_content = "".to_string();
@@ -334,7 +334,7 @@ impl SystemTray {
                             Some(flags),
                             Some(&self.icon),
                         );
-                        return;
+                        bail!("{msg_content}");
                     }
                 }
                 None => {
@@ -350,7 +350,7 @@ impl SystemTray {
                             Some(flags),
                             Some(&self.icon),
                         );
-                        return;
+                        bail!("{msg_content}");
                     }
                 }
             };
@@ -401,6 +401,7 @@ impl SystemTray {
             Some(flags),
             Some(&self.icon),
         );
+        Ok(())
     }
     /// Update tray icon data on layer change
     fn reload_layer_icon(&self) {
@@ -773,18 +774,19 @@ pub mod system_tray_ui {
             E::OnMenuHover =>
               if        &handle == &evt_ui.tray_1cfg_m	{SystemTray::check_active(&evt_ui);}
             E::OnMenuItemSelected =>
-              if        &handle == &evt_ui.tray_2reload	{SystemTray::reload_cfg(&evt_ui,None);
-              } else if &handle == &evt_ui.tray_3exit  	{SystemTray::exit  (&evt_ui);
+              if        &handle == &evt_ui.tray_2reload {let _ = SystemTray::reload_cfg(&evt_ui,None);
+              } else if &handle == &evt_ui.tray_3exit	{SystemTray::exit  (&evt_ui);
               } else {
                 match handle {
                   ControlHandle::MenuItem(_parent, _id) => {
                     let tray_item_dyn	= &evt_ui.tray_item_dyn.borrow(); //
                     for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
-                      if &handle == h_cfg { //info!("CONFIG handle i={:?} {:?}",i,&handle);
+                      // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
                         for (_j, h_cfg_j) in tray_item_dyn.iter().enumerate() {
                           if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck others
                         h_cfg.set_checked(true); // check self
-                        SystemTray::reload_cfg(&evt_ui,Some(i));
+                      let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends on future fix in kanata that would revert index on failed config changes
+                      // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
                       }
                     }
                   },
