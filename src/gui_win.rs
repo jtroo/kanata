@@ -490,20 +490,20 @@ impl SystemTray {
                 &path_cur_cc,
                 &app_data.icon_match_layer_name,
             ) {
-                let mut temp_icon_bitmap = Default::default();
+                let mut cfg_icon_bitmap = Default::default();
                 if let Ok(()) = nwg::Bitmap::builder()
                     .source_file(Some(&ico_p))
                     .strict(false)
-                    .build(&mut temp_icon_bitmap)
+                    .build(&mut cfg_icon_bitmap)
                 {
                     debug!(
                         "✓ Using an icon from this config+layer: {}",
                         cfg_layer_pkey_s
                     );
-                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     let _ = icon_dyn.insert(cfg_layer_pkey.clone(), Some(temp_icon));
                     *icon_active = Some(cfg_layer_pkey);
-                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     self.tray.set_icon(&temp_icon);
                 } else {
                     warn!(
@@ -550,20 +550,20 @@ impl SystemTray {
                 &path_cur_cc,
                 &app_data.icon_match_layer_name,
             ) {
-                let mut temp_icon_bitmap = Default::default();
+                let mut cfg_icon_bitmap = Default::default();
                 if let Ok(()) = nwg::Bitmap::builder()
                     .source_file(Some(&ico_p))
                     .strict(false)
-                    .build(&mut temp_icon_bitmap)
+                    .build(&mut cfg_icon_bitmap)
                 {
                     debug!(
                         "✓ Using an icon from this config: {}",
                         path_cur_cc.display().to_string()
                     );
-                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     let _ = icon_dyn.insert(cfg_layer_pkey.clone(), Some(temp_icon));
                     *icon_active = Some(cfg_layer_pkey);
-                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     self.tray.set_icon(&temp_icon);
                 } else {
                     warn!(
@@ -716,16 +716,16 @@ pub mod system_tray_ui {
                                 cfg_layer_pkey.push(cfg_p.clone());
                                 cfg_layer_pkey.push(PRE_LAYER.to_owned() + &app_data.layer0_name);
                                 let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
-                                let mut temp_icon_bitmap = Default::default();
+                                let mut cfg_icon_bitmap = Default::default();
                                 if let Ok(()) = nwg::Bitmap::builder()
                                     .source_file(Some(&ico_p))
                                     .strict(false)
-                                    .build(&mut temp_icon_bitmap)
+                                    .build(&mut cfg_icon_bitmap)
                                 {
                                     debug!("✓ main 0 config: using icon for {}", cfg_layer_pkey_s);
-                                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                                     let _ = icon_dyn.insert(cfg_layer_pkey, Some(temp_icon));
-                                    let temp_icon = temp_icon_bitmap.copy_as_icon();
+                                    let temp_icon = cfg_icon_bitmap.copy_as_icon();
                                     d.tray.set_icon(&temp_icon);
                                 } else {
                                     debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
@@ -742,8 +742,8 @@ pub mod system_tray_ui {
                                 let _ = icon_dyn.insert(cfg_p.clone(), Some(temp_icon));
                                 *icon_active = Some(cfg_p.clone());
                                 // Set tray menu config item icons, ignores layers since these are per config
-                                if let Some(temp_icon_bitmap) = set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p) {
-                                  let _ = img_dyn.insert(cfg_p.clone(),Some(temp_icon_bitmap));
+                                if let Some(cfg_icon_bitmap) = set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p) {
+                                  let _ = img_dyn.insert(cfg_p.clone(),Some(cfg_icon_bitmap));
                                 } else {
                                   let _ = img_dyn.insert(cfg_p.clone(),None);
                                 }
@@ -807,10 +807,10 @@ pub mod system_tray_ui {
   fn set_menu_item_cfg_icon(menu_item:&mut nwg::MenuItem, cfg_icon_s:&str, cfg_p:&PathBuf) -> Option<nwg::Bitmap>{
     if let Some(ico_p) = get_icon_p("","", &cfg_icon_s, &cfg_p, &false) {
       let cfg_pkey_s = cfg_p.display().to_string();
-      let mut temp_icon_bitmap = Default::default();
-      if let Ok(()) = nwg::Bitmap::builder().source_file(Some(&ico_p)).strict(false).size(Some((24,24))).build(&mut temp_icon_bitmap) {
+      let mut cfg_icon_bitmap = Default::default();
+      if let Ok(()) = nwg::Bitmap::builder().source_file(Some(&ico_p)).strict(false).size(Some((24,24))).build(&mut cfg_icon_bitmap) {
         debug!("✓ main 0 config: using icon for {}",cfg_pkey_s);
-        menu_item.set_bitmap(Some(&temp_icon_bitmap)); return Some(temp_icon_bitmap)
+        menu_item.set_bitmap(Some(&cfg_icon_bitmap)); return Some(cfg_icon_bitmap)
       } else {debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);}
     }
     menu_item.set_bitmap(None); None
