@@ -255,34 +255,36 @@ fn main_impl() -> Result<()> {
         (None, None, None)
     };
 
-    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]{
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
+    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
+    {
+        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
-    if let (Some(server), Some(nrx)) = (server, nrx) {
-        #[allow(clippy::unit_arg)]
-        Kanata::start_notification_loop(nrx, server.connections);
+        if let (Some(server), Some(nrx)) = (server, nrx) {
+            #[allow(clippy::unit_arg)]
+            Kanata::start_notification_loop(nrx, server.connections);
+        }
+
+        #[cfg(target_os = "linux")]
+        sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
+
+        Kanata::event_loop(kanata_arc, tx)?;
     }
 
-    #[cfg(target_os = "linux")]
-    sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    {
+        use anyhow::Context;
 
-    Kanata::event_loop(kanata_arc, tx)?;
-    }
+        native_windows_gui::init().context("Failed to init Native Windows GUI")?;
+        let ui = build_tray(&kanata_arc)?;
+        let gui_tx = ui.layer_notice.sender();
+        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
 
-    #[cfg(all(target_os = "windows", feature = "gui"))] {
-    use anyhow::Context;
-    use native_windows_gui as nwg;
-    native_windows_gui::init().context("Failed to init Native Windows GUI")?;
-    let ui = build_tray(&kanata_arc)?;
-    let gui_tx = ui.layer_notice.sender();
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
+        if let (Some(server), Some(nrx)) = (server, nrx) {
+            #[allow(clippy::unit_arg)]
+            Kanata::start_notification_loop(nrx, server.connections);
+        }
 
-    if let (Some(server), Some(nrx)) = (server, nrx) {
-        #[allow(clippy::unit_arg)]
-        Kanata::start_notification_loop(nrx, server.connections);
-    }
-
-    Kanata::event_loop(kanata_arc, tx, ui)?;
+        Kanata::event_loop(kanata_arc, tx, ui)?;
     }
 
     Ok(())

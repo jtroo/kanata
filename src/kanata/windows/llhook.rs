@@ -10,7 +10,11 @@ use crate::kanata::*;
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
     /// and run the native_windows_gui event loop.
-    pub fn event_loop(_cfg: Arc<Mutex<Self>>, tx: Sender<KeyEvent>, #[cfg(all(target_os = "windows", feature = "gui"))] ui:system_tray_ui::SystemTrayUi) -> Result<()> {
+    pub fn event_loop(
+        _cfg: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+        #[cfg(all(target_os = "windows", feature = "gui"))] ui: crate::system_tray_ui::SystemTrayUi,
+    ) -> Result<()> {
         // Display debug and panic output when launched from a terminal.
         #[cfg(not(feature = "gui"))]
         unsafe {
@@ -68,7 +72,7 @@ impl Kanata {
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
-        // The event loop is also required for the low-level keyboard hook to work.
+                      // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
         Ok(())
     }

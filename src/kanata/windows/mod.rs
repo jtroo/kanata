@@ -152,8 +152,8 @@ impl Kanata {
             }
         }
         // if let Err(e) = self.do_live_reload(&None,gui_tx) {
-            // self.cur_cfg_idx = backup_cfg_idx; // restore index on fail when. TODO: add when a similar reversion is added to other custom actions
-            // return Err(e)
+        // self.cur_cfg_idx = backup_cfg_idx; // restore index on fail when. TODO: add when a similar reversion is added to other custom actions
+        // return Err(e)
         // }
         self.do_live_reload(&None, gui_tx)?;
         Ok(())

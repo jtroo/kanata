@@ -1,5 +1,5 @@
 use crate::Kanata;
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use core::cell::RefCell;
 use log::Level::*;
 
@@ -10,11 +10,10 @@ use std::env::{current_exe, var_os};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use nwg::{ControlHandle, NativeUi};
-use crate::gui_nwg_ext::{BitmapEx, MenuItemEx, MenuEx};
+use crate::gui_nwg_ext::{BitmapEx, MenuEx, MenuItemEx};
 use kanata_parser::cfg;
+use nwg::{ControlHandle, NativeUi};
 use std::sync::Arc;
-use core::cell::{Cell,RefCell};
 
 trait PathExt {
     fn add_ext(&mut self, ext_o: impl AsRef<std::path::Path>);
@@ -52,7 +51,7 @@ pub struct SystemTray {
     /// Store dynamically created icons to not load them from a file every time
     pub icon_dyn: RefCell<HashMap<PathBuf, Option<nwg::Icon>>>,
     /// Store dynamically created icons to not load them from a file every time (bitmap format needed to set MenuItem's icons)
-    pub img_dyn         : RefCell<HashMap<PathBuf,Option<nwg::Bitmap>>>,
+    pub img_dyn: RefCell<HashMap<PathBuf, Option<nwg::Bitmap>>>,
     /// Store 'icon_dyn' hashmap key for the currently active icon ('cfg_path:layer_name' format)
     pub icon_active: RefCell<Option<PathBuf>>,
     /// Store embedded-in-the-binary resources like icons not to load them from a file
@@ -65,8 +64,8 @@ pub struct SystemTray {
     pub tray_1cfg_m: nwg::Menu,
     pub tray_2reload: nwg::MenuItem,
     pub tray_3exit: nwg::MenuItem,
-    pub img_reload	: nwg::Bitmap,
-    pub img_exit  	: nwg::Bitmap,
+    pub img_reload: nwg::Bitmap,
+    pub img_exit: nwg::Bitmap,
 }
 pub fn get_appdata() -> Option<PathBuf> {
     var_os("APPDATA").map(PathBuf::from)
@@ -86,7 +85,6 @@ use crate::lib_main::CFG;
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p` or a config file name at various locations (where config file is, where executable is, in user config folders)
 fn get_icon_p<S1, S2, S3, P>(
-    &self,
     lyr_icn: S1,
     lyr_nm: S2,
     cfg_icn: S3,
@@ -99,7 +97,7 @@ where
     S3: AsRef<str>,
     P: AsRef<Path>,
 {
-    self.get_icon_p_impl(
+    get_icon_p_impl(
         lyr_icn.as_ref(),
         lyr_nm.as_ref(),
         cfg_icn.as_ref(),
@@ -107,15 +105,17 @@ where
         match_name,
     )
 }
+
 fn get_icon_p_impl(
-    &self,
     lyr_icn: &str,
     lyr_nm: &str,
     cfg_icn: &str,
     p: &Path,
     match_name: &bool,
 ) -> Option<String> {
-    trace!("lyr_icn={lyr_icn} lyr_nm={lyr_nm} cfg_icn={cfg_icn} cfg_p={p:?} match_name={match_name}");
+    trace!(
+        "lyr_icn={lyr_icn} lyr_nm={lyr_nm} cfg_icn={cfg_icn} cfg_p={p:?} match_name={match_name}"
+    );
     let mut icon_file = PathBuf::new();
     let blank_p = Path::new("");
     let lyr_icn_p = Path::new(&lyr_icn);
@@ -222,10 +222,7 @@ fn get_icon_p_impl(
                         trace!("testing icon file {:?}", icon_file);
                         if !icon_file.is_file() {
                             icon_file.clear();
-                            if p_par == blank_p
-                                && p_kan.is_empty()
-                                && p_icn.is_empty()
-                                && is_full_p
+                            if p_par == blank_p && p_kan.is_empty() && p_icn.is_empty() && is_full_p
                             {
                                 trace!("skipping further sub-iters on an empty parent with user config {:?}",nm);
                                 continue 'p;
@@ -243,16 +240,32 @@ fn get_icon_p_impl(
     return None;
 }
 
-fn set_menu_item_cfg_icon(menu_item:&mut nwg::MenuItem, cfg_icon_s:&str, cfg_p:&PathBuf) -> Option<nwg::Bitmap>{
-  if let Some(ico_p) = get_icon_p("","", &cfg_icon_s, &cfg_p, &false) {
-    let cfg_pkey_s = cfg_p.display().to_string();
-    let mut cfg_icon_bitmap = Default::default();
-    if let Ok(()) = nwg::Bitmap::builder().source_file(Some(&ico_p)).strict(false).size(Some((24,24))).build(&mut cfg_icon_bitmap) {
-      debug!("✓ main 0 config: using icon for {}",cfg_pkey_s);
-      menu_item.set_bitmap(Some(&cfg_icon_bitmap)); return Some(cfg_icon_bitmap)
-    } else {debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);}
-  }
-  menu_item.set_bitmap(None); None
+fn set_menu_item_cfg_icon(
+    menu_item: &mut nwg::MenuItem,
+    cfg_icon_s: &str,
+    cfg_p: &PathBuf,
+) -> Option<nwg::Bitmap> {
+    if let Some(ico_p) = get_icon_p("", "", &cfg_icon_s, &cfg_p, &false) {
+        let cfg_pkey_s = cfg_p.display().to_string();
+        let mut cfg_icon_bitmap = Default::default();
+        if let Ok(()) = nwg::Bitmap::builder()
+            .source_file(Some(&ico_p))
+            .strict(false)
+            .size(Some((24, 24)))
+            .build(&mut cfg_icon_bitmap)
+        {
+            debug!("✓ main 0 config: using icon for {}", cfg_pkey_s);
+            menu_item.set_bitmap(Some(&cfg_icon_bitmap));
+            return Some(cfg_icon_bitmap);
+        } else {
+            debug!(
+                "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
+                cfg_p
+            );
+        }
+    }
+    menu_item.set_bitmap(None);
+    None
 }
 
 impl SystemTray {
@@ -262,61 +275,93 @@ impl SystemTray {
         self.tray_menu.popup(x, y);
     }
     /// Add a ✓ (or highlight the icon) to the currently active config. Runs on opening of the list of configs menu
-    fn update_tray_icon_cfg(&self,menu_item_cfg:&mut nwg::MenuItem,cfg_p:&PathBuf,is_active:bool) -> Result<()> {
-      let mut img_dyn = self.img_dyn.borrow_mut();
-      if img_dyn.contains_key(cfg_p) { // check if menu group icon needs to be updated to match active
-        if is_active {
-          if let Some(cfg_icon_bitmap) = img_dyn.get(cfg_p) {
-            self.tray_1cfg_m.set_bitmap(cfg_icon_bitmap.as_ref());
-          }
+    fn update_tray_icon_cfg(
+        &self,
+        menu_item_cfg: &mut nwg::MenuItem,
+        cfg_p: &PathBuf,
+        is_active: bool,
+    ) -> Result<()> {
+        let mut img_dyn = self.img_dyn.borrow_mut();
+        if img_dyn.contains_key(cfg_p) {
+            // check if menu group icon needs to be updated to match active
+            if is_active {
+                if let Some(cfg_icon_bitmap) = img_dyn.get(cfg_p) {
+                    self.tray_1cfg_m.set_bitmap(cfg_icon_bitmap.as_ref());
+                }
+            }
+        } else {
+            trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
+            if let Ok(cfg) = cfg::new_from_file(&cfg_p) {
+                if let Some(cfg_icon_s) = cfg.options.tray_icon {
+                    debug!("loaded config without a tray icon {cfg_p:?}");
+                    if let Some(cfg_icon_bitmap) =
+                        set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, &cfg_p)
+                    {
+                        if is_active {
+                            self.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap));
+                        } // update currently active config's icon in the combo menu
+                        debug!("✓set icon {cfg_p:?}");
+                        let _ = img_dyn.insert(cfg_p.clone(), Some(cfg_icon_bitmap));
+                    } else {
+                        bail!("✗couldn't get a valid icon")
+                    }
+                } else {
+                    bail!("✗icon not configured")
+                }
+            } else {
+                bail!("✗couldn't load config")
+            }
         }
-      } else {trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
-        if let Ok(cfg) = cfg::new_from_file(&cfg_p) {
-          if let Some(cfg_icon_s) = cfg.options.tray_icon {debug!("loaded config without a tray icon {cfg_p:?}");
-            if let Some(cfg_icon_bitmap) = set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, &cfg_p) {
-              if is_active {self.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap));} // update currently active config's icon in the combo menu
-                    debug!("✓set icon {cfg_p:?}");
-              let _ = img_dyn.insert(cfg_p.clone(),Some(cfg_icon_bitmap));
-            } else {bail!("✗couldn't get a valid icon")}
-          } else   {bail!("✗icon not configured")}
-        } else     {bail!("✗couldn't load config")}
-      }
-      Ok(())
+        Ok(())
     }
-    fn update_tray_icon_cfg_group(&self,force:bool) {
-      if let Some(cfg) = CFG.get() {if let Some(k) = cfg.try_lock() {
-        let     idx_cfg         = k.cur_cfg_idx;
-        let mut tray_item_dyn   = self.tray_item_dyn    .borrow_mut();
-        let h_cfg_i = &mut tray_item_dyn[idx_cfg];
-        let is_check = h_cfg_i.checked();
-        if ! is_check || force {
-          let cfg_p = &k.cfg_paths[idx_cfg]; debug!("✗ mismatch idx_cfg={idx_cfg:?} {} {:?} cfg_p={cfg_p:?}",if is_check {"✓"}else{"✗"},    h_cfg_i.handle);
-          h_cfg_i.set_checked(true);
-          if let Err(e) = self.update_tray_icon_cfg(h_cfg_i,&cfg_p,true){
-            debug!("{e:?} {cfg_p:?}");
-            let mut img_dyn = self.img_dyn.borrow_mut();
-            img_dyn.insert(cfg_p.clone(),None);
-            self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo menu icon
-          };
-        } else {debug!("gui cfg selection matches active config");};
-      } else {debug!("✗ kanata config is locked, can't get current config (likely the gui changed the layer and is still holding the lock, it will update the icon)");}
-      };
+    fn update_tray_icon_cfg_group(&self, force: bool) {
+        if let Some(cfg) = CFG.get() {
+            if let Some(k) = cfg.try_lock() {
+                let idx_cfg = k.cur_cfg_idx;
+                let mut tray_item_dyn = self.tray_item_dyn.borrow_mut();
+                let h_cfg_i = &mut tray_item_dyn[idx_cfg];
+                let is_check = h_cfg_i.checked();
+                if !is_check || force {
+                    let cfg_p = &k.cfg_paths[idx_cfg];
+                    debug!(
+                        "✗ mismatch idx_cfg={idx_cfg:?} {} {:?} cfg_p={cfg_p:?}",
+                        if is_check { "✓" } else { "✗" },
+                        h_cfg_i.handle
+                    );
+                    h_cfg_i.set_checked(true);
+                    if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, &cfg_p, true) {
+                        debug!("{e:?} {cfg_p:?}");
+                        let mut img_dyn = self.img_dyn.borrow_mut();
+                        img_dyn.insert(cfg_p.clone(), None);
+                        self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo menu icon
+                    };
+                } else {
+                    debug!("gui cfg selection matches active config");
+                };
+            } else {
+                debug!("✗ kanata config is locked, can't get current config (likely the gui changed the layer and is still holding the lock, it will update the icon)");
+            }
+        };
     }
     fn check_active(&self) {
-        if let Some(cfg) = CFG.get() {let k = cfg.lock();
-          let     idx_cfg       = k.cur_cfg_idx;
-          let mut tray_item_dyn = self.tray_item_dyn    .borrow_mut();
-          for (i, mut h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
-            // 1 if missing an icon, read config to get one
-            let cfg_p = &k.cfg_paths[i]; trace!("     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}",h_cfg_i.handle); // change to trace todo
-            let is_active = i==idx_cfg;
-            if let Err(e) = self.update_tray_icon_cfg(&mut h_cfg_i,&cfg_p,is_active){
-              info!("{e:?} {cfg_p:?}");
-              let mut img_dyn   = self.img_dyn.borrow_mut();
-              img_dyn.insert(cfg_p.clone(),None);
-              if i==idx_cfg {self.tray_1cfg_m.set_bitmap(None);} // update currently active config's icon in the combo menu
-            };
-            // 2 if wrong GUI checkmark, correct it
+        if let Some(cfg) = CFG.get() {
+            let k = cfg.lock();
+            let idx_cfg = k.cur_cfg_idx;
+            let mut tray_item_dyn = self.tray_item_dyn.borrow_mut();
+            for (i, mut h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
+                // 1 if missing an icon, read config to get one
+                let cfg_p = &k.cfg_paths[i];
+                trace!("     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}", h_cfg_i.handle);
+                let is_active = i == idx_cfg;
+                if let Err(e) = self.update_tray_icon_cfg(&mut h_cfg_i, &cfg_p, is_active) {
+                    debug!("{e:?} {cfg_p:?}");
+                    let mut img_dyn = self.img_dyn.borrow_mut();
+                    img_dyn.insert(cfg_p.clone(), None);
+                    if is_active {
+                        self.tray_1cfg_m.set_bitmap(None);
+                    } // update currently active config's icon in the combo menu
+                };
+                // 2 if wrong GUI checkmark, correct it
                 if h_cfg_i.checked() && !is_active {
                     debug!("uncheck i{} act{}", i, idx_cfg);
                     h_cfg_i.set_checked(false);
@@ -331,7 +376,7 @@ impl SystemTray {
         };
     }
     /// Reload config file, currently active (`i=None`) or matching a given `i` index
-    fn reload_cfg(&self, i:Option<usize>) -> Result<()> {
+    fn reload_cfg(&self, i: Option<usize>) -> Result<()> {
         use nwg::TrayNotificationFlags as f_tray;
         let mut msg_title = "".to_string();
         let mut msg_content = "".to_string();
@@ -437,7 +482,7 @@ impl SystemTray {
                 self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
                                                       // self.tray.set_visibility(true);
             }
-            let clear = if i.is_none() { true } else { false };
+            let clear = i.is_none();
             self.update_tray_icon(
                 cfg_layer_pkey,
                 &cfg_layer_pkey_s,
@@ -520,7 +565,7 @@ impl SystemTray {
     ) {
         let mut icon_dyn = self.icon_dyn.borrow_mut(); // update the tray icon
         let mut icon_active = self.icon_active.borrow_mut(); // update the tray icon active path
-        let mut img_dyn     = self.img_dyn    .borrow_mut(); // update the tray images
+        let mut img_dyn = self.img_dyn.borrow_mut(); // update the tray images
         if clear {
             *icon_dyn = Default::default();
             *icon_active = Default::default();
@@ -658,11 +703,10 @@ pub mod system_tray_ui {
     use super::*;
     use core::cmp;
     use native_windows_gui::{self as nwg, MousePressEvent};
-    use windows_sys::Win32::UI::{Controls::LVSCW_AUTOSIZE_USEHEADER,
-      Shell::{SIID_SHIELD,SIID_DELETE,SIID_DOCASSOC}};
     use std::cell::RefCell;
     use std::ops::Deref;
     use std::rc::Rc;
+    use windows_sys::Win32::UI::Shell::SIID_DELETE;
 
     pub struct SystemTrayUi {
         inner: Rc<SystemTray>,
@@ -709,20 +753,24 @@ pub mod system_tray_ui {
                 .build(&mut d.tray_3exit)?;
 
             let mut tmp_bitmap = Default::default();
-            nwg::Bitmap::builder().source_embed(Some(&d.embed)).source_embed_str(Some("imgReload")).strict(true).size(Some((24,24)))
-              .build(&mut tmp_bitmap)?;
-            let img_exit    = nwg::Bitmap::from_system_icon(SIID_DELETE);
-            d.tray_2reload  .set_bitmap(Some(&tmp_bitmap));
-            d.tray_3exit    .set_bitmap(Some(&img_exit));
-            d.img_reload    = tmp_bitmap;
-            d.img_exit      = img_exit;
+            nwg::Bitmap::builder()
+                .source_embed(Some(&d.embed))
+                .source_embed_str(Some("imgReload"))
+                .strict(true)
+                .size(Some((24, 24)))
+                .build(&mut tmp_bitmap)?;
+            let img_exit = nwg::Bitmap::from_system_icon(SIID_DELETE);
+            d.tray_2reload.set_bitmap(Some(&tmp_bitmap));
+            d.tray_3exit.set_bitmap(Some(&img_exit));
+            d.img_reload = tmp_bitmap;
+            d.img_exit = img_exit;
 
             let mut main_tray_icon_l = Default::default();
             let mut main_tray_icon_is = false;
             {
                 let mut tray_item_dyn = d.tray_item_dyn.borrow_mut(); //extra scope to drop borrowed mut
                 let mut icon_dyn = d.icon_dyn.borrow_mut();
-                let mut img_dyn         = d.img_dyn      .borrow_mut();
+                let mut img_dyn = d.img_dyn.borrow_mut();
                 let mut icon_active = d.icon_active.borrow_mut();
                 const MENU_ACC: &str = "ASDFGQWERTZXCVBYUIOPHJKLNM";
                 let layer0_icon_s = &app_data.layer0_icon.clone().unwrap_or("".to_string());
@@ -744,7 +792,7 @@ pub mod system_tray_ui {
                             .unwrap_or_else(|| OsStr::new(""))
                             .to_string_lossy()
                             .to_string(); //kanata.kbd
-                                          // let menu_text	= i_acc + cfg_name; // &1 kanata.kbd
+                                          // let menu_text  = i_acc + cfg_name; // &1 kanata.kbd
                         let menu_text = format!("{cfg_name}\t{i_acc}"); // kanata.kbd &1
                         let mut menu_item = Default::default();
                         if i == 0 {
@@ -798,25 +846,32 @@ pub mod system_tray_ui {
                                     .build(&mut temp_icon)?;
                                 let _ = icon_dyn.insert(cfg_p.clone(), Some(temp_icon));
                                 *icon_active = Some(cfg_p.clone());
-                                // Set tray menu config item icons, ignores layers since these are per config
-                                if let Some(cfg_icon_bitmap) = set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p) {
-                                  d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently active config's icon in the combo menu
-                                  let _ = img_dyn.insert(cfg_p.clone(),Some(cfg_icon_bitmap));
-                                } else {
-                                  let _ = img_dyn.insert(cfg_p.clone(),None);
-                                }
-                              }
-                              tray_item_dyn.push(menu_item);
                             }
+                            // Set tray menu config item icons, ignores layers since these are per config
+                            if let Some(cfg_icon_bitmap) =
+                                set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p)
+                            {
+                                d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently active config's icon in the combo menu
+                                let _ = img_dyn.insert(cfg_p.clone(), Some(cfg_icon_bitmap));
+                            } else {
+                                let _ = img_dyn.insert(cfg_p.clone(), None);
+                            }
+                        }
+                        tray_item_dyn.push(menu_item);
+                    }
                 } else {
                     warn!("Didn't get any config paths from Kanata!")
                 }
             }
             let main_tray_icon = match main_tray_icon_is {
-              true  => Some(&main_tray_icon_l),
-              false => Some(&d.icon),};
-            nwg::TrayNotification   ::builder().parent(&d.window)   .icon(main_tray_icon)   .tip(Some(&app_data.tooltip))
-              .                       build(       &mut d.tray      )?                      ;
+                true => Some(&main_tray_icon_l),
+                false => Some(&d.icon),
+            };
+            nwg::TrayNotification::builder()
+                .parent(&d.window)
+                .icon(main_tray_icon)
+                .tip(Some(&app_data.tooltip))
+                .build(&mut d.tray)?;
 
             let ui = SystemTrayUi {
                 // Wrap-up
@@ -828,36 +883,37 @@ pub mod system_tray_ui {
             let handle_events = move |evt, _evt_data, handle| {
                 if let Some(evt_ui) = evt_ui.upgrade() {
                     match evt {
-            E::OnNotice                                       	=> if &handle == &evt_ui.layer_notice {SystemTray::reload_layer_icon(&evt_ui);}
-            E::OnWindowClose                                  	=> if &handle == &evt_ui.window {SystemTray::exit  (&evt_ui);}
-            E::OnMousePress(MousePressEvent::MousePressLeftUp)	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-            E::OnContextMenu/*🖰›*/                            	=> if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-            E::OnMenuHover =>
-              if        &handle == &evt_ui.tray_1cfg_m	{SystemTray::check_active(&evt_ui);}
-            E::OnMenuItemSelected =>
-              if        &handle == &evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
-              } else if &handle == &evt_ui.tray_3exit	{SystemTray::exit  (&evt_ui);
-              } else {
-                match handle {
-                  ControlHandle::MenuItem(_parent, _id) => {
-                    {let tray_item_dyn  = &evt_ui.tray_item_dyn.borrow(); //
-                    for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
-                      // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
-                        for (_j, h_cfg_j) in tray_item_dyn.iter().enumerate() {
-                          if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck others
-                        h_cfg.set_checked(true); // check self
-                      let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends on future fix in kanata that would revert index on failed config changes
-                      // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
-                      }
+                      E::OnNotice                                           => if &handle == &evt_ui.layer_notice {SystemTray::reload_layer_icon(&evt_ui);}
+                      E::OnWindowClose                                      => if &handle == &evt_ui.window {SystemTray::exit  (&evt_ui);}
+                      E::OnMousePress(MousePressEvent::MousePressLeftUp)    => if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                      E::OnContextMenu/*🖰›*/                                => if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                      E::OnMenuHover =>
+                        if        &handle == &evt_ui.tray_1cfg_m    {SystemTray::check_active(&evt_ui);}
+                      E::OnMenuItemSelected =>
+                        if        &handle == &evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
+                        } else if &handle == &evt_ui.tray_3exit     {SystemTray::exit  (&evt_ui);
+                        } else {
+                          match handle {
+                            ControlHandle::MenuItem(_parent, _id) => {
+                              {let tray_item_dyn    = &evt_ui.tray_item_dyn.borrow(); //
+                              for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
+                                if &handle == h_cfg { //info!("CONFIG handle i={:?} {:?}",i,&handle);
+                                  // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
+                                    for (_j, h_cfg_j) in tray_item_dyn.iter().enumerate() {
+                                      if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck others
+                                    h_cfg.set_checked(true); // check self
+                                  let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends on future fix in kanata that would revert index on failed config changes
+                                  // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
+                                }
+                              }
+                              }
+                              SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
+                            },
+                            _   => {},
+                          }
+                        },
+                      _ => {}
                     }
-                    }
-                    SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
-                  },
-                  _	=> {},
-                }
-              },
-            _ => {}
-          }
                 }
             };
             ui.handler_def
