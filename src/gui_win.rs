@@ -520,9 +520,11 @@ impl SystemTray {
     ) {
         let mut icon_dyn = self.icon_dyn.borrow_mut(); // update the tray icon
         let mut icon_active = self.icon_active.borrow_mut(); // update the tray icon active path
+        let mut img_dyn     = self.img_dyn    .borrow_mut(); // update the tray images
         if clear {
             *icon_dyn = Default::default();
             *icon_active = Default::default();
+            *img_dyn = Default::default();
             debug!("reloading active config, clearing icon_dyn/_active cache");
         }
         let app_data = self.app_data.borrow();
