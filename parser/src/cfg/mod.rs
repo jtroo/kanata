@@ -1097,7 +1097,7 @@ fn parse_layer_indexes(
         let mut cfg_third = 0;
         if let Some(third) = subexprs.peek() {
             if let Some(third_list) = third.list(None) {
-                if !third_list.is_empty() {
+                if third_list.len() > 0 {
                     if let Some(third_list_1st_s) = &third_list[0].atom(None) {
                         if DEFLAYER_ICON.iter().any(|&i| i == *third_list_1st_s) {
                             cfg_third = 1;
@@ -1433,7 +1433,11 @@ fn parse_action_as_cfg(expr: &SExpr) -> bool {
             if !DEFLAYER_ICON.iter().any(|&i| i == *expr_list_1st) {
                 return false;
             } else {
-                return expr_list[1].atom(None).is_some();
+                if expr_list[1].atom(None).is_some() {
+                    return true;
+                } else {
+                    return false;
+                }
             }
         }
     }
