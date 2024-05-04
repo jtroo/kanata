@@ -317,10 +317,6 @@ pub fn lib_main_gui() {
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
-    // if *IS_TERM    {
-    // eprintln!("\nPress enter to exit");
-    // let _ = std::io::stdin().read_line(&mut String::new()); // TODO: panics on Err(TryRecvError::Disconnected) @ Win/llhook, move to llhook OR coordinate with exit(&self) {nwg::stop_thread_dispatch();}? OR just ignore, why do we need this at all?
-    // }
 
     unsafe {
         FreeConsole();
