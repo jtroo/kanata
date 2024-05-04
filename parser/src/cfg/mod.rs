@@ -319,6 +319,7 @@ pub type MappedKeys = HashSet<OsCode>;
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
+    pub icon: Option<String>,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -500,6 +501,7 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
+const DEFLAYER_ICON: [&str;3] = ["icon","🖻","🖼"];
 const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-win",
     "deflocalkeys-winiov2",
@@ -647,7 +649,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let (layer_idxs,layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -680,7 +682,7 @@ pub fn parse_cfg_raw_string(
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
         .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
+        .map(|(name, cfg_text)| LayerInfo { name: name.clone(), cfg_text, icon: layer_icons.get(&name).unwrap_or(&None).clone()})
         .collect();
 
     let defsrc_layer = create_defsrc_layer();
@@ -1031,6 +1033,7 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
 }
 
 type LayerIndexes = HashMap<String, usize>;
+type LayerIcons = HashMap<String, Option<String>>;
 type Aliases = HashMap<String, &'static KanataAction>;
 
 /// Returns layer names and their indexes into the keyberon layout. This also checks that:
@@ -1118,10 +1121,11 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                 )
             }
         }
-        layer_indexes.insert(layer_name, i);
+        layer_indexes.insert(layer_name.clone(), i);
+        layer_icons.insert(layer_name, icon);
     }
 
-    Ok(layer_indexes)
+    Ok((layer_indexes,layer_icons))
 }
 
 #[derive(Debug, Clone)]
