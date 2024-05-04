@@ -472,10 +472,7 @@ impl Kanata {
         })
     }
 
-    fn do_live_reload(
-        &mut self,
-        _tx: &Option<Sender<ServerMessage>>,
-    ) -> Result<()> {
+    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -555,8 +552,11 @@ impl Kanata {
             }
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
-        if let Some(gui_tx) = GUI_TX.get() {gui_tx.notice();
-        } else {error!("no ‘GUI_TX’ var that can notify GUI thread of layer changes");}
+        if let Some(gui_tx) = GUI_TX.get() {
+            gui_tx.notice();
+        } else {
+            error!("no ‘GUI_TX’ var that can notify GUI thread of layer changes");
+        }
         Ok(())
     }
 
@@ -599,10 +599,7 @@ impl Kanata {
 
     /// Advance keyberon layout state and send events based on changes to its state.
     /// Returns the number of ticks that elapsed.
-    fn handle_time_ticks(
-        &mut self,
-        tx: &Option<Sender<ServerMessage>>,
-    ) -> Result<u16> {
+    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
         const NS_IN_MS: u128 = 1_000_000;
         let now = instant::Instant::now();
         let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
@@ -1520,10 +1517,7 @@ impl Kanata {
     #[allow(unused_variables)]
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
-    fn check_handle_layer_change(
-        &mut self,
-        tx: &Option<Sender<ServerMessage>>,
-    ) {
+    fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
@@ -1540,8 +1534,11 @@ impl Kanata {
                 }
             }
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            if let Some(gui_tx) = GUI_TX.get() {gui_tx.notice();
-            } else {error!("no ‘GUI_TX’ var that can notify GUI thread of layer changes");}
+            if let Some(gui_tx) = GUI_TX.get() {
+                gui_tx.notice();
+            } else {
+                error!("no ‘GUI_TX’ var that can notify GUI thread of layer changes");
+            }
         }
     }
 
