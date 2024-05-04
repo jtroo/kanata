@@ -277,7 +277,8 @@ fn main_impl() -> Result<()> {
         native_windows_gui::init().context("Failed to init Native Windows GUI")?;
         let ui = build_tray(&kanata_arc)?;
         let gui_tx = ui.layer_notice.sender();
-        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, gui_tx, args.nodelay);
+        if GUI_TX.set(gui_tx).is_err() {warn!("Someone else set our ‘GUI_TX’");};
+        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]
@@ -304,6 +305,8 @@ use parking_lot::Mutex;
 use std::sync::{Arc, OnceLock};
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub static CFG: OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
+#[cfg(all(target_os = "windows", feature = "gui"))]
+pub static GUI_TX:OnceLock<native_windows_gui::NoticeSender> = OnceLock::new();
 
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub fn lib_main_gui() {

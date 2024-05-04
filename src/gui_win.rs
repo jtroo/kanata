@@ -420,11 +420,9 @@ impl SystemTray {
                     cfg_icon_s, layer_name, layer_icon_s
                 );
             }
-            let noticer: &nwg::Notice = &self.layer_notice;
-            let gui_tx = noticer.sender();
             match i {
                 Some(idx) => {
-                    if let Ok(()) = k.live_reload_n(idx, gui_tx) {
+                    if let Ok(()) = k.live_reload_n(idx) {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" loaded");
                         flags |= f_tray::USER_ICON;
                     } else {
@@ -440,7 +438,7 @@ impl SystemTray {
                     }
                 }
                 None => {
-                    if let Ok(()) = k.live_reload(gui_tx) {
+                    if let Ok(()) = k.live_reload() {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" reloaded");
                         flags |= f_tray::USER_ICON;
                     } else {
