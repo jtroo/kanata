@@ -2,8 +2,7 @@ use anyhow::Result;
 use anyhow::{anyhow, bail};
 use clap::Parser;
 use kanata_state_machine::{oskbd::*, *};
-use simplelog::*;
-
+use simplelog::{format_description, *};
 use std::path::PathBuf;
 
 pub fn default_sim() -> Vec<PathBuf> {
@@ -87,7 +86,10 @@ fn log_init() {
     if let Err(e) = log_cfg.set_time_offset_to_local() {
         eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
-    log_cfg.set_time_format_rfc3339();
+    log_cfg.set_time_format_custom(format_description!(
+        version = 2,
+        "[hour]:[minute]:[second].[subsecond digits:4]"
+    ));
     CombinedLogger::init(vec![TermLogger::new(
         LevelFilter::Info,
         log_cfg.build(),
