@@ -578,6 +578,7 @@ dependencies = [
  "kanata",
  "log",
  "simplelog",
+ "time",
 ]
 
 [[package]]
