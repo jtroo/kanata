@@ -44,3 +44,9 @@ use_local_deps:
 change_subcrate_versions version:
   sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
   sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\)\) = ".*$/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
+
+publish:
+  cd keyberon; cargo publish
+  cd tcp_protocol; cargo publish
+  cd parser; cargo publish
+  cargo publish

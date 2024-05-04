@@ -485,7 +485,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.6.1-prerelease-1"
+version = "1.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -497,9 +497,9 @@ dependencies = [
  "inotify",
  "instant",
  "kanata-interception",
- "kanata-keyberon",
- "kanata-parser",
- "kanata-tcp-protocol",
+ "kanata-keyberon 0.161.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-parser 0.161.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-tcp-protocol 0.161.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "karabiner-driverkit",
  "log",
  "miette",
@@ -532,7 +532,19 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.161.0"
+version = "0.161.1"
+dependencies = [
+ "arraydeque",
+ "heapless",
+ "kanata-keyberon-macros",
+ "rustc-hash",
+]
+
+[[package]]
+name = "kanata-keyberon"
+version = "0.161.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a670016db0fb2f7ca96ea48b1877faa255154cb2d734278369ca379194c44e81"
 dependencies = [
  "arraydeque",
  "heapless",
@@ -552,12 +564,31 @@ dependencies = [
 
 [[package]]
 name = "kanata-parser"
-version = "0.161.0"
+version = "0.161.1"
 dependencies = [
  "anyhow",
  "bytemuck",
  "itertools",
- "kanata-keyberon",
+ "kanata-keyberon 0.161.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "miette",
+ "once_cell",
+ "parking_lot",
+ "patricia_tree",
+ "rustc-hash",
+ "thiserror",
+]
+
+[[package]]
+name = "kanata-parser"
+version = "0.161.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7519bd1b29ebdafb08d2d1f4fb63ffec6d322bec5ca39b5b904818a454f99042"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "itertools",
+ "kanata-keyberon 0.161.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "miette",
  "once_cell",
@@ -581,7 +612,18 @@ dependencies = [
 
 [[package]]
 name = "kanata-tcp-protocol"
-version = "0.161.0"
+version = "0.161.1"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
+name = "kanata-tcp-protocol"
+version = "0.161.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9e5473e2d3cfda552d8ad6a3e7574d92dd5f5b83a22efaaf10efefccaa53b48"
 dependencies = [
  "serde",
  "serde_derive",
@@ -594,7 +636,7 @@ version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "kanata-tcp-protocol",
+ "kanata-tcp-protocol 0.161.1",
  "log",
  "serde_json",
  "simplelog",
