@@ -118,7 +118,7 @@ fn cli_init() -> Result<ValidatedArgs> {
     };
     log_cfg.set_time_format_custom(format_description!(
         version = 2,
-        "[year]-[month]-[day]_[hour]:[minute]:[second].[subsecond digits:5]"
+        "[hour]:[minute]:[second].[subsecond digits:4]"
     ));
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,
