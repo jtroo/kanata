@@ -319,8 +319,6 @@ pub type MappedKeys = HashSet<OsCode>;
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub layer_icon: Option<String>,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -502,7 +500,6 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
-const DEFLAYER_ICON: &str = "icon";
 const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-win",
     "deflocalkeys-winiov2",
@@ -650,7 +647,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let (layer_idxs,layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -683,7 +680,7 @@ pub fn parse_cfg_raw_string(
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
         .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name: name.clone(), cfg_text, layer_icon: layer_icons.get(&name).unwrap_or(&None).clone()})
+        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
         .collect();
 
     let defsrc_layer = create_defsrc_layer();
@@ -1034,27 +1031,21 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
 }
 
 type LayerIndexes = HashMap<String, usize>;
-type LayerIcons = HashMap<String, Option<String>>;
 type Aliases = HashMap<String, &'static KanataAction>;
 
-/// Returns layer names and their indexes into the keyberon layout, and their tray icons. This also checks that:
+/// Returns layer names and their indexes into the keyberon layout. This also checks that:
 /// - All layers have the same number of items as the defsrc,
 /// - There are no duplicate layer names
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
-fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<(LayerIndexes,LayerIcons)> {
+fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
-    let mut layer_icons = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
-        let mut icon:Option<String> = None;
         let (mut subexprs, expr, do_element_count_check) = match expr_type {
-            #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
-            SpannedLayerExprs::DefsrcMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER)?           , e, true)}
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            SpannedLayerExprs::DefsrcMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER)?.peekable(), e, true)}
-            #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
-            SpannedLayerExprs::CustomMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)}
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            SpannedLayerExprs::CustomMapping(e) => {(check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?.peekable(), e, false)
+            SpannedLayerExprs::DefsrcMapping(e) => {
+                (check_first_expr(e.t.iter(), DEFLAYER)?, e, true)
+            }
+            SpannedLayerExprs::CustomMapping(e) => {
+                (check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)
             }
         };
         let layer_expr = subexprs.next().ok_or_else(|| {
@@ -1089,28 +1080,6 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         if layer_indexes.contains_key(&layer_name) {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
-        let mut third_list_count = 0;
-        #[cfg(all(target_os = "windows", feature = "gui"))]
-        if let Some(third) = subexprs.peek() {println!("next is list? = {:?} {:?}",third.list(None),third);
-            if let Some(third_list) = third.list(None) {
-                third_list_count = 1;
-                let third_list_1st = &third_list[0];
-                if let Some(third_list_1st_s) = &third_list[0].atom(None) {
-                    if *third_list_1st_s != DEFLAYER_ICON {
-                        bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON} as its 1st element, not {third_list_1st_s}");
-                    } else {
-                        if let Some(third_list_2nd_s) = &third_list[1].atom(None) {
-                            icon = Some(third_list_2nd_s.to_string());
-                        } else {
-                            bail!("deflayer failed to parse an icon name in its 3rd element");
-                        }
-                    }
-                } else {
-                    bail!("deflayer with a list as its 3rd element only accepts {DEFLAYER_ICON} as its 1st element, not {third_list_1st:?}");
-                }
-            }
-            subexprs.next(); // advance over the 3rd list
-        }
         // Check if user tried to use parentheses directly - `(` and `)`
         // or escaped them like in kmonad - `\(` and `\)`.
         for subexpr in subexprs {
@@ -1138,7 +1107,7 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
             }
         }
         if do_element_count_check {
-            let num_actions = expr.t.len() - 2 - third_list_count;
+            let num_actions = expr.t.len() - 2;
             if num_actions != expected_len {
                 bail_span!(
                     expr,
@@ -1149,11 +1118,10 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                 )
             }
         }
-        layer_indexes.insert(layer_name.clone(), i);
-        layer_icons.insert(layer_name, icon);
+        layer_indexes.insert(layer_name, i);
     }
 
-    Ok((layer_indexes,layer_icons))
+    Ok(layer_indexes)
 }
 
 #[derive(Debug, Clone)]
