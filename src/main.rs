@@ -3,8 +3,7 @@ use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
 use log::info;
-use simplelog::*;
-
+use simplelog::{format_description, *};
 use std::path::PathBuf;
 
 #[cfg(test)]
@@ -117,7 +116,10 @@ fn cli_init() -> Result<ValidatedArgs> {
     if let Err(e) = log_cfg.set_time_offset_to_local() {
         eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
-    log_cfg.set_time_format_rfc3339();
+    log_cfg.set_time_format_custom(format_description!(
+        version = 2,
+        "[year]-[month]-[day]_[hour]:[minute]:[second].[subsecond digits:5]"
+    ));
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,
         log_cfg.build(),
