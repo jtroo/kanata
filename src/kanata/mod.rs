@@ -264,7 +264,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &args.symlink_path,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_trackpoint,
+            cfg.options.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -381,7 +381,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &None,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_trackpoint,
+            cfg.options.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
