@@ -2910,7 +2910,7 @@ fn parse_layers(
                 } else {
                     2
                 }; // skip the 3rd list that's used to configure a layer rather than define an action
-                   // Parse actions as input -> output triplets
+                   // Parse actions as input output pairs
                 let mut pairs = layer[skip..].chunks_exact(2);
                 let mut layer_mapped_keys = HashSet::default();
                 let mut defsrc_anykey_used = false;
