@@ -62,6 +62,7 @@ fn simulate(cfg: &str, sim: &str) -> String {
     k.kbd_out.outputs.events.join("\n")
 }
 
+#[allow(unused)]
 trait SimTransform {
     /// Changes newlines to spaces.
     fn to_spaces(self) -> Self;
