@@ -145,7 +145,10 @@ fn cli_init() -> Result<ValidatedArgs> {
     if let Err(e) = log_cfg.set_time_offset_to_local() {
         eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
-    log_cfg.set_time_format_rfc3339();
+    log_cfg.set_time_format_custom(format_description!(
+        version = 2,
+        "[hour]:[minute]:[second].[subsecond digits:4]"
+    ));
     #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,
