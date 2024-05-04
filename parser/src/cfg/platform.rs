@@ -137,17 +137,38 @@ pub(crate) fn filter_env_specific_cfg(
                 }),
                 env_var_val.is_empty(),
             ) {
-                (None, false) => {}
+                (None, false) => {
+                    lsp_hint_inactive_code.push(LspHintInactiveCode {
+                        span: tle.span.clone(),
+                        reason: format!(
+                            "Active if env var {env_var_name} is {env_var_val}. It is unset."
+                        ),
+                    });
+                }
                 (None, true) => {
                     tles.push(configuration.clone());
                 }
                 (Some(val), true) if val.is_empty() => {
                     tles.push(configuration.clone());
                 }
-                (Some(_), true) => {}
+                (Some(val), true) => {
+                    lsp_hint_inactive_code.push(LspHintInactiveCode {
+                        span: tle.span.clone(),
+                        reason: format!(
+                            "Active if {env_var_name} is empty or unset. It has value {val}"
+                        ),
+                    });
+                }
                 (Some(val), false) => {
                     if val == env_var_val {
                         tles.push(configuration.clone());
+                    } else {
+                        lsp_hint_inactive_code.push(LspHintInactiveCode {
+                            span: tle.span.clone(),
+                            reason: format!(
+                                "Active if {env_var_name} is {env_var_val}. It has value {val}"
+                            ),
+                        })
                     }
                 }
             }
