@@ -1428,16 +1428,16 @@ fn parse_action(expr: &SExpr, s: &ParserState) -> Result<&'static KanataAction> 
 
 /// Check if an `SExpr` is a layer config.
 fn parse_action_as_cfg(expr: &SExpr) -> bool {
-    expr.list(None)
-        .and_then(|l| l[0].atom(None))
-        .and_then(|l0| {
-            if !DEFLAYER_ICON.iter().any(|&i| i == l0) {
-                None
+    if let Some(expr_list) = expr.list(None) {
+        if let Some(expr_list_1st) = &expr_list[0].atom(None) {
+            if !DEFLAYER_ICON.iter().any(|&i| i == *expr_list_1st) {
+                return false;
             } else {
-                expr.list(None).and_then(|l| l[1].atom(None))
+                return expr_list[1].atom(None).is_some();
             }
-        })
-        .is_some()
+        }
+    }
+    false
 }
 
 /// Returns a single custom action in the proper wrapped type.
