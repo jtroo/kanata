@@ -13,10 +13,8 @@ See below for links to specific guide versions.
 .Links to specific guide versions
 [%collapsible]
 ====
-* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-4/docs/config.adoc[v1.6.0-prerelease-4]
-* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-3/docs/config.adoc[v1.6.0-prerelease-3]
-* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-2/docs/config.adoc[v1.6.0-prerelease-2]
-* https://github.com/jtroo/kanata/blob/v1.6.0-prerelease-1/docs/config.adoc[v1.6.0-prerelease-1]
+* https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
+* https://github.com/jtroo/kanata/blob/v1.6.0/docs/config.adoc[v1.6.0]
 * https://github.com/jtroo/kanata/blob/v1.5.0/docs/config.adoc[v1.5.0]
 ====
 
