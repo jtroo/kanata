@@ -468,7 +468,7 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             tray_icon: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            icon_match_layer_name: true,
+            icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
     }
 
