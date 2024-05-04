@@ -117,7 +117,7 @@ Install the [Karabiner kernel extension](https://github.com/pqrs-org/Karabiner-V
     cargo build   # --release optional, not really perf sensitive
 
     # sudo is needed to gain permission to intercept the keyboard
-    
+
     sudo target/debug/kanata --cfg <your_configuration_file>
 
 The full configuration guide is [found here](./docs/config.adoc).
@@ -199,10 +199,9 @@ Contributions are welcome!
 Unless explicitly stated otherwise, your contributions to kanata will be made
 under the LGPL-3.0-only[*] license.
 
-The exception to this is the code under the [keyberon](./keyberon) directory,
-which is licensed under the MIT license, and likewise, contributions to code
-in this directory will be made under the MIT license unless explicitly stated
-otherwise.
+Some directories are exceptions:
+- [keyberon](./keyberon): MIT License
+- [interception](./interception): MIT or Apache-2.0 Licenses
 
 [Here's a basic low-effort design doc of kanata](./docs/design.md)
 
@@ -219,7 +218,6 @@ otherwise.
 - If you know anything about writing a keyboard driver for Windows, starting an
   open-source alternative to the Interception driver would be lovely.
 
-  
 ## Community projects related to kanata
 
 - [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
