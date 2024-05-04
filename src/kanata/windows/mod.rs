@@ -10,9 +10,6 @@ mod llhook;
 #[cfg(feature = "interception_driver")]
 mod interception;
 
-#[cfg(feature = "gui")]
-use native_windows_gui as nwg;
-
 pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
 
@@ -132,13 +129,13 @@ impl Kanata {
     }
 
     #[cfg(feature = "gui")]
-    pub fn live_reload(&mut self, gui_tx: nwg::NoticeSender) -> Result<()> {
+    pub fn live_reload(&mut self) -> Result<()> {
         self.live_reload_requested = true;
-        self.do_live_reload(&None, gui_tx)?;
+        self.do_live_reload(&None)?;
         Ok(())
     }
     #[cfg(feature = "gui")]
-    pub fn live_reload_n(&mut self, n: usize, gui_tx: nwg::NoticeSender) -> Result<()> {
+    pub fn live_reload_n(&mut self, n: usize) -> Result<()> {
         // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
         self.live_reload_requested = true;
         // let backup_cfg_idx = self.cur_cfg_idx;
@@ -151,11 +148,11 @@ impl Kanata {
                 log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
             }
         }
-        // if let Err(e) = self.do_live_reload(&None,gui_tx) {
+        // if let Err(e) = self.do_live_reload(&None) {
         // self.cur_cfg_idx = backup_cfg_idx; // restore index on fail when. TODO: add when a similar reversion is added to other custom actions
         // return Err(e)
         // }
-        self.do_live_reload(&None, gui_tx)?;
+        self.do_live_reload(&None)?;
         Ok(())
     }
 }
