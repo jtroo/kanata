@@ -555,7 +555,7 @@ impl Kanata {
         if let Some(gui_tx) = GUI_TX.get() {
             gui_tx.notice();
         } else {
-            error!("no ‘GUI_TX’ var that can notify GUI thread of layer changes");
+                error!("no GUI_TX to notify GUI thread of layer changes");
         }
         Ok(())
     }
