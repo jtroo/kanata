@@ -13,7 +13,7 @@ impl Kanata {
     pub fn event_loop(
         _cfg: Arc<Mutex<Self>>,
         tx: Sender<KeyEvent>,
-        #[cfg(all(target_os = "windows", feature = "gui"))] ui: crate::system_tray_ui::SystemTrayUi,
+        #[cfg(all(target_os = "windows", feature = "gui"))] ui: crate::gui::system_tray_ui::SystemTrayUi,
     ) -> Result<()> {
         // Display debug and panic output when launched from a terminal.
         #[cfg(not(feature = "gui"))]

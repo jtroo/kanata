@@ -4,23 +4,13 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 #[cfg(all(target_os = "windows", feature = "gui"))]
-pub mod gui_win;
+#[path="gui/[gui].rs"] pub mod gui;
 pub mod kanata;
 pub mod lib_main;
 pub mod oskbd;
 pub mod tcp_server;
 #[cfg(test)]
 pub mod tests;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-pub use gui_win::*;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-pub mod gui_nwg_ext;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-pub use gui_nwg_ext::*;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-pub use win_dbg_logger as log_win;
-#[cfg(all(target_os = "windows", feature = "gui"))]
-pub use win_dbg_logger::WINDBG_LOGGER;
 
 pub use kanata::*;
 pub use tcp_server::TcpServer;

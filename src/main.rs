@@ -3,7 +3,7 @@
 #[cfg(not(feature = "gui"))]
 use kanata_state_machine::lib_main::lib_main_cli;
 #[cfg(feature = "gui")]
-use kanata_state_machine::lib_main::lib_main_gui;
+use kanata_state_machine::gui::lib_main_gui;
 
 #[cfg(not(feature = "gui"))]
 use anyhow::Result;

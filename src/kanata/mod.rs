@@ -62,7 +62,7 @@ mod unknown;
 use unknown::*;
 
 #[cfg(all(target_os = "windows", feature = "gui"))]
-use crate::lib_main::GUI_TX;
+use crate::gui::GUI_TX;
 
 mod caps_word;
 pub use caps_word::*;
