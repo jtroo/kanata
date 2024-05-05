@@ -1846,3 +1846,17 @@ fn parse_defseq_overlap_too_many() {
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect_err("fails");
 }
+
+#[test]
+fn parse_layer_opts_icon() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_good.kbd")).unwrap();
+}
+
+#[test]
+fn disallow_dupe_layer_opts_icon() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_bad_dupe.kbd"))
+        .map(|_| ())
+        .expect_err("fails");
+}
