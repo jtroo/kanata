@@ -50,6 +50,9 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
+pub mod layer_opts;
+use layer_opts::*;
+
 pub mod list_actions;
 use list_actions::*;
 
@@ -1070,39 +1073,11 @@ fn parse_layer_indexes(
                     let mut list = listt.iter();
                     let name = list.next().ok_or_else(|| {anyhow_span!(name_opts_span,"deflayer requires a string name within this pair of parenthesis (or a string name without any)")})?
                         .atom(None).ok_or_else(|| {anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses")})?;
-                    let mut icon = "";
-                    //todo: add hashmap for future options, currently only parse icons
-                    let mut layer_opts: HashMap<String, String> = HashMap::default();
-                    while let Some(key_expr) = list.next() {
-                        // Read k-v pairs from the configuration
-                        let opt_key = key_expr.atom(None).ok_or_else(|| {anyhow_expr!(key_expr, "No lists are allowed in {DEFLAYER} options")}).and_then(|opt_key| {
-                                if DEFLAYER_ICON.iter().any(|&i| i == opt_key) {
-                                    if layer_opts.contains_key(DEFLAYER_ICON[0]) {bail_expr!(key_expr,"Duplicate option found in {DEFLAYER}: {opt_key}");}
-                                    Ok(DEFLAYER_ICON[0])
-                                } else {bail_expr!(key_expr, "Invalid option in {DEFLAYER}: {opt_key}, expected one of {DEFLAYER_ICON:?}")}
-                                })?;
-                        if layer_opts.contains_key(opt_key) {
-                            bail_expr!(key_expr, "Duplicate option found in {DEFLAYER}: {opt_key}");
-                        }
-                        let opt_val = match list.next() {
-                            Some(v) => v
-                                .atom(None)
-                                .ok_or_else(|| {
-                                    anyhow_expr!(
-                                        v,
-                                        "No lists are allowed in {DEFLAYER}'s option values"
-                                    )
-                                })
-                                .map(|opt_val| {
-                                    icon = opt_val.trim_matches('"');
-                                    opt_val
-                                })?,
-                            None => {
-                                bail_expr!(key_expr, "Option without a value in {DEFLAYER} {name}")
-                            }
-                        };
-                        layer_opts.insert(opt_key.to_owned(), opt_val.to_owned());
-                    }
+                    let layer_opts = parse_layer_opts(list)?;
+                    let icon = layer_opts
+                        .get(DEFLAYER_ICON[0])
+                        .map(|icon_s| icon_s.trim_matches('"'))
+                        .unwrap_or("");
                     (name.to_owned(), Some(icon.to_owned()))
                 }
             },
