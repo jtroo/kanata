@@ -76,8 +76,8 @@ mod fake_key;
 use fake_key::*;
 pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
 
-mod os_dependent;
-use os_dependent::*;
+mod platform;
+use platform::*;
 
 mod is_a_button;
 use is_a_button::*;
@@ -534,6 +534,7 @@ pub fn parse_cfg_raw_string(
                 &mut lsp_hint_inactive_code,
             )
         })
+        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hint_inactive_code))
         .and_then(expand_templates)?;
 
     if let Some(spanned) = spanned_root_exprs
