@@ -8,7 +8,7 @@ use simplelog::{format_description, *};
 pub mod win;
 pub use win::*;
 pub mod win_nwg_ext;
-use lib_main::*;
+
 pub use win_nwg_ext::*;
 
 pub use win_dbg_logger as log_win;
@@ -18,6 +18,87 @@ use parking_lot::Mutex;
 use std::sync::{Arc, OnceLock};
 pub static CFG: OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
 pub static GUI_TX: OnceLock<native_windows_gui::NoticeSender> = OnceLock::new();
+
+#[derive(Parser, Debug)]
+#[command(author, version, verbatim_doc_comment)]
+/// kanata: an advanced software key remapper
+///
+/// kanata remaps key presses to other keys or complex actions depending on the
+/// configuration for that key. You can find the guide for creating a config
+/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+///
+/// If you need help, please feel welcome to create an issue or discussion in
+/// the kanata repository: https://github.com/jtroo/kanata
+struct Args {
+    // Display different platform specific paths based on the target OS
+    #[cfg_attr(
+        target_os = "windows",
+        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'"
+    )]
+    #[cfg_attr(
+        target_os = "macos",
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$HOME/Library/Application Support/kanata/kanata.kbd.'"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "macos", target_os = "windows")),
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+kanata.kbd in the current working directory and
+'$XDG_CONFIG_HOME/kanata/kanata.kbd'"
+    )]
+    #[arg(short, long, verbatim_doc_comment)]
+    cfg: Option<Vec<PathBuf>>,
+
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
+    /// listened on.
+    #[cfg(feature = "tcp_server")]
+    #[arg(
+        short = 'p',
+        long = "port",
+        value_name = "PORT or IP:PORT",
+        verbatim_doc_comment
+    )]
+    tcp_server_address: Option<SocketAddrWrapper>,
+    /// Path for the symlink pointing to the newly-created device. If blank, no
+    /// symlink will be created.
+    #[cfg(target_os = "linux")]
+    #[arg(short, long, verbatim_doc_comment)]
+    symlink_path: Option<String>,
+
+    /// List the keyboards available for grabbing and exit.
+    #[cfg(target_os = "macos")]
+    #[arg(short, long)]
+    list: bool,
+
+    /// Enable debug logging.
+    #[arg(short, long)]
+    debug: bool,
+
+    /// Enable trace logging; implies --debug as well.
+    #[arg(short, long)]
+    trace: bool,
+
+    /// Remove the startup delay on kanata.
+    /// In some cases, removing the delay may cause keyboard issues on startup.
+    #[arg(short, long, verbatim_doc_comment)]
+    nodelay: bool,
+
+    /// Milliseconds to wait before attempting to register a newly connected
+    /// device. The default is 200.
+    ///
+    /// You may wish to increase this if you have a device that is failing
+    /// to register - the device may be taking too long to become ready.
+    #[cfg(target_os = "linux")]
+    #[arg(short, long, verbatim_doc_comment)]
+    wait_device_ms: Option<u64>,
+
+    /// Validate configuration file and exit
+    #[arg(long, verbatim_doc_comment)]
+    check: bool,
+}
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
@@ -43,7 +124,7 @@ fn cli_init() -> Result<ValidatedArgs> {
             } // doesn't panic
             match e.kind() {
                 ErrorKind::DisplayHelp => {
-                    let mut cmd = lib_main::Args::command();
+                    let mut cmd = Args::command();
                     let help = cmd.render_help();
                     info!("{help}");
                     log::set_max_level(LevelFilter::Off);
