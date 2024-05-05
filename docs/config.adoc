@@ -3449,6 +3449,14 @@ cargo build --win_manifest
 Kanata can be compiled as a Windows GUI tray app with the feature flag `gui`.
 This can simplify launching the app on user login by placing a `.lnk`
 at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`, show custom icon indicator per config
+
+
+image:https://github.com/jtroo/kanata/blob/main/docs/win-tray/win-tray-screen.png[icon indicator per config,477,129]
+
+as well as dynamic icon indicator per layer (might need to click on the gif below to play)
+
+image:https://github.com/jtroo/kanata/blob/main/docs/win-tray/win-tray-layer-change.gif[icon indicator per layer,33,35,opts=autoplay]
+
 (see <<windows-only-win-tray-icon>>). It also supports (re)loading configs.
 
 Currently the only configuration supported is tray icon per profile, all other configuration should
