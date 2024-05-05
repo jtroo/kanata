@@ -16,7 +16,7 @@ use std::path::PathBuf;
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
 /// the kanata repository: https://github.com/jtroo/kanata
-pub struct Args {
+struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
         target_os = "windows",
@@ -37,7 +37,7 @@ kanata.kbd in the current working directory and
 '$XDG_CONFIG_HOME/kanata/kanata.kbd'"
     )]
     #[arg(short, long, verbatim_doc_comment)]
-    pub cfg: Option<Vec<PathBuf>>,
+    cfg: Option<Vec<PathBuf>>,
 
     /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
     /// listened on.
@@ -48,30 +48,30 @@ kanata.kbd in the current working directory and
         value_name = "PORT or IP:PORT",
         verbatim_doc_comment
     )]
-    pub tcp_server_address: Option<SocketAddrWrapper>,
+    tcp_server_address: Option<SocketAddrWrapper>,
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.
     #[cfg(target_os = "linux")]
     #[arg(short, long, verbatim_doc_comment)]
-    pub symlink_path: Option<String>,
+    symlink_path: Option<String>,
 
     /// List the keyboards available for grabbing and exit.
     #[cfg(target_os = "macos")]
     #[arg(short, long)]
-    pub list: bool,
+    list: bool,
 
     /// Enable debug logging.
     #[arg(short, long)]
-    pub debug: bool,
+    debug: bool,
 
     /// Enable trace logging; implies --debug as well.
     #[arg(short, long)]
-    pub trace: bool,
+    trace: bool,
 
     /// Remove the startup delay on kanata.
     /// In some cases, removing the delay may cause keyboard issues on startup.
     #[arg(short, long, verbatim_doc_comment)]
-    pub nodelay: bool,
+    nodelay: bool,
 
     /// Milliseconds to wait before attempting to register a newly connected
     /// device. The default is 200.
@@ -80,11 +80,11 @@ kanata.kbd in the current working directory and
     /// to register - the device may be taking too long to become ready.
     #[cfg(target_os = "linux")]
     #[arg(short, long, verbatim_doc_comment)]
-    pub wait_device_ms: Option<u64>,
+    wait_device_ms: Option<u64>,
 
     /// Validate configuration file and exit
     #[arg(long, verbatim_doc_comment)]
-    pub check: bool,
+    check: bool,
 }
 
 /// Parse CLI arguments and initialize logging.
