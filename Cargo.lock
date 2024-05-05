@@ -1476,7 +1476,6 @@ name = "win_dbg_logger"
 version = "0.1.0"
 dependencies = [
  "log",
- "once_cell",
  "regex",
  "simplelog",
  "winapi",
