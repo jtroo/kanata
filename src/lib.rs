@@ -7,7 +7,6 @@ use std::str::FromStr;
 #[path = "gui/[gui].rs"]
 pub mod gui;
 pub mod kanata;
-pub mod lib_main;
 pub mod oskbd;
 pub mod tcp_server;
 #[cfg(test)]
