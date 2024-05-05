@@ -1,5 +1,5 @@
 use crate::*;
-use anyhow::{bail, Result, Context};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use clap::{error::ErrorKind, CommandFactory};
 use kanata_parser::cfg;
@@ -8,8 +8,8 @@ use simplelog::{format_description, *};
 pub mod win;
 pub use win::*;
 pub mod win_nwg_ext;
-pub use win_nwg_ext::*;
 use lib_main::*;
+pub use win_nwg_ext::*;
 
 pub use win_dbg_logger as log_win;
 pub use win_dbg_logger::WINDBG_LOGGER;

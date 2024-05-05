@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 #[cfg(all(target_os = "windows", feature = "gui"))]
-#[path="gui/[gui].rs"] pub mod gui;
+#[path = "gui/[gui].rs"]
+pub mod gui;
 pub mod kanata;
 pub mod lib_main;
 pub mod oskbd;
