@@ -504,7 +504,6 @@ fn expand_includes(
 
 const DEFLAYER: &str = "deflayer";
 const DEFLAYER_MAPPED: &str = "deflayermap";
-const DEFLAYER_ICON: [&str; 3] = ["icon", "🖻", "🖼"];
 const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-win",
     "deflocalkeys-winiov2",
@@ -1040,7 +1039,6 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
 }
 
 type LayerIndexes = HashMap<String, usize>;
-type LayerIcons = HashMap<String, Option<String>>;
 type Aliases = HashMap<String, &'static KanataAction>;
 
 /// Returns layer names and their indexes into the keyberon layout. This also checks that:
@@ -1069,16 +1067,20 @@ fn parse_layer_indexes(
             SpannedLayerExprs::DefsrcMapping(_) => match layer_expr {
                 SExpr::Atom(name_span) => (name_span.t.to_owned(), None),
                 SExpr::List(name_opts_span) => {
-                    let listt = &name_opts_span.t;
-                    let mut list = listt.iter();
-                    let name = list.next().ok_or_else(|| {anyhow_span!(name_opts_span,"deflayer requires a string name within this pair of parenthesis (or a string name without any)")})?
-                        .atom(None).ok_or_else(|| {anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses")})?;
-                    let layer_opts = parse_layer_opts(list)?;
+                    let list = &name_opts_span.t;
+                    let name = list.get(0).ok_or_else(|| anyhow_span!(
+                            name_opts_span,
+                            "deflayer requires a string name within this pair of parenthesis (or a string name without any)"
+                        ))?
+                        .atom(None).ok_or_else(|| anyhow_expr!(
+                            layer_expr,
+                            "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
+                        ))?;
+                    let layer_opts = parse_layer_opts(&list[1..])?;
                     let icon = layer_opts
                         .get(DEFLAYER_ICON[0])
-                        .map(|icon_s| icon_s.trim_matches('"'))
-                        .unwrap_or("");
-                    (name.to_owned(), Some(icon.to_owned()))
+                        .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                    (name.to_owned(), icon)
                 }
             },
             SpannedLayerExprs::CustomMapping(_) => {
@@ -1091,49 +1093,19 @@ fn parse_layer_indexes(
                         )
                     })?
                     .to_owned();
-                let mut list = list.iter();
-                let name = list.next().ok_or_else(|| {anyhow_expr!(layer_expr,"layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses")})?
-                    .atom(None).ok_or_else(|| {anyhow_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses")})?;
+                let name = list.get(0)
+                    .and_then(|s| s.atom(None))
+                    .ok_or_else(|| anyhow_expr!(
+                        layer_expr,
+                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
+                    ))?;
 
-                let mut icon = "";
                 // add hashmap for future options, currently only parse icons
-                let mut layer_opts: HashMap<String, String> = HashMap::default();
-                while let Some(key_expr) = list.next() {
-                    // Read k-v pairs from the configuration
-                    let opt_key = key_expr.atom(None).ok_or_else(|| {anyhow_expr!(&key_expr, "No lists are allowed in {DEFLAYER_MAPPED} options")})
-                    .and_then(|opt_key| {
-                        if DEFLAYER_ICON.iter().any(|&i| i == opt_key) {
-                            if layer_opts.contains_key(DEFLAYER_ICON[0]) {bail_expr!(key_expr,"Duplicate option found in {DEFLAYER_MAPPED}: {opt_key}");}
-                            Ok(DEFLAYER_ICON[0])
-                        } else {bail_expr!(key_expr, "Invalid option in {DEFLAYER_MAPPED}: {opt_key}, expected one of {DEFLAYER_ICON:?}")}
-                    })?;
-                    if layer_opts.contains_key(opt_key) {
-                        bail_expr!(
-                            key_expr,
-                            "Duplicate option found in {DEFLAYER_MAPPED}: {opt_key}"
-                        );
-                    }
-                    let opt_val = match list.next() {
-                        Some(v) => v
-                            .atom(None)
-                            .ok_or_else(|| {
-                                anyhow_expr!(
-                                    &v,
-                                    "No lists are allowed in {DEFLAYER_MAPPED}'s option values"
-                                )
-                            })
-                            .map(|opt_val| {
-                                icon = opt_val.trim_matches('"');
-                                opt_val
-                            })?,
-                        None => bail_expr!(
-                            &key_expr,
-                            "Option without a value in {DEFLAYER_MAPPED} {name}"
-                        ),
-                    };
-                    layer_opts.insert(opt_key.to_owned(), opt_val.to_owned());
-                }
-                (name.to_owned(), Some(icon.to_owned()))
+                let layer_opts = parse_layer_opts(&list[1..])?;
+                let icon = layer_opts
+                    .get(DEFLAYER_ICON[0])
+                    .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                (name.to_owned(), icon)
             }
         };
         if layer_indexes.contains_key(&layer_name) {

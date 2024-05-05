@@ -1,10 +1,12 @@
 use crate::cfg::*;
 use crate::*;
-use std::collections::HashMap;
-pub fn parse_layer_opts<'a>(
-    mut list: impl Iterator<Item = &'a SExpr>,
-) -> Result<HashMap<String, String>> {
+
+pub(crate) const DEFLAYER_ICON: [&str; 3] = ["icon", "🖻", "🖼"];
+pub(crate) type LayerIcons = HashMap<String, Option<String>>;
+
+pub fn parse_layer_opts(list: &[SExpr]) -> Result<HashMap<String, String>> {
     let mut layer_opts: HashMap<String, String> = HashMap::default();
+    let mut list = list.iter();
     while let Some(key_expr) = list.next() {
         // Read k-v pairs from the configuration
         // todo: add hashmap for future options, currently only parse icons
