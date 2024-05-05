@@ -1,93 +1,96 @@
-#[cfg(not(feature = "gui"))]
-mod cli {
-    pub(crate) use anyhow::{bail, Result};
-    pub(crate) use clap::Parser;
-    pub(crate) use kanata_parser::cfg;
-    pub(crate) use kanata_state_machine::*;
-    pub(crate) use log::info;
-    pub(crate) use simplelog::{format_description, *};
-    pub(crate) use std::path::PathBuf;
+mod main_lib;
 
-    #[derive(Parser, Debug)]
-    #[command(author, version, verbatim_doc_comment)]
-    /// kanata: an advanced software key remapper
-    ///
-    /// kanata remaps key presses to other keys or complex actions depending on the
-    /// configuration for that key. You can find the guide for creating a config
-    /// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-    ///
-    /// If you need help, please feel welcome to create an issue or discussion in
-    /// the kanata repository: https://github.com/jtroo/kanata
-    struct Args {
-        // Display different platform specific paths based on the target OS
-        #[cfg_attr(
-            target_os = "windows",
-            doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
+use anyhow::{bail, Result};
+use clap::Parser;
+use kanata_parser::cfg;
+use kanata_state_machine::*;
+use simplelog::{format_description, *};
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(author, version, verbatim_doc_comment)]
+/// kanata: an advanced software key remapper
+///
+/// kanata remaps key presses to other keys or complex actions depending on the
+/// configuration for that key. You can find the guide for creating a config
+/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+///
+/// If you need help, please feel welcome to create an issue or discussion in
+/// the kanata repository: https://github.com/jtroo/kanata
+struct Args {
+    // Display different platform specific paths based on the target OS
+    #[cfg_attr(
+        target_os = "windows",
+        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
 kanata.kbd in the current working directory and
 'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'"
-        )]
-        #[cfg_attr(
-            target_os = "macos",
-            doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+    )]
+    #[cfg_attr(
+        target_os = "macos",
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
 kanata.kbd in the current working directory and
 '$HOME/Library/Application Support/kanata/kanata.kbd.'"
-        )]
-        #[cfg_attr(
-            not(any(target_os = "macos", target_os = "windows")),
-            doc = "Configuration file(s) to use with kanata. If not specified, defaults to
+    )]
+    #[cfg_attr(
+        not(any(target_os = "macos", target_os = "windows")),
+        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
 kanata.kbd in the current working directory and
 '$XDG_CONFIG_HOME/kanata/kanata.kbd'"
-        )]
-        #[arg(short, long, verbatim_doc_comment)]
-        cfg: Option<Vec<PathBuf>>,
+    )]
+    #[arg(short, long, verbatim_doc_comment)]
+    cfg: Option<Vec<PathBuf>>,
 
-        /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
-        /// listened on.
-        #[cfg(feature = "tcp_server")]
-        #[arg(
-            short = 'p',
-            long = "port",
-            value_name = "PORT or IP:PORT",
-            verbatim_doc_comment
-        )]
-        tcp_server_address: Option<SocketAddrWrapper>,
-        /// Path for the symlink pointing to the newly-created device. If blank, no
-        /// symlink will be created.
-        #[cfg(target_os = "linux")]
-        #[arg(short, long, verbatim_doc_comment)]
-        symlink_path: Option<String>,
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
+    /// listened on.
+    #[cfg(feature = "tcp_server")]
+    #[arg(
+        short = 'p',
+        long = "port",
+        value_name = "PORT or IP:PORT",
+        verbatim_doc_comment
+    )]
+    tcp_server_address: Option<SocketAddrWrapper>,
+    /// Path for the symlink pointing to the newly-created device. If blank, no
+    /// symlink will be created.
+    #[cfg(target_os = "linux")]
+    #[arg(short, long, verbatim_doc_comment)]
+    symlink_path: Option<String>,
 
-        /// List the keyboards available for grabbing and exit.
-        #[cfg(target_os = "macos")]
-        #[arg(short, long)]
-        list: bool,
+    /// List the keyboards available for grabbing and exit.
+    #[cfg(target_os = "macos")]
+    #[arg(short, long)]
+    list: bool,
 
-        /// Enable debug logging.
-        #[arg(short, long)]
-        debug: bool,
+    /// Enable debug logging.
+    #[arg(short, long)]
+    debug: bool,
 
-        /// Enable trace logging; implies --debug as well.
-        #[arg(short, long)]
-        trace: bool,
+    /// Enable trace logging; implies --debug as well.
+    #[arg(short, long)]
+    trace: bool,
 
-        /// Remove the startup delay on kanata.
-        /// In some cases, removing the delay may cause keyboard issues on startup.
-        #[arg(short, long, verbatim_doc_comment)]
-        nodelay: bool,
+    /// Remove the startup delay on kanata.
+    /// In some cases, removing the delay may cause keyboard issues on startup.
+    #[arg(short, long, verbatim_doc_comment)]
+    nodelay: bool,
 
-        /// Milliseconds to wait before attempting to register a newly connected
-        /// device. The default is 200.
-        ///
-        /// You may wish to increase this if you have a device that is failing
-        /// to register - the device may be taking too long to become ready.
-        #[cfg(target_os = "linux")]
-        #[arg(short, long, verbatim_doc_comment)]
-        wait_device_ms: Option<u64>,
+    /// Milliseconds to wait before attempting to register a newly connected
+    /// device. The default is 200.
+    ///
+    /// You may wish to increase this if you have a device that is failing
+    /// to register - the device may be taking too long to become ready.
+    #[cfg(target_os = "linux")]
+    #[arg(short, long, verbatim_doc_comment)]
+    wait_device_ms: Option<u64>,
 
-        /// Validate configuration file and exit
-        #[arg(long, verbatim_doc_comment)]
-        check: bool,
-    }
+    /// Validate configuration file and exit
+    #[arg(long, verbatim_doc_comment)]
+    check: bool,
+}
+
+#[cfg(not(feature = "gui"))]
+mod cli {
+    use super::*;
 
     /// Parse CLI arguments and initialize logging.
     fn cli_init() -> Result<ValidatedArgs> {
@@ -174,7 +177,7 @@ kanata.kbd in the current working directory and
         let kanata_arc = Kanata::new_arc(&args)?;
 
         if !args.nodelay {
-            info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
+            log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
             std::thread::sleep(std::time::Duration::from_secs(2));
         }
 
@@ -236,6 +239,6 @@ pub fn main() -> Result<()> {
 
 #[cfg(feature = "gui")]
 fn main() {
-    use kanata_state_machine::gui::lib_main_gui;
+    use main_lib::win_gui::*;
     lib_main_gui();
 }
