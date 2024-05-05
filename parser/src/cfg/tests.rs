@@ -1854,9 +1854,19 @@ fn parse_layer_opts_icon() {
 }
 
 #[test]
-fn disallow_dupe_layer_opts_icon() {
+fn disallow_dupe_layer_opts_icon_layernonmap() {
     let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_bad_dupe.kbd"))
         .map(|_| ())
         .expect_err("fails");
+}
+
+#[test]
+fn disallow_dupe_layer_opts_icon_layermap() {
+    let source = "
+(defcfg)
+(defsrc)
+(deflayermap (base icon base.png 🖻 n.ico) 0 0)
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
 }

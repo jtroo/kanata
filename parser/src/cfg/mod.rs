@@ -1068,7 +1068,7 @@ fn parse_layer_indexes(
                 SExpr::Atom(name_span) => (name_span.t.to_owned(), None),
                 SExpr::List(name_opts_span) => {
                     let list = &name_opts_span.t;
-                    let name = list.get(0).ok_or_else(|| anyhow_span!(
+                    let name = list.first().ok_or_else(|| anyhow_span!(
                             name_opts_span,
                             "deflayer requires a string name within this pair of parenthesis (or a string name without any)"
                         ))?
@@ -1093,7 +1093,7 @@ fn parse_layer_indexes(
                         )
                     })?
                     .to_owned();
-                let name = list.get(0)
+                let name = list.first()
                     .and_then(|s| s.atom(None))
                     .ok_or_else(|| anyhow_expr!(
                         layer_expr,
