@@ -889,35 +889,30 @@ pub mod system_tray_ui {
             let handle_events = move |evt, _evt_data, handle| {
                 if let Some(evt_ui) = evt_ui.upgrade() {
                     match evt {
-                      E::OnNotice                                           => if &handle == &evt_ui.layer_notice {SystemTray::reload_layer_icon(&evt_ui);}
-                      E::OnWindowClose                                      => if &handle == &evt_ui.window {SystemTray::exit  (&evt_ui);}
-                      E::OnMousePress(MousePressEvent::MousePressLeftUp)    => if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-                      E::OnContextMenu/*🖰›*/                                => if &handle == &evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                      E::OnNotice                                           => if handle == evt_ui.layer_notice {SystemTray::reload_layer_icon(&evt_ui);}
+                      E::OnWindowClose                                      => if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
+                      E::OnMousePress(MousePressEvent::MousePressLeftUp)    => if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                      E::OnContextMenu/*🖰›*/                                => if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
                       E::OnMenuHover =>
-                        if        &handle == &evt_ui.tray_1cfg_m    {SystemTray::check_active(&evt_ui);}
+                        if        handle == evt_ui.tray_1cfg_m    {SystemTray::check_active(&evt_ui);}
                       E::OnMenuItemSelected =>
-                        if        &handle == &evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
-                        } else if &handle == &evt_ui.tray_3exit     {SystemTray::exit  (&evt_ui);
-                        } else {
-                          match handle {
-                            ControlHandle::MenuItem(_parent, _id) => {
+                        if        handle == evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
+                        } else if handle == evt_ui.tray_3exit     {SystemTray::exit  (&evt_ui);
+                        } else if let
+                            ControlHandle::MenuItem(_parent, _id) = handle {
                               {let tray_item_dyn    = &evt_ui.tray_item_dyn.borrow(); //
                               for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
                                 if &handle == h_cfg { //info!("CONFIG handle i={:?} {:?}",i,&handle);
                                   // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
-                                    for (_j, h_cfg_j) in tray_item_dyn.iter().enumerate() {
+                                    for h_cfg_j in tray_item_dyn.iter() {
                                       if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck others
                                     h_cfg.set_checked(true); // check self
                                   let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends on future fix in kanata that would revert index on failed config changes
                                   // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
                                 }
                               }
-                              }
-                              SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
-                            },
-                            _   => {},
+                            }
                           }
-                        },
                       _ => {}
                     }
                 }
@@ -981,6 +976,5 @@ pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
 
 use once_cell::sync::Lazy;
 pub static IS_TERM: Lazy<bool> = Lazy::new(|| stdout().is_terminal());
-pub static IS_CONSOLE: Lazy<bool> = Lazy::new(|| unsafe {
-    AttachConsole(ATTACH_PARENT_PROCESS) != 0i32
-});
+pub static IS_CONSOLE: Lazy<bool> =
+    Lazy::new(|| unsafe { AttachConsole(ATTACH_PARENT_PROCESS) != 0i32 });
