@@ -473,6 +473,20 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ralt (multi ralt (layer-toggle ralted))
 )
 
+;; Wrapping a top-level configuration item in a list beginning with
+;; (environment (env-var-name env-var-value) ...configuration...)
+;; will make the configuration only active if the environment variable matches.
+(environment (LAPTOP lp1)
+  (defalias met @lp1met)
+)
+
+(environment (LAPTOP lp2)
+  (defalias met @lp2met)
+)
+
+;; NOTE: the configuration below is an older and less general variant
+;; of the environment configuration above.
+;;
 ;; The defaliasenvcond variant of defalias is parsed similarly, but there must
 ;; be a list parameter first. The list must contain two strings. In order,
 ;; these strings are: an environment variable name, and the environment

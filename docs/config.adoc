@@ -1703,6 +1703,48 @@ The valid values for applicable platforms are:
 )
 ----
 
+[[environment]]
+== Environment-conditional configuration
+<<table-of-contents,Back to ToC>>
+
+.Syntax:
+[source]
+----
+(environment (env-var-name env-var-value) ...)
+----
+
+The items `env-var-name` and `env-var-value` can be arbitrary strings.
+The name is the environment variable that is read
+for determining if the configuration is used or not.
+If the value of the environment variable (set only on kanata startup)
+matches `env-var-value`, the configuration is used; otherwise it is ignored.
+An empty string for `env-var-value` — `""` — will use the configuration
+if the environment variable an empty string
+and also if the variable is unset/missing entirely.
+
+.Example
+[source]
+----
+(environment (LAPTOP lp1)
+  (defalias met @lp1met)
+)
+
+(environment (LAPTOP lp2)
+  (defalias met @lp2met)
+)
+----
+
+.Set environment variables in the current terminal process:
+[source]
+----
+# powershell
+$env:VAR_NAME = "var_value"
+
+# bash
+VAR_NAME=var_value
+----
+
+
 [[input-chords-v2]]
 == Input chords / combos (v2)
 <<table-of-contents,Back to ToC>>
@@ -2886,6 +2928,9 @@ Using a macro will guarantee a rapid press+release for the output keys.
 [[defaliasenvcond]]
 === defaliasenvcond
 <<table-of-contents,Back to ToC>>
+
+NOTE: this configuration item is older and instead you may want to use
+the newer and more generalized <<environment>> configuration.
 
 There is a variant of `defalias`: `defaliasenvcond`.
 This variant is parsed similarly,
