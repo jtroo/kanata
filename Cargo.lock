@@ -501,7 +501,6 @@ dependencies = [
  "kanata-parser",
  "kanata-tcp-protocol",
  "karabiner-driverkit",
- "lazy_static",
  "log",
  "miette",
  "mio",
@@ -1476,8 +1475,8 @@ dependencies = [
 name = "win_dbg_logger"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "log",
+ "once_cell",
  "regex",
  "simplelog",
  "winapi",
