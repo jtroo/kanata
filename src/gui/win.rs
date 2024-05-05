@@ -156,9 +156,9 @@ fn get_icon_p_impl(
     ];
     let pre_p = p.parent().unwrap_or_else(|| Path::new(""));
     let cur_exe = current_exe().unwrap_or_else(|_| PathBuf::new());
-    let xdg_cfg = get_xdg_home().unwrap_or_else(|| PathBuf::new());
-    let app_data = get_appdata().unwrap_or_else(|| PathBuf::new());
-    let mut user_cfg = get_user_home().unwrap_or_else(|| PathBuf::new());
+    let xdg_cfg = get_xdg_home().unwrap_or_default();
+    let app_data = get_appdata().unwrap_or_default();
+    let mut user_cfg = get_user_home().unwrap_or_default();
     user_cfg.push(".config");
     let parents = [
         Path::new(""),
@@ -208,7 +208,7 @@ fn get_icon_p_impl(
                     trace!("{}p_icn={:?}", "      ", p_icn);
                     for ext in IMG_EXT {
                         trace!("{}  ext={:?}", "        ", ext);
-                        if !(p_par == blank_p) {
+                        if p_par != blank_p {
                             icon_file.push(p_par);
                         } // folders
                         if !p_kan.is_empty() {
@@ -245,7 +245,7 @@ fn get_icon_p_impl(
         }
     }
     debug!("✗ no icon file found");
-    return None;
+    None
 }
 
 fn set_menu_item_cfg_icon(
@@ -253,7 +253,7 @@ fn set_menu_item_cfg_icon(
     cfg_icon_s: &str,
     cfg_p: &PathBuf,
 ) -> Option<nwg::Bitmap> {
-    if let Some(ico_p) = get_icon_p("", "", &cfg_icon_s, &cfg_p, &false) {
+    if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false) {
         let cfg_pkey_s = cfg_p.display().to_string();
         let mut cfg_icon_bitmap = Default::default();
         if let Ok(()) = nwg::Bitmap::builder()
@@ -299,11 +299,11 @@ impl SystemTray {
             }
         } else {
             trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
-            if let Ok(cfg) = cfg::new_from_file(&cfg_p) {
+            if let Ok(cfg) = cfg::new_from_file(cfg_p) {
                 if let Some(cfg_icon_s) = cfg.options.tray_icon {
                     debug!("loaded config without a tray icon {cfg_p:?}");
                     if let Some(cfg_icon_bitmap) =
-                        set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, &cfg_p)
+                        set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, cfg_p)
                     {
                         if is_active {
                             self.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap));
@@ -337,7 +337,7 @@ impl SystemTray {
                         h_cfg_i.handle
                     );
                     h_cfg_i.set_checked(true);
-                    if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, &cfg_p, true) {
+                    if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, cfg_p, true) {
                         debug!("{e:?} {cfg_p:?}");
                         let mut img_dyn = self.img_dyn.borrow_mut();
                         img_dyn.insert(cfg_p.clone(), None);
@@ -356,12 +356,12 @@ impl SystemTray {
             let k = cfg.lock();
             let idx_cfg = k.cur_cfg_idx;
             let mut tray_item_dyn = self.tray_item_dyn.borrow_mut();
-            for (i, mut h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
+            for (i, h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
                 // 1 if missing an icon, read config to get one
                 let cfg_p = &k.cfg_paths[i];
                 trace!("     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}", h_cfg_i.handle);
                 let is_active = i == idx_cfg;
-                if let Err(e) = self.update_tray_icon_cfg(&mut h_cfg_i, &cfg_p, is_active) {
+                if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, cfg_p, is_active) {
                     debug!("{e:?} {cfg_p:?}");
                     let mut img_dyn = self.img_dyn.borrow_mut();
                     img_dyn.insert(cfg_p.clone(), None);
@@ -468,7 +468,7 @@ impl SystemTray {
             let layer_icon = &k.layer_info[layer_id].icon;
             let mut cfg_layer_pkey = PathBuf::new(); // path key
             cfg_layer_pkey.push(path_cur_cc.clone());
-            cfg_layer_pkey.push(PRE_LAYER.to_owned() + &layer_name); //:invalid path marker, so should be safe to use as a separator
+            cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker, so should be safe to use as a separator
             let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
             if log_enabled!(Debug) {
                 let layer_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
@@ -480,8 +480,8 @@ impl SystemTray {
 
             {
                 let mut app_data = self.app_data.borrow_mut();
-                app_data.cfg_icon = cfg_icon.clone();
-                app_data.layer0_name = k.layer_info[0].name.clone();
+                app_data.cfg_icon.clone_from(cfg_icon);
+                app_data.layer0_name.clone_from(&k.layer_info[0].name);
                 app_data.layer0_icon = Some(k.layer_info[0].name.clone());
                 app_data.icon_match_layer_name = k.icon_match_layer_name;
                 // self.tray.set_visibility(false); // flash the icon, but might be confusing as the app isn't restarting, just reloading
@@ -492,8 +492,8 @@ impl SystemTray {
             self.update_tray_icon(
                 cfg_layer_pkey,
                 &cfg_layer_pkey_s,
-                &layer_name,
-                &layer_icon,
+                layer_name,
+                layer_icon,
                 path_cur_cc,
                 clear,
             )
@@ -526,7 +526,7 @@ impl SystemTray {
 
                 let mut cfg_layer_pkey = PathBuf::new(); // path key
                 cfg_layer_pkey.push(path_cur_cc.clone());
-                cfg_layer_pkey.push(PRE_LAYER.to_owned() + &layer_name); //:invalid path marker, so should be safe to use as a separator
+                cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker, so should be safe to use as a separator
                 let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
                 if log_enabled!(Debug) {
                     let cfg_name = &path_cur
@@ -547,8 +547,8 @@ impl SystemTray {
                 self.update_tray_icon(
                     cfg_layer_pkey,
                     &cfg_layer_pkey_s,
-                    &layer_name,
-                    &layer_icon,
+                    layer_name,
+                    layer_icon,
                     path_cur_cc,
                     clear,
                 )
@@ -582,7 +582,7 @@ impl SystemTray {
         if let Some(icon_opt) = icon_dyn.get(&cfg_layer_pkey) {
             // 1a config+layer path has already been checked
             if let Some(icon) = icon_opt {
-                self.tray.set_icon(&icon);
+                self.tray.set_icon(icon);
                 *icon_active = Some(cfg_layer_pkey);
             } else {
                 debug!(
@@ -595,8 +595,8 @@ impl SystemTray {
         } else if let Some(layer_icon) = layer_icon {
             // 1b cfg+layer path hasn't been checked, but layer has an icon configured, so check it
             if let Some(ico_p) = get_icon_p(
-                &layer_icon,
-                &layer_name,
+                layer_icon,
+                layer_name,
                 "",
                 &path_cur_cc,
                 &app_data.icon_match_layer_name,
@@ -637,7 +637,7 @@ impl SystemTray {
         } else if icon_dyn.contains_key(&path_cur_cc) {
             // 2a no layer icon configured, but config icon exists, use it
             if let Some(icon) = icon_dyn.get(&path_cur_cc).unwrap() {
-                self.tray.set_icon(&icon);
+                self.tray.set_icon(icon);
                 *icon_active = Some(path_cur_cc);
             } else {
                 debug!(
@@ -656,8 +656,8 @@ impl SystemTray {
             };
             if let Some(ico_p) = get_icon_p(
                 "",
-                &layer_name,
-                &cfg_icon_p,
+                layer_name,
+                cfg_icon_p,
                 &path_cur_cc,
                 &app_data.icon_match_layer_name,
             ) {
@@ -699,7 +699,7 @@ impl SystemTray {
     fn exit(&self) {
         let handlers = self.handlers_dyn.borrow();
         for handler in handlers.iter() {
-            nwg::unbind_event_handler(&handler);
+            nwg::unbind_event_handler(handler);
         }
         nwg::stop_thread_dispatch();
     }
@@ -781,7 +781,7 @@ pub mod system_tray_ui {
                 const MENU_ACC: &str = "ASDFGQWERTZXCVBYUIOPHJKLNM";
                 let layer0_icon_s = &app_data.layer0_icon.clone().unwrap_or("".to_string());
                 let cfg_icon_s = &app_data.cfg_icon.clone().unwrap_or("".to_string());
-                if (app_data.cfg_p).len() > 0 {
+                if !(app_data.cfg_p).is_empty() {
                     for (i, cfg_p) in app_data.cfg_p.iter().enumerate() {
                         let i_acc = match i {
                             // menu accelerators from 1–0 then A–Z starting from home row for easier presses
@@ -791,7 +791,7 @@ pub mod system_tray_ui {
                                 "&{} ",
                                 &MENU_ACC[(i - 10)..cmp::min(i - 10 + 1, MENU_ACC.len())]
                             ),
-                            _ => format!("  "),
+                            _ => "  ".to_string(),
                         };
                         let cfg_name = &cfg_p
                             .file_name()
@@ -816,10 +816,10 @@ pub mod system_tray_ui {
                         if i == 0 {
                             // add icons if exists, hashed by config path (for active config, others will create on load)
                             if let Some(ico_p) = get_icon_p(
-                                &layer0_icon_s,
+                                layer0_icon_s,
                                 &app_data.layer0_name,
-                                &cfg_icon_s,
-                                &cfg_p,
+                                cfg_icon_s,
+                                cfg_p,
                                 &app_data.icon_match_layer_name,
                             ) {
                                 let mut cfg_layer_pkey = PathBuf::new(); // path key
@@ -855,7 +855,7 @@ pub mod system_tray_ui {
                             }
                             // Set tray menu config item icons, ignores layers since these are per config
                             if let Some(cfg_icon_bitmap) =
-                                set_menu_item_cfg_icon(&mut menu_item, &cfg_icon_s, &cfg_p)
+                                set_menu_item_cfg_icon(&mut menu_item, cfg_icon_s, cfg_p)
                             {
                                 d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently active config's icon in the combo menu
                                 let _ = img_dyn.insert(cfg_p.clone(), Some(cfg_icon_bitmap));
@@ -928,7 +928,7 @@ pub mod system_tray_ui {
                     &ui.window.handle,
                     handle_events,
                 ));
-            return Ok(ui);
+            Ok(ui)
         }
     }
 
@@ -982,9 +982,5 @@ pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
 use once_cell::sync::Lazy;
 pub static IS_TERM: Lazy<bool> = Lazy::new(|| stdout().is_terminal());
 pub static IS_CONSOLE: Lazy<bool> = Lazy::new(|| unsafe {
-    if AttachConsole(ATTACH_PARENT_PROCESS) == 0i32 {
-        return false;
-    } else {
-        return true;
-    }
+    AttachConsole(ATTACH_PARENT_PROCESS) != 0i32
 });
