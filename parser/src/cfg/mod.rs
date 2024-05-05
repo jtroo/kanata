@@ -2971,18 +2971,8 @@ fn parse_layers(
                     }
                 }
                 let rem = pairs.remainder();
-                match rem.len() {
-                    0 => {}
-                    1 => {
-                        bail_expr!(
-                            &rem[0],
-                            "an input must be followed by a map string and an action"
-                        );
-                    }
-                    2 => {
-                        bail_expr!(&rem[1], "map string must be followed by an action");
-                    }
-                    _ => unreachable!(),
+                if !rem.is_empty() {
+                    bail_expr!(&rem[0], "input must by followed by an action");
                 }
             }
         }
