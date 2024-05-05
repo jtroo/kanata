@@ -81,7 +81,15 @@ const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow check
 const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
-use crate::gui::CFG;
+use crate::gui::{CFG, GUI_TX};
+
+pub fn send_gui_notice() {
+    if let Some(gui_tx) = GUI_TX.get() {
+        gui_tx.notice();
+    } else {
+        error!("no GUI_TX to notify GUI thread of layer changes");
+    }
+}
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p` or a config file name at various locations (where config file is, where executable is, in user config folders)
 fn get_icon_p<S1, S2, S3, P>(
