@@ -129,16 +129,19 @@ pub fn set_thread_state(is: bool) -> &'static bool {
     CELL.get_or_init(|| is)
 }
 
-use lazy_static::lazy_static;
 use regex::Regex;
-lazy_static! { // shorten source file name, no src/ no .rs ext
- static ref reExt:Regex = Regex::new(r"\..*$"   ).unwrap();
- static ref reSrc:Regex = Regex::new(r"src[\\/]").unwrap();
+macro_rules! regex {
+    ($re:literal $(,)?) => {{
+        static RE: OnceLock<regex::Regex> = OnceLock::new();
+        RE.get_or_init(|| regex::Regex::new($re).unwrap())
+    }};
 }
 fn clean_name(path: Option<&str>) -> String {
+    let re_ext: &Regex = regex!(r"\..*$"); // shorten source file name, no src/ no .rs ext
+    let re_src: &Regex = regex!(r"src[\\/]");
     // remove extension and src paths
     if let Some(p) = path {
-        reSrc.replace(&reExt.replace(p, ""), "").to_string()
+        re_src.replace(&re_ext.replace(p, ""), "").to_string()
     } else {
         "?".to_string()
     }
