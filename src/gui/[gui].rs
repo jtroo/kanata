@@ -1,95 +1,58 @@
 use crate::*;
-use anyhow::{bail, Result};
+use anyhow::{bail, Result, Context};
 use clap::Parser;
+use clap::{error::ErrorKind, CommandFactory};
 use kanata_parser::cfg;
-use log::info;
 use simplelog::{format_description, *};
-use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
-#[command(author, version, verbatim_doc_comment)]
-/// kanata: an advanced software key remapper
-///
-/// kanata remaps key presses to other keys or complex actions depending on the
-/// configuration for that key. You can find the guide for creating a config
-/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-///
-/// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository: https://github.com/jtroo/kanata
-pub struct Args {
-    // Display different platform specific paths based on the target OS
-    #[cfg_attr(
-        target_os = "windows",
-        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'"
-    )]
-    #[cfg_attr(
-        target_os = "macos",
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$HOME/Library/Application Support/kanata/kanata.kbd.'"
-    )]
-    #[cfg_attr(
-        not(any(target_os = "macos", target_os = "windows")),
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$XDG_CONFIG_HOME/kanata/kanata.kbd'"
-    )]
-    #[arg(short, long, verbatim_doc_comment)]
-    pub cfg: Option<Vec<PathBuf>>,
+pub mod win;
+pub use win::*;
+pub mod win_nwg_ext;
+pub use win_nwg_ext::*;
+use lib_main::*;
 
-    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
-    /// listened on.
-    #[cfg(feature = "tcp_server")]
-    #[arg(
-        short = 'p',
-        long = "port",
-        value_name = "PORT or IP:PORT",
-        verbatim_doc_comment
-    )]
-    pub tcp_server_address: Option<SocketAddrWrapper>,
-    /// Path for the symlink pointing to the newly-created device. If blank, no
-    /// symlink will be created.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    pub symlink_path: Option<String>,
+pub use win_dbg_logger as log_win;
+pub use win_dbg_logger::WINDBG_LOGGER;
 
-    /// List the keyboards available for grabbing and exit.
-    #[cfg(target_os = "macos")]
-    #[arg(short, long)]
-    pub list: bool,
-
-    /// Enable debug logging.
-    #[arg(short, long)]
-    pub debug: bool,
-
-    /// Enable trace logging; implies --debug as well.
-    #[arg(short, long)]
-    pub trace: bool,
-
-    /// Remove the startup delay on kanata.
-    /// In some cases, removing the delay may cause keyboard issues on startup.
-    #[arg(short, long, verbatim_doc_comment)]
-    pub nodelay: bool,
-
-    /// Milliseconds to wait before attempting to register a newly connected
-    /// device. The default is 200.
-    ///
-    /// You may wish to increase this if you have a device that is failing
-    /// to register - the device may be taking too long to become ready.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    pub wait_device_ms: Option<u64>,
-
-    /// Validate configuration file and exit
-    #[arg(long, verbatim_doc_comment)]
-    pub check: bool,
-}
+use parking_lot::Mutex;
+use std::sync::{Arc, OnceLock};
+pub static CFG: OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
+pub static GUI_TX: OnceLock<native_windows_gui::NoticeSender> = OnceLock::new();
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
-    let args = Args::parse();
+    let args = match Args::try_parse() {
+        Ok(args) => args,
+        Err(e) => {
+            if *IS_TERM {
+                // init loggers without config so '-help' "error" or real ones can be printed
+                let mut log_cfg = ConfigBuilder::new();
+                CombinedLogger::init(vec![
+                    TermLogger::new(
+                        LevelFilter::Debug,
+                        log_cfg.build(),
+                        TerminalMode::Mixed,
+                        ColorChoice::AlwaysAnsi,
+                    ),
+                    log_win::windbg_simple_combo(LevelFilter::Debug),
+                ])
+                .expect("logger can init");
+            } else {
+                log_win::init();
+                log::set_max_level(LevelFilter::Debug);
+            } // doesn't panic
+            match e.kind() {
+                ErrorKind::DisplayHelp => {
+                    let mut cmd = lib_main::Args::command();
+                    let help = cmd.render_help();
+                    info!("{help}");
+                    log::set_max_level(LevelFilter::Off);
+                    return Err(anyhow!(""));
+                }
+                _ => return Err(e.into()),
+            }
+        }
+    };
 
     #[cfg(target_os = "macos")]
     if args.list {
@@ -113,14 +76,20 @@ fn cli_init() -> Result<ValidatedArgs> {
         version = 2,
         "[hour]:[minute]:[second].[subsecond digits:4]"
     ));
-    CombinedLogger::init(vec![TermLogger::new(
-        log_lvl,
-        log_cfg.build(),
-        TerminalMode::Mixed,
-        ColorChoice::AlwaysAnsi,
-    )])
-    .expect("logger can init");
-
+    if *IS_TERM {
+        CombinedLogger::init(vec![
+            TermLogger::new(
+                log_lvl,
+                log_cfg.build(),
+                TerminalMode::Mixed,
+                ColorChoice::AlwaysAnsi,
+            ),
+            log_win::windbg_simple_combo(log_lvl),
+        ])
+        .expect("logger can init");
+    } else {
+        CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl)]).expect("logger can init");
+    }
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     log::info!("using LLHOOK+SendInput for keyboard IO");
@@ -171,6 +140,10 @@ fn main_impl() -> Result<()> {
     let args = cli_init()?;
     let kanata_arc = Kanata::new_arc(&args)?;
 
+    if CFG.set(kanata_arc.clone()).is_err() {
+        warn!("Someone else set our ‘CFG’");
+    }; // store a clone of cfg so that we can ask it to reset itself
+
     if !args.nodelay {
         info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
         std::thread::sleep(std::time::Duration::from_secs(2));
@@ -202,6 +175,12 @@ fn main_impl() -> Result<()> {
         (None, None, None)
     };
 
+    native_windows_gui::init().context("Failed to init Native Windows GUI")?;
+    let ui = build_tray(&kanata_arc)?;
+    let gui_tx = ui.layer_notice.sender();
+    if GUI_TX.set(gui_tx).is_err() {
+        warn!("Someone else set our ‘GUI_TX’");
+    };
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
@@ -209,20 +188,19 @@ fn main_impl() -> Result<()> {
         Kanata::start_notification_loop(nrx, server.connections);
     }
 
-    #[cfg(target_os = "linux")]
-    sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
-
-    #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
-    Kanata::event_loop(kanata_arc, tx)?;
+    Kanata::event_loop(kanata_arc, tx, ui)?;
 
     Ok(())
 }
-pub fn lib_main_cli() -> Result<()> {
+
+pub fn lib_main_gui() {
+    let _attach_console = *IS_CONSOLE;
     let ret = main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
-    eprintln!("\nPress enter to exit");
-    let _ = std::io::stdin().read_line(&mut String::new());
-    ret
+
+    unsafe {
+        FreeConsole();
+    }
 }
