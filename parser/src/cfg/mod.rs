@@ -407,7 +407,7 @@ pub struct DefinitionLocations {
     pub variable: HashMap<String, Span>,    // TODO
     pub virtual_key: HashMap<String, Span>, // TODO
     pub chord_group: HashMap<String, Span>, // TODO
-    pub layer: HashMap<String, Span>,       // TODO
+    pub layer: HashMap<String, Span>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -416,8 +416,8 @@ pub struct ReferenceLocations {
     pub variable: HashMap<String, Vec<Span>>,    // TODO
     pub virtual_key: HashMap<String, Vec<Span>>, // TODO
     pub chord_group: HashMap<String, Vec<Span>>, // TODO
-    pub layer: HashMap<String, Vec<Span>>,       // TODO
-    pub include: HashMap<String, Vec<Span>>,     // TODO
+    pub layer: HashMap<String, Vec<Span>>,
+    pub include: HashMap<String, Vec<Span>>, // TODO
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -675,7 +675,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len(), &mut lsp_hints)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -1065,7 +1065,11 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// - All layers have the same number of items as the defsrc,
 /// - There are no duplicate layer names
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
-fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<LayerIndexes> {
+fn parse_layer_indexes(
+    exprs: &[SpannedLayerExprs],
+    expected_len: usize,
+    lsp_hints: &mut LspHints,
+) -> Result<LayerIndexes> {
     let mut layer_indexes = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
         let (mut subexprs, expr, do_element_count_check) = match expr_type {
@@ -1079,33 +1083,33 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
-        let layer_name = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(_) => layer_expr
-                .atom(None)
-                .ok_or_else(|| {
-                    anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
-                })?
-                .to_owned(),
+        let Spanned { t: layer_name, span: layer_name_span } = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(_) => match layer_expr {
+                SExpr::Atom(x) => x,
+                SExpr::List(_) => {
+                    bail_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
+                }
+            },
             SpannedLayerExprs::CustomMapping(_) => {
-                let list = layer_expr
-                    .list(None)
-                    .ok_or_else(|| {
-                        anyhow_expr!(
-                            layer_expr,
-                            "layer name after {DEFLAYER_MAPPED} must be in parentheses"
-                        )
-                    })?
-                    .to_owned();
-                if list.len() != 1 {
-                    bail_expr!(
+                match layer_expr {
+                    SExpr::Atom(_) => bail_expr!(
+                        layer_expr,
+                        "layer name after {DEFLAYER_MAPPED} must be in parentheses"
+                    ),
+                    SExpr::List(Spanned { t, .. }) if t.len() == 1 => {
+                        match &t[0] {
+                            SExpr::Atom(x) => x,
+                            SExpr::List(_) => bail_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"),
+                        }
+                    },
+                    SExpr::List(_) => bail_expr!(
                         layer_expr,
                         "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
-                    );
+                    ),
                 }
-                list[0].atom(None).ok_or_else(|| anyhow_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"))?.to_owned()
             }
         };
-        if layer_indexes.contains_key(&layer_name) {
+        if layer_indexes.contains_key(layer_name) {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
         // Check if user tried to use parentheses directly - `(` and `)`
@@ -1146,7 +1150,11 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                 )
             }
         }
-        layer_indexes.insert(layer_name, i);
+        layer_indexes.insert(layer_name.clone(), i);
+        lsp_hints
+            .definition_locations
+            .layer
+            .insert(layer_name.clone(), layer_name_span.clone());
     }
 
     Ok(layer_indexes)
@@ -1652,11 +1660,29 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::DefaultLayer(layer_idx(ac_params, &s.layer_idxs)?)))
+    let idx = layer_idx(ac_params, &s.layer_idxs)?;
+    set_layer_change_lsp_hint(ac_params, s);
+    Ok(s.a.sref(Action::DefaultLayer(idx)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs)?)))
+    let idx = layer_idx(ac_params, &s.layer_idxs)?;
+    set_layer_change_lsp_hint(ac_params, s);
+    Ok(s.a.sref(Action::Layer(idx)))
+}
+
+fn set_layer_change_lsp_hint(ac_params: &[SExpr], s: &ParserState) {
+    let layer_refs = &mut s.lsp_hints.borrow_mut().reference_locations.layer;
+    let (layer_name, span) = match &ac_params[0] {
+        SExpr::Atom(x) => (&x.t, &x.span),
+        SExpr::List(_) => unreachable!("checked in layer_idx"),
+    };
+    match layer_refs.get_mut(layer_name) {
+        Some(refs) => refs.push(span.clone()),
+        None => {
+            layer_refs.insert(layer_name.clone(), vec![span.clone()]);
+        }
+    };
 }
 
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
