@@ -1,1 +1,5 @@
+# wasm-pack output
 pkg/
+
+# do not commit lockfile; not important for wasm project
+Cargo.lock
