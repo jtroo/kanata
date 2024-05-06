@@ -127,7 +127,8 @@ impl TcpServer {
                                                         .lock()
                                                         .layer_info
                                                         .iter()
-                                                        .step_by(2) // skip every other name, which is a duplicate
+                                                        .step_by(2) // skip every other name,
+                                                        // which is a duplicate
                                                         .map(|info| info.name.clone())
                                                         .collect::<Vec<_>>(),
                                                 };
@@ -176,14 +177,17 @@ impl TcpServer {
                                                 match kanata.lock().kbd_out.set_mouse(x, y) {
                                                     Ok(_) => {
                                                         log::info!("sucessfully did set mouse position to: x {x} y {y}");
-                                                        // Optionally send a success message to the client
+                                                        // Optionally send a success message to the
+                                                        // client
                                                     }
                                                     Err(e) => {
                                                         log::error!(
                                                             "Failed to set mouse position: {}",
                                                             e
                                                         );
-                                                        // Implement any error handling logic here, such as sending an error response to the client
+                                                        // Implement any error handling logic here,
+                                                        // such as sending an error response to
+                                                        // the client
                                                     }
                                                 }
                                             }

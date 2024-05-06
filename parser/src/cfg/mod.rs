@@ -184,7 +184,8 @@ macro_rules! anyhow_span {
 
 pub struct FileContentProvider<'a> {
     /// A function to load content of a file from a filepath.
-    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file" from loading twice.
+    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file"
+    /// from loading twice.
     get_file_content_fn: &'a mut dyn FnMut(&Path) -> std::result::Result<String, String>,
 }
 
@@ -2084,7 +2085,8 @@ static KEYMODI: &[(&str, KeyCode)] = &[
     ("RA-", KeyCode::RAlt),
     ("⎇›", KeyCode::RAlt),
     ("⌥›", KeyCode::RAlt),
-    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after indicators with sides have had a chance
+    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after
+    // indicators with sides have had a chance
     ("⌥", KeyCode::LAlt),
     ("⎇", KeyCode::LAlt),
     ("◆", KeyCode::LGui),
@@ -3166,7 +3168,8 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParserState) -> Result<Vec<u16>> {
                                     );
                                 }
                                 if *pressed != KEY_OVERLAP {
-                                    // Note: key overlap item is special and goes at the end, not the beginning
+                                    // Note: key overlap item is special and goes at the end,
+                                    // not the beginning
                                     seq.push(seq_num);
                                 }
                             }

@@ -50,7 +50,8 @@ pub struct SystemTray {
     pub handlers_dyn: RefCell<Vec<nwg::EventHandler>>,
     /// Store dynamically created icons to not load them from a file every time
     pub icon_dyn: RefCell<HashMap<PathBuf, Option<nwg::Icon>>>,
-    /// Store dynamically created icons to not load them from a file every time (bitmap format needed to set MenuItem's icons)
+    /// Store dynamically created icons to not load them from a file every time
+    /// (bitmap format needed to set MenuItem's icons)
     pub img_dyn: RefCell<HashMap<PathBuf, Option<nwg::Bitmap>>>,
     /// Store 'icon_dyn' hashmap key for the currently active icon ('cfg_path:layer_name' format)
     pub icon_active: RefCell<Option<PathBuf>>,
@@ -77,7 +78,8 @@ pub fn get_xdg_home() -> Option<PathBuf> {
     var_os("XDG_CONFIG_HOME").map(PathBuf::from)
 }
 
-const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow checking directly for user passed values
+const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow checking directly for
+                                                         // user passed values
 const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
@@ -91,7 +93,10 @@ pub fn send_gui_notice() {
     }
 }
 
-/// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p` or a config file name at various locations (where config file is, where executable is, in user config folders)
+/// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name
+/// `lyr_nm` (if `match_name` is `true`) or a given config icon name for the whole config `cfg_p`
+/// or a config file name at various locations (where config file is, where executable is,
+/// in user config folders)
 fn get_icon_p<S1, S2, S3, P>(
     lyr_icn: S1,
     lyr_nm: S2,
@@ -167,7 +172,8 @@ fn get_icon_p_impl(
         &xdg_cfg,
         &app_data,
         &user_cfg,
-    ]; // empty path to allow no prefixes when icon path is explictily set in case it's a full path already
+    ]; // empty path to allow no prefixes when icon path is explictily set in case it's a full
+       // path already
 
     for (i, nm) in f_name.enumerate() {
         trace!("{}nm={:?}", "", nm);
@@ -282,7 +288,8 @@ impl SystemTray {
         let (x, y) = nwg::GlobalCursor::position();
         self.tray_menu.popup(x, y);
     }
-    /// Add a ✓ (or highlight the icon) to the currently active config. Runs on opening of the list of configs menu
+    /// Add a ✓ (or highlight the icon) to the currently active config.
+    /// Runs on opening of the list of configs menu
     fn update_tray_icon_cfg(
         &self,
         menu_item_cfg: &mut nwg::MenuItem,
@@ -341,7 +348,8 @@ impl SystemTray {
                         debug!("{e:?} {cfg_p:?}");
                         let mut img_dyn = self.img_dyn.borrow_mut();
                         img_dyn.insert(cfg_p.clone(), None);
-                        self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo menu icon
+                        self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo
+                                                           // menu icon
                     };
                 } else {
                     debug!("gui cfg selection matches active config");
@@ -468,7 +476,9 @@ impl SystemTray {
             let layer_icon = &k.layer_info[layer_id].icon;
             let mut cfg_layer_pkey = PathBuf::new(); // path key
             cfg_layer_pkey.push(path_cur_cc.clone());
-            cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker, so should be safe to use as a separator
+            cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker,
+                                                                    // so should be safe to use as
+                                                                    // a separator
             let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
             if log_enabled!(Debug) {
                 let layer_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
@@ -484,9 +494,7 @@ impl SystemTray {
                 app_data.layer0_name.clone_from(&k.layer_info[0].name);
                 app_data.layer0_icon = Some(k.layer_info[0].name.clone());
                 app_data.icon_match_layer_name = k.icon_match_layer_name;
-                // self.tray.set_visibility(false); // flash the icon, but might be confusing as the app isn't restarting, just reloading
                 self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
-                                                      // self.tray.set_visibility(true);
             }
             let clear = i.is_none();
             self.update_tray_icon(
@@ -526,7 +534,9 @@ impl SystemTray {
 
                 let mut cfg_layer_pkey = PathBuf::new(); // path key
                 cfg_layer_pkey.push(path_cur_cc.clone());
-                cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker, so should be safe to use as a separator
+                cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker,
+                                                                        // so should be safe
+                                                                        // to use as a separator
                 let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
                 if log_enabled!(Debug) {
                     let cfg_name = &path_cur
@@ -724,7 +734,6 @@ pub mod system_tray_ui {
             use nwg::Event as E;
 
             let app_data = d.app_data.borrow().clone();
-            // d.app_data  	= RefCell::new(Default::default());
             d.tray_item_dyn = RefCell::new(Default::default());
             d.handlers_dyn = RefCell::new(Default::default());
             // Resources
@@ -774,7 +783,7 @@ pub mod system_tray_ui {
             let mut main_tray_icon_l = Default::default();
             let mut main_tray_icon_is = false;
             {
-                let mut tray_item_dyn = d.tray_item_dyn.borrow_mut(); //extra scope to drop borrowed mut
+                let mut tray_item_dyn = d.tray_item_dyn.borrow_mut(); //extra scope to drop borrowed
                 let mut icon_dyn = d.icon_dyn.borrow_mut();
                 let mut img_dyn = d.img_dyn.borrow_mut();
                 let mut icon_active = d.icon_active.borrow_mut();
@@ -784,7 +793,7 @@ pub mod system_tray_ui {
                 if !(app_data.cfg_p).is_empty() {
                     for (i, cfg_p) in app_data.cfg_p.iter().enumerate() {
                         let i_acc = match i {
-                            // menu accelerators from 1–0 then A–Z starting from home row for easier presses
+                            // accelerators from 1–0, A–Z starting from home row for easier presses
                             0..=8 => format!("&{} ", i + 1),
                             9 => format!("&{} ", 0),
                             10..=35 => format!(
@@ -798,7 +807,6 @@ pub mod system_tray_ui {
                             .unwrap_or_else(|| OsStr::new(""))
                             .to_string_lossy()
                             .to_string(); //kanata.kbd
-                                          // let menu_text  = i_acc + cfg_name; // &1 kanata.kbd
                         let menu_text = format!("{cfg_name}\t{i_acc}"); // kanata.kbd &1
                         let mut menu_item = Default::default();
                         if i == 0 {
@@ -814,7 +822,8 @@ pub mod system_tray_ui {
                                 .build(&mut menu_item)?;
                         }
                         if i == 0 {
-                            // add icons if exists, hashed by config path (for active config, others will create on load)
+                            // add icons if exists, hashed by config path
+                            // (for active config, others will create on load)
                             if let Some(ico_p) = get_icon_p(
                                 layer0_icon_s,
                                 &app_data.layer0_name,
@@ -853,11 +862,15 @@ pub mod system_tray_ui {
                                 let _ = icon_dyn.insert(cfg_p.clone(), Some(temp_icon));
                                 *icon_active = Some(cfg_p.clone());
                             }
-                            // Set tray menu config item icons, ignores layers since these are per config
+                            // Set tray menu config item icons, ignores layers since these
+                            // are per config
                             if let Some(cfg_icon_bitmap) =
                                 set_menu_item_cfg_icon(&mut menu_item, cfg_icon_s, cfg_p)
                             {
-                                d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently active config's icon in the combo menu
+                                d.tray_1cfg_m.set_bitmap(Some(&cfg_icon_bitmap)); // show currently
+                                                                                  // active config's
+                                                                                  // icon in the
+                                                                                  // combo menu
                                 let _ = img_dyn.insert(cfg_p.clone(), Some(cfg_icon_bitmap));
                             } else {
                                 let _ = img_dyn.insert(cfg_p.clone(), None);
@@ -889,26 +902,33 @@ pub mod system_tray_ui {
             let handle_events = move |evt, _evt_data, handle| {
                 if let Some(evt_ui) = evt_ui.upgrade() {
                     match evt {
-                      E::OnNotice                                           => if handle == evt_ui.layer_notice {SystemTray::reload_layer_icon(&evt_ui);}
-                      E::OnWindowClose                                      => if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
-                      E::OnMousePress(MousePressEvent::MousePressLeftUp)    => if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-                      E::OnContextMenu/*🖰›*/                                => if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-                      E::OnMenuHover =>
-                        if        handle == evt_ui.tray_1cfg_m    {SystemTray::check_active(&evt_ui);}
-                      E::OnMenuItemSelected =>
-                        if        handle == evt_ui.tray_2reload   {let _ = SystemTray::reload_cfg(&evt_ui,None);SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
+                        E::OnNotice =>
+                            if handle == evt_ui.layer_notice {
+                                SystemTray::reload_layer_icon(&evt_ui);}
+                        E::OnWindowClose =>
+                            if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
+                        E::OnMousePress(MousePressEvent::MousePressLeftUp) =>
+                            if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                        E::OnContextMenu/*🖰›*/ =>
+                            if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                        E::OnMenuHover =>
+                            if        handle == evt_ui.tray_1cfg_m {
+                                SystemTray::check_active(&evt_ui);}
+                        E::OnMenuItemSelected =>
+                            if        handle == evt_ui.tray_2reload   {
+                            let _ = SystemTray::reload_cfg(&evt_ui,None);
+                            SystemTray::update_tray_icon_cfg_group(&evt_ui,true);
                         } else if handle == evt_ui.tray_3exit     {SystemTray::exit  (&evt_ui);
                         } else if let
                             ControlHandle::MenuItem(_parent, _id) = handle {
                               {let tray_item_dyn    = &evt_ui.tray_item_dyn.borrow(); //
                               for (i, h_cfg) in tray_item_dyn.iter().enumerate() {
-                                if &handle == h_cfg { //info!("CONFIG handle i={:?} {:?}",i,&handle);
-                                  // if SystemTray::reload_cfg(&evt_ui,Some(i)).is_ok() {
+                                if &handle == h_cfg {
                                     for h_cfg_j in tray_item_dyn.iter() {
-                                      if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck others
+                                      if h_cfg_j.checked() {h_cfg_j.set_checked(false);} } // uncheck
+                                      // others
                                     h_cfg.set_checked(true); // check self
-                                  let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends on future fix in kanata that would revert index on failed config changes
-                                  // } else {info!("OnMenuItemSelected: checkmarks not changed since config wasn't reloaded");}
+                                  let _ = SystemTray::reload_cfg(&evt_ui,Some(i)); // depends
                                 }
                               }
                             }
@@ -928,7 +948,8 @@ pub mod system_tray_ui {
     }
 
     impl Drop for SystemTrayUi {
-        /// To make sure that everything is freed without issues, the default handler must be unbound.
+        /// To make sure that everything is freed without issues, the default handler
+        /// must be unbound.
         fn drop(&mut self) {
             let mut handlers = self.handler_def.borrow_mut();
             for handler in handlers.drain(0..) {
@@ -961,7 +982,6 @@ pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTray
         layer0_icon: layer0_icon.clone(),
         icon_match_layer_name: *icon_match_layer_name,
     };
-    // drop(k); // release manually if needed in buid_ui
     let app = SystemTray {
         app_data: RefCell::new(app_data),
         ..Default::default()

@@ -40,8 +40,8 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
-    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
-    /// listened on.
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
+    /// no TCP port will be listened on.
     #[cfg(feature = "tcp_server")]
     #[arg(
         short = 'p',
@@ -183,9 +183,9 @@ mod cli {
 
         // Start a processing loop in another thread and run the event loop in this thread.
         //
-        // The reason for two different event loops is that the "event loop" only listens for keyboard
-        // events, which it sends to the "processing loop". The processing loop handles keyboard events
-        // while also maintaining `tick()` calls to keyberon.
+        // The reason for two different event loops is that the "event loop" only listens for
+        // keyboard events, which it sends to the "processing loop". The processing loop handles
+        // keyboard events while also maintaining `tick()` calls to keyberon.
 
         let (tx, rx) = std::sync::mpsc::sync_channel(100);
 
