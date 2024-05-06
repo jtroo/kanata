@@ -491,7 +491,8 @@ fn expand_includes(
                 )
             };
             let include_file_path = spanned_filepath.t.trim_matches('"');
-            let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
+            let file_content = file_content_provider.get_file_content(Path::new(include_file_path))
+                .map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
 

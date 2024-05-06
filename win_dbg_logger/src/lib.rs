@@ -3,17 +3,26 @@
 //!
 //! This crate integrates with the ubiquitous [`log`] crate and can be used with the [`simplelog`] crate.
 //!
-//! Windows allows applications to output a string directly to debuggers. This is very useful in situations where other forms of logging are not available.
+//! Windows allows applications to output a string directly to debuggers. This is very useful in
+//! situations where other forms of logging are not available.
 //! For example, stderr is not available for GUI apps.
 //!
-//! Windows provides the `OutputDebugString` entry point, which allows apps to print a debug string. Internally, `OutputDebugString` is implemented by raising an SEH exception, which the debugger catches and handles.
+//! Windows provides the `OutputDebugString` entry point, which allows apps to print a debug string.
+//! Internally, `OutputDebugString` is implemented by raising an SEH exception, which the debugger
+//! catches and handles.
 //!
-//! Raising an exception has a significant cost, when run under a debugger, because the debugger halts all threads in the target process. So you should avoid using this logger for high rates of output, because doing so will slow down your app.
+//! Raising an exception has a significant cost, when run under a debugger, because the debugger
+//! halts all threads in the target process. So you should avoid using this logger for high rates
+//! of output, because doing so will slow down your app.
 //!
-//! Like many Windows entry points, `OutputDebugString` is actually two entry points: `OutputDebugStringA` (multi-byte encodings) and
-//! `OutputDebugStringW` (UTF-16). In most cases, the `*A` version is implemented using a "thunk" which converts its arguments to UTF-16 and then calls the `*W` version. However, `OutputDebugStringA` is one of the few entry points where the opposite is true.
+//! Like many Windows entry points, `OutputDebugString` is actually two entry points:
+//! `OutputDebugStringA` (multi-byte encodings) and
+//! `OutputDebugStringW` (UTF-16). In most cases, the `*A` version is implemented using a "thunk"
+//! which converts its arguments to UTF-16 and then calls the `*W` version. However,
+//! `OutputDebugStringA` is one of the few entry points where the opposite is true.
 //!
-//! This crate can be compiled and used on non-Windows platforms, but it does nothing. This is intended to minimize the impact on code that takes a dependency on this crate.
+//! This crate can be compiled and used on non-Windows platforms, but it does nothing.
+//! This is intended to minimize the impact on code that takes a dependency on this crate.
 //!
 //! # Example
 //!
@@ -44,7 +53,8 @@ pub struct WinDbgLogger {
     _priv: (),
 }
 
-/// This is a static instance of `WinDbgLogger`. Since `WinDbgLogger` contains no state, this can be directly registered using `log::set_logger`, e.g.:
+/// This is a static instance of `WinDbgLogger`. Since `WinDbgLogger` contains no state,
+/// this can be directly registered using `log::set_logger`, e.g.:
 ///
 /// ```
 /// log::set_logger(&win_dbg_logger::WINDBG_LOGGER).unwrap(); // Initialize
@@ -124,7 +134,8 @@ pub fn is_thread_state() -> &'static bool {
     set_thread_state(false)
 }
 pub fn set_thread_state(is: bool) -> &'static bool {
-    // accessor function to avoid get_or_init on every call (lazycell allows doing that without an extra function)
+    // accessor function to avoid get_or_init on every call
+    // (lazycell allows doing that without an extra function)
     static CELL: OnceLock<bool> = OnceLock::new();
     CELL.get_or_init(|| is)
 }
@@ -225,9 +236,11 @@ pub fn is_debugger_present() -> bool {
 
 /// Sets the `WinDbgLogger` as the currently-active logger.
 ///
-/// If an error occurs when registering `WinDbgLogger` as the current logger, this function will output a warning and will return normally. It will not panic.
+/// If an error occurs when registering `WinDbgLogger` as the current logger, this function will
+/// output a warning and will return normally. It will not panic.
 /// This behavior was chosen because `WinDbgLogger` is intended for use in debugging.
-/// Panicking would disrupt debugging and introduce new failure modes. It would also create problems for mixed-mode debugging, where Rust code is linked with C/C++ code.
+/// Panicking would disrupt debugging and introduce new failure modes. It would also create
+/// problems for mixed-mode debugging, where Rust code is linked with C/C++ code.
 pub fn init() {
     match log::set_logger(&WINDBG_LOGGER) {
         Ok(()) => {} //↓ there's really nothing we can do about it.
@@ -243,7 +256,9 @@ macro_rules! define_init_at_level {
     ($func:ident, $level:ident) => {
         /// This can be called from C/C++ code to register the debug logger.
         ///
-        /// For Windows DLLs that have statically linked an instance of `win_dbg_logger` into them, `DllMain` should call `win_dbg_logger_init_<level>()` from the `DLL_PROCESS_ATTACH` handler, e.g.:
+        /// For Windows DLLs that have statically linked an instance of `win_dbg_logger` into
+        /// them, `DllMain` should call `win_dbg_logger_init_<level>()` from the `DLL_PROCESS_ATTACH`
+        /// handler, e.g.:
         ///
         /// ```ignore
         /// extern "C" void __cdecl rust_win_dbg_logger_init_debug(); // Calls into Rust code
@@ -257,7 +272,8 @@ macro_rules! define_init_at_level {
         /// }
         /// ```
         ///
-        /// For Windows executables that have statically linked an instance of `win_dbg_logger` into them, call `win_dbg_logger_init_<level>()` during app startup.
+        /// For Windows executables that have statically linked an instance of `win_dbg_logger`
+        /// into them, call `win_dbg_logger_init_<level>()` during app startup.
         #[no_mangle]
         pub extern "C" fn $func() {
             init();
