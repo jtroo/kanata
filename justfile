@@ -44,3 +44,12 @@ use_local_deps:
 change_subcrate_versions version:
   sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
   sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\)\) = ".*$/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
+
+cov:
+  cargo llvm-cov clean --workspace
+  cargo llvm-cov --no-report --workspace --no-default-features
+  cargo llvm-cov --no-report --workspace
+  cargo llvm-cov --no-report --workspace --features=cmd,win_llhook_read_scancodes,win_sendinput_send_scancodes
+  cargo llvm-cov --no-report --workspace --features=cmd,interception_driver,win_sendinput_send_scancodes
+  cargo llvm-cov --no-report --features=simulated_output -- sim_tests
+  cargo llvm-cov report --html
