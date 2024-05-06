@@ -1,7 +1,7 @@
-use std::iter;
 use std::ops::Index;
 use std::rc::Rc;
 use std::str::Bytes;
+use std::{fmt::Debug, iter};
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -29,12 +29,23 @@ impl Position {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub start: Position,
     pub end: Position,
     pub file_name: Rc<str>,
     pub file_content: Rc<str>,
+}
+
+impl Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Span")
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("file_name", &self.file_name)
+            .field("file_content [len]", &self.file_content.len())
+            .finish()
+    }
 }
 
 impl Default for Span {

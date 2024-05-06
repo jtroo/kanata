@@ -91,6 +91,7 @@ use permutations::*;
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::path::PathBuf;
@@ -393,6 +394,32 @@ pub struct IntermediateCfg {
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
 }
 
+#[derive(Debug, Default)]
+pub struct LspHints {
+    pub inactive_code: Vec<LspHintInactiveCode>,
+    pub definition_locations: DefinitionLocations,
+    pub reference_locations: ReferenceLocations,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct DefinitionLocations {
+    pub alias: HashMap<String, Span>,
+    pub variable: HashMap<String, Span>,    // TODO
+    pub virtual_key: HashMap<String, Span>, // TODO
+    pub chord_group: HashMap<String, Span>, // TODO
+    pub layer: HashMap<String, Span>,       // TODO
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ReferenceLocations {
+    pub alias: HashMap<String, Vec<Span>>,
+    pub variable: HashMap<String, Vec<Span>>,    // TODO
+    pub virtual_key: HashMap<String, Vec<Span>>, // TODO
+    pub chord_group: HashMap<String, Vec<Span>>, // TODO
+    pub layer: HashMap<String, Vec<Span>>,       // TODO
+    pub include: HashMap<String, Vec<Span>>,     // TODO
+}
+
 // A snapshot of enviroment variables, or an error message with an explanation
 // why env vars are not not supported.
 pub type EnvVars = std::result::Result<Vec<(String, String)>, String>;
@@ -523,7 +550,7 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
     env_vars: EnvVars,
 ) -> Result<IntermediateCfg> {
-    let mut lsp_hint_inactive_code: Vec<LspHintInactiveCode> = vec![];
+    let mut lsp_hints: LspHints = Default::default();
 
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider))
@@ -531,10 +558,10 @@ pub fn parse_cfg_raw_string(
             filter_platform_specific_cfg(
                 xs,
                 def_local_keys_variant_to_apply,
-                &mut lsp_hint_inactive_code,
+                &mut lsp_hints.inactive_code,
             )
         })
-        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hint_inactive_code))
+        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hints.inactive_code))
         .and_then(expand_templates)?;
 
     if let Some(spanned) = spanned_root_exprs
@@ -569,7 +596,7 @@ pub fn parse_cfg_raw_string(
                 );
                 local_keys = Some(mapping);
             } else {
-                lsp_hint_inactive_code.push(LspHintInactiveCode {
+                lsp_hints.inactive_code.push(LspHintInactiveCode {
                     span,
                     reason: format!(
                         "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
@@ -733,7 +760,7 @@ pub fn parse_cfg_raw_string(
         default_sequence_timeout: cfg.sequence_timeout,
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
-        lsp_hint_inactive_code,
+        lsp_hints: RefCell::new(lsp_hints),
         ..Default::default()
     };
 
@@ -1154,7 +1181,7 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     switch_max_key_timing: Cell<u16>,
     trans_forbidden_reason: Option<&'static str>,
-    pub lsp_hint_inactive_code: Vec<LspHintInactiveCode>,
+    pub lsp_hints: RefCell<LspHints>,
     a: Arc<Allocations>,
 }
 
@@ -1183,7 +1210,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             switch_max_key_timing: Cell::new(0),
             trans_forbidden_reason: None,
-            lsp_hint_inactive_code: Default::default(),
+            lsp_hints: Default::default(),
             a: unsafe { Allocations::new() },
         }
     }
@@ -1311,13 +1338,14 @@ fn handle_envcond_defalias(
             })?;
             match env_vars {
                 Ok(vars) => {
+                    let lsp_hints = &mut s.lsp_hints.borrow_mut();
                     let values_of_matching_vars: Vec<_> = vars
                         .iter()
                         .filter_map(|(k, v)| if k == env_var_name { Some(v) } else { None })
                         .collect();
                     if values_of_matching_vars.is_empty() {
                         let msg = format!("Env var '{env_var_name}' is not set");
-                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
+                        lsp_hints.inactive_code.push(LspHintInactiveCode {
                             span: exprs.span.clone(),
                             reason: msg.clone(),
                         });
@@ -1326,7 +1354,7 @@ fn handle_envcond_defalias(
                     } else if !values_of_matching_vars.iter().any(|&v| v == env_var_value) {
                         let msg =
                             format!("Env var '{env_var_name}' is set, but value doesn't match");
-                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
+                        lsp_hints.inactive_code.push(LspHintInactiveCode {
                             span: exprs.span.clone(),
                             reason: msg.clone(),
                         });
@@ -1367,6 +1395,11 @@ fn read_alias_name_action_pairs<'a>(
         if s.aliases.insert(alias.into(), action).is_some() {
             bail_expr!(alias_expr, "Duplicate alias: {}", alias);
         }
+        let lsp_hints = &mut s.lsp_hints.borrow_mut();
+        lsp_hints
+            .definition_locations
+            .alias
+            .insert(alias.into(), alias_expr.span());
     }
     Ok(())
 }
@@ -1478,7 +1511,21 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     }
     if let Some(alias) = ac.strip_prefix('@') {
         return match s.aliases.get(alias) {
-            Some(ac) => Ok(*ac),
+            Some(ac) => {
+                let lsp_hints = &mut s.lsp_hints.borrow_mut();
+                match lsp_hints.reference_locations.alias.get_mut(alias) {
+                    Some(x) => {
+                        x.push(ac_span.span.clone());
+                    }
+                    None => {
+                        lsp_hints
+                            .reference_locations
+                            .alias
+                            .insert(alias.to_owned(), vec![ac_span.span.clone()]);
+                    }
+                };
+                Ok(*ac)
+            }
             None => bail!(
                 "Referenced unknown alias {}. Note that order of declarations matter.",
                 alias
