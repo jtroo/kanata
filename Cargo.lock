@@ -517,7 +517,7 @@ dependencies = [
  "signal-hook",
  "simplelog",
  "time",
- "win_dbg_logger",
+ "win_dbg_logger 0.1.0",
  "winapi",
  "windows-sys 0.52.0",
 ]
@@ -569,6 +569,19 @@ dependencies = [
  "patricia_tree",
  "rustc-hash",
  "thiserror",
+]
+
+[[package]]
+name = "kanata-sim"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dirs",
+ "kanata",
+ "log",
+ "simplelog",
+ "time",
 ]
 
 [[package]]
@@ -1120,6 +1133,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "simulated_passthru"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dirs",
+ "encode_unicode",
+ "evdev",
+ "indoc",
+ "inotify",
+ "kanata",
+ "kanata-interception",
+ "kanata-keyberon",
+ "kanata-parser",
+ "kanata-tcp-protocol",
+ "lazy_static",
+ "log",
+ "miette",
+ "mio",
+ "native-windows-gui",
+ "nix 0.26.4",
+ "once_cell",
+ "parking_lot",
+ "radix_trie",
+ "regex",
+ "rustc-hash",
+ "sd-notify",
+ "signal-hook",
+ "simplelog",
+ "widestring",
+ "win_dbg_logger 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1460,6 +1508,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "widestring"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7219d36b6eac893fa81e84ebe06485e7dcbb616177469b142df14f1f4deb1311"
+
+[[package]]
 name = "win_dbg_logger"
 version = "0.1.0"
 dependencies = [
@@ -1467,6 +1521,15 @@ dependencies = [
  "regex",
  "simplelog",
  "winapi",
+]
+
+[[package]]
+name = "win_dbg_logger"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d1b4c22244dc27534d81e2f6fc3efd6b20e50c010f177efc20b719ec759a779"
+dependencies = [
+ "log",
 ]
 
 [[package]]
