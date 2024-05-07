@@ -1,6 +1,3 @@
-[workspace]
-members = ["."]
-
 [package]
 name = "kanata-sim"
 version = "0.1.0"
