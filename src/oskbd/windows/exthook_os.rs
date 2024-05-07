@@ -28,14 +28,14 @@ pub static HOOK_CB: Lazy<Mutex<Option<Box<HookFn>>>> = Lazy::new(|| Mutex::new(N
 pub struct KeyboardHook {} // reusing hook type for our listener
 impl KeyboardHook {
     /// Sets input callback (panics if already registered)
-    #[must_use = "The hook will immediatelly be unregistered and not work."]
-    pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + Send + Sync + 'static) {
+    pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + Send + Sync + 'static) -> KeyboardHook {
         let mut cb_opt = HOOK_CB.lock();
         assert!(
             cb_opt.take().is_none(),
             "Only 1 external listener is allowed!"
         );
         *cb_opt = Some(Box::new(callback));
+        KeyboardHook {}
     }
 }
 impl Drop for KeyboardHook {

@@ -1,3 +1,4 @@
+#![cfg(feature = "passthru_ahk")]
 use anyhow::bail;
 use anyhow::Result;
 

@@ -162,7 +162,10 @@ fn main_impl() -> Result<()> {
     }
 
     for config_sim_file in &sim_paths {
+        #[cfg(not(feature = "passthru_ahk"))]
         let mut k = Kanata::new(&args)?;
+        #[cfg(   feature = "passthru_ahk" )]
+        let mut k = Kanata::new(&args, None)?;
         log::info!("Evaluating simulation file = {:?}", config_sim_file);
         let s = std::fs::read_to_string(config_sim_file)?;
         for l in s.lines() {
