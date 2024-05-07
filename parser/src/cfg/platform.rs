@@ -8,7 +8,7 @@ use crate::err_expr;
 pub(crate) fn filter_platform_specific_cfg(
     top_levels: Vec<TopLevel>,
     deflocalkeys_variant_to_apply: &str,
-    lsp_hint_inactive_code: &mut Vec<LspHintInactiveCode>,
+    lsp_hint_inactive_code: &mut Vec<lsp_hints::InactiveCode>,
 ) -> Result<Vec<TopLevel>> {
     let valid_platform_names = DEFLOCALKEYS_VARIANTS
         .iter()
@@ -62,7 +62,7 @@ pub(crate) fn filter_platform_specific_cfg(
             if applicable_platforms.contains(&current_platform) {
                 tles.push(configuration.clone());
             } else {
-                lsp_hint_inactive_code.push(LspHintInactiveCode {
+                lsp_hint_inactive_code.push(lsp_hints::InactiveCode {
                     span: tle.span.clone(),
                     reason: format!(
                         "Current platform \"{current_platform}\" doesn't match any of: {}",
@@ -78,7 +78,7 @@ pub(crate) fn filter_platform_specific_cfg(
 pub(crate) fn filter_env_specific_cfg(
     top_levels: Vec<TopLevel>,
     env: &EnvVars,
-    lsp_hint_inactive_code: &mut Vec<LspHintInactiveCode>,
+    lsp_hint_inactive_code: &mut Vec<lsp_hints::InactiveCode>,
 ) -> Result<Vec<TopLevel>> {
     top_levels
         .into_iter()
@@ -138,7 +138,7 @@ pub(crate) fn filter_env_specific_cfg(
                 env_var_val.is_empty(),
             ) {
                 (None, false) => {
-                    lsp_hint_inactive_code.push(LspHintInactiveCode {
+                    lsp_hint_inactive_code.push(lsp_hints::InactiveCode {
                         span: tle.span.clone(),
                         reason: format!(
                             "Active if env var {env_var_name} is {env_var_val}. It is unset."
@@ -152,7 +152,7 @@ pub(crate) fn filter_env_specific_cfg(
                     tles.push(configuration.clone());
                 }
                 (Some(val), true) => {
-                    lsp_hint_inactive_code.push(LspHintInactiveCode {
+                    lsp_hint_inactive_code.push(lsp_hints::InactiveCode {
                         span: tle.span.clone(),
                         reason: format!(
                             "Active if {env_var_name} is empty or unset. It has value {val}"
@@ -163,7 +163,7 @@ pub(crate) fn filter_env_specific_cfg(
                     if val == env_var_val {
                         tles.push(configuration.clone());
                     } else {
-                        lsp_hint_inactive_code.push(LspHintInactiveCode {
+                        lsp_hint_inactive_code.push(lsp_hints::InactiveCode {
                             span: tle.span.clone(),
                             reason: format!(
                                 "Active if {env_var_name} is {env_var_val}. It has value {val}"

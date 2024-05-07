@@ -37,14 +37,16 @@
 //! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
+
 pub mod sexpr;
 
 pub(crate) mod alloc;
 use alloc::*;
 
-mod key_override;
 use crate::sequences::*;
 use kanata_keyberon::chord::ChordsV2;
+
+mod key_override;
 pub use key_override::*;
 
 mod custom_tap_hold;
@@ -88,6 +90,7 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
+use crate::lsp_hints::{self, LspHints};
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -394,32 +397,6 @@ pub struct IntermediateCfg {
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
 }
 
-#[derive(Debug, Default)]
-pub struct LspHints {
-    pub inactive_code: Vec<LspHintInactiveCode>,
-    pub definition_locations: DefinitionLocations,
-    pub reference_locations: ReferenceLocations,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct DefinitionLocations {
-    pub alias: HashMap<String, Span>,
-    pub variable: HashMap<String, Span>,    // TODO
-    pub virtual_key: HashMap<String, Span>, // TODO
-    pub chord_group: HashMap<String, Span>, // TODO
-    pub layer: HashMap<String, Span>,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct ReferenceLocations {
-    pub alias: HashMap<String, Vec<Span>>,
-    pub variable: HashMap<String, Vec<Span>>,    // TODO
-    pub virtual_key: HashMap<String, Vec<Span>>, // TODO
-    pub chord_group: HashMap<String, Vec<Span>>, // TODO
-    pub layer: HashMap<String, Vec<Span>>,
-    pub include: HashMap<String, Vec<Span>>,
-}
-
 // A snapshot of enviroment variables, or an error message with an explanation
 // why env vars are not not supported.
 pub type EnvVars = std::result::Result<Vec<(String, String)>, String>;
@@ -536,12 +513,6 @@ const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-macos",
 ];
 
-#[derive(Debug, Clone)]
-pub struct LspHintInactiveCode {
-    pub span: Span,
-    pub reason: String,
-}
-
 #[allow(clippy::type_complexity)] // return type is not pub
 pub fn parse_cfg_raw_string(
     text: &str,
@@ -597,7 +568,7 @@ pub fn parse_cfg_raw_string(
                 );
                 local_keys = Some(mapping);
             } else {
-                lsp_hints.inactive_code.push(LspHintInactiveCode {
+                lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
                     span,
                     reason: format!(
                         "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
@@ -1354,7 +1325,7 @@ fn handle_envcond_defalias(
                         .collect();
                     if values_of_matching_vars.is_empty() {
                         let msg = format!("Env var '{env_var_name}' is not set");
-                        lsp_hints.inactive_code.push(LspHintInactiveCode {
+                        lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
                             span: exprs.span.clone(),
                             reason: msg.clone(),
                         });
@@ -1363,7 +1334,7 @@ fn handle_envcond_defalias(
                     } else if !values_of_matching_vars.iter().any(|&v| v == env_var_value) {
                         let msg =
                             format!("Env var '{env_var_name}' is set, but value doesn't match");
-                        lsp_hints.inactive_code.push(LspHintInactiveCode {
+                        lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
                             span: exprs.span.clone(),
                             reason: msg.clone(),
                         });
