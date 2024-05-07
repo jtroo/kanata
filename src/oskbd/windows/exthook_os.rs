@@ -1,22 +1,15 @@
 //! A function listener for keyboard input events replacing Windows keyboard hook API
 
 use core::fmt;
-use log::{debug, info, trace};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use std::cell::Cell;
-use std::io;
-use std::{mem, ptr};
 
 use winapi::ctypes::*;
-use winapi::shared::minwindef::*;
-use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 
-use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::{KeyEvent, KeyValue};
 use kanata_keyberon::key_code::KeyCode;
-use kanata_parser::custom_action::*;
+
 use kanata_parser::keys::*;
 
 pub const LLHOOK_IDLE_TIME_CLEAR_INPUTS: u64 = 60;
