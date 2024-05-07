@@ -3,22 +3,26 @@
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
 
+#[cfg(not(feature = "simulated_input"))]
 use std::mem;
 
+#[cfg(not(feature = "simulated_input"))]
 use winapi::um::winuser::*;
 
+#[cfg(not(feature = "simulated_input"))]
 use encode_unicode::CharExt;
 
+#[cfg(not(feature = "simulated_input"))]
 use crate::oskbd::KeyValue;
 
 #[cfg(all(not(feature = "interception_driver"), not(feature = "simulated_input")))]
-mod llhook;
+mod llhook; // contains KbdOut any(not(feature = "simulated_output"), not(feature = "passthru_ahk"))
 #[cfg(all(not(feature = "interception_driver"), not(feature = "simulated_input")))]
 pub use llhook::*;
 
-#[cfg(feature = "simulated_input")]
+#[cfg(all(not(feature = "interception_driver"), feature = "simulated_input"))]
 mod exthook_os;
-#[cfg(feature = "simulated_input")]
+#[cfg(all(not(feature = "interception_driver"), feature = "simulated_input"))]
 pub use exthook_os::*;
 
 mod scancode_to_usvk;
@@ -34,6 +38,7 @@ pub use self::interception::*;
 #[cfg(feature = "interception_driver")]
 pub use interception_convert::*;
 
+#[cfg(not(feature = "simulated_input"))]
 fn send_uc(c: char, up: bool) {
     log::debug!("sending unicode {c}");
     let mut inputs: [INPUT; 2] = unsafe { mem::zeroed() };
@@ -62,6 +67,7 @@ fn send_uc(c: char, up: bool) {
     }
 }
 
+#[cfg(not(feature = "simulated_input"))]
 fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
     send_key_sendinput(
         code,
@@ -75,6 +81,7 @@ fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+#[cfg(not(feature = "simulated_input"))]
 fn send_key_sendinput(code: u16, is_key_up: bool) {
     unsafe {
         let mut kb_input: KEYBDINPUT = mem::zeroed();
