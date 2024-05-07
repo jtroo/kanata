@@ -80,7 +80,7 @@ pub extern "win64" fn output_ev_check() -> LRESULT {
             match rx.try_recv() {
                 Ok(in_ev) => {
                     debug!("✓ rx_kout@key_out(dll) ‘{in_ev}’");
-                    if let Ok(_) = send_out_ev(in_ev) {
+                    if send_out_ev(in_ev).is_ok() {
                         res = 0;
                     } else {
                         res = -1;

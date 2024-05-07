@@ -6,7 +6,7 @@ use kanata_state_machine::{oskbd::*, *};
 use log::*;
 
 fn log_init(max_lvl: &c_longlong) {
-    let _ = log_win::init();
+    log_win::init();
     let _a = log_win::set_thread_state(true);
     let log_lvl = match max_lvl {
         1 => log::LevelFilter::Error,
@@ -30,7 +30,7 @@ use winapi::shared::minwindef::*;
 pub extern "win64" fn reset_kanata_state(tick: c_longlong) -> LRESULT {
     debug!("                               ext →→→ reset_kanata_state");
     if let Some(cfg) = CFG.get() {
-        if kanata::clean_state(&cfg, tick.try_into().unwrap()).is_err() {
+        if kanata::clean_state(cfg, tick.try_into().unwrap()).is_err() {
             debug!("✗ @ reset_kanata_state");
             return 1;
         };
