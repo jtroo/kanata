@@ -494,7 +494,7 @@ fn expand_includes(
             let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
-            lsp_hints.reference_locations.include.insert(spanned_filepath.t.clone(), vec![spanned_filepath.span.clone()]);
+            lsp_hints.reference_locations.include.push_from_atom(spanned_filepath);
             Ok(acc)
         } else {
             acc.push(spanned_exprs.clone());
@@ -1492,18 +1492,11 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     if let Some(alias) = ac.strip_prefix('@') {
         return match s.aliases.get(alias) {
             Some(ac) => {
-                let lsp_hints = &mut s.lsp_hints.borrow_mut();
-                match lsp_hints.reference_locations.alias.get_mut(alias) {
-                    Some(x) => {
-                        x.push(ac_span.span.clone());
-                    }
-                    None => {
-                        lsp_hints
-                            .reference_locations
-                            .alias
-                            .insert(alias.to_owned(), vec![ac_span.span.clone()]);
-                    }
-                };
+                s.lsp_hints
+                    .borrow_mut()
+                    .reference_locations
+                    .alias
+                    .push_from_atom(ac_span);
                 Ok(*ac)
             }
             None => bail!(
@@ -1633,28 +1626,26 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     let idx = layer_idx(ac_params, &s.layer_idxs)?;
-    set_layer_change_lsp_hint(ac_params, s);
+    set_layer_change_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::DefaultLayer(idx)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     let idx = layer_idx(ac_params, &s.layer_idxs)?;
-    set_layer_change_lsp_hint(ac_params, s);
+    set_layer_change_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Layer(idx)))
 }
 
-fn set_layer_change_lsp_hint(ac_params: &[SExpr], s: &ParserState) {
-    let layer_refs = &mut s.lsp_hints.borrow_mut().reference_locations.layer;
-    let (layer_name, span) = match &ac_params[0] {
-        SExpr::Atom(x) => (&x.t, &x.span),
+fn set_layer_change_lsp_hint(layer_name_expr: &SExpr, s: &ParserState) {
+    let layer_name_atom = match layer_name_expr {
+        SExpr::Atom(x) => x,
         SExpr::List(_) => unreachable!("checked in layer_idx"),
     };
-    match layer_refs.get_mut(layer_name) {
-        Some(refs) => refs.push(span.clone()),
-        None => {
-            layer_refs.insert(layer_name.clone(), vec![span.clone()]);
-        }
-    };
+    s.lsp_hints
+        .borrow_mut()
+        .reference_locations
+        .layer
+        .push_from_atom(layer_name_atom);
 }
 
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
@@ -2665,6 +2656,8 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
             {
                 bail_expr!(key_name_expr, "Duplicate fake key: {}", key_name);
             }
+            let vk_definitions = &mut s.lsp_hints.borrow_mut().definition_locations.virtual_key;
+            vk_definitions.insert(key_name, key_name_expr.span());
         }
     }
     if s.virtual_keys.len() > KEYS_IN_ROW {
@@ -2700,7 +2693,9 @@ fn parse_virtual_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> 
                 .is_some()
             {
                 bail_expr!(key_name_expr, "Duplicate virtual key: {}", key_name);
-            }
+            };
+            let vk_definitions = &mut s.lsp_hints.borrow_mut().definition_locations.virtual_key;
+            vk_definitions.insert(key_name, key_name_expr.span());
         }
     }
     if s.virtual_keys.len() > KEYS_IN_ROW {
@@ -3034,9 +3029,19 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
         let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
 
         while let Some(vkey_expr) = subexprs.next() {
-            let vkey = vkey_expr.atom(s.vars()).ok_or_else(|| {
-                anyhow_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
-            })?;
+            let vkey = match vkey_expr {
+                SExpr::Atom(atom) => {
+                    s.lsp_hints
+                        .borrow_mut()
+                        .reference_locations
+                        .virtual_key
+                        .push_from_atom(atom);
+                    &atom.t
+                }
+                SExpr::List(_) => {
+                    bail_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
+                }
+            };
             if !s.virtual_keys.contains_key(vkey) {
                 bail_expr!(
                     vkey_expr,
