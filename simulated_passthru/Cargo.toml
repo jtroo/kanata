@@ -60,5 +60,5 @@ win_dbg_logger = "0.1.0"
 default         	= ["simulated_input","simulated_output","passthru_ahk","perf_logging"] # todo remove perf/pass
 simulated_output	= []
 simulated_input 	= []
-passthru_ahk    	= []
+passthru_ahk    	= ["simulated_input","simulated_output","kanata/passthru_ahk"]
 perf_logging    	= []
