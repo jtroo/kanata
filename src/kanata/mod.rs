@@ -1994,7 +1994,8 @@ fn check_for_exit(_event: &KeyEvent) {
             _ => return,
         }
         const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
-        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
+        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst)
+        {
             log::info!("{EXIT_MSG}");
             #[cfg(all(target_os = "windows", feature = "gui"))]
             {
