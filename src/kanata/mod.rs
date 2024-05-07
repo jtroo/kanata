@@ -6,13 +6,13 @@ use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
-use std::sync::mpsc::{Receiver, SyncSender as Sender, Sender as ASender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender as ASender, SyncSender as Sender, TryRecvError};
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
 use std::path::PathBuf;
-#[cfg(not(feature="passthru_ahk"))]
+#[cfg(not(feature = "passthru_ahk"))]
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
@@ -259,17 +259,17 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 impl Kanata {
-    #[cfg(    feature="passthru_ahk" )]
+    #[cfg(feature = "passthru_ahk")]
     /// Create a new configuration from a file.
-    pub fn new(args:&ValidatedArgs,tx:Option<ASender<InputEvent>>) -> Result<Self> {
-      Kanata::new_both(args,tx)
+    pub fn new(args: &ValidatedArgs, tx: Option<ASender<InputEvent>>) -> Result<Self> {
+        Kanata::new_both(args, tx)
     }
-    #[cfg(not(feature="passthru_ahk"))]
+    #[cfg(not(feature = "passthru_ahk"))]
     /// Create a new configuration from a file.
-    pub fn new(args:&ValidatedArgs,                             ) -> Result<Self> {
-      Kanata::new_both(args,None)
+    pub fn new(args: &ValidatedArgs) -> Result<Self> {
+        Kanata::new_both(args, None)
     }
-    fn new_both(args:&ValidatedArgs,tx:Option<ASender<InputEvent>>) -> Result<Self> {
+    fn new_both(args: &ValidatedArgs, tx: Option<ASender<InputEvent>>) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {
@@ -281,7 +281,7 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
-            #[cfg(feature="passthru_ahk")]
+            #[cfg(feature = "passthru_ahk")]
             tx,
         ) {
             Ok(kbd_out) => kbd_out,
@@ -387,10 +387,17 @@ impl Kanata {
     }
 
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
-    #[cfg(not(feature="passthru_ahk"))]
-    pub fn new_arc(args: &ValidatedArgs                               ) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args   )?)))}
-    #[cfg(    feature="passthru_ahk" )]
-    pub fn new_arc(args: &ValidatedArgs, tx:Option<ASender<InputEvent>>) -> Result<Arc<Mutex<Self>>> {Ok(Arc::new(Mutex::new(Self::new(args,tx)?)))}
+    #[cfg(not(feature = "passthru_ahk"))]
+    pub fn new_arc(args: &ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(args)?)))
+    }
+    #[cfg(feature = "passthru_ahk")]
+    pub fn new_arc(
+        args: &ValidatedArgs,
+        tx: Option<ASender<InputEvent>>,
+    ) -> Result<Arc<Mutex<Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(args, tx)?)))
+    }
 
     pub fn new_from_str(cfg: &str) -> Result<Self> {
         let cfg = match cfg::new_from_str(cfg) {
@@ -403,8 +410,8 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &None,
-            #[cfg(feature="passthru_ahk")]
-            None
+            #[cfg(feature = "passthru_ahk")]
+            None,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -1956,23 +1963,25 @@ fn apply_speed_modifiers() {
     assert_eq!(apply_mouse_distance_modifiers(10, &vec![33u16, 200u16]), 6);
 }
 
-#[cfg(feature="passthru_ahk")]
+#[cfg(feature = "passthru_ahk")]
 /// Clean kanata's state without exiting
-pub fn clean_state(kanata:&Arc<Mutex<Kanata>>,tick:u128) -> Result<()> {
-  let mut k = kanata.lock();
-  let layout = k.layout.bm();
-  release_normalkey_states(layout);
-  k.tick_ms(tick,&None)?;
-  let mut k_pressed = PRESSED_KEYS.lock();
-  // debug!("  PRESSED {:?} tick {:?}", k_pressed, tick);
-  for key_os in k_pressed.clone() {k.kbd_out.release_key(key_os)?;};
-  k_pressed.clear();
-  Ok(())
+pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
+    let mut k = kanata.lock();
+    let layout = k.layout.bm();
+    release_normalkey_states(layout);
+    k.tick_ms(tick, &None)?;
+    let mut k_pressed = PRESSED_KEYS.lock();
+    // debug!("  PRESSED {:?} tick {:?}", k_pressed, tick);
+    for key_os in k_pressed.clone() {
+        k.kbd_out.release_key(key_os)?;
+    }
+    k_pressed.clear();
+    Ok(())
 }
 
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
-#[cfg(not(feature="passthru_ahk"))]
+#[cfg(not(feature = "passthru_ahk"))]
 fn check_for_exit(event: &KeyEvent) {
     static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
     static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
