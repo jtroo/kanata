@@ -50,6 +50,8 @@ fn cli_init(cfg_path: &str) -> Result<ValidatedArgs> {
     }
     Ok(ValidatedArgs {
         paths: vec![cfg_file],
+        #[cfg(feature = "tcp_server")]
+        tcp_server_address: None, //todo: any need in a dll?
         nodelay: true,
     })
 }
