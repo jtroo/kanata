@@ -417,7 +417,7 @@ pub struct ReferenceLocations {
     pub virtual_key: HashMap<String, Vec<Span>>, // TODO
     pub chord_group: HashMap<String, Vec<Span>>, // TODO
     pub layer: HashMap<String, Vec<Span>>,
-    pub include: HashMap<String, Vec<Span>>, // TODO
+    pub include: HashMap<String, Vec<Span>>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -487,6 +487,7 @@ fn parse_cfg_raw(p: &Path, s: &mut ParserState) -> MResult<IntermediateCfg> {
 fn expand_includes(
     xs: Vec<TopLevel>,
     file_content_provider: &mut FileContentProvider,
+    lsp_hints: &mut LspHints,
 ) -> Result<Vec<TopLevel>> {
     let include_is_first_atom = gen_first_atom_filter("include");
     xs.iter().try_fold(Vec::new(), |mut acc, spanned_exprs| {
@@ -516,7 +517,7 @@ fn expand_includes(
             let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
-
+            lsp_hints.reference_locations.include.insert(spanned_filepath.t.clone(), vec![spanned_filepath.span.clone()]);
             Ok(acc)
         } else {
             acc.push(spanned_exprs.clone());
@@ -553,7 +554,7 @@ pub fn parse_cfg_raw_string(
     let mut lsp_hints: LspHints = Default::default();
 
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
-        .and_then(|xs| expand_includes(xs, file_content_provider))
+        .and_then(|xs| expand_includes(xs, file_content_provider, &mut lsp_hints))
         .and_then(|xs| {
             filter_platform_specific_cfg(
                 xs,
