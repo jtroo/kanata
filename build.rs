@@ -1,12 +1,12 @@
 fn main() -> std::io::Result<()> {
-    #[cfg(all(target_os = "windows", feature = "win_manifest"))]
+    #[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
     {
         windows::build()?;
     }
     Ok(())
 }
 
-#[cfg(all(target_os = "windows", feature = "win_manifest"))]
+#[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
 mod windows {
     use indoc::formatdoc;
     use regex::Regex;
@@ -42,14 +42,22 @@ mod windows {
 
         let manifest_str = formatdoc!(
             r#"<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-            <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-              <assemblyIdentity name="kanata.exe" version="{}" type="win32"/>
-              <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-                <security>
-                  <requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false"/></requestedPrivileges>
-                </security>
-              </trustInfo>
-            </assembly>
+               <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:v3="urn:schemas-microsoft-com:asm.v3">
+                 <assemblyIdentity name="kanata.exe" version="{}" type="win32"></assemblyIdentity>
+                 <v3:trustInfo><v3:security>
+                   <v3:requestedPrivileges><v3:requestedExecutionLevel level="asInvoker" uiAccess="false"></v3:requestedExecutionLevel></v3:requestedPrivileges>
+                 </v3:security></v3:trustInfo>
+                 <v3:application>
+                   <v3:windowsSettings>
+                     <dpiAware     xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
+                     <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+                   </v3:windowsSettings>
+                 </v3:application>
+                 <dependency><dependentAssembly>
+                   <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls"
+                     version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"></assemblyIdentity></dependentAssembly>
+                 </dependency>
+               </assembly>
             "#,
             version
         );

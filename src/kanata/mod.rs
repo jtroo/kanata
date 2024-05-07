@@ -1,5 +1,7 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
+#[cfg(all(target_os = "windows", feature = "gui"))]
+use crate::gui::win::*;
 use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
@@ -197,6 +199,12 @@ pub struct Kanata {
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// File name / path to the tray icon file.
+    pub tray_icon: Option<String>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// Whether to match layer names to icon files without an explicit 'icon' field
+    pub icon_match_layer_name: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -359,6 +367,10 @@ impl Kanata {
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tray_icon: cfg.options.tray_icon,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
     }
 
@@ -452,6 +464,10 @@ impl Kanata {
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tray_icon: None,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
     }
 
@@ -487,6 +503,11 @@ impl Kanata {
             self.virtual_keys = cfg.fake_keys;
         }
         self.switch_max_key_timing = cfg.switch_max_key_timing;
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        {
+            self.tray_icon = cfg.options.tray_icon;
+            self.icon_match_layer_name = cfg.options.icon_match_layer_name;
+        }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -529,6 +550,8 @@ impl Kanata {
                 }
             }
         }
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        send_gui_notice();
         Ok(())
     }
 
@@ -1505,6 +1528,8 @@ impl Kanata {
                     }
                 }
             }
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            send_gui_notice();
         }
     }
 
@@ -1935,14 +1960,21 @@ fn check_for_exit(event: &KeyEvent) {
     }
     const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
     if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
-        #[cfg(not(target_os = "linux"))]
+        log::info!("{EXIT_MSG}");
+        #[cfg(all(target_os = "windows", feature = "gui"))]
         {
-            log::info!("{EXIT_MSG}");
+            native_windows_gui::stop_thread_dispatch();
+        }
+        #[cfg(all(
+            not(target_os = "linux"),
+            not(target_os = "windows"),
+            not(feature = "gui")
+        ))]
+        {
             panic!("{EXIT_MSG}");
         }
         #[cfg(target_os = "linux")]
         {
-            log::info!("{EXIT_MSG}");
             signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
         }
     }

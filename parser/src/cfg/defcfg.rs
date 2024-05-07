@@ -53,6 +53,10 @@ pub struct CfgOptions {
     pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub tray_icon: Option<String>,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub icon_match_layer_name: bool,
 }
 
 impl Default for CfgOptions {
@@ -105,6 +109,10 @@ impl Default for CfgOptions {
             windows_interception_keyboard_hwids: None,
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
+            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            tray_icon: None,
+            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            icon_match_layer_name: true,
         }
     }
 }
@@ -387,6 +395,28 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 log::warn!("macos-dev-names-include is empty");
                             }
                             cfg.macos_dev_names_include = Some(dev_names);
+                        }
+                    }
+                    "tray-icon" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            let icon_path = sexpr_to_str_or_err(val, label)?;
+                            if icon_path.is_empty() {
+                                log::warn!("tray-icon is empty");
+                            }
+                            cfg.tray_icon = Some(icon_path.to_string());
+                        }
+                    }
+                    "icon-match-layer-name" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
                         }
                     }
 

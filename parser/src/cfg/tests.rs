@@ -1288,6 +1288,8 @@ fn parse_all_defcfg() {
   linux-unicode-u-code v
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
+  tray-icon symbols.ico
+  icon-match-layer-name no
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
   windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
@@ -1844,4 +1846,28 @@ fn parse_defseq_overlap_too_many() {
     parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect_err("fails");
+}
+
+#[test]
+fn parse_layer_opts_icon() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_good.kbd")).unwrap();
+}
+
+#[test]
+fn disallow_dupe_layer_opts_icon_layernonmap() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_bad_dupe.kbd"))
+        .map(|_| ())
+        .expect_err("fails");
+}
+
+#[test]
+fn disallow_dupe_layer_opts_icon_layermap() {
+    let source = "
+(defcfg)
+(defsrc)
+(deflayermap (base icon base.png 🖻 n.ico) 0 0)
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
 }

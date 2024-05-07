@@ -1,0 +1,7 @@
+(defcfg)
+(defsrc 1)
+(deflayer	(base       	icon base.png   	) 1)
+(deflayer	(1emoji     	🖻 1symbols.png  	) 1)
+(deflayer	(2icon-quote	🖻 "2Nav Num.png"	) 1)
+(deflayer	(3emoji_alt 	🖼 3trans.parent 	) 1)
+(deflayermap	(4layermap 	🖼 3trans.parent 	) 0 0)

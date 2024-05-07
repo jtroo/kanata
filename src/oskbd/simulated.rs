@@ -96,7 +96,8 @@ impl LogFmt {
         let mut pad = value.len();
         let mut time = "".to_string();
         if self.ticks > 0 {
-            pad = std::cmp::max(value.len(), self.ticks.to_string().len()); // add extra padding if event tick is wider
+            pad = std::cmp::max(value.len(), self.ticks.to_string().len()); // add extra padding if
+                                                                            // event tick is wider
             time = format!("  {: <pad$}", self.ticks);
             self.ticks = 0;
         }

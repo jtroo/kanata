@@ -7,6 +7,7 @@ members = [
     "tcp_protocol",
     "simulated_input",
     "windows_key_tester",
+    "win_dbg_logger",
 ]
 exclude = [
     "wasm",
@@ -79,7 +80,23 @@ winapi = { version = "0.3.9", features = [
     "timeapi",
     "mmsystem",
 ] }
-native-windows-gui = { version = "1.0.12", default_features = false }
+windows-sys = { version = "0.52.0", features = [
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Devices_Usb",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_UI_Controls",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+], optional=true }
+win_dbg_logger = { path = "win_dbg_logger", optional = true }
+native-windows-gui = { version = "1.0.13", default_features = false}
+native-windows-derive = { version = "1.0.5", default_features = false, optional = true }
+regex = { version = "1.10.4", optional = true }
 kanata-interception = { version = "0.2.0", optional = true }
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
@@ -98,6 +115,7 @@ cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
 wasm = [ "instant/wasm-bindgen" ]
+gui = ["win_manifest","native-windows-derive","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","dep:windows-sys"]
 
 [profile.release]
 opt-level = "z"

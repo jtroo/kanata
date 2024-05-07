@@ -1,13 +1,11 @@
+mod main_lib;
+
 use anyhow::{bail, Result};
 use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
-use log::info;
 use simplelog::{format_description, *};
 use std::path::PathBuf;
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
@@ -15,14 +13,10 @@ mod tests;
 ///
 /// kanata remaps key presses to other keys or complex actions depending on the
 /// configuration for that key. You can find the guide for creating a config
-/// file here:
-///
-///     https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository:
-///
-///     https://github.com/jtroo/kanata
+/// the kanata repository: https://github.com/jtroo/kanata
 struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -46,8 +40,8 @@ kanata.kbd in the current working directory and
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
 
-    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank, no TCP port will be
-    /// listened on.
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
+    /// no TCP port will be listened on.
     #[cfg(feature = "tcp_server")]
     #[arg(
         short = 'p',
@@ -94,136 +88,146 @@ kanata.kbd in the current working directory and
     check: bool,
 }
 
-/// Parse CLI arguments and initialize logging.
-fn cli_init() -> Result<ValidatedArgs> {
-    let args = Args::parse();
+#[cfg(not(feature = "gui"))]
+mod cli {
+    use super::*;
 
-    #[cfg(target_os = "macos")]
-    if args.list {
-        karabiner_driverkit::list_keyboards();
-        std::process::exit(0);
-    }
+    /// Parse CLI arguments and initialize logging.
+    fn cli_init() -> Result<ValidatedArgs> {
+        let args = Args::parse();
 
-    let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
+        #[cfg(target_os = "macos")]
+        if args.list {
+            karabiner_driverkit::list_keyboards();
+            std::process::exit(0);
+        }
 
-    let log_lvl = match (args.debug, args.trace) {
-        (_, true) => LevelFilter::Trace,
-        (true, false) => LevelFilter::Debug,
-        (false, false) => LevelFilter::Info,
-    };
+        let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
-    let mut log_cfg = ConfigBuilder::new();
-    if let Err(e) = log_cfg.set_time_offset_to_local() {
-        eprintln!("WARNING: could not set log TZ to local: {e:?}");
-    };
-    log_cfg.set_time_format_custom(format_description!(
-        version = 2,
-        "[hour]:[minute]:[second].[subsecond digits:4]"
-    ));
-    CombinedLogger::init(vec![TermLogger::new(
-        log_lvl,
-        log_cfg.build(),
-        TerminalMode::Mixed,
-        ColorChoice::AlwaysAnsi,
-    )])
-    .expect("logger can init");
-    log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
-    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-    log::info!("using LLHOOK+SendInput for keyboard IO");
-    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    log::info!("using the Interception driver for keyboard IO");
+        let log_lvl = match (args.debug, args.trace) {
+            (_, true) => LevelFilter::Trace,
+            (true, false) => LevelFilter::Debug,
+            (false, false) => LevelFilter::Info,
+        };
 
-    if let Some(config_file) = cfg_paths.first() {
-        if !config_file.exists() {
-            bail!(
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_custom(format_description!(
+            version = 2,
+            "[hour]:[minute]:[second].[subsecond digits:4]"
+        ));
+        CombinedLogger::init(vec![TermLogger::new(
+            log_lvl,
+            log_cfg.build(),
+            TerminalMode::Mixed,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+
+        log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
+        #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+        log::info!("using LLHOOK+SendInput for keyboard IO");
+        #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+        log::info!("using the Interception driver for keyboard IO");
+
+        if let Some(config_file) = cfg_paths.first() {
+            if !config_file.exists() {
+                bail!(
                 "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
                 cfg_paths[0].to_str().unwrap_or("?")
             )
-        }
-    } else {
-        bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
-    }
-
-    if args.check {
-        log::info!("validating config only and exiting");
-        let status = match cfg::new_from_file(&cfg_paths[0]) {
-            Ok(_) => 0,
-            Err(e) => {
-                log::error!("{e:?}");
-                1
             }
-        };
-        std::process::exit(status);
-    }
+        } else {
+            bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
+        }
 
-    #[cfg(target_os = "linux")]
-    if let Some(wait) = args.wait_device_ms {
-        use std::sync::atomic::Ordering;
-        log::info!("Setting device registration wait time to {wait} ms.");
-        oskbd::WAIT_DEVICE_MS.store(wait, Ordering::SeqCst);
-    }
+        if args.check {
+            log::info!("validating config only and exiting");
+            let status = match cfg::new_from_file(&cfg_paths[0]) {
+                Ok(_) => 0,
+                Err(e) => {
+                    log::error!("{e:?}");
+                    1
+                }
+            };
+            std::process::exit(status);
+        }
 
-    Ok(ValidatedArgs {
-        paths: cfg_paths,
-        #[cfg(feature = "tcp_server")]
-        tcp_server_address: args.tcp_server_address,
         #[cfg(target_os = "linux")]
-        symlink_path: args.symlink_path,
-        nodelay: args.nodelay,
-    })
-}
+        if let Some(wait) = args.wait_device_ms {
+            use std::sync::atomic::Ordering;
+            log::info!("Setting device registration wait time to {wait} ms.");
+            oskbd::WAIT_DEVICE_MS.store(wait, Ordering::SeqCst);
+        }
 
-fn main_impl() -> Result<()> {
-    let args = cli_init()?;
-    let kanata_arc = Kanata::new_arc(&args)?;
-
-    if !args.nodelay {
-        info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        Ok(ValidatedArgs {
+            paths: cfg_paths,
+            #[cfg(feature = "tcp_server")]
+            tcp_server_address: args.tcp_server_address,
+            #[cfg(target_os = "linux")]
+            symlink_path: args.symlink_path,
+            nodelay: args.nodelay,
+        })
     }
 
-    // Start a processing loop in another thread and run the event loop in this thread.
-    //
-    // The reason for two different event loops is that the "event loop" only listens for keyboard
-    // events, which it sends to the "processing loop". The processing loop handles keyboard events
-    // while also maintaining `tick()` calls to keyberon.
+    pub(crate) fn main_impl() -> Result<()> {
+        let args = cli_init()?;
+        let kanata_arc = Kanata::new_arc(&args)?;
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(100);
-
-    let (server, ntx, nrx) = if let Some(address) = {
-        #[cfg(feature = "tcp_server")]
-        {
-            args.tcp_server_address
+        if !args.nodelay {
+            log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
+            std::thread::sleep(std::time::Duration::from_secs(2));
         }
-        #[cfg(not(feature = "tcp_server"))]
-        {
-            None::<SocketAddrWrapper>
+
+        // Start a processing loop in another thread and run the event loop in this thread.
+        //
+        // The reason for two different event loops is that the "event loop" only listens for
+        // keyboard events, which it sends to the "processing loop". The processing loop handles
+        // keyboard events while also maintaining `tick()` calls to keyberon.
+
+        let (tx, rx) = std::sync::mpsc::sync_channel(100);
+
+        let (server, ntx, nrx) = if let Some(address) = {
+            #[cfg(feature = "tcp_server")]
+            {
+                args.tcp_server_address
+            }
+            #[cfg(not(feature = "tcp_server"))]
+            {
+                None::<SocketAddrWrapper>
+            }
+        } {
+            let mut server = TcpServer::new(address.into_inner(), tx.clone());
+            server.start(kanata_arc.clone());
+            let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
+            (Some(server), Some(ntx), Some(nrx))
+        } else {
+            (None, None, None)
+        };
+
+        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
+
+        if let (Some(server), Some(nrx)) = (server, nrx) {
+            #[allow(clippy::unit_arg)]
+            Kanata::start_notification_loop(nrx, server.connections);
         }
-    } {
-        let mut server = TcpServer::new(address.into_inner(), tx.clone());
-        server.start(kanata_arc.clone());
-        let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
-        (Some(server), Some(ntx), Some(nrx))
-    } else {
-        (None, None, None)
-    };
 
-    Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
+        #[cfg(target_os = "linux")]
+        sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
-    if let (Some(server), Some(nrx)) = (server, nrx) {
-        #[allow(clippy::unit_arg)]
-        Kanata::start_notification_loop(nrx, server.connections);
+        #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
+        Kanata::event_loop(kanata_arc, tx)?;
+
+        Ok(())
     }
-
-    #[cfg(target_os = "linux")]
-    sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
-
-    Kanata::event_loop(kanata_arc, tx)?;
-
-    Ok(())
 }
 
-fn main() -> Result<()> {
+#[cfg(not(feature = "gui"))]
+use cli::*;
+#[cfg(not(feature = "gui"))]
+pub fn main() -> Result<()> {
     let ret = main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
@@ -231,4 +235,10 @@ fn main() -> Result<()> {
     eprintln!("\nPress enter to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
     ret
+}
+
+#[cfg(feature = "gui")]
+fn main() {
+    use main_lib::win_gui::*;
+    lib_main_gui();
 }

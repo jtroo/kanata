@@ -5,7 +5,7 @@
 //! and see if the real output looks sensible according to what is expected.
 
 use crate::tests::*;
-use kanata_state_machine::{
+use crate::{
     oskbd::{KeyEvent, KeyValue},
     str_to_oscode, Kanata,
 };

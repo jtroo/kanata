@@ -50,6 +50,9 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
+pub mod layer_opts;
+use layer_opts::*;
+
 pub mod list_actions;
 use list_actions::*;
 
@@ -181,7 +184,8 @@ macro_rules! anyhow_span {
 
 pub struct FileContentProvider<'a> {
     /// A function to load content of a file from a filepath.
-    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file" from loading twice.
+    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file"
+    /// from loading twice.
     get_file_content_fn: &'a mut dyn FnMut(&Path) -> std::result::Result<String, String>,
 }
 
@@ -319,6 +323,7 @@ pub type MappedKeys = HashSet<OsCode>;
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
+    pub icon: Option<String>,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -486,7 +491,8 @@ fn expand_includes(
                 )
             };
             let include_file_path = spanned_filepath.t.trim_matches('"');
-            let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
+            let file_content = file_content_provider.get_file_content(Path::new(include_file_path))
+                .map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
 
@@ -648,7 +654,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let (layer_idxs, layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -681,7 +687,11 @@ pub fn parse_cfg_raw_string(
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
         .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
+        .map(|(name, cfg_text)| LayerInfo {
+            name: name.clone(),
+            cfg_text,
+            icon: layer_icons.get(&name).unwrap_or(&None).clone(),
+        })
         .collect();
 
     let defsrc_layer = create_defsrc_layer();
@@ -1038,8 +1048,12 @@ type Aliases = HashMap<String, &'static KanataAction>;
 /// - All layers have the same number of items as the defsrc,
 /// - There are no duplicate layer names
 /// - Parentheses weren't used directly or kmonad-style escapes for parentheses weren't used.
-fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Result<LayerIndexes> {
+fn parse_layer_indexes(
+    exprs: &[SpannedLayerExprs],
+    expected_len: usize,
+) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
+    let mut layer_icons = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
         let (mut subexprs, expr, do_element_count_check) = match expr_type {
             SpannedLayerExprs::DefsrcMapping(e) => {
@@ -1052,13 +1066,26 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
-        let layer_name = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(_) => layer_expr
-                .atom(None)
-                .ok_or_else(|| {
-                    anyhow_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
-                })?
-                .to_owned(),
+        let (layer_name, icon) = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(_) => match layer_expr {
+                SExpr::Atom(name_span) => (name_span.t.to_owned(), None),
+                SExpr::List(name_opts_span) => {
+                    let list = &name_opts_span.t;
+                    let name = list.first().ok_or_else(|| anyhow_span!(
+                            name_opts_span,
+                            "deflayer requires a string name within this pair of parenthesis (or a string name without any)"
+                        ))?
+                        .atom(None).ok_or_else(|| anyhow_expr!(
+                            layer_expr,
+                            "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
+                        ))?;
+                    let layer_opts = parse_layer_opts(&list[1..])?;
+                    let icon = layer_opts
+                        .get(DEFLAYER_ICON[0])
+                        .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                    (name.to_owned(), icon)
+                }
+            },
             SpannedLayerExprs::CustomMapping(_) => {
                 let list = layer_expr
                     .list(None)
@@ -1069,13 +1096,19 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                         )
                     })?
                     .to_owned();
-                if list.len() != 1 {
-                    bail_expr!(
+                let name = list.first()
+                    .and_then(|s| s.atom(None))
+                    .ok_or_else(|| anyhow_expr!(
                         layer_expr,
                         "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
-                    );
-                }
-                list[0].atom(None).ok_or_else(|| anyhow_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"))?.to_owned()
+                    ))?;
+
+                // add hashmap for future options, currently only parse icons
+                let layer_opts = parse_layer_opts(&list[1..])?;
+                let icon = layer_opts
+                    .get(DEFLAYER_ICON[0])
+                    .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                (name.to_owned(), icon)
             }
         };
         if layer_indexes.contains_key(&layer_name) {
@@ -1119,10 +1152,11 @@ fn parse_layer_indexes(exprs: &[SpannedLayerExprs], expected_len: usize) -> Resu
                 )
             }
         }
-        layer_indexes.insert(layer_name, i);
+        layer_indexes.insert(layer_name.clone(), i);
+        layer_icons.insert(layer_name, icon);
     }
 
-    Ok(layer_indexes)
+    Ok((layer_indexes, layer_icons))
 }
 
 #[derive(Debug, Clone)]
@@ -2053,7 +2087,8 @@ static KEYMODI: &[(&str, KeyCode)] = &[
     ("RA-", KeyCode::RAlt),
     ("⎇›", KeyCode::RAlt),
     ("⌥›", KeyCode::RAlt),
-    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after indicators with sides have had a chance
+    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after
+    // indicators with sides have had a chance
     ("⌥", KeyCode::LAlt),
     ("⎇", KeyCode::LAlt),
     ("◆", KeyCode::LGui),
@@ -2940,18 +2975,8 @@ fn parse_layers(
                     }
                 }
                 let rem = pairs.remainder();
-                match rem.len() {
-                    0 => {}
-                    1 => {
-                        bail_expr!(
-                            &rem[0],
-                            "an input must be followed by a map string and an action"
-                        );
-                    }
-                    2 => {
-                        bail_expr!(&rem[1], "map string must be followed by an action");
-                    }
-                    _ => unreachable!(),
+                if !rem.is_empty() {
+                    bail_expr!(&rem[0], "input must by followed by an action");
                 }
             }
         }
@@ -3145,7 +3170,8 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParserState) -> Result<Vec<u16>> {
                                     );
                                 }
                                 if *pressed != KEY_OVERLAP {
-                                    // Note: key overlap item is special and goes at the end, not the beginning
+                                    // Note: key overlap item is special and goes at the end,
+                                    // not the beginning
                                     seq.push(seq_num);
                                 }
                             }

@@ -112,6 +112,11 @@ jobs:
     - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
 
+    - name: Run tests gui
+      run: cargo test --all --features=gui
+    - name: Run clippy gui
+      run: cargo clippy --all --features=gui -- -D warnings
+
   build-test-clippy-macos:
     runs-on: ${{ matrix.os }}
     strategy:
