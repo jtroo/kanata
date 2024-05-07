@@ -39,6 +39,12 @@ guif:
   cargo fmt    --all
   cargo clippy --all --fix --features=gui -- -D warnings
 
+ahkc:
+  cargo check              --features=passthru_ahk
+ahkf:
+  cargo fmt    --all
+  cargo clippy --all --fix --features=passthru_ahk -- -D warnings
+
 use_cratesio_deps:
   sed -i 's/^# \(kanata-\(keyberon\|parser\|tcp-protocol\) = ".*\)$/\1/' Cargo.toml parser/Cargo.toml
   sed -i 's/^\(kanata-\(keyberon\|parser\|tcp-protocol\) = .*path.*\)$/# \1/' Cargo.toml parser/Cargo.toml
