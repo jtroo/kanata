@@ -2129,7 +2129,14 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     ac_params[0]
         .atom(s.vars())
         .map(|a| {
-            let a = a.trim_matches('"');
+            let a = match a.strip_prefix("r#\"") {
+                Some(a) => a.strip_suffix("\"#").unwrap_or(a),
+                None => a
+                    .strip_prefix('"')
+                    .unwrap_or(a)
+                    .strip_suffix('"')
+                    .unwrap_or(a),
+            };
             if a.chars().count() != 1 {
                 bail_expr!(&ac_params[0], "{ERR_STR}")
             }
