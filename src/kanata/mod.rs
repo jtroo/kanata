@@ -1986,40 +1986,42 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
 
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
-#[cfg(not(feature = "passthru_ahk"))]
 fn check_for_exit(event: &KeyEvent) {
-    static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
-    let is_pressed = match event.value {
-        KeyValue::Press => true,
-        KeyValue::Release => false,
-        _ => return,
-    };
-    match event.code {
-        OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
-        _ => return,
-    }
-    const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
-    if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
-        log::info!("{EXIT_MSG}");
-        #[cfg(all(target_os = "windows", feature = "gui"))]
-        {
-            native_windows_gui::stop_thread_dispatch();
+    #[cfg(not(feature = "passthru_ahk"))]
+    {
+        static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
+        let is_pressed = match event.value {
+            KeyValue::Press => true,
+            KeyValue::Release => false,
+            _ => return,
+        };
+        match event.code {
+            OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
+            _ => return,
         }
-        #[cfg(all(
-            not(target_os = "linux"),
-            not(target_os = "windows"),
-            not(feature = "gui")
-        ))]
-        {
-            panic!("{EXIT_MSG}");
-        }
-        #[cfg(target_os = "linux")]
-        {
-            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+        const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
+        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
+            log::info!("{EXIT_MSG}");
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            {
+                native_windows_gui::stop_thread_dispatch();
+            }
+            #[cfg(all(
+                not(target_os = "linux"),
+                not(target_os = "windows"),
+                not(feature = "gui")
+            ))]
+            {
+                panic!("{EXIT_MSG}");
+            }
+            #[cfg(target_os = "linux")]
+            {
+                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            }
         }
     }
 }
