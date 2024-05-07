@@ -6,8 +6,10 @@ use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
-use std::sync::mpsc::Sender as ASender;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
+
+#[cfg(feature = "passthru_ahk")]
+use std::sync::mpsc::Sender as ASender;
 
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
@@ -260,17 +262,7 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 impl Kanata {
-    #[cfg(not(feature = "passthru_ahk"))]
-    /// Create a new configuration from a file.
-    pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        Kanata::new_inner(args, None)
-    }
-    #[cfg(feature = "passthru_ahk")]
-    /// Create a new configuration from a file.
-    pub fn new(args: &ValidatedArgs, tx: Option<ASender<InputEvent>>) -> Result<Self> {
-        Kanata::new_inner(args, tx)
-    }
-    fn new_inner(args: &ValidatedArgs, _tx: Option<ASender<InputEvent>>) -> Result<Self> {
+    fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {
@@ -282,8 +274,6 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
-            #[cfg(feature = "passthru_ahk")]
-            _tx,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -388,16 +378,8 @@ impl Kanata {
     }
 
     /// Create a new configuration from a file, wrapped in an Arc<Mutex<_>>
-    #[cfg(not(feature = "passthru_ahk"))]
     pub fn new_arc(args: &ValidatedArgs) -> Result<Arc<Mutex<Self>>> {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
-    }
-    #[cfg(feature = "passthru_ahk")]
-    pub fn new_arc(
-        args: &ValidatedArgs,
-        tx: Option<ASender<InputEvent>>,
-    ) -> Result<Arc<Mutex<Self>>> {
-        Ok(Arc::new(Mutex::new(Self::new(args, tx)?)))
     }
 
     pub fn new_from_str(cfg: &str) -> Result<Self> {
@@ -411,8 +393,6 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &None,
-            #[cfg(feature = "passthru_ahk")]
-            None,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -492,6 +472,16 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
+    }
+
+    #[cfg(feature = "passthru_ahk")]
+    pub fn new_with_output_channel(
+        args: &ValidatedArgs,
+        tx: Option<ASender<InputEvent>>,
+    ) -> Result<Self> {
+        let mut k = Self::new(args)?;
+        k.kbd_out.tx_kout = tx;
+        Ok(k)
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {

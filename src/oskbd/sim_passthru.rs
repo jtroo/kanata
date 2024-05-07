@@ -15,10 +15,7 @@ use std::fmt;
 
 use std::sync::Arc;
 use std::sync::OnceLock;
-#[cfg(feature = "passthru_ahk")]
 type CbOutEvFn = dyn Fn(i64, i64, i64) -> i64 + Send + Sync + 'static; // Rust wrapper func around external callback (transmuted into this) Ahk accept only i64 arguments (vk,sc,up)
-#[cfg(not(feature = "passthru_ahk"))]
-type CbOutEvFn = dyn Fn(i64, i64, i64) -> i64 + Send + Sync + 'static;
 pub struct FnOutEvWrapper {
     pub cb: Arc<CbOutEvFn>,
 } // wrapper struct to store our callback in a thread-shareable manner
@@ -27,27 +24,18 @@ pub static OUTEVWRAP: OnceLock<FnOutEvWrapper> = OnceLock::new(); // ensure that
 use std::sync::mpsc::{SendError, Sender as ASender};
 /// Handle for writing keys to the simulated input provider.
 pub struct KbdOut {
-    #[cfg(feature = "passthru_ahk")]
-    tx_kout: Option<ASender<InputEvent>>,
+    pub tx_kout: Option<ASender<InputEvent>>,
 }
 
 use std::io::{Error as IoErr, ErrorKind::NotConnected};
 impl KbdOut {
-    #[cfg(all(not(target_os = "linux"), not(feature = "passthru_ahk")))]
+    #[cfg(not(target_os = "linux"))]
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self {})
     }
-    #[cfg(all(not(target_os = "linux"), feature = "passthru_ahk"))]
-    pub fn new(tx: Option<ASender<InputEvent>>) -> Result<Self, io::Error> {
-        Ok(Self { tx_kout: tx })
-    }
-    #[cfg(all(target_os = "linux", not(feature = "passthru_ahk")))]
+    #[cfg(target_os = "linux")]
     pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
-        Ok(Self {})
-    }
-    #[cfg(all(target_os = "linux", feature = "passthru_ahk"))]
-    pub fn new(_: &Option<String>, tx: Option<ASender<InputEvent>>) -> Result<Self, io::Error> {
-        Ok(Self { tx_kout: tx })
+        Ok(Self { tx_kout: None })
     }
     #[cfg(target_os = "linux")]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
