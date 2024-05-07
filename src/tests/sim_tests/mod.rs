@@ -15,6 +15,7 @@ mod chord_sim_tests;
 mod layer_sim_tests;
 mod repeat_sim_tests;
 mod seq_sim_tests;
+mod unicode_sim_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
     init_log();
