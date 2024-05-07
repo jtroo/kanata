@@ -26,6 +26,7 @@ mod windows {
         // https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests
 
         let re_ver_build = Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+(?<vpos>\d+)$").unwrap();
+        let re_ver_build2 = Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+$").unwrap();
         let re_version3 = Regex::new(r"^(\d+\.){2}\d+$").unwrap();
         let mut version: String = env!("CARGO_PKG_VERSION").to_string();
 
@@ -35,6 +36,8 @@ mod windows {
             version = re_ver_build
                 .replace_all(&version, r"$vpre.$vpos")
                 .to_string();
+        } else if re_ver_build2.find(&version).is_some() {
+            version = re_ver_build2.replace_all(&version, r"$vpre.0").to_string();
         } else {
             pb!("unknown version format '{}', using '0.0.0.0'", version);
             version = "0.0.0.0".to_string();
