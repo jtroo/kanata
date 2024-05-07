@@ -174,7 +174,10 @@ mod cli {
 
     pub(crate) fn main_impl() -> Result<()> {
         let args = cli_init()?;
+        #[cfg(not(feature="passthru_ahk"))]
         let kanata_arc = Kanata::new_arc(&args)?;
+        #[cfg(    feature="passthru_ahk" )]
+        let kanata_arc = Kanata::new_arc(&args,None)?;
 
         if !args.nodelay {
             log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
