@@ -3036,7 +3036,9 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
                         .reference_locations
                         .virtual_key
                         .push_from_atom(atom);
-                    &atom.t
+                    vkey_expr
+                        .atom(s.vars())
+                        .expect("must be atom since we're matching atom")
                 }
                 SExpr::List(_) => {
                     bail_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
