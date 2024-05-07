@@ -382,7 +382,7 @@ impl<'a> Lexer<'a> {
                             _ => self.next_string(),
                         },
                         b'r' => {
-                            match (self.bytes.clone().next(), self.bytes.clone().skip(1).next()) {
+                            match (self.bytes.clone().next(), self.bytes.clone().nth(1)) {
                                 (Some(b'#'), Some(b'"')) => {
                                     // consume the # and "
                                     self.bytes.next();
