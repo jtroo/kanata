@@ -1988,18 +1988,18 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
 
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
-fn check_for_exit(event: &KeyEvent) {
+fn check_for_exit(_event: &KeyEvent) {
     #[cfg(not(feature = "passthru_ahk"))]
     {
         static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
         static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
         static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
-        let is_pressed = match event.value {
+        let is_pressed = match _event.value {
             KeyValue::Press => true,
             KeyValue::Release => false,
             _ => return,
         };
-        match event.code {
+        match _event.code {
             OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
             OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
             OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),

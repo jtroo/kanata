@@ -20,6 +20,8 @@ impl Kanata {
                 Ok(ev) => ev, // KeyEvent  {code:OsCode   , value:KeyValue}
                 _ => return false,
             }; // Some(OsCode::KEY_0)←0x30        Release0 Press1 Repeat2 Tap WakeUp
+            check_for_exit(&key_event); //noop
+
             let oscode = OsCode::from(input_event.code);
             if !MAPPED_KEYS.lock().contains(&oscode) {
                 return false;
