@@ -37,6 +37,9 @@ mod key_repeat;
 mod sequences;
 use sequences::*;
 
+pub mod cfg_forced;
+use cfg_forced::*;
+
 #[cfg(feature = "cmd")]
 mod cmd;
 #[cfg(feature = "cmd")]
@@ -346,7 +349,8 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.options.log_layer_changes,
+            log_layer_changes: get_forced_log_layer_changes()
+                .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
@@ -443,7 +447,8 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.options.log_layer_changes,
+            log_layer_changes: get_forced_log_layer_changes()
+                .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
@@ -491,7 +496,8 @@ impl Kanata {
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes = cfg.options.log_layer_changes;
+        self.log_layer_changes =
+            get_forced_log_layer_changes().unwrap_or(cfg.options.log_layer_changes);
         self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
         self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
