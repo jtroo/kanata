@@ -20,17 +20,49 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::*;
 
-#[cfg(any(all(not(feature="simulated_input"),    feature="simulated_output"  ,not(feature="passthru_ahk")) ,
-          all(    feature="simulated_input" ,not(feature="simulated_output") ,not(feature="passthru_ahk"))))]
-mod simulated;    // has KbdOut
-#[cfg(any(all(not(feature="simulated_input"),    feature="simulated_output"  ,not(feature="passthru_ahk")) ,
-          all(    feature="simulated_input" ,not(feature="simulated_output") ,not(feature="passthru_ahk"))))]
+#[cfg(any(
+    all(
+        not(feature = "simulated_input"),
+        feature = "simulated_output",
+        not(feature = "passthru_ahk")
+    ),
+    all(
+        feature = "simulated_input",
+        not(feature = "simulated_output"),
+        not(feature = "passthru_ahk")
+    )
+))]
+mod simulated; // has KbdOut
+#[cfg(any(
+    all(
+        not(feature = "simulated_input"),
+        feature = "simulated_output",
+        not(feature = "passthru_ahk")
+    ),
+    all(
+        feature = "simulated_input",
+        not(feature = "simulated_output"),
+        not(feature = "passthru_ahk")
+    )
+))]
 pub use simulated::*;
-#[cfg(any(all(    feature="simulated_input" ,    feature="simulated_output") ,
-          all(    feature="simulated_input" ,    feature="simulated_output"  ,    feature="passthru_ahk"),))]
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    all(
+        feature = "simulated_input",
+        feature = "simulated_output",
+        feature = "passthru_ahk"
+    ),
+))]
 mod sim_passthru; // has KbdOut
-#[cfg(any(all(    feature="simulated_input" ,    feature="simulated_output") ,
-          all(    feature="simulated_input" ,    feature="simulated_output"  ,    feature="passthru_ahk"),))]
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    all(
+        feature = "simulated_input",
+        feature = "simulated_output",
+        feature = "passthru_ahk"
+    ),
+))]
 pub use sim_passthru::*;
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
