@@ -69,7 +69,7 @@ kanata.kbd in the current working directory and
     #[arg(short, long)]
     trace: bool,
 
-    /// Remove the startup delay on kanata.
+    /// Remove the startup delay.
     /// In some cases, removing the delay may cause keyboard issues on startup.
     #[arg(short, long, verbatim_doc_comment)]
     nodelay: bool,
@@ -87,10 +87,9 @@ kanata.kbd in the current working directory and
     #[arg(long, verbatim_doc_comment)]
     check: bool,
 
-    /// Log layer changes even if the configuration file has set
-    /// the defcfg option to false.
-    /// Useful if you are experimenting with a new configuration
-    /// but want to default to no logging.
+    /// Log layer changes even if the configuration file has set the defcfg
+    /// option to false. Useful if you are experimenting with a new
+    /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     log_layer_changes: bool,
 }
