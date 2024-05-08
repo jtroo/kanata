@@ -1627,41 +1627,7 @@ impl Kanata {
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
-                    let is_idle = k.is_idle();
-                    // Note: checking waiting_for_idle can not be part of the computation for
-                    // is_idle() since incrementing ticks_since_idle is dependent on the return
-                    // value of is_idle().
-                    let counting_idle_ticks =
-                        !k.waiting_for_idle.is_empty() || k.live_reload_requested;
-                    if !is_idle {
-                        k.ticks_since_idle = 0;
-                    } else if is_idle && counting_idle_ticks {
-                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(ms_elapsed);
-                        #[cfg(feature = "perf_logging")]
-                        log::info!("ticks since idle: {}", k.ticks_since_idle);
-                    }
-                    // NOTE: this check must not be part of `is_idle` because its falsiness
-                    // does not mean that kanata is in a non-idle state, just that we
-                    // haven't done enough ticks yet to properly compute key-timing.
-                    let passed_max_switch_timing_check = k
-                        .layout
-                        .b()
-                        .historical_keys
-                        .iter_hevents()
-                        .next()
-                        .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
-                        .unwrap_or(true);
-                    let chordsv2_accepts_chords = k
-                        .layout
-                        .b()
-                        .chords_v2
-                        .as_ref()
-                        .map(|cv2| cv2.accepts_chords_chv2())
-                        .unwrap_or(true);
-                    is_idle
-                        && !counting_idle_ticks
-                        && passed_max_switch_timing_check
-                        && chordsv2_accepts_chords
+                    k.can_block_update_idle_waiting(ms_elapsed)
                 };
                 if can_block {
                     log::trace!("blocking on channel");
@@ -1853,6 +1819,41 @@ impl Kanata {
             };
             panic!("processing loop encountered error {err:?}")
         });
+    }
+
+    pub fn can_block_update_idle_waiting(&mut self, ms_elapsed: u16) -> bool {
+        let k = self;
+        let is_idle = k.is_idle();
+        // Note: checking waiting_for_idle can not be part of the computation for
+        // is_idle() since incrementing ticks_since_idle is dependent on the return
+        // value of is_idle().
+        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested;
+        if !is_idle {
+            k.ticks_since_idle = 0;
+        } else if is_idle && counting_idle_ticks {
+            k.ticks_since_idle = k.ticks_since_idle.saturating_add(ms_elapsed);
+            #[cfg(feature = "perf_logging")]
+            log::info!("ticks since idle: {}", k.ticks_since_idle);
+        }
+        // NOTE: this check must not be part of `is_idle` because its falsiness
+        // does not mean that kanata is in a non-idle state, just that we
+        // haven't done enough ticks yet to properly compute key-timing.
+        let passed_max_switch_timing_check = k
+            .layout
+            .b()
+            .historical_keys
+            .iter_hevents()
+            .next()
+            .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
+            .unwrap_or(true);
+        let chordsv2_accepts_chords = k
+            .layout
+            .b()
+            .chords_v2
+            .as_ref()
+            .map(|cv2| cv2.accepts_chords_chv2())
+            .unwrap_or(true);
+        is_idle && !counting_idle_ticks && passed_max_switch_timing_check && chordsv2_accepts_chords
     }
 
     pub fn is_idle(&self) -> bool {

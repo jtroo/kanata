@@ -38,13 +38,19 @@ pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
             match pair.split_once(':') {
                 Some((kind, val)) => match kind {
                     "tick" | "🕐" | "t" => {
-                        let tick = str::parse::<u128>(val)
+                        let ticks = str::parse::<u128>(val)
                             .map_err(|e| anyhow!("line: {l}\ninvalid number in {kind}:{val}\n{e}"))?;
-                        if tick > 60000 {
+                        if ticks > 60000 {
                             bail!("line: {l}\nmax tick is 60000: {kind}:{val}")
                         }
-                        k.tick_ms(tick, &None)?;
-                        accumulated_ticks += tick;
+                        for _ in 0..ticks {
+                            if !k.can_block_update_idle_waiting(1) {
+                                k.tick_ms(1, &None)?;
+                            } else {
+                                k.kbd_out.tick();
+                            }
+                        }
+                        accumulated_ticks += ticks;
                         if accumulated_ticks > 3600000 {
                             bail!("You are trying to simulate over an hour's worth of time.\nAborting to avoid wasting your CPU cycles.")
                         }
