@@ -98,6 +98,7 @@ kanata.kbd in the current working directory and
 
 #[cfg(not(feature = "gui"))]
 mod cli {
+    use log::*;
     use super::*;
 
     /// Parse CLI arguments and initialize logging.
