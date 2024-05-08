@@ -345,21 +345,19 @@ impl KbdOut {
             RelativeAxisType::REL_HWHEEL_HI_RES,
         ]);
 
-        let properties = if trackpoint {
-            evdev::AttributeSet::from_iter([PropType::POINTING_STICK])
-        } else {
-            evdev::AttributeSet::from_iter([])
-        };
-
-        let mut device = uinput::VirtualDeviceBuilder::new()?
+        let device = uinput::VirtualDeviceBuilder::new()?
             .name("kanata")
             // libinput's "disable while typing" feature don't work when bus_type
             // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
             .input_id(evdev::InputId::new(evdev::BusType::BUS_I8042, 1, 1, 1))
             .with_keys(&keys)?
-            .with_relative_axes(&relative_axes)?
-            .with_properties(&properties)?
-            .build()?;
+            .with_relative_axes(&relative_axes)?;
+        let device = if trackpoint {
+            device.with_properties(&evdev::AttributeSet::from_iter([PropType::POINTING_STICK]))?
+        } else {
+            device
+        };
+        let mut device = device.build()?;
         let devnode = device
             .enumerate_dev_nodes_blocking()?
             .next() // Expect only one. Using fold or calling next again blocks indefinitely
