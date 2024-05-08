@@ -126,7 +126,7 @@ pub(crate) fn filter_env_specific_cfg(
                         })?,
                     ))
                 })?;
-            let env_var_val = env_var_val.trim_matches('"');
+            let env_var_val = env_var_val.trim_atom_quotes();
             match (
                 env.iter().find_map(|(name, val)| {
                     if name == env_var_name {
