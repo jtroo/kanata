@@ -91,6 +91,9 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
+mod str_ext;
+pub use str_ext::*;
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -490,7 +493,7 @@ fn expand_includes(
                     "Multiple filepaths are not allowed in include blocks. If you want to include multiple files, create a new include block for each of them."
                 )
             };
-            let include_file_path = spanned_filepath.t.trim_matches('"');
+            let include_file_path = spanned_filepath.t.trim_atom_quotes();
             let file_content = file_content_provider.get_file_content(Path::new(include_file_path))
                 .map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
@@ -1082,7 +1085,7 @@ fn parse_layer_indexes(
                     let layer_opts = parse_layer_opts(&list[1..])?;
                     let icon = layer_opts
                         .get(DEFLAYER_ICON[0])
-                        .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                        .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
                     (name.to_owned(), icon)
                 }
             },
@@ -1107,7 +1110,7 @@ fn parse_layer_indexes(
                 let layer_opts = parse_layer_opts(&list[1..])?;
                 let icon = layer_opts
                     .get(DEFLAYER_ICON[0])
-                    .map(|icon_s| icon_s.trim_matches('"').to_owned());
+                    .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
                 (name.to_owned(), icon)
             }
         };
@@ -1279,7 +1282,7 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> 
 fn push_all_atoms(exprs: &[SExpr], vars: &HashMap<String, SExpr>, pusheen: &mut String) {
     for expr in exprs {
         if let Some(a) = expr.atom(Some(vars)) {
-            pusheen.push_str(a.trim_matches('"'));
+            pusheen.push_str(a.trim_atom_quotes());
         } else if let Some(l) = expr.list(Some(vars)) {
             push_all_atoms(l, vars, pusheen);
         }
@@ -2129,7 +2132,7 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     ac_params[0]
         .atom(s.vars())
         .map(|a| {
-            let a = a.trim_matches('"');
+            let a = a.trim_atom_quotes();
             if a.chars().count() != 1 {
                 bail_expr!(&ac_params[0], "{ERR_STR}")
             }
@@ -2172,7 +2175,7 @@ fn parse_cmd(
 fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParserState) {
     for param in params {
         if let Some(a) = param.atom(s.vars()) {
-            strings.push(a.trim_matches('"').to_owned());
+            strings.push(a.trim_atom_quotes().to_owned());
         } else {
             // unwrap: this must be a list, since it's not an atom.
             let l = param.list(s.vars()).unwrap();
@@ -2207,7 +2210,7 @@ fn to_simple_expr(params: &[SExpr], s: &ParserState) -> Vec<SimpleSExpr> {
     let mut result: Vec<SimpleSExpr> = Vec::new();
     for param in params {
         if let Some(a) = param.atom(s.vars()) {
-            result.push(SimpleSExpr::Atom(a.trim_matches('"').to_owned()));
+            result.push(SimpleSExpr::Atom(a.trim_atom_quotes().to_owned()));
         } else {
             // unwrap: this must be a list, since it's not an atom.
             let sexps = param.list(s.vars()).unwrap();
@@ -2856,7 +2859,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
             bail_expr!(&expr, "Filepath cannot be a list")
         }
     };
-    let lrld_file_path = spanned_filepath.t.trim_matches('"');
+    let lrld_file_path = spanned_filepath.t.trim_atom_quotes();
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::LiveReloadFile(lrld_file_path.to_string()),
     )))))

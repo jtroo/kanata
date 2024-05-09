@@ -324,6 +324,20 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Looks for "#, consuming bytes until found. If not found, returns Err(...);
+    fn read_until_multiline_string_end(&mut self) -> TokenRes {
+        for b2 in self.bytes.clone().skip(1) {
+            // Iterating over a clone of this iterator that's 1 item ahead - this is guaranteed to
+            // be Some.
+            let b1 = self.bytes.next().expect("iter lag");
+            if b1 == b'"' && b2 == b'#' {
+                self.bytes.next();
+                return Ok(Token::StringTok);
+            }
+        }
+        Err("Unterminated multiline string. Add \"# after the end of your string.".to_string())
+    }
+
     /// Looks for "|#", consuming bytes until found. If not found, returns Err(...);
     fn read_until_multiline_comment_end(&mut self) -> TokenRes {
         for b2 in self.bytes.clone().skip(1) {
@@ -367,6 +381,21 @@ impl<'a> Lexer<'a> {
                             }
                             _ => self.next_string(),
                         },
+                        b'r' => {
+                            match (self.bytes.clone().next(), self.bytes.clone().nth(1)) {
+                                (Some(b'#'), Some(b'"')) => {
+                                    // consume the # and "
+                                    self.bytes.next();
+                                    self.bytes.next();
+                                    let tok: Token = match self.read_until_multiline_string_end() {
+                                        Ok(t) => t,
+                                        e @ Err(_) => return Some((start, e)),
+                                    };
+                                    tok
+                                }
+                                _ => self.next_string(),
+                            }
+                        }
                         b'#' => match self.bytes.clone().next() {
                             Some(b'|') => {
                                 // consume the '|'
