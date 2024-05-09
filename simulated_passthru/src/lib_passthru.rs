@@ -57,12 +57,14 @@ fn cli_init(cfg_path: &str) -> Result<ValidatedArgs> {
 }
 
 use std::sync::mpsc::Receiver;
-thread_local! {pub static RX_KEY_EV_OUT:Cell<Option<Receiver<InputEvent>>> = Cell::default();} // Stores receiver for key data to be sent out for the current thread
+thread_local! {pub static RX_KEY_EV_OUT:Cell<Option<Receiver<InputEvent>>> = Cell::default();}
+// Stores receiver for key data to be sent out for the current thread
 
 fn lib_impl(cfg_path: &str) -> Result<()> {
     let args = cli_init(cfg_path)?;
     let (tx_kout, rx_kout) = std::sync::mpsc::channel(); //async channel
-    let cfg_arc = Kanata::new_with_output_channel(&args, Some(tx_kout))?; // new configuration from a file
+    let cfg_arc = Kanata::new_with_output_channel(&args, Some(tx_kout))?;
+    // new configuration from a file
     debug!("loaded {:?}", args.paths[0]);
     if CFG.set(cfg_arc.clone()).is_err() {
         warn!("Someone else set our ‘CFG’");
@@ -77,12 +79,19 @@ fn lib_impl(cfg_path: &str) -> Result<()> {
     });
 
     // Start a processing loop in another thread and run the event loop in this thread
-    // The reason for two different event loops is that the "event loop" only listens for keyboard events, which it sends to the "processing loop". The processing loop handles keyboard events while also maintaining `tick()` calls to keyberon.
+    // The reason for two different event loops is that the "event loop" only listens for keyboard
+    // events, which it sends to the "processing loop". The processing loop handles keyboard events
+    // while also maintaining `tick()` calls to keyberon.
     let (tx, rx) = std::sync::mpsc::sync_channel(100);
     let ntx = None;
-    Kanata::start_processing_loop(cfg_arc.clone(), rx, ntx, args.nodelay); // 2 handles keyboard events while also maintaining `tick()` calls to keyberon
+    Kanata::start_processing_loop(cfg_arc.clone(), rx, ntx, args.nodelay); // 2 handles keyboard
+                                                                           // events while also
+                                                                           // maintaining `tick()`
+                                                                           // calls to keyberon
 
-    Kanata::event_loop(cfg_arc, tx)?; // 1 only listens for keyboard events (not a real loop, just registers callback closures for external function to call at will)
+    Kanata::event_loop(cfg_arc, tx)?; // 1 only listens for keyboard events
+                                      // (not a real loop, just registers callback closures
+                                      // for external function to call at will)
 
     Ok(())
 }
@@ -111,9 +120,13 @@ pub extern "win64" fn lib_kanata_passthru(
         error!("couldn't register external key out event callback");
         return 1;
     };
-    let cfg_path_wc = unsafe { U16CStr::from_ptr_str(cfg_path) }; // Constructs a wide C string slice from a nul-terminated string pointer
-    let cfg_path_wx: &U16Str = cfg_path_wc.as_ustr(); // 16b wide string slice with undefined encoding
-                                                      // reject invalid UTF16 (skip check with from_ustr_unchecked if certain input is valid UTF16)
+    let cfg_path_wc = unsafe { U16CStr::from_ptr_str(cfg_path) }; // Constructs a wide C string
+                                                                  // slice from a nul-terminated
+                                                                  // string pointer
+    let cfg_path_wx: &U16Str = cfg_path_wc.as_ustr(); // 16b wide string slice with undefined
+                                                      // encoding reject invalid UTF16 (skip check
+                                                      // with from_ustr_unchecked if certain input
+                                                      // is valid UTF16)
     let cfg_path_w: &Utf16Str = match Utf16Str::from_ustr(cfg_path_wx) {
         Ok(s) => s,
         Err(_e) => {
@@ -121,7 +134,7 @@ pub extern "win64" fn lib_kanata_passthru(
             return -1;
         }
     };
-    let cfg_path_s: String = cfg_path_w.to_string(); // valid UTF16 → conversion is lossless & non-fallible
+    let cfg_path_s: String = cfg_path_w.to_string(); // valid UTF16→conv is lossless&non-fallible
 
     let ret = lib_impl(&cfg_path_s);
     if let Err(ref e) = ret {

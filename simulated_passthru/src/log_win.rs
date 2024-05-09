@@ -1,7 +1,8 @@
 //! A logger that prints to OutputDebugString (Windows only)
 use log::{Level, Metadata, Record};
 
-/// Implements `log::Log`, so can be used as a logging provider to forward log messages to the Windows `OutputDebugString` API
+/// Implements `log::Log`, so can be used as a logging provider to
+/// forward log messages to the Windows `OutputDebugString` API
 pub struct WinDebugLogger;
 
 /// Static instance of `WinDebugLogger`, can be directly registered using `log::set_logger`<br>
@@ -30,7 +31,8 @@ pub fn is_thread_state() -> &'static bool {
     set_thread_state(false)
 }
 pub fn set_thread_state(is: bool) -> &'static bool {
-    // accessor function to avoid get_or_init on every call (lazycell allows doing that without an extra function)
+    // accessor function to avoid get_or_init on every call (lazycell
+    // allows doing that without an extra function)
     static CELL: OnceLock<bool> = OnceLock::new();
     CELL.get_or_init(|| is)
 }
@@ -85,7 +87,8 @@ impl log::Log for WinDebugLogger {
 }
 
 pub fn dbg_win(s: &str) {
-    //! Calls the `OutputDebugString` API to log a string (on Windows only)<br> See [`OutputDebugStringW`](https://docs.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-outputdebugstringw).
+    //! Calls the `OutputDebugString` API to log a string (on Windows only)<br>
+    //! See [`OutputDebugStringW`](https://docs.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-outputdebugstringw).
     #[cfg(windows)]
     {
         let len = s.encode_utf16().count() + 1;
@@ -104,7 +107,8 @@ extern "stdcall" {
 }
 
 pub fn init() {
-    //! Set `WinDebugLogger` as the active logger<br>Doesn't panic on failure as it creates other problems for FFI etc.
+    //! Set `WinDebugLogger` as the active logger<br>
+    //! Doesn't panic on failure as it creates other problems for FFI etc.
     match log::set_logger(&WINDBG_LOGGER) {
         Ok(()) => {}
         Err(_) => {
