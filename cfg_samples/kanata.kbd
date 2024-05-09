@@ -235,6 +235,13 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; Kanata does send the events in the correct order,
   ;; so the fault is more in the environment, but kanata provides a workaround anyway.
   rapid-event-delay 5
+
+  ;; This setting defaults to yes but can be configured to no to save on
+  ;; logging. However, if --log-layer-changes is passed as a command line
+  ;; argument, a "no" in the configuration file will be overridden and layer
+  ;; changes will be logged.
+  ;;
+  ;; log-layer-changes no
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

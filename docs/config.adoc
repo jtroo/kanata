@@ -1960,6 +1960,14 @@ overhead. If you do not care for the logging, you can choose to disable it.
 )
 ----
 
+If `+--log-layer-changes+` is passed as a command line argument,
+a `no` in the configuration file will be overridden
+and layer changes will again be logged.
+This flag can be helpful when testing new configuration changes
+while keeping the default behaviour as "no logging" to save on processing,
+so that the `defcfg` item does not need to be adjusted back and forth
+when experimenting vs. stable usage.
+
 [[delegate-to-first-layer]]
 === delegate-to-first-layer
 <<table-of-contents,Back to ToC>>
