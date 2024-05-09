@@ -2,7 +2,7 @@
 
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
-use evdev::{uinput, Device, EventType, InputEvent, RelativeAxisType};
+use evdev::{uinput, Device, EventType, InputEvent, PropType, RelativeAxisType};
 use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use nix::ioctl_read_buf;
@@ -324,7 +324,7 @@ pub struct KbdOut {
 
 #[cfg(not(feature = "simulated_output"))]
 impl KbdOut {
-    pub fn new(symlink_path: &Option<String>) -> Result<Self, io::Error> {
+    pub fn new(symlink_path: &Option<String>, trackpoint: bool) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
         // TODO investigate the rare possibility that a device is e.g. a Joystick and a Keyboard or a Mouse at the same time, which could lead to lost events
 
@@ -345,14 +345,19 @@ impl KbdOut {
             RelativeAxisType::REL_HWHEEL_HI_RES,
         ]);
 
-        let mut device = uinput::VirtualDeviceBuilder::new()?
+        let device = uinput::VirtualDeviceBuilder::new()?
             .name("kanata")
             // libinput's "disable while typing" feature don't work when bus_type
             // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
             .input_id(evdev::InputId::new(evdev::BusType::BUS_I8042, 1, 1, 1))
             .with_keys(&keys)?
-            .with_relative_axes(&relative_axes)?
-            .build()?;
+            .with_relative_axes(&relative_axes)?;
+        let device = if trackpoint {
+            device.with_properties(&evdev::AttributeSet::from_iter([PropType::POINTING_STICK]))?
+        } else {
+            device
+        };
+        let mut device = device.build()?;
         let devnode = device
             .enumerate_dev_nodes_blocking()?
             .next() // Expect only one. Using fold or calling next again blocks indefinitely

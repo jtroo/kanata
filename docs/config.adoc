@@ -527,7 +527,7 @@ When live reload is activated,
 the active kanata layer will be the first `deflayer` defined in the configuration.
 
 NOTE: live reload does not read or apply changes to device-related configurations,
-such as `linux-dev`, `macos-dev-names-include`,
+such as `linux-dev`, `macos-dev-names-include`, `linux-use-trackpoint-property`
 or `windows-only-windows-interception-keyboard-hwids`.
 
 .Example:
@@ -2302,6 +2302,28 @@ This configuration item does not affect Wayland or no-desktop environments.
 ----
 (defcfg
   linux-x11-repeat-delay-rate 400,50
+)
+----
+
+[[linux-only-linux-use-trackpoint-property]]
+=== Linux only: linux-use-trackpoint-property
+<<table-of-contents,Back to ToC>>
+
+On linux, you can ask kanata to label itself as a trackpoint. This has several
+effects on libinput including enabling middle mouse button scrolling and using a
+different acceleration curve. Otherwise, a trackpoint intercepted by kanata may
+not behave as expected.
+
+If using this feature, it is recommended to filter out any non-trackpoint
+pointing devices using <<linux-only-linux-dev-names-include>>,
+<<linux-only-linux-dev-names-exclude>> or <<linux-only-linux-dev>> to avoid
+changing their behavior as well.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-use-trackpoint-property yes
 )
 ----
 

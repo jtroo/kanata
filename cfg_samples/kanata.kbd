@@ -92,6 +92,18 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; linux-x11-repeat-delay-rate 400,50
 
+  ;; On linux, you can ask kanata to label itself as a trackpoint. This has several
+  ;; effects on libinput including enabling middle mouse button scrolling and using
+  ;; a different acceleration curve. Otherwise, a trackpoint intercepted by kanata
+  ;; may not behave as expected.
+  ;;
+  ;; If using this feature, it is recommended to filter out any non-trackpoint
+  ;; pointing devices using linux-only-linux-dev-names-include,
+  ;; linux-only-linux-dev-names-exclude or linux-only-linux-dev to avoid changing
+  ;; their behavior as well.
+  ;;
+  ;; linux-use-trackpoint-property yes
+
   ;; Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
   ;; then pressing Enter. However, if you do remapping in userspace, e.g. via
   ;; xmodmap/xkb, the keycode "U" that kanata outputs may not become a keysym "u"

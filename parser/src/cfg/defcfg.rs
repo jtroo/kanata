@@ -39,6 +39,8 @@ pub struct CfgOptions {
     pub linux_unicode_termination: UnicodeTermination,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_use_trackpoint_property: bool,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
     pub windows_altgr: AltGrBehaviour,
     #[cfg(any(
@@ -95,6 +97,8 @@ impl Default for CfgOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_x11_repeat_delay_rate: None,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_use_trackpoint_property: false,
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
             windows_altgr: AltGrBehaviour::default(),
             #[cfg(any(
@@ -242,6 +246,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     Err(_) => bail_expr!(val, "{}", ERRMSG),
                                 },
                             });
+                        }
+                    }
+                    "linux-use-trackpoint-property" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "windows-altgr" => {

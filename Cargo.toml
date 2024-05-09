@@ -71,7 +71,7 @@ mio = { version = "0.8.11", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
 sd-notify = "0.4.1"
 
-evdev = "=0.12.0" # Pinned to avoid a bug in 0.12.1
+evdev = ">=0.12.2" # Pinned to avoid a bug in 0.12.1, which also has a new interface
 
 [target.'cfg(target_os = "windows")'.dependencies]
 encode_unicode = "0.3.6"
