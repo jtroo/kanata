@@ -204,17 +204,17 @@ fn parse_input(input: &str) -> Result<Vec<ChordDefinition>> {
         .lines()
         .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
         .map(|line| {
-            let caps = line.split('\t').collect::<Vec<&str>>();
-            match caps.as_slice() {
-                &[keys, action] => Ok(ChordDefinition {
-                    keys: caps[0].to_string(),
-                    action: caps[1].to_string(),
-                }),
-                _ => bail_expr!(&SExpr::Atom(Spanned::new(line.to_string(), Span::default())),
-                    "A line must contain a key and a trigger, separated by a tab. Got '{}'",
-                    line
-                ),
-            }
+            let mut caps = line.split('\t');
+            let error_message = format!(
+                "Each line needs to have an action separated by a tab character, got '{}'",
+                line
+            );
+            let keys = caps.next().expect(&error_message);
+            let action = caps.next().expect(&error_message);
+            Ok(ChordDefinition {
+                keys: keys.to_string(),
+                action: action.to_string(),
+            })
         })
         .collect()
 }
