@@ -4,8 +4,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use std::fs;
 
-use std::collections::HashMap;
-
 use crate::{anyhow_expr, bail_expr};
 
 use super::*;
@@ -226,8 +224,8 @@ struct ChordDefinition {
 
 struct ChordTranslation<'a> {
     file_name: &'a str,
-    target_map: HashMap<String, String>,
-    postprocess_map: HashMap<String, String>,
+    target_map: FxHashMap<String, String>,
+    postprocess_map: FxHashMap<String, String>,
     timeout: &'a SExpr,
     release_behaviour: &'a SExpr,
     disabled_layers: &'a SExpr,
@@ -241,7 +239,7 @@ impl<'a> ChordTranslation<'a> {
         disabled_layers: &'a SExpr,
         first_layer: &[Action<'static, &&[&CustomAction]>],
     ) -> Self {
-        let postprocess_map: HashMap<String, String> = [
+        let postprocess_map: FxHashMap<String, String> = [
             ("semicolon", ";"),
             ("colon", "S-."),
             ("slash", "/"),
@@ -271,7 +269,7 @@ impl<'a> ChordTranslation<'a> {
             .collect::<Vec<_>>()
             .into_iter()
             .chain(vec![(" ".to_string(), "spc".to_string())])
-            .collect::<HashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
         ChordTranslation {
             file_name,
             target_map,
