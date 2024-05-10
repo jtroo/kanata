@@ -92,25 +92,7 @@ pub(crate) fn parse_defchordv2(
 }
 
 fn parse_single_chord(chunk: &[SExpr], s: &ParserState) -> Result<ChordV2<'static, KanataCustom>> {
-    let keys = &chunk[0];
-    let key_strings = keys
-        .list(s.vars())
-        .map(|keys| {
-            keys.iter()
-                .map(|key| {
-                    key.atom(s.vars()).ok_or_else(|| {
-                        anyhow_expr!(key, "The first chord item must be a list of keys.")
-                    })
-                })
-                .collect::<Vec<_>>()
-        })
-        .ok_or_else(|| anyhow_expr!(keys, "The first chord item must be a list of keys."))?
-        .into_iter()
-        .collect::<Result<Vec<_>>>()?;
-    if key_strings.len() < 2 {
-        bail_expr!(keys, "The minimum number of participating chord keys is 2");
-    }
-    let participants = parse_participating_keys(key_strings)?;
+    let participants = parse_participating_keys(&chunk[0], s)?;
     let action = parse_action(&chunk[1], s)?;
     let timeout = parse_timeout(&chunk[2], s)?;
     let release_behaviour = parse_release_behaviour(&chunk[3], s)?;
@@ -125,17 +107,26 @@ fn parse_single_chord(chunk: &[SExpr], s: &ParserState) -> Result<ChordV2<'stati
     Ok(s.a.sref(chord).clone())
 }
 
-fn parse_participating_keys(key_strings: Vec<&str>) -> Result<Vec<u16>> {
-    let mut participants =
-        key_strings
-            .iter()
-            .try_fold(vec![], |mut keys, key| -> Result<Vec<u16>> {
-                let k = str_to_oscode(key).ok_or_else(|| {
-                    ParseError::new_without_span(format!("Invalid keycode: '{}'", key))
-                })?;
-                keys.push(k.into());
-                Ok(keys)
-            })?;
+fn parse_participating_keys(keys: &SExpr, s: &ParserState) -> Result<Vec<u16>> {
+    let mut participants = keys
+        .list(s.vars())
+        .map(|l| {
+            l.iter()
+                .try_fold(vec![], |mut keys, key| -> Result<Vec<u16>> {
+                    let k = key.atom(s.vars()).and_then(str_to_oscode).ok_or_else(|| {
+                        anyhow_expr!(
+                            key,
+                            "The first chord item must be a list of keys.\nInvalid key name."
+                        )
+                    })?;
+                    keys.push(k.into());
+                    Ok(keys)
+                })
+        })
+        .ok_or_else(|| anyhow_expr!(keys, "The first chord item must be a list of keys."))??;
+    if participants.len() < 2 {
+        bail_expr!(keys, "The minimum number of participating chord keys is 2");
+    }
     participants.sort();
     Ok(participants)
 }
