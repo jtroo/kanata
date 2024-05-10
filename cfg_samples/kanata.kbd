@@ -224,8 +224,6 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; tap-hold onwards will start from 0ms after the previous tap-hold expires.
   ;;
   concurrent-tap-hold yes
-  chords-v2-min-idle-experimental 200
-  sequence-input-mode visible-backspaced
 
   ;; This configuration makes the release of one-shot-press and of the tap in a tap-hold
   ;; by the defined number of milliseconds (approximate).
@@ -1277,27 +1275,7 @@ Syntax (5-tuples):
 |#
 
 (defchordsv2-experimental
-  (include cfg_samples/chords.tsv) ()     200 all-released  (arrows)
   (a b)      c                200 all-released  (arrows)
   (a b z)   (macro h e l l o) 250 first-release (arrows)
   (a b z y) (macro b y e)     400 first-release (arrows)
 )
-
-(deftemplate seq (vk-name in out)
-	(defvirtualkeys $vk-name $out)
-	(defseq $vk-name $in))
-
-(defvirtualkeys rls-sft (multi (release-key lsft)(release-key rsft)))
-(defvar rls-sft (on-press tap-vkey rls-sft))
-(deftemplate rls-sft () $rls-sft 5)
-
-(t! seq Monday (d a y spc nop0 1) (macro S-m $rls-sft o n d a y nop9 sldr spc nop0))
-(t! seq Tuesday (d a y spc nop0 2) (macro S-t $rls-sft u e s d a y nop9 sldr spc nop0))
-(t! seq DelSpace_. (spc nop0 .) (macro . spc))
-(t! seq DelSpace_, (spc nop0 ,) (macro , spc))
-(t! seq DelSpace_? (spc nop0 S-/) (macro S-/ spc))
-(t! seq DelSpace_; (spc nop0 ;) (macro ;))
-(t! seq DelSpace_' (spc nop0 ') (macro ' s spc))
-(t! seq DelSpace_- (spc nop0 -) (macro -))
-(t! seq DelSpace_s (spc nop0 s) (macro s spc))
-
