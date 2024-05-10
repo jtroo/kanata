@@ -195,23 +195,26 @@ fn parse_disabled_layers(disabled_layers: &SExpr, s: &ParserState) -> Result<Vec
 fn parse_chord_file(file_name: &str) -> Result<Vec<ChordDefinition>> {
     let input_data = fs::read_to_string(file_name)
         .unwrap_or_else(|_| panic!("Unable to read file {}", file_name));
-    let parsed_chords = parse_input(&input_data);
+    let parsed_chords = parse_input(&input_data).unwrap();
     Ok(parsed_chords)
 }
 
-fn parse_input(input: &str) -> Vec<ChordDefinition> {
+fn parse_input(input: &str) -> Result<Vec<ChordDefinition>> {
     input
         .lines()
         .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
-        .filter_map(|line| {
+        .map(|line| {
             let caps = line.split('\t').collect::<Vec<&str>>();
-            if caps.len() < 2 {
-                return None;
+            match caps.as_slice() {
+                &[keys, action] => Ok(ChordDefinition {
+                    keys: caps[0].to_string(),
+                    action: caps[1].to_string(),
+                }),
+                _ => bail_expr!(&SExpr::Atom(Spanned::new(line.to_string(), Span::default())),
+                    "A line must contain a key and a trigger, separated by a tab. Got '{}'",
+                    line
+                ),
             }
-            Some(ChordDefinition {
-                keys: caps[0].to_string(),
-                action: caps[1].to_string(),
-            })
         })
         .collect()
 }
