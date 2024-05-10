@@ -40,8 +40,7 @@ pub(crate) fn parse_defchordv2(
                 });
                 Ok::<_, ParseError>(processed.collect_vec())
             }
-            SExpr::List(_) => Ok(vec![parse_single_chord(chunk, s)]),
-            _ => Ok(vec![]),
+            _ => Ok(vec![parse_single_chord(chunk, s)]),
         })
         .flat_map(|vec_result| vec_result.into_iter())
         .collect::<Vec<Result<_>>>();
