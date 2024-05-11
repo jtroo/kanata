@@ -632,6 +632,12 @@ pub fn parse_cfg_raw_string(
     }
     let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
+    let var_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defvar"))
+        .collect::<Vec<_>>();
+    parse_vars(&var_exprs, s)?;
+
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
         if exprs.t.is_empty() {
@@ -657,7 +663,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let (layer_idxs, layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len())?;
+    let (layer_idxs, layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len(), s)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -747,14 +753,9 @@ pub fn parse_cfg_raw_string(
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
         lsp_hint_inactive_code,
+        vars: s.vars.clone(),
         ..Default::default()
     };
-
-    let var_exprs = root_exprs
-        .iter()
-        .filter(gen_first_atom_filter("defvar"))
-        .collect::<Vec<_>>();
-    parse_vars(&var_exprs, s)?;
 
     let chords_exprs = spanned_root_exprs
         .iter()
@@ -1054,6 +1055,7 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(
     exprs: &[SpannedLayerExprs],
     expected_len: usize,
+    s: &mut ParserState,
 ) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
     let mut layer_icons = HashMap::default();
@@ -1100,7 +1102,7 @@ fn parse_layer_indexes(
                     })?
                     .to_owned();
                 let name = list.first()
-                    .and_then(|s| s.atom(None))
+                    .and_then(|expr| expr.atom(s.vars()))
                     .ok_or_else(|| anyhow_expr!(
                         layer_expr,
                         "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
@@ -1642,14 +1644,18 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::DefaultLayer(layer_idx(ac_params, &s.layer_idxs)?)))
+    Ok(s.a.sref(Action::DefaultLayer(layer_idx(
+        ac_params,
+        &s.layer_idxs,
+        s,
+    )?)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs)?)))
+    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs, s)?)))
 }
 
-fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
+fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes, s: &ParserState) -> Result<usize> {
     if ac_params.len() != 1 {
         bail!(
             "Layer actions expect one item: the layer name, found {} items",
@@ -1657,15 +1663,18 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
         )
     }
     let layer_name = match &ac_params[0] {
-        SExpr::Atom(ln) => &ln.t,
+        SExpr::Atom(_) => ac_params[0].atom(s.vars()),
         _ => bail_expr!(&ac_params[0], "layer name should be a string not a list",),
     };
-    match layers.get(layer_name) {
-        Some(i) => Ok(*i),
-        None => err_expr!(
-            &ac_params[0],
-            "layer name is not declared in any deflayer: {layer_name}"
-        ),
+    match layer_name {
+        Some(layer_name) => match layers.get(layer_name) {
+            Some(i) => Ok(*i),
+            None => err_expr!(
+                &ac_params[0],
+                "layer name is not declared in any deflayer: {layer_name}"
+            ),
+        },
+        None => err_expr!(&ac_params[0], "layer name is not declared in any deflayer"),
     }
 }
 
@@ -2340,6 +2349,7 @@ fn parse_release_layer(ac_params: &[SExpr], s: &ParserState) -> Result<&'static 
         .sref(Action::ReleaseState(ReleasableState::Layer(layer_idx(
             ac_params,
             &s.layer_idxs,
+            s,
         )?))))
 }
 
