@@ -1662,19 +1662,15 @@ fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes, s: &ParserState) -> Res
             ac_params.len()
         )
     }
-    let layer_name = match &ac_params[0] {
-        SExpr::Atom(_) => ac_params[0].atom(s.vars()),
-        _ => bail_expr!(&ac_params[0], "layer name should be a string not a list",),
-    };
-    match layer_name {
-        Some(layer_name) => match layers.get(layer_name) {
-            Some(i) => Ok(*i),
-            None => err_expr!(
-                &ac_params[0],
-                "layer name is not declared in any deflayer: {layer_name}"
-            ),
-        },
-        None => err_expr!(&ac_params[0], "layer name is not declared in any deflayer"),
+    let layer_name = ac_params[0]
+        .atom(s.vars())
+        .ok_or_else(|| anyhow_expr!(&ac_params[0], "layer name should be a string not a list",))?;
+    match layers.get(layer_name) {
+        Some(i) => Ok(*i),
+        None => err_expr!(
+            &ac_params[0],
+            "layer name is not declared in any deflayer: {layer_name}"
+        ),
     }
 }
 
