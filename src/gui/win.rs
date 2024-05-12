@@ -655,7 +655,7 @@ impl SystemTray {
           } else if img_dyn.contains_key(&path_cur_cc) { // 2a no layer icon configured, but config icon exists, use it
             if let Some(icn) = img_dyn.get(&path_cur_cc).unwrap() {
               self.tray.set_icon(    & icn.icon); *icon_act_key = Some(path_cur_cc);
-              self.show_tooltip (Some(&icn.tooltip));
+              self.show_tooltip (None);
             } else {info!("no icon found, using default for config: {}",path_cur_cc.display().to_string());
               self.tray.set_icon(    &self.icon); *icon_act_key = Some(path_cur_cc);
               self.show_tooltip (None);
