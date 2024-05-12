@@ -699,6 +699,32 @@ impl SystemTray {
         }
         nwg::stop_thread_dispatch();
     }
+
+    fn build_win_tt(&self) -> Result<nwg::Window, nwg::NwgError> {
+      let mut f_style = wf::POPUP;
+      let f_ex = ws_click_thru
+       | WS_EX_NOACTIVATE   //0x8000000L top-level win doesn't become foreground win on user click
+       | WS_EX_TOOLWINDOW   // remove from the taskbar (floating toolbar)
+       ;
+
+      let mut window:nwg::Window = Default::default();
+      let dpi = dpi!();
+      let app_data = self.app_data.borrow();
+      let icn_sz_tt_i = (app_data.tooltip_size.0,app_data.tooltip_size.1);
+      let w = (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+      let h = (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+      trace!("Active Kanata Layer win size = {w}⋅{h}");
+      nwg::Window::builder().title("Active Kanata Layer")   // text in the window title bar
+        .size((w,h)).position((0,0)).center(false)          // default win size/position in the desktop, center (overrides position) windows in the current monitor based on its size
+        .topmost(false)                                     // If the window should always be on top of other system window
+        .maximized(false).minimized(false)                  // max/minimize at creation
+        .flags(f_style).ex_flags(f_ex)                      // WindowFlags | win32 window extended flags (straight from winapi unlike flags)
+        .icon(None)                                         // window icon
+        .accept_files(false)                                // accept files by drag & drop
+        // .parent()                                        // logical parent of the window, unlike children controls, this is NOT required
+        .build(&mut window)?;
+      Ok(window)
+    }
 }
 
 pub mod system_tray_ui {
@@ -973,31 +999,6 @@ fn show_layered_win(win_id:HWND) {
     //          LWA_ALPHA       0x00000002 Use bAlpha to determine the opacity of the layered window
     //          LWA_COLORKEY    0x00000001  Use crKey as the transparency color
   unsafe{SetLayeredWindowAttributes(win_id,crKey,bAlpha,dwFlags);} // layered window doesn't appear w/o this call
-}
-
-pub fn build_win_tt() -> Result<nwg::Window, nwg::NwgError> {
-  let mut f_style = wf::POPUP;
-  let f_ex = ws_click_thru
-   | WS_EX_NOACTIVATE   //0x8000000L top-level win doesn't become foreground win on user click
-   | WS_EX_TOOLWINDOW   // remove from the taskbar (floating toolbar)
-   ;
-
-  let mut window:nwg::Window = Default::default();
-  let dpi:i32 = unsafe{nwg::dpi()};
-  let w = (ICN_SZ_TT_I[0] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
-  let h = (ICN_SZ_TT_I[1] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
-  nwg::Window::builder().title("Active Kanata Layer")   // text in the window title bar
-    .size((w,h)).position((0,0)).center(false)          // default win size/position in the desktop, center (overrides position) windows in the current monitor based on its size
-    .topmost(false)                                     // If the window should always be on top of other system window
-    .maximized(false).minimized(false)                  // max/minimize at creation
-    .flags(f_style).ex_flags(f_ex)                      // WindowFlags | win32 window extended flags (straight from winapi unlike flags)
-    .icon(None)                                         // window icon
-    .accept_files(false)                                // accept files by drag & drop
-    // .parent()                                        // logical parent of the window, unlike children controls, this is NOT required
-    .build(&mut window)?;
-
-
-  Ok(window)
 }
 
 pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
