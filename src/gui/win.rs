@@ -9,8 +9,12 @@ use std::collections::HashMap;
 use std::env::{current_exe, var_os};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+use winapi::shared::minwindef::{BYTE,DWORD,UINT};
+use winapi::shared::windef::COLORREF;
+use winapi::shared::basetsd::LONG_PTR;
+use core::ffi::c_int;
 
-use crate::gui::win_nwg_ext::{BitmapEx, MenuEx, MenuItemEx};
+use crate::gui::win_nwg_ext::{BitmapEx, MenuItemEx, MenuEx, WindowEx};
 use kanata_parser::cfg;
 use nwg::{ControlHandle, NativeUi};
 use std::sync::Arc;
