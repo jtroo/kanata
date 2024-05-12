@@ -277,6 +277,13 @@ pub const ICN_SZ_TT     :[u32;2] = [36,36]; // size for tooltip icons
 pub const ICN_SZ_MENU_I :[i32;2] = [24,24]; // for the builder, which needs i32
 pub const ICN_SZ_TT_I   :[i32;2] = [36,36]; // for the builder, which needs i32
 
+macro_rules! dpi { //todo: change on monitor changes
+  () => {{
+    static DPI: OnceLock<i32> = OnceLock::new();
+    *DPI.get_or_init(|| unsafe{nwg::dpi()})
+  }};
+}
+
 impl SystemTray {
     /// Read an image from a file, convert it to various formats: tray, tooltip, icon
     fn get_icon_from_file<P>(&self,  ico_p:P) -> Result<Icn>
@@ -317,8 +324,8 @@ impl SystemTray {
         let win_id = self.win_tt.handle.hwnd().expect("win_tt should be a valid/existing window!");
         show_layered_win(win_id);
       } else {info!("win_tt has been shown as a layered window");}
+      let dpi = dpi!();
       let (x,y) = nwg::GlobalCursor::position();
-      let dpi:i32 = unsafe{nwg::dpi()};
       let xx = (x as f64 / (dpi as f64 / 96 as f64)).round() as i32;
       let yy = (y as f64 / (dpi as f64 / 96 as f64)).round() as i32;
       trace!("🖰 @{x}⋅{y} @ dpi={dpi} → {xx}⋅{yy}");
@@ -972,7 +979,7 @@ pub fn build_win_tt() -> Result<nwg::Window, nwg::NwgError> {
    ;
 
   let mut window:nwg::Window = Default::default();
-  let dpi:i32 = unsafe{nwg::dpi()}; // todo remove manual dpi adjustment when NWG is fixed?
+  let dpi:i32 = unsafe{nwg::dpi()};
   let w = (ICN_SZ_TT_I[0] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
   let h = (ICN_SZ_TT_I[1] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
   nwg::Window::builder().title("Active Kanata Layer")   // text in the window title bar
