@@ -103,6 +103,7 @@ const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow check
 const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
+const TTTIMER_L :  u16      = 9; // lifetime delta to duration for a tooltip timer (so that it's only shown once)
 use crate::gui::{CFG, GUI_TX};
 
 pub fn send_gui_notice() {
@@ -779,7 +780,7 @@ pub mod system_tray_ui {
             if app_data.tooltip_layer_changes {
             d.win_tt = d.build_win_tt().expect("Tooltip window");
             nwg::AnimationTimer::builder().parent(&d.window).interval(Duration::from_millis(app_data.tooltip_duration.into()))
-              .lifetime(Some(Duration::from_millis((app_data.tooltip_duration+100).into()))).max_tick(None).active(false)
+              .lifetime(Some(Duration::from_millis((app_data.tooltip_duration+TTTIMER_L).into()))).max_tick(None).active(false)
               .build(&mut d.win_tt_timer)?;
 
             let icn_sz_tt_i = (app_data.tooltip_size.0 as i32,app_data.tooltip_size.1 as i32);
