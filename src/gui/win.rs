@@ -967,15 +967,19 @@ pub fn build_win_tt() -> Result<nwg::Window, nwg::NwgError> {
    ;
 
   let mut window:nwg::Window = Default::default();
-  nwg::Window::builder().title("Active Kanata Layer")           // text in the window title bar
-    .size(ICN_SZ_MENU_I.into()).position((0,0)).center(false)   // default win size/position in the desktop, center (overrides position) windows in the current monitor based on its size
-    .topmost(false)                                             // If the window should always be on top of other system window
-    .maximized(false).minimized(false)                          // max/minimize at creation
-    .flags(f_style).ex_flags(f_ex)                              // WindowFlags | win32 window extended flags (straight from winapi unlike flags)
-    .icon(None)                                                 // window icon
-    .accept_files(false)                                        // accept files by drag & drop
-    // .parent()                                                // logical parent of the window, unlike children controls, this is NOT required
+  let dpi:i32 = unsafe{nwg::dpi()}; // todo remove manual dpi adjustment when NWG is fixed?
+  let w = (ICN_SZ_TT_I[0] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+  let h = (ICN_SZ_TT_I[1] as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+  nwg::Window::builder().title("Active Kanata Layer")   // text in the window title bar
+    .size((w,h)).position((0,0)).center(false)          // default win size/position in the desktop, center (overrides position) windows in the current monitor based on its size
+    .topmost(false)                                     // If the window should always be on top of other system window
+    .maximized(false).minimized(false)                  // max/minimize at creation
+    .flags(f_style).ex_flags(f_ex)                      // WindowFlags | win32 window extended flags (straight from winapi unlike flags)
+    .icon(None)                                         // window icon
+    .accept_files(false)                                // accept files by drag & drop
+    // .parent()                                        // logical parent of the window, unlike children controls, this is NOT required
     .build(&mut window)?;
+
 
   Ok(window)
 }
