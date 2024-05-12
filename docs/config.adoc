@@ -471,7 +471,6 @@ Variables can be used to substitute most values.
 Some notable exceptions are:
 
 - variables cannot be used in `defcfg`, `defsrc`, or `deflocalkeys`
-- variables cannot be used to substitute a layer name
 - variables cannot be used to substitute an action name
 
 Variables are referred to by prefixing their name with `$`.
