@@ -95,6 +95,10 @@ windows-sys = { version = "0.52.0", features = [
     "Win32_UI_Controls",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_System_SystemInformation",
+    "Wdk",
+    "Wdk_System",
+    "Wdk_System_SystemServices",
 ], optional=true }
 win_dbg_logger = { path = "win_dbg_logger", optional = true }
 native-windows-gui = { version = "1.0.13", default_features = false}
