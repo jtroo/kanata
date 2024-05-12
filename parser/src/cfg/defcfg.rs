@@ -66,7 +66,7 @@ pub struct CfgOptions {
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_duration: u16,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_size: (u16,u16),
+    pub tooltip_size: (u16, u16),
 }
 
 impl Default for CfgOptions {
@@ -445,26 +445,57 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
                         }
                     }
-                    "tooltip-layer-changes"       => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?}  }
-                    "tooltip-show-blank"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.tooltip_show_blank    = parse_defcfg_val_bool(val, label)?}  }
-                    "tooltip-duration"            => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.tooltip_duration      = parse_cfg_val_u16(val, label, false)?}  }
-                    "tooltip-size"                => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        let v = sexpr_to_str_or_err(val, label)?;
-                        let tooltip_size = v.split(',').collect::<Vec<_>>();
-                        const ERRMSG: &str = "Invalid value for tooltip-size.\nExpected two numbers 0-65535 separated by a comma, e.g. 24,24";
-                        if tooltip_size.len() != 2 {bail_expr!(val, "{}", ERRMSG)}
-                        cfg.tooltip_size = (
-                            match str::parse::<u16>(tooltip_size[0]) {
-                                Ok (w) => w,
-                                Err(_) => bail_expr!(val, "{}", ERRMSG),},
-                            match str::parse::<u16>(tooltip_size[1]) {
-                                Ok (h) => h,
-                                Err(_) => bail_expr!(val, "{}", ERRMSG),},
-                        );
-                    } }
+                    "tooltip-layer-changes" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-show-blank" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-duration" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.tooltip_duration = parse_cfg_val_u16(val, label, false)?
+                        }
+                    }
+                    "tooltip-size" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            let tooltip_size = v.split(',').collect::<Vec<_>>();
+                            const ERRMSG: &str = "Invalid value for tooltip-size.\nExpected two numbers 0-65535 separated by a comma, e.g. 24,24";
+                            if tooltip_size.len() != 2 {
+                                bail_expr!(val, "{}", ERRMSG)
+                            }
+                            cfg.tooltip_size = (
+                                match str::parse::<u16>(tooltip_size[0]) {
+                                    Ok(w) => w,
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                },
+                                match str::parse::<u16>(tooltip_size[1]) {
+                                    Ok(h) => h,
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                },
+                            );
+                        }
+                    }
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?

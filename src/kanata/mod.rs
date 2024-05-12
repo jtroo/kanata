@@ -221,7 +221,7 @@ pub struct Kanata {
     pub tooltip_duration: u16,
     /// Set tooltip size (width, height)
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_size: (u16,u16),
+    pub tooltip_size: (u16, u16),
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -557,9 +557,9 @@ impl Kanata {
             self.tray_icon = cfg.options.tray_icon;
             self.icon_match_layer_name = cfg.options.icon_match_layer_name;
             self.tooltip_layer_changes = cfg.options.tooltip_layer_changes;
-            self.tooltip_show_blank    = cfg.options.tooltip_show_blank;
-            self.tooltip_duration      = cfg.options.tooltip_duration;
-            self.tooltip_size          = cfg.options.tooltip_size;
+            self.tooltip_show_blank = cfg.options.tooltip_show_blank;
+            self.tooltip_duration = cfg.options.tooltip_duration;
+            self.tooltip_size = cfg.options.tooltip_size;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
