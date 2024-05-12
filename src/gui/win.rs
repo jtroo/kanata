@@ -333,7 +333,6 @@ impl SystemTray {
             if is_active {
                 img_dyn.get(cfg_p).and_then(|maybe_icn| maybe_icn.as_ref()).map(|icn| {
                     self.tray_1cfg_m.set_bitmap(icn.tray.as_ref()) });
-                }
             }
         } else {
             trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
