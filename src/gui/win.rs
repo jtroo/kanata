@@ -540,14 +540,8 @@ impl SystemTray {
                 );
             }
 
-            {
-                let mut app_data = self.app_data.borrow_mut();
-                app_data.cfg_icon.clone_from(cfg_icon);
-                app_data.layer0_name.clone_from(&k.layer_info[0].name);
-                app_data.layer0_icon = Some(k.layer_info[0].name.clone());
-                app_data.icon_match_layer_name = k.icon_match_layer_name;
-                self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
-            }
+            {*self.app_data.borrow_mut() = update_app_data(&k)?;}
+            self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
             let clear = i.is_none();
             self.update_tray_icon(
                 cfg_layer_pkey,
