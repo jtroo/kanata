@@ -1,3 +1,4 @@
+use winapi::shared::windef::HWND;
 use crate::Kanata;
 use anyhow::{bail, Result};
 use core::cell::RefCell;
@@ -9,15 +10,13 @@ use std::collections::HashMap;
 use std::env::{current_exe, var_os};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use winapi::shared::minwindef::{BYTE,DWORD,UINT};
+use winapi::shared::minwindef::{BYTE,DWORD};
 use winapi::shared::windef::COLORREF;
-use winapi::shared::basetsd::LONG_PTR;
-use core::ffi::c_int;
 use std::sync::OnceLock;
 use std::time::Duration;
 use parking_lot::MutexGuard;
 
-use crate::gui::win_nwg_ext::{BitmapEx, MenuItemEx, MenuEx, WindowEx};
+use crate::gui::win_nwg_ext::{BitmapEx, MenuItemEx, MenuEx};
 use kanata_parser::cfg;
 use nwg::{ControlHandle, NativeUi};
 use std::sync::Arc;
@@ -325,9 +324,9 @@ impl SystemTray {
       let app_data = self.app_data.borrow();
       if ! app_data.tooltip_layer_changes {return};
       if img.is_none() && ! app_data.tooltip_show_blank {self.win_tt.set_visible(false); return};
-      static is_init:OnceLock<bool> = OnceLock::new();
-      if ! is_init.get().is_some() { // layered win needs a special call after being initialized to appear
-        let _ = is_init.set(true); debug!("win_tt hasn't been shown as a layered window");
+      static IS_INIT:OnceLock<bool> = OnceLock::new();
+      if ! IS_INIT.get().is_some() { // layered win needs a special call after being initialized to appear
+        let _ = IS_INIT.set(true); debug!("win_tt hasn't been shown as a layered window");
         let win_id = self.win_tt.handle.hwnd().expect("win_tt should be a valid/existing window!");
         show_layered_win(win_id);
       } else {debug!("win_tt has been shown as a layered window");}
@@ -729,8 +728,8 @@ impl SystemTray {
     }
 
     fn build_win_tt(&self) -> Result<nwg::Window, nwg::NwgError> {
-      let mut f_style = wf::POPUP;
-      let f_ex = ws_click_thru
+      let f_style = wf::POPUP;
+      let f_ex = WS_CLICK_THRU
        | WS_EX_NOACTIVATE   //0x8000000L top-level win doesn't become foreground win on user click
        | WS_EX_TOOLWINDOW   // remove from the taskbar (floating toolbar)
        ;
@@ -757,7 +756,6 @@ impl SystemTray {
 
 pub mod system_tray_ui {
     use super::*;
-    use core::cmp;
     use native_windows_gui::{self as nwg, MousePressEvent};
     use std::cell::RefCell;
     use std::ops::Deref;
@@ -1004,29 +1002,28 @@ pub mod system_tray_ui {
         }
     }
 }
-use winapi::um::winuser::{WS_OVERLAPPEDWINDOW,WS_CLIPCHILDREN,WS_VISIBLE,WS_DISABLED,WS_MAXIMIZE,WS_MINIMIZE,WS_CAPTION,WS_MINIMIZEBOX,WS_MAXIMIZEBOX,WS_SYSMENU,WS_THICKFRAME,WS_POPUP,WS_SIZEBOX,
-  WS_EX_ACCEPTFILES,WS_EX_APPWINDOW,WS_EX_CLIENTEDGE,WS_EX_COMPOSITED,WS_EX_CONTEXTHELP,WS_EX_CONTROLPARENT,WS_EX_DLGMODALFRAME,WS_EX_LAYERED,WS_EX_LAYOUTRTL,WS_EX_LEFT,WS_EX_LEFTSCROLLBAR,WS_EX_LTRREADING,WS_EX_MDICHILD,WS_EX_NOACTIVATE,WS_EX_NOINHERITLAYOUT,WS_EX_NOPARENTNOTIFY,WS_EX_NOREDIRECTIONBITMAP,WS_EX_OVERLAPPEDWINDOW,WS_EX_PALETTEWINDOW,WS_EX_RIGHT,WS_EX_RIGHTSCROLLBAR,WS_EX_RTLREADING,WS_EX_STATICEDGE,WS_EX_TOOLWINDOW,WS_EX_TOPMOST,WS_EX_TRANSPARENT,WS_EX_WINDOWEDGE,
-  SetLayeredWindowAttributes,GetLayeredWindowAttributes,
+use winapi::um::winuser::{WS_EX_LAYERED,WS_EX_NOACTIVATE,WS_EX_TOOLWINDOW,WS_EX_TRANSPARENT,
+  SetLayeredWindowAttributes,
 };
-pub const ws_click_thru:u32 = 0
+pub const WS_CLICK_THRU:u32 = 0
  | WS_EX_LAYERED        //0x80000   significantly improve performance and visual effects for a window that has a complex shape, animates its shape, or wishes to use alpha blending effects. The system automatically composes and repaints layered windows and the windows of underlying applications. As a result, layered windows are rendered smoothly, without the flickering typical of complex window regions. In addition, layered windows can be partially translucent, that is, alpha-blended.
  //                     After the CreateWindowEx call, the layered window will not become visible until the SetLayeredWindowAttributes or UpdateLayeredWindow function has been called for this window
  //                     layered window with WS_EX_TRANSPARENT: shape of the layered window will be ignored and the mouse events will be passed to other windows underneath the layered window
  | WS_EX_TRANSPARENT    //0x  20L   don't paint until siblings beneath the window (that were created by the same thread) have been painted. Window appears transparent because the bits of underlying sibling windows have already been painted.
  ;
 
-use std::rc::Rc;
+
 use nwg::WindowFlags as wf;
 /// Build a tooltip-like window to notify of user events
 fn show_layered_win(win_id:HWND) {
-  use winapi::um::wingdi::{CreateSolidBrush, RGB};
+  use winapi::um::wingdi::{RGB};
   use winapi::um::winuser::LWA_ALPHA;
-  let crKey     : COLORREF      = RGB(0,0,0); //transparency color key to be used when composing the layered window
-  let bAlpha    : BYTE          = 255; //0 transparent 255 fully opaque
-  let dwFlags   : DWORD         = LWA_ALPHA;
+  let cr_key     : COLORREF      = RGB(0,0,0); //transparency color key to be used when composing the layered window
+  let b_alpha    : BYTE          = 255; //0 transparent 255 fully opaque
+  let dw_flags   : DWORD         = LWA_ALPHA;
     //          LWA_ALPHA       0x00000002 Use bAlpha to determine the opacity of the layered window
     //          LWA_COLORKEY    0x00000001  Use crKey as the transparency color
-  unsafe{SetLayeredWindowAttributes(win_id,crKey,bAlpha,dwFlags);} // layered window doesn't appear w/o this call
+  unsafe{SetLayeredWindowAttributes(win_id,cr_key,b_alpha,dw_flags);} // layered window doesn't appear w/o this call
 }
 
 pub fn update_app_data(k:&MutexGuard<Kanata>) -> Result<SystemTrayData> {
@@ -1051,9 +1048,10 @@ pub fn update_app_data(k:&MutexGuard<Kanata>) -> Result<SystemTrayData> {
     })
 }
 pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
-    let k         = cfg.lock();
-    let app_data  = update_app_data(&k)?;
-    Ok(SystemTray::build_ui(app)?)
+  let k         = cfg.lock();
+  let app_data  = update_app_data(&k)?;
+  let app   = SystemTray {app_data:RefCell::new(app_data), ..Default::default()};
+  Ok(SystemTray::build_ui(app)?)
 }
 
 pub use log::*;
