@@ -791,7 +791,7 @@ pub mod system_tray_ui {
             let icn_sz_tt_i = (app_data.tooltip_size.0 as i32,app_data.tooltip_size.1 as i32);
             let padx = (app_data.tooltip_size.0 as f64 / 6 as f64).round() as i32; // todo: replace with a no-margin NWG config when it's available
             let pady = (app_data.tooltip_size.1 as f64 / 6 as f64).round() as i32;
-            let pad = (-padx,-pady); trace!("kanata tooltip sieze = {icn_sz_tt_i:?}, offset = {padx}⋅{pady}");
+            let pad = (-padx,-pady); trace!("kanata tooltip size = {icn_sz_tt_i:?}, offset = {padx}⋅{pady}");
             let mut cfg_icon_bmp_tray   = Default::default();
             nwg::Bitmap::builder().source_embed(Some(&d.embed)).source_embed_str(Some("imgMain")).strict(true)
               .size(Some(ICN_SZ_MENU.into())).build(&mut cfg_icon_bmp_tray)?;
