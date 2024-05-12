@@ -13,6 +13,8 @@ use winapi::shared::minwindef::{BYTE,DWORD,UINT};
 use winapi::shared::windef::COLORREF;
 use winapi::shared::basetsd::LONG_PTR;
 use core::ffi::c_int;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use crate::gui::win_nwg_ext::{BitmapEx, MenuItemEx, MenuEx, WindowEx};
 use kanata_parser::cfg;
