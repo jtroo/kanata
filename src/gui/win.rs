@@ -583,11 +583,14 @@ impl SystemTray {
     /// Update tray icon data given various config/layer info
     fn update_tray_icon(
         &self,
+        /// "path␤🗍: layer_name" unique icon id
         cfg_layer_pkey: PathBuf,
         cfg_layer_pkey_s: &str,
         layer_name: &str,
         layer_icon: &Option<String>,
+        /// "path" without the layer name
         path_cur_cc: PathBuf,
+        /// reset stored icon cached paths/files
         clear: bool,
     ) {
         let mut icon_dyn = self.icon_dyn.borrow_mut(); // update the tray icon
