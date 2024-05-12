@@ -2501,6 +2501,30 @@ Show a custom tray icon that matches the name of the active layer if it doesn't 
 Otherwise <<tray-icon>> will be used. Defaults to true. File search rules are the same as in <<tray-icon>>.
 See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
 
+[[windows-only-tooltip-layer-changes]]
+=== Windows only: tooltip-layer-changes
+<<table-of-contents,Back to ToC>>
+
+Show a custom layer icon near the mouse pointer position. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-show-blank]]
+=== Windows only: tooltip-show-blank
+<<table-of-contents,Back to ToC>>
+
+Show a blank square when instead of an icon if a layer isn't configured to have one. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-duration]]
+=== Windows only: tooltip-duration
+<<table-of-contents,Back to ToC>>
+
+Set duration (in ms) for showing a custom layer icon near the mouse pointer position. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-size]]
+=== Windows only: tooltip-size
+<<table-of-contents,Back to ToC>>
+
+Set the size (comma-separated Width,Height without spaces) for a custom layer icon near the mouse pointer position. Defaults to 24,24. Requires <<windows-only-win-tray>> gui-enabled build.
+
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
 <<table-of-contents,Back to ToC>>
