@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 #[cfg(all(
     feature = "simulated_output",
+    not(feature = "simulated_input"),
     not(target_os = "macos"),
     not(feature = "interception_driver")
 ))]

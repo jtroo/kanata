@@ -224,11 +224,11 @@ unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM)
     }
 }
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self {})

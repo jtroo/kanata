@@ -150,13 +150,60 @@ fn split_at_1(s: &str) -> (&str, &str) {
         None => s.split_at(0),
     }
 }
-
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LogFmtT {
+    // partial dupe of @simulated since otherwise no-features clippy fails when features are disabled since even though the function body is conditional and doesn't use the enum, the ↓ function signature still uses it, so will warn
+    InKeyUp,
+    InKeyDown,
+    InKeyRep,
+    InTick,
+}
+fn kbd_out_log(
+    _kbd_out: &mut KbdOut,
+    _log_type: LogFmtT,
+    _key_code: Option<OsCode>,
+    _tick: Option<u128>,
+) {
+    let a = LogFmtT::InTick;
+    if a == LogFmtT::InTick {
+        println!("{}", 42)
+    };
+    #[cfg(all(
+        not(feature = "simulated_input"),
+        not(feature = "passthru_ahk"),
+        feature = "simulated_output"
+    ))]
+    {
+        match _log_type {
+            LogFmtT::InTick => {
+                if let Some(tick) = _tick {
+                    _kbd_out.log.in_tick(tick);
+                }
+            }
+            LogFmtT::InKeyUp => {
+                if let Some(key_code) = _key_code {
+                    _kbd_out.log.in_release_key(key_code);
+                }
+            }
+            LogFmtT::InKeyDown => {
+                if let Some(key_code) = _key_code {
+                    _kbd_out.log.in_press_key(key_code);
+                }
+            }
+            LogFmtT::InKeyRep => {
+                if let Some(key_code) = _key_code {
+                    _kbd_out.log.in_repeat_key(key_code);
+                }
+            }
+        }
+    }
+}
 fn main_impl() -> Result<()> {
     log_init();
-    let (args, sim_paths, sim_appendix) = cli_init_fsim()?;
+    let (args, sim_paths, _sim_appendix) = cli_init_fsim()?;
     #[cfg(not(feature = "simulated_output"))]
     {
-        if sim_appendix.is_some() {
+        if _sim_appendix.is_some() {
             bail!("The program was compiled without simulated output. The -o|--out flag is unsupported");
         }
     }
@@ -171,15 +218,13 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
-                            #[cfg(feature = "simulated_output")]
-                            k.kbd_out.log.in_tick(tick);
+                            kbd_out_log(&mut k.kbd_out, LogFmtT::InTick, None, Some(tick));
                             k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
-                            k.kbd_out.log.in_press_key(key_code);
+                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyDown, Some(key_code), None);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Press,
@@ -188,8 +233,7 @@ fn main_impl() -> Result<()> {
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
-                            k.kbd_out.log.in_release_key(key_code);
+                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Release,
@@ -198,8 +242,7 @@ fn main_impl() -> Result<()> {
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            #[cfg(feature = "simulated_output")]
-                            k.kbd_out.log.in_repeat_key(key_code);
+                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyRep, Some(key_code), None);
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Repeat,
@@ -213,15 +256,18 @@ fn main_impl() -> Result<()> {
                             //allow skipping : separator for unique non-key symbols
                             "🕐" => {
                                 let tick = str::parse::<u128>(val)?;
-                                #[cfg(feature = "simulated_output")]
-                                k.kbd_out.log.in_tick(tick);
+                                kbd_out_log(&mut k.kbd_out, LogFmtT::InTick, None, Some(tick));
                                 k.tick_ms(tick, &None)?;
                             }
                             "↓" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(feature = "simulated_output")]
-                                k.kbd_out.log.in_press_key(key_code);
+                                kbd_out_log(
+                                    &mut k.kbd_out,
+                                    LogFmtT::InKeyDown,
+                                    Some(key_code),
+                                    None,
+                                );
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Press,
@@ -230,8 +276,7 @@ fn main_impl() -> Result<()> {
                             "↑" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(feature = "simulated_output")]
-                                k.kbd_out.log.in_release_key(key_code);
+                                kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Release,
@@ -240,8 +285,12 @@ fn main_impl() -> Result<()> {
                             "⟳" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                #[cfg(feature = "simulated_output")]
-                                k.kbd_out.log.in_repeat_key(key_code);
+                                kbd_out_log(
+                                    &mut k.kbd_out,
+                                    LogFmtT::InKeyRep,
+                                    Some(key_code),
+                                    None,
+                                );
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Repeat,
@@ -253,10 +302,18 @@ fn main_impl() -> Result<()> {
                 }
             }
         }
-        #[cfg(feature = "simulated_output")]
+        #[cfg(all(
+            not(feature = "simulated_input"),
+            not(feature = "passthru_ahk"),
+            feature = "simulated_output"
+        ))]
         println!("{}", k.kbd_out.outputs.events.join("\n"));
-        #[cfg(feature = "simulated_output")]
-        k.kbd_out.log.end(config_sim_file, sim_appendix.clone());
+        #[cfg(all(
+            not(feature = "simulated_input"),
+            not(feature = "passthru_ahk"),
+            feature = "simulated_output"
+        ))]
+        k.kbd_out.log.end(config_sim_file, _sim_appendix.clone());
     }
 
     Ok(())

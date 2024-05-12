@@ -15,10 +15,50 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::*;
 
-#[cfg(feature = "simulated_output")]
-mod simulated;
-#[cfg(feature = "simulated_output")]
+#[cfg(any(
+    all(
+        not(feature = "simulated_input"),
+        feature = "simulated_output",
+        not(feature = "passthru_ahk")
+    ),
+    all(
+        feature = "simulated_input",
+        not(feature = "simulated_output"),
+        not(feature = "passthru_ahk")
+    )
+))]
+mod simulated; // has KbdOut
+#[cfg(any(
+    all(
+        not(feature = "simulated_input"),
+        feature = "simulated_output",
+        not(feature = "passthru_ahk")
+    ),
+    all(
+        feature = "simulated_input",
+        not(feature = "simulated_output"),
+        not(feature = "passthru_ahk")
+    )
+))]
 pub use simulated::*;
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    all(
+        feature = "simulated_input",
+        feature = "simulated_output",
+        feature = "passthru_ahk"
+    ),
+))]
+mod sim_passthru; // has KbdOut
+#[cfg(any(
+    all(feature = "simulated_input", feature = "simulated_output"),
+    all(
+        feature = "simulated_input",
+        feature = "simulated_output",
+        feature = "passthru_ahk"
+    ),
+))]
+pub use sim_passthru::*;
 
 pub const HI_RES_SCROLL_UNITS_IN_LO_RES: u16 = 120;
 
@@ -71,5 +111,21 @@ pub struct KeyEvent {
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
         Self { code, value }
+    }
+}
+
+use core::fmt;
+impl fmt::Display for KeyEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use kanata_keyberon::key_code::KeyCode;
+        let direction = match self.value {
+            KeyValue::Press => "↓",
+            KeyValue::Release => "↑",
+            KeyValue::Repeat => "⟳",
+            KeyValue::Tap => "↕",
+            KeyValue::WakeUp => "!",
+        };
+        let key_name = KeyCode::from(self.code);
+        write!(f, "{}{:?}", direction, key_name)
     }
 }

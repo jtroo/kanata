@@ -8,11 +8,13 @@ use log::{error, info};
 use parking_lot::Mutex;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
+#[cfg(feature = "passthru_ahk")]
+use std::sync::mpsc::Sender as ASender;
+
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
@@ -261,7 +263,6 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 impl Kanata {
-    /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
@@ -478,6 +479,16 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             icon_match_layer_name: cfg.options.icon_match_layer_name,
         })
+    }
+
+    #[cfg(feature = "passthru_ahk")]
+    pub fn new_with_output_channel(
+        args: &ValidatedArgs,
+        tx: Option<ASender<InputEvent>>,
+    ) -> Result<Arc<Mutex<Self>>> {
+        let mut k = Self::new(args)?;
+        k.kbd_out.tx_kout = tx;
+        Ok(Arc::new(Mutex::new(k)))
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
@@ -1624,6 +1635,7 @@ impl Kanata {
 
             info!("Starting kanata proper");
 
+            #[cfg(not(feature = "passthru_ahk"))]
             info!(
                 "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
@@ -1952,41 +1964,66 @@ fn apply_speed_modifiers() {
     assert_eq!(apply_mouse_distance_modifiers(10, &vec![33u16, 200u16]), 6);
 }
 
+#[cfg(feature = "passthru_ahk")]
+/// Clean kanata's state without exiting
+pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
+    let mut k = kanata.lock();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    let layout = k.layout.bm();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    release_normalkey_states(layout);
+    k.tick_ms(tick, &None)?;
+    #[cfg(not(target_os = "linux"))]
+    {
+        let mut k_pressed = PRESSED_KEYS.lock();
+        for key_os in k_pressed.clone() {
+            k.kbd_out.release_key(key_os)?;
+        }
+        k_pressed.clear();
+    }
+    Ok(())
+}
+
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
-fn check_for_exit(event: &KeyEvent) {
-    static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
-    let is_pressed = match event.value {
-        KeyValue::Press => true,
-        KeyValue::Release => false,
-        _ => return,
-    };
-    match event.code {
-        OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
-        _ => return,
-    }
-    const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
-    if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
-        log::info!("{EXIT_MSG}");
-        #[cfg(all(target_os = "windows", feature = "gui"))]
-        {
-            native_windows_gui::stop_thread_dispatch();
+fn check_for_exit(_event: &KeyEvent) {
+    #[cfg(not(feature = "passthru_ahk"))]
+    {
+        use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+        static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
+        let is_pressed = match _event.value {
+            KeyValue::Press => true,
+            KeyValue::Release => false,
+            _ => return,
+        };
+        match _event.code {
+            OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
+            _ => return,
         }
-        #[cfg(all(
-            not(target_os = "linux"),
-            not(target_os = "windows"),
-            not(feature = "gui")
-        ))]
+        const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
+        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst)
         {
-            panic!("{EXIT_MSG}");
-        }
-        #[cfg(target_os = "linux")]
-        {
-            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            log::info!("{EXIT_MSG}");
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            {
+                native_windows_gui::stop_thread_dispatch();
+            }
+            #[cfg(all(
+                not(target_os = "linux"),
+                not(target_os = "windows"),
+                not(feature = "gui")
+            ))]
+            {
+                panic!("{EXIT_MSG}");
+            }
+            #[cfg(target_os = "linux")]
+            {
+                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            }
         }
     }
 }

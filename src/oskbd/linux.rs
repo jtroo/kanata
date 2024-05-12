@@ -312,7 +312,7 @@ impl From<KeyEvent> for InputEvent {
 
 use std::cell::Cell;
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {
     device: uinput::VirtualDevice,
     accumulated_scroll: u16,
@@ -322,7 +322,7 @@ pub struct KbdOut {
     pub unicode_u_code: Cell<OsCode>,
 }
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new(symlink_path: &Option<String>, trackpoint: bool) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost

@@ -5,13 +5,15 @@ members = [
     "keyberon",
     "example_tcp_client",
     "tcp_protocol",
-    "simulated_input",
     "windows_key_tester",
     "win_dbg_logger",
+    "simulated_input",
+    "simulated_passthru",
 ]
 exclude = [
     "wasm",
 ]
+resolver = "2"
 
 [package]
 name = "kanata"
@@ -114,6 +116,8 @@ win_manifest = ["embed-resource", "indoc", "regex"]
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
+simulated_input = ["indoc"]
+passthru_ahk = ["simulated_input","simulated_output"]
 wasm = [ "instant/wasm-bindgen" ]
 gui = ["win_manifest","native-windows-derive","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","dep:windows-sys"]
 

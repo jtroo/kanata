@@ -4,11 +4,12 @@ use parking_lot::Mutex;
 
 use crate::kanata::*;
 
-#[cfg(not(feature = "interception_driver"))]
-mod llhook;
-
-#[cfg(feature = "interception_driver")]
+#[cfg(all(feature = "simulated_input", not(feature = "interception_driver")))]
+mod exthook;
+#[cfg(all(not(feature = "simulated_input"), feature = "interception_driver"))]
 mod interception;
+#[cfg(all(not(feature = "simulated_input"), not(feature = "interception_driver")))]
+mod llhook;
 
 pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
