@@ -51,6 +51,8 @@ pub struct SystemTrayData {
     pub tooltip_show_blank          :bool,
     pub tooltip_duration            :u16,
     pub tooltip_size                :(u16,u16),
+    pub tt_duration_pre       :u16,
+    pub tt_size_pre           :(u16,u16),
 }
 #[derive(Default)] pub struct Icn {
   pub tray      : nwg::Bitmap, // uses an image of different size to fit the menu items
@@ -444,6 +446,35 @@ impl SystemTray {
             error!("no CFG var that contains active kanata config");
         };
     }
+    /// Check if tooltip data is changed, and update tooltip window size / timer duration
+    fn update_tooltip_data(&self,k:&MutexGuard<Kanata>) -> bool {
+      let mut app_data = self.app_data.borrow_mut();
+      let mut clear = false;
+      if ! app_data.tt_duration_pre     == k.tooltip_duration {
+        app_data   .tooltip_duration    =  k.tooltip_duration; clear = true;
+        app_data   .tt_duration_pre     =  k.tooltip_duration; trace!("timer duration changed, updating");
+        self.win_tt_timer.set_interval(     Duration::from_millis((k.tooltip_duration                          ).into()));
+        self.win_tt_timer.set_lifetime(Some(Duration::from_millis((k.tooltip_duration.saturating_add(TTTIMER_L)).into())));
+      }
+      if ! (app_data.tt_size_pre.0  == k.tooltip_size.0
+        &&  app_data.tt_size_pre.1  == k.tooltip_size.1) {
+        app_data    .tt_size_pre    =  k.tooltip_size; clear = true;
+        app_data    .tooltip_size   =  k.tooltip_size; trace!("tooltip_size duration changed, updating");
+        let dpi = dpi!();
+        let icn_sz_tt_i = (k.tooltip_size.0,k.tooltip_size.1);
+        let w = (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96 as f64)).round() as u32;
+        let h = (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96 as f64)).round() as u32;
+        self.win_tt.set_size(w,h);
+
+        let icn_sz_tt_i = (k.tooltip_size.0 as u32,k.tooltip_size.1 as u32);
+        let padx = (k.tooltip_size.0 as f64 / 6 as f64).round() as i32; // todo: replace with a no-margin NWG config when it's available
+        let pady = (k.tooltip_size.1 as f64 / 6 as f64).round() as i32;
+        trace!("kanata tooltip size = {icn_sz_tt_i:?}, ttsize = {w}⋅{h} offset = {padx}⋅{pady}");
+        self.win_tt_ifr.set_size(icn_sz_tt_i.0, icn_sz_tt_i.1);
+        self.win_tt_ifr.set_position(-padx,-pady);
+      }
+      clear
+    }
     /// Reload config file, currently active (`i=None`) or matching a given `i` index
     fn reload_cfg(&self, i: Option<usize>) -> Result<()> {
         use nwg::TrayNotificationFlags as f_tray;
@@ -541,6 +572,7 @@ impl SystemTray {
                 );
             }
 
+            let _ = self.update_tooltip_data(&k); // check for changes before they're overwritten ↓
             {*self.app_data.borrow_mut() = update_app_data(&k)?;}
             self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
             let clear = i.is_none();
@@ -599,8 +631,8 @@ impl SystemTray {
                     );
                 }
 
+                let clear = self.update_tooltip_data(&k); // if tooltip dimensions changed, reset icons to get them resized
                 self.tray.set_tip(&cfg_layer_pkey_s); // update tooltip to point to the newer config
-                let clear = false;
                 self.update_tray_icon(
                     cfg_layer_pkey,
                     &cfg_layer_pkey_s,
@@ -1014,6 +1046,8 @@ pub fn update_app_data(k:&MutexGuard<Kanata>) -> Result<SystemTrayData> {
       tooltip_show_blank    : k.tooltip_show_blank,
       tooltip_duration      : k.tooltip_duration,
       tooltip_size          : k.tooltip_size,
+      tt_duration_pre       : k.tooltip_duration,
+      tt_size_pre           : k.tooltip_size,
     })
 }
 pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
