@@ -449,7 +449,7 @@ impl SystemTray {
     fn update_tooltip_data(&self,k:&MutexGuard<Kanata>) -> bool {
       let mut app_data = self.app_data.borrow_mut();
       let mut clear = false;
-      if ! app_data.tt_duration_pre     == k.tooltip_duration {
+      if ! (app_data.tt_duration_pre     == k.tooltip_duration) {
         app_data   .tooltip_duration    =  k.tooltip_duration; clear = true;
         app_data   .tt_duration_pre     =  k.tooltip_duration; trace!("timer duration changed, updating");
         self.win_tt_timer.set_interval(     Duration::from_millis((k.tooltip_duration                          ).into()));
