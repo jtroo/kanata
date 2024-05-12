@@ -210,6 +210,18 @@ pub struct Kanata {
     #[cfg(all(target_os = "windows", feature = "gui"))]
     /// Whether to match layer names to icon files without an explicit 'icon' field
     pub icon_match_layer_name: bool,
+    /// Show tooltip on layer changes showing layer icons
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_layer_changes: bool,
+    /// Show tooltip on layer changes even for layers without an icon
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_show_blank: bool,
+    /// Show tooltip on layer changes for this duration (ms)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_duration: u16,
+    /// Set tooltip size (width, height)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_size: (u16,u16),
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -378,6 +390,14 @@ impl Kanata {
             tray_icon: cfg.options.tray_icon,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             icon_match_layer_name: cfg.options.icon_match_layer_name,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_layer_changes: cfg.options.tooltip_layer_changes,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_show_blank: cfg.options.tooltip_show_blank,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_duration: cfg.options.tooltip_duration,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_size: cfg.options.tooltip_size,
         })
     }
 
@@ -478,6 +498,14 @@ impl Kanata {
             tray_icon: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             icon_match_layer_name: cfg.options.icon_match_layer_name,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_layer_changes: cfg.options.tooltip_layer_changes,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_show_blank: cfg.options.tooltip_show_blank,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_duration: cfg.options.tooltip_duration,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            tooltip_size: cfg.options.tooltip_size,
         })
     }
 
@@ -528,6 +556,10 @@ impl Kanata {
         {
             self.tray_icon = cfg.options.tray_icon;
             self.icon_match_layer_name = cfg.options.icon_match_layer_name;
+            self.tooltip_layer_changes = cfg.options.tooltip_layer_changes;
+            self.tooltip_show_blank    = cfg.options.tooltip_show_blank;
+            self.tooltip_duration      = cfg.options.tooltip_duration;
+            self.tooltip_size          = cfg.options.tooltip_size;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
