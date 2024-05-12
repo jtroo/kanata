@@ -320,7 +320,7 @@ impl SystemTray {
     fn show_tooltip(&self, img:Option<&nwg::Bitmap>) {
       let app_data = self.app_data.borrow();
       if ! app_data.tooltip_layer_changes {return};
-      if img.is_none() && ! app_data.tooltip_show_blank {return};
+      if img.is_none() && ! app_data.tooltip_show_blank {self.win_tt.set_visible(false); return};
       static is_init:OnceLock<bool> = OnceLock::new();
       if ! is_init.get().is_some() { // layered win needs a special call after being initialized to appear
         let _ = is_init.set(true); info!("win_tt hasn't been shown as a layered window");
