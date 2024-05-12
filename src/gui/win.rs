@@ -15,6 +15,7 @@ use winapi::shared::basetsd::LONG_PTR;
 use core::ffi::c_int;
 use std::sync::OnceLock;
 use std::time::Duration;
+use parking_lot::MutexGuard;
 
 use crate::gui::win_nwg_ext::{BitmapEx, MenuItemEx, MenuEx, WindowEx};
 use kanata_parser::cfg;
@@ -1001,14 +1002,13 @@ fn show_layered_win(win_id:HWND) {
   unsafe{SetLayeredWindowAttributes(win_id,crKey,bAlpha,dwFlags);} // layered window doesn't appear w/o this call
 }
 
-pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
-    let k                     = cfg.lock();
-    let paths                 = &k.cfg_paths;
-    let path_cur              = &paths[0];
-    let layer0_id             =  k.layout.b().current_layer();
-    let layer0_name           = &k.layer_info[layer0_id].name;
-    let layer0_icon           = &k.layer_info[layer0_id].icon;
-    let app_data              = SystemTrayData {
+pub fn update_app_data(k:&MutexGuard<Kanata>) -> Result<SystemTrayData> {
+    let paths         = &k.cfg_paths;
+    let path_cur      = &paths[0];
+    let layer0_id     =  k.layout.b().current_layer();
+    let layer0_name   = &k.layer_info[layer0_id].name;
+    let layer0_icon   = &k.layer_info[layer0_id].icon;
+    Ok(SystemTrayData {
       tooltip                 : path_cur.display().to_string(),
       cfg_p                   : paths.clone(),
       cfg_icon                : k.tray_icon.clone(),
@@ -1019,7 +1019,11 @@ pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTray
       tooltip_show_blank    : k.tooltip_show_blank,
       tooltip_duration      : k.tooltip_duration,
       tooltip_size          : k.tooltip_size,
-    };
+    })
+}
+pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
+    let k         = cfg.lock();
+    let app_data  = update_app_data(&k)?;
     Ok(SystemTray::build_ui(app)?)
 }
 
