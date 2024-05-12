@@ -356,11 +356,34 @@ impl SystemTray {
         let win_id = self.win_tt.handle.hwnd().expect("win_tt should be a valid/existing window!");
         show_layered_win(win_id);
       } else {debug!("win_tt has been shown as a layered window");}
+      let (mut x,mut y) = nwg::GlobalCursor::position();
+      let win_ver = win_ver!();
+      let icn_sz_tt_i = (app_data.tooltip_size.0,app_data.tooltip_size.1);
+      let w = icn_sz_tt_i.0 as i32;
+      let h = icn_sz_tt_i.1 as i32;
+      let flags             = if (win_ver.0>=6 && win_ver.1 >=1) || win_ver.0>6 {TPM_WORKAREA}else{0};
+      let     tt_off        = 16; // tooltip offset vs. 🖰 pointer
+      let     anchorpoint   = &POINT{ x:x+tt_off, y:y+tt_off};
+      let     tt_win_sz     = &SIZE {cx:w       ,cy:h};
+      let     p_sz          = 6; // 🖰 pointer size to make sure tooltip doesn't overlap
+      let     excluderect   = &    RECT{left:x-p_sz,right :x+p_sz
+        ,                          top :y-p_sz,bottom:x+p_sz, }; //Avoid ~ mouse pointer area
+      let mut out_rect      = &mut RECT{left:0,right:0,top:0,bottom:0,};
+      let ret = unsafe{CalculatePopupWindowPosition(
+        anchorpoint,
+        tt_win_sz,
+        flags,
+        excluderect,
+        out_rect,
+      )};
+      if ! (ret == 0)  {
+        x = out_rect.left;
+        y = out_rect.top;
+      }
       let dpi = dpi!();
-      let (x,y) = nwg::GlobalCursor::position();
-      let xx = (x as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+      let xx = (x as f64 / (dpi as f64 / 96 as f64)).round() as i32; // adjust dpi for layout
       let yy = (y as f64 / (dpi as f64 / 96 as f64)).round() as i32;
-      trace!("🖰 @{x}⋅{y} @ dpi={dpi} → {xx}⋅{yy}");
+      trace!("🖰 @{x}⋅{y} (upd{}) @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags}",!(ret==0));
       self.win_tt_ifr.set_bitmap(img);
       self.win_tt.set_position(xx,yy);
       self.win_tt.set_visible(true);self.win_tt_timer.start();
