@@ -796,7 +796,7 @@ pub mod system_tray_ui {
                 .source_embed(Some(&d.embed))
                 .source_embed_str(Some("imgReload"))
                 .strict(true)
-                .size(Some((24, 24)))
+                .size(Some(ICN_SZ_MENU.into()))
                 .build(&mut tmp_bitmap)?;
             let img_exit = nwg::Bitmap::from_system_icon(SIID_DELETE);
             d.tray_2reload.set_bitmap(Some(&tmp_bitmap));
