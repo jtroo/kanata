@@ -600,6 +600,7 @@ impl SystemTray {
             if let Some(icon) = icon_opt {
                 self.tray.set_icon(icon);
                 *icon_active = Some(cfg_layer_pkey);
+                self.show_tooltip(Some(&icon));
             } else {
                 debug!(
                     "no icon found, using default for config+layer = {}",
@@ -607,6 +608,7 @@ impl SystemTray {
                 );
                 self.tray.set_icon(&self.icon);
                 *icon_active = Some(cfg_layer_pkey);
+                self.show_tooltip(Some(&self.icon));
             }
         } else if let Some(layer_icon) = layer_icon {
             // 1b cfg+layer path hasn't been checked, but layer has an icon configured, so check it
@@ -632,6 +634,7 @@ impl SystemTray {
                     *icon_active = Some(cfg_layer_pkey);
                     let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     self.tray.set_icon(&temp_icon);
+                    self.show_tooltip (Some(&temp_icon));
                 } else {
                     warn!(
                         "✗ Invalid icon file \"{layer_icon}\" from this config+layer: {}",
@@ -640,6 +643,7 @@ impl SystemTray {
                     let _ = icon_dyn.insert(cfg_layer_pkey.clone(), None);
                     *icon_active = Some(cfg_layer_pkey);
                     self.tray.set_icon(&self.icon);
+                    self.show_tooltip (Some(&self.icon));
                 }
             } else {
                 warn!(
@@ -649,12 +653,14 @@ impl SystemTray {
                 let _ = icon_dyn.insert(cfg_layer_pkey.clone(), None);
                 *icon_active = Some(cfg_layer_pkey);
                 self.tray.set_icon(&self.icon);
+                self.show_tooltip (Some(&self.icon));
             }
         } else if icon_dyn.contains_key(&path_cur_cc) {
             // 2a no layer icon configured, but config icon exists, use it
             if let Some(icon) = icon_dyn.get(&path_cur_cc).unwrap() {
                 self.tray.set_icon(icon);
                 *icon_active = Some(path_cur_cc);
+                self.show_tooltip (Some(&icon));
             } else {
                 debug!(
                     "no icon found, using default for config: {}",
@@ -662,6 +668,7 @@ impl SystemTray {
                 );
                 self.tray.set_icon(&self.icon);
                 *icon_active = Some(path_cur_cc);
+                self.show_tooltip (Some(&self.icon));
             }
         } else {
             // 2a no layer icon configured, no config icon, use config path
@@ -692,6 +699,7 @@ impl SystemTray {
                     *icon_active = Some(cfg_layer_pkey);
                     let temp_icon = cfg_icon_bitmap.copy_as_icon();
                     self.tray.set_icon(&temp_icon);
+                    self.show_tooltip (Some(&temp_icon));
                 } else {
                     warn!(
                         "✗ Invalid icon file \"{cfg_icon_p}\" from this config: {}",
@@ -700,6 +708,7 @@ impl SystemTray {
                     let _ = icon_dyn.insert(cfg_layer_pkey.clone(), None);
                     *icon_active = Some(cfg_layer_pkey);
                     self.tray.set_icon(&self.icon);
+                    self.show_tooltip (Some(&self.icon));
                 }
             } else {
                 warn!(
@@ -709,6 +718,7 @@ impl SystemTray {
                 let _ = icon_dyn.insert(cfg_layer_pkey.clone(), None);
                 *icon_active = Some(cfg_layer_pkey);
                 self.tray.set_icon(&self.icon);
+                self.show_tooltip (Some(&self.icon));
             }
         }
     }
