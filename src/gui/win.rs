@@ -660,7 +660,7 @@ impl SystemTray {
               self.tray.set_icon(    &self.icon); *icon_act_key = Some(path_cur_cc);
               self.show_tooltip (None);
             }
-          } else { // 2a no layer icon configured, no config icon, use config path
+          } else { // 2b no layer icon configured, no config icon, use config path
             let cfg_icon_p = if let Some(cfg_icon) = &app_data.cfg_icon {cfg_icon} else {""};
             if let Some(ico_p) = get_icon_p("", &layer_name, &cfg_icon_p, &path_cur_cc, &app_data.icon_match_layer_name) {
               if let Ok(icn) = self.get_icon_from_file(&ico_p) {
