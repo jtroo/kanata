@@ -126,7 +126,7 @@ impl Default for CfgOptions {
             #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
             icon_match_layer_name: true,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_layer_changes : true,
+            tooltip_layer_changes : false,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             tooltip_show_blank : false,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
