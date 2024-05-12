@@ -272,35 +272,41 @@ fn get_icon_p_impl(
     None
 }
 
-fn set_menu_item_cfg_icon(
-    menu_item: &mut nwg::MenuItem,
-    cfg_icon_s: &str,
-    cfg_p: &PathBuf,
-) -> Option<nwg::Bitmap> {
-    if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false) {
-        let cfg_pkey_s = cfg_p.display().to_string();
-        let mut cfg_icon_bitmap = Default::default();
-        if let Ok(()) = nwg::Bitmap::builder()
-            .source_file(Some(&ico_p))
-            .strict(false)
-            .size(Some((24, 24)))
-            .build(&mut cfg_icon_bitmap)
-        {
-            debug!("✓ main 0 config: using icon for {}", cfg_pkey_s);
-            menu_item.set_bitmap(Some(&cfg_icon_bitmap));
-            return Some(cfg_icon_bitmap);
-        } else {
-            debug!(
-                "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
-                cfg_p
-            );
-        }
-    }
-    menu_item.set_bitmap(None);
-    None
-}
+pub const ICN_SZ_MENU   :[u32;2] = [24,24]; // size for menu icons
+pub const ICN_SZ_TT     :[u32;2] = [36,36]; // size for tooltip icons
+pub const ICN_SZ_MENU_I :[i32;2] = [24,24]; // for the builder, which needs i32
+pub const ICN_SZ_TT_I   :[i32;2] = [36,36]; // for the builder, which needs i32
 
 impl SystemTray {
+    /// Read an image from a file, convert it to various formats: tray, tooltip, icon
+    fn get_icon_from_file<P>(&self,  ico_p:P) -> Result<Icn>
+     where                         P:AsRef<str> {
+      self.get_icon_from_file_impl(ico_p.as_ref())}
+    fn get_icon_from_file_impl(&self, ico_p:&str) -> Result<Icn> {
+      if let Ok(img_data) = self.decoder.from_filename(&ico_p).and_then(|img_src| img_src.frame(0)) {
+        if let Ok(cfg_img_menu) = self.decoder.resize_image(&img_data,ICN_SZ_MENU) {
+          if let Ok(cfg_img_menu) = self.decoder.resize_image(&img_data,ICN_SZ_TT) {
+            let cfg_icon_bmp_tray   = cfg_img_menu.as_bitmap()?;
+            let cfg_icon_bmp_tt     = cfg_img_menu.as_bitmap()?;
+            let cfg_icon_bmp_icon   = cfg_icon_bmp_tray.copy_as_icon();
+            return Ok(Icn{tray:cfg_icon_bmp_tray, tooltip:cfg_icon_bmp_tt, icon:cfg_icon_bmp_icon})
+          } else {debug!("✓ main ✗ icon resize Tray for {:?}",ico_p);}
+        } else   {debug!("✓ main ✗ icon resize TTip for {:?}",ico_p);}
+      } else     {debug!("✗ main 0 icon ✓ icon path for {:?}",ico_p);}
+      bail!("✗ couldn't get a valid icon at {:?}",ico_p)
+    }
+    /// Read an image from a file, convert it to a menu-sized icon,
+    /// assign to a menu and return the image in various formats (tray, tooltip, icon)
+    fn set_menu_item_cfg_icon(&self, menu_item:&mut nwg::MenuItem, cfg_icon_s:&str, cfg_p:&PathBuf)
+      -> Result<Icn> {
+      if let Some(ico_p) = get_icon_p("","", &cfg_icon_s, &cfg_p, &false) {
+        if let Ok(icn) = self.get_icon_from_file(&ico_p) {
+          menu_item.set_bitmap(Some(&icn.tray));
+          return Ok(icn)
+        } else     {debug!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);}
+      }
+      menu_item.set_bitmap(None); bail!("✗couldn't get a valid icon for {:?}",cfg_p)
+    }
     /// Show our tooltip-like notification window
     fn show_tooltip(&self, img:Option<&nwg::Bitmap>) {
       static is_init:OnceLock<bool> = OnceLock::new();
