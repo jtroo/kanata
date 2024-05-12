@@ -314,7 +314,13 @@ impl SystemTray {
         let win_id = self.win_tt.handle.hwnd().expect("win_tt should be a valid/existing window!");
         show_layered_win(win_id);
       } else {info!("win_tt has been shown as a layered window");}
+      let (x,y) = nwg::GlobalCursor::position();
+      let dpi:i32 = unsafe{nwg::dpi()};
+      let xx = (x as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+      let yy = (y as f64 / (dpi as f64 / 96 as f64)).round() as i32;
+      trace!("🖰 @{x}⋅{y} @ dpi={dpi} → {xx}⋅{yy}");
       self.win_tt_ifr.set_bitmap(img);
+      self.win_tt.set_position(xx,yy);
       self.win_tt.set_visible(true);self.win_tt_timer.start();
     }
     /// Hide our tooltip-like notification window
