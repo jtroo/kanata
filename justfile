@@ -18,6 +18,7 @@ build_release_windows output_dir:
   cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata_winIOv2.exe"
   cargo build --release --features win_manifest,cmd; cp target/release/kanata.exe "{{output_dir}}\kanata_cmd_allowed.exe"
   cargo build --release --features win_manifest,cmd,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_wintercept_cmd_allowed.exe"
+  cargo build --release --features passthru_ahk --package=simulated_passthru; cp target/release/kanata_passthru.dll "{{output_dir}}\kanata_passthru.dll"
   cp cfg_samples/kanata.kbd "{{output_dir}}"
 
 # Generate the sha256sums for all files in the output directory
