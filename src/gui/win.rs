@@ -1008,7 +1008,7 @@ impl SystemTray {
             .size((w, h))
             .position((0, 0))
             .center(false)
-            .topmost(false)
+            .topmost(true)
             .maximized(false)
             .minimized(false)
             .flags(f_style)
