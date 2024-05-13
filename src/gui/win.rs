@@ -323,7 +323,7 @@ macro_rules! win_ver {
 /// Convert string to wide array and append null
 pub fn to_wide_str(s: &str) -> Vec<u16> {OsStr::new(s).encode_wide().chain(once(0)).collect()}
 macro_rules! mouse_scale_factor { // screen size = dpi⋅size⋅scaleF
-  () => {{
+  () => {{ //TODO: track changes by subscribing via RegNotifyChangeKeyValue and reset value
     static MOUSE_PTR_SCALE_F: OnceLock<u32> = OnceLock::new();
     *MOUSE_PTR_SCALE_F.get_or_init(|| {
       // 3. pointer scale factor @ Settings/Ease of Access/Mouse pointer
@@ -334,23 +334,23 @@ macro_rules! mouse_scale_factor { // screen size = dpi⋅size⋅scaleF
       let key_name = to_wide_str(key_name_s);
       use std::os::windows::prelude::*;
       let mut mouse_scale       : DWORD = 0;
-      let     mouse_scale_p     : *mut c_void = std::mem::transmute(&mut mouse_scale);
+      let     mouse_scale_p     : *mut c_void = unsafe{std::mem::transmute(&mut mouse_scale)};
       let mut mouse_scale_sz    : DWORD = std::mem::size_of::<DWORD>() as DWORD;
       let res = unsafe{RegGetValueW(key_root,key_path.as_ptr(),key_name.as_ptr(),RRF_RT_REG_DWORD //restrict type to REG_DWORD
         ,std::ptr::null_mut() //pdwType
         ,mouse_scale_p, &mut mouse_scale_sz)};
       match res as DWORD {
-        ERROR_SUCCESS           => {}
-        ERROR_FILE_NOT_FOUND    => {error!(r"Registry '{}\{}' not found"                   ,key_path_s,key_name_s    );mouse_scale = 1}
-        _                       => {error!(r"Registry '{}\{}' couldn't be read as DWORD {}",key_path_s,key_name_s,res);mouse_scale = 1}
+        ERROR_SUCCESS           => {},
+        ERROR_FILE_NOT_FOUND    => {log::error!(r"Registry '{}\{}' not found"                   ,key_path_s,key_name_s    );mouse_scale = 1;},
+        _                       => {log::error!(r"Registry '{}\{}' couldn't be read as DWORD {}",key_path_s,key_name_s,res);mouse_scale = 1;},
       }
       mouse_scale
     })
   }};
 }
-pub fn get_mouse_ptr_size() -> (u32,u32) {
+pub fn get_mouse_ptr_size(dpi_scale:bool) -> (u32,u32) {
   // 1. get monitor DPI
-  let dpi = unsafe{nwg::dpi()};
+  let dpi = if dpi_scale {unsafe{nwg::dpi()}} else {96};
   // 2. icon size @ dpi
   let curW      = SM_CXCURSOR;
   let curH      = SM_CYCURSOR;
@@ -446,29 +446,21 @@ impl SystemTray {
         } else {
             debug!("win_tt has been shown as a layered window");
         }
-        let (mut x, mut y) = nwg::GlobalCursor::position();
+        let (mut mx,mut my) = nwg::GlobalCursor::position(); // hotspot, typically top-left
+        let mx = x; let my = y;
         let win_ver = win_ver!();
         let icn_sz_tt_i = (app_data.tooltip_size.0, app_data.tooltip_size.1);
         let w = icn_sz_tt_i.0 as i32;
         let h = icn_sz_tt_i.1 as i32;
-        let flags = if (win_ver.0 >= 6 && win_ver.1 >= 1) || win_ver.0 > 6 {
-            TPM_WORKAREA
-        } else {
-            0
-        };
-        let tt_off = 16; // tooltip offset vs. 🖰 pointer
-        let anchorpoint = &POINT {
-            x: x + tt_off,
-            y: y + tt_off,
-        };
-        let tt_win_sz = &SIZE { cx: w, cy: h };
-        let p_sz = 6; // 🖰 pointer size to make sure tooltip doesn't overlap
-        let excluderect = &RECT {
-            left: x - p_sz,
-            right: x + p_sz,
-            top: y - p_sz,
-            bottom: x + p_sz,
-        }; //Avoid ~ mouse pointer area
+        let flags   = if (win_ver.0>=6 && win_ver.1 >=1) || win_ver.0>6 {TPM_WORKAREA}else{0};
+        let (mouse_ptr_w,mouse_ptr_h) = get_mouse_ptr_size(false); // 🖰 pointer size to make sure tooltip doesn't overlap, don't adjust for dpi in internal calculations
+        let     tt_off_x    = (mouse_ptr_w as f64 * 0.25).round() as i32; // tooltip offset vs. 🖰 pointer by 25% its size
+        let     tt_off_y    = (mouse_ptr_h as f64 * 0.25).round() as i32; //
+        let (mouse_ptr_w,mouse_ptr_h) = (mouse_ptr_w as i32,mouse_ptr_h as i32);
+        let     anchorpoint = &POINT{ x:x+tt_off_x, y:y+tt_off_y};
+        let     tt_win_sz   = &SIZE {cx:w       ,cy:h};
+        let     excluderect = &    RECT{left:x.saturating_sub(mouse_ptr_w), right :x.saturating_add(mouse_ptr_w) // assuming ~top-left hotspot
+          ,                             top :y.saturating_sub(mouse_ptr_h), bottom:y.saturating_add(mouse_ptr_h), }; //Avoid ~ mouse pointer area
         let out_rect = &mut RECT {
             left: 0,
             right: 0,
@@ -484,11 +476,8 @@ impl SystemTray {
         }
         let dpi = unsafe{nwg::dpi()};
         let xx = (x as f64 / (dpi as f64 / 96_f64)).round() as i32; // adjust dpi for layout
-        let yy = (y as f64 / (dpi as f64 / 96_f64)).round() as i32;
-        trace!(
-            "🖰 @{x}⋅{y} (upd{}) @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags}",
-            ret != 0
-        );
+        let yy = (y as f64 / (dpi as f64 / 96_f64)).round() as i32; // TODO: somehow still shown a bit too far off from the pointer
+        trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}",ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);
         self.win_tt_ifr.set_bitmap(img);
         self.win_tt.set_position(xx, yy);
         self.win_tt.set_visible(true);
