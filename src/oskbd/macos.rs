@@ -9,6 +9,8 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
+use core_graphics::base::CGFloat;
+use core_graphics::display::{CGDisplay, CGPoint};
 use core_graphics::event::{
     CGEvent, CGEventField, CGEventTapLocation, CGEventType, CGMouseButton, EventField,
 };
@@ -17,7 +19,9 @@ use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
 use std::convert::TryFrom;
+use std::fmt;
 use std::io;
+use std::io::{Error, ErrorKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -112,11 +116,6 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
         })
         .collect()
 }
-
-use core_graphics::base::CGFloat;
-use core_graphics::display::{CGDisplay, CGPoint};
-use std::fmt;
-use std::io::{Error, ErrorKind};
 
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
