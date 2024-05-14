@@ -2513,6 +2513,12 @@ Show a custom layer icon near the mouse pointer position. Defaults to false. Req
 
 Show a blank square when instead of an icon if a layer isn't configured to have one. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
+[[windows-only-tooltip-no-base]]
+=== Windows only: tooltip-no-base
+<<table-of-contents,Back to ToC>>
+
+Don't show a tooltip layer icon for the base layer (1st deflayer). Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
 [[windows-only-tooltip-duration]]
 === Windows only: tooltip-duration
 <<table-of-contents,Back to ToC>>
