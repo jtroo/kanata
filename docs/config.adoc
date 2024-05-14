@@ -2517,7 +2517,7 @@ Show a blank square when instead of an icon if a layer isn't configured to have 
 === Windows only: tooltip-duration
 <<table-of-contents,Back to ToC>>
 
-Set duration (in ms) for showing a custom layer icon near the mouse pointer position. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
+Set duration (in ms) for showing a custom layer icon near the mouse pointer position. 0 to never hide. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-size]]
 === Windows only: tooltip-size
