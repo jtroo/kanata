@@ -806,8 +806,11 @@ impl SystemTray {
         );
         Ok(())
     }
-    /// Update tray icon data on layer change
-    fn reload_layer_icon(&self) {
+    fn reload_layer_icon(&self) {let _ = self.reload_cfg_or_layer_icon(false);}
+    /// Update tray icon data on config reload
+    fn reload_cfg_icon  (&self) {let _ = self.reload_cfg_or_layer_icon(true );}
+    /// Update tray icon data on layer change (and config reload)
+    fn reload_cfg_or_layer_icon(&self,is_cfg:bool) -> Result<()> {
         if let Some(cfg) = CFG.get() {
             if let Some(k) = cfg.try_lock() {
                 let paths = &k.cfg_paths;
@@ -840,6 +843,7 @@ impl SystemTray {
                 }
 
                 let clear = self.update_tooltip_data(&k);
+                if is_cfg {*self.app_data.borrow_mut() = update_app_data(&k)?;}
                 self.tray.set_tip(&cfg_layer_pkey_s);
                 self.update_tray_icon(
                     cfg_layer_pkey,
@@ -855,6 +859,7 @@ impl SystemTray {
         } else {
             warn!("✗ Layer indicator NOT changed, no CFG");
         };
+        Ok(())
     }
     /// Update tray icon data given various config/layer info
     /// * `cfg_layer_pkey` - "path␤🗍: layer_name" unique icon id
@@ -1269,7 +1274,9 @@ pub mod system_tray_ui {
                     match evt {
                         E::OnNotice =>
                             if handle == evt_ui.layer_notice {
-                                SystemTray::reload_layer_icon(&evt_ui);}
+                                SystemTray::reload_layer_icon(&evt_ui);
+                            } else if handle == evt_ui.cfg_notice {
+                                SystemTray::reload_cfg_icon(&evt_ui);}
                         E::OnWindowClose =>
                             if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
                         E::OnMousePress(MousePressEvent::MousePressLeftUp) =>
