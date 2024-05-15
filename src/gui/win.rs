@@ -1134,6 +1134,7 @@ pub mod system_tray_ui {
                 let mut tray_item_dyn = d.tray_item_dyn.borrow_mut();
                 let mut img_dyn = d.img_dyn.borrow_mut();
                 let mut icon_act_key = d.icon_act_key.borrow_mut();
+                let mut icon_0_key = d.icon_0_key.borrow_mut();
                 const MENU_ACC: &str = "1234567890ASDFGQWERTZXCVBYUIOPHJKLNM";
                 const M_E: usize = MENU_ACC.len() - 1;
                 let layer0_icon_s = &app_data.layer0_icon.clone().unwrap_or("".to_string());
@@ -1178,6 +1179,7 @@ pub mod system_tray_ui {
                                 cfg_layer_pkey.push(cfg_p.clone());
                                 cfg_layer_pkey.push(PRE_LAYER.to_owned() + &app_data.layer0_name);
                                 let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
+                                *icon_0_key = Some(cfg_layer_pkey.clone());
                                 if let Ok(icn) = d.get_icon_from_file(&ico_p) {
                                     debug!("✓ main 0 config: using icon for {}", cfg_layer_pkey_s);
                                     main_tray_icon_l = icn.tray.copy_as_icon();

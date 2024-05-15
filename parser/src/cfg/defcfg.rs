@@ -64,6 +64,8 @@ pub struct CfgOptions {
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_show_blank: bool,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub tooltip_no_base: bool,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_duration: u16,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_size: (u16, u16),
@@ -129,6 +131,8 @@ impl Default for CfgOptions {
             tooltip_layer_changes : false,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             tooltip_show_blank : false,
+            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+            tooltip_no_base : true,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             tooltip_duration : 500,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
@@ -463,6 +467,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
                         }
                     }
+                    "tooltip-no-base"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
+                        cfg.tooltip_no_base    = parse_defcfg_val_bool(val, label)?}  }
                     "tooltip-duration" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
