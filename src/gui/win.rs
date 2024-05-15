@@ -58,6 +58,7 @@ pub struct SystemTrayData {
     pub layer0_icon: Option<String>,
     pub icon_match_layer_name: bool,
     pub tooltip_layer_changes: bool,
+    pub tooltip_no_base       :bool,
     pub tooltip_show_blank: bool,
     pub tooltip_duration: u16,
     pub tooltip_size: (u16, u16),
@@ -80,8 +81,10 @@ pub struct SystemTray {
     /// Store dynamically created icons to not load them from a file every time
     /// (icon format for tray icon, bitmap for tray MenuItem icons and tooltips)
     pub img_dyn: RefCell<HashMap<PathBuf, Option<Icn>>>,
-    /// Store 'img_dyn' hashmap key for the currently active icon ('cfg_path:layer_name' format)
+    /// Store 'img_dyn' hashmap key for the currently active icon ('cfg_path:🗍layer_name' format)
     pub icon_act_key: RefCell<Option<PathBuf>>,
+    /// Store 'img_dyn' hashmap key for the first deflayer to allow skipping it in tooltips
+    pub icon_0_key    : RefCell<Option<PathBuf>>,
     /// Store embedded-in-the-binary resources like icons not to load them from a file
     pub embed: nwg::EmbedResource,
     pub icon: nwg::Icon,
@@ -863,18 +866,18 @@ impl SystemTray {
     ) {
         let mut img_dyn = self.img_dyn.borrow_mut(); // update the tray icons
         let mut icon_act_key = self.icon_act_key.borrow_mut(); // update the tray icon active path
-        if clear {
-            *img_dyn = Default::default();
-            *icon_act_key = Default::default();
-            debug!("reloading active config, clearing icon_dyn/_active cache");
-        }
+        let mut icon_0_key      = self.icon_0_key  .borrow_mut(); // update the tray tooltip layer0 path
+        if clear { *img_dyn = Default::default(); *icon_act_key = Default::default(); *icon_0_key = Some(cfg_layer_pkey.clone()); debug!("reloading active config, clearing img_dyn/_active cache");}
         let app_data = self.app_data.borrow();
+        let skip_tt = app_data.tooltip_no_base && icon_0_key.as_ref().filter(|p| **p == cfg_layer_pkey).is_some();
+        if icon_0_key.is_none() {warn!("internal bug?: icon_0_key should never be empty?")}
         if let Some(icn_opt) = img_dyn.get(&cfg_layer_pkey) {
             // 1a config+layer path has already been checked
             if let Some(icn) = icn_opt {
                 self.tray.set_icon(&icn.icon);
                 *icon_act_key = Some(cfg_layer_pkey);
-                self.show_tooltip(Some(&icn.tooltip));
+                if ! skip_tt {
+                self.show_tooltip (Some(&icn.tooltip));}
             } else {
                 info!(
                     "no icon found, using default for config+layer = {}",
@@ -899,7 +902,8 @@ impl SystemTray {
                         cfg_layer_pkey_s
                     );
                     self.tray.set_icon(&icn.icon);
-                    self.show_tooltip(Some(&icn.tooltip));
+                    if ! skip_tt {
+                    self.show_tooltip (Some(&icn.tooltip));}
                     let _ = img_dyn.insert(cfg_layer_pkey.clone(), Some(icn));
                     *icon_act_key = Some(cfg_layer_pkey);
                 } else {
@@ -957,7 +961,8 @@ impl SystemTray {
                         path_cur_cc.display().to_string()
                     );
                     self.tray.set_icon(&icn.icon);
-                    self.show_tooltip(Some(&icn.tooltip));
+                    if ! skip_tt {
+                    self.show_tooltip (Some(&icn.tooltip));}
                     let _ = img_dyn.insert(cfg_layer_pkey.clone(), Some(icn));
                     *icon_act_key = Some(cfg_layer_pkey);
                 } else {
@@ -1349,6 +1354,7 @@ pub fn update_app_data(k: &MutexGuard<Kanata>) -> Result<SystemTrayData> {
         icon_match_layer_name: k.icon_match_layer_name,
         tooltip_layer_changes: k.tooltip_layer_changes,
         tooltip_show_blank: k.tooltip_show_blank,
+        tooltip_no_base: k.tooltip_no_base,
         tooltip_duration: k.tooltip_duration,
         tooltip_size: k.tooltip_size,
         tt_duration_pre: k.tooltip_duration,
