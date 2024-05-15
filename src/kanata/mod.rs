@@ -612,7 +612,7 @@ impl Kanata {
             }
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
-        send_gui_notice();
+        send_gui_cfg_notice();
         Ok(())
     }
 

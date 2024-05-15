@@ -148,9 +148,11 @@ fn main_impl() -> Result<()> {
     native_windows_gui::init().context("Failed to init Native Windows GUI")?;
     let ui = build_tray(&kanata_arc)?;
     let gui_tx = ui.layer_notice.sender();
+    let gui_cfg_tx	= ui.cfg_notice  .sender(); // allows notifying GUI on config reloads
     if GUI_TX.set(gui_tx).is_err() {
         warn!("Someone else set our ‘GUI_TX’");
     };
+    if GUI_CFG_TX.set(gui_cfg_tx).is_err() {warn!("Someone else set our ‘GUI_CFG_TX’");};
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {

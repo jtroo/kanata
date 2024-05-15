@@ -96,6 +96,7 @@ pub struct SystemTray {
     win_tt_ifr: nwg::ImageFrame,
     win_tt_timer: nwg::AnimationTimer,
     pub layer_notice: nwg::Notice,
+    pub cfg_notice: nwg::Notice,
     pub tray: nwg::TrayNotification,
     pub tray_menu: nwg::Menu,
     pub tray_1cfg_m: nwg::Menu,
@@ -120,7 +121,7 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_TX};
+use crate::gui::{CFG, GUI_TX, GUI_CFG_TX};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -128,6 +129,10 @@ pub fn send_gui_notice() {
     } else {
         error!("no GUI_TX to notify GUI thread of layer changes");
     }
+}
+pub fn send_gui_cfg_notice() {
+  if let Some(gui_tx) = GUI_CFG_TX.get() {gui_tx.notice();
+  } else {error!("no GUI_CFG_TX to notify GUI thread of layer changes");}
 }
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name
@@ -1062,6 +1067,9 @@ pub mod system_tray_ui {
             nwg::Notice::builder()
                 .parent(&d.window)
                 .build(&mut d.layer_notice)?;
+            nwg::Notice::builder()
+                .parent(&d.window)
+                .build(&mut d.cfg_notice)?;
             nwg::Menu::builder()
                 .parent(&d.window)
                 .popup(true) /*context menu*/	//
