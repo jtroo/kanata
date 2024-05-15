@@ -58,7 +58,7 @@ pub struct SystemTrayData {
     pub layer0_icon: Option<String>,
     pub icon_match_layer_name: bool,
     pub tooltip_layer_changes: bool,
-    pub tooltip_no_base       :bool,
+    pub tooltip_no_base: bool,
     pub tooltip_show_blank: bool,
     pub tooltip_duration: u16,
     pub tooltip_size: (u16, u16),
@@ -84,7 +84,7 @@ pub struct SystemTray {
     /// Store 'img_dyn' hashmap key for the currently active icon ('cfg_path:🗍layer_name' format)
     pub icon_act_key: RefCell<Option<PathBuf>>,
     /// Store 'img_dyn' hashmap key for the first deflayer to allow skipping it in tooltips
-    pub icon_0_key    : RefCell<Option<PathBuf>>,
+    pub icon_0_key: RefCell<Option<PathBuf>>,
     /// Store embedded-in-the-binary resources like icons not to load them from a file
     pub embed: nwg::EmbedResource,
     pub icon: nwg::Icon,
@@ -121,7 +121,7 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_TX, GUI_CFG_TX};
+use crate::gui::{CFG, GUI_CFG_TX, GUI_TX};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -131,8 +131,11 @@ pub fn send_gui_notice() {
     }
 }
 pub fn send_gui_cfg_notice() {
-  if let Some(gui_tx) = GUI_CFG_TX.get() {gui_tx.notice();
-  } else {error!("no GUI_CFG_TX to notify GUI thread of layer changes");}
+    if let Some(gui_tx) = GUI_CFG_TX.get() {
+        gui_tx.notice();
+    } else {
+        error!("no GUI_CFG_TX to notify GUI thread of layer changes");
+    }
 }
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name
@@ -526,7 +529,9 @@ impl SystemTray {
         self.win_tt_ifr.set_bitmap(img);
         self.win_tt.set_position(xx, yy);
         self.win_tt.set_visible(true);
-        if app_data.tooltip_duration != 0 {self.win_tt_timer.start()};
+        if app_data.tooltip_duration != 0 {
+            self.win_tt_timer.start()
+        };
     }
     /// Hide our tooltip-like notification window
     fn hide_tooltip(&self) {
@@ -649,9 +654,9 @@ impl SystemTray {
             clear = true;
             app_data.tt_duration_pre = k.tooltip_duration;
             trace!("timer duration changed, updating");
-            self.win_tt_timer
-                .set_interval(Duration::from_millis(
-                (k.tooltip_duration.saturating_add(1        )).into()));
+            self.win_tt_timer.set_interval(Duration::from_millis(
+                (k.tooltip_duration.saturating_add(1)).into(),
+            ));
             self.win_tt_timer.set_lifetime(Some(Duration::from_millis(
                 (k.tooltip_duration.saturating_add(TTTIMER_L)).into(),
             )));
@@ -806,11 +811,15 @@ impl SystemTray {
         );
         Ok(())
     }
-    fn reload_layer_icon(&self) {let _ = self.reload_cfg_or_layer_icon(false);}
+    fn reload_layer_icon(&self) {
+        let _ = self.reload_cfg_or_layer_icon(false);
+    }
     /// Update tray icon data on config reload
-    fn reload_cfg_icon  (&self) {let _ = self.reload_cfg_or_layer_icon(true );}
+    fn reload_cfg_icon(&self) {
+        let _ = self.reload_cfg_or_layer_icon(true);
+    }
     /// Update tray icon data on layer change (and config reload)
-    fn reload_cfg_or_layer_icon(&self,is_cfg:bool) -> Result<()> {
+    fn reload_cfg_or_layer_icon(&self, is_cfg: bool) -> Result<()> {
         if let Some(cfg) = CFG.get() {
             if let Some(k) = cfg.try_lock() {
                 let paths = &k.cfg_paths;
@@ -843,7 +852,9 @@ impl SystemTray {
                 }
 
                 let clear = self.update_tooltip_data(&k);
-                if is_cfg {*self.app_data.borrow_mut() = update_app_data(&k)?;}
+                if is_cfg {
+                    *self.app_data.borrow_mut() = update_app_data(&k)?;
+                }
                 self.tray.set_tip(&cfg_layer_pkey_s);
                 self.update_tray_icon(
                     cfg_layer_pkey,
@@ -876,18 +887,30 @@ impl SystemTray {
     ) {
         let mut img_dyn = self.img_dyn.borrow_mut(); // update the tray icons
         let mut icon_act_key = self.icon_act_key.borrow_mut(); // update the tray icon active path
-        let mut icon_0_key      = self.icon_0_key  .borrow_mut(); // update the tray tooltip layer0 path
-        if clear { *img_dyn = Default::default(); *icon_act_key = Default::default(); *icon_0_key = Some(cfg_layer_pkey.clone()); debug!("reloading active config, clearing img_dyn/_active cache");}
+        let mut icon_0_key = self.icon_0_key.borrow_mut(); // update the tray tooltip layer0 path
+        if clear {
+            *img_dyn = Default::default();
+            *icon_act_key = Default::default();
+            *icon_0_key = Some(cfg_layer_pkey.clone());
+            debug!("reloading active config, clearing img_dyn/_active cache");
+        }
         let app_data = self.app_data.borrow();
-        let skip_tt = app_data.tooltip_no_base && icon_0_key.as_ref().filter(|p| **p == cfg_layer_pkey).is_some();
-        if icon_0_key.is_none() {warn!("internal bug?: icon_0_key should never be empty?")}
+        let skip_tt = app_data.tooltip_no_base
+            && icon_0_key
+                .as_ref()
+                .filter(|p| **p == cfg_layer_pkey)
+                .is_some();
+        if icon_0_key.is_none() {
+            warn!("internal bug?: icon_0_key should never be empty?")
+        }
         if let Some(icn_opt) = img_dyn.get(&cfg_layer_pkey) {
             // 1a config+layer path has already been checked
             if let Some(icn) = icn_opt {
                 self.tray.set_icon(&icn.icon);
                 *icon_act_key = Some(cfg_layer_pkey);
-                if ! skip_tt {
-                self.show_tooltip (Some(&icn.tooltip));}
+                if !skip_tt {
+                    self.show_tooltip(Some(&icn.tooltip));
+                }
             } else {
                 info!(
                     "no icon found, using default for config+layer = {}",
@@ -912,8 +935,9 @@ impl SystemTray {
                         cfg_layer_pkey_s
                     );
                     self.tray.set_icon(&icn.icon);
-                    if ! skip_tt {
-                    self.show_tooltip (Some(&icn.tooltip));}
+                    if !skip_tt {
+                        self.show_tooltip(Some(&icn.tooltip));
+                    }
                     let _ = img_dyn.insert(cfg_layer_pkey.clone(), Some(icn));
                     *icon_act_key = Some(cfg_layer_pkey);
                 } else {
@@ -971,8 +995,9 @@ impl SystemTray {
                         path_cur_cc.display().to_string()
                     );
                     self.tray.set_icon(&icn.icon);
-                    if ! skip_tt {
-                    self.show_tooltip (Some(&icn.tooltip));}
+                    if !skip_tt {
+                        self.show_tooltip(Some(&icn.tooltip));
+                    }
                     let _ = img_dyn.insert(cfg_layer_pkey.clone(), Some(icn));
                     *icon_act_key = Some(cfg_layer_pkey);
                 } else {
@@ -1097,7 +1122,8 @@ pub mod system_tray_ui {
                 nwg::AnimationTimer::builder()
                     .parent(&d.window)
                     .interval(Duration::from_millis(
-                        (app_data.tooltip_duration.saturating_add(1)).into()))
+                        (app_data.tooltip_duration.saturating_add(1)).into(),
+                    ))
                     .lifetime(Some(Duration::from_millis(
                         (app_data.tooltip_duration + TTTIMER_L).into(),
                     )))

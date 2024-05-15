@@ -467,8 +467,15 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
                         }
                     }
-                    "tooltip-no-base"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.tooltip_no_base    = parse_defcfg_val_bool(val, label)?}  }
+                    "tooltip-no-base" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.tooltip_no_base = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
                     "tooltip-duration" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
