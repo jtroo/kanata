@@ -510,8 +510,8 @@ impl SystemTray {
         let yy = (y as f64 / (dpi as f64 / 96_f64)).round() as i32;
         self.win_tt.set_position(xx,yy);
         // TODO: somehow still shown a bit too far off from the pointer
-        trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}"
-        ,ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);
+        if log_enabled!(Trace) {let (mx,my) = MXY.get();
+        trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}",ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);}
         (x,y)
     }
     /// Spawn a thread with a new 🖰 pointer watcher (that sends a signal back to GUI which in turn moves the tooltip to the new position)
@@ -521,14 +521,13 @@ impl SystemTray {
       let (m2tt_sndr0,m2tt_rcvr) = std::sync::mpsc::channel::<bool>();
       let m2tt_sndr = m2tt_sndr0.clone();
       {let mut m2tt_sender  = self.m2tt_sender.borrow_mut();
-      //if m2tt_sender.is_some() { info!("m2tt_sender already exist, thought we're just about to launch a new thread!")} // this is fine?
       *m2tt_sender = Some(m2tt_sndr0.clone());}
-      let handler = std::thread::spawn(move || -> Result<()> {info!("  ✓ Starting polling for a 🖰 pointer position");
+      let handler = std::thread::spawn(move || -> Result<()> {debug!("  ✓ Starting polling for a 🖰 pointer position");
         let mut i = 0;
         while i <= ticks {i += 1;
           std::thread::sleep(poll_time);
           match m2tt_rcvr.try_recv() {
-            Ok (_)                          => {info!("extending tooltip watcher instead of launching +1");i=0;}
+            Ok (_)                          => {debug!("extending tooltip watcher instead of launching +1");i=0;}
             Err(TryRecvError::Empty)        => {trace!("send signal to reposition");gui_tx.notice();},
             Err(TryRecvError::Disconnected) => {debug!("internal: m2tt_sender disconnected, no more 🖰 pointer tracking");break;},
           }
@@ -571,18 +570,18 @@ impl SystemTray {
         if let Some((tt2m_sndr,tt2m_rcvr)) = &self.tt2m_channel {
           let mut start = false;
           match tt2m_rcvr.try_recv() {
-            Ok (_)                    => {info!("launch a new thread"); start = true;},
+            Ok (_)                    => {debug!("launch a new thread"); start = true;},
             Err(TryRecvError::Empty)  => {
               if let Some(m2tt_sender) = self.m2tt_sender.borrow().as_ref() {trace!("send signal to extend");
                 m2tt_sender.send(true).unwrap_or_else(|_| error!("internal: couldn't send a signal to the 🖰 pointer watcher!"));
-              } else {info!("no message and no m2tt_sender_o, so no thread should be running, launch a new thread!");
+              } else {debug!("no message and no m2tt_sender_o, so no thread should be running, launch a new thread!");
               start = true;} },
             Err(TryRecvError::Disconnected)   => {error!("internal: tt2m_channel disconnected, no more 🖰 pointer tracking")},
           }
         let duration = 5;
         let poll_time = Duration::from_millis(duration);
         let ticks = (app_data.tooltip_duration as f64 / duration as f64).round() as u16;
-        info!("will tick for {ticks} every {duration} ms to match user {}",app_data.tooltip_duration);
+        debug!("will tick for {ticks} every {duration} ms to match user {}",app_data.tooltip_duration);
           if start {self.update_mouse_watcher(tt2m_sndr.clone(),ticks,poll_time);}
         } else {error!("internal: m2tt_sender doesn't exist can't track 🖰 pointer without it!");}
     }
