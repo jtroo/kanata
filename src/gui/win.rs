@@ -626,7 +626,7 @@ impl SystemTray {
                     error!("internal: tt2m_channel disconnected, no more 🖰 pointer tracking")
                 }
             }
-            let duration = 5;
+            let duration = 16;
             let poll_time = Duration::from_millis(duration);
             let ticks = (app_data.tooltip_duration as f64 / duration as f64).round() as u16;
             debug!(
