@@ -512,7 +512,6 @@ impl SystemTray {
         // TODO: somehow still shown a bit too far off from the pointer
         if log_enabled!(Trace) {let (mx,my) = MXY.get();
         trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}",ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);}
-        (x,y)
     }
     /// Spawn a thread with a new 🖰 pointer watcher (that sends a signal back to GUI which in turn moves the tooltip to the new position)
     fn update_mouse_watcher(&self,tt2m_sndr:ASender<bool>,ticks:u16,poll_time:Duration) {
@@ -563,7 +562,7 @@ impl SystemTray {
         self.win_tt_ifr.set_bitmap(img);
         {let mut m_ptr_wh = self.m_ptr_wh.borrow_mut();
         *m_ptr_wh = get_mouse_ptr_size(false);} // 🖰 pointer size to make sure tooltip doesn't overlap, don't adjust for dpi in internal calculations
-        let (x,y) = self.update_tooltip_pos();
+        self.update_tooltip_pos();
         self.win_tt.set_visible(true);
         if app_data.tooltip_duration != 0 {self.win_tt_timer.start()};
 
