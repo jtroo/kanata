@@ -4,6 +4,8 @@ use core::cell::RefCell;
 use log::Level::*;
 use winapi::shared::windef::HWND;
 
+use std::sync::mpsc::{Receiver, Sender as ASender, SyncSender as SSender, TryRecvError};
+use std::cell::OnceCell;
 use core::ffi::c_void;
 use native_windows_gui as nwg;
 use parking_lot::Mutex;
@@ -97,6 +99,10 @@ pub struct SystemTray {
     win_tt_timer: nwg::AnimationTimer,
     pub layer_notice: nwg::Notice,
     pub cfg_notice: nwg::Notice,
+    pub tt_notice   	: nwg::Notice,
+    pub tt2m_channel	:         Option<(ASender<bool>,Receiver<bool>)>,
+    pub m2tt_sender 	: RefCell<Option< ASender<bool>                >>, // receiver will be created before a thread is spawned and moved there
+    pub m_ptr_wh    	: RefCell<(u32,u32)>,
     pub tray: nwg::TrayNotification,
     pub tray_menu: nwg::Menu,
     pub tray_1cfg_m: nwg::Menu,
@@ -453,37 +459,16 @@ impl SystemTray {
         menu_item.set_bitmap(None);
         bail!("✗couldn't get a valid icon for {:?}", cfg_p)
     }
+    /// Move tooltip to the current mouse pointer position
+    fn update_tooltip_pos(&self) -> (i32,i32) {
     /// Show our tooltip-like notification window
-    fn show_tooltip(&self, img: Option<&nwg::Bitmap>) {
         let app_data = self.app_data.borrow();
-        if !app_data.tooltip_layer_changes {
-            return;
-        };
-        if img.is_none() && !app_data.tooltip_show_blank {
-            self.win_tt.set_visible(false);
-            return;
-        };
-        static IS_INIT: OnceLock<bool> = OnceLock::new();
-        if IS_INIT.get().is_none() {
-            // layered win needs a special call after being initialized to appear
-            let _ = IS_INIT.set(true);
-            debug!("win_tt hasn't been shown as a layered window");
-            let win_id = self
-                .win_tt
-                .handle
-                .hwnd()
-                .expect("win_tt should be a valid/existing window!");
-            show_layered_win(win_id);
-        } else {
-            debug!("win_tt has been shown as a layered window");
-        }
         let (mut x, mut y) = nwg::GlobalCursor::position(); // hotspot, typically top-left
         let mx = x;
         let my = y;
         let win_ver = win_ver!();
-        let icn_sz_tt_i = (app_data.tooltip_size.0, app_data.tooltip_size.1);
-        let w = icn_sz_tt_i.0 as i32;
-        let h = icn_sz_tt_i.1 as i32;
+        let w = app_data.tooltip_size.0 as i32; // image width/height to take it into account when calculating overlaps
+        let h = app_data.tooltip_size.1 as i32;
         let flags = if (win_ver.0 >= 6 && win_ver.1 >= 1) || win_ver.0 > 6 {
             TPM_WORKAREA
         } else {
@@ -491,7 +476,7 @@ impl SystemTray {
         };
         // 🖰 pointer size to make sure tooltip doesn't overlap,
         // don't adjust for dpi in internal calculations
-        let (mouse_ptr_w, mouse_ptr_h) = get_mouse_ptr_size(false);
+        let (mouse_ptr_w,mouse_ptr_h) = *self.m_ptr_wh.borrow(); // 🖰 pointer size to make sure tooltip doesn't overlap, don't adjust for dpi in internal calculations
         // tooltip offset vs. 🖰 pointer by 25% its size
         let tt_off_x = (mouse_ptr_w as f64 * 0.25).round() as i32;
         let tt_off_y = (mouse_ptr_h as f64 * 0.25).round() as i32; //
@@ -523,15 +508,83 @@ impl SystemTray {
         let dpi = unsafe { nwg::dpi() };
         let xx = (x as f64 / (dpi as f64 / 96_f64)).round() as i32; // adjust dpi for layout
         let yy = (y as f64 / (dpi as f64 / 96_f64)).round() as i32;
+        self.win_tt.set_position(xx,yy);
         // TODO: somehow still shown a bit too far off from the pointer
         trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}"
         ,ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);
-        self.win_tt_ifr.set_bitmap(img);
-        self.win_tt.set_position(xx, yy);
-        self.win_tt.set_visible(true);
-        if app_data.tooltip_duration != 0 {
-            self.win_tt_timer.start()
+        (x,y)
+    }
+    /// Spawn a thread with a new 🖰 pointer watcher (that sends a signal back to GUI which in turn moves the tooltip to the new position)
+    fn update_mouse_watcher(&self,tt2m_sndr:ASender<bool>,ticks:u16,poll_time:Duration) {
+      info!("   ✓   update_mouse_watcher");
+      let gui_tx = self.tt_notice.sender(); // allows notifying GUI on tooltip move updates
+      let (m2tt_sndr0,m2tt_rcvr) = std::sync::mpsc::channel::<bool>();
+      let m2tt_sndr = m2tt_sndr0.clone();
+      {let mut m2tt_sender  = self.m2tt_sender.borrow_mut();
+      //if m2tt_sender.is_some() { info!("m2tt_sender already exist, thought we're just about to launch a new thread!")} // this is fine?
+      *m2tt_sender = Some(m2tt_sndr0.clone());}
+      let handler = std::thread::spawn(move || -> Result<()> {info!("  ✓ Starting polling for a 🖰 pointer position");
+        let mut i = 0;
+        while i <= ticks {i += 1;
+          std::thread::sleep(poll_time);
+          match m2tt_rcvr.try_recv() {
+            Ok (_)                          => {info!("extending tooltip watcher instead of launching +1");i=0;}
+            Err(TryRecvError::Empty)        => {trace!("send signal to reposition");gui_tx.notice();},
+            Err(TryRecvError::Disconnected) => {debug!("internal: m2tt_sender disconnected, no more 🖰 pointer tracking");break;},
+          }
+        } debug!("  ✗ Stopped polling for a 🖰 pointer position");
+        tt2m_sndr.send(true)?;
+        Ok(())
+      });
+    }
+    /// Show our tooltip-like notification window
+    fn show_tooltip(&self, img:Option<&nwg::Bitmap>) {
+        let app_data = self.app_data.borrow();
+        if !app_data.tooltip_layer_changes {
+            return;
         };
+        if img.is_none() && !app_data.tooltip_show_blank {
+            self.win_tt.set_visible(false);
+            return;
+        };
+        static IS_INIT: OnceLock<bool> = OnceLock::new();
+        if IS_INIT.get().is_none() {
+            // layered win needs a special call after being initialized to appear
+            let _ = IS_INIT.set(true);
+            debug!("win_tt hasn't been shown as a layered window");
+            let win_id = self
+                .win_tt
+                .handle
+                .hwnd()
+                .expect("win_tt should be a valid/existing window!");
+            show_layered_win(win_id);
+        } else {
+            debug!("win_tt has been shown as a layered window");
+        }
+        self.win_tt_ifr.set_bitmap(img);
+        {let mut m_ptr_wh = self.m_ptr_wh.borrow_mut();
+        *m_ptr_wh = get_mouse_ptr_size(false);} // 🖰 pointer size to make sure tooltip doesn't overlap, don't adjust for dpi in internal calculations
+        let (x,y) = self.update_tooltip_pos();
+        self.win_tt.set_visible(true);
+        if app_data.tooltip_duration != 0 {self.win_tt_timer.start()};
+
+        if let Some((tt2m_sndr,tt2m_rcvr)) = &self.tt2m_channel {
+          let mut start = false;
+          match tt2m_rcvr.try_recv() {
+            Ok (_)                    => {info!("launch a new thread"); start = true;},
+            Err(TryRecvError::Empty)  => {
+              if let Some(m2tt_sender) = self.m2tt_sender.borrow().as_ref() {trace!("send signal to extend");
+                m2tt_sender.send(true).unwrap_or_else(|_| error!("internal: couldn't send a signal to the 🖰 pointer watcher!"));
+              } else {info!("no message and no m2tt_sender_o, so no thread should be running, launch a new thread!");
+              start = true;} },
+            Err(TryRecvError::Disconnected)   => {error!("internal: tt2m_channel disconnected, no more 🖰 pointer tracking")},
+          }
+        let duration = 5;
+        let poll_time = Duration::from_millis(duration);
+        let ticks = (app_data.tooltip_duration as f64 / duration as f64).round() as u16;
+        info!("will tick for {ticks} every {duration} ms to match user {}",app_data.tooltip_duration);
+          if start {self.update_mouse_watcher(tt2m_sndr.clone(),ticks,poll_time);}
+        } else {error!("internal: m2tt_sender doesn't exist can't track 🖰 pointer without it!");}
     }
     /// Hide our tooltip-like notification window
     fn hide_tooltip(&self) {
@@ -1092,6 +1145,9 @@ pub mod system_tray_ui {
                 .strict(true) /*use sys, not panic, if missing*/
                 .build(&mut d.icon)?;
 
+            let (sndr,rcvr) = std::sync::mpsc::channel();
+            d.tt2m_channel = Some((sndr,rcvr));
+
             // Controls
             nwg::MessageWindow::builder().build(&mut d.window)?;
             nwg::Notice::builder()
@@ -1104,6 +1160,8 @@ pub mod system_tray_ui {
                 .parent(&d.window)
                 .popup(true) /*context menu*/	//
                 .build(&mut d.tray_menu)?;
+            nwg::Notice                 ::builder().parent(&d.window)
+                .                           build(       &mut d.tt_notice    )?  ;
             nwg::Menu::builder()
                 .parent(&d.tray_menu)
                 .text("&F Load config") //
@@ -1302,7 +1360,8 @@ pub mod system_tray_ui {
                             if handle == evt_ui.layer_notice {
                                 SystemTray::reload_layer_icon(&evt_ui);
                             } else if handle == evt_ui.cfg_notice {
-                                SystemTray::reload_cfg_icon(&evt_ui);}
+                                SystemTray::reload_cfg_icon(&evt_ui);
+                            } else if handle == evt_ui.tt_notice    {SystemTray::update_tooltip_pos(&evt_ui);}
                         E::OnWindowClose =>
                             if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
                         E::OnMousePress(MousePressEvent::MousePressLeftUp) =>
