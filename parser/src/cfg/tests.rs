@@ -1295,6 +1295,8 @@ fn parse_all_defcfg() {
   tooltip-no-base yes
   tooltip-duration 300
   tooltip-size 24,24
+  notify-cfg-reload yes
+  notify-cfg-reload-silent no
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
   windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
