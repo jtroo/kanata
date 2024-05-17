@@ -68,6 +68,10 @@ pub struct CfgOptions {
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_duration: u16,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub notify_cfg_reload: bool,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub notify_cfg_reload_silent: bool,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub tooltip_size: (u16, u16),
 }
 
@@ -135,6 +139,10 @@ impl Default for CfgOptions {
             tooltip_no_base : true,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             tooltip_duration : 500,
+            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+            notify_cfg_reload: true,
+            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+            notify_cfg_reload_silent: false,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             tooltip_size : (24,24),
         }
@@ -485,6 +493,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.tooltip_duration = parse_cfg_val_u16(val, label, false)?
                         }
                     }
+                    "notify-cfg-reload"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
+                        cfg.notify_cfg_reload    = parse_defcfg_val_bool(val, label)?}  }
+                    "notify-cfg-reload-silent"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
+                        cfg.notify_cfg_reload_silent    = parse_defcfg_val_bool(val, label)?}  }
                     "tooltip-size" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),

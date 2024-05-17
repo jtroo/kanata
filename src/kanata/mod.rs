@@ -222,6 +222,12 @@ pub struct Kanata {
     /// Show tooltip on layer changes for this duration (ms)
     #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_duration: u16,
+    /// Show system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_cfg_reload: bool,
+    /// Disable sound for the system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_cfg_reload_silent: bool,
     /// Set tooltip size (width, height)
     #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_size: (u16, u16),
@@ -402,6 +408,10 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             tooltip_duration: cfg.options.tooltip_duration,
             #[cfg(all(target_os = "windows", feature = "gui"))]
+            notify_cfg_reload: cfg.options.notify_cfg_reload,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            notify_cfg_reload_silent: cfg.options.notify_cfg_reload_silent,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
             tooltip_size: cfg.options.tooltip_size,
         })
     }
@@ -512,6 +522,10 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             tooltip_duration: cfg.options.tooltip_duration,
             #[cfg(all(target_os = "windows", feature = "gui"))]
+            notify_cfg_reload: cfg.options.notify_cfg_reload,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            notify_cfg_reload_silent: cfg.options.notify_cfg_reload_silent,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
             tooltip_size: cfg.options.tooltip_size,
         })
     }
@@ -567,6 +581,8 @@ impl Kanata {
             self.tooltip_no_base = cfg.options.tooltip_no_base;
             self.tooltip_show_blank = cfg.options.tooltip_show_blank;
             self.tooltip_duration = cfg.options.tooltip_duration;
+            self.notify_cfg_reload = cfg.options.notify_cfg_reload;
+            self.notify_cfg_reload_silent = cfg.options.notify_cfg_reload_silent;
             self.tooltip_size = cfg.options.tooltip_size;
         }
 
