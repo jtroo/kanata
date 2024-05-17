@@ -1095,14 +1095,14 @@ recently pressed `+one-shot+` key.
 
 There are four variants of the `+one-shot+` action:
 
-- `+one-shot-press+`:
+- `+one-shot-press+` or `+one-shot↓+`:
   end on the first press of another key
-- `+one-shot-release+`:
+- `+one-shot-release+` or `+one-shot↑+`:
   end on the first release of another key
-- `+one-shot-press-pcancel+`:
+- `+one-shot-press-pcancel+` or `+one-shot↓🗙+`:
   end on the first press of another key
   or on re-press of another active one-shot key
-- `+one-shot-release-pcancel+`:
+- `+one-shot-release-pcancel+` or `+one-shot↑🗙+`:
   end on the first release of another key
   or on re-press of another active one-shot key
 
