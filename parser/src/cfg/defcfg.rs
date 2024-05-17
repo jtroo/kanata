@@ -493,10 +493,24 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.tooltip_duration = parse_cfg_val_u16(val, label, false)?
                         }
                     }
-                    "notify-cfg-reload"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.notify_cfg_reload    = parse_defcfg_val_bool(val, label)?}  }
-                    "notify-cfg-reload-silent"          => {#[cfg(all(any(target_os="windows",target_os="unknown"),feature="gui"))]{
-                        cfg.notify_cfg_reload_silent    = parse_defcfg_val_bool(val, label)?}  }
+                    "notify-cfg-reload" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.notify_cfg_reload = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "notify-cfg-reload-silent" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.notify_cfg_reload_silent = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
                     "tooltip-size" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
