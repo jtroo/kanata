@@ -96,7 +96,10 @@ pub struct SystemTray {
     win_tt_timer: nwg::AnimationTimer,
     pub layer_notice: nwg::Notice,
     pub cfg_notice: nwg::Notice,
+    pub err_notice: nwg::Notice,
     pub tt_notice: nwg::Notice,
+    /// Receiver of error message content sent from other threads (e.g., from key event thread via WinDbgLogger that will also notify our GUI (but not pass data) after sending data to this receiver)
+    pub err_recv : Option<Receiver<(String,String)>>,
     pub tt2m_channel: Option<(ASender<bool>, Receiver<bool>)>,
     // receiver will be created before a thread is spawned and moved there
     pub m2tt_sender: RefCell<Option<ASender<bool>>>,
@@ -125,7 +128,7 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_CFG_TX, GUI_TX};
+use crate::gui::{CFG, GUI_CFG_TX, GUI_TX, GUI_ERR_TX, GUI_ERR_MSG_TX};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -140,6 +143,20 @@ pub fn send_gui_cfg_notice() {
     } else {
         error!("no GUI_CFG_TX to notify GUI thread of layer changes");
     }
+}
+pub fn send_gui_err_notice() {
+  if let Some(gui_tx) = GUI_ERR_TX.get() {gui_tx.notice();
+  } else {error!("no GUI_ERR_TX to notify GUI thread of errors");}
+}
+pub fn show_err_msg_nofail(title:String,msg:String) {
+  // log gets intialized before gui, so some errors might have no target to log to, ignore it
+  if let Some(gui_msg_tx) = GUI_ERR_MSG_TX.get() {
+    if gui_msg_tx.send((title,msg)).is_err() {warn!("send_gui_err_msg_notice failed to use OS notifications")
+    } else { // can't Error to avoid an ∞ error loop ↑
+      if let Some(gui_tx) = GUI_ERR_TX.get() {gui_tx.notice();
+      } //else {warn!("no GUI_ERR_TX to notify GUI thread of errors")}
+    }
+  } //else {warn!("no GUI_ERR_MSG_TX to notify GUI thread of errors")}
 }
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name
@@ -921,6 +938,24 @@ impl SystemTray {
     fn reload_layer_icon(&self) {
         let _ = self.reload_cfg_or_layer_icon(false);
     }
+    /// Show OS notification message with an error coming from WinDbgLogger
+    fn notify_error(&self) {
+      use nwg::TrayNotificationFlags as f_tray;
+      let mut msg_title     = "".to_string();
+      let mut msg_content   = "".to_string();
+      let mut flags         = f_tray::empty();
+      if let Some(gsui_msg_rx) = &self.err_recv {
+        match gsui_msg_rx.try_recv() {
+          Ok ((title,msg))                  => {msg_title += &title; msg_content += &msg;}
+          Err(TryRecvError::Empty)          => {msg_title += "internal"; msg_content += "channel to receive errors is Empty";}
+          Err(TryRecvError::Disconnected)   => {msg_title += "internal"; msg_content += "channel to receive errors is Disconnected";}
+        }
+      } else {msg_title += "internal"; msg_content += "SystemTray is supposed to have a valid 'err_recv' field value"}
+      let flags   = f_tray::empty() | f_tray::ERROR_ICON;
+      let msg_title   = strip_ansi_escapes::strip_str(&msg_title);
+      let msg_content = strip_ansi_escapes::strip_str(&msg_content);
+      self.tray.show(&msg_content, Some(&msg_title), Some(flags), Some(&self.icon));
+    }
     /// Update tray icon data on config reload
     fn reload_cfg_icon(&self) {
         let _ = self.reload_cfg_or_layer_icon(true);
@@ -1227,6 +1262,9 @@ pub mod system_tray_ui {
 
             let (sndr, rcvr) = std::sync::mpsc::channel();
             d.tt2m_channel = Some((sndr, rcvr));
+            let (sndr,rcvr) = std::sync::mpsc::channel();
+            d.err_recv = Some(rcvr);
+            if GUI_ERR_MSG_TX.set(sndr).is_err() {warn!("Someone else set our ‘GUI_ERR_MSG_TX’");};
 
             // Controls
             nwg::MessageWindow::builder().build(&mut d.window)?;
@@ -1243,6 +1281,8 @@ pub mod system_tray_ui {
             nwg::Notice::builder()
                 .parent(&d.window)
                 .build(&mut d.tt_notice)?;
+            nwg::Notice                 ::builder().parent(&d.window)
+              .                           build(       &mut d.err_notice    )?  ;
             nwg::Menu::builder()
                 .parent(&d.tray_menu)
                 .text("&F Load config") //
@@ -1442,6 +1482,8 @@ pub mod system_tray_ui {
                                 SystemTray::reload_layer_icon(&evt_ui);
                             } else if handle == evt_ui.cfg_notice {
                                 SystemTray::reload_cfg_icon(&evt_ui);
+              } else                                   if handle == evt_ui.err_notice   {SystemTray::notify_error(&evt_ui);
+
                             } else if handle == evt_ui.tt_notice {
                                 SystemTray::update_tooltip_pos(&evt_ui);}
                         E::OnWindowClose =>
