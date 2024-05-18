@@ -761,8 +761,8 @@ and would output `ctrl+c` in the example case.
 
 You can release a held key or layer via these actions:
 
-* `release-key`: release a key, accepts `defsrc` compatible names
-* `release-layer`: release a while-held layer
+* `release-key` or `key↑`: release a key, accepts `defsrc` compatible names
+* `release-layer` or `layer↑`: release a while-held layer
 
 NOTE:
 A lower-level detail of these actions is that they operate on output states
@@ -886,10 +886,10 @@ The actions are as follows:
 
 The mouse wheel actions are:
 
-* `mwheel-up`: vertical scroll up
-* `mwheel-down`: vertical scroll down
-* `mwheel-left`: horizontal scroll left
-* `mwheel-right`: horizontal scroll right
+* `mwheel-up` or `🖱↑`: vertical scroll up
+* `mwheel-down` or `🖱↓`: vertical scroll down
+* `mwheel-left` or `🖱←`: horizontal scroll left
+* `mwheel-right` or `🖱→`: horizontal scroll right
 
 All of these actions accept two number strings. The first is the interval
 (unit: ms) between scroll actions. The second number is the distance
@@ -918,10 +918,10 @@ you will probably get way more events than you intended.
 
 The mouse movement actions are:
 
-* `movemouse-up`
-* `movemouse-down`
-* `movemouse-left`
-* `movemouse-right`
+* `movemouse-up` or `🖰↑`
+* `movemouse-down` or `🖰↓`
+* `movemouse-left` or `🖰←`
+* `movemouse-right` or `🖰→`
 
 Similar to the mouse wheel actions, all of these actions accept two number strings.
 The first is the interval (unit: ms) between movement actions and the second number
@@ -930,10 +930,10 @@ is the distance (unit: pixels) of each movement.
 The following are variants of the above mouse movements that apply linear mouse
 acceleration from the minimum distance to the maximum distance as the mapped key is held.
 
-* `movemouse-accel-up`
-* `movemouse-accel-down`
-* `movemouse-accel-left`
-* `movemouse-accel-right`
+* `movemouse-accel-up` or `🖰accel↑`
+* `movemouse-accel-down` or `🖰accel↓`
+* `movemouse-accel-left` or `🖰accel←`
+* `movemouse-accel-right` or `🖰accel→`
 
 All these actions accept four number strings. The first number is the
 interval (unit: ms) between movement actions. The second number is the time it
@@ -947,7 +947,7 @@ There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inh
 ==== Set absolute mouse position
 <<table-of-contents,Back to ToC>>
 
-The action `setmouse` sets the absolute mouse position.
+The action `setmouse` or `set🖰` sets the absolute mouse position.
 
 WARNING: This is only supported in Windows right now.
 For an interesting keyboard-centric mouse solution in Linux,
@@ -968,7 +968,7 @@ Experimentation will be needed.
 ==== Modify the speed of mouse movements
 <<table-of-contents,Back to ToC>>
 
-The action `movemouse-speed` modifies the speed at which `movemouse` and
+The action `movemouse-speed` or `🖰speed` modifies the speed at which `movemouse` and
 `movemouse-accel` function at runtime. It does this by expanding or shrinking
 `min_distance` and `max_distance` while the action key is pressed.
 
@@ -1203,10 +1203,10 @@ activate.
 
 There are two additional variants of `+tap-hold+`:
 
-* `+tap-hold-press+`
+* `+tap-hold-press+` or `+tap🠿+`
 ** If there is a press of a different key, the hold action is activated even if
 the hold timeout hasn't expired yet
-* `+tap-hold-release+`
+* `+tap-hold-release+` or `+tap🠽+`
 ** If there is a press+release of a different key, the hold action is activated
 even if the hold timeout hasn't expired yet
 
@@ -1225,15 +1225,15 @@ but you should be wary of activating the hold action unintentionally.
 
 There are further additional variants of `tap-hold-press` and `tap-hold-release`:
 
-- `tap-hold-press-timeout`
-- `tap-hold-release-timeout`
+- `tap-hold-press-timeout` or `tap🠿timeout`
+- `tap-hold-release-timeout` or `tap🠽timeout`
 
 These variants take a 5th parameter, in addition to the same 4 as the other
 variants. The 5th parameter is another action, which will activate if the hold
 timeout expires as opposed to being triggered by other key actions, whereas the
 non `-timeout` variants will activate the hold action in both cases.
 
-- `tap-hold-release-keys`
+- `tap-hold-release-keys` or `tap🠽keys`
 
 This variant takes a 5th parameter which is a list of keys
 that trigger an early tap
@@ -1259,7 +1259,7 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 )
 ----
 
-- `tap-hold-except-keys`
+- `tap-hold-except-keys` or `tap-hold🗙keys`
 
 This variant takes a 5th parameter which is a list of keys
 that always trigger a tap
@@ -1343,7 +1343,7 @@ needs the delay of `5` to work correctly.
 ----
 
 There is a variant of the `+macro+` action that will cancel all active macros
-upon releasing the key: `+macro-release-cancel+`. It is parsed identically to
+upon releasing the key: `+macro-release-cancel+` or `+macro↑🗙+`. It is parsed identically to
 the non-cancelling version. An example use case for this action is holding down
 a key to get different outputs, similar to tap-dance but one can see which keys
 are being outputted.
@@ -1374,7 +1374,9 @@ only the most recently pressed macro will be repeated.
 ----
 (defalias
   mr1 (macro-repeat mltp)
+  mr2 (macro⟳ mltp)
   mr2 (macro-repeat-release-cancel mltp)
+  mr2 (macro⟳↑🗙 mltp)
 )
 ----
 
@@ -1450,7 +1452,7 @@ can still be checked within `fork`, unlike what `XX` does.
 === caps-word
 <<table-of-contents,Back to ToC>>
 
-The `caps-word` action triggers a state where the `lsft` key
+The `caps-word` or `word⇪` action triggers a state where the `lsft` key
 will be added to the active key list
 when a set of specific keys are active.
 The keys are: `a-z` and `-`, which will be outputted as `A-Z` and `_`
@@ -1479,7 +1481,7 @@ and the extra keys in this list:
 - `bspc del`
 - `up down left rght`
 
-You can use `caps-word-custom` instead of `caps-word`
+You can use `caps-word-custom` or `word⇪-custom` instead of `caps-word`
 if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
@@ -1527,7 +1529,7 @@ and send one or more keys.
 After the `unmod` key is released, the released modifiers are pressed again.
 The modifiers affected are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
 
-A variant of `unmod` is `unshift`.
+A variant of `unmod` is `unshift` or `un⇧`.
 This action only releases the `lsft,rsft` keys.
 This can be useful for forcing unshifted keys while AltGr is still held.
 
@@ -2619,9 +2621,9 @@ You can define up to 767 virtual keys.
 These keys are not directly mapped to any physical key presses or releases.
 Virtual keys can be activated via special actions:
 
-* `(on-press    <action> <virtual key name>)`:
+* `(on-press    <action> <virtual key name>)` or `on↓`:
 Activate a virtual key action when pressing the associated input key.
-* `(on-release  <action> <virtual key name>)`:
+* `(on-release  <action> <virtual key name>)` or `on↑`:
 Activate a virtual key action when releasing the associated input key.
 * `(on-idle <milliseconds> <action> <virtual key name>)`:
 Activate a virtual key action when kanata has been idle
@@ -2699,9 +2701,9 @@ Fake keys can be defined inside of `deffakekeys`.
 
 The actions are:
 
-* `+(on-press-fakekey <fake key name> <action>)+`: Activate a fake key
+* `+(on-press-fakekey <fake key name> <action>)+` or `on↓fakekey`: Activate a fake key
   action when pressing the key mapped to this action.
-* `+(on-release-fakekey <fake key name> <action>)+`: Activate a fake key
+* `+(on-release-fakekey <fake key name> <action>)+` or `on↑fakekey`: Activate a fake key
   action when releasing the key mapped to this action.
 * `+(on-idle-fakekey <fake key name> <action> <idle time>)+`:
   Activate a fake key action when kanata has been idle
