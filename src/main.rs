@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
+// disable default console for a Windows GUI app
 mod main_lib;
 
 use anyhow::{bail, Result};
