@@ -2543,6 +2543,12 @@ Show system notification message on config reload. Defaults to true. Requires <<
 
 Disable sound for the system notification message on config reload. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
+[[windows-only-notify-error]]
+=== Windows only: notify-error
+<<table-of-contents,Back to ToC>>
+
+Show system notification message on kanata errors. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
 <<table-of-contents,Back to ToC>>
