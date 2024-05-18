@@ -120,7 +120,7 @@ simulated_output = ["indoc"]
 simulated_input = ["indoc"]
 passthru_ahk = ["simulated_input","simulated_output"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["win_manifest","native-windows-derive","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","dep:windows-sys"]
+gui = ["win_manifest","native-windows-derive","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","dep:windows-sys","win_sendinput_send_scancodes","win_llhook_read_scancodes"]
 
 [profile.release]
 opt-level = "z"
