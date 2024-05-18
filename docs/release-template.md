@@ -1,5 +1,7 @@
 ## Configuration guide
 
+<!-- NOTE: GitHub release doc seems to not support multiline paragraph joining as opposed to other places markdown is used in GitHub. Keep paragraphs on one line in this file, as ugly as it is to do so. -->
+
 Link to the appropriate configuration guide version: [guide link](https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc).
 
 ## Changelog (since <TODO: previous_version_here>)
@@ -144,6 +146,20 @@ C:\Users\my_user\Documents\
 
 </details>
 
+## kanata\_passthru.dll
+
+<details>
+<summary>Explanation</summary>
+
+The Windows `kanata_passthru.dll` file allows using Kanata as a library within AutoHotkey to avoid conflicts between keyboard hooks installed by both. You can channel keyboard input events received by AutoHotkey into Kanata's keyboard engine and get the transformed keyboard output events (per your Kanata config) that AutoHotkey can then send to the OS.
+</details>
+
+<details>
+<summary>Instructions</summary>
+
+Download `kanata_passthru.dll`, then the [simulated_passthru_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief example, place the dll there, open `kanata_passthru.ahk` to read what the example does and then double-click to launch it.
+</details>
+
 ## sha256 checksums
 
 <details>
@@ -153,23 +169,4 @@ C:\Users\my_user\Documents\
 TODO: fill this out
 ```
 
-</details>
-
-## kanata_passthru.dll
-
-<details>
-<summary>Explanation</summary>
-
-The Windows `kanata_passthru.dll` file allows using Kanata as a library within AutoHotkey to avoid
-conflicts between keyboard hooks installed by both. You can channel keyboard input events received
-by AutoHotkey into Kanata's keyboard engine and get the transformed keyboard output events (per your 
-Kanata config) that AutoHotkey can then send to the OS.
-</details>
-
-<details>
-<summary>Instructions</summary>
-
-Download `kanata_passthru.dll`, then the [simulated_passthru_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief
-example, place the dll there, open `kanata_passthru.ahk` to read what the example does and
-then double-click to launch it.
 </details>
