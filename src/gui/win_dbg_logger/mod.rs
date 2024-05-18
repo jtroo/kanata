@@ -93,8 +93,11 @@ pub static WINDBG_L0: WinDbgLogger = WinDbgLogger {
     _priv: (),
 };
 
-#[cfg(all(target_os="windows",feature="gui"))]
-pub fn windbg_simple_combo(log_lvl: LevelFilter, noti_lvl: LevelFilter) -> Box<dyn simplelog::SharedLogger> {
+#[cfg(all(target_os = "windows", feature = "gui"))]
+pub fn windbg_simple_combo(
+    log_lvl: LevelFilter,
+    noti_lvl: LevelFilter,
+) -> Box<dyn simplelog::SharedLogger> {
     set_noti_lvl(noti_lvl);
     match log_lvl {
         LevelFilter::Error => Box::new(WINDBG_L1),
@@ -105,7 +108,7 @@ pub fn windbg_simple_combo(log_lvl: LevelFilter, noti_lvl: LevelFilter) -> Box<d
         LevelFilter::Off => Box::new(WINDBG_L0),
     }
 }
-#[cfg(all(target_os="windows",feature="gui"))]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 impl simplelog::SharedLogger for WinDbgLogger {
     // allows using with simplelog's CombinedLogger
     fn level(&self) -> LevelFilter {
@@ -140,10 +143,12 @@ pub fn set_thread_state(is: bool) -> &'static bool {
     static CELL: OnceLock<bool> = OnceLock::new();
     CELL.get_or_init(|| is)
 }
-pub fn get_noti_lvl() -> &'static LevelFilter {set_noti_lvl(LevelFilter::Off)}
-pub fn set_noti_lvl(lvl:LevelFilter) -> &'static LevelFilter {
-  static CELL: OnceLock<LevelFilter> = OnceLock::new();
-  CELL.get_or_init(|| lvl)
+pub fn get_noti_lvl() -> &'static LevelFilter {
+    set_noti_lvl(LevelFilter::Off)
+}
+pub fn set_noti_lvl(lvl: LevelFilter) -> &'static LevelFilter {
+    static CELL: OnceLock<LevelFilter> = OnceLock::new();
+    CELL.get_or_init(|| lvl)
 }
 
 use regex::Regex;
@@ -189,14 +194,19 @@ impl log::Log for WinDbgLogger {
                 record.line().unwrap_or(0),
                 record.args()
             );
-            #[cfg(all(target_os="windows",feature="gui"))] {use crate::gui::win::*;
-              let title = format!("{}{}:{}",
-                thread_id,clean_name(record.file()),
-                record.line().unwrap_or(0));
-              let msg = format!("{}",record.args());
-              if record.level() <= *get_noti_lvl() {
-                show_err_msg_nofail(title,msg);
-              }
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            {
+                use crate::gui::win::*;
+                let title = format!(
+                    "{}{}:{}",
+                    thread_id,
+                    clean_name(record.file()),
+                    record.line().unwrap_or(0)
+                );
+                let msg = format!("{}", record.args());
+                if record.level() <= *get_noti_lvl() {
+                    show_err_msg_nofail(title, msg);
+                }
             }
             output_debug_string(&s);
         }
