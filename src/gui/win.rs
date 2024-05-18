@@ -1,5 +1,5 @@
 use crate::Kanata;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use core::cell::RefCell;
 use log::Level::*;
 
@@ -986,7 +986,7 @@ pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTray
         app_data: RefCell::new(app_data),
         ..Default::default()
     };
-    SystemTray::build_ui(app).context("Failed to build UI")
+    Ok(SystemTray::build_ui(app)?)
 }
 
 pub use log::*;
