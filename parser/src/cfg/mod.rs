@@ -1577,22 +1577,46 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         LAYER_SWITCH => parse_layer_base(&ac[1..], s),
         LAYER_TOGGLE | LAYER_WHILE_HELD => parse_layer_toggle(&ac[1..], s),
         TAP_HOLD => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
-        TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)}
-        TAP_HOLD_RELEASE | TAP_HOLD_RELEASE_A => {parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold)}
-        TAP_HOLD_PRESS_TIMEOUT | TAP_HOLD_PRESS_TIMEOUT_A => {parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)}
-        TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)}
-        TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)}
-        TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)}
+        TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
+        }
+        TAP_HOLD_RELEASE | TAP_HOLD_RELEASE_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold)
+        }
+        TAP_HOLD_PRESS_TIMEOUT | TAP_HOLD_PRESS_TIMEOUT_A => {
+            parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
+        }
+        TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
+            parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
+        }
+        TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
+            parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
+        }
+        TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
+            parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)
+        }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),
-        MACRO_RELEASE_CANCEL | MACRO_RELEASE_CANCEL_A => {parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No)}
-        MACRO_REPEAT_RELEASE_CANCEL | MACRO_REPEAT_RELEASE_CANCEL_A => {parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes)}
+        MACRO_RELEASE_CANCEL | MACRO_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No)
+        }
+        MACRO_REPEAT_RELEASE_CANCEL | MACRO_REPEAT_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes)
+        }
         UNICODE | SYM => parse_unicode(&ac[1..], s),
-        ONE_SHOT | ONE_SHOT_PRESS | ONE_SHOT_PRESS_A => {parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)}
-        ONE_SHOT_RELEASE | ONE_SHOT_RELEASE_A => {parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease)}
-        ONE_SHOT_PRESS_PCANCEL | ONE_SHOT_PRESS_PCANCEL_A => {parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)}
-        ONE_SHOT_RELEASE_PCANCEL | ONE_SHOT_RELEASE_PCANCEL_A => {parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)}
+        ONE_SHOT | ONE_SHOT_PRESS | ONE_SHOT_PRESS_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
+        }
+        ONE_SHOT_RELEASE | ONE_SHOT_RELEASE_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease)
+        }
+        ONE_SHOT_PRESS_PCANCEL | ONE_SHOT_PRESS_PCANCEL_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)
+        }
+        ONE_SHOT_RELEASE_PCANCEL | ONE_SHOT_RELEASE_PCANCEL_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
+        }
         TAP_DANCE => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
         TAP_DANCE_EAGER => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
         CHORD => parse_chord(&ac[1..], s),
@@ -1616,10 +1640,18 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         MOVEMOUSE_DOWN | MOVEMOUSE_DOWN_A => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
         MOVEMOUSE_LEFT | MOVEMOUSE_LEFT_A => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
         MOVEMOUSE_RIGHT | MOVEMOUSE_RIGHT_A => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
-        MOVEMOUSE_ACCEL_UP | MOVEMOUSE_ACCEL_UP_A => {parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s)}
-        MOVEMOUSE_ACCEL_DOWN | MOVEMOUSE_ACCEL_DOWN_A => {parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s)}
-        MOVEMOUSE_ACCEL_LEFT | MOVEMOUSE_ACCEL_LEFT_A => {parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s)}
-        MOVEMOUSE_ACCEL_RIGHT | MOVEMOUSE_ACCEL_RIGHT_A => {parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s)}
+        MOVEMOUSE_ACCEL_UP | MOVEMOUSE_ACCEL_UP_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s)
+        }
+        MOVEMOUSE_ACCEL_DOWN | MOVEMOUSE_ACCEL_DOWN_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s)
+        }
+        MOVEMOUSE_ACCEL_LEFT | MOVEMOUSE_ACCEL_LEFT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s)
+        }
+        MOVEMOUSE_ACCEL_RIGHT | MOVEMOUSE_ACCEL_RIGHT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s)
+        }
         MOVEMOUSE_SPEED | MOVEMOUSE_SPEED_A => parse_move_mouse_speed(&ac[1..], s),
         SETMOUSE | SETMOUSE_A => parse_set_mouse(&ac[1..], s),
         DYNAMIC_MACRO_RECORD => parse_dynamic_macro_record(&ac[1..], s),
