@@ -6,6 +6,7 @@ use kanata_state_machine::*;
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
+    let noti_lvl = LevelFilter::Error; // min lvl above which to use Win system notifications
     let args = match Args::try_parse() {
         Ok(args) => args,
         Err(e) => {
@@ -19,7 +20,7 @@ fn cli_init() -> Result<ValidatedArgs> {
                         TerminalMode::Mixed,
                         ColorChoice::AlwaysAnsi,
                     ),
-                    log_win::windbg_simple_combo(LevelFilter::Debug),
+                    log_win::windbg_simple_combo(LevelFilter::Debug,noti_lvl),
                 ])
                 .expect("logger can init");
             } else {
@@ -63,11 +64,11 @@ fn cli_init() -> Result<ValidatedArgs> {
                 TerminalMode::Mixed,
                 ColorChoice::AlwaysAnsi,
             ),
-            log_win::windbg_simple_combo(log_lvl),
+            log_win::windbg_simple_combo(log_lvl,noti_lvl),
         ])
         .expect("logger can init");
     } else {
-        CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl)]).expect("logger can init");
+        CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl,noti_lvl)]).expect("logger can init");
     }
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
@@ -149,12 +150,14 @@ fn main_impl() -> Result<()> {
     let ui = build_tray(&kanata_arc)?;
     let gui_tx = ui.layer_notice.sender();
     let gui_cfg_tx = ui.cfg_notice.sender(); // allows notifying GUI on config reloads
+    let gui_err_tx  = ui.err_notice  .sender(); // allows notifying GUI on erorrs (from logger)
     if GUI_TX.set(gui_tx).is_err() {
         warn!("Someone else set our ‘GUI_TX’");
     };
     if GUI_CFG_TX.set(gui_cfg_tx).is_err() {
         warn!("Someone else set our ‘GUI_CFG_TX’");
     };
+    if GUI_ERR_TX.set(gui_err_tx).is_err() {warn!("Someone else set our ‘GUI_ERR_TX’");};
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
