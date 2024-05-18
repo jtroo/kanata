@@ -93,7 +93,7 @@ pub static WINDBG_L0: WinDbgLogger = WinDbgLogger {
     _priv: (),
 };
 
-#[cfg(feature = "simple_shared")]
+#[cfg(all(target_os="windows",feature="gui"))]
 pub fn windbg_simple_combo(log_lvl: LevelFilter) -> Box<dyn simplelog::SharedLogger> {
     match log_lvl {
         LevelFilter::Error => Box::new(WINDBG_L1),
@@ -104,7 +104,7 @@ pub fn windbg_simple_combo(log_lvl: LevelFilter) -> Box<dyn simplelog::SharedLog
         LevelFilter::Off => Box::new(WINDBG_L0),
     }
 }
-#[cfg(feature = "simple_shared")]
+#[cfg(all(target_os="windows",feature="gui"))]
 impl simplelog::SharedLogger for WinDbgLogger {
     // allows using with simplelog's CombinedLogger
     fn level(&self) -> LevelFilter {
