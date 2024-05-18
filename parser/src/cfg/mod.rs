@@ -789,7 +789,8 @@ pub fn parse_cfg_raw_string(
     let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
 
     resolve_chord_groups(&mut klayers, s)?;
-
+    let layers = s.a.bref_slice(klayers);
+    s.layers = layers;
     let override_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defoverrides"))
@@ -841,7 +842,7 @@ pub fn parse_cfg_raw_string(
         )
         .into());
     }
-    let layers = s.a.bref_slice(klayers);
+
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
         options: cfg,
@@ -1176,6 +1177,7 @@ enum SpannedLayerExprs {
 
 #[derive(Debug)]
 pub struct ParserState {
+    layers: KLayers,
     layer_exprs: Vec<LayerExprs>,
     aliases: Aliases,
     layer_idxs: LayerIndexes,
@@ -1205,6 +1207,7 @@ impl Default for ParserState {
     fn default() -> Self {
         let default_cfg = CfgOptions::default();
         Self {
+            layers: Default::default(),
             layer_exprs: Default::default(),
             aliases: Default::default(),
             layer_idxs: Default::default(),
@@ -1439,6 +1442,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             "This is a list action and must be in parentheses: ({ac} ...)"
         );
     }
+
     match ac {
         "_" | "‗" | "≝" => {
             if let Some(trans_forbidden_reason) = s.trans_forbidden_reason {
