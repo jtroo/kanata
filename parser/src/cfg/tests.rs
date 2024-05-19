@@ -1871,3 +1871,22 @@ fn disallow_dupe_layer_opts_icon_layermap() {
 ";
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
+
+#[test]
+fn layer_name_allows_var() {
+    let source = "
+(defvar l1name base)
+(defvar l2name l2)
+(defvar l3name (concat $l1name $l2name))
+(defvar l4name (concat $l3name actually-4))
+(defsrc a)
+(deflayer $l1name (layer-while-held $l2name))
+(deflayermap ($l2name)
+  a (layer-while-held $l3name))
+(deflayer ($l3name) (layer-while-held $l4name))
+(deflayer ($l4name icon icon.ico) (layer-while-held $l1name))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parse succeeds");
+}
