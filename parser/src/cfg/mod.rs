@@ -1072,23 +1072,27 @@ fn parse_layer_indexes(
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
         let (layer_name, icon) = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(_) => match layer_expr {
-                SExpr::Atom(name_span) => (name_span.t.to_owned(), None),
-                SExpr::List(name_opts_span) => {
-                    let list = &name_opts_span.t;
-                    let name = list.first().ok_or_else(|| anyhow_span!(
-                            name_opts_span,
-                            "deflayer requires a string name within this pair of parenthesis (or a string name without any)"
-                        ))?
-                        .atom(None).ok_or_else(|| anyhow_expr!(
-                            layer_expr,
-                            "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
-                        ))?;
-                    let layer_opts = parse_layer_opts(&list[1..])?;
-                    let icon = layer_opts
-                        .get(DEFLAYER_ICON[0])
-                        .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
-                    (name.to_owned(), icon)
+            SpannedLayerExprs::DefsrcMapping(_) => {
+                let name = layer_expr.atom(s.vars());
+                match name {
+                    Some(name) => (name.to_owned(), None),
+                    None => {
+                        // unwrap: this **must** be a list due to atom() call above.
+                        let list = layer_expr.list(s.vars()).unwrap();
+                        let name = list.first().ok_or_else(|| anyhow_expr!(
+                                layer_expr,
+                                "deflayer requires a string name within this pair of parentheses (or a string name without any)"
+                            ))?
+                            .atom(s.vars()).ok_or_else(|| anyhow_expr!(
+                                layer_expr,
+                                "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
+                            ))?;
+                        let layer_opts = parse_layer_opts(&list[1..])?;
+                        let icon = layer_opts
+                            .get(DEFLAYER_ICON[0])
+                            .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
+                        (name.to_owned(), icon)
+                    }
                 }
             },
             SpannedLayerExprs::CustomMapping(_) => {
