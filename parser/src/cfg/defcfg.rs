@@ -6,32 +6,49 @@ use crate::custom_action::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
-cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-#[derive(Default, Debug, Clone, Copy)]
+#[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+#[derive(Debug, Clone)]
 pub struct CfgOptionsGui {
+    /// File name / path to the tray icon file.
     pub tray_icon: Option<String>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// Whether to match layer names to icon files without an explicit 'icon' field
     pub icon_match_layer_name: bool,
+    /// Show tooltip on layer changes showing layer icons
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_layer_changes: bool,
-    pub tooltip_show_blank: bool,
+    /// Show tooltip on layer changes for the default/base layer
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_no_base: bool,
+    /// Show tooltip on layer changes even for layers without an icon
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_show_blank: bool,
+    /// Show tooltip on layer changes for this duration (ms)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_duration: u16,
+    /// Show system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_cfg_reload: bool,
+    /// Disable sound for the system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_cfg_reload_silent: bool,
+    /// Set tooltip size (width, height)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_size: (u16, u16),
 }
-#[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+#[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
 impl Default for CfgOptionsGui {
     fn default() -> Self {
-        Self::{
+        Self {
             tray_icon: None,
             icon_match_layer_name: true,
-            tooltip_layer_changes : false,
-            tooltip_show_blank : false,
-            tooltip_no_base : true,
-            tooltip_duration : 500,
+            tooltip_layer_changes: false,
+            tooltip_show_blank: false,
+            tooltip_no_base: true,
+            tooltip_duration: 500,
             notify_cfg_reload: true,
             notify_cfg_reload_silent: false,
-            tooltip_size : (24,24),
+            tooltip_size: (24, 24),
         }
     }
 }
@@ -443,7 +460,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if icon_path.is_empty() {
                                 log::warn!("tray-icon is empty");
                             }
-                            cfg.tray_icon = Some(icon_path.to_string());
+                            cfg.gui_opts.tray_icon = Some(icon_path.to_string());
                         }
                     }
                     "icon-match-layer-name" => {
@@ -506,7 +523,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.notify_cfg_reload_silent = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.notify_cfg_reload_silent =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-size" => {

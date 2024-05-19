@@ -1,6 +1,7 @@
 use crate::Kanata;
 use anyhow::{bail, Result};
 use core::cell::RefCell;
+use kanata_parser::cfg::CfgOptionsGui;
 use log::Level::*;
 use std::cell::Cell;
 use winapi::shared::windef::HWND;
@@ -59,14 +60,7 @@ pub struct SystemTrayData {
     pub cfg_icon: Option<String>,
     pub layer0_name: String,
     pub layer0_icon: Option<String>,
-    pub icon_match_layer_name: bool,
-    pub tooltip_layer_changes: bool,
-    pub tooltip_no_base: bool,
-    pub tooltip_show_blank: bool,
-    pub tooltip_duration: u16,
-    pub notify_cfg_reload: bool,
-    pub notify_cfg_reload_silent: bool,
-    pub tooltip_size: (u16, u16),
+    pub gui_opts: CfgOptionsGui,
     pub tt_duration_pre: u16,
     pub tt_size_pre: (u16, u16),
 }
@@ -414,8 +408,8 @@ impl SystemTray {
     fn get_icon_from_file_impl(&self, ico_p: &str) -> Result<Icn> {
         let app_data = self.app_data.borrow();
         let icn_sz_tt = [
-            app_data.tooltip_size.0 as u32,
-            app_data.tooltip_size.1 as u32,
+            app_data.gui_opts.tooltip_size.0 as u32,
+            app_data.gui_opts.tooltip_size.1 as u32,
         ];
         if let Ok(img_data) = self
             .decoder
@@ -485,8 +479,8 @@ impl SystemTray {
         }; //info!("⏎⏎⏎");
         let win_ver = win_ver!();
         // image width/height to take it into account when calculating overlaps
-        let w = app_data.tooltip_size.0 as i32;
-        let h = app_data.tooltip_size.1 as i32;
+        let w = app_data.gui_opts.tooltip_size.0 as i32;
+        let h = app_data.gui_opts.tooltip_size.1 as i32;
         let flags = if (win_ver.0 >= 6 && win_ver.1 >= 1) || win_ver.0 > 6 {
             TPM_WORKAREA
         } else {
@@ -573,10 +567,10 @@ impl SystemTray {
     /// Show our tooltip-like notification window
     fn show_tooltip(&self, img: Option<&nwg::Bitmap>) {
         let app_data = self.app_data.borrow();
-        if !app_data.tooltip_layer_changes {
+        if !app_data.gui_opts.tooltip_layer_changes {
             return;
         };
-        if img.is_none() && !app_data.tooltip_show_blank {
+        if img.is_none() && !app_data.gui_opts.tooltip_show_blank {
             self.win_tt.set_visible(false);
             return;
         };
@@ -602,7 +596,7 @@ impl SystemTray {
           // don't adjust for dpi in internal calculations
         self.update_tooltip_pos();
         self.win_tt.set_visible(true);
-        if app_data.tooltip_duration != 0 {
+        if app_data.gui_opts.tooltip_duration != 0 {
             self.win_tt_timer.start()
         };
 
@@ -630,10 +624,11 @@ impl SystemTray {
             }
             let duration = 16;
             let poll_time = Duration::from_millis(duration);
-            let ticks = (app_data.tooltip_duration as f64 / duration as f64).round() as u16;
+            let ticks =
+                (app_data.gui_opts.tooltip_duration as f64 / duration as f64).round() as u16;
             debug!(
                 "will tick for {ticks} every {duration} ms to match user {}",
-                app_data.tooltip_duration
+                app_data.gui_opts.tooltip_duration
             );
             if start {
                 self.update_mouse_watcher(tt2m_sndr.clone(), ticks, poll_time);
@@ -670,7 +665,7 @@ impl SystemTray {
         } else {
             trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
             if let Ok(cfg) = cfg::new_from_file(cfg_p) {
-                if let Some(cfg_icon_s) = cfg.options.tray_icon {
+                if let Some(cfg_icon_s) = cfg.options.gui_opts.tray_icon {
                     debug!("loaded config without a tray icon {cfg_p:?}");
                     if let Ok(icn) = self.set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, cfg_p)
                     {
@@ -758,35 +753,38 @@ impl SystemTray {
     fn update_tooltip_data(&self, k: &MutexGuard<Kanata>) -> bool {
         let mut app_data = self.app_data.borrow_mut();
         let mut clear = false;
-        if app_data.tt_duration_pre != k.tooltip_duration {
-            app_data.tooltip_duration = k.tooltip_duration;
+        if app_data.tt_duration_pre != k.gui_opts.tooltip_duration {
+            app_data.gui_opts.tooltip_duration = k.gui_opts.tooltip_duration;
             clear = true;
-            app_data.tt_duration_pre = k.tooltip_duration;
+            app_data.tt_duration_pre = k.gui_opts.tooltip_duration;
             trace!("timer duration changed, updating");
             self.win_tt_timer.set_interval(Duration::from_millis(
-                (k.tooltip_duration.saturating_add(1)).into(),
+                (k.gui_opts.tooltip_duration.saturating_add(1)).into(),
             ));
             self.win_tt_timer.set_lifetime(Some(Duration::from_millis(
-                (k.tooltip_duration.saturating_add(TTTIMER_L)).into(),
+                (k.gui_opts.tooltip_duration.saturating_add(TTTIMER_L)).into(),
             )));
         }
-        if !(app_data.tt_size_pre.0 == k.tooltip_size.0
-            && app_data.tt_size_pre.1 == k.tooltip_size.1)
+        if !(app_data.tt_size_pre.0 == k.gui_opts.tooltip_size.0
+            && app_data.tt_size_pre.1 == k.gui_opts.tooltip_size.1)
         {
-            app_data.tt_size_pre = k.tooltip_size;
+            app_data.tt_size_pre = k.gui_opts.tooltip_size;
             clear = true;
-            app_data.tooltip_size = k.tooltip_size;
+            app_data.gui_opts.tooltip_size = k.gui_opts.tooltip_size;
             trace!("tooltip_size duration changed, updating");
             let dpi = unsafe { nwg::dpi() };
-            let icn_sz_tt_i = (k.tooltip_size.0, k.tooltip_size.1);
+            let icn_sz_tt_i = (k.gui_opts.tooltip_size.0, k.gui_opts.tooltip_size.1);
             let w = (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96_f64)).round() as u32;
             let h = (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96_f64)).round() as u32;
             self.win_tt.set_size(w, h);
 
-            let icn_sz_tt_i = (k.tooltip_size.0 as u32, k.tooltip_size.1 as u32);
+            let icn_sz_tt_i = (
+                k.gui_opts.tooltip_size.0 as u32,
+                k.gui_opts.tooltip_size.1 as u32,
+            );
             // todo: replace with a no-margin NWG config when it's available
-            let padx = (k.tooltip_size.0 as f64 / 6_f64).round() as i32;
-            let pady = (k.tooltip_size.1 as f64 / 6_f64).round() as i32;
+            let padx = (k.gui_opts.tooltip_size.0 as f64 / 6_f64).round() as i32;
+            let pady = (k.gui_opts.tooltip_size.1 as f64 / 6_f64).round() as i32;
             trace!(
                 "kanata tooltip size = {icn_sz_tt_i:?}, ttsize = {w}⋅{h} offset = {padx}⋅{pady}"
             );
@@ -829,7 +827,7 @@ impl SystemTray {
                 .to_string_lossy()
                 .to_string();
             if log_enabled!(Debug) {
-                let cfg_icon = &k.tray_icon;
+                let cfg_icon = &k.gui_opts.tray_icon;
                 let cfg_icon_s = cfg_icon.clone().unwrap_or("✗".to_string());
                 let layer_id = k.layout.b().current_layer();
                 let layer_name = &k.layer_info[layer_id].name;
@@ -874,7 +872,7 @@ impl SystemTray {
                     }
                 }
             };
-            let cfg_icon = &k.tray_icon;
+            let cfg_icon = &k.gui_opts.tray_icon;
             let layer_id = k.layout.b().current_layer();
             let layer_name = &k.layer_info[layer_id].name;
             let layer_icon = &k.layer_info[layer_id].icon;
@@ -935,7 +933,7 @@ impl SystemTray {
                 let idx_cfg = k.cur_cfg_idx;
                 let path_cur = &paths[idx_cfg];
                 let path_cur_cc = path_cur.clone();
-                let cfg_icon = &k.tray_icon;
+                let cfg_icon = &k.gui_opts.tray_icon;
                 let layer_id = k.layout.b().current_layer();
                 let layer_name = &k.layer_info[layer_id].name;
                 let layer_icon = &k.layer_info[layer_id].icon;
@@ -966,7 +964,7 @@ impl SystemTray {
                 }
                 if is_cfg {
                     let app_data = self.app_data.borrow();
-                    if app_data.notify_cfg_reload {
+                    if app_data.gui_opts.notify_cfg_reload {
                         use nwg::TrayNotificationFlags as f_tray;
                         let cfg_name = &path_cur
                             .file_name()
@@ -976,7 +974,7 @@ impl SystemTray {
                         let msg_title = "🔄 \"".to_owned() + cfg_name + "\" re-loaded";
                         let msg_content = &path_cur.display().to_string();
                         let mut flags = f_tray::empty() | f_tray::USER_ICON | f_tray::LARGE_ICON;
-                        if app_data.notify_cfg_reload_silent {
+                        if app_data.gui_opts.notify_cfg_reload_silent {
                             flags |= f_tray::SILENT;
                         }
                         self.tray.show(
@@ -1027,7 +1025,7 @@ impl SystemTray {
             debug!("reloading active config, clearing img_dyn/_active cache");
         }
         let app_data = self.app_data.borrow();
-        let skip_tt = app_data.tooltip_no_base
+        let skip_tt = app_data.gui_opts.tooltip_no_base
             && icon_0_key
                 .as_ref()
                 .filter(|p| **p == cfg_layer_pkey)
@@ -1059,7 +1057,7 @@ impl SystemTray {
                 layer_name,
                 "",
                 &path_cur_cc,
-                &app_data.icon_match_layer_name,
+                &app_data.gui_opts.icon_match_layer_name,
             ) {
                 if let Ok(icn) = self.get_icon_from_file(ico_p) {
                     info!(
@@ -1119,7 +1117,7 @@ impl SystemTray {
                 layer_name,
                 cfg_icon_p,
                 &path_cur_cc,
-                &app_data.icon_match_layer_name,
+                &app_data.gui_opts.icon_match_layer_name,
             ) {
                 if let Ok(icn) = self.get_icon_from_file(ico_p) {
                     info!(
@@ -1172,7 +1170,10 @@ impl SystemTray {
         let mut window: nwg::Window = Default::default();
         let dpi = unsafe { nwg::dpi() };
         let app_data = self.app_data.borrow();
-        let icn_sz_tt_i = (app_data.tooltip_size.0, app_data.tooltip_size.1);
+        let icn_sz_tt_i = (
+            app_data.gui_opts.tooltip_size.0,
+            app_data.gui_opts.tooltip_size.1,
+        );
         let w = (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96_f64)).round() as i32;
         let h = (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96_f64)).round() as i32;
         trace!("Active Kanata Layer win size = {w}⋅{h}");
@@ -1255,27 +1256,27 @@ pub mod system_tray_ui {
                 .text("&X Exit\t‹⎈␠⎋") //
                 .build(&mut d.tray_3exit)?;
 
-            if app_data.tooltip_layer_changes {
+            if app_data.gui_opts.tooltip_layer_changes {
                 d.win_tt = d.build_win_tt().expect("Tooltip window");
                 nwg::AnimationTimer::builder()
                     .parent(&d.window)
                     .interval(Duration::from_millis(
-                        (app_data.tooltip_duration.saturating_add(1)).into(),
+                        (app_data.gui_opts.tooltip_duration.saturating_add(1)).into(),
                     ))
                     .lifetime(Some(Duration::from_millis(
-                        (app_data.tooltip_duration + TTTIMER_L).into(),
+                        (app_data.gui_opts.tooltip_duration + TTTIMER_L).into(),
                     )))
                     .max_tick(None)
                     .active(false)
                     .build(&mut d.win_tt_timer)?;
 
                 let icn_sz_tt_i = (
-                    app_data.tooltip_size.0 as i32,
-                    app_data.tooltip_size.1 as i32,
+                    app_data.gui_opts.tooltip_size.0 as i32,
+                    app_data.gui_opts.tooltip_size.1 as i32,
                 );
                 // todo: replace with a no-margin NWG config when it's available
-                let padx = (app_data.tooltip_size.0 as f64 / 6_f64).round() as i32;
-                let pady = (app_data.tooltip_size.1 as f64 / 6_f64).round() as i32;
+                let padx = (app_data.gui_opts.tooltip_size.0 as f64 / 6_f64).round() as i32;
+                let pady = (app_data.gui_opts.tooltip_size.1 as f64 / 6_f64).round() as i32;
                 let pad = (-padx, -pady);
                 trace!("kanata tooltip size = {icn_sz_tt_i:?}, offset = {padx}⋅{pady}");
                 let mut cfg_icon_bmp_tray = Default::default();
@@ -1350,7 +1351,7 @@ pub mod system_tray_ui {
                                 &app_data.layer0_name,
                                 cfg_icon_s,
                                 cfg_p,
-                                &app_data.icon_match_layer_name,
+                                &app_data.gui_opts.icon_match_layer_name,
                             ) {
                                 let mut cfg_layer_pkey = PathBuf::new(); // path key
                                 cfg_layer_pkey.push(cfg_p.clone());
@@ -1531,19 +1532,12 @@ pub fn update_app_data(k: &MutexGuard<Kanata>) -> Result<SystemTrayData> {
     Ok(SystemTrayData {
         tooltip: path_cur.display().to_string(),
         cfg_p: paths.clone(),
-        cfg_icon: k.tray_icon.clone(),
+        cfg_icon: k.gui_opts.tray_icon.clone(),
         layer0_name: layer0_name.clone(),
         layer0_icon: layer0_icon.clone(),
-        icon_match_layer_name: k.icon_match_layer_name,
-        tooltip_layer_changes: k.tooltip_layer_changes,
-        tooltip_show_blank: k.tooltip_show_blank,
-        tooltip_no_base: k.tooltip_no_base,
-        tooltip_duration: k.tooltip_duration,
-        notify_cfg_reload: k.notify_cfg_reload,
-        notify_cfg_reload_silent: k.notify_cfg_reload_silent,
-        tooltip_size: k.tooltip_size,
-        tt_duration_pre: k.tooltip_duration,
-        tt_size_pre: k.tooltip_size,
+        gui_opts: k.gui_opts.clone(),
+        tt_duration_pre: k.gui_opts.tooltip_duration,
+        tt_size_pre: k.gui_opts.tooltip_size,
     })
 }
 pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {

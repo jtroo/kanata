@@ -205,32 +205,8 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    /// File name / path to the tray icon file.
-    pub tray_icon: Option<String>,
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    /// Whether to match layer names to icon files without an explicit 'icon' field
-    pub icon_match_layer_name: bool,
-    /// Show tooltip on layer changes showing layer icons
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_layer_changes: bool,
-    /// Show tooltip on layer changes for the default/base layer
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_no_base: bool,
-    /// Show tooltip on layer changes even for layers without an icon
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_show_blank: bool,
-    /// Show tooltip on layer changes for this duration (ms)
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_duration: u16,
-    /// Show system notification message on config reload
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub notify_cfg_reload: bool,
-    /// Disable sound for the system notification message on config reload
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub notify_cfg_reload_silent: bool,
-    /// Set tooltip size (width, height)
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    pub tooltip_size: (u16, u16),
+    /// Various GUI-related options.
+    pub gui_opts: CfgOptionsGui,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -269,16 +245,6 @@ pub struct MoveMouseState {
     pub move_mouse_accel_state: Option<MoveMouseAccelState>,
 }
 
-#[derive(Clone, Copy)]
-pub struct MoveMouseAccelState {
-    pub accel_ticks_from_min: u16,
-    pub accel_ticks_until_max: u16,
-    pub accel_increment: f64,
-    pub min_distance: u16,
-    pub max_distance: u16,
-}
-
-#[cfg(all(target_os = "windows", feature = "gui"))]
 #[derive(Clone, Copy)]
 pub struct MoveMouseAccelState {
     pub accel_ticks_from_min: u16,
@@ -406,23 +372,7 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            tray_icon: cfg.options.tray_icon,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            icon_match_layer_name: cfg.options.icon_match_layer_name,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_layer_changes: cfg.options.tooltip_layer_changes,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_no_base: cfg.options.tooltip_no_base,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_show_blank: cfg.options.tooltip_show_blank,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_duration: cfg.options.tooltip_duration,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            notify_cfg_reload: cfg.options.notify_cfg_reload,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            notify_cfg_reload_silent: cfg.options.notify_cfg_reload_silent,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_size: cfg.options.tooltip_size,
+            gui_opts: cfg.options.gui_opts,
         })
     }
 
@@ -520,23 +470,7 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            tray_icon: None,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            icon_match_layer_name: cfg.options.icon_match_layer_name,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_layer_changes: cfg.options.tooltip_layer_changes,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_no_base: cfg.options.tooltip_no_base,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_show_blank: cfg.options.tooltip_show_blank,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_duration: cfg.options.tooltip_duration,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            notify_cfg_reload: cfg.options.notify_cfg_reload,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            notify_cfg_reload_silent: cfg.options.notify_cfg_reload_silent,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            tooltip_size: cfg.options.tooltip_size,
+            gui_opts: cfg.options.gui_opts,
         })
     }
 
@@ -585,15 +519,15 @@ impl Kanata {
         self.switch_max_key_timing = cfg.switch_max_key_timing;
         #[cfg(all(target_os = "windows", feature = "gui"))]
         {
-            self.tray_icon = cfg.options.tray_icon;
-            self.icon_match_layer_name = cfg.options.icon_match_layer_name;
-            self.tooltip_layer_changes = cfg.options.tooltip_layer_changes;
-            self.tooltip_no_base = cfg.options.tooltip_no_base;
-            self.tooltip_show_blank = cfg.options.tooltip_show_blank;
-            self.tooltip_duration = cfg.options.tooltip_duration;
-            self.notify_cfg_reload = cfg.options.notify_cfg_reload;
-            self.notify_cfg_reload_silent = cfg.options.notify_cfg_reload_silent;
-            self.tooltip_size = cfg.options.tooltip_size;
+            self.gui_opts.tray_icon = cfg.options.gui_opts.tray_icon;
+            self.gui_opts.icon_match_layer_name = cfg.options.gui_opts.icon_match_layer_name;
+            self.gui_opts.tooltip_layer_changes = cfg.options.gui_opts.tooltip_layer_changes;
+            self.gui_opts.tooltip_no_base = cfg.options.gui_opts.tooltip_no_base;
+            self.gui_opts.tooltip_show_blank = cfg.options.gui_opts.tooltip_show_blank;
+            self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
+            self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
+            self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
