@@ -35,7 +35,7 @@
 //! }
 //!
 //! fn main() {
-//!     log::set_logger(&win_dbg_logger::WINDBG_LOGGER).unwrap();
+//!     log::set_logger(&kanata_state_machine::gui::WINDBG_LOGGER).unwrap();
 //!     log::set_max_level(log::LevelFilter::Debug);
 //!
 //!     do_cool_stuff();
@@ -57,7 +57,7 @@ pub struct WinDbgLogger {
 /// this can be directly registered using `log::set_logger`, e.g.:
 ///
 /// ```
-/// log::set_logger(&win_dbg_logger::WINDBG_LOGGER).unwrap(); // Initialize
+/// log::set_logger(&kanata_state_machine::gui::WINDBG_LOGGER).unwrap(); // Initialize
 /// log::set_max_level(log::LevelFilter::Debug);
 ///
 /// use log::{info, debug}; // Import
