@@ -1094,7 +1094,7 @@ fn parse_layer_indexes(
                         (name.to_owned(), icon)
                     }
                 }
-            },
+            }
             SpannedLayerExprs::CustomMapping(_) => {
                 let list = layer_expr
                     .list(None)
