@@ -278,6 +278,16 @@ pub struct MoveMouseAccelState {
     pub max_distance: u16,
 }
 
+#[cfg(all(target_os = "windows", feature = "gui"))]
+#[derive(Clone, Copy)]
+pub struct MoveMouseAccelState {
+    pub accel_ticks_from_min: u16,
+    pub accel_ticks_until_max: u16,
+    pub accel_increment: f64,
+    pub min_distance: u16,
+    pub max_distance: u16,
+}
+
 use once_cell::sync::Lazy;
 
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =

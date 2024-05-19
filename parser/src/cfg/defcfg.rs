@@ -6,6 +6,36 @@ use crate::custom_action::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
+cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+#[derive(Default, Debug, Clone, Copy)]
+pub struct CfgOptionsGui {
+    pub tray_icon: Option<String>,
+    pub icon_match_layer_name: bool,
+    pub tooltip_layer_changes: bool,
+    pub tooltip_show_blank: bool,
+    pub tooltip_no_base: bool,
+    pub tooltip_duration: u16,
+    pub notify_cfg_reload: bool,
+    pub notify_cfg_reload_silent: bool,
+    pub tooltip_size: (u16, u16),
+}
+#[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+impl Default for CfgOptionsGui {
+    fn default() -> Self {
+        Self::{
+            tray_icon: None,
+            icon_match_layer_name: true,
+            tooltip_layer_changes : false,
+            tooltip_show_blank : false,
+            tooltip_no_base : true,
+            tooltip_duration : 500,
+            notify_cfg_reload: true,
+            notify_cfg_reload_silent: false,
+            tooltip_size : (24,24),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CfgOptions {
     pub process_unmapped_keys: bool,
@@ -56,23 +86,7 @@ pub struct CfgOptions {
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tray_icon: Option<String>,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub icon_match_layer_name: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_layer_changes: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_show_blank: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_no_base: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_duration: u16,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub notify_cfg_reload: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub notify_cfg_reload_silent: bool,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-    pub tooltip_size: (u16, u16),
+    pub gui_opts: CfgOptionsGui,
 }
 
 impl Default for CfgOptions {
@@ -128,23 +142,7 @@ impl Default for CfgOptions {
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
             #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
-            tray_icon: None,
-            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
-            icon_match_layer_name: true,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_layer_changes : false,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_show_blank : false,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_no_base : true,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_duration : 500,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            notify_cfg_reload: true,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            notify_cfg_reload_silent: false,
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
-            tooltip_size : (24,24),
+            gui_opts: Default::default(),
         }
     }
 }
@@ -454,7 +452,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-layer-changes" => {
@@ -463,7 +461,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-show-blank" => {
@@ -472,7 +470,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-no-base" => {
@@ -481,7 +479,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.tooltip_no_base = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_no_base = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-duration" => {
@@ -490,7 +488,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.tooltip_duration = parse_cfg_val_u16(val, label, false)?
+                            cfg.gui_opts.tooltip_duration = parse_cfg_val_u16(val, label, false)?
                         }
                     }
                     "notify-cfg-reload" => {
@@ -499,7 +497,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.notify_cfg_reload = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.notify_cfg_reload = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "notify-cfg-reload-silent" => {
@@ -508,7 +506,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.notify_cfg_reload_silent = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.notify_cfg_reload_silent = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-size" => {
@@ -523,7 +521,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if tooltip_size.len() != 2 {
                                 bail_expr!(val, "{}", ERRMSG)
                             }
-                            cfg.tooltip_size = (
+                            cfg.gui_opts.tooltip_size = (
                                 match str::parse::<u16>(tooltip_size[0]) {
                                     Ok(w) => w,
                                     Err(_) => bail_expr!(val, "{}", ERRMSG),
