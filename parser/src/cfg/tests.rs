@@ -205,7 +205,7 @@ fn parse_action_vars() {
   the (tap-hold-except-keys $one $two $chr $two $three)
   thta (tap🠿↑timeout $one $two $chr $two $one)
   thka (tap🠿↑keys $one $two $chr $two $three)
-  thea (tap-hold🗙keys $one $two $chr $two $three)
+  thea (tap🠿🗙keys $one $two $chr $two $three)
   mac (macro $one $two $one $two $chr C-S-$three $one)
   rmc (macro-repeat $one $two $one $two $chr C-S-$three $one)
   mrca (macro↑🗙 $one 500 bspc S-1 500 bspc S-2)
