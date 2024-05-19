@@ -131,7 +131,7 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_TX, GUI_EXIT_TX};
+use crate::gui::{CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_EXIT_TX, GUI_TX};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -155,8 +155,11 @@ pub fn send_gui_err_notice() {
     }
 }
 pub fn send_gui_exit_notice() {
-  if let Some(gui_tx) = GUI_EXIT_TX.get() {gui_tx.notice();
-  } else {error!("no GUI_EXIT_TX to ask GUI thread to exit");}
+    if let Some(gui_tx) = GUI_EXIT_TX.get() {
+        gui_tx.notice();
+    } else {
+        error!("no GUI_EXIT_TX to ask GUI thread to exit");
+    }
 }
 pub fn show_err_msg_nofail(title: String, msg: String) {
     // log gets insalized before gui, so some errors might have no target to log to, ignore them

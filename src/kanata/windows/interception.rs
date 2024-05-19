@@ -115,7 +115,9 @@ impl Kanata {
         #[cfg(feature = "gui")] ui: crate::gui::system_tray_ui::SystemTrayUi,
     ) -> Result<()> {
         #[cfg(not(feature = "gui"))]
-        Self::event_loop_inner(kanata, tx);
+        {
+            Self::event_loop_inner(kanata, tx)
+        }
         #[cfg(feature = "gui")]
         {
             std::thread::spawn(move || -> Result<()> { Self::event_loop_inner(kanata, tx) });
