@@ -10,7 +10,7 @@ use crate::oskbd::KeyValue;
 use kanata_parser::keys::OsCode;
 
 impl Kanata {
-    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop_inner(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         let intrcptn = ic::Interception::new().ok_or_else(|| anyhow!("interception driver should init: have you completed the interception driver installation?"))?;
         intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
         let mut strokes = [ic::Stroke::Keyboard {
@@ -29,7 +29,6 @@ impl Kanata {
             );
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
-
         loop {
             let dev = intrcptn.wait();
             if dev > 0 {
@@ -110,6 +109,21 @@ impl Kanata {
             }
         }
     }
+    pub fn event_loop(
+        kanata: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+        #[cfg(feature = "gui")] ui: crate::gui::system_tray_ui::SystemTrayUi,
+    ) -> Result<()> {
+        #[cfg(not(feature = "gui"))]
+        Self::event_loop_inner(kanata, tx);
+        #[cfg(feature = "gui")]
+        {
+            std::thread::spawn(move || -> Result<()> { Self::event_loop_inner(kanata, tx) });
+            let _ui = ui; // prevents thread from panicking on exiting via a GUI
+            native_windows_gui::dispatch_thread_events();
+            Ok(())
+        }
+    }
 }
 
 fn is_device_interceptable(
@@ -134,7 +148,6 @@ fn is_device_interceptable(
         },
     }
 }
-
 fn mouse_state_to_event(
     input_dev: ic::Device,
     allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
