@@ -948,9 +948,12 @@ impl SystemTray {
     }
     /// Show OS notification message with an error coming from WinDbgLogger
     fn notify_error(&self) {
+        let app_data = self.app_data.borrow();
+        if ! app_data.gui_opts.notify_error {return};
         use nwg::TrayNotificationFlags as f_tray;
         let mut msg_title = "".to_string();
         let mut msg_content = "".to_string();
+        let mut flags = f_tray::empty();
         if let Some(gsui_msg_rx) = &self.err_recv {
             match gsui_msg_rx.try_recv() {
                 Ok((title, msg)) => {
@@ -970,7 +973,8 @@ impl SystemTray {
             msg_title += "internal";
             msg_content += "SystemTray is supposed to have a valid 'err_recv' field value"
         }
-        let flags = f_tray::empty() | f_tray::ERROR_ICON;
+        flags |= f_tray::ERROR_ICON;
+        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}
         let msg_title = strip_ansi_escapes::strip_str(&msg_title);
         let msg_content = strip_ansi_escapes::strip_str(&msg_content);
         self.tray.show(

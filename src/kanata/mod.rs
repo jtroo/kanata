@@ -527,6 +527,7 @@ impl Kanata {
             self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
             self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
             self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
             self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
         }
 
