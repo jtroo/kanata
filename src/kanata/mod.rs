@@ -2029,7 +2029,13 @@ fn check_for_exit(_event: &KeyEvent) {
             log::info!("{EXIT_MSG}");
             #[cfg(all(target_os = "windows", feature = "gui"))]
             {
+                #[cfg(not(feature = "interception_driver"))]
                 native_windows_gui::stop_thread_dispatch();
+                #[cfg(feature = "interception_driver")]
+                send_gui_exit_notice(); // interception driver is running in another thread to allow
+                                        // GUI take the main one, so it's calling check_for_exit
+                                        // from a thread that has no access to the main one, so
+                                        // can't stop main thread's dispatch
             }
             #[cfg(all(
                 not(target_os = "linux"),
