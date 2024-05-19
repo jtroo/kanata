@@ -51,6 +51,7 @@ impl Default for CfgOptionsGui {
             tooltip_duration: 500,
             notify_cfg_reload: true,
             notify_cfg_reload_silent: false,
+            notify_error: true,
             tooltip_size: (24, 24),
         }
     }
