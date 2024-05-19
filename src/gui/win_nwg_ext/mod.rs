@@ -192,20 +192,21 @@ pub fn logical_to_physical(x: i32, y: i32) -> (i32, i32) {
     let y = y.mul_div_round(dpi, USER_DEFAULT_SCREEN_DPI).unwrap_or(y);
     (x, y)
 }
-/// # Safety
-pub unsafe fn set_window_position(handle: HWND, x: i32, y: i32) {
+pub fn set_window_position(handle: HWND, x: i32, y: i32) {
     use winapi::um::winuser::SetWindowPos;
     use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER};
     let (x, y) = logical_to_physical(x, y);
-    SetWindowPos(
-        handle,
-        ptr::null_mut(),
-        x as c_int,
-        y as c_int,
-        0,
-        0,
-        SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER,
-    );
+    unsafe {
+        SetWindowPos(
+            handle,
+            ptr::null_mut(),
+            x as c_int,
+            y as c_int,
+            0,
+            0,
+            SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER,
+        );
+    }
 }
 const NOT_BOUND: &str = "Window is not yet bound to a winapi object";
 const BAD_HANDLE: &str = "INTERNAL ERROR: Window handle is not HWND!";
@@ -231,6 +232,6 @@ impl WindowEx for nwg::Window {
     /// Set the position of the button in the parent window
     fn set_position_ex(&self, x: i32, y: i32) {
         let handle = check_hwnd(&self.handle, NOT_BOUND, BAD_HANDLE);
-        unsafe { set_window_position(handle, x, y) }
+        set_window_position(handle, x, y)
     }
 }
