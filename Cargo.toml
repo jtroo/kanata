@@ -6,7 +6,6 @@ members = [
     "example_tcp_client",
     "tcp_protocol",
     "windows_key_tester",
-    "win_dbg_logger",
     "simulated_input",
     "simulated_passthru",
 ]
@@ -82,6 +81,7 @@ winapi = { version = "0.3.9", features = [
     "wincon",
     "timeapi",
     "mmsystem",
+    "processthreadsapi",
 ] }
 windows-sys = { version = "0.52.0", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
@@ -101,7 +101,6 @@ windows-sys = { version = "0.52.0", features = [
     "Wdk_System",
     "Wdk_System_SystemServices",
 ], optional=true }
-win_dbg_logger = { path = "win_dbg_logger", optional = true }
 native-windows-gui = { version = "1.0.13", default_features = false}
 native-windows-derive = { version = "1.0.5", default_features = false, optional = true }
 regex = { version = "1.10.4", optional = true }
@@ -126,7 +125,7 @@ simulated_output = ["indoc"]
 simulated_input = ["indoc"]
 passthru_ahk = ["simulated_input","simulated_output"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["win_manifest","native-windows-derive","win_dbg_logger","win_dbg_logger/simple_shared","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer","muldiv","dep:windows-sys","win_sendinput_send_scancodes","win_llhook_read_scancodes"]
+gui = ["win_manifest","native-windows-derive","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer","muldiv","dep:windows-sys","win_sendinput_send_scancodes","win_llhook_read_scancodes"]
 
 [profile.release]
 opt-level = "z"
