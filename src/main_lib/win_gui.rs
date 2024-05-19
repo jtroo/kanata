@@ -152,6 +152,7 @@ fn main_impl() -> Result<()> {
     let gui_tx = ui.layer_notice.sender();
     let gui_cfg_tx = ui.cfg_notice.sender(); // allows notifying GUI on config reloads
     let gui_err_tx = ui.err_notice.sender(); // allows notifying GUI on erorrs (from logger)
+    let gui_exit_tx = ui.exit_notice.sender(); // allows notifying GUI on app quit
     if GUI_TX.set(gui_tx).is_err() {
         warn!("Someone else set our ‘GUI_TX’");
     };
@@ -160,6 +161,9 @@ fn main_impl() -> Result<()> {
     };
     if GUI_ERR_TX.set(gui_err_tx).is_err() {
         warn!("Someone else set our ‘GUI_ERR_TX’");
+    };
+    if GUI_EXIT_TX.set(gui_exit_tx).is_err() {
+        warn!("Someone else set our ‘GUI_EXIT_TX’");
     };
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
