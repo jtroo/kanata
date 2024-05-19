@@ -1203,10 +1203,10 @@ activate.
 
 There are two additional variants of `+tap-hold+`:
 
-* `+tap-hold-press+` or `+tap🠿+`
+* `+tap-hold-press+` or `+tap🠿↓+`
 ** If there is a press of a different key, the hold action is activated even if
 the hold timeout hasn't expired yet
-* `+tap-hold-release+` or `+tap🠽+`
+* `+tap-hold-release+` or `+tap🠿↑+`
 ** If there is a press+release of a different key, the hold action is activated
 even if the hold timeout hasn't expired yet
 
@@ -1225,15 +1225,15 @@ but you should be wary of activating the hold action unintentionally.
 
 There are further additional variants of `tap-hold-press` and `tap-hold-release`:
 
-- `tap-hold-press-timeout` or `tap🠿timeout`
-- `tap-hold-release-timeout` or `tap🠽timeout`
+- `tap-hold-press-timeout` or `tap🠿↓timeout`
+- `tap-hold-release-timeout` or `tap🠿↑timeout`
 
 These variants take a 5th parameter, in addition to the same 4 as the other
 variants. The 5th parameter is another action, which will activate if the hold
 timeout expires as opposed to being triggered by other key actions, whereas the
 non `-timeout` variants will activate the hold action in both cases.
 
-- `tap-hold-release-keys` or `tap🠽keys`
+- `tap-hold-release-keys` or `tap🠿↑keys`
 
 This variant takes a 5th parameter which is a list of keys
 that trigger an early tap
