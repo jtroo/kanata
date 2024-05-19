@@ -32,6 +32,9 @@ pub struct CfgOptionsGui {
     /// Disable sound for the system notification message on config reload
     #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_cfg_reload_silent: bool,
+    /// Show system notification message on errors
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_error: bool,
     /// Set tooltip size (width, height)
     #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_size: (u16, u16),
@@ -525,6 +528,15 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             cfg.gui_opts.notify_cfg_reload_silent =
                                 parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "notify-error" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.notify_error = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-size" => {
