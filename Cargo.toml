@@ -41,6 +41,7 @@ anyhow = "1"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
 dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }
+strip-ansi-escapes = { version = "0.2.0", optional = true }
 instant = { version = "0.1.12", default_features = false }
 log = { version = "0.4.8", default_features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
@@ -125,7 +126,7 @@ simulated_output = ["indoc"]
 simulated_input = ["indoc"]
 passthru_ahk = ["simulated_input","simulated_output"]
 wasm = [ "instant/wasm-bindgen" ]
-gui = ["win_manifest","native-windows-derive","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer","muldiv","dep:windows-sys","win_sendinput_send_scancodes","win_llhook_read_scancodes"]
+gui = ["win_manifest","native-windows-derive","kanata-parser/gui","native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer","muldiv","strip-ansi-escapes","dep:windows-sys","win_sendinput_send_scancodes","win_llhook_read_scancodes"]
 
 [profile.release]
 opt-level = "z"
