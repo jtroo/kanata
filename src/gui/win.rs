@@ -750,7 +750,7 @@ impl SystemTray {
         };
     }
     /// Check if tooltip data is changed, and update tooltip window size / timer duration
-    fn update_tooltip_data(&self, k: &MutexGuard<Kanata>) -> bool {
+    fn update_tooltip_data(&self, k: &Kanata) -> bool {
         let mut app_data = self.app_data.borrow_mut();
         let mut clear = false;
         if app_data.tt_duration_pre != k.gui_opts.tooltip_duration {
