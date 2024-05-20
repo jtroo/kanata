@@ -531,7 +531,7 @@ impl SystemTray {
     /// Spawn a thread with a new 🖰 pointer watcher
     /// (that sends a signal back to GUI which in turn moves the tooltip to the new position)
     fn update_mouse_watcher(&self, tt2m_sndr: ASender<bool>, ticks: u16, poll_time: Duration) {
-        info!("   ✓   update_mouse_watcher");
+        debug!("   ✓   update_mouse_watcher");
         let gui_tx = self.tt_notice.sender(); // allows notifying GUI on tooltip move updates
         let (m2tt_sndr0, m2tt_rcvr) = std::sync::mpsc::channel::<bool>();
         {
