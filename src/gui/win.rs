@@ -476,7 +476,7 @@ impl SystemTray {
         });
         if is_same {
             return;
-        }; //info!("⏎⏎⏎");
+        };
         let win_ver = win_ver!();
         // image width/height to take it into account when calculating overlaps
         let w = app_data.gui_opts.tooltip_size.0 as i32;
