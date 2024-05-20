@@ -236,6 +236,6 @@ impl WindowEx for nwg::Window {
     /// Set the position of the button in the parent window
     fn set_position_ex(&self, x: i32, y: i32) {
         let handle = check_hwnd(&self.handle, NOT_BOUND, BAD_HANDLE);
-        unsafe{set_window_position(handle, x, y)}
+        unsafe { set_window_position(handle, x, y) }
     }
 }
