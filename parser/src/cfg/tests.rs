@@ -1290,6 +1290,13 @@ fn parse_all_defcfg() {
   linux-x11-repeat-delay-rate 400,50
   tray-icon symbols.ico
   icon-match-layer-name no
+  tooltip-layer-changes yes
+  tooltip-show-blank yes
+  tooltip-no-base yes
+  tooltip-duration 300
+  tooltip-size 24,24
+  notify-cfg-reload yes
+  notify-cfg-reload-silent no
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
   windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
@@ -1889,4 +1896,16 @@ fn layer_name_allows_var() {
     parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("parse succeeds");
+}
+
+#[test]
+fn disallow_whitespace_in_tooltip_size() {
+    let source = "
+(defcfg
+  tooltip-size 24 24	;; should be 24,24
+)
+(defsrc 1)
+(deflayer test 1)
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
 }

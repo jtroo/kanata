@@ -572,6 +572,7 @@ dependencies = [
  "log",
  "miette",
  "mio",
+ "muldiv 1.0.1",
  "native-windows-derive",
  "native-windows-gui",
  "nix 0.26.4",
@@ -806,6 +807,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0419348c027fa7be448d2ae7ea0e4e04c2334c31dc4e74ab29f00a2a7ca69204"
 
 [[package]]
+name = "muldiv"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "956787520e75e9bd233246045d19f42fb73242759cc57fba9611d940ae96d4b0"
+
+[[package]]
 name = "native-windows-derive"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -825,7 +832,7 @@ checksum = "4f7003a669f68deb6b7c57d74fff4f8e533c44a3f0b297492440ef4ff5a28454"
 dependencies = [
  "bitflags 1.3.2",
  "lazy_static",
- "muldiv",
+ "muldiv 0.2.1",
  "winapi",
  "winapi-build",
 ]

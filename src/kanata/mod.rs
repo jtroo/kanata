@@ -205,11 +205,8 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(all(target_os = "windows", feature = "gui"))]
-    /// File name / path to the tray icon file.
-    pub tray_icon: Option<String>,
-    #[cfg(all(target_os = "windows", feature = "gui"))]
-    /// Whether to match layer names to icon files without an explicit 'icon' field
-    pub icon_match_layer_name: bool,
+    /// Various GUI-related options.
+    pub gui_opts: CfgOptionsGui,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -375,9 +372,7 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            tray_icon: cfg.options.tray_icon,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            icon_match_layer_name: cfg.options.icon_match_layer_name,
+            gui_opts: cfg.options.gui_opts,
         })
     }
 
@@ -475,9 +470,7 @@ impl Kanata {
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
-            tray_icon: None,
-            #[cfg(all(target_os = "windows", feature = "gui"))]
-            icon_match_layer_name: cfg.options.icon_match_layer_name,
+            gui_opts: cfg.options.gui_opts,
         })
     }
 
@@ -526,8 +519,15 @@ impl Kanata {
         self.switch_max_key_timing = cfg.switch_max_key_timing;
         #[cfg(all(target_os = "windows", feature = "gui"))]
         {
-            self.tray_icon = cfg.options.tray_icon;
-            self.icon_match_layer_name = cfg.options.icon_match_layer_name;
+            self.gui_opts.tray_icon = cfg.options.gui_opts.tray_icon;
+            self.gui_opts.icon_match_layer_name = cfg.options.gui_opts.icon_match_layer_name;
+            self.gui_opts.tooltip_layer_changes = cfg.options.gui_opts.tooltip_layer_changes;
+            self.gui_opts.tooltip_no_base = cfg.options.gui_opts.tooltip_no_base;
+            self.gui_opts.tooltip_show_blank = cfg.options.gui_opts.tooltip_show_blank;
+            self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
+            self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
+            self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
@@ -572,7 +572,7 @@ impl Kanata {
             }
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
-        send_gui_notice();
+        send_gui_cfg_notice();
         Ok(())
     }
 

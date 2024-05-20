@@ -10,3 +10,4 @@ use parking_lot::Mutex;
 use std::sync::{Arc, OnceLock};
 pub static CFG: OnceLock<Arc<Mutex<Kanata>>> = OnceLock::new();
 pub static GUI_TX: OnceLock<native_windows_gui::NoticeSender> = OnceLock::new();
+pub static GUI_CFG_TX: OnceLock<native_windows_gui::NoticeSender> = OnceLock::new();
