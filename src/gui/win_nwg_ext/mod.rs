@@ -192,7 +192,10 @@ pub fn logical_to_physical(x: i32, y: i32) -> (i32, i32) {
     let y = y.mul_div_round(dpi, USER_DEFAULT_SCREEN_DPI).unwrap_or(y);
     (x, y)
 }
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
+/// # Safety
+/// The `handle` param must be a valid pointer to a window handle returned by some winapi call.
+/// Failure to do so probably won't be UB because the handle is passed to a WinAPI call
+/// which is expected to handle these cases safely, but seems worth noting anyway.
 pub fn set_window_position(handle: HWND, x: i32, y: i32) {
     use winapi::um::winuser::SetWindowPos;
     use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER};
