@@ -196,7 +196,7 @@ pub fn logical_to_physical(x: i32, y: i32) -> (i32, i32) {
 /// The `handle` param must be a valid pointer to a window handle returned by some winapi call.
 /// Failure to do so probably won't be UB because the handle is passed to a WinAPI call
 /// which is expected to handle these cases safely, but seems worth noting anyway.
-pub fn set_window_position(handle: HWND, x: i32, y: i32) {
+pub unsafe fn set_window_position(handle: HWND, x: i32, y: i32) {
     use winapi::um::winuser::SetWindowPos;
     use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER};
     let (x, y) = logical_to_physical(x, y);
@@ -236,6 +236,6 @@ impl WindowEx for nwg::Window {
     /// Set the position of the button in the parent window
     fn set_position_ex(&self, x: i32, y: i32) {
         let handle = check_hwnd(&self.handle, NOT_BOUND, BAD_HANDLE);
-        set_window_position(handle, x, y)
+        unsafe{set_window_position(handle, x, y)}
     }
 }
