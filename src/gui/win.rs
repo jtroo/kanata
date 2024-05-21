@@ -1218,7 +1218,7 @@ pub mod system_tray_ui {
             nwg::ImageDecoder::builder().build(&mut d.decoder)?;
             // Resources
             d.embed = Default::default();
-            d.embed = nwg::EmbedResource::load(Some("kanata.exe"))?;
+            d.embed = nwg::EmbedResource::load(None)?;
             nwg::Icon::builder()
                 .source_embed(Some(&d.embed))
                 .source_embed_str(Some("iconMain"))
