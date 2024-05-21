@@ -178,6 +178,13 @@ pub struct CapsWordCfg {
     pub keys_to_capitalize: &'static [KeyCode],
     pub keys_nonterminal: &'static [KeyCode],
     pub timeout: u16,
+    pub repress_behaviour: CapsWordRepressBehaviour,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CapsWordRepressBehaviour {
+    Overwrite,
+    Toggle,
 }
 
 /// This controls the behaviour of kanata when sequence mode is initiated by the sequence leader

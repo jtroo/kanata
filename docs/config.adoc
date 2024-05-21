@@ -1483,6 +1483,7 @@ You can use `caps-word-custom` instead of `caps-word`
 if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
+.Example
 [source]
 ----
 (defalias
@@ -1491,6 +1492,26 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
   ;; This example is similar to the default caps-word behaviour but it moves the
   ;; 0-9 keys to the capitalized key list from the extra non-terminating key list.
   cwc (caps-word-custom
+    2000
+    (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+    (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+  )
+)
+----
+
+==== caps-word-toggle[[caps-word-toggle]]
+
+There are `-toggle` variants of the `caps-word` actions.
+By default repressing `caps-word` will keep `caps-word` active.
+The `-toggle` variants will end `caps-word` if it is currently active,
+otherwise `caps-word` will be activate as normal.
+
+.Example
+[source]
+----
+(defalias
+  cwt (caps-word-toggle 2000)
+  cct (caps-word-custom-toggle
     2000
     (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
     (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)

@@ -57,6 +57,8 @@ pub const CMD_OUTPUT_KEYS: &str = "cmd-output-keys";
 pub const FORK: &str = "fork";
 pub const CAPS_WORD: &str = "caps-word";
 pub const CAPS_WORD_CUSTOM: &str = "caps-word-custom";
+pub const CAPS_WORD_TOGGLE: &str = "caps-word-toggle";
+pub const CAPS_WORD_CUSTOM_TOGGLE: &str = "caps-word-custom-toggle";
 pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str = "dynamic-macro-record-stop-truncate";
 pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
@@ -124,7 +126,9 @@ pub fn is_list_action(ac: &str) -> bool {
         PUSH_MESSAGE,
         FORK,
         CAPS_WORD,
+        CAPS_WORD_TOGGLE,
         CAPS_WORD_CUSTOM,
+        CAPS_WORD_CUSTOM_TOGGLE,
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE,
         SWITCH,
         SEQUENCE,
