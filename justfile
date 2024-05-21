@@ -12,11 +12,11 @@ build_release_linux output_dir:
 
 # Build the release binaries for Windows and put the binaries+cfg in the output directory.
 build_release_windows output_dir:
-  cargo build --release --features win_manifest; cp target/release/kanata.exe "{{output_dir}}\kanata.exe"
+  cargo build --release --features win_manifest; cp target/release/kanata.exe "{{output_dir}}\kanata_legacy_output.exe"
   cargo build --release --features win_manifest,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_wintercept.exe"
-  cargo build --release --features win_manifest,win_sendinput_send_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata_scancode_experimental.exe"
+  cargo build --release --features win_manifest,win_sendinput_send_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata.exe"
   cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata_winIOv2.exe"
-  cargo build --release --features win_manifest,cmd; cp target/release/kanata.exe "{{output_dir}}\kanata_cmd_allowed.exe"
+  cargo build --release --features win_manifest,cmd,win_sendinput_send_scancodes; cp target/release/kanata.exe "{{output_dir}}\kanata_cmd_allowed.exe"
   cargo build --release --features win_manifest,cmd,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_wintercept_cmd_allowed.exe"
   cargo build --release --features passthru_ahk --package=simulated_passthru; cp target/release/kanata_passthru.dll "{{output_dir}}\kanata_passthru.dll"
   cargo build --release --features win_manifest,gui    ; cp target/release/kanata.exe "{{output_dir}}\kanata_gui.exe"

@@ -39,7 +39,7 @@ This variant contains the same output change as in the `scancode` variant below,
 
 ---
 
-**NOTE:** The `kanata_scancode_experimental.exe` variant has the same input `defsrc` handling as the standard `kanata.exe` file but contains a change for [an issue](https://github.com/jtroo/kanata/issues/567) where kanata outputs are not handled correctly by some applications. This has not yet been extensively tested but the hope is that it is a strict improvement in scenarios where kanata operates correctly.
+**NOTE:** The `kanata_legacy_output.exe` variant has the same input `defsrc` handling as the standard `kanata.exe` file. It uses the same output mechanism as the standard `kanata.exe` variant in version 1.6.1 and earlier. In other words the formerly `experimental_scancode` variant is nwow default binary. The non-legacy variants contain changes for [an issue](https://github.com/jtroo/kanata/issues/567), which is omitted from this legacy variant. The legacy variant is included in case issues are found with the new output mechanism.
 
 ---
 
