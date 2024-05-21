@@ -1390,9 +1390,17 @@ impl Kanata {
                         CustomAction::SendArbitraryCode(code) => {
                             self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
                         }
-                        CustomAction::CapsWord(cfg) => {
-                            self.caps_word = Some(CapsWordState::new(cfg));
-                        }
+                        CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
+                            CapsWordRepressBehaviour::Overwrite => {
+                                self.caps_word = Some(CapsWordState::new(cfg));
+                            }
+                            CapsWordRepressBehaviour::Toggle => {
+                                self.caps_word = match self.caps_word {
+                                    Some(_) => None,
+                                    None => Some(CapsWordState::new(cfg)),
+                                };
+                            }
+                        },
                         CustomAction::SetMouse { x, y } => {
                             self.kbd_out.set_mouse(*x, *y)?;
                         }
