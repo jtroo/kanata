@@ -886,10 +886,10 @@ The actions are as follows:
 
 The mouse wheel actions are:
 
-* `mwheel-up` or `🖱↑`: vertical scroll up
-* `mwheel-down` or `🖱↓`: vertical scroll down
-* `mwheel-left` or `🖱←`: horizontal scroll left
-* `mwheel-right` or `🖱→`: horizontal scroll right
+* `mwheel-up` or `🖱☸↑`: vertical scroll up
+* `mwheel-down` or `🖱☸↓`: vertical scroll down
+* `mwheel-left` or `🖱☸←`: horizontal scroll left
+* `mwheel-right` or `🖱☸→`: horizontal scroll right
 
 All of these actions accept two number strings. The first is the interval
 (unit: ms) between scroll actions. The second number is the distance
@@ -918,10 +918,10 @@ you will probably get way more events than you intended.
 
 The mouse movement actions are:
 
-* `movemouse-up` or `🖰↑`
-* `movemouse-down` or `🖰↓`
-* `movemouse-left` or `🖰←`
-* `movemouse-right` or `🖰→`
+* `movemouse-up` or `🖱↑`
+* `movemouse-down` or `🖱↓`
+* `movemouse-left` or `🖱←`
+* `movemouse-right` or `🖱→`
 
 Similar to the mouse wheel actions, all of these actions accept two number strings.
 The first is the interval (unit: ms) between movement actions and the second number
@@ -930,10 +930,10 @@ is the distance (unit: pixels) of each movement.
 The following are variants of the above mouse movements that apply linear mouse
 acceleration from the minimum distance to the maximum distance as the mapped key is held.
 
-* `movemouse-accel-up` or `🖰accel↑`
-* `movemouse-accel-down` or `🖰accel↓`
-* `movemouse-accel-left` or `🖰accel←`
-* `movemouse-accel-right` or `🖰accel→`
+* `movemouse-accel-up` or `🖱accel↑`
+* `movemouse-accel-down` or `🖱accel↓`
+* `movemouse-accel-left` or `🖱accel←`
+* `movemouse-accel-right` or `🖱accel→`
 
 All these actions accept four number strings. The first number is the
 interval (unit: ms) between movement actions. The second number is the time it
@@ -947,7 +947,7 @@ There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inh
 ==== Set absolute mouse position
 <<table-of-contents,Back to ToC>>
 
-The action `setmouse` or `set🖰` sets the absolute mouse position.
+The action `setmouse` or `set🖱` sets the absolute mouse position.
 
 WARNING: This is only supported in Windows right now.
 For an interesting keyboard-centric mouse solution in Linux,
@@ -968,7 +968,7 @@ Experimentation will be needed.
 ==== Modify the speed of mouse movements
 <<table-of-contents,Back to ToC>>
 
-The action `movemouse-speed` or `🖰speed` modifies the speed at which `movemouse` and
+The action `movemouse-speed` or `🖱speed` modifies the speed at which `movemouse` and
 `movemouse-accel` function at runtime. It does this by expanding or shrinking
 `min_distance` and `max_distance` while the action key is pressed.
 
