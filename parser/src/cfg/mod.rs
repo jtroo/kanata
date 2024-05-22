@@ -1577,60 +1577,83 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         LAYER_SWITCH => parse_layer_base(&ac[1..], s),
         LAYER_TOGGLE | LAYER_WHILE_HELD => parse_layer_toggle(&ac[1..], s),
         TAP_HOLD => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
-        TAP_HOLD_PRESS => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
-        TAP_HOLD_RELEASE => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
-        TAP_HOLD_PRESS_TIMEOUT => {
+        TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
+        }
+        TAP_HOLD_RELEASE | TAP_HOLD_RELEASE_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold)
+        }
+        TAP_HOLD_PRESS_TIMEOUT | TAP_HOLD_PRESS_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
         }
-        TAP_HOLD_RELEASE_TIMEOUT => {
+        TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        TAP_HOLD_RELEASE_KEYS => {
+        TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
         }
-        TAP_HOLD_EXCEPT_KEYS => parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except),
+        TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
+            parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)
+        }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
-        MACRO_REPEAT => parse_macro(&ac[1..], s, RepeatMacro::Yes),
-        MACRO_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No),
-        MACRO_REPEAT_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes),
-        UNICODE => parse_unicode(&ac[1..], s),
-        SYM => parse_unicode(&ac[1..], s),
-        ONE_SHOT | ONE_SHOT_PRESS => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress),
-        ONE_SHOT_RELEASE => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease),
-        ONE_SHOT_PRESS_PCANCEL => {
+        MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),
+        MACRO_RELEASE_CANCEL | MACRO_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No)
+        }
+        MACRO_REPEAT_RELEASE_CANCEL | MACRO_REPEAT_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes)
+        }
+        UNICODE | SYM => parse_unicode(&ac[1..], s),
+        ONE_SHOT | ONE_SHOT_PRESS | ONE_SHOT_PRESS_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
+        }
+        ONE_SHOT_RELEASE | ONE_SHOT_RELEASE_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease)
+        }
+        ONE_SHOT_PRESS_PCANCEL | ONE_SHOT_PRESS_PCANCEL_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)
         }
-        ONE_SHOT_RELEASE_PCANCEL => {
+        ONE_SHOT_RELEASE_PCANCEL | ONE_SHOT_RELEASE_PCANCEL_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
         }
         TAP_DANCE => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
         TAP_DANCE_EAGER => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
         CHORD => parse_chord(&ac[1..], s),
-        RELEASE_KEY => parse_release_key(&ac[1..], s),
-        RELEASE_LAYER => parse_release_layer(&ac[1..], s),
-        ON_PRESS_FAKEKEY => parse_on_press_fake_key_op(&ac[1..], s),
-        ON_RELEASE_FAKEKEY => parse_on_release_fake_key_op(&ac[1..], s),
-        ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
-        ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
+        RELEASE_KEY | RELEASE_KEY_A => parse_release_key(&ac[1..], s),
+        RELEASE_LAYER | RELEASE_LAYER_A => parse_release_layer(&ac[1..], s),
+        ON_PRESS_FAKEKEY | ON_PRESS_FAKEKEY_A => parse_on_press_fake_key_op(&ac[1..], s),
+        ON_RELEASE_FAKEKEY | ON_RELEASE_FAKEKEY_A => parse_on_release_fake_key_op(&ac[1..], s),
+        ON_PRESS_FAKEKEY_DELAY | ON_PRESS_FAKEKEY_DELAY_A => parse_fake_key_delay(&ac[1..], s),
+        ON_RELEASE_FAKEKEY_DELAY | ON_RELEASE_FAKEKEY_DELAY_A => {
+            parse_on_release_fake_key_delay(&ac[1..], s)
+        }
         ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),
-        ON_PRESS => parse_on_press(&ac[1..], s),
-        ON_RELEASE => parse_on_release(&ac[1..], s),
+        ON_PRESS | ON_PRESS_A => parse_on_press(&ac[1..], s),
+        ON_RELEASE | ON_RELEASE_A => parse_on_release(&ac[1..], s),
         ON_IDLE => parse_on_idle(&ac[1..], s),
-        MWHEEL_UP => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
-        MWHEEL_DOWN => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
-        MWHEEL_LEFT => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
-        MWHEEL_RIGHT => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
-        MOVEMOUSE_UP => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
-        MOVEMOUSE_DOWN => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
-        MOVEMOUSE_LEFT => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
-        MOVEMOUSE_RIGHT => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
-        MOVEMOUSE_ACCEL_UP => parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s),
-        MOVEMOUSE_ACCEL_DOWN => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
-        MOVEMOUSE_ACCEL_LEFT => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
-        MOVEMOUSE_ACCEL_RIGHT => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
-        MOVEMOUSE_SPEED => parse_move_mouse_speed(&ac[1..], s),
-        SETMOUSE => parse_set_mouse(&ac[1..], s),
+        MWHEEL_UP | MWHEEL_UP_A => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
+        MWHEEL_DOWN | MWHEEL_DOWN_A => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
+        MWHEEL_LEFT | MWHEEL_LEFT_A => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
+        MWHEEL_RIGHT | MWHEEL_RIGHT_A => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
+        MOVEMOUSE_UP | MOVEMOUSE_UP_A => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
+        MOVEMOUSE_DOWN | MOVEMOUSE_DOWN_A => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
+        MOVEMOUSE_LEFT | MOVEMOUSE_LEFT_A => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
+        MOVEMOUSE_RIGHT | MOVEMOUSE_RIGHT_A => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
+        MOVEMOUSE_ACCEL_UP | MOVEMOUSE_ACCEL_UP_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s)
+        }
+        MOVEMOUSE_ACCEL_DOWN | MOVEMOUSE_ACCEL_DOWN_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s)
+        }
+        MOVEMOUSE_ACCEL_LEFT | MOVEMOUSE_ACCEL_LEFT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s)
+        }
+        MOVEMOUSE_ACCEL_RIGHT | MOVEMOUSE_ACCEL_RIGHT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s)
+        }
+        MOVEMOUSE_SPEED | MOVEMOUSE_SPEED_A => parse_move_mouse_speed(&ac[1..], s),
+        SETMOUSE | SETMOUSE_A => parse_set_mouse(&ac[1..], s),
         DYNAMIC_MACRO_RECORD => parse_dynamic_macro_record(&ac[1..], s),
         DYNAMIC_MACRO_PLAY => parse_dynamic_macro_play(&ac[1..], s),
         ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
@@ -1638,19 +1661,23 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
-        CAPS_WORD => parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s),
-        CAPS_WORD_CUSTOM => {
+        CAPS_WORD | CAPS_WORD_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
+        }
+        CAPS_WORD_CUSTOM | CAPS_WORD_CUSTOM_A => {
             parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
         }
-        CAPS_WORD_TOGGLE => parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Toggle, s),
-        CAPS_WORD_CUSTOM_TOGGLE => {
+        CAPS_WORD_TOGGLE | CAPS_WORD_TOGGLE_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
+        }
+        CAPS_WORD_CUSTOM_TOGGLE | CAPS_WORD_CUSTOM_TOGGLE_A => {
             parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
         }
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
         SWITCH => parse_switch(&ac[1..], s),
         SEQUENCE => parse_sequence_start(&ac[1..], s),
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
-        UNSHIFT => parse_unmod(UNSHIFT, &ac[1..], s),
+        UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
         _ => unreachable!(),
