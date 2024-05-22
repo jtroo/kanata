@@ -1099,10 +1099,10 @@ There are four variants of the `+one-shot+` action:
   end on the first press of another key
 - `+one-shot-release+` or `+one-shot↑+`:
   end on the first release of another key
-- `+one-shot-press-pcancel+` or `+one-shot↓🗙+`:
+- `+one-shot-press-pcancel+` or `+one-shot↓⤫+`:
   end on the first press of another key
   or on re-press of another active one-shot key
-- `+one-shot-release-pcancel+` or `+one-shot↑🗙+`:
+- `+one-shot-release-pcancel+` or `+one-shot↑⤫+`:
   end on the first release of another key
   or on re-press of another active one-shot key
 
@@ -1259,7 +1259,7 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 )
 ----
 
-- `tap-hold-except-keys` or `tap-hold🗙keys`
+- `tap-hold-except-keys` or `tap-hold⤫keys`
 
 This variant takes a 5th parameter which is a list of keys
 that always trigger a tap
@@ -1343,7 +1343,7 @@ needs the delay of `5` to work correctly.
 ----
 
 There is a variant of the `+macro+` action that will cancel all active macros
-upon releasing the key: `+macro-release-cancel+` or `+macro↑🗙+`. It is parsed identically to
+upon releasing the key: `+macro-release-cancel+` or `+macro↑⤫+`. It is parsed identically to
 the non-cancelling version. An example use case for this action is holding down
 a key to get different outputs, similar to tap-dance but one can see which keys
 are being outputted.
@@ -1376,7 +1376,7 @@ only the most recently pressed macro will be repeated.
   mr1 (macro-repeat mltp)
   mr2 (macro⟳ mltp)
   mr2 (macro-repeat-release-cancel mltp)
-  mr2 (macro⟳↑🗙 mltp)
+  mr2 (macro⟳↑⤫ mltp)
 )
 ----
 
