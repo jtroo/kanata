@@ -154,7 +154,7 @@ pub fn send_gui_err_notice() {
     }
 }
 pub fn show_err_msg_nofail(title: String, msg: String) {
-    // log gets intialized before gui, so some errors might have no target to log to, ignore it
+    // log gets insalized before gui, so some errors might have no target to log to, ignore them
     if let Some(gui_msg_tx) = GUI_ERR_MSG_TX.get() {
         if gui_msg_tx.send((title, msg)).is_err() {
             warn!("send_gui_err_msg_notice failed to use OS notifications")
