@@ -956,8 +956,8 @@ impl SystemTray {
         let mut msg_title = "".to_string();
         let mut msg_content = "".to_string();
         let mut flags = f_tray::empty();
-        if let Some(gsui_msg_rx) = &self.err_recv {
-            match gsui_msg_rx.try_recv() {
+        if let Some(gui_msg_rx) = &self.err_recv {
+            match gui_msg_rx.try_recv() {
                 Ok((title, msg)) => {
                     msg_title += &title;
                     msg_content += &msg;
