@@ -1661,11 +1661,15 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
-        CAPS_WORD | CAPS_WORD_A => parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s),
+        CAPS_WORD | CAPS_WORD_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
+        }
         CAPS_WORD_CUSTOM | CAPS_WORD_CUSTOM_A => {
             parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
         }
-        CAPS_WORD_TOGGLE | CAPS_WORD_TOGGLE_A => parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Toggle, s),
+        CAPS_WORD_TOGGLE | CAPS_WORD_TOGGLE_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
+        }
         CAPS_WORD_CUSTOM_TOGGLE | CAPS_WORD_CUSTOM_TOGGLE_A => {
             parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
         }
