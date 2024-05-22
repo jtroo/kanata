@@ -162,9 +162,9 @@ pub fn show_err_msg_nofail(title: String, msg: String) {
             // can't Error to avoid an ∞ error loop ↑
             if let Some(gui_tx) = GUI_ERR_TX.get() {
                 gui_tx.notice();
-            } //else {warn!("no GUI_ERR_TX to notify GUI thread of errors")}
+            }
         }
-    } //else {warn!("no GUI_ERR_MSG_TX to notify GUI thread of errors")}
+    }
 }
 
 /// Find an icon file that matches a given config icon name for a layer `lyr_icn` or a layer name
