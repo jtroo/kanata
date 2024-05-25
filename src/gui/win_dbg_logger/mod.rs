@@ -35,7 +35,7 @@
 //! }
 //!
 //! fn main() {
-//!     log::set_logger(&win_dbg_logger::WINDBG_LOGGER).unwrap();
+//!     log::set_logger(&kanata_state_machine::gui::WINDBG_LOGGER).unwrap();
 //!     log::set_max_level(log::LevelFilter::Debug);
 //!
 //!     do_cool_stuff();
@@ -57,7 +57,7 @@ pub struct WinDbgLogger {
 /// this can be directly registered using `log::set_logger`, e.g.:
 ///
 /// ```
-/// log::set_logger(&win_dbg_logger::WINDBG_LOGGER).unwrap(); // Initialize
+/// log::set_logger(&kanata_state_machine::gui::WINDBG_LOGGER).unwrap(); // Initialize
 /// log::set_max_level(log::LevelFilter::Debug);
 ///
 /// use log::{info, debug}; // Import
@@ -93,8 +93,12 @@ pub static WINDBG_L0: WinDbgLogger = WinDbgLogger {
     _priv: (),
 };
 
-#[cfg(feature = "simple_shared")]
-pub fn windbg_simple_combo(log_lvl: LevelFilter) -> Box<dyn simplelog::SharedLogger> {
+#[cfg(all(target_os = "windows", feature = "gui"))]
+pub fn windbg_simple_combo(
+    log_lvl: LevelFilter,
+    noti_lvl: LevelFilter,
+) -> Box<dyn simplelog::SharedLogger> {
+    set_noti_lvl(noti_lvl);
     match log_lvl {
         LevelFilter::Error => Box::new(WINDBG_L1),
         LevelFilter::Warn => Box::new(WINDBG_L2),
@@ -104,7 +108,7 @@ pub fn windbg_simple_combo(log_lvl: LevelFilter) -> Box<dyn simplelog::SharedLog
         LevelFilter::Off => Box::new(WINDBG_L0),
     }
 }
-#[cfg(feature = "simple_shared")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 impl simplelog::SharedLogger for WinDbgLogger {
     // allows using with simplelog's CombinedLogger
     fn level(&self) -> LevelFilter {
@@ -138,6 +142,13 @@ pub fn set_thread_state(is: bool) -> &'static bool {
     // (lazycell allows doing that without an extra function)
     static CELL: OnceLock<bool> = OnceLock::new();
     CELL.get_or_init(|| is)
+}
+pub fn get_noti_lvl() -> &'static LevelFilter {
+    set_noti_lvl(LevelFilter::Off)
+}
+pub fn set_noti_lvl(lvl: LevelFilter) -> &'static LevelFilter {
+    static CELL: OnceLock<LevelFilter> = OnceLock::new();
+    CELL.get_or_init(|| lvl)
 }
 
 use regex::Regex;
@@ -183,6 +194,20 @@ impl log::Log for WinDbgLogger {
                 record.line().unwrap_or(0),
                 record.args()
             );
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            {
+                use crate::gui::win::*;
+                let title = format!(
+                    "{}{}:{}",
+                    thread_id,
+                    clean_name(record.file()),
+                    record.line().unwrap_or(0)
+                );
+                let msg = format!("{}", record.args());
+                if record.level() <= *get_noti_lvl() {
+                    show_err_msg_nofail(title, msg);
+                }
+            }
             output_debug_string(&s);
         }
     }

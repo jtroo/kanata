@@ -585,8 +585,8 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "simplelog",
+ "strip-ansi-escapes",
  "time",
- "win_dbg_logger 0.1.0",
  "winapi",
  "windows-sys 0.52.0",
 ]
@@ -1221,7 +1221,7 @@ dependencies = [
  "parking_lot",
  "regex",
  "widestring",
- "win_dbg_logger 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "win_dbg_logger",
  "winapi",
 ]
 
@@ -1251,6 +1251,15 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "strip-ansi-escapes"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55ff8ef943b384c414f54aefa961dd2bd853add74ec75e7ac74cf91dba62bcfa"
+dependencies = [
+ "vte",
+]
 
 [[package]]
 name = "strsim"
@@ -1496,6 +1505,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "vte"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5022b5fbf9407086c180e9557be968742d839e68346af7792b8592489732197"
+dependencies = [
+ "utf8parse",
+ "vte_generate_state_changes",
+]
+
+[[package]]
+name = "vte_generate_state_changes"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d257817081c7dffcdbab24b9e62d2def62e2ff7d00b1c20062551e6cccc145ff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1570,16 +1599,6 @@ name = "widestring"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7219d36b6eac893fa81e84ebe06485e7dcbb616177469b142df14f1f4deb1311"
-
-[[package]]
-name = "win_dbg_logger"
-version = "0.1.0"
-dependencies = [
- "log",
- "regex",
- "simplelog",
- "winapi",
-]
 
 [[package]]
 name = "win_dbg_logger"

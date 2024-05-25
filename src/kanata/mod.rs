@@ -527,6 +527,7 @@ impl Kanata {
             self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
             self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
             self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
             self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
         }
 
@@ -1273,10 +1274,20 @@ impl Kanata {
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
                             {
-                                for (key_action, osc) in keys_for_cmd_output(_cmd) {
+                                let cmd = _cmd.clone();
+                                // Maybe improvement in the future:
+                                // A delay here, as in KeyAction::Delay, will pause the entire
+                                // state machine loop. That is _probably_ OK, but ideally this
+                                // would be done in a separate thread or somehow
+                                for key_action in keys_for_cmd_output(&cmd) {
                                     match key_action {
-                                        KeyAction::Press => press_key(&mut self.kbd_out, osc)?,
-                                        KeyAction::Release => release_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Release(osc) => {
+                                            release_key(&mut self.kbd_out, osc)?
+                                        }
+                                        KeyAction::Delay(delay) => std::thread::sleep(
+                                            std::time::Duration::from_millis(u64::from(delay)),
+                                        ),
                                     }
                                 }
                             }
@@ -2018,7 +2029,13 @@ fn check_for_exit(_event: &KeyEvent) {
             log::info!("{EXIT_MSG}");
             #[cfg(all(target_os = "windows", feature = "gui"))]
             {
+                #[cfg(not(feature = "interception_driver"))]
                 native_windows_gui::stop_thread_dispatch();
+                #[cfg(feature = "interception_driver")]
+                send_gui_exit_notice(); // interception driver is running in another thread to allow
+                                        // GUI take the main one, so it's calling check_for_exit
+                                        // from a thread that has no access to the main one, so
+                                        // can't stop main thread's dispatch
             }
             #[cfg(all(
                 not(target_os = "linux"),

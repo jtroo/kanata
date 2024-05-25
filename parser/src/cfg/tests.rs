@@ -151,6 +151,12 @@ fn test_span_of_an_unterminated_block_comment_error() {
 #[test]
 fn parse_action_vars() {
     let source = r#"
+(defvirtualkeys
+  ctl lctl
+  sft lsft
+  met lmet
+  alt lalt
+)
 (defvar
   one 1
   two 2
@@ -178,25 +184,62 @@ fn parse_action_vars() {
   rlk (release-key $one)
   mul (multi $two $one)
   mwu (mwheel-up $one $two)
+  mwua (🖱☸↑ $one $two)
+  mwda (🖱☸↓ $one $two)
+  mwla (🖱☸← $one $two)
+  mwra (🖱☸→ $one $two)
+  mmua (🖱↑ $one $two)
+  mmda (🖱↓ $one $two)
+  mmla (🖱← $one $two)
+  mmra (🖱→ $one $two)
   mmu (movemouse-up $one $two)
   mau (movemouse-accel-up $one $two $one $two)
+  maua (🖱accel↑ $one $two $one $two)
+  mada (🖱accel↓ $one $two $one $two)
+  mala (🖱accel← $one $two $one $two)
+  mara (🖱accel→ $one $two $one $two)
   ons (one-shot $one $two)
   thd (tap-hold $one $two $chr $two)
   tht (tap-hold-release-timeout $one $two $chr $two $one)
   thk (tap-hold-release-keys $one $two $chr $two $three)
   the (tap-hold-except-keys $one $two $chr $two $three)
+  thta (tap⬓↑timeout $one $two $chr $two $one)
+  thka (tap⬓↑keys $one $two $chr $two $three)
+  thea (tap⬓⤫keys $one $two $chr $two $three)
   mac (macro $one $two $one $two $chr C-S-$three $one)
   rmc (macro-repeat $one $two $one $two $chr C-S-$three $one)
+  mrca (macro↑⤫ $one 500 bspc S-1 500 bspc S-2)
+  mrra (macro⟳↑⤫ mltp)
+  oat (tap⬓↓timeout   200 200 o $one bspc)
+  fsta (🖱speed 200)
+  psfa (on↓ press-virtualkey   sft)
+  rsfa (on↑ release-virtualkey sft)
+  os2a (one-shot↓ 2000 lsft)
+  os3a (one-shot↑ 2000 lctl)
+  os4a (one-shot↓⤫ 2000 lalt)
+  os5a (one-shot↑⤫ 2000 lmet)
+  oara (tap⬓↓ 200 200 o $two)
+  echa (tap⬓↑ 200 200 e $two)
+  rmca (macro⟳ $one $two $one $two $chr C-S-$three $one)
   dr1 (dynamic-macro-record $one)
   dp1 (dynamic-macro-play $one)
   abc (arbitrary-code $one)
   opf (on-press-fakekey $one $rel)
   orf (on-release-fakekey $one $rel)
+  opfa (on↓fakekey $one $rel)
+  orfa (on↑fakekey $one $rel)
+  opfda (on↓fakekey-delay 200)
+  orfda (on↑fakekey-delay 200)
+  relka (key↑ $one)
+  rella (layer↑ base)
   fla $full-action
   frk (fork $one $two $five)
   cpw (caps-word-custom $one $three $four)
+  cwa (word⇪ 2000)
+  cpwa (word⇪custom $one $three $four)
   rst (dynamic-macro-record-stop-truncate $one)
   stm (setmouse $one $two)
+  stma (set🖱 $one $two)
 )
 (defsrc a b c d)
 (deflayer base $chord1 $chord2 $chr @tdl)
@@ -1297,6 +1340,7 @@ fn parse_all_defcfg() {
   tooltip-size 24,24
   notify-cfg-reload yes
   notify-cfg-reload-silent no
+  notify-error yes
   windows-altgr add-lctl-release
   windows-interception-mouse-hwid "70, 0, 60, 0"
   windows-interception-mouse-hwids ("0, 0, 0" "1, 1, 1")
@@ -1313,11 +1357,12 @@ fn parse_all_defcfg() {
 #[test]
 fn parse_unmod() {
     let source = r#"
-(defsrc a b c d)
+(defsrc a b c d e)
 (deflayer base
   (unmod a)
   (unmod a b)
   (unshift a)
+  (un⇧ a)
   (unshift a b)
 )
 "#;
