@@ -666,6 +666,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ((input-history real lsft 2)) f break
     ((input-history virtual ctl 2)) g break
 
+    ;; layer evaluates to `true` if the active layer matches the given name
+    ((layer dvorak)) x break
+    ((layer qwerty)) y break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break

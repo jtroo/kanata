@@ -3126,19 +3126,19 @@ VAR_NAME=var_value
 The `switch` action accepts multiple cases.
 One case is a triple of:
 
-- keys check
-- action: to activate if keys check succeeds
+- logic check
+- action: to activate if logic check evaluates to true
 - `fallthrough|break`: choose to continue vs. stop evaluating cases
 
-The default use of keys check behaves similarly to fork.
+The default use of the logic check behaves similarly to fork.
 
-For example, the keys check `(a b c)` will activate the corresponding action
+For example, the the logic check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
 TIP: the keys `nop0-nop9` can be used as no-op outputs that
 can still be checked within `switch`, unlike what `XX` does.
 
-The keys check also accepts the boolean operators `and|or|not` to allow more
+The logic check also accepts the boolean operators `and|or|not` to allow more
 complex use cases.
 
 The order of cases matters.
@@ -3173,14 +3173,14 @@ Below is a description of how this example behaves.
 ((and a b (or c d) (or e f))) a break
 ----
 
-Translating case 1's keys check to some other common languages
+Translating case 1's logic check to some other common languages
 might look like:
 
 ----
 (a && b && (c || d) && (e || f))
 ----
 
-If the keys check passes, the action `@ac1` will activate.
+If the logic check passes, the action `@ac1` will activate.
 No other action will activate since `break` is used.
 
 ==== Cases 2 and 3
@@ -3198,18 +3198,18 @@ or for some other common languages:
 
     a || b || c
 
-If this keys check passes and the case 1 does not pass,
+If this logic check passes and the case 1 does not pass,
 the action `@ac2` will activate first.
-Since the keys check of case 3 always passes, `@ac3` will activate next.
+Since the logic check of case 3 always passes, `@ac3` will activate next.
 
-If neither case 1 or case 2 pass their keys checks,
+If neither case 1 or case 2 pass their logic checks,
 case 3 will always activate with `@ac3`.
 
 [[key-history-and-key-timing]]
 ==== key-history and key-timing
 
 In addition to simple keys there are two list items
-that can be used within the case keys check
+that can be used within the case logic check
 that compare against your typed key history:
 
 * `key-history`
@@ -3341,6 +3341,26 @@ because the current input is in the recency `1` slot.
   )
 )
 ----
+
+==== layer
+
+The `layer` list item can be used in `switch` logic to operate on the active layer.
+It accepts a single layer name
+and evaluates to true if the configured layer name is the active layer,
+otherwise it evaluates to false.
+
+.Example:
+[source]
+----
+(defalias switch-layer-example
+  (switch
+     ((layer base)) x break
+    ((layer other)) y break
+                 () z break
+  )
+)
+----
+
 
 [[templates]]
 === Templates
