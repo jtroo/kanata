@@ -1587,8 +1587,8 @@ use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
 There is a variant of `cmd`: `cmd-output-keys`. This variant reads the output
 of the executed program and reads it as an S-expression, similarly to the
-<<macro, macro action>>. However — unlike macro — only keys, chords, and
-chorded lists are supported. Delays and other actions are not supported.
+<<macro, macro action>>. However — unlike macro — only delays, keys, chords, and
+chorded lists are supported. Other actions are not supported.
 
 [source]
 ----

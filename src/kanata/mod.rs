@@ -1273,10 +1273,20 @@ impl Kanata {
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
                             {
-                                for (key_action, osc) in keys_for_cmd_output(_cmd) {
+                                let cmd = _cmd.clone();
+                                // Maybe improvement in the future:
+                                // A delay here, as in KeyAction::Delay, will pause the entire
+                                // state machine loop. That is _probably_ OK, but ideally this
+                                // would be done in a separate thread or somehow
+                                for key_action in keys_for_cmd_output(&cmd) {
                                     match key_action {
-                                        KeyAction::Press => press_key(&mut self.kbd_out, osc)?,
-                                        KeyAction::Release => release_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Release(osc) => {
+                                            release_key(&mut self.kbd_out, osc)?
+                                        }
+                                        KeyAction::Delay(delay) => std::thread::sleep(
+                                            std::time::Duration::from_millis(u64::from(delay)),
+                                        ),
                                     }
                                 }
                             }
