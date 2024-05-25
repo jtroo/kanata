@@ -97,6 +97,7 @@ pub struct SystemTray {
     pub layer_notice: nwg::Notice,
     pub cfg_notice: nwg::Notice,
     pub err_notice: nwg::Notice,
+    pub exit_notice: nwg::Notice,
     pub tt_notice: nwg::Notice,
     /// Receiver of error message content sent from other threads
     /// (e.g., from key event thread via WinDbgLogger that will also notify our GUI
@@ -130,7 +131,7 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_TX};
+use crate::gui::{CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_EXIT_TX, GUI_TX};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -151,6 +152,13 @@ pub fn send_gui_err_notice() {
         gui_tx.notice();
     } else {
         error!("no GUI_ERR_TX to notify GUI thread of errors");
+    }
+}
+pub fn send_gui_exit_notice() {
+    if let Some(gui_tx) = GUI_EXIT_TX.get() {
+        gui_tx.notice();
+    } else {
+        error!("no GUI_EXIT_TX to ask GUI thread to exit");
     }
 }
 pub fn show_err_msg_nofail(title: String, msg: String) {
@@ -1318,6 +1326,9 @@ pub mod system_tray_ui {
             nwg::Notice::builder()
                 .parent(&d.window)
                 .build(&mut d.err_notice)?;
+            nwg::Notice::builder()
+                .parent(&d.window)
+                .build(&mut d.exit_notice)?;
             nwg::Menu::builder()
                 .parent(&d.tray_menu)
                 .text("&F Load config") //
@@ -1519,6 +1530,8 @@ pub mod system_tray_ui {
                                 SystemTray::reload_cfg_icon(&evt_ui);
                             } else if handle == evt_ui.err_notice {
                                 SystemTray::notify_error(&evt_ui);
+                            } else if handle == evt_ui.exit_notice {
+                                SystemTray::exit(&evt_ui);
                             } else if handle == evt_ui.tt_notice {
                                 SystemTray::update_tooltip_pos(&evt_ui);}
                         E::OnWindowClose =>
