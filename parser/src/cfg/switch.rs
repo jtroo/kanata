@@ -89,6 +89,7 @@ pub fn parse_switch_case_bool(
             KeyTiming,
             Input,
             InputHistory,
+            Layer,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -113,6 +114,7 @@ pub fn parse_switch_case_bool(
                 "key-timing" => Some(AllowedListOps::KeyTiming),
                 "input" => Some(AllowedListOps::Input),
                 "input-history" => Some(AllowedListOps::InputHistory),
+                "layer" => Some(AllowedListOps::Layer),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -238,6 +240,22 @@ pub fn parse_switch_case_bool(
                 };
                 s.switch_max_key_timing
                     .set(std::cmp::max(s.switch_max_key_timing.get(), ticks_since));
+                Ok(())
+            }
+            AllowedListOps::Layer => {
+                if l.len() != 2 {
+                    bail_expr!(op_expr, "layer must have 1 parameter: layer-name");
+                }
+                let layer = l[1]
+                    .atom(s.vars())
+                    .and_then(|atom| s.layer_idxs.get(atom))
+                    .map(|idx| {
+                        assert!(*idx < MAX_LAYERS);
+                        *idx as u16
+                    })
+                    .ok_or_else(|| anyhow_expr!(&l[1], "not a known layer name"))?;
+                let (op1, op2) = OpCode::new_layer(layer);
+                ops.extend(&[op1, op2]);
                 Ok(())
             }
             AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
