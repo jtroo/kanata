@@ -1,12 +1,16 @@
 (defcfg
-  process-unmapped-keys	yes	;;|no| enable processing of keys that are not in defsrc, useful if mapping a few keys in defsrc instead of most of the keys on your keyboard. Without this, the tap-hold-release and tap-hold-press actions will not activate for keys that are not in defsrc. Disabled because some keys may not work correctly if they are intercepted. E.g. rctl/altgr on Windows; see the windows-altgr configuration item above for context.
-  log-layer-changes    	yes	;;|no| overhead
+  process-unmapped-keys		yes	;;|no| enable processing of keys that are not in defsrc, useful if mapping a few keys in defsrc instead of most of the keys on your keyboard. Without this, the tap-hold-release and tap-hold-press actions will not activate for keys that are not in defsrc. Disabled because some keys may not work correctly if they are intercepted. E.g. rctl/altgr on Windows; see the windows-altgr configuration item above for context.
+  log-layer-changes    		yes	;;|no| overhead
   tray-icon "./_custom-icons/s.png" ;; should activate for layers without icons like '5no-icn'
-  icon-match-layer-name yes ;;|yes| match layer name to icon files even without an explicit (icon name.ico) config
-  tooltip-layer-changes	yes  	;;|false|
-  tooltip-show-blank   	yes  	;;|no|
-  tooltip-duration     	500  	;;|500|
-  tooltip-size         	24,24	;;|24 24|
+  ;;opt                   	val  	  |≝|
+  icon-match-layer-name   	yes  	;;|yes| match layer name to icon files even without an explicit (icon name.ico) config
+  tooltip-layer-changes   	yes  	;;|false|
+  tooltip-show-blank      	yes  	;;|no|
+  tooltip-duration        	500  	;;|500|
+  tooltip-size            	24,24	;;|24 24|
+  notify-cfg-reload       	yes  	;;|yes|
+  notify-cfg-reload-silent	no   	;;|no|
+  notify-error            	yes  	;;|yes|
 )
 (defalias l1 (layer-while-held 1emoji))
 (defalias l2 (layer-while-held 2icon-quote))
