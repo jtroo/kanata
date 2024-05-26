@@ -879,6 +879,8 @@ impl SystemTray {
                     } else {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT loaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
+                        {let app_data = self.app_data.borrow();
+                        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
                         self.tray.show(
                             &msg_content,
                             Some(&msg_title),
@@ -895,6 +897,8 @@ impl SystemTray {
                     } else {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT reloaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
+                        {let app_data = self.app_data.borrow();
+                        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
                         self.tray.show(
                             &msg_content,
                             Some(&msg_title),
@@ -943,6 +947,8 @@ impl SystemTray {
             flags |= f_tray::ERROR_ICON;
         };
         flags |= f_tray::LARGE_ICON; // todo: fails without this, must have SM_CXICON x SM_CYICON?
+        {let app_data = self.app_data.borrow();
+        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
         self.tray.show(
             &msg_content,
             Some(&msg_title),
