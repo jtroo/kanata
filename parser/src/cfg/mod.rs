@@ -2201,7 +2201,7 @@ fn parse_cmd(
 ) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "cmd expects at least one string";
     if !s.is_cmd_enabled {
-        bail!("cmd is not enabled, but cmd is in the configuration");
+        bail!("cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration");
     }
     let mut cmd = vec![];
     collect_strings(ac_params, &mut cmd, s);
