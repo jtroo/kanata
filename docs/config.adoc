@@ -2156,8 +2156,11 @@ The default (and minimum) value is `5` and the unit is milliseconds.
 )
 ----
 
+[[linux-only-defcfg]]
+=== Linux-only defcfg items
+
 [[linux-only-linux-dev]]
-=== Linux only: linux-dev
+==== Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
 By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices from the
@@ -2208,7 +2211,7 @@ item contains spaces.
 ----
 
 [[linux-only-linux-dev-names-include]]
-=== Linux only: linux-dev-names-include
+==== Linux only: linux-dev-names-include
 <<table-of-contents,Back to ToC>>
 
 In the case that `linux-dev` is omitted,
@@ -2234,7 +2237,7 @@ registering /dev/input/eventX: "Name goes here"
 ----
 
 [[linux-only-linux-dev-names-exclude]]
-=== Linux only: linux-dev-names-exclude
+==== Linux only: linux-dev-names-exclude
 <<table-of-contents,Back to ToC>>
 
 In the case that `linux-dev` is omitted,
@@ -2257,7 +2260,7 @@ but in practice it probably only makes sense to use one and not both.
 ----
 
 [[linux-only-linux-continue-if-no-devs-found]]
-=== Linux only: linux-continue-if-no-devs-found
+==== Linux only: linux-continue-if-no-devs-found
 <<table-of-contents,Back to ToC>>
 
 By default, kanata will crash if no input devices are found. You can change
@@ -2272,7 +2275,7 @@ this behaviour by setting `linux-continue-if-no-devs-found`.
 ----
 
 [[linux-only-linux-unicode-u-code]]
-=== Linux only: linux-unicode-u-code
+==== Linux only: linux-unicode-u-code
 <<table-of-contents,Back to ToC>>
 
 Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
@@ -2296,7 +2299,7 @@ is sent. Then you can use this configuration to change kanata's behaviour.
 ----
 
 [[linux-only-linux-unicode-termination]]
-=== Linux only: linux-unicode-termination
+==== Linux only: linux-unicode-termination
 <<table-of-contents,Back to ToC>>
 
 Unicode on Linux terminates with the Enter key by default. This may not work in
@@ -2315,7 +2318,7 @@ some applications. The termination is configurable with the following options:
 )
 ----
 
-=== Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
+==== Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
 <<table-of-contents,Back to ToC>>
 
 On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
@@ -2336,7 +2339,7 @@ This configuration item does not affect Wayland or no-desktop environments.
 ----
 
 [[linux-only-linux-use-trackpoint-property]]
-=== Linux only: linux-use-trackpoint-property
+==== Linux only: linux-use-trackpoint-property
 <<table-of-contents,Back to ToC>>
 
 On linux, you can ask kanata to label itself as a trackpoint. This has several
@@ -2357,32 +2360,11 @@ changing their behavior as well.
 )
 ----
 
-[[macos-only-macos-dev-names-include]]
-=== macOS only: macos-dev-names-include
-<<table-of-contents,Back to ToC>>
-
-This option defines a list of device names that should be included.
-By default, kanata will try to detect which input devices are keyboards and try
-to intercept them all. However, you may specify exact keyboard devices to intercept
-using the `macos-dev-names-include` configuration.
-Device names that do not exist in the list will be ignored.
-This option is parsed identically to `linux-dev`.
-
-Use `kanata -l` or `kanata --list` to list the available keyboards.
-
-.Example:
-[source]
-----
-(defcfg
-  macos-dev-names-include (
-    "Device name 1"
-    "Device name 2"
-  )
-)
-----
+[[windows-only-defcfg]]
+=== Windows-only defcfg items
 
 [[windows-only-windows-altgr]]
-=== Windows only: windows-altgr
+==== Windows only: windows-altgr
 <<table-of-contents,Back to ToC>>
 
 There is an option for Windows to help mitigate the strange behaviour of AltGr
@@ -2409,7 +2391,7 @@ NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may 
 work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv
 
-=== Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
+==== Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 <<table-of-contents,Back to ToC>>
 
 This defcfg item allows you to intercept mouse buttons for a specific mouse device.
@@ -2439,7 +2421,7 @@ https://github.com/jtroo/kanata/issues/108[Relevant issue].
 )
 ----
 
-=== Windows only: windows-interception-mouse-hwids[[windows-only-windows-interception-mouse-hwids]]
+==== Windows only: windows-interception-mouse-hwids[[windows-only-windows-interception-mouse-hwids]]
 <<table-of-contents,Back to ToC>>
 
 This item has a similar purpose as the singular version documented above,
@@ -2459,7 +2441,7 @@ the singular version will behave as if added to the list.
 )
 ----
 
-=== Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
+==== Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
 <<table-of-contents,Back to ToC>>
 
 This defcfg item allows you to intercept only specific keyboards.
@@ -2489,7 +2471,7 @@ they are an arbitrary length and can be very long.
 ----
 
 [[windows-only-tray-icon]]
-=== Windows only: tray-icon
+==== Windows only: tray-icon
 <<table-of-contents,Back to ToC>>
 
 Show a custom tray icon file for a <<windows-only-win-tray>> gui-enabled build of kanata on Windows.
@@ -2517,7 +2499,7 @@ See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 ----
 
 [[windows-only-icon-match-layer-name]]
-=== Windows only: icon-match-layer-name
+==== Windows only: icon-match-layer-name
 <<table-of-contents,Back to ToC>>
 
 Show a custom tray icon that matches the name of the active layer if it doesn't specify an explicit icon.
@@ -2525,52 +2507,76 @@ Otherwise <<tray-icon>> will be used. Defaults to true. File search rules are th
 See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
 
 [[windows-only-tooltip-layer-changes]]
-=== Windows only: tooltip-layer-changes
+==== Windows only: tooltip-layer-changes
 <<table-of-contents,Back to ToC>>
 
 Show a custom layer icon near the mouse pointer position. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-show-blank]]
-=== Windows only: tooltip-show-blank
+==== Windows only: tooltip-show-blank
 <<table-of-contents,Back to ToC>>
 
 Show a blank square when instead of an icon if a layer isn't configured to have one. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-no-base]]
-=== Windows only: tooltip-no-base
+==== Windows only: tooltip-no-base
 <<table-of-contents,Back to ToC>>
 
 Don't show a tooltip layer icon for the base layer (1st deflayer). Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-duration]]
-=== Windows only: tooltip-duration
+==== Windows only: tooltip-duration
 <<table-of-contents,Back to ToC>>
 
 Set duration (in ms) for showing a custom layer icon near the mouse pointer position. 0 to never hide. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-size]]
-=== Windows only: tooltip-size
+==== Windows only: tooltip-size
 <<table-of-contents,Back to ToC>>
 
 Set the size (comma-separated Width,Height without spaces) for a custom layer icon near the mouse pointer position. Defaults to 24,24. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-cfg-reload]]
-=== Windows only: notify-cfg-reload
+==== Windows only: notify-cfg-reload
 <<table-of-contents,Back to ToC>>
 
 Show system notification message on config reload. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-cfg-reload-silent]]
-=== Windows only: notify-cfg-reload-silent
+==== Windows only: notify-cfg-reload-silent
 <<table-of-contents,Back to ToC>>
 
 Disable sound for the system notification message on config reload. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-error]]
-=== Windows only: notify-error
+==== Windows only: notify-error
 <<table-of-contents,Back to ToC>>
 
 Show system notification message on kanata errors. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[macos-only-macos-dev-names-include]]
+=== macOS only: macos-dev-names-include
+<<table-of-contents,Back to ToC>>
+
+This option defines a list of device names that should be included.
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify exact keyboard devices to intercept
+using the `macos-dev-names-include` configuration.
+Device names that do not exist in the list will be ignored.
+This option is parsed identically to `linux-dev`.
+
+Use `kanata -l` or `kanata --list` to list the available keyboards.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev-names-include (
+    "Device name 1"
+    "Device name 2"
+  )
+)
+----
 
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
@@ -3591,7 +3597,7 @@ https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.kbd[example 
 * hold `+⎇›+` and tap `+Delete+` would insert `+␡+`
 
 [[windows-only-work-elevated]]
-=== Windows only: enable in elevated windows
+==== Windows only: enable in elevated windows
 <<table-of-contents,Back to ToC>>
 
 The default `kanata.exe` binary doesn't work in elevated windows (run with administrative privileges),
@@ -3608,7 +3614,7 @@ cargo build --win_manifest
 ```
 
 [[windows-only-win-tray]]
-=== Windows only: win-tray
+==== Windows only: win-tray
 <<table-of-contents,Back to ToC>>
 
 Kanata can be compiled as a Windows GUI tray app with the feature flag `gui`.
