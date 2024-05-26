@@ -275,9 +275,19 @@ fn get_icon_p_impl(
             .to_string_lossy()
             .to_string();
         let is_icn_ext_valid = if f_ext[i].is_some() {
-          if IMG_EXT.iter().any(|&i| {i==icn_ext}) {trace!("icn_ext={:?}",icn_ext);true
-          } else {warn!("user icon extension \"{}\" might be invalid (or just not an extension)!",icn_ext);false}
-        } else {false};
+            if IMG_EXT.iter().any(|&i| i == icn_ext) {
+                trace!("icn_ext={:?}", icn_ext);
+                true
+            } else {
+                warn!(
+                    "user icon extension \"{}\" might be invalid (or just not an extension)!",
+                    icn_ext
+                );
+                false
+            }
+        } else {
+            false
+        };
         'p: for p_par in parents {
             trace!("{}p_par={:?}", "  ", p_par);
             if p_par == blank_p && !is_full_p {
@@ -873,8 +883,12 @@ impl SystemTray {
                     } else {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT loaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
-                        {let app_data = self.app_data.borrow();
-                        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
+                        {
+                            let app_data = self.app_data.borrow();
+                            if app_data.gui_opts.notify_cfg_reload_silent {
+                                flags |= f_tray::SILENT;
+                            }
+                        }
                         self.tray.show(
                             &msg_content,
                             Some(&msg_title),
@@ -891,8 +905,12 @@ impl SystemTray {
                     } else {
                         msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT reloaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
-                        {let app_data = self.app_data.borrow();
-                        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
+                        {
+                            let app_data = self.app_data.borrow();
+                            if app_data.gui_opts.notify_cfg_reload_silent {
+                                flags |= f_tray::SILENT;
+                            }
+                        }
                         self.tray.show(
                             &msg_content,
                             Some(&msg_title),
@@ -941,8 +959,12 @@ impl SystemTray {
             flags |= f_tray::ERROR_ICON;
         };
         flags |= f_tray::LARGE_ICON; // todo: fails without this, must have SM_CXICON x SM_CYICON?
-        {let app_data = self.app_data.borrow();
-        if app_data.gui_opts.notify_cfg_reload_silent {flags |= f_tray::SILENT;}}
+        {
+            let app_data = self.app_data.borrow();
+            if app_data.gui_opts.notify_cfg_reload_silent {
+                flags |= f_tray::SILENT;
+            }
+        }
         self.tray.show(
             &msg_content,
             Some(&msg_title),
@@ -1125,11 +1147,19 @@ impl SystemTray {
                 *icon_act_key = Some(cfg_layer_pkey);
                 self.show_tooltip(None);
             }
-        } else if layer_icon.is_some()
-          || app_data.gui_opts.icon_match_layer_name {
+        } else if layer_icon.is_some() || app_data.gui_opts.icon_match_layer_name {
             let layer_icon = match layer_icon {
-                Some(layer_icon_inner)  => {trace!("configured layer icon = {}", layer_icon_inner); layer_icon_inner},
-                None                    => {trace!("no configured layer icon, checking its name = {}", layer_name); layer_name},
+                Some(layer_icon_inner) => {
+                    trace!("configured layer icon = {}", layer_icon_inner);
+                    layer_icon_inner
+                }
+                None => {
+                    trace!(
+                        "no configured layer icon, checking its name = {}",
+                        layer_name
+                    );
+                    layer_name
+                }
             };
             // 1b cfg+layer path hasn't been checked, but layer has an icon configured...
             // or configured to check its name, so check it
