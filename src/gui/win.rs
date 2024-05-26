@@ -274,16 +274,10 @@ fn get_icon_p_impl(
             .unwrap_or_else(|| OsStr::new(""))
             .to_string_lossy()
             .to_string();
-        let is_icn_ext_valid = if !IMG_EXT.iter().any(|&i| i == icn_ext) && f_ext[i].is_some() {
-            warn!(
-                "user icon extension \"{}\" might be invalid (or just not an extension)!",
-                icn_ext
-            );
-            false
-        } else {
-            trace!("icn_ext={:?}", icn_ext);
-            true
-        };
+        let is_icn_ext_valid = if f_ext[i].is_some() {
+          if IMG_EXT.iter().any(|&i| {i==icn_ext}) {trace!("icn_ext={:?}",icn_ext);true
+          } else {warn!("user icon extension \"{}\" might be invalid (or just not an extension)!",icn_ext);false}
+        } else {false};
         'p: for p_par in parents {
             trace!("{}p_par={:?}", "  ", p_par);
             if p_par == blank_p && !is_full_p {
@@ -1131,8 +1125,14 @@ impl SystemTray {
                 *icon_act_key = Some(cfg_layer_pkey);
                 self.show_tooltip(None);
             }
-        } else if let Some(layer_icon) = layer_icon {
-            // 1b cfg+layer path hasn't been checked, but layer has an icon configured, so check it
+        } else if layer_icon.is_some()
+          || app_data.gui_opts.icon_match_layer_name {
+            let layer_icon = match layer_icon {
+                Some(layer_icon_inner)  => {trace!("configured layer icon = {}", layer_icon_inner); layer_icon_inner},
+                None                    => {trace!("no configured layer icon, checking its name = {}", layer_name); layer_name},
+            };
+            // 1b cfg+layer path hasn't been checked, but layer has an icon configured...
+            // or configured to check its name, so check it
             if let Some(ico_p) = get_icon_p(
                 layer_icon,
                 layer_name,
