@@ -2520,8 +2520,9 @@ See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 === Windows only: icon-match-layer-name
 <<table-of-contents,Back to ToC>>
 
-Show a custom tray icon that matches the name of the active layer if it doesn't specify an explicit icon.
-Otherwise <<tray-icon>> will be used. Defaults to true. File search rules are the same as in <<tray-icon>>.
+When enabled, attempt to switch to a custom tray icon that matches the name of the active layer
+if the layer doesn't specify an explicit icon. If no icon file is found, the default icon will be used (see <<windows-only-tray-icon>>).
+File search rules are the same as in <<windows-only-tray-icon>>. Defaults to true.
 See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
 
 [[windows-only-tooltip-layer-changes]]
@@ -3622,7 +3623,7 @@ as well as dynamic icon indicator per layer (might need to click on the gif belo
 
 image:https://github.com/jtroo/kanata/blob/main/docs/win-tray/win-tray-layer-change.gif[icon indicator per layer,33,35,opts=autoplay]
 
-(see <<windows-only-win-tray-icon>>). It also supports (re)loading configs.
+(see <<windows-only-win-tray>>). It also supports (re)loading configs.
 
 Currently the only configuration supported is tray icon per profile, all other configuration should
 be done by passing cli flags in the `Target` field of `.lnk`, e.g., `"C:\Program Files\kanata\kanata.exe" -d -n`
