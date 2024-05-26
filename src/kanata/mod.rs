@@ -872,13 +872,6 @@ impl Kanata {
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
-        self.overrides
-            .override_keys(cur_keys, &mut self.override_states);
-        if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
-                self.caps_word = None;
-            }
-        }
 
         // Deal with unmodded. Unlike other custom actions, this should come before key presses and
         // releases. I don't quite remember why custom actions come after the key processing, but I
@@ -932,6 +925,14 @@ impl Kanata {
         if !self.unshifted_keys.is_empty() {
             cur_keys.retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
             cur_keys.extend(self.unshifted_keys.iter());
+        }
+
+        self.overrides
+            .override_keys(cur_keys, &mut self.override_states);
+        if let Some(caps_word) = &mut self.caps_word {
+            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+                self.caps_word = None;
+            }
         }
 
         // Release keys that do not exist in the current state but exist in the previous state.
