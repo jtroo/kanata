@@ -1341,9 +1341,7 @@ impl Kanata {
                             {
                                 log::trace!("Posted a message {_win_msg:?}");
                                 use colored::*;
-                                use widestring::{
-                                    U16CString,
-                                };
+                                use widestring::U16CString;
                                 use windows_sys::core::PCWSTR;
                                 use windows_sys::Win32::UI::WindowsAndMessaging::HWND_BROADCAST;
                                 use windows_sys::Win32::UI::WindowsAndMessaging::{
