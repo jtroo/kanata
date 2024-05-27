@@ -1693,9 +1693,13 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
         SEND_WMSG_SYNC => win_send_message(&ac[1..], s, SEND_WMSG_SYNC),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
         SEND_WMSG_SYNC_A => win_send_message(&ac[1..], s, SEND_WMSG_SYNC_A),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
         SEND_WMSG_ASYNC => win_post_message(&ac[1..], s, SEND_WMSG_ASYNC),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
         SEND_WMSG_ASYNC_A => win_post_message(&ac[1..], s, SEND_WMSG_ASYNC_A),
         FORK => parse_fork(&ac[1..], s),
         CAPS_WORD | CAPS_WORD_A => {
