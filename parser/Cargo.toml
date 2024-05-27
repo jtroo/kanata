@@ -27,6 +27,8 @@ thiserror = "1.0.38"
 # binary.
 kanata-keyberon = { path = "../keyberon" }
 bytemuck = "1.15.0"
+colored = "2.1.0"
+num-format = "0.4.4"
 
 [features]
 cmd = []
