@@ -3,6 +3,7 @@
 //! When adding a new custom action, the macro section of the config.adoc documentation may need to
 //! be updated, to include the new action to the documented list of supported actions in macro.
 
+use crate::cfg::{WinMsg};
 use anyhow::{anyhow, Result};
 use core::fmt;
 use kanata_keyberon::key_code::KeyCode;
@@ -14,6 +15,8 @@ pub enum CustomAction {
     Cmd(Vec<String>),
     CmdOutputKeys(Vec<String>),
     PushMessage(Vec<SimpleSExpr>),
+    WinSendMessage(WinMsg),
+    WinPostMessage(WinMsg),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),

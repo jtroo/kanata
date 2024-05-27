@@ -86,6 +86,10 @@ pub const DYNAMIC_MACRO_PLAY: &str = "dynamic-macro-play";
 pub const ARBITRARY_CODE: &str = "arbitrary-code";
 pub const CMD: &str = "cmd";
 pub const PUSH_MESSAGE: &str = "push-msg";
+pub const SEND_WMSG_SYNC: &str = "win-send-msg";
+pub const SEND_WMSG_SYNC_A: &str = "msg❖sync";
+pub const SEND_WMSG_ASYNC: &str = "win-post-msg";
+pub const SEND_WMSG_ASYNC_A: &str = "msg❖async";
 pub const CMD_OUTPUT_KEYS: &str = "cmd-output-keys";
 pub const FORK: &str = "fork";
 pub const CAPS_WORD: &str = "caps-word";
@@ -197,6 +201,10 @@ pub fn is_list_action(ac: &str) -> bool {
         CMD,
         CMD_OUTPUT_KEYS,
         PUSH_MESSAGE,
+        SEND_WMSG_SYNC,
+        SEND_WMSG_ASYNC,
+        SEND_WMSG_SYNC_A,
+        SEND_WMSG_ASYNC_A,
         FORK,
         CAPS_WORD,
         CAPS_WORD_A,
