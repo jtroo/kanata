@@ -1955,7 +1955,6 @@ fn disallow_whitespace_in_tooltip_size() {
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
 
-
 #[test]
 fn win_message_ok() {
     let source = r#"

@@ -51,8 +51,6 @@ use cmd::*;
 mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::*;
-#[cfg(all(target_os = "windows"))]
-use windows_sys::Win32::Foundation::{HWND,WPARAM,LPARAM};
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -1326,40 +1324,61 @@ impl Kanata {
                             );
                         }
                         CustomAction::WinSendMessage(_win_msg) => {
-                            #[cfg(target_os = "windows")] {
-                            // log::trace!("Sent a message {_win_msg:?}");
-                            log::warn!("Sending a message isn't implemented yet");
+                            #[cfg(target_os = "windows")]
+                            {
+                                // log::trace!("Sent a message {_win_msg:?}");
+                                log::warn!("Sending a message isn't implemented yet");
                             }
                             #[cfg(not(target_os = "windows"))]
                             log::warn!(
                                 "{} or {} was used, but this only works on Windows.",
-                                SEND_WMSG_SYNC,SEND_WMSG_SYNC_A
+                                SEND_WMSG_SYNC,
+                                SEND_WMSG_SYNC_A
                             );
                         }
                         CustomAction::WinPostMessage(_win_msg) => {
-                            #[cfg(target_os = "windows")] {
-                            log::trace!("Posted a message {_win_msg:?}");
-                            use windows_sys::Win32::UI::WindowsAndMessaging::HWND_BROADCAST;
-                            use windows_sys::Win32::UI::WindowsAndMessaging::{RegisterWindowMessageW,PostMessageW,};
-                            use windows_sys::core::PCWSTR;
-                            use colored::*;
-                            use widestring::{U16Str,WideChar,u16cstr,
-                              U16CString,U16CStr,   //   0 U16/U32-CString wide version of the standard CString type
-                              Utf16Str   ,          // no0 UTF-16 encoded, growable owned string
-                            };
-                            log::debug!("Action PostMessage (async)");
-                            if let Ok(val_w16cs) = U16CString::from_str(_win_msg.msg_sid.clone())  {
-                                let msg_txt:PCWSTR = val_w16cs.into_raw();
-                                let msg_id = unsafe{RegisterWindowMessageW(msg_txt)};
-                                let ret  = unsafe{PostMessageW(HWND_BROADCAST, msg_id, _win_msg.argu, _win_msg.argi)};
-                                if ret == 0 {log::error!("Failed to post a message: {_win_msg:?}, OS error# {ret}");}
-                                // TODO: call GetLastError to get error content
-                            } else {log::error!("Failed to parse {} into a Windows string",_win_msg.msg_sid.to_string().blue());}
+                            #[cfg(target_os = "windows")]
+                            {
+                                log::trace!("Posted a message {_win_msg:?}");
+                                use colored::*;
+                                use widestring::{
+                                    U16CString,
+                                };
+                                use windows_sys::core::PCWSTR;
+                                use windows_sys::Win32::UI::WindowsAndMessaging::HWND_BROADCAST;
+                                use windows_sys::Win32::UI::WindowsAndMessaging::{
+                                    PostMessageW, RegisterWindowMessageW,
+                                };
+                                log::debug!("Action PostMessage (async)");
+                                if let Ok(val_w16cs) =
+                                    U16CString::from_str(_win_msg.msg_sid.clone())
+                                {
+                                    let msg_txt: PCWSTR = val_w16cs.into_raw();
+                                    let msg_id = unsafe { RegisterWindowMessageW(msg_txt) };
+                                    let ret = unsafe {
+                                        PostMessageW(
+                                            HWND_BROADCAST,
+                                            msg_id,
+                                            _win_msg.argu,
+                                            _win_msg.argi,
+                                        )
+                                    };
+                                    if ret == 0 {
+                                        log::error!("Failed to post a message: {_win_msg:?}, OS error# {ret}");
+                                    }
+                                    // TODO: call GetLastError to get error content
+                                } else {
+                                    log::error!(
+                                        "Failed to parse {} into a Windows string",
+                                        _win_msg.msg_sid.to_string().blue()
+                                    );
+                                }
                             }
                             #[cfg(not(target_os = "windows"))]
                             log::warn!(
                                 "{} or {} was used, but this only works on Windows.",
-                                SEND_WMSG_ASYNC,SEND_WMSG_ASYNC_A
+                                SEND_WMSG_ASYNC,
+                                SEND_WMSG_ASYNC_A
                             );
                         }
                         CustomAction::FakeKey { coord, action } => {
