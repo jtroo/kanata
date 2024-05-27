@@ -2509,6 +2509,36 @@ they are an arbitrary length and can be very long.
 )
 ----
 
+[[windows-only-send-message]]
+=== Windows only: send-message
+<<table-of-contents,Back to ToC>>
+
+`msg❖async` or `win-post-msg` command allows sharing 2 numbers with any app you control
+via Windows system messages mechanism. For example, you can set your AutoHotkey script to print
+
+- a short date if Kanata sends it `1`, and
+- a long date if it sends `2`
+
+The command accepts at most 5 optional parameters (order sensitive!):
+[cols="1,1"]
+|===
+|Name | Default
+|numeric arg #1          	|`0`
+|numeric arg #2          	|`0`
+|target window title     	|`\AutoHotkey.ahk`
+|shared message string id	|`kanata_4117d2917ccb4678a7a8c71a5ff898ed`
+|target window class     	|`AutoHotkey`
+|===
+
+Window title and class are currently **ignored** and the messages are posted to all the windows.
+Parameters are order sensitive, so if you want to skip the 3rd title string, set it to an empty `""`.
+
+See https://github.com/jtroo/kanata/blob/main/cfg_samples/win-msg/win-msg.kbd[example config] for more details.
+Requires https://www.autohotkey.com/download/[AutoHotkey v2] and a running
+https://github.com/jtroo/kanata/blob/main/cfg_samples/win-msg/insert-date.kbd[example script].
+See https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postmessagew[PostMessageW] for more
+API details.
+
 [[windows-only-tray-icon]]
 === Windows only: tray-icon
 <<table-of-contents,Back to ToC>>
