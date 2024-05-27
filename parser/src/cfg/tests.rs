@@ -1955,6 +1955,7 @@ fn disallow_whitespace_in_tooltip_size() {
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 #[test]
 fn win_message_ok() {
     let source = r#"
@@ -1972,6 +1973,7 @@ fn win_message_ok() {
         .expect("parse succeeds");
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 #[test]
 fn win_message_wrong_number_value() {
     let source = "
@@ -1982,6 +1984,7 @@ fn win_message_wrong_number_value() {
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 #[test]
 fn win_message_wrong_number_type() {
     let source = r#"
@@ -1992,6 +1995,7 @@ fn win_message_wrong_number_type() {
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
 #[test]
 fn win_message_too_many_args() {
     let source = r#"
