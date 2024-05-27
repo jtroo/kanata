@@ -1,0 +1,17 @@
+#|
+|#
+(defcfg
+  process-unmapped-keys	yes
+  log-layer-changes    	yes
+  danger-enable-cmd    	yes
+)
+(defsrc        	         	1  	2	  3	4	5	6	7	8	9	0)
+(deflayermap   	(win-msg)	1 1	2 2
+3 (msg❖async   	1        	) ;; print date in the ‘dddd MMMM d, yyyy H:mm:ss’ format
+4 (win-post-msg	2        	) ;; print date in the ‘yy’ format
+5 (win-post-msg	3        	) ;; print error ‘✗ wParam=3 lParam=0’
+6 (msg❖async   	3 0 "" "kanata_your_custom_message_string_unique_id") ;; print long message
+8 lrld
+9 lrld-prev
+0 lrld-next
+)
