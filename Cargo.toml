@@ -64,7 +64,7 @@ kanata-tcp-protocol = { path = "tcp_protocol" }
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
 core-graphics = "0.23.2"
-open = "5"
+open = { version = "5", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 signal-hook = "0.3.14"
@@ -72,7 +72,7 @@ inotify = { version = "0.10.0", default_features = false }
 mio = { version = "0.8.11", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
 sd-notify = "0.4.1"
-open = "5"
+open = { version = "5", optional = true }
 
 evdev = ">=0.12.2" # Pinned to avoid a bug in 0.12.1, which also has a new interface
 
