@@ -2535,7 +2535,7 @@ Parameters are order sensitive, so if you want to skip the 3rd title string, set
 
 See https://github.com/jtroo/kanata/blob/main/cfg_samples/win-msg/win-msg.kbd[example config] for more details.
 Requires https://www.autohotkey.com/download/[AutoHotkey v2] and a running
-https://github.com/jtroo/kanata/blob/main/cfg_samples/win-msg/insert-date.kbd[example script].
+https://github.com/jtroo/kanata/blob/main/cfg_samples/win-msg/insert-date.ahk[example script].
 See https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postmessagew[PostMessageW] for more
 API details.
 
