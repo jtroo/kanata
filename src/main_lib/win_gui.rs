@@ -3,10 +3,12 @@ use anyhow::{anyhow, Context};
 use clap::{error::ErrorKind, CommandFactory};
 use kanata_state_machine::gui::*;
 use kanata_state_machine::*;
+use std::fs::File;
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
     let noti_lvl = LevelFilter::Error; // min lvl above which to use Win system notifications
+    let log_file_p = "kanata_log.txt";
     let args = match Args::try_parse() {
         Ok(args) => args,
         Err(e) => {
@@ -24,18 +26,40 @@ fn cli_init() -> Result<ValidatedArgs> {
                 ])
                 .expect("logger can init");
             } else {
-                log_win::init();
-                log::set_max_level(LevelFilter::Debug);
-            } // doesn't panic
+                CombinedLogger::init(vec![
+                    log_win::windbg_simple_combo(LevelFilter::Debug, noti_lvl),
+                    WriteLogger::new(
+                        LevelFilter::Debug,
+                        Config::default(),
+                        File::create(log_file_p).unwrap(),
+                    ),
+                ])
+                .expect("logger can init");
+            }
             match e.kind() {
                 ErrorKind::DisplayHelp => {
                     let mut cmd = Args::command();
                     let help = cmd.render_help();
                     info!("{help}");
                     log::set_max_level(LevelFilter::Off);
+                    if !*IS_TERM {
+                        // detached to open log still opened for writing
+                        match open::that_detached(log_file_p) {
+                            Ok(()) => {} // on the off-chance the user looks at WinDbg logs
+                            Err(ef) => error!("failed to open {log_file_p} due to {ef:?}"),
+                        }
+                    }
                     return Err(anyhow!(""));
                 }
-                _ => return Err(e.into()),
+                _ => {
+                    if !*IS_TERM {
+                        match open::that_detached(log_file_p) {
+                            Ok(()) => {}
+                            Err(ef) => error!("failed to open {log_file_p} due to {ef:?}"),
+                        }
+                    }
+                    return Err(e.into());
+                }
             }
         }
     };

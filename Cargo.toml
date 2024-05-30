@@ -51,7 +51,6 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default_features = false, optional = true }
 time = "0.3.36"
-
 # kanata-keyberon = "0.161.0"
 # kanata-parser = "0.161.0"
 # kanata-tcp-protocol = "0.161.0"
@@ -65,6 +64,7 @@ kanata-tcp-protocol = { path = "tcp_protocol" }
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.3"
 core-graphics = "0.23.2"
+open = { version = "5", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 signal-hook = "0.3.14"
@@ -72,6 +72,7 @@ inotify = { version = "0.10.0", default_features = false }
 mio = { version = "0.8.11", features = ["os-poll", "os-ext"] }
 nix = { version = "0.26.1", features = ["ioctl"] }
 sd-notify = "0.4.1"
+open = { version = "5", optional = true }
 
 evdev = ">=0.12.2" # Pinned to avoid a bug in 0.12.1, which also has a new interface
 
@@ -105,6 +106,8 @@ regex = { version = "1.10.4", optional = true }
 kanata-interception = { version = "0.2.0", optional = true }
 muldiv = { version = "1.0.1", optional = true }
 strip-ansi-escapes = { version = "0.2.0", optional = true }
+open = { version = "5", features = ["shellexecute-on-windows"], optional = true}
+# shellexecute fix allows opening files already opened for writing, needs _detached mode
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
 embed-resource = { version = "2.4.2", optional = true }
@@ -126,7 +129,7 @@ passthru_ahk = ["simulated_input","simulated_output"]
 wasm = [ "instant/wasm-bindgen" ]
 gui = ["win_manifest","kanata-parser/gui",
   "win_sendinput_send_scancodes","win_llhook_read_scancodes",
-  "muldiv","strip-ansi-escapes",
+  "muldiv","strip-ansi-escapes","open",
   "dep:windows-sys",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
