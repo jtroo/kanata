@@ -101,7 +101,7 @@ impl From<KeyValue> for bool {
 
 use kanata_parser::keys::OsCode;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct KeyEvent {
     pub code: OsCode,
     pub value: KeyValue,
@@ -127,5 +127,17 @@ impl fmt::Display for KeyEvent {
         };
         let key_name = KeyCode::from(self.code);
         write!(f, "{}{:?}", direction, key_name)
+    }
+}
+
+impl fmt::Debug for KeyEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("KeyEvent")
+            .field(
+                "code",
+                &format_args!("{:?} ({})", self.code, self.code.as_u16()),
+            )
+            .field("value", &self.value)
+            .finish()
     }
 }
