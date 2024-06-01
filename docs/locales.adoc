@@ -269,3 +269,43 @@ NOTE: This is for the https://kbdlayout.info/kbdbr[ABNT2 QWERTY layout]. Tested 
 )
 ----
 ====
+
+== ISO Swedish QWERTY (Linux)[[swedish]]
+
+[%collapsible]
+====
+----
+;; Swedish ISO105
+(deflocalkeys-linux
+  §   41
+  +   12
+  ´   13 ;; Acute accent. Opposite to the grave accent (grv).
+  å   26
+  ¨   27
+  ö   39
+  ä   40
+  '   43
+  <   86
+  ,   51
+  .   52
+  -   53
+)
+
+(defsrc ;; Swedish ISO105
+  §    1    2    3    4    5    6    7    8    9    0    +    ´    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    å    ¨
+  caps a    s    d    f    g    h    j    k    l    ö    ä    '    ret
+  lsft <    z    x    c    v    b    n    m    ,    .    -         rsft
+  lctl lmet lalt                spc                 ralt rmet menu rctl
+)
+
+;; Empty layer that matches the Swedish layout
+(deflayer default
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _         _
+  _    _    _                   _                   _    _    _    _
+)
+----
+====
