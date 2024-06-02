@@ -671,7 +671,7 @@ pub fn parse_cfg_raw_string(
     }
 
     let (layer_idxs, layer_icons) =
-        parse_layer_indexes(&layer_exprs, mapping_order.len(), s, &mut lsp_hints)?;
+        parse_layer_indexes(&layer_exprs, mapping_order.len(), &vars, &mut lsp_hints)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -1074,7 +1074,7 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(
     exprs: &[SpannedLayerExprs],
     expected_len: usize,
-    s: &mut ParserState,
+    vars: &HashMap<String, SExpr>,
     lsp_hints: &mut LspHints,
 ) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
@@ -1098,17 +1098,17 @@ fn parse_layer_indexes(
             )
         })?;
         let (layer_name, layer_name_span, icon) = {
-            let name = layer_expr.atom(s.vars());
+            let name = layer_expr.atom(Some(vars));
             match name {
                 Some(name) => (name.to_owned(), layer_expr.span(), None),
                 None => {
                     // unwrap: this **must** be a list due to atom() call above.
-                    let list = layer_expr.list(s.vars()).unwrap();
+                    let list = layer_expr.list(Some(vars)).unwrap();
                     let first = list.first().ok_or_else(|| anyhow_expr!(
                             layer_expr,
                             "{deflayer_keyword} requires a string name within this pair of parentheses (or a string name without any)"
                         ))?;
-                    let name = first.atom(s.vars()).ok_or_else(|| anyhow_expr!(
+                    let name = first.atom(Some(vars)).ok_or_else(|| anyhow_expr!(
                             layer_expr,
                             "layer name after {deflayer_keyword} must be a string when enclosed within one pair of parentheses"
                         ))?;
