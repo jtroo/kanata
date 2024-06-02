@@ -309,7 +309,8 @@ Please contribute to the document if you are able!
 The number used for a custom key represents the converted value for an OsCode in
 base 10. This differs between Windows-hooks, Windows-interception, and Linux.
 
-Running katana with the `--debug` flag lets you read the correct number number, show in parenthesis of `code` in the `KeyEvent` log lines.
+Running kanata with the `--debug` flag lets you read the correct number,
+shown in parenthesis of `code` in the `KeyEvent` log lines.
 
 It also possible to use native tools, as described below.
 
