@@ -2,16 +2,20 @@ use super::*;
 
 use crate::{anyhow_expr, bail, bail_expr};
 
+#[allow(unused_variables)]
 fn set_virtual_key_reference_lsp_hint(vk_name_expr: &SExpr, s: &ParserState) {
-    let atom = match vk_name_expr {
-        SExpr::Atom(x) => x,
-        SExpr::List(_) => unreachable!("should be validated to be atom earlier"),
-    };
-    s.lsp_hints
-        .borrow_mut()
-        .reference_locations
-        .virtual_key
-        .push_from_atom(atom);
+    #[cfg(feature = "lsp")]
+    {
+        let atom = match vk_name_expr {
+            SExpr::Atom(x) => x,
+            SExpr::List(_) => unreachable!("should be validated to be atom earlier"),
+        };
+        s.lsp_hints
+            .borrow_mut()
+            .reference_locations
+            .virtual_key
+            .push_from_atom(atom);
+    }
 }
 
 pub(crate) fn parse_on_press_fake_key_op(

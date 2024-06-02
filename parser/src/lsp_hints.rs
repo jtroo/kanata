@@ -37,6 +37,7 @@ pub struct ReferenceLocations {
 #[derive(Debug, Default, Clone)]
 pub struct ReferencesMap(pub HashMap<String, Vec<Span>>);
 
+#[allow(unused)]
 impl ReferencesMap {
     pub(crate) fn push_from_atom(&mut self, atom: &Spanned<String>) {
         match self.0.get_mut(&atom.t) {

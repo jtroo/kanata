@@ -58,7 +58,7 @@ pub fn expand_templates(
         }
 
         // Parse template name
-        let (name, name_span) = list
+        let (name, _name_span) = list
             .t
             .get(1)
             .ok_or_else(|| {
@@ -78,10 +78,11 @@ pub fn expand_templates(
                 Ok((name, name_expr.span()))
             })?;
 
+        #[cfg(feature = "lsp")]
         lsp_hints
             .definition_locations
             .template
-            .insert(name.to_owned(), name_span);
+            .insert(name.to_owned(), _name_span);
 
         // Parse template variable names
         let vars = list
@@ -176,7 +177,7 @@ struct Replacement {
     insert_index: usize,
 }
 
-fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], lsp_hints: &mut LspHints) -> Result<()> {
+fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHints) -> Result<()> {
     let mut replacements: Vec<Replacement> = vec![];
     for (expr_index, expr) in exprs.iter_mut().enumerate() {
         match expr {
@@ -186,7 +187,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], lsp_hints: &mut LspHin
                     l.t.first().and_then(|expr| expr.atom(None)),
                     Some("template-expand") | Some("t!")
                 ) {
-                    expand(&mut l.t, templates, lsp_hints)?;
+                    expand(&mut l.t, templates, _lsp_hints)?;
                     continue;
                 }
 
@@ -203,7 +204,8 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], lsp_hints: &mut LspHin
                             let name = name_expr.atom(None).ok_or_else(|| {
                                 anyhow_expr!(name_expr, "template name must be a string")
                             })?;
-                            lsp_hints
+                            #[cfg(feature = "lsp")]
+                            _lsp_hints
                                 .reference_locations
                                 .template
                                 .push(name, name_expr.span());
