@@ -92,6 +92,18 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; linux-x11-repeat-delay-rate 400,50
 
+  ;; On linux, you can ask kanata to label itself as a trackpoint. This has several
+  ;; effects on libinput including enabling middle mouse button scrolling and using
+  ;; a different acceleration curve. Otherwise, a trackpoint intercepted by kanata
+  ;; may not behave as expected.
+  ;;
+  ;; If using this feature, it is recommended to filter out any non-trackpoint
+  ;; pointing devices using linux-only-linux-dev-names-include,
+  ;; linux-only-linux-dev-names-exclude or linux-only-linux-dev to avoid changing
+  ;; their behavior as well.
+  ;;
+  ;; linux-use-trackpoint-property yes
+
   ;; Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
   ;; then pressing Enter. However, if you do remapping in userspace, e.g. via
   ;; xmodmap/xkb, the keycode "U" that kanata outputs may not become a keysym "u"
@@ -235,6 +247,13 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; Kanata does send the events in the correct order,
   ;; so the fault is more in the environment, but kanata provides a workaround anyway.
   rapid-event-delay 5
+
+  ;; This setting defaults to yes but can be configured to no to save on
+  ;; logging. However, if --log-layer-changes is passed as a command line
+  ;; argument, a "no" in the configuration file will be overridden and layer
+  ;; changes will be logged.
+  ;;
+  ;; log-layer-changes no
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale
@@ -647,6 +666,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ((input-history real lsft 2)) f break
     ((input-history virtual ctl 2)) g break
 
+    ;; layer evaluates to `true` if the active layer matches the given name
+    ((layer dvorak)) x break
+    ((layer qwerty)) y break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break
@@ -786,6 +809,17 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This example is similar to the default caps-word behaviour but it moves the
   ;; 0-9 keys to capitalized key list from the extra non-terminating key list.
   cwc (caps-word-custom
+    2000
+    (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+    (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+  )
+)
+
+;; -toggle variants of caps-word will terminate caps-word on repress if it is
+;; currently active, otherwise caps-word will be activated.
+(defalias
+  cwt (caps-word-toggle 2000)
+  cct (caps-word-custom-toggle
     2000
     (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
     (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)

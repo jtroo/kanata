@@ -9,6 +9,8 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
+use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType};
+use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
@@ -110,6 +112,8 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
 }
 
 use std::fmt;
+use std::io::ErrorKind;
+
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use kanata_keyberon::key_code::KeyCode;
@@ -168,10 +172,10 @@ impl TryFrom<KeyEvent> for InputEvent {
     }
 }
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {}
 
-#[cfg(not(feature = "simulated_output"))]
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {})
@@ -219,10 +223,25 @@ impl KbdOut {
         self.write_key(key, KeyValue::Release)
     }
 
-    /// Send using C-S-u + <unicode hex number> + spc
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
-        log::error!("Unable to send unicode {c}, unsupported functionality");
-        todo!()
+        let event_source =
+            CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
+                io::Error::new(
+                    ErrorKind::Other,
+                    "failed to create core graphics event source",
+                )
+            })?;
+        let event = CGEvent::new(event_source).map_err(|_| {
+            io::Error::new(ErrorKind::Other, "failed to create core graphics event")
+        })?;
+        let mut arr: [u16; 2] = [0; 2];
+        c.encode_utf16(&mut arr);
+        event.set_string_from_utf16_unchecked(&arr);
+        event.set_type(CGEventType::KeyDown);
+        event.post(CGEventTapLocation::AnnotatedSession);
+        event.set_type(CGEventType::KeyUp);
+        event.post(CGEventTapLocation::AnnotatedSession);
+        Ok(())
     }
 
     pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {

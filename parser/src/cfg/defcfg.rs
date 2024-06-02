@@ -1,10 +1,61 @@
-use super::error::*;
 use super::sexpr::SExpr;
 use super::HashSet;
+use super::{error::*, TrimAtomQuotes};
 use crate::cfg::check_first_expr;
 use crate::custom_action::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
+
+#[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+#[derive(Debug, Clone)]
+pub struct CfgOptionsGui {
+    /// File name / path to the tray icon file.
+    pub tray_icon: Option<String>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// Whether to match layer names to icon files without an explicit 'icon' field
+    pub icon_match_layer_name: bool,
+    /// Show tooltip on layer changes showing layer icons
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_layer_changes: bool,
+    /// Show tooltip on layer changes for the default/base layer
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_no_base: bool,
+    /// Show tooltip on layer changes even for layers without an icon
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_show_blank: bool,
+    /// Show tooltip on layer changes for this duration (ms)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_duration: u16,
+    /// Show system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_cfg_reload: bool,
+    /// Disable sound for the system notification message on config reload
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_cfg_reload_silent: bool,
+    /// Show system notification message on errors
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub notify_error: bool,
+    /// Set tooltip size (width, height)
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    pub tooltip_size: (u16, u16),
+}
+#[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+impl Default for CfgOptionsGui {
+    fn default() -> Self {
+        Self {
+            tray_icon: None,
+            icon_match_layer_name: true,
+            tooltip_layer_changes: false,
+            tooltip_show_blank: false,
+            tooltip_no_base: true,
+            tooltip_duration: 500,
+            notify_cfg_reload: true,
+            notify_cfg_reload_silent: false,
+            notify_error: true,
+            tooltip_size: (24, 24),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct CfgOptions {
@@ -39,6 +90,8 @@ pub struct CfgOptions {
     pub linux_unicode_termination: UnicodeTermination,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_use_trackpoint_property: bool,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
     pub windows_altgr: AltGrBehaviour,
     #[cfg(any(
@@ -53,6 +106,8 @@ pub struct CfgOptions {
     pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
+    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    pub gui_opts: CfgOptionsGui,
 }
 
 impl Default for CfgOptions {
@@ -91,6 +146,8 @@ impl Default for CfgOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_x11_repeat_delay_rate: None,
+            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            linux_use_trackpoint_property: false,
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
             windows_altgr: AltGrBehaviour::default(),
             #[cfg(any(
@@ -105,6 +162,8 @@ impl Default for CfgOptions {
             windows_interception_keyboard_hwids: None,
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
+            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            gui_opts: Default::default(),
         }
     }
 }
@@ -234,6 +293,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     Err(_) => bail_expr!(val, "{}", ERRMSG),
                                 },
                             });
+                        }
+                    }
+                    "linux-use-trackpoint-property" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "windows-altgr" => {
@@ -389,6 +454,116 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.macos_dev_names_include = Some(dev_names);
                         }
                     }
+                    "tray-icon" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            let icon_path = sexpr_to_str_or_err(val, label)?;
+                            if icon_path.is_empty() {
+                                log::warn!("tray-icon is empty");
+                            }
+                            cfg.gui_opts.tray_icon = Some(icon_path.to_string());
+                        }
+                    }
+                    "icon-match-layer-name" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-layer-changes" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-show-blank" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-no-base" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.tooltip_no_base = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-duration" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.tooltip_duration = parse_cfg_val_u16(val, label, false)?
+                        }
+                    }
+                    "notify-cfg-reload" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.notify_cfg_reload = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "notify-cfg-reload-silent" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.notify_cfg_reload_silent =
+                                parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "notify-error" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            cfg.gui_opts.notify_error = parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "tooltip-size" => {
+                        #[cfg(all(
+                            any(target_os = "windows", target_os = "unknown"),
+                            feature = "gui"
+                        ))]
+                        {
+                            let v = sexpr_to_str_or_err(val, label)?;
+                            let tooltip_size = v.split(',').collect::<Vec<_>>();
+                            const ERRMSG: &str = "Invalid value for tooltip-size.\nExpected two numbers 0-65535 separated by a comma, e.g. 24,24";
+                            if tooltip_size.len() != 2 {
+                                bail_expr!(val, "{}", ERRMSG)
+                            }
+                            cfg.gui_opts.tooltip_size = (
+                                match str::parse::<u16>(tooltip_size[0]) {
+                                    Ok(w) => w,
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                },
+                                match str::parse::<u16>(tooltip_size[1]) {
+                                    Ok(h) => h,
+                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                },
+                            );
+                        }
+                    }
 
                     "process-unmapped-keys" => {
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
@@ -463,7 +638,7 @@ pub const BOOLEAN_VALUES: [&str; 6] = ["yes", "true", "1", "no", "false", "0"];
 fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
     match &expr {
         SExpr::Atom(v) => {
-            let val = v.t.trim_matches('"').to_ascii_lowercase();
+            let val = v.t.trim_atom_quotes().to_ascii_lowercase();
             if TRUE_VALUES.contains(&val.as_str()) {
                 Ok(true)
             } else if FALSE_VALUES.contains(&val.as_str()) {
@@ -489,7 +664,7 @@ fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
 fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u16> {
     let start = if exclude_zero { 1 } else { 0 };
     match &expr {
-        SExpr::Atom(v) => Ok(str::parse::<u16>(v.t.trim_matches('"'))
+        SExpr::Atom(v) => Ok(str::parse::<u16>(v.t.trim_atom_quotes())
             .ok()
             .and_then(|u| {
                 if exclude_zero && u == 0 {
@@ -531,7 +706,7 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
 pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
-            let devs = parse_colon_separated_text(a.t.trim_matches('"'));
+            let devs = parse_colon_separated_text(a.t.trim_atom_quotes());
             if devs.len() == 1 && devs[0].is_empty() {
                 bail_expr!(val, "an empty string is not a valid device name or path")
             }
@@ -542,7 +717,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
                 l.t.iter()
                     .try_fold(Vec::with_capacity(l.t.len()), |mut acc, expr| match expr {
                         SExpr::Atom(path) => {
-                            let trimmed_path = path.t.trim_matches('"').to_string();
+                            let trimmed_path = path.t.trim_atom_quotes().to_string();
                             if trimmed_path.is_empty() {
                                 bail_span!(
                                     path,
@@ -564,7 +739,7 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
 
 fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
     match expr {
-        SExpr::Atom(a) => Ok(a.t.trim_matches('"')),
+        SExpr::Atom(a) => Ok(a.t.trim_atom_quotes()),
         SExpr::List(_) => bail_expr!(expr, "The value for {label} can't be a list"),
     }
 }

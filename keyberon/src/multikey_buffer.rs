@@ -67,7 +67,8 @@ impl<'a, T> MultiKeyBuffer<'a, T> {
     /// # Safety
     ///
     /// The program should not have any references to the inner buffer before calling.
-    /// The program should not mutate the buffer after calling this function until after the returned reference is dropped.
+    /// The program should not mutate the buffer after calling this function until after the
+    /// returned reference is dropped.
     pub(crate) unsafe fn get_ref(&self) -> &'a Action<'a, T> {
         *self.ac = Action::NoOp;
         *self.ptr = slice::from_raw_parts(self.buf.as_ptr(), self.size);

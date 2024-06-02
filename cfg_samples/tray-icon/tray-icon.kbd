@@ -1,0 +1,29 @@
+(defcfg
+  process-unmapped-keys		yes	;;|no| enable processing of keys that are not in defsrc, useful if mapping a few keys in defsrc instead of most of the keys on your keyboard. Without this, the tap-hold-release and tap-hold-press actions will not activate for keys that are not in defsrc. Disabled because some keys may not work correctly if they are intercepted. E.g. rctl/altgr on Windows; see the windows-altgr configuration item above for context.
+  log-layer-changes    		yes	;;|no| overhead
+  tray-icon "./_custom-icons/s.png" ;; should activate for layers without icons like '5no-icn'
+  ;;opt                   	val  	  |≝|
+  icon-match-layer-name   	yes  	;;|yes| match layer name to icon files even without an explicit (icon name.ico) config
+  tooltip-layer-changes   	yes  	;;|false|
+  tooltip-show-blank      	yes  	;;|no|
+  tooltip-duration        	500  	;;|500|
+  tooltip-size            	24,24	;;|24 24|
+  notify-cfg-reload       	yes  	;;|yes|
+  notify-cfg-reload-silent	no   	;;|no|
+  notify-error            	yes  	;;|yes|
+)
+(defalias l1 (layer-while-held 1emoji))
+(defalias l2 (layer-while-held 2icon-quote))
+(defalias l3 (layer-while-held 3emoji_alt))
+(defalias l4 (layer-while-held 4my-lmap))
+(defalias l5 (layer-while-held 5no-icn))
+(defalias l6 (layer-while-held 6name-match))
+
+(defsrc     	            	                            	1  	2  	3  	4  	5  	6)
+(deflayer   	(⌂          	icon base.png)              	@l1	@l2	@l3	@l4	@l5	@l6)	;; find in the 'icon'  subfolder
+(deflayer   	(1emoji     	🖻 1symbols.png)             	q  	q  	q  	q  	q  	q)  	;; find in the 'icons' subfolder
+(deflayer   	(2icon-quote	🖻 "2Nav Num.png")           	w  	w  	w  	w  	w  	w)  	;; find in the 'img'   subfolder
+(deflayer   	(3emoji_alt 	🖼 3trans.parent)            	e  	e  	e  	e  	e  	e)  	;; find '.png'
+(deflayermap	(4my-lmap   	🖻 "..\..\assets\kanata.ico")	1 r	2 r	3 r	4 r	5 r	6 r) ;; find in relative path
+(deflayer   	5no-icn     	                            	t  	t  	t  	t  	t  	t) ;; match file name from 'tray-icon' config, whithout which would fall back to 'tray-icon.png' as it's the only valid icon matching 'tray-icon.kbd' name
+(deflayer   	6name-match 	                            	y  	y  	y  	y  	y  	y) ;; uses '6name-match' with any valid extension since 'icon-match-layer-name' is set to 'yes'

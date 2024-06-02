@@ -1,16 +1,20 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
+#[cfg(all(target_os = "windows", feature = "gui"))]
+use crate::gui::win::*;
 use anyhow::{bail, Result};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
+#[cfg(feature = "passthru_ahk")]
+use std::sync::mpsc::Sender as ASender;
+
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::Arc;
 use std::time;
 
@@ -34,6 +38,9 @@ mod key_repeat;
 
 mod sequences;
 use sequences::*;
+
+pub mod cfg_forced;
+use cfg_forced::*;
 
 #[cfg(feature = "cmd")]
 mod cmd;
@@ -197,6 +204,9 @@ pub struct Kanata {
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
+    #[cfg(all(target_os = "windows", feature = "gui"))]
+    /// Various GUI-related options.
+    pub gui_opts: CfgOptionsGui,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -250,7 +260,6 @@ static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 impl Kanata {
-    /// Create a new configuration from a file.
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
@@ -263,6 +272,8 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &args.symlink_path,
+            #[cfg(target_os = "linux")]
+            cfg.options.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -338,7 +349,8 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.options.log_layer_changes,
+            log_layer_changes: get_forced_log_layer_changes()
+                .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
@@ -359,6 +371,8 @@ impl Kanata {
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            gui_opts: cfg.options.gui_opts,
         })
     }
 
@@ -378,6 +392,8 @@ impl Kanata {
         let kbd_out = match KbdOut::new(
             #[cfg(target_os = "linux")]
             &None,
+            #[cfg(target_os = "linux")]
+            cfg.options.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -431,7 +447,8 @@ impl Kanata {
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
-            log_layer_changes: cfg.options.log_layer_changes,
+            log_layer_changes: get_forced_log_layer_changes()
+                .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
@@ -452,7 +469,19 @@ impl Kanata {
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            gui_opts: cfg.options.gui_opts,
         })
+    }
+
+    #[cfg(feature = "passthru_ahk")]
+    pub fn new_with_output_channel(
+        args: &ValidatedArgs,
+        tx: Option<ASender<InputEvent>>,
+    ) -> Result<Arc<Mutex<Self>>> {
+        let mut k = Self::new(args)?;
+        k.kbd_out.tx_kout = tx;
+        Ok(Arc::new(Mutex::new(k)))
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
@@ -475,7 +504,8 @@ impl Kanata {
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes = cfg.options.log_layer_changes;
+        self.log_layer_changes =
+            get_forced_log_layer_changes().unwrap_or(cfg.options.log_layer_changes);
         self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
         self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
@@ -487,6 +517,19 @@ impl Kanata {
             self.virtual_keys = cfg.fake_keys;
         }
         self.switch_max_key_timing = cfg.switch_max_key_timing;
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        {
+            self.gui_opts.tray_icon = cfg.options.gui_opts.tray_icon;
+            self.gui_opts.icon_match_layer_name = cfg.options.gui_opts.icon_match_layer_name;
+            self.gui_opts.tooltip_layer_changes = cfg.options.gui_opts.tooltip_layer_changes;
+            self.gui_opts.tooltip_no_base = cfg.options.gui_opts.tooltip_no_base;
+            self.gui_opts.tooltip_show_blank = cfg.options.gui_opts.tooltip_show_blank;
+            self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
+            self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
+            self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
+            self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
+        }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
@@ -529,6 +572,8 @@ impl Kanata {
                 }
             }
         }
+        #[cfg(all(target_os = "windows", feature = "gui"))]
+        send_gui_cfg_notice();
         Ok(())
     }
 
@@ -827,13 +872,6 @@ impl Kanata {
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
-        self.overrides
-            .override_keys(cur_keys, &mut self.override_states);
-        if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
-                self.caps_word = None;
-            }
-        }
 
         // Deal with unmodded. Unlike other custom actions, this should come before key presses and
         // releases. I don't quite remember why custom actions come after the key processing, but I
@@ -887,6 +925,14 @@ impl Kanata {
         if !self.unshifted_keys.is_empty() {
             cur_keys.retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
             cur_keys.extend(self.unshifted_keys.iter());
+        }
+
+        self.overrides
+            .override_keys(cur_keys, &mut self.override_states);
+        if let Some(caps_word) = &mut self.caps_word {
+            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+                self.caps_word = None;
+            }
         }
 
         // Release keys that do not exist in the current state but exist in the previous state.
@@ -1229,10 +1275,20 @@ impl Kanata {
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
                             {
-                                for (key_action, osc) in keys_for_cmd_output(_cmd) {
+                                let cmd = _cmd.clone();
+                                // Maybe improvement in the future:
+                                // A delay here, as in KeyAction::Delay, will pause the entire
+                                // state machine loop. That is _probably_ OK, but ideally this
+                                // would be done in a separate thread or somehow
+                                for key_action in keys_for_cmd_output(&cmd) {
                                     match key_action {
-                                        KeyAction::Press => press_key(&mut self.kbd_out, osc)?,
-                                        KeyAction::Release => release_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
+                                        KeyAction::Release(osc) => {
+                                            release_key(&mut self.kbd_out, osc)?
+                                        }
+                                        KeyAction::Delay(delay) => std::thread::sleep(
+                                            std::time::Duration::from_millis(u64::from(delay)),
+                                        ),
                                     }
                                 }
                             }
@@ -1346,9 +1402,17 @@ impl Kanata {
                         CustomAction::SendArbitraryCode(code) => {
                             self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
                         }
-                        CustomAction::CapsWord(cfg) => {
-                            self.caps_word = Some(CapsWordState::new(cfg));
-                        }
+                        CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
+                            CapsWordRepressBehaviour::Overwrite => {
+                                self.caps_word = Some(CapsWordState::new(cfg));
+                            }
+                            CapsWordRepressBehaviour::Toggle => {
+                                self.caps_word = match self.caps_word {
+                                    Some(_) => None,
+                                    None => Some(CapsWordState::new(cfg)),
+                                };
+                            }
+                        },
                         CustomAction::SetMouse { x, y } => {
                             self.kbd_out.set_mouse(*x, *y)?;
                         }
@@ -1505,6 +1569,8 @@ impl Kanata {
                     }
                 }
             }
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            send_gui_notice();
         }
     }
 
@@ -1589,6 +1655,7 @@ impl Kanata {
 
             info!("Starting kanata proper");
 
+            #[cfg(not(feature = "passthru_ahk"))]
             info!(
                 "You may forcefully exit kanata by pressing lctl+spc+esc at any time. \
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
@@ -1602,41 +1669,7 @@ impl Kanata {
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
-                    let is_idle = k.is_idle();
-                    // Note: checking waiting_for_idle can not be part of the computation for
-                    // is_idle() since incrementing ticks_since_idle is dependent on the return
-                    // value of is_idle().
-                    let counting_idle_ticks =
-                        !k.waiting_for_idle.is_empty() || k.live_reload_requested;
-                    if !is_idle {
-                        k.ticks_since_idle = 0;
-                    } else if is_idle && counting_idle_ticks {
-                        k.ticks_since_idle = k.ticks_since_idle.saturating_add(ms_elapsed);
-                        #[cfg(feature = "perf_logging")]
-                        log::info!("ticks since idle: {}", k.ticks_since_idle);
-                    }
-                    // NOTE: this check must not be part of `is_idle` because its falsiness
-                    // does not mean that kanata is in a non-idle state, just that we
-                    // haven't done enough ticks yet to properly compute key-timing.
-                    let passed_max_switch_timing_check = k
-                        .layout
-                        .b()
-                        .historical_keys
-                        .iter_hevents()
-                        .next()
-                        .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
-                        .unwrap_or(true);
-                    let chordsv2_accepts_chords = k
-                        .layout
-                        .b()
-                        .chords_v2
-                        .as_ref()
-                        .map(|cv2| cv2.accepts_chords_chv2())
-                        .unwrap_or(true);
-                    is_idle
-                        && !counting_idle_ticks
-                        && passed_max_switch_timing_check
-                        && chordsv2_accepts_chords
+                    k.can_block_update_idle_waiting(ms_elapsed)
                 };
                 if can_block {
                     log::trace!("blocking on channel");
@@ -1830,6 +1863,41 @@ impl Kanata {
         });
     }
 
+    pub fn can_block_update_idle_waiting(&mut self, ms_elapsed: u16) -> bool {
+        let k = self;
+        let is_idle = k.is_idle();
+        // Note: checking waiting_for_idle can not be part of the computation for
+        // is_idle() since incrementing ticks_since_idle is dependent on the return
+        // value of is_idle().
+        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested;
+        if !is_idle {
+            k.ticks_since_idle = 0;
+        } else if is_idle && counting_idle_ticks {
+            k.ticks_since_idle = k.ticks_since_idle.saturating_add(ms_elapsed);
+            #[cfg(feature = "perf_logging")]
+            log::info!("ticks since idle: {}", k.ticks_since_idle);
+        }
+        // NOTE: this check must not be part of `is_idle` because its falsiness
+        // does not mean that kanata is in a non-idle state, just that we
+        // haven't done enough ticks yet to properly compute key-timing.
+        let passed_max_switch_timing_check = k
+            .layout
+            .b()
+            .historical_keys
+            .iter_hevents()
+            .next()
+            .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
+            .unwrap_or(true);
+        let chordsv2_accepts_chords = k
+            .layout
+            .b()
+            .chords_v2
+            .as_ref()
+            .map(|cv2| cv2.accepts_chords_chv2())
+            .unwrap_or(true);
+        is_idle && !counting_idle_ticks && passed_max_switch_timing_check && chordsv2_accepts_chords
+    }
+
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
@@ -1916,34 +1984,72 @@ fn apply_speed_modifiers() {
     assert_eq!(apply_mouse_distance_modifiers(10, &vec![33u16, 200u16]), 6);
 }
 
+#[cfg(feature = "passthru_ahk")]
+/// Clean kanata's state without exiting
+pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
+    let mut k = kanata.lock();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    let layout = k.layout.bm();
+    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+    release_normalkey_states(layout);
+    k.tick_ms(tick, &None)?;
+    #[cfg(not(target_os = "linux"))]
+    {
+        let mut k_pressed = PRESSED_KEYS.lock();
+        for key_os in k_pressed.clone() {
+            k.kbd_out.release_key(key_os)?;
+        }
+        k_pressed.clear();
+    }
+    Ok(())
+}
+
 /// Checks if kanata should exit based on the fixed key combination of:
 /// Lctl+Spc+Esc
-fn check_for_exit(event: &KeyEvent) {
-    static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
-    static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
-    let is_pressed = match event.value {
-        KeyValue::Press => true,
-        KeyValue::Release => false,
-        _ => return,
-    };
-    match event.code {
-        OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
-        OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
-        _ => return,
-    }
-    const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
-    if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst) {
-        #[cfg(not(target_os = "linux"))]
-        {
-            log::info!("{EXIT_MSG}");
-            panic!("{EXIT_MSG}");
+fn check_for_exit(_event: &KeyEvent) {
+    #[cfg(not(feature = "passthru_ahk"))]
+    {
+        use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+        static IS_LCL_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_SPC_PRESSED: AtomicBool = AtomicBool::new(false);
+        static IS_ESC_PRESSED: AtomicBool = AtomicBool::new(false);
+        let is_pressed = match _event.value {
+            KeyValue::Press => true,
+            KeyValue::Release => false,
+            _ => return,
+        };
+        match _event.code {
+            OsCode::KEY_ESC => IS_ESC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_SPACE => IS_SPC_PRESSED.store(is_pressed, SeqCst),
+            OsCode::KEY_LEFTCTRL => IS_LCL_PRESSED.store(is_pressed, SeqCst),
+            _ => return,
         }
-        #[cfg(target_os = "linux")]
+        const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
+        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst)
         {
             log::info!("{EXIT_MSG}");
-            signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            #[cfg(all(target_os = "windows", feature = "gui"))]
+            {
+                #[cfg(not(feature = "interception_driver"))]
+                native_windows_gui::stop_thread_dispatch();
+                #[cfg(feature = "interception_driver")]
+                send_gui_exit_notice(); // interception driver is running in another thread to allow
+                                        // GUI take the main one, so it's calling check_for_exit
+                                        // from a thread that has no access to the main one, so
+                                        // can't stop main thread's dispatch
+            }
+            #[cfg(all(
+                not(target_os = "linux"),
+                not(target_os = "windows"),
+                not(feature = "gui")
+            ))]
+            {
+                panic!("{EXIT_MSG}");
+            }
+            #[cfg(target_os = "linux")]
+            {
+                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            }
         }
     }
 }

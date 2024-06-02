@@ -9,6 +9,8 @@ pub enum SequenceActivity {
 use SequenceActivity::*;
 
 pub struct SequenceState {
+    /// Unmangled sequence of keys pressed for hidden-delay-type.
+    pub raw_oscs: Vec<OsCode>,
     /// Keeps track of standard sequence state.
     /// This includes regular keys, e.g. `a b c`
     /// and chorded keys, e.g. `S-(d e f)`.
@@ -31,6 +33,7 @@ pub struct SequenceState {
 impl SequenceState {
     pub fn new() -> Self {
         Self {
+            raw_oscs: vec![],
             sequence: vec![],
             overlapped_sequence: vec![],
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
@@ -45,6 +48,7 @@ impl SequenceState {
         self.sequence_input_mode = input_mode;
         self.sequence_timeout = timeout;
         self.ticks_until_timeout = timeout;
+        self.raw_oscs.clear();
         self.sequence.clear();
         self.overlapped_sequence.clear();
         self.activity = Active;
@@ -95,6 +99,7 @@ pub(super) fn do_sequence_press_logic(
 ) -> Result<(), anyhow::Error> {
     state.ticks_until_timeout = state.sequence_timeout;
     let osc = OsCode::from(*k);
+    state.raw_oscs.push(osc);
     use kanata_parser::trie::GetOrDescendentExistsResult::*;
     let pushed_into_seq = {
         // Transform to OsCode and convert modifiers other than altgr/ralt
@@ -216,7 +221,7 @@ pub(super) fn do_sequence_press_logic(
             res = sequences.get_or_descendant_exists(&state.sequence);
         }
         (true, true) => {
-            // One more try for backtracking: check for validity by removing from the front
+            // One more try for backtracking: check for validity by removing from the front.
             while res == NotInTrie && !state.sequence.is_empty() {
                 state.sequence.remove(0);
                 res = sequences.get_or_descendant_exists(&state.sequence);
@@ -349,13 +354,10 @@ pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -
     log::debug!("sequence cancelled");
     match state.sequence_input_mode {
         SequenceInputMode::HiddenDelayType => {
-            for code in state.sequence.iter().copied() {
-                let code = code & kanata_parser::sequences::MASK_KEYCODES;
-                if let Some(osc) = OsCode::from_u16(code) {
-                    // BUG: chorded_hidden_delay_type
-                    press_key(kbd_out, osc)?;
-                    release_key(kbd_out, osc)?;
-                }
+            for osc in state.raw_oscs.iter().copied() {
+                // BUG: chorded_hidden_delay_type
+                press_key(kbd_out, osc)?;
+                release_key(kbd_out, osc)?;
             }
         }
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}

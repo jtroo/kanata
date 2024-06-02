@@ -52,6 +52,9 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
+pub mod layer_opts;
+use layer_opts::*;
+
 pub mod list_actions;
 use list_actions::*;
 
@@ -91,6 +94,10 @@ mod permutations;
 use permutations::*;
 
 use crate::lsp_hints::{self, LspHints};
+
+mod str_ext;
+pub use str_ext::*;
+
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
@@ -185,7 +192,8 @@ macro_rules! anyhow_span {
 
 pub struct FileContentProvider<'a> {
     /// A function to load content of a file from a filepath.
-    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file" from loading twice.
+    /// Optionally, it could implement caching and a mechanism preventing "file" and "./file"
+    /// from loading twice.
     get_file_content_fn: &'a mut dyn FnMut(&Path) -> std::result::Result<String, String>,
 }
 
@@ -323,6 +331,7 @@ pub type MappedKeys = HashSet<OsCode>;
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
+    pub icon: Option<String>,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -490,8 +499,9 @@ fn expand_includes(
                     "Multiple filepaths are not allowed in include blocks. If you want to include multiple files, create a new include block for each of them."
                 )
             };
-            let include_file_path = spanned_filepath.t.trim_matches('"');
-            let file_content = file_content_provider.get_file_content(Path::new(include_file_path)).map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
+            let include_file_path = spanned_filepath.t.trim_atom_quotes();
+            let file_content = file_content_provider.get_file_content(Path::new(include_file_path))
+                .map_err(|e| anyhow_span!(spanned_filepath, "{e}"))?;
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
             lsp_hints.reference_locations.include.push_from_atom(spanned_filepath);
@@ -622,6 +632,12 @@ pub fn parse_cfg_raw_string(
     }
     let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
+    let var_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defvar"))
+        .collect::<Vec<_>>();
+    parse_vars(&var_exprs, s)?;
+
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
         if exprs.t.is_empty() {
@@ -647,7 +663,8 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let layer_idxs = parse_layer_indexes(&layer_exprs, mapping_order.len(), &mut lsp_hints)?;
+    let (layer_idxs, layer_icons) =
+        parse_layer_indexes(&layer_exprs, mapping_order.len(), s, &mut lsp_hints)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -680,7 +697,11 @@ pub fn parse_cfg_raw_string(
     let layer_info: Vec<LayerInfo> = layer_names
         .into_iter()
         .zip(layer_strings)
-        .map(|(name, cfg_text)| LayerInfo { name, cfg_text })
+        .map(|(name, cfg_text)| LayerInfo {
+            name: name.clone(),
+            cfg_text,
+            icon: layer_icons.get(&name).unwrap_or(&None).clone(),
+        })
         .collect();
 
     let defsrc_layer = create_defsrc_layer();
@@ -733,14 +754,9 @@ pub fn parse_cfg_raw_string(
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
         lsp_hints: RefCell::new(lsp_hints),
+        vars: s.vars.clone(),
         ..Default::default()
     };
-
-    let var_exprs = root_exprs
-        .iter()
-        .filter(gen_first_atom_filter("defvar"))
-        .collect::<Vec<_>>();
-    parse_vars(&var_exprs, s)?;
 
     let chords_exprs = spanned_root_exprs
         .iter()
@@ -775,7 +791,8 @@ pub fn parse_cfg_raw_string(
     let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
 
     resolve_chord_groups(&mut klayers, s)?;
-
+    let layers = s.a.bref_slice(klayers);
+    s.layers = layers;
     let override_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defoverrides"))
@@ -827,7 +844,7 @@ pub fn parse_cfg_raw_string(
         )
         .into());
     }
-    let layers = s.a.bref_slice(klayers);
+
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
         options: cfg,
@@ -1040,9 +1057,11 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(
     exprs: &[SpannedLayerExprs],
     expected_len: usize,
+    s: &mut ParserState,
     lsp_hints: &mut LspHints,
-) -> Result<LayerIndexes> {
+) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
+    let mut layer_icons = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
         let (mut subexprs, expr, do_element_count_check) = match expr_type {
             SpannedLayerExprs::DefsrcMapping(e) => {
@@ -1055,33 +1074,56 @@ fn parse_layer_indexes(
         let layer_expr = subexprs.next().ok_or_else(|| {
             anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
         })?;
-        let Spanned { t: layer_name, span: layer_name_span } = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(_) => match layer_expr {
-                SExpr::Atom(x) => x,
-                SExpr::List(_) => {
-                    bail_expr!(layer_expr, "layer name after {DEFLAYER} must be a string")
-                }
-            },
-            SpannedLayerExprs::CustomMapping(_) => {
-                match layer_expr {
-                    SExpr::Atom(_) => bail_expr!(
-                        layer_expr,
-                        "layer name after {DEFLAYER_MAPPED} must be in parentheses"
-                    ),
-                    SExpr::List(Spanned { t, .. }) if t.len() == 1 => {
-                        match &t[0] {
-                            SExpr::Atom(x) => x,
-                            SExpr::List(_) => bail_expr!(layer_expr, "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"),
-                        }
-                    },
-                    SExpr::List(_) => bail_expr!(
-                        layer_expr,
-                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
-                    ),
+        let (layer_name, layer_name_span, icon) = match expr_type {
+            SpannedLayerExprs::DefsrcMapping(_) => {
+                let name = layer_expr.atom(s.vars());
+                match name {
+                    Some(name) => (name.to_owned(), layer_expr.span(), None),
+                    None => {
+                        // unwrap: this **must** be a list due to atom() call above.
+                        let list = layer_expr.list(s.vars()).unwrap();
+                        let name = list.first().ok_or_else(|| anyhow_expr!(
+                                layer_expr,
+                                "deflayer requires a string name within this pair of parentheses (or a string name without any)"
+                            ))?
+                            .atom(s.vars()).ok_or_else(|| anyhow_expr!(
+                                layer_expr,
+                                "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
+                            ))?;
+                        let layer_opts = parse_layer_opts(&list[1..])?;
+                        let icon = layer_opts
+                            .get(DEFLAYER_ICON[0])
+                            .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
+                        (name.to_owned(), layer_expr.span(), icon)
+                    }
                 }
             }
+            SpannedLayerExprs::CustomMapping(_) => {
+                let list = layer_expr
+                    .list(None)
+                    .ok_or_else(|| {
+                        anyhow_expr!(
+                            layer_expr,
+                            "layer name after {DEFLAYER_MAPPED} must be in parentheses"
+                        )
+                    })?
+                    .to_owned();
+                let name = list.first()
+                    .and_then(|expr| expr.atom(s.vars()))
+                    .ok_or_else(|| anyhow_expr!(
+                        layer_expr,
+                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
+                    ))?;
+
+                // add hashmap for future options, currently only parse icons
+                let layer_opts = parse_layer_opts(&list[1..])?;
+                let icon = layer_opts
+                    .get(DEFLAYER_ICON[0])
+                    .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
+                (name.to_owned(), layer_expr.span(), icon)
+            }
         };
-        if layer_indexes.contains_key(layer_name) {
+        if layer_indexes.contains_key(&layer_name) {
             bail_expr!(layer_expr, "duplicate layer name: {}", layer_name);
         }
         // Check if user tried to use parentheses directly - `(` and `)`
@@ -1127,9 +1169,10 @@ fn parse_layer_indexes(
             .definition_locations
             .layer
             .insert(layer_name.clone(), layer_name_span.clone());
+        layer_icons.insert(layer_name, icon);
     }
 
-    Ok(layer_indexes)
+    Ok((layer_indexes, layer_icons))
 }
 
 #[derive(Debug, Clone)]
@@ -1146,6 +1189,7 @@ enum SpannedLayerExprs {
 
 #[derive(Debug)]
 pub struct ParserState {
+    layers: KLayers,
     layer_exprs: Vec<LayerExprs>,
     aliases: Aliases,
     layer_idxs: LayerIndexes,
@@ -1175,6 +1219,7 @@ impl Default for ParserState {
     fn default() -> Self {
         let default_cfg = CfgOptions::default();
         Self {
+            layers: Default::default(),
             layer_exprs: Default::default(),
             aliases: Default::default(),
             layer_idxs: Default::default(),
@@ -1252,7 +1297,7 @@ fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> 
 fn push_all_atoms(exprs: &[SExpr], vars: &HashMap<String, SExpr>, pusheen: &mut String) {
     for expr in exprs {
         if let Some(a) = expr.atom(Some(vars)) {
-            pusheen.push_str(a.trim_matches('"'));
+            pusheen.push_str(a.trim_atom_quotes());
         } else if let Some(l) = expr.list(Some(vars)) {
             push_all_atoms(l, vars, pusheen);
         }
@@ -1415,6 +1460,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             "This is a list action and must be in parentheses: ({ac} ...)"
         );
     }
+
     match ac {
         "_" | "‗" | "≝" => {
             if let Some(trans_forbidden_reason) = s.trans_forbidden_reason {
@@ -1550,60 +1596,83 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         LAYER_SWITCH => parse_layer_base(&ac[1..], s),
         LAYER_TOGGLE | LAYER_WHILE_HELD => parse_layer_toggle(&ac[1..], s),
         TAP_HOLD => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
-        TAP_HOLD_PRESS => parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress),
-        TAP_HOLD_RELEASE => parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold),
-        TAP_HOLD_PRESS_TIMEOUT => {
+        TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
+        }
+        TAP_HOLD_RELEASE | TAP_HOLD_RELEASE_A => {
+            parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold)
+        }
+        TAP_HOLD_PRESS_TIMEOUT | TAP_HOLD_PRESS_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
         }
-        TAP_HOLD_RELEASE_TIMEOUT => {
+        TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        TAP_HOLD_RELEASE_KEYS => {
+        TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
         }
-        TAP_HOLD_EXCEPT_KEYS => parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except),
+        TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
+            parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)
+        }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
-        MACRO_REPEAT => parse_macro(&ac[1..], s, RepeatMacro::Yes),
-        MACRO_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No),
-        MACRO_REPEAT_RELEASE_CANCEL => parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes),
-        UNICODE => parse_unicode(&ac[1..], s),
-        SYM => parse_unicode(&ac[1..], s),
-        ONE_SHOT | ONE_SHOT_PRESS => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress),
-        ONE_SHOT_RELEASE => parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease),
-        ONE_SHOT_PRESS_PCANCEL => {
+        MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),
+        MACRO_RELEASE_CANCEL | MACRO_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::No)
+        }
+        MACRO_REPEAT_RELEASE_CANCEL | MACRO_REPEAT_RELEASE_CANCEL_A => {
+            parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes)
+        }
+        UNICODE | SYM => parse_unicode(&ac[1..], s),
+        ONE_SHOT | ONE_SHOT_PRESS | ONE_SHOT_PRESS_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
+        }
+        ONE_SHOT_RELEASE | ONE_SHOT_RELEASE_A => {
+            parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstRelease)
+        }
+        ONE_SHOT_PRESS_PCANCEL | ONE_SHOT_PRESS_PCANCEL_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPressOrRepress)
         }
-        ONE_SHOT_RELEASE_PCANCEL => {
+        ONE_SHOT_RELEASE_PCANCEL | ONE_SHOT_RELEASE_PCANCEL_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
         }
         TAP_DANCE => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
         TAP_DANCE_EAGER => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
         CHORD => parse_chord(&ac[1..], s),
-        RELEASE_KEY => parse_release_key(&ac[1..], s),
-        RELEASE_LAYER => parse_release_layer(&ac[1..], s),
-        ON_PRESS_FAKEKEY => parse_on_press_fake_key_op(&ac[1..], s),
-        ON_RELEASE_FAKEKEY => parse_on_release_fake_key_op(&ac[1..], s),
-        ON_PRESS_FAKEKEY_DELAY => parse_fake_key_delay(&ac[1..], s),
-        ON_RELEASE_FAKEKEY_DELAY => parse_on_release_fake_key_delay(&ac[1..], s),
+        RELEASE_KEY | RELEASE_KEY_A => parse_release_key(&ac[1..], s),
+        RELEASE_LAYER | RELEASE_LAYER_A => parse_release_layer(&ac[1..], s),
+        ON_PRESS_FAKEKEY | ON_PRESS_FAKEKEY_A => parse_on_press_fake_key_op(&ac[1..], s),
+        ON_RELEASE_FAKEKEY | ON_RELEASE_FAKEKEY_A => parse_on_release_fake_key_op(&ac[1..], s),
+        ON_PRESS_FAKEKEY_DELAY | ON_PRESS_FAKEKEY_DELAY_A => parse_fake_key_delay(&ac[1..], s),
+        ON_RELEASE_FAKEKEY_DELAY | ON_RELEASE_FAKEKEY_DELAY_A => {
+            parse_on_release_fake_key_delay(&ac[1..], s)
+        }
         ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),
-        ON_PRESS => parse_on_press(&ac[1..], s),
-        ON_RELEASE => parse_on_release(&ac[1..], s),
+        ON_PRESS | ON_PRESS_A => parse_on_press(&ac[1..], s),
+        ON_RELEASE | ON_RELEASE_A => parse_on_release(&ac[1..], s),
         ON_IDLE => parse_on_idle(&ac[1..], s),
-        MWHEEL_UP => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
-        MWHEEL_DOWN => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
-        MWHEEL_LEFT => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
-        MWHEEL_RIGHT => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
-        MOVEMOUSE_UP => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
-        MOVEMOUSE_DOWN => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
-        MOVEMOUSE_LEFT => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
-        MOVEMOUSE_RIGHT => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
-        MOVEMOUSE_ACCEL_UP => parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s),
-        MOVEMOUSE_ACCEL_DOWN => parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s),
-        MOVEMOUSE_ACCEL_LEFT => parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s),
-        MOVEMOUSE_ACCEL_RIGHT => parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s),
-        MOVEMOUSE_SPEED => parse_move_mouse_speed(&ac[1..], s),
-        SETMOUSE => parse_set_mouse(&ac[1..], s),
+        MWHEEL_UP | MWHEEL_UP_A => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
+        MWHEEL_DOWN | MWHEEL_DOWN_A => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
+        MWHEEL_LEFT | MWHEEL_LEFT_A => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
+        MWHEEL_RIGHT | MWHEEL_RIGHT_A => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
+        MOVEMOUSE_UP | MOVEMOUSE_UP_A => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
+        MOVEMOUSE_DOWN | MOVEMOUSE_DOWN_A => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
+        MOVEMOUSE_LEFT | MOVEMOUSE_LEFT_A => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
+        MOVEMOUSE_RIGHT | MOVEMOUSE_RIGHT_A => parse_move_mouse(&ac[1..], MoveDirection::Right, s),
+        MOVEMOUSE_ACCEL_UP | MOVEMOUSE_ACCEL_UP_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Up, s)
+        }
+        MOVEMOUSE_ACCEL_DOWN | MOVEMOUSE_ACCEL_DOWN_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Down, s)
+        }
+        MOVEMOUSE_ACCEL_LEFT | MOVEMOUSE_ACCEL_LEFT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Left, s)
+        }
+        MOVEMOUSE_ACCEL_RIGHT | MOVEMOUSE_ACCEL_RIGHT_A => {
+            parse_move_mouse_accel(&ac[1..], MoveDirection::Right, s)
+        }
+        MOVEMOUSE_SPEED | MOVEMOUSE_SPEED_A => parse_move_mouse_speed(&ac[1..], s),
+        SETMOUSE | SETMOUSE_A => parse_set_mouse(&ac[1..], s),
         DYNAMIC_MACRO_RECORD => parse_dynamic_macro_record(&ac[1..], s),
         DYNAMIC_MACRO_PLAY => parse_dynamic_macro_play(&ac[1..], s),
         ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
@@ -1611,13 +1680,23 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
-        CAPS_WORD => parse_caps_word(&ac[1..], s),
-        CAPS_WORD_CUSTOM => parse_caps_word_custom(&ac[1..], s),
+        CAPS_WORD | CAPS_WORD_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
+        }
+        CAPS_WORD_CUSTOM | CAPS_WORD_CUSTOM_A => {
+            parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
+        }
+        CAPS_WORD_TOGGLE | CAPS_WORD_TOGGLE_A => {
+            parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
+        }
+        CAPS_WORD_CUSTOM_TOGGLE | CAPS_WORD_CUSTOM_TOGGLE_A => {
+            parse_caps_word_custom(&ac[1..], CapsWordRepressBehaviour::Toggle, s)
+        }
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
         SWITCH => parse_switch(&ac[1..], s),
         SEQUENCE => parse_sequence_start(&ac[1..], s),
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
-        UNSHIFT => parse_unmod(UNSHIFT, &ac[1..], s),
+        UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
         _ => unreachable!(),
@@ -1625,13 +1704,13 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    let idx = layer_idx(ac_params, &s.layer_idxs)?;
+    let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
     set_layer_change_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::DefaultLayer(idx)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    let idx = layer_idx(ac_params, &s.layer_idxs)?;
+    let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
     set_layer_change_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Layer(idx)))
 }
@@ -1648,17 +1727,16 @@ fn set_layer_change_lsp_hint(layer_name_expr: &SExpr, s: &ParserState) {
         .push_from_atom(layer_name_atom);
 }
 
-fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes) -> Result<usize> {
+fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes, s: &ParserState) -> Result<usize> {
     if ac_params.len() != 1 {
         bail!(
             "Layer actions expect one item: the layer name, found {} items",
             ac_params.len()
         )
     }
-    let layer_name = match &ac_params[0] {
-        SExpr::Atom(ln) => &ln.t,
-        _ => bail_expr!(&ac_params[0], "layer name should be a string not a list",),
-    };
+    let layer_name = ac_params[0]
+        .atom(s.vars())
+        .ok_or_else(|| anyhow_expr!(&ac_params[0], "layer name should be a string not a list",))?;
     match layers.get(layer_name) {
         Some(i) => Ok(*i),
         None => err_expr!(
@@ -2089,7 +2167,8 @@ static KEYMODI: &[(&str, KeyCode)] = &[
     ("RA-", KeyCode::RAlt),
     ("⎇›", KeyCode::RAlt),
     ("⌥›", KeyCode::RAlt),
-    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after indicators with sides have had a chance
+    ("⎈", KeyCode::LCtrl), // Shorter indicators should be at the end to only get matched after
+    // indicators with sides have had a chance
     ("⌥", KeyCode::LAlt),
     ("⎇", KeyCode::LAlt),
     ("◆", KeyCode::LGui),
@@ -2130,6 +2209,7 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     ac_params[0]
         .atom(s.vars())
         .map(|a| {
+            let a = a.trim_atom_quotes();
             if a.chars().count() != 1 {
                 bail_expr!(&ac_params[0], "{ERR_STR}")
             }
@@ -2152,7 +2232,7 @@ fn parse_cmd(
 ) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "cmd expects at least one string";
     if !s.is_cmd_enabled {
-        bail!("cmd is not enabled, but cmd is in the configuration");
+        bail!("cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration");
     }
     let mut cmd = vec![];
     collect_strings(ac_params, &mut cmd, s);
@@ -2172,7 +2252,7 @@ fn parse_cmd(
 fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &ParserState) {
     for param in params {
         if let Some(a) = param.atom(s.vars()) {
-            strings.push(a.trim_matches('"').to_owned());
+            strings.push(a.trim_atom_quotes().to_owned());
         } else {
             // unwrap: this must be a list, since it's not an atom.
             let l = param.list(s.vars()).unwrap();
@@ -2207,7 +2287,7 @@ fn to_simple_expr(params: &[SExpr], s: &ParserState) -> Vec<SimpleSExpr> {
     let mut result: Vec<SimpleSExpr> = Vec::new();
     for param in params {
         if let Some(a) = param.atom(s.vars()) {
-            result.push(SimpleSExpr::Atom(a.trim_matches('"').to_owned()));
+            result.push(SimpleSExpr::Atom(a.trim_atom_quotes().to_owned()));
         } else {
             // unwrap: this must be a list, since it's not an atom.
             let sexps = param.list(s.vars()).unwrap();
@@ -2337,6 +2417,7 @@ fn parse_release_layer(ac_params: &[SExpr], s: &ParserState) -> Result<&'static 
         .sref(Action::ReleaseState(ReleasableState::Layer(layer_idx(
             ac_params,
             &s.layer_idxs,
+            s,
         )?))))
 }
 
@@ -2860,7 +2941,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
             bail_expr!(&expr, "Filepath cannot be a list")
         }
     };
-    let lrld_file_path = spanned_filepath.t.trim_matches('"');
+    let lrld_file_path = spanned_filepath.t.trim_atom_quotes();
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::LiveReloadFile(lrld_file_path.to_string()),
     )))))
@@ -2980,18 +3061,8 @@ fn parse_layers(
                     }
                 }
                 let rem = pairs.remainder();
-                match rem.len() {
-                    0 => {}
-                    1 => {
-                        bail_expr!(
-                            &rem[0],
-                            "an input must be followed by a map string and an action"
-                        );
-                    }
-                    2 => {
-                        bail_expr!(&rem[1], "map string must be followed by an action");
-                    }
-                    _ => unreachable!(),
+                if !rem.is_empty() {
+                    bail_expr!(&rem[0], "input must by followed by an action");
                 }
             }
         }
@@ -3197,7 +3268,8 @@ fn parse_sequence_keys(exprs: &[SExpr], s: &ParserState) -> Result<Vec<u16>> {
                                     );
                                 }
                                 if *pressed != KEY_OVERLAP {
-                                    // Note: key overlap item is special and goes at the end, not the beginning
+                                    // Note: key overlap item is special and goes at the end,
+                                    // not the beginning
                                     seq.push(seq_num);
                                 }
                             }
@@ -3321,7 +3393,11 @@ fn parse_fork(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
     }))))
 }
 
-fn parse_caps_word(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+fn parse_caps_word(
+    ac_params: &[SExpr],
+    repress_behaviour: CapsWordRepressBehaviour,
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "caps-word expects 1 param: <timeout>";
     if ac_params.len() != 1 {
         bail!("{ERR_STR}\nFound {} params instead of 1", ac_params.len());
@@ -3329,6 +3405,7 @@ fn parse_caps_word(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kana
     let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::CapsWord(CapsWordCfg {
+            repress_behaviour,
             keys_to_capitalize: &[
                 KeyCode::A,
                 KeyCode::B,
@@ -3391,7 +3468,11 @@ fn parse_caps_word(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kana
     )))))
 }
 
-fn parse_caps_word_custom(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+fn parse_caps_word_custom(
+    ac_params: &[SExpr],
+    repress_behaviour: CapsWordRepressBehaviour,
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
     const ERR_STR: &str = "caps-word-custom expects 3 param: <timeout> <keys-to-capitalize> <extra-non-terminal-keys>";
     if ac_params.len() != 3 {
         bail!("{ERR_STR}\nFound {} params instead of 3", ac_params.len());
@@ -3400,6 +3481,7 @@ fn parse_caps_word_custom(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
     Ok(s.a.sref(Action::Custom(
         s.a.sref(
             s.a.sref_slice(CustomAction::CapsWord(CapsWordCfg {
+                repress_behaviour,
                 keys_to_capitalize: s.a.sref_vec(
                     parse_key_list(&ac_params[1], s, "keys-to-capitalize")?
                         .into_iter()

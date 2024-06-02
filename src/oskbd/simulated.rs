@@ -96,7 +96,8 @@ impl LogFmt {
         let mut pad = value.len();
         let mut time = "".to_string();
         if self.ticks > 0 {
-            pad = std::cmp::max(value.len(), self.ticks.to_string().len()); // add extra padding if event tick is wider
+            pad = std::cmp::max(value.len(), self.ticks.to_string().len()); // add extra padding if
+                                                                            // event tick is wider
             time = format!("  {: <pad$}", self.ticks);
             self.ticks = 0;
         }
@@ -352,7 +353,7 @@ impl KbdOut {
         Self::new_actual()
     }
     #[cfg(target_os = "linux")]
-    pub fn new(_s: &Option<String>) -> Result<Self, io::Error> {
+    pub fn new(_s: &Option<String>, _tp: bool) -> Result<Self, io::Error> {
         Self::new_actual()
     }
     #[cfg(target_os = "linux")]

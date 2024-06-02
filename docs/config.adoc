@@ -154,6 +154,10 @@ would be:
 )
 ----
 
+A <<windows-only-tray-icon,Windows tray menu build>> also allows specifying
+layer icons in `+deflayer+` and `+deflayermap+` to show in the tray menu on layer activation,
+see https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config]
+
 ==== deflayermap
 
 An alternative method for defining a layer exists: `deflayermap`.
@@ -467,7 +471,6 @@ Variables can be used to substitute most values.
 Some notable exceptions are:
 
 - variables cannot be used in `defcfg`, `defsrc`, or `deflocalkeys`
-- variables cannot be used to substitute a layer name
 - variables cannot be used to substitute an action name
 
 Variables are referred to by prefixing their name with `$`.
@@ -523,7 +526,7 @@ When live reload is activated,
 the active kanata layer will be the first `deflayer` defined in the configuration.
 
 NOTE: live reload does not read or apply changes to device-related configurations,
-such as `linux-dev`, `macos-dev-names-include`,
+such as `linux-dev`, `macos-dev-names-include`, `linux-use-trackpoint-property`
 or `windows-only-windows-interception-keyboard-hwids`.
 
 .Example:
@@ -758,8 +761,8 @@ and would output `ctrl+c` in the example case.
 
 You can release a held key or layer via these actions:
 
-* `release-key`: release a key, accepts `defsrc` compatible names
-* `release-layer`: release a while-held layer
+* `release-key` or `key↑`: release a key, accepts `defsrc` compatible names
+* `release-layer` or `layer↑`: release a while-held layer
 
 NOTE:
 A lower-level detail of these actions is that they operate on output states
@@ -883,10 +886,10 @@ The actions are as follows:
 
 The mouse wheel actions are:
 
-* `mwheel-up`: vertical scroll up
-* `mwheel-down`: vertical scroll down
-* `mwheel-left`: horizontal scroll left
-* `mwheel-right`: horizontal scroll right
+* `mwheel-up` or `🖱☸↑`: vertical scroll up
+* `mwheel-down` or `🖱☸↓`: vertical scroll down
+* `mwheel-left` or `🖱☸←`: horizontal scroll left
+* `mwheel-right` or `🖱☸→`: horizontal scroll right
 
 All of these actions accept two number strings. The first is the interval
 (unit: ms) between scroll actions. The second number is the distance
@@ -915,10 +918,10 @@ you will probably get way more events than you intended.
 
 The mouse movement actions are:
 
-* `movemouse-up`
-* `movemouse-down`
-* `movemouse-left`
-* `movemouse-right`
+* `movemouse-up` or `🖱↑`
+* `movemouse-down` or `🖱↓`
+* `movemouse-left` or `🖱←`
+* `movemouse-right` or `🖱→`
 
 Similar to the mouse wheel actions, all of these actions accept two number strings.
 The first is the interval (unit: ms) between movement actions and the second number
@@ -927,10 +930,10 @@ is the distance (unit: pixels) of each movement.
 The following are variants of the above mouse movements that apply linear mouse
 acceleration from the minimum distance to the maximum distance as the mapped key is held.
 
-* `movemouse-accel-up`
-* `movemouse-accel-down`
-* `movemouse-accel-left`
-* `movemouse-accel-right`
+* `movemouse-accel-up` or `🖱accel↑`
+* `movemouse-accel-down` or `🖱accel↓`
+* `movemouse-accel-left` or `🖱accel←`
+* `movemouse-accel-right` or `🖱accel→`
 
 All these actions accept four number strings. The first number is the
 interval (unit: ms) between movement actions. The second number is the time it
@@ -944,7 +947,7 @@ There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inh
 ==== Set absolute mouse position
 <<table-of-contents,Back to ToC>>
 
-The action `setmouse` sets the absolute mouse position.
+The action `setmouse` or `set🖱` sets the absolute mouse position.
 
 WARNING: This is only supported in Windows right now.
 For an interesting keyboard-centric mouse solution in Linux,
@@ -965,7 +968,7 @@ Experimentation will be needed.
 ==== Modify the speed of mouse movements
 <<table-of-contents,Back to ToC>>
 
-The action `movemouse-speed` modifies the speed at which `movemouse` and
+The action `movemouse-speed` or `🖱speed` modifies the speed at which `movemouse` and
 `movemouse-accel` function at runtime. It does this by expanding or shrinking
 `min_distance` and `max_distance` while the action key is pressed.
 
@@ -1092,14 +1095,14 @@ recently pressed `+one-shot+` key.
 
 There are four variants of the `+one-shot+` action:
 
-- `+one-shot-press+`:
+- `+one-shot-press+` or `+one-shot↓+`:
   end on the first press of another key
-- `+one-shot-release+`:
+- `+one-shot-release+` or `+one-shot↑+`:
   end on the first release of another key
-- `+one-shot-press-pcancel+`:
+- `+one-shot-press-pcancel+` or `+one-shot↓⤫+`:
   end on the first press of another key
   or on re-press of another active one-shot key
-- `+one-shot-release-pcancel+`:
+- `+one-shot-release-pcancel+` or `+one-shot↑⤫+`:
   end on the first release of another key
   or on re-press of another active one-shot key
 
@@ -1200,10 +1203,10 @@ activate.
 
 There are two additional variants of `+tap-hold+`:
 
-* `+tap-hold-press+`
+* `+tap-hold-press+` or `+tap⬓↓+`
 ** If there is a press of a different key, the hold action is activated even if
 the hold timeout hasn't expired yet
-* `+tap-hold-release+`
+* `+tap-hold-release+` or `+tap⬓↑+`
 ** If there is a press+release of a different key, the hold action is activated
 even if the hold timeout hasn't expired yet
 
@@ -1222,15 +1225,15 @@ but you should be wary of activating the hold action unintentionally.
 
 There are further additional variants of `tap-hold-press` and `tap-hold-release`:
 
-- `tap-hold-press-timeout`
-- `tap-hold-release-timeout`
+- `tap-hold-press-timeout` or `tap⬓↓timeout`
+- `tap-hold-release-timeout` or `tap⬓↑timeout`
 
 These variants take a 5th parameter, in addition to the same 4 as the other
 variants. The 5th parameter is another action, which will activate if the hold
 timeout expires as opposed to being triggered by other key actions, whereas the
 non `-timeout` variants will activate the hold action in both cases.
 
-- `tap-hold-release-keys`
+- `tap-hold-release-keys` or `tap⬓↑keys`
 
 This variant takes a 5th parameter which is a list of keys
 that trigger an early tap
@@ -1256,7 +1259,7 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 )
 ----
 
-- `tap-hold-except-keys`
+- `tap-hold-except-keys` or `tap-hold⤫keys`
 
 This variant takes a 5th parameter which is a list of keys
 that always trigger a tap
@@ -1340,7 +1343,7 @@ needs the delay of `5` to work correctly.
 ----
 
 There is a variant of the `+macro+` action that will cancel all active macros
-upon releasing the key: `+macro-release-cancel+`. It is parsed identically to
+upon releasing the key: `+macro-release-cancel+` or `+macro↑⤫+`. It is parsed identically to
 the non-cancelling version. An example use case for this action is holding down
 a key to get different outputs, similar to tap-dance but one can see which keys
 are being outputted.
@@ -1371,7 +1374,9 @@ only the most recently pressed macro will be repeated.
 ----
 (defalias
   mr1 (macro-repeat mltp)
+  mr2 (macro⟳ mltp)
   mr2 (macro-repeat-release-cancel mltp)
+  mr2 (macro⟳↑⤫ mltp)
 )
 ----
 
@@ -1447,7 +1452,7 @@ can still be checked within `fork`, unlike what `XX` does.
 === caps-word
 <<table-of-contents,Back to ToC>>
 
-The `caps-word` action triggers a state where the `lsft` key
+The `caps-word` or `word⇪` action triggers a state where the `lsft` key
 will be added to the active key list
 when a set of specific keys are active.
 The keys are: `a-z` and `-`, which will be outputted as `A-Z` and `_`
@@ -1476,10 +1481,11 @@ and the extra keys in this list:
 - `bspc del`
 - `up down left rght`
 
-You can use `caps-word-custom` instead of `caps-word`
+You can use `caps-word-custom` or `word⇪-custom` instead of `caps-word`
 if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
+.Example
 [source]
 ----
 (defalias
@@ -1495,6 +1501,26 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 )
 ----
 
+==== caps-word-toggle[[caps-word-toggle]]
+
+There are `-toggle` variants of the `caps-word` actions.
+By default repressing `caps-word` will keep `caps-word` active.
+The `-toggle` variants will end `caps-word` if it is currently active,
+otherwise `caps-word` will be activate as normal.
+
+.Example
+[source]
+----
+(defalias
+  cwt (caps-word-toggle 2000)
+  cct (caps-word-custom-toggle
+    2000
+    (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9)
+    (kp0 kp1 kp2 kp3 kp4 kp5 kp6 kp7 kp8 kp9 bspc del up down left rght)
+  )
+)
+----
+
 === unmod[[unmod]]
 <<table-of-contents,Back to ToC>>
 
@@ -1503,7 +1529,7 @@ and send one or more keys.
 After the `unmod` key is released, the released modifiers are pressed again.
 The modifiers affected are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
 
-A variant of `unmod` is `unshift`.
+A variant of `unmod` is `unshift` or `un⇧`.
 This action only releases the `lsft,rsft` keys.
 This can be useful for forcing unshifted keys while AltGr is still held.
 
@@ -1561,8 +1587,8 @@ use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
 There is a variant of `cmd`: `cmd-output-keys`. This variant reads the output
 of the executed program and reads it as an S-expression, similarly to the
-<<macro, macro action>>. However — unlike macro — only keys, chords, and
-chorded lists are supported. Delays and other actions are not supported.
+<<macro, macro action>>. However — unlike macro — only delays, keys, chords, and
+chorded lists are supported. Other actions are not supported.
 
 [source]
 ----
@@ -1956,6 +1982,14 @@ overhead. If you do not care for the logging, you can choose to disable it.
 )
 ----
 
+If `+--log-layer-changes+` is passed as a command line argument,
+a `no` in the configuration file will be overridden
+and layer changes will again be logged.
+This flag can be helpful when testing new configuration changes
+while keeping the default behaviour as "no logging" to save on processing,
+so that the `defcfg` item does not need to be adjusted back and forth
+when experimenting vs. stable usage.
+
 [[delegate-to-first-layer]]
 === delegate-to-first-layer
 <<table-of-contents,Back to ToC>>
@@ -2301,6 +2335,28 @@ This configuration item does not affect Wayland or no-desktop environments.
 )
 ----
 
+[[linux-only-linux-use-trackpoint-property]]
+=== Linux only: linux-use-trackpoint-property
+<<table-of-contents,Back to ToC>>
+
+On linux, you can ask kanata to label itself as a trackpoint. This has several
+effects on libinput including enabling middle mouse button scrolling and using a
+different acceleration curve. Otherwise, a trackpoint intercepted by kanata may
+not behave as expected.
+
+If using this feature, it is recommended to filter out any non-trackpoint
+pointing devices using <<linux-only-linux-dev-names-include>>,
+<<linux-only-linux-dev-names-exclude>> or <<linux-only-linux-dev>> to avoid
+changing their behavior as well.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-use-trackpoint-property yes
+)
+----
+
 [[macos-only-macos-dev-names-include]]
 === macOS only: macos-dev-names-include
 <<table-of-contents,Back to ToC>>
@@ -2432,6 +2488,91 @@ they are an arbitrary length and can be very long.
 )
 ----
 
+[[windows-only-tray-icon]]
+=== Windows only: tray-icon
+<<table-of-contents,Back to ToC>>
+
+Show a custom tray icon file for a <<windows-only-win-tray>> gui-enabled build of kanata on Windows.
+Accepts either the full path (including the file name with an extension) to the icon file
+or just the file name, which is then searched in the following locations:
+
+* Default parent folders:
+** config file's, executable's
+** env vars: `XDG_CONFIG_HOME`, `APPDATA` (`C:\Users\<Name>\AppData\Roaming`), `USERPROFILE` `/.config` (`C:\Users\<Name>\.config`)
+* Default config subfolders: `kanata` `kanata-tray`
+* Default image subfolders (optional): `icon` `img` `icons`
+* Supported image file formats: `ico` `jpg` `jpeg` `png` `bmp` `dds` `tiff`
+
+If not specified, tries to load any icon file from the same locations with the name matching
+config name with extension replaced by one of the supported ones.
+See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
+
+.Example:
+[source]
+----
+;; in a config file C:\Users\<U>\AppData\Roaming\kanata\kanata.kbd
+(defcfg
+  tray-icon base.png ;; will load C:\Users\<U>\AppData\Roaming\kanata\base.png
+)
+----
+
+[[windows-only-icon-match-layer-name]]
+=== Windows only: icon-match-layer-name
+<<table-of-contents,Back to ToC>>
+
+When enabled, attempt to switch to a custom tray icon that matches the name of the active layer
+if the layer doesn't specify an explicit icon. If no icon file is found, the default icon will be used (see <<windows-only-tray-icon>>).
+File search rules are the same as in <<windows-only-tray-icon>>. Defaults to true.
+See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kbd[example config] for more details.
+
+[[windows-only-tooltip-layer-changes]]
+=== Windows only: tooltip-layer-changes
+<<table-of-contents,Back to ToC>>
+
+Show a custom layer icon near the mouse pointer position. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-show-blank]]
+=== Windows only: tooltip-show-blank
+<<table-of-contents,Back to ToC>>
+
+Show a blank square when instead of an icon if a layer isn't configured to have one. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-no-base]]
+=== Windows only: tooltip-no-base
+<<table-of-contents,Back to ToC>>
+
+Don't show a tooltip layer icon for the base layer (1st deflayer). Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-duration]]
+=== Windows only: tooltip-duration
+<<table-of-contents,Back to ToC>>
+
+Set duration (in ms) for showing a custom layer icon near the mouse pointer position. 0 to never hide. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-tooltip-size]]
+=== Windows only: tooltip-size
+<<table-of-contents,Back to ToC>>
+
+Set the size (comma-separated Width,Height without spaces) for a custom layer icon near the mouse pointer position. Defaults to 24,24. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-notify-cfg-reload]]
+=== Windows only: notify-cfg-reload
+<<table-of-contents,Back to ToC>>
+
+Show system notification message on config reload. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-notify-cfg-reload-silent]]
+=== Windows only: notify-cfg-reload-silent
+<<table-of-contents,Back to ToC>>
+
+Disable sound for the system notification message on config reload. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
+
+[[windows-only-notify-error]]
+=== Windows only: notify-error
+<<table-of-contents,Back to ToC>>
+
+Show system notification message on kanata errors. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
+
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
 <<table-of-contents,Back to ToC>>
@@ -2487,9 +2628,9 @@ You can define up to 767 virtual keys.
 These keys are not directly mapped to any physical key presses or releases.
 Virtual keys can be activated via special actions:
 
-* `(on-press    <action> <virtual key name>)`:
+* `(on-press    <action> <virtual key name>)` or `on↓`:
 Activate a virtual key action when pressing the associated input key.
-* `(on-release  <action> <virtual key name>)`:
+* `(on-release  <action> <virtual key name>)` or `on↑`:
 Activate a virtual key action when releasing the associated input key.
 * `(on-idle <milliseconds> <action> <virtual key name>)`:
 Activate a virtual key action when kanata has been idle
@@ -2567,9 +2708,9 @@ Fake keys can be defined inside of `deffakekeys`.
 
 The actions are:
 
-* `+(on-press-fakekey <fake key name> <action>)+`: Activate a fake key
+* `+(on-press-fakekey <fake key name> <action>)+` or `on↓fakekey`: Activate a fake key
   action when pressing the key mapped to this action.
-* `+(on-release-fakekey <fake key name> <action>)+`: Activate a fake key
+* `+(on-release-fakekey <fake key name> <action>)+` or `on↑fakekey`: Activate a fake key
   action when releasing the key mapped to this action.
 * `+(on-idle-fakekey <fake key name> <action> <idle time>)+`:
   Activate a fake key action when kanata has been idle
@@ -2986,19 +3127,19 @@ VAR_NAME=var_value
 The `switch` action accepts multiple cases.
 One case is a triple of:
 
-- keys check
-- action: to activate if keys check succeeds
+- logic check
+- action: to activate if logic check evaluates to true
 - `fallthrough|break`: choose to continue vs. stop evaluating cases
 
-The default use of keys check behaves similarly to fork.
+The default use of the logic check behaves similarly to fork.
 
-For example, the keys check `(a b c)` will activate the corresponding action
+For example, the the logic check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
 TIP: the keys `nop0-nop9` can be used as no-op outputs that
 can still be checked within `switch`, unlike what `XX` does.
 
-The keys check also accepts the boolean operators `and|or|not` to allow more
+The logic check also accepts the boolean operators `and|or|not` to allow more
 complex use cases.
 
 The order of cases matters.
@@ -3033,14 +3174,14 @@ Below is a description of how this example behaves.
 ((and a b (or c d) (or e f))) a break
 ----
 
-Translating case 1's keys check to some other common languages
+Translating case 1's logic check to some other common languages
 might look like:
 
 ----
 (a && b && (c || d) && (e || f))
 ----
 
-If the keys check passes, the action `@ac1` will activate.
+If the logic check passes, the action `@ac1` will activate.
 No other action will activate since `break` is used.
 
 ==== Cases 2 and 3
@@ -3058,18 +3199,18 @@ or for some other common languages:
 
     a || b || c
 
-If this keys check passes and the case 1 does not pass,
+If this logic check passes and the case 1 does not pass,
 the action `@ac2` will activate first.
-Since the keys check of case 3 always passes, `@ac3` will activate next.
+Since the logic check of case 3 always passes, `@ac3` will activate next.
 
-If neither case 1 or case 2 pass their keys checks,
+If neither case 1 or case 2 pass their logic checks,
 case 3 will always activate with `@ac3`.
 
 [[key-history-and-key-timing]]
 ==== key-history and key-timing
 
 In addition to simple keys there are two list items
-that can be used within the case keys check
+that can be used within the case logic check
 that compare against your typed key history:
 
 * `key-history`
@@ -3201,6 +3342,26 @@ because the current input is in the recency `1` slot.
   )
 )
 ----
+
+==== layer
+
+The `layer` list item can be used in `switch` logic to operate on the active layer.
+It accepts a single layer name
+and evaluates to true if the configured layer name is the active layer,
+otherwise it evaluates to false.
+
+.Example:
+[source]
+----
+(defalias switch-layer-example
+  (switch
+     ((layer base)) x break
+    ((layer other)) y break
+                 () z break
+  )
+)
+----
+
 
 [[templates]]
 === Templates
@@ -3438,7 +3599,7 @@ The default `kanata.exe` binary doesn't work in elevated windows (run with admin
 e.g., `Control Panel`. However, you can use AutoHotkey's "EnableUIAccess" script to self-sign the binary,
 move it to "Program Files", then launching kanata from there will also work in these elevated windows.
 See https://github.com/jtroo/kanata/blob/main/EnableUIAccess[EnableUIAccess] folder with the script
-and its requires libraries (needs https://www.autohotkey.com/download/ahk-install.exe[AutoHotkey v1] installed)
+and its required libraries (needs https://www.autohotkey.com/download/[AutoHotkey v2] installed)
 
 If compiling yourself, you should add the feature flag `win_manifest`
 to enable the use of the `EnableUIAccess` script:
@@ -3446,6 +3607,30 @@ to enable the use of the `EnableUIAccess` script:
 ```
 cargo build --win_manifest
 ```
+
+[[windows-only-win-tray]]
+=== Windows only: win-tray
+<<table-of-contents,Back to ToC>>
+
+Kanata can be compiled as a Windows GUI tray app with the feature flag `gui`.
+This can simplify launching the app on user login by placing a `.lnk`
+at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`, show custom icon indicator per config
+
+
+image:https://github.com/jtroo/kanata/blob/main/docs/win-tray/win-tray-screen.png[icon indicator per config,477,129]
+
+as well as dynamic icon indicator per layer (might need to click on the gif below to play)
+
+image:https://github.com/jtroo/kanata/blob/main/docs/win-tray/win-tray-layer-change.gif[icon indicator per layer,33,35,opts=autoplay]
+
+(see <<windows-only-win-tray>>). It also supports (re)loading configs.
+
+Currently the only configuration supported is tray icon per profile, all other configuration should
+be done by passing cli flags in the `Target` field of `.lnk`, e.g., `"C:\Program Files\kanata\kanata.exe" -d -n`
+to launch kanata without a delay in a debug mode
+
+When launched from a command line, the app outputs log to the console, but otherwise the logs are currently
+only available via an app capable of viewing `OutputDebugString` debugs, e.g., https://github.com/smourier/TraceSpy[TraceSpy].
 
 [[test-your-config]]
 === Test your config

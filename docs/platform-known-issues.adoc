@@ -83,4 +83,3 @@ and explicitly map keys in `defsrc` instead
 
 * Mouse output actions are not implemented
 * Mouse input processing is not implemented
-* Unicode output action is not implemented

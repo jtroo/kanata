@@ -31,3 +31,4 @@ bytemuck = "1.15.0"
 [features]
 cmd = []
 interception_driver = []
+gui = []

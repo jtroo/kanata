@@ -4,11 +4,12 @@ use parking_lot::Mutex;
 
 use crate::kanata::*;
 
-#[cfg(not(feature = "interception_driver"))]
-mod llhook;
-
-#[cfg(feature = "interception_driver")]
+#[cfg(all(feature = "simulated_input", not(feature = "interception_driver")))]
+mod exthook;
+#[cfg(all(not(feature = "simulated_input"), feature = "interception_driver"))]
 mod interception;
+#[cfg(all(not(feature = "simulated_input"), not(feature = "interception_driver")))]
+mod llhook;
 
 pub static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
@@ -125,6 +126,34 @@ impl Kanata {
 
     #[cfg(feature = "interception_driver")]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    #[cfg(feature = "gui")]
+    pub fn live_reload(&mut self) -> Result<()> {
+        self.live_reload_requested = true;
+        self.do_live_reload(&None)?;
+        Ok(())
+    }
+    #[cfg(feature = "gui")]
+    pub fn live_reload_n(&mut self, n: usize) -> Result<()> {
+        // can't use in CustomAction::LiveReloadNum(n) due to 2nd mut borrow
+        self.live_reload_requested = true;
+        // let backup_cfg_idx = self.cur_cfg_idx;
+        match self.cfg_paths.get(n) {
+            Some(path) => {
+                self.cur_cfg_idx = n;
+                log::info!("Requested live reload of file: {}", path.display(),);
+            }
+            None => {
+                log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
+            }
+        }
+        // if let Err(e) = self.do_live_reload(&None) {
+        // self.cur_cfg_idx = backup_cfg_idx; // restore index on fail when. TODO: add when a similar reversion is added to other custom actions
+        // return Err(e)
+        // }
+        self.do_live_reload(&None)?;
         Ok(())
     }
 }
