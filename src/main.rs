@@ -229,18 +229,13 @@ mod cli {
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
-        #[cfg(any(not(target_os = "windows"), not(feature = "gui")))]
-        Kanata::event_loop(kanata_arc, tx)?;
-
-        Ok(())
+        Kanata::event_loop(kanata_arc, tx)
     }
 }
 
 #[cfg(not(feature = "gui"))]
-use cli::*;
-#[cfg(not(feature = "gui"))]
 pub fn main() -> Result<()> {
-    let ret = main_impl();
+    let ret = cli::main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
@@ -249,8 +244,7 @@ pub fn main() -> Result<()> {
     ret
 }
 
-#[cfg(feature = "gui")]
+#[cfg(all(feature = "gui", target_os = "windows"))]
 fn main() {
-    use main_lib::win_gui::*;
-    lib_main_gui();
+    main_lib::win_gui::lib_main_gui();
 }

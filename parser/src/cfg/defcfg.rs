@@ -11,32 +11,23 @@ use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 pub struct CfgOptionsGui {
     /// File name / path to the tray icon file.
     pub tray_icon: Option<String>,
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     /// Whether to match layer names to icon files without an explicit 'icon' field
     pub icon_match_layer_name: bool,
     /// Show tooltip on layer changes showing layer icons
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_layer_changes: bool,
     /// Show tooltip on layer changes for the default/base layer
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_no_base: bool,
     /// Show tooltip on layer changes even for layers without an icon
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_show_blank: bool,
     /// Show tooltip on layer changes for this duration (ms)
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_duration: u16,
     /// Show system notification message on config reload
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_cfg_reload: bool,
     /// Disable sound for the system notification message on config reload
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_cfg_reload_silent: bool,
     /// Show system notification message on errors
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub notify_error: bool,
     /// Set tooltip size (width, height)
-    #[cfg(all(target_os = "windows", feature = "gui"))]
     pub tooltip_size: (u16, u16),
 }
 #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
