@@ -3107,21 +3107,14 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
         let mut subexprs = check_first_expr(expr.iter(), "defseq")?.peekable();
 
         while let Some(vkey_expr) = subexprs.next() {
-            let vkey = match vkey_expr {
-                SExpr::Atom(atom) => {
-                    s.lsp_hints
-                        .borrow_mut()
-                        .reference_locations
-                        .virtual_key
-                        .push_from_atom(atom);
-                    vkey_expr
-                        .atom(s.vars())
-                        .expect("must be atom since we're matching atom")
-                }
-                SExpr::List(_) => {
-                    bail_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
-                }
-            };
+            let vkey = vkey_expr.atom(s.vars()).ok_or_else(|| {
+                anyhow_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
+            })?;
+            s.lsp_hints
+                .borrow_mut()
+                .reference_locations
+                .virtual_key
+                .push(vkey, vkey_expr.span());
             if !s.virtual_keys.contains_key(vkey) {
                 bail_expr!(
                     vkey_expr,
