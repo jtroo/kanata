@@ -539,11 +539,6 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
     env_vars: EnvVars,
 ) -> Result<IntermediateCfg> {
-    #[cfg(feature = "lsp")]
-    unsafe {
-        LSP_VARIABLE_REFERENCES = Default::default();
-    }
-
     let mut lsp_hints: LspHints = Default::default();
 
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
@@ -864,7 +859,7 @@ pub fn parse_cfg_raw_string(
             .reference_locations
             .variable
             .0
-            .clone_from(&LSP_VARIABLE_REFERENCES.0)
+            .extend(LSP_VARIABLE_REFERENCES.0.drain())
     }
 
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
