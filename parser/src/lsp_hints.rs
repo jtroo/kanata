@@ -18,9 +18,8 @@ pub struct InactiveCode {
 #[derive(Debug, Default, Clone)]
 pub struct DefinitionLocations {
     pub alias: HashMap<String, Span>,
-    pub variable: HashMap<String, Span>, // unimplemented, TODO
+    pub variable: HashMap<String, Span>,
     pub virtual_key: HashMap<String, Span>,
-    pub chord_group: HashMap<String, Span>, // unimplemented, TODO
     pub layer: HashMap<String, Span>,
     pub template: HashMap<String, Span>,
 }
@@ -28,9 +27,8 @@ pub struct DefinitionLocations {
 #[derive(Debug, Default, Clone)]
 pub struct ReferenceLocations {
     pub alias: ReferencesMap,
-    pub variable: ReferencesMap, // unimplemented, TODO
+    pub variable: ReferencesMap,
     pub virtual_key: ReferencesMap,
-    pub chord_group: ReferencesMap, // unimplemented, TODO
     pub layer: ReferencesMap,
     pub template: ReferencesMap,
     pub include: ReferencesMap,
