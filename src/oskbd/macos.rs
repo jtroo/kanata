@@ -9,13 +9,19 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
-use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType};
+use core_graphics::base::CGFloat;
+use core_graphics::display::{CGDisplay, CGPoint};
+use core_graphics::event::{
+    CGEvent, CGEventField, CGEventTapLocation, CGEventType, CGMouseButton, EventField,
+};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
 use std::convert::TryFrom;
+use std::fmt;
 use std::io;
+use std::io::{Error, ErrorKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -110,9 +116,6 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
         })
         .collect()
 }
-
-use std::fmt;
-use std::io::ErrorKind;
 
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -224,16 +227,7 @@ impl KbdOut {
     }
 
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
-        let event_source =
-            CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    "failed to create core graphics event source",
-                )
-            })?;
-        let event = CGEvent::new(event_source).map_err(|_| {
-            io::Error::new(ErrorKind::Other, "failed to create core graphics event")
-        })?;
+        let event = Self::make_event()?;
         let mut arr: [u16; 2] = [0; 2];
         c.encode_utf16(&mut arr);
         event.set_string_from_utf16_unchecked(&arr);
@@ -245,26 +239,131 @@ impl KbdOut {
     }
 
     pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let event = Self::make_event()?;
+        event.set_type(CGEventType::ScrollWheel);
+        match _direction {
+            MWheelDirection::Down => event.set_integer_value_field(
+                EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
+                (_distance as i64) * 1,
+            ),
+            MWheelDirection::Up => event.set_integer_value_field(
+                EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
+                (_distance as i64) * -1,
+            ),
+            MWheelDirection::Left => event.set_integer_value_field(
+                EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
+                (_distance as i64) * 1,
+            ),
+            MWheelDirection::Right => event.set_integer_value_field(
+                EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
+                (_distance as i64) * -1,
+            ),
+        }
+        // Mouse control only seems to work with CGEventTapLocation::HID.
+        event.post(CGEventTapLocation::HID);
+        Ok(())
     }
 
     pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let event = Self::make_event()?;
+        let event_type = match _btn {
+            Btn::Left => CGEventType::LeftMouseDown,
+            Btn::Right => CGEventType::RightMouseDown,
+            Btn::Mid => CGEventType::OtherMouseDown,
+            // It's unclear to me which event type to use here, hence unsupported for now
+            Btn::Forward => CGEventType::Null,
+            Btn::Backward => CGEventType::Null,
+        };
+        // CGEventType doesn't implement Eq, therefore the casting to u8
+        if event_type as u8 == CGEventType::Null as u8 {
+            panic!("mouse buttons other than left, right, and middle aren't currently supported")
+        }
+        event.set_type(event_type);
+        // Mouse control only seems to work with CGEventTapLocation::HID.
+        event.post(CGEventTapLocation::HID);
+        Ok(())
     }
 
     pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let event = Self::make_event()?;
+        let event_type = match _btn {
+            Btn::Left => CGEventType::LeftMouseUp,
+            Btn::Right => CGEventType::RightMouseUp,
+            Btn::Mid => CGEventType::OtherMouseUp,
+            // It's unclear to me which event type to use here, hence unsupported for now
+            Btn::Forward => CGEventType::Null,
+            Btn::Backward => CGEventType::Null,
+        };
+        // CGEventType doesn't implement Eq, therefore the casting to u8
+        if event_type as u8 == CGEventType::Null as u8 {
+            panic!("mouse buttons other than left, right, and middle aren't currently supported")
+        }
+        event.set_type(event_type);
+        // Mouse control only seems to work with CGEventTapLocation::HID.
+        event.post(CGEventTapLocation::HID);
+        Ok(())
     }
 
     pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let event = Self::make_event()?;
+        let mut mouse_position = event.location();
+        let display = CGDisplay::main();
+        Self::apply_calculated_move(&_mv, &mut mouse_position);
+        display
+            .move_cursor_to_point(mouse_position)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move mouse"))?;
+        Ok(())
     }
 
     pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let event = Self::make_event()?;
+        let mut mouse_position = event.location();
+        let display = CGDisplay::main();
+        for current_move in _moves.iter() {
+            Self::apply_calculated_move(current_move, &mut mouse_position);
+        }
+        display
+            .move_cursor_to_point(mouse_position)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move mouse"))?;
+        Ok(())
     }
 
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
-        panic!("Mouse is not supported yet on Macos")
+        let display = CGDisplay::main();
+        let point = CGPoint::new(_x as CGFloat, _y as CGFloat);
+        display
+            .move_cursor_to_point(point)
+            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move cursor to point"))?;
+        Ok(())
+    }
+
+    /// Creates a core graphics event.
+    /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
+    /// I have not verified that this is the correct parameter.
+    /// Note that the CFRelease function mentioned in the docs is automatically called when the
+    /// event is dropped, therefore we don't need to care about this ourselves.
+    fn make_event() -> Result<CGEvent, Error> {
+        let event_source =
+            CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
+                Error::new(
+                    ErrorKind::Other,
+                    "failed to create core graphics event source",
+                )
+            })?;
+        let event = CGEvent::new(event_source)
+            .map_err(|_| Error::new(ErrorKind::Other, "failed to create core graphics event"))?;
+        Ok(event)
+    }
+
+    /// Applies a calculated mouse move to a CGPoint.
+    ///
+    /// This does _not_ move the mouse, it just mutates the point.
+    fn apply_calculated_move(_mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
+        match _mv.direction {
+            MoveDirection::Up => mouse_position.y = mouse_position.y - _mv.distance as CGFloat,
+            MoveDirection::Down => mouse_position.y = mouse_position.y + _mv.distance as CGFloat,
+            MoveDirection::Left => mouse_position.x = mouse_position.x - _mv.distance as CGFloat,
+            MoveDirection::Right => mouse_position.x = mouse_position.x + _mv.distance as CGFloat,
+        }
     }
 }
