@@ -46,4 +46,13 @@ impl ReferencesMap {
             }
         };
     }
+
+    pub(crate) fn push(&mut self, name: &str, span: &Span) {
+        match self.0.get_mut(name) {
+            Some(refs) => refs.push(span.clone()),
+            None => {
+                self.0.insert(name.to_owned(), vec![span.clone()]);
+            }
+        };
+    }
 }

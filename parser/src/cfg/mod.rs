@@ -1542,7 +1542,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     .borrow_mut()
                     .reference_locations
                     .alias
-                    .push_from_atom(ac_span);
+                    .push(alias, &ac_span.span);
                 Ok(*ac)
             }
             None => bail!(
