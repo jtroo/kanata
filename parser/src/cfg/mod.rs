@@ -523,7 +523,14 @@ const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-macos",
 ];
 
+#[cfg(feature = "lsp")]
+/// Safety: Unsafe for concurrent access.
+pub(crate) static mut LSP_VARIABLE_REFERENCES: once_cell::unsync::Lazy<
+    crate::lsp_hints::ReferencesMap,
+> = once_cell::unsync::Lazy::new(crate::lsp_hints::ReferencesMap::default);
+
 #[allow(clippy::type_complexity)] // return type is not pub
+/// Safety: Unsafe to call concurrently with "lsp" feature on.
 pub fn parse_cfg_raw_string(
     text: &str,
     s: &mut ParserState,
@@ -532,6 +539,11 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
     env_vars: EnvVars,
 ) -> Result<IntermediateCfg> {
+    #[cfg(feature = "lsp")]
+    unsafe {
+        LSP_VARIABLE_REFERENCES = Default::default();
+    }
+
     let mut lsp_hints: LspHints = Default::default();
 
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
@@ -636,7 +648,7 @@ pub fn parse_cfg_raw_string(
         .iter()
         .filter(gen_first_atom_filter("defvar"))
         .collect::<Vec<_>>();
-    parse_vars(&var_exprs, s)?;
+    let vars = parse_vars(&var_exprs, &mut lsp_hints)?;
 
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
@@ -754,7 +766,7 @@ pub fn parse_cfg_raw_string(
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
         lsp_hints: RefCell::new(lsp_hints),
-        vars: s.vars.clone(),
+        vars,
         ..Default::default()
     };
 
@@ -843,6 +855,16 @@ pub fn parse_cfg_raw_string(
             It is currently false or unspecified."
         )
         .into());
+    }
+
+    #[cfg(feature = "lsp")]
+    unsafe {
+        s.lsp_hints
+            .borrow_mut()
+            .reference_locations
+            .variable
+            .0
+            .clone_from(&LSP_VARIABLE_REFERENCES.0)
     }
 
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
@@ -1231,7 +1253,8 @@ struct ChordGroup {
     timeout: u16,
 }
 
-fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
+fn parse_vars(exprs: &[&Vec<SExpr>], lsp_hints: &mut LspHints) -> Result<HashMap<String, SExpr>> {
+    let mut vars: HashMap<String, SExpr> = Default::default();
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defvar")?;
         // Read k-v pairs from the configuration
@@ -1243,16 +1266,20 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
             let var_expr = match subexprs.next() {
                 Some(v) => match v {
                     SExpr::Atom(_) => v.clone(),
-                    SExpr::List(l) => parse_list_var(l, &s.vars),
+                    SExpr::List(l) => parse_list_var(l, &vars),
                 },
                 None => bail_expr!(var_name_expr, "variable name must have a subsequent value"),
             };
-            if s.vars.insert(var_name.into(), var_expr).is_some() {
+            lsp_hints
+                .definition_locations
+                .variable
+                .insert(var_name.to_owned(), var_name_expr.span());
+            if vars.insert(var_name.into(), var_expr).is_some() {
                 bail_expr!(var_name_expr, "duplicate variable name: {}", var_name);
             }
         }
     }
-    Ok(())
+    Ok(vars)
 }
 
 fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> SExpr {

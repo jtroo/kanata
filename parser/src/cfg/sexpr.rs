@@ -152,7 +152,13 @@ impl SExpr {
                 let s = a.t.as_str();
                 match (s.strip_prefix('$'), vars) {
                     (Some(varname), Some(vars)) => match vars.get(varname) {
-                        Some(var) => var.atom(Some(vars)),
+                        Some(var) => {
+                            #[cfg(feature = "lsp")]
+                            unsafe {
+                                super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
+                            }
+                            var.atom(Some(vars))
+                        }
                         None => Some(s),
                     },
                     _ => Some(s),
@@ -167,7 +173,13 @@ impl SExpr {
             SExpr::List(l) => Some(&l.t),
             SExpr::Atom(a) => match (a.t.strip_prefix('$'), vars) {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
-                    Some(var) => var.list(Some(vars)),
+                    Some(var) => {
+                        #[cfg(feature = "lsp")]
+                        unsafe {
+                            super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
+                        }
+                        var.list(Some(vars))
+                    }
                     None => None,
                 },
                 _ => None,
@@ -183,7 +195,13 @@ impl SExpr {
             SExpr::List(l) => Some(l),
             SExpr::Atom(a) => match (a.t.strip_prefix('$'), vars) {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
-                    Some(var) => var.span_list(Some(vars)),
+                    Some(var) => {
+                        #[cfg(feature = "lsp")]
+                        unsafe {
+                            super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
+                        }
+                        var.span_list(Some(vars))
+                    }
                     None => None,
                 },
                 _ => None,
