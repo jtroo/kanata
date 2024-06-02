@@ -18,19 +18,21 @@ pub struct InactiveCode {
 #[derive(Debug, Default, Clone)]
 pub struct DefinitionLocations {
     pub alias: HashMap<String, Span>,
-    pub variable: HashMap<String, Span>, // TODO
+    pub variable: HashMap<String, Span>, // unimplemented, TODO
     pub virtual_key: HashMap<String, Span>,
-    pub chord_group: HashMap<String, Span>, // TODO
+    pub chord_group: HashMap<String, Span>, // unimplemented, TODO
     pub layer: HashMap<String, Span>,
+    pub template: HashMap<String, Span>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct ReferenceLocations {
     pub alias: ReferencesMap,
-    pub variable: ReferencesMap, // TODO
+    pub variable: ReferencesMap, // unimplemented, TODO
     pub virtual_key: ReferencesMap,
-    pub chord_group: ReferencesMap, // TODO
+    pub chord_group: ReferencesMap, // unimplemented, TODO
     pub layer: ReferencesMap,
+    pub template: ReferencesMap,
     pub include: ReferencesMap,
 }
 
@@ -47,11 +49,11 @@ impl ReferencesMap {
         };
     }
 
-    pub(crate) fn push(&mut self, name: &str, span: &Span) {
+    pub(crate) fn push(&mut self, name: &str, span: Span) {
         match self.0.get_mut(name) {
-            Some(refs) => refs.push(span.clone()),
+            Some(refs) => refs.push(span),
             None => {
-                self.0.insert(name.to_owned(), vec![span.clone()]);
+                self.0.insert(name.to_owned(), vec![span]);
             }
         };
     }

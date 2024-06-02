@@ -544,7 +544,7 @@ pub fn parse_cfg_raw_string(
             )
         })
         .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hints.inactive_code))
-        .and_then(expand_templates)?;
+        .and_then(|xs| expand_templates(xs, &mut lsp_hints))?;
 
     if let Some(spanned) = spanned_root_exprs
         .iter()
@@ -1522,7 +1522,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     .borrow_mut()
                     .reference_locations
                     .alias
-                    .push(alias, &ac_span.span);
+                    .push(alias, ac_span.span.clone());
                 Ok(*ac)
             }
             None => bail!(
