@@ -154,9 +154,9 @@ impl SExpr {
                     (Some(varname), Some(vars)) => match vars.get(varname) {
                         Some(var) => {
                             #[cfg(feature = "lsp")]
-                            unsafe {
-                                super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
-                            }
+                            super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
+                                refs.push(varname, a.span.clone());
+                            });
                             var.atom(Some(vars))
                         }
                         None => Some(s),
@@ -175,9 +175,9 @@ impl SExpr {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
                     Some(var) => {
                         #[cfg(feature = "lsp")]
-                        unsafe {
-                            super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
-                        }
+                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
+                            refs.push(varname, a.span.clone());
+                        });
                         var.list(Some(vars))
                     }
                     None => None,
@@ -197,9 +197,9 @@ impl SExpr {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
                     Some(var) => {
                         #[cfg(feature = "lsp")]
-                        unsafe {
-                            super::LSP_VARIABLE_REFERENCES.push(varname, a.span.clone());
-                        }
+                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
+                            refs.push(varname, a.span.clone());
+                        });
                         var.span_list(Some(vars))
                     }
                     None => None,

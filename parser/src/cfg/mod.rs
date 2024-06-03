@@ -527,13 +527,12 @@ const DEFLOCALKEYS_VARIANTS: &[&str] = &[
 ];
 
 #[cfg(feature = "lsp")]
-/// Safety: Unsafe for concurrent access.
-pub(crate) static mut LSP_VARIABLE_REFERENCES: once_cell::unsync::Lazy<
-    crate::lsp_hints::ReferencesMap,
-> = once_cell::unsync::Lazy::new(crate::lsp_hints::ReferencesMap::default);
+thread_local! {
+    pub(crate) static LSP_VARIABLE_REFERENCES: RefCell<crate::lsp_hints::ReferencesMap> =
+        RefCell::new(crate::lsp_hints::ReferencesMap::default());
+}
 
 #[allow(clippy::type_complexity)] // return type is not pub
-/// Safety: Unsafe to call concurrently with "lsp" feature on.
 pub fn parse_cfg_raw_string(
     text: &str,
     s: &mut ParserState,
@@ -857,14 +856,14 @@ pub fn parse_cfg_raw_string(
     }
 
     #[cfg(feature = "lsp")]
-    unsafe {
+    LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
         s.lsp_hints
             .borrow_mut()
             .reference_locations
             .variable
             .0
-            .extend(LSP_VARIABLE_REFERENCES.0.drain())
-    }
+            .extend(refs.0.drain());
+    });
 
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
