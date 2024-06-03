@@ -546,13 +546,9 @@ pub fn parse_cfg_raw_string(
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
         .and_then(|xs| expand_includes(xs, file_content_provider, &mut lsp_hints))
         .and_then(|xs| {
-            filter_platform_specific_cfg(
-                xs,
-                def_local_keys_variant_to_apply,
-                &mut lsp_hints.inactive_code,
-            )
+            filter_platform_specific_cfg(xs, def_local_keys_variant_to_apply, &mut lsp_hints)
         })
-        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hints.inactive_code))
+        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hints))
         .and_then(|xs| expand_templates(xs, &mut lsp_hints))?;
 
     if let Some(spanned) = spanned_root_exprs
