@@ -36,7 +36,7 @@ jobs:
             artifacts-arm64/kanata_macos_cmd_allowed_arm64
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
     - uses: actions/checkout@v3
