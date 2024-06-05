@@ -2385,15 +2385,20 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
 === Windows only: windows-altgr
 <<table-of-contents,Back to ToC>>
 
-There is an option for Windows to help mitigate the strange behaviour of AltGr
-(ralt) if you're using that key in your defsrc. This is applicable for many
-non-US layouts. You can use one of the listed values to change what kanata does
-with the key:
+There is an option for Windows to mitigate the strange behaviour of AltGr (ralt)
+if you're using `process-unmapped-keys yes` or have the key in your defsrc.
+This is applicable for many non-US layouts.
+You can use one of the listed values to change what kanata does with the key:
 
 * `cancel-lctl-press`
 ** This will remove the `lctl` press that is generated alonside `ralt`
 * `add-lctl-release`
 ** This adds an `lctl` release when `ralt` is released
+
+Without these workarounds,
+you should instead ensure you set `process-unmapped-keys no`
+or omit the configuration; it defaults to no,
+**and** also omit `ralt` from `defsrc`.
 
 .Example:
 [source]
