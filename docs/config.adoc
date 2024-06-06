@@ -309,6 +309,11 @@ Please contribute to the document if you are able!
 The number used for a custom key represents the converted value for an OsCode in
 base 10. This differs between Windows-hooks, Windows-interception, and Linux.
 
+Running kanata with the `--debug` flag lets you read the correct number,
+shown in parenthesis of `code` in the `KeyEvent` log lines.
+
+It also possible to use native tools, as described below.
+
 In Linux, `evtest` will give the correct number for the physical key you press.
 
 In Windows using the default hook mechanism, the non-interception version of the
