@@ -2,11 +2,28 @@ use super::*;
 
 use crate::{anyhow_expr, bail, bail_expr};
 
+#[allow(unused_variables)]
+fn set_virtual_key_reference_lsp_hint(vk_name_expr: &SExpr, s: &ParserState) {
+    #[cfg(feature = "lsp")]
+    {
+        let atom = match vk_name_expr {
+            SExpr::Atom(x) => x,
+            SExpr::List(_) => unreachable!("should be validated to be atom earlier"),
+        };
+        s.lsp_hints
+            .borrow_mut()
+            .reference_locations
+            .virtual_key
+            .push_from_atom(atom);
+    }
+}
+
 pub(crate) fn parse_on_press_fake_key_op(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
+    set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
     )))
@@ -17,6 +34,7 @@ pub(crate) fn parse_on_release_fake_key_op(
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
+    set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
     ))))
@@ -66,6 +84,7 @@ pub(crate) fn parse_on_idle_fakekey(
     })?;
     let (x, y) = get_fake_key_coords(y);
     let coord = Coord { x, y };
+    set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
             coord,
@@ -115,6 +134,7 @@ fn parse_fake_key_op_coord_action(
             )
         })?;
     let (x, y) = get_fake_key_coords(y);
+    set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok((Coord { x, y }, action))
 }
 
@@ -168,6 +188,7 @@ fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
         None => bail_expr!(param, "unknown virtual key name: {name}",),
     };
     let coord = Coord { x: FAKE_KEY_ROW, y };
+    set_virtual_key_reference_lsp_hint(param, s);
     Ok(coord)
 }
 

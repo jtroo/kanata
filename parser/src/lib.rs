@@ -4,5 +4,6 @@ pub mod cfg;
 pub mod custom_action;
 pub mod keys;
 pub mod layers;
+pub mod lsp_hints;
 pub mod sequences;
 pub mod trie;

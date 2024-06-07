@@ -37,12 +37,15 @@ struct Template {
 ///
 /// Syntax of `deftemplate` is:
 ///
-/// `(deftemplate (<list of template vars>) <rest of template>)`
+/// `(deftemplate <template name> (<list of template vars>) <rest of template>)`
 ///
 /// Syntax of `template-expand` is:
 ///
 /// `(template-expand <template name> <template var substitutions>)`
-pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLevel>> {
+pub fn expand_templates(
+    mut toplevel_exprs: Vec<TopLevel>,
+    lsp_hints: &mut LspHints,
+) -> Result<Vec<TopLevel>> {
     let mut templates: Vec<Template> = vec![];
 
     // Find defined templates
@@ -55,7 +58,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         }
 
         // Parse template name
-        let name = list
+        let (name, _name_span) = list
             .t
             .get(1)
             .ok_or_else(|| {
@@ -72,9 +75,14 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
                 if templates.iter().any(|t| t.name == name) {
                     bail_expr!(name_expr, "template name was already defined earlier");
                 }
-                Ok(name)
-            })?
-            .to_owned();
+                Ok((name, name_expr.span()))
+            })?;
+
+        #[cfg(feature = "lsp")]
+        lsp_hints
+            .definition_locations
+            .template
+            .insert(name.to_owned(), _name_span);
 
         // Parse template variable names
         let vars = list
@@ -130,7 +138,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
         }
 
         templates.push(Template {
-            name,
+            name: name.to_string(),
             vars,
             vars_substitute_names,
             content,
@@ -147,7 +155,7 @@ pub fn expand_templates(mut toplevel_exprs: Vec<TopLevel>) -> Result<Vec<TopLeve
             })
         })
         .collect();
-    expand(&mut toplevels, &templates)?;
+    expand(&mut toplevels, &templates, lsp_hints)?;
 
     toplevels.into_iter().try_fold(vec![], |mut tls, tl| {
         tls.push(match &tl {
@@ -169,7 +177,7 @@ struct Replacement {
     insert_index: usize,
 }
 
-fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
+fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHints) -> Result<()> {
     let mut replacements: Vec<Replacement> = vec![];
     for (expr_index, expr) in exprs.iter_mut().enumerate() {
         match expr {
@@ -179,7 +187,7 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                     l.t.first().and_then(|expr| expr.atom(None)),
                     Some("template-expand") | Some("t!")
                 ) {
-                    expand(&mut l.t, templates)?;
+                    expand(&mut l.t, templates, _lsp_hints)?;
                     continue;
                 }
 
@@ -196,6 +204,11 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template]) -> Result<()> {
                             let name = name_expr.atom(None).ok_or_else(|| {
                                 anyhow_expr!(name_expr, "template name must be a string")
                             })?;
+                            #[cfg(feature = "lsp")]
+                            _lsp_hints
+                                .reference_locations
+                                .template
+                                .push(name, name_expr.span());
                             templates.iter().find(|t| t.name == name).ok_or_else(|| {
                                 anyhow_expr!(
                                     name_expr,

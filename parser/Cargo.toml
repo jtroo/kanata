@@ -32,3 +32,4 @@ bytemuck = "1.15.0"
 cmd = []
 interception_driver = []
 gui = []
+lsp = []

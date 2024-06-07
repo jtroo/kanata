@@ -37,14 +37,16 @@
 //! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
+
 pub mod sexpr;
 
 pub(crate) mod alloc;
 use alloc::*;
 
-mod key_override;
 use crate::sequences::*;
 use kanata_keyberon::chord::ChordsV2;
+
+mod key_override;
 pub use key_override::*;
 
 mod custom_tap_hold;
@@ -91,12 +93,15 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
+use crate::lsp_hints::{self, LspHints};
+
 mod str_ext;
 pub use str_ext::*;
 
 use crate::trie::Trie;
 use anyhow::anyhow;
 use std::cell::Cell;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::path::PathBuf;
@@ -468,6 +473,7 @@ fn parse_cfg_raw(p: &Path, s: &mut ParserState) -> MResult<IntermediateCfg> {
 fn expand_includes(
     xs: Vec<TopLevel>,
     file_content_provider: &mut FileContentProvider,
+    _lsp_hints: &mut LspHints,
 ) -> Result<Vec<TopLevel>> {
     let include_is_first_atom = gen_first_atom_filter("include");
     xs.iter().try_fold(Vec::new(), |mut acc, spanned_exprs| {
@@ -499,6 +505,9 @@ fn expand_includes(
             let tree = sexpr::parse(&file_content, include_file_path)?;
             acc.extend(tree);
 
+            #[cfg(feature = "lsp")]
+            _lsp_hints.reference_locations.include.push_from_atom(spanned_filepath);
+
             Ok(acc)
         } else {
             acc.push(spanned_exprs.clone());
@@ -517,10 +526,10 @@ const DEFLOCALKEYS_VARIANTS: &[&str] = &[
     "deflocalkeys-macos",
 ];
 
-#[derive(Debug, Clone)]
-pub struct LspHintInactiveCode {
-    pub span: Span,
-    pub reason: String,
+#[cfg(feature = "lsp")]
+thread_local! {
+    pub(crate) static LSP_VARIABLE_REFERENCES: RefCell<crate::lsp_hints::ReferencesMap> =
+        RefCell::new(crate::lsp_hints::ReferencesMap::default());
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -532,19 +541,15 @@ pub fn parse_cfg_raw_string(
     def_local_keys_variant_to_apply: &str,
     env_vars: EnvVars,
 ) -> Result<IntermediateCfg> {
-    let mut lsp_hint_inactive_code: Vec<LspHintInactiveCode> = vec![];
+    let mut lsp_hints: LspHints = Default::default();
 
     let spanned_root_exprs = sexpr::parse(text, &cfg_path.to_string_lossy())
-        .and_then(|xs| expand_includes(xs, file_content_provider))
+        .and_then(|xs| expand_includes(xs, file_content_provider, &mut lsp_hints))
         .and_then(|xs| {
-            filter_platform_specific_cfg(
-                xs,
-                def_local_keys_variant_to_apply,
-                &mut lsp_hint_inactive_code,
-            )
+            filter_platform_specific_cfg(xs, def_local_keys_variant_to_apply, &mut lsp_hints)
         })
-        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hint_inactive_code))
-        .and_then(expand_templates)?;
+        .and_then(|xs| filter_env_specific_cfg(xs, &env_vars, &mut lsp_hints))
+        .and_then(|xs| expand_templates(xs, &mut lsp_hints))?;
 
     if let Some(spanned) = spanned_root_exprs
         .iter()
@@ -560,7 +565,7 @@ pub fn parse_cfg_raw_string(
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in DEFLOCALKEYS_VARIANTS {
-        if let Some((result, span)) = spanned_root_exprs
+        if let Some((result, _span)) = spanned_root_exprs
             .iter()
             .find(gen_first_atom_filter_spanned(def_local_keys_variant))
             .map(|x| {
@@ -578,8 +583,9 @@ pub fn parse_cfg_raw_string(
                 );
                 local_keys = Some(mapping);
             } else {
-                lsp_hint_inactive_code.push(LspHintInactiveCode {
-                    span,
+                #[cfg(feature = "lsp")]
+                lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
+                    span: _span,
                     reason: format!(
                         "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
                     ),
@@ -636,7 +642,7 @@ pub fn parse_cfg_raw_string(
         .iter()
         .filter(gen_first_atom_filter("defvar"))
         .collect::<Vec<_>>();
-    parse_vars(&var_exprs, s)?;
+    let vars = parse_vars(&var_exprs, &mut lsp_hints)?;
 
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
@@ -663,7 +669,8 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let (layer_idxs, layer_icons) = parse_layer_indexes(&layer_exprs, mapping_order.len(), s)?;
+    let (layer_idxs, layer_icons) =
+        parse_layer_indexes(&layer_exprs, mapping_order.len(), &vars, &mut lsp_hints)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
 
@@ -752,8 +759,8 @@ pub fn parse_cfg_raw_string(
         default_sequence_timeout: cfg.sequence_timeout,
         default_sequence_input_mode: cfg.sequence_input_mode,
         block_unmapped_keys: cfg.block_unmapped_keys,
-        lsp_hint_inactive_code,
-        vars: s.vars.clone(),
+        lsp_hints: RefCell::new(lsp_hints),
+        vars,
         ..Default::default()
     };
 
@@ -843,6 +850,16 @@ pub fn parse_cfg_raw_string(
         )
         .into());
     }
+
+    #[cfg(feature = "lsp")]
+    LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
+        s.lsp_hints
+            .borrow_mut()
+            .reference_locations
+            .variable
+            .0
+            .extend(refs.0.drain());
+    });
 
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
@@ -1056,69 +1073,50 @@ type Aliases = HashMap<String, &'static KanataAction>;
 fn parse_layer_indexes(
     exprs: &[SpannedLayerExprs],
     expected_len: usize,
-    s: &mut ParserState,
+    vars: &HashMap<String, SExpr>,
+    _lsp_hints: &mut LspHints,
 ) -> Result<(LayerIndexes, LayerIcons)> {
     let mut layer_indexes = HashMap::default();
     let mut layer_icons = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
-        let (mut subexprs, expr, do_element_count_check) = match expr_type {
+        let (mut subexprs, expr, do_element_count_check, deflayer_keyword) = match expr_type {
             SpannedLayerExprs::DefsrcMapping(e) => {
-                (check_first_expr(e.t.iter(), DEFLAYER)?, e, true)
+                (check_first_expr(e.t.iter(), DEFLAYER)?, e, true, DEFLAYER)
             }
-            SpannedLayerExprs::CustomMapping(e) => {
-                (check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?, e, false)
-            }
+            SpannedLayerExprs::CustomMapping(e) => (
+                check_first_expr(e.t.iter(), DEFLAYER_MAPPED)?,
+                e,
+                false,
+                DEFLAYER_MAPPED,
+            ),
         };
         let layer_expr = subexprs.next().ok_or_else(|| {
-            anyhow_span!(expr, "deflayer requires a name and {expected_len} item(s)")
+            anyhow_span!(
+                expr,
+                "{deflayer_keyword} requires a layer name after `{deflayer_keyword}` token"
+            )
         })?;
-        let (layer_name, icon) = match expr_type {
-            SpannedLayerExprs::DefsrcMapping(_) => {
-                let name = layer_expr.atom(s.vars());
-                match name {
-                    Some(name) => (name.to_owned(), None),
-                    None => {
-                        // unwrap: this **must** be a list due to atom() call above.
-                        let list = layer_expr.list(s.vars()).unwrap();
-                        let name = list.first().ok_or_else(|| anyhow_expr!(
-                                layer_expr,
-                                "deflayer requires a string name within this pair of parentheses (or a string name without any)"
-                            ))?
-                            .atom(s.vars()).ok_or_else(|| anyhow_expr!(
-                                layer_expr,
-                                "layer name after {DEFLAYER} must be a string when enclosed within one pair of parentheses"
-                            ))?;
-                        let layer_opts = parse_layer_opts(&list[1..])?;
-                        let icon = layer_opts
-                            .get(DEFLAYER_ICON[0])
-                            .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
-                        (name.to_owned(), icon)
-                    }
-                }
-            }
-            SpannedLayerExprs::CustomMapping(_) => {
-                let list = layer_expr
-                    .list(None)
-                    .ok_or_else(|| {
-                        anyhow_expr!(
+        let (layer_name, _layer_name_span, icon) = {
+            let name = layer_expr.atom(Some(vars));
+            match name {
+                Some(name) => (name.to_owned(), layer_expr.span(), None),
+                None => {
+                    // unwrap: this **must** be a list due to atom() call above.
+                    let list = layer_expr.list(Some(vars)).unwrap();
+                    let first = list.first().ok_or_else(|| anyhow_expr!(
                             layer_expr,
-                            "layer name after {DEFLAYER_MAPPED} must be in parentheses"
-                        )
-                    })?
-                    .to_owned();
-                let name = list.first()
-                    .and_then(|expr| expr.atom(s.vars()))
-                    .ok_or_else(|| anyhow_expr!(
-                        layer_expr,
-                        "layer name after {DEFLAYER_MAPPED} must be a string within one pair of parentheses"
-                    ))?;
-
-                // add hashmap for future options, currently only parse icons
-                let layer_opts = parse_layer_opts(&list[1..])?;
-                let icon = layer_opts
-                    .get(DEFLAYER_ICON[0])
-                    .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
-                (name.to_owned(), icon)
+                            "{deflayer_keyword} requires a string name within this pair of parentheses (or a string name without any)"
+                        ))?;
+                    let name = first.atom(Some(vars)).ok_or_else(|| anyhow_expr!(
+                            layer_expr,
+                            "layer name after {deflayer_keyword} must be a string when enclosed within one pair of parentheses"
+                        ))?;
+                    let layer_opts = parse_layer_opts(&list[1..])?;
+                    let icon = layer_opts
+                        .get(DEFLAYER_ICON[0])
+                        .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
+                    (name.to_owned(), first.span(), icon)
+                }
             }
         };
         if layer_indexes.contains_key(&layer_name) {
@@ -1162,6 +1160,13 @@ fn parse_layer_indexes(
                 )
             }
         }
+
+        #[cfg(feature = "lsp")]
+        _lsp_hints
+            .definition_locations
+            .layer
+            .insert(layer_name.clone(), _layer_name_span.clone());
+
         layer_indexes.insert(layer_name.clone(), i);
         layer_icons.insert(layer_name, icon);
     }
@@ -1199,7 +1204,7 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     switch_max_key_timing: Cell<u16>,
     trans_forbidden_reason: Option<&'static str>,
-    pub lsp_hint_inactive_code: Vec<LspHintInactiveCode>,
+    pub lsp_hints: RefCell<LspHints>,
     a: Arc<Allocations>,
 }
 
@@ -1229,7 +1234,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             switch_max_key_timing: Cell::new(0),
             trans_forbidden_reason: None,
-            lsp_hint_inactive_code: Default::default(),
+            lsp_hints: Default::default(),
             a: unsafe { Allocations::new() },
         }
     }
@@ -1245,7 +1250,8 @@ struct ChordGroup {
     timeout: u16,
 }
 
-fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
+fn parse_vars(exprs: &[&Vec<SExpr>], _lsp_hints: &mut LspHints) -> Result<HashMap<String, SExpr>> {
+    let mut vars: HashMap<String, SExpr> = Default::default();
     for expr in exprs {
         let mut subexprs = check_first_expr(expr.iter(), "defvar")?;
         // Read k-v pairs from the configuration
@@ -1257,16 +1263,21 @@ fn parse_vars(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
             let var_expr = match subexprs.next() {
                 Some(v) => match v {
                     SExpr::Atom(_) => v.clone(),
-                    SExpr::List(l) => parse_list_var(l, &s.vars),
+                    SExpr::List(l) => parse_list_var(l, &vars),
                 },
                 None => bail_expr!(var_name_expr, "variable name must have a subsequent value"),
             };
-            if s.vars.insert(var_name.into(), var_expr).is_some() {
+            #[cfg(feature = "lsp")]
+            _lsp_hints
+                .definition_locations
+                .variable
+                .insert(var_name.to_owned(), var_name_expr.span());
+            if vars.insert(var_name.into(), var_expr).is_some() {
                 bail_expr!(var_name_expr, "duplicate variable name: {}", var_name);
             }
         }
     }
-    Ok(())
+    Ok(vars)
 }
 
 fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> SExpr {
@@ -1363,19 +1374,27 @@ fn handle_envcond_defalias(
                         .collect();
                     if values_of_matching_vars.is_empty() {
                         let msg = format!("Env var '{env_var_name}' is not set");
-                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
-                            span: exprs.span.clone(),
-                            reason: msg.clone(),
-                        });
+                        #[cfg(feature = "lsp")]
+                        s.lsp_hints
+                            .borrow_mut()
+                            .inactive_code
+                            .push(lsp_hints::InactiveCode {
+                                span: exprs.span.clone(),
+                                reason: msg.clone(),
+                            });
                         log::info!("{msg}, skipping associated aliases");
                         return Ok(());
                     } else if !values_of_matching_vars.iter().any(|&v| v == env_var_value) {
                         let msg =
                             format!("Env var '{env_var_name}' is set, but value doesn't match");
-                        s.lsp_hint_inactive_code.push(LspHintInactiveCode {
-                            span: exprs.span.clone(),
-                            reason: msg.clone(),
-                        });
+                        #[cfg(feature = "lsp")]
+                        s.lsp_hints
+                            .borrow_mut()
+                            .inactive_code
+                            .push(lsp_hints::InactiveCode {
+                                span: exprs.span.clone(),
+                                reason: msg.clone(),
+                            });
                         log::info!("{msg}, skipping associated aliases");
                         return Ok(());
                     }
@@ -1413,6 +1432,12 @@ fn read_alias_name_action_pairs<'a>(
         if s.aliases.insert(alias.into(), action).is_some() {
             bail_expr!(alias_expr, "Duplicate alias: {}", alias);
         }
+        #[cfg(feature = "lsp")]
+        s.lsp_hints
+            .borrow_mut()
+            .definition_locations
+            .alias
+            .insert(alias.into(), alias_expr.span());
     }
     Ok(())
 }
@@ -1525,7 +1550,15 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     }
     if let Some(alias) = ac.strip_prefix('@') {
         return match s.aliases.get(alias) {
-            Some(ac) => Ok(*ac),
+            Some(ac) => {
+                #[cfg(feature = "lsp")]
+                s.lsp_hints
+                    .borrow_mut()
+                    .reference_locations
+                    .alias
+                    .push(alias, ac_span.span.clone());
+                Ok(*ac)
+            }
             None => bail!(
                 "Referenced unknown alias {}. Note that order of declarations matter.",
                 alias
@@ -1685,15 +1718,30 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
 }
 
 fn parse_layer_base(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::DefaultLayer(layer_idx(
-        ac_params,
-        &s.layer_idxs,
-        s,
-    )?)))
+    let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
+    set_layer_change_lsp_hint(&ac_params[0], &mut s.lsp_hints.borrow_mut());
+    Ok(s.a.sref(Action::DefaultLayer(idx)))
 }
 
 fn parse_layer_toggle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    Ok(s.a.sref(Action::Layer(layer_idx(ac_params, &s.layer_idxs, s)?)))
+    let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
+    set_layer_change_lsp_hint(&ac_params[0], &mut s.lsp_hints.borrow_mut());
+    Ok(s.a.sref(Action::Layer(idx)))
+}
+
+#[allow(unused_variables)]
+fn set_layer_change_lsp_hint(layer_name_expr: &SExpr, lsp_hints: &mut LspHints) {
+    #[cfg(feature = "lsp")]
+    {
+        let layer_name_atom = match layer_name_expr {
+            SExpr::Atom(x) => x,
+            SExpr::List(_) => unreachable!("checked in layer_idx"),
+        };
+        lsp_hints
+            .reference_locations
+            .layer
+            .push_from_atom(layer_name_atom);
+    }
 }
 
 fn layer_idx(ac_params: &[SExpr], layers: &LayerIndexes, s: &ParserState) -> Result<usize> {
@@ -2706,6 +2754,12 @@ fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
             {
                 bail_expr!(key_name_expr, "Duplicate fake key: {}", key_name);
             }
+            #[cfg(feature = "lsp")]
+            s.lsp_hints
+                .borrow_mut()
+                .definition_locations
+                .virtual_key
+                .insert(key_name, key_name_expr.span());
         }
     }
     if s.virtual_keys.len() > KEYS_IN_ROW {
@@ -2741,7 +2795,13 @@ fn parse_virtual_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> 
                 .is_some()
             {
                 bail_expr!(key_name_expr, "Duplicate virtual key: {}", key_name);
-            }
+            };
+            #[cfg(feature = "lsp")]
+            s.lsp_hints
+                .borrow_mut()
+                .definition_locations
+                .virtual_key
+                .insert(key_name, key_name_expr.span());
         }
     }
     if s.virtual_keys.len() > KEYS_IN_ROW {
@@ -3068,6 +3128,12 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
             let vkey = vkey_expr.atom(s.vars()).ok_or_else(|| {
                 anyhow_expr!(vkey_expr, "{SEQ_ERR}\nvirtual_key_name must not be a list")
             })?;
+            #[cfg(feature = "lsp")]
+            s.lsp_hints
+                .borrow_mut()
+                .reference_locations
+                .virtual_key
+                .push(vkey, vkey_expr.span());
             if !s.virtual_keys.contains_key(vkey) {
                 bail_expr!(
                     vkey_expr,
