@@ -15,7 +15,7 @@ pub fn init() {
 
 #[wasm_bindgen]
 pub fn check_config(cfg: &str) -> JsValue {
-    let res = Kanata::new_from_str(cfg);
+    let res = Kanata::new_from_str(cfg, None);
     JsValue::from_str(&match res {
         Ok(_) => "Config is good!".to_owned(),
         Err(e) => format!("{e:?}"),
@@ -31,7 +31,7 @@ pub fn simulate(cfg: &str, sim: &str) -> JsValue {
 }
 
 pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
-    let mut k = Kanata::new_from_str(cfg)?;
+    let mut k = Kanata::new_from_str(cfg, None)?;
     let mut accumulated_ticks = 0;
     for l in sim.lines() {
         for pair in l.split_whitespace() {

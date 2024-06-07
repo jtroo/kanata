@@ -326,6 +326,10 @@ impl Kanata {
         set_win_altgr_behaviour(cfg.options.windows_altgr);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
+        }
 
         Ok(Self {
             kbd_out,
@@ -424,8 +428,8 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    pub fn new_from_str(cfg: &str) -> Result<Self> {
-        let cfg = match cfg::new_from_str(cfg) {
+    pub fn new_from_str(cfg: &str, file_content: Option<String>) -> Result<Self> {
+        let cfg = match cfg::new_from_str(cfg, file_content) {
             Ok(c) => c,
             Err(e) => {
                 bail!("{e:?}");
@@ -451,6 +455,10 @@ impl Kanata {
         };
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
+        }
 
         Ok(Self {
             kbd_out,
@@ -600,6 +608,10 @@ impl Kanata {
             self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
             self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
             self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
+        }
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
@@ -774,6 +786,7 @@ impl Kanata {
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
         tick_record_state(&mut self.dynamic_macro_record_state);
+        zippy_tick();
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
         #[cfg(feature = "simulated_output")]
@@ -2008,6 +2021,7 @@ impl Kanata {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
         self.layout.b().queue.is_empty()
+            && zippy_is_idle()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
             && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
