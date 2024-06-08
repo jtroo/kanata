@@ -1578,6 +1578,13 @@ substituted with your home directory.
 If you want to execute with a shell program
 use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
+NOTE: the command will be executed as the user that kanata was started with.
+For example, if kanata was started by root,
+the command will be run by the root user.
+If you need to execute as a different user,
+on Unix platforms you can use `sudo -u USER`
+before the rest of your command to achieve this.
+
 .Example:
 [source]
 ----
@@ -1587,6 +1594,10 @@ use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
   ;; You can use bash -c and then a quoted string to execute arbitrary text in
   ;; bash. All text within double-quotes is treated as a single string.
   cm2 (cmd bash -c "echo hello world")
+
+  ;; You can prefix commands with sudo -u USER
+  ;; to execute commands as a different user.
+  cm3 (cmd sudo -u other_user bash -c "echo goodbye")
 )
 ----
 
