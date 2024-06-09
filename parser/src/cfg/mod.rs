@@ -1693,6 +1693,14 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+        SEND_WMSG_SYNC => win_send_message(&ac[1..], s, SEND_WMSG_SYNC),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+        SEND_WMSG_SYNC_A => win_send_message(&ac[1..], s, SEND_WMSG_SYNC_A),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+        SEND_WMSG_ASYNC => win_post_message(&ac[1..], s, SEND_WMSG_ASYNC),
+        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+        SEND_WMSG_ASYNC_A => win_post_message(&ac[1..], s, SEND_WMSG_ASYNC_A),
         FORK => parse_fork(&ac[1..], s),
         CAPS_WORD | CAPS_WORD_A => {
             parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
@@ -2299,6 +2307,18 @@ fn parse_push_message(ac_params: &[SExpr], s: &ParserState) -> Result<&'static K
     let message = to_simple_expr(ac_params, s);
     custom(CustomAction::PushMessage(message), &s.a)
 }
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+pub mod windows;
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+pub use windows::*;
+#[cfg(target_os = "linux")]
+pub mod linux;
+#[cfg(target_os = "linux")]
+pub use linux::*;
+#[cfg(target_os = "macos")]
+pub mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::*;
 
 fn to_simple_expr(params: &[SExpr], s: &ParserState) -> Vec<SimpleSExpr> {
     let mut result: Vec<SimpleSExpr> = Vec::new();

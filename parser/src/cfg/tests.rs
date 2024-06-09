@@ -1954,3 +1954,54 @@ fn disallow_whitespace_in_tooltip_size() {
 ";
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[test]
+fn win_message_ok() {
+    let source = r#"
+(defcfg)
+(defsrc 3 4   5   6   7)
+(deflayermap    (win-msg)
+3 (msg❖async    1           )
+4 (win-post-msg 2           )
+5 (win-post-msg 3           )
+6 (msg❖async    3 0 "" "kanata_your_custom_message_string_unique_id")
+)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parse succeeds");
+}
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[test]
+fn win_message_wrong_number_value() {
+    let source = "
+(defcfg)
+(defsrc 1)
+(deflayer base (msg❖async -1))
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[test]
+fn win_message_wrong_number_type() {
+    let source = r#"
+(defcfg)
+(defsrc 1)
+(deflayer base (msg❖async "a" ))
+"#;
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}
+
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[test]
+fn win_message_too_many_args() {
+    let source = r#"
+(defcfg)
+(defsrc 1)
+(deflayer base (msg❖async 0 1 "a" "b" "c" 5 ))
+"#;
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}

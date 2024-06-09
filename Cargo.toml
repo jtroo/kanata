@@ -51,6 +51,7 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default_features = false, optional = true }
 time = "0.3.36"
+colored = "2.1.0"
 # kanata-keyberon = "0.161.0"
 # kanata-parser = "0.161.0"
 # kanata-tcp-protocol = "0.161.0"
@@ -84,23 +85,11 @@ winapi = { version = "0.3.9", features = [
     "mmsystem",
 ] }
 windows-sys = { version = "0.52.0", features = [
-    "Win32_Devices_DeviceAndDriverInstallation",
-    "Win32_Devices_Usb",
     "Win32_Foundation",
-    "Win32_Graphics_Gdi",
-    "Win32_Security",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_Registry",
-    "Win32_System_Threading",
-    "Win32_UI_Controls",
-    "Win32_UI_Shell",
-    "Win32_UI_HiDpi",
     "Win32_UI_WindowsAndMessaging",
-    "Win32_System_SystemInformation",
-    "Wdk",
-    "Wdk_System",
-    "Wdk_System_SystemServices",
-], optional=true }
+]}
+
+widestring = "1.1.0"
 native-windows-gui = { version = "1.0.13", default_features = false}
 regex = { version = "1.10.4", optional = true }
 kanata-interception = { version = "0.2.0", optional = true }
@@ -130,7 +119,20 @@ wasm = [ "instant/wasm-bindgen" ]
 gui = ["win_manifest","kanata-parser/gui",
   "win_sendinput_send_scancodes","win_llhook_read_scancodes",
   "muldiv","strip-ansi-escapes","open",
-  "dep:windows-sys",
+  "windows-sys/Win32_Devices_DeviceAndDriverInstallation",
+  "windows-sys/Win32_Devices_Usb",
+  "windows-sys/Win32_Graphics_Gdi",
+  "windows-sys/Win32_Security",
+  "windows-sys/Win32_System_Diagnostics_Debug",
+  "windows-sys/Win32_System_Registry",
+  "windows-sys/Win32_System_Threading",
+  "windows-sys/Win32_UI_Controls",
+  "windows-sys/Win32_UI_Shell",
+  "windows-sys/Win32_UI_HiDpi",
+  "windows-sys/Win32_System_SystemInformation",
+  "windows-sys/Wdk",
+  "windows-sys/Wdk_System",
+  "windows-sys/Wdk_System_SystemServices",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
