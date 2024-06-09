@@ -73,11 +73,11 @@ pub enum CustomAction {
         y: u16,
     },
     Unmodded {
-        keys: Vec<KeyCode>,
+        keys: Box<[KeyCode]>,
         mods: UnmodMods,
     },
     Unshifted {
-        keys: Vec<KeyCode>,
+        keys: Box<[KeyCode]>,
     },
 }
 

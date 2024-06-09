@@ -3501,7 +3501,9 @@ fn parse_unmod(
     if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
+
     let mut mods = UnmodMods(0b11111111);
+    // Parse the optional first-list that specifies the mod keys to use.
     if let Some(mod_list) = ac_params[0].list(s.vars()) {
         if unmod_type != UNMOD {
             bail_expr!(&ac_params[0], "{unmod_type} only expects key names but found a list");
@@ -3530,8 +3532,15 @@ fn parse_unmod(
             }
             Ok::<_, ParseError>(mod_flags | flag)
         })?;
+        if mods.is_empty() {
+            bail_expr!(&ac_params[0], "an empty modifier key list is invalid");
+        }
+        if ac_params[1..].is_empty() {
+            bail!("at least one key is required after the modifier key list");
+        }
     }
-    let mut keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {
+
+    let keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {
         keys.push(
             param
                 .atom(s.vars())
@@ -3541,7 +3550,7 @@ fn parse_unmod(
         );
         Ok::<_, ParseError>(keys)
     })?;
-    keys.shrink_to_fit();
+    let keys = keys.into_boxed_slice();
     match unmod_type {
         UNMOD => Ok(s.a.sref(Action::Custom(
             s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys, mods })),
