@@ -3497,12 +3497,13 @@ fn parse_unmod(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "expects expects at least one key name";
+   const ERR_MSG: &str = "expects expects at least one key name";
     if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
 
     let mut mods = UnmodMods(0b11111111);
+    let mut params = ac_params;
     // Parse the optional first-list that specifies the mod keys to use.
     if let Some(mod_list) = ac_params[0].list(s.vars()) {
         if unmod_type != UNMOD {
@@ -3538,14 +3539,15 @@ fn parse_unmod(
         if ac_params[1..].is_empty() {
             bail!("at least one key is required after the modifier key list");
         }
+        params = &ac_params[1..];
     }
 
-    let keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {
+    let keys: Vec<KeyCode> = params.iter().try_fold(Vec::new(), |mut keys, param| {
         keys.push(
             param
                 .atom(s.vars())
                 .and_then(str_to_oscode)
-                .ok_or_else(|| anyhow_expr!(&ac_params[0], "{unmod_type} {ERR_MSG}"))?
+                .ok_or_else(|| anyhow_expr!(&ac_params[0], "{unmod_type} {ERR_MSG}\nfound invalid key name"))?
                 .into(),
         );
         Ok::<_, ParseError>(keys)
