@@ -64,6 +64,7 @@ fn simulate(cfg: &str, sim: &str) -> String {
             None => panic!("invalid item {pair}"),
         }
     }
+    drop(_lk);
     k.kbd_out.outputs.events.join("\n")
 }
 
