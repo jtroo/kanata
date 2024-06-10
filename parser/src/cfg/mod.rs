@@ -221,7 +221,7 @@ type TapHoldCustomFunc =
     ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
 
 pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a &'a [&'a CustomAction]>;
-pub type KeySeqsToFKeys = Trie;
+pub type KeySeqsToFKeys = Trie<(u8, u16)>;
 
 pub struct KanataLayout {
     layout: KLayout,
