@@ -80,3 +80,29 @@ fn unmod_keys_mod_list_cannot_have_empty_keys_after_mod_list() {
         "",
     );
 }
+
+#[test]
+#[should_panic]
+fn unmod_keys_mod_list_cannot_have_empty_keys() {
+    simulate(
+        "
+         (defcfg)
+         (defsrc a)
+         (deflayer base (unmod))
+        ",
+        "",
+    );
+}
+
+#[test]
+#[should_panic]
+fn unmod_keys_mod_list_cannot_have_invalid_keys() {
+    simulate(
+        "
+         (defcfg)
+         (defsrc a)
+         (deflayer base (unmod invalid-key))
+        ",
+        "",
+    );
+}
