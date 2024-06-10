@@ -1548,6 +1548,21 @@ This can be useful for forcing unshifted keys while AltGr is still held.
 )
 ----
 
+Introduced more recently is an optional list as the first parameter of `unmod`,
+which must be a non-empty list of modifier keys,
+namely keys in the affected modifiers list from earlier in the unmod section
+of the document.
+
+When this list exists `unmod` will temporarily release only the keys listed
+rather than all modifiers.
+
+.Example:
+[source]
+----
+;; only unshift the alt keys
+(unshift (lalt ralt) a)
+----
+
 [[cmd]]
 === cmd
 <<table-of-contents,Back to ToC>>
