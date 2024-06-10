@@ -890,7 +890,7 @@ impl Kanata {
                             self.unmodded_mods = *mods;
                         }
                         CustomAction::Unshifted { keys } => {
-                            self.unshifted_keys.extend(keys.iter()); // test_unmodmods_bits
+                            self.unshifted_keys.extend(keys.iter());
                         }
                         _ => {}
                     }
@@ -1937,8 +1937,8 @@ impl Kanata {
 
 #[test]
 fn test_unmodmods_bits() {
-    assert_eq!(UnmodMods::empty(), UnmodMods(0u8));
-    assert_eq!(UnmodMods::all(), UnmodMods(255u8));
+    assert_eq!(UnmodMods::empty().bits(), 0u8);
+    assert_eq!(UnmodMods::all().bits(), 255u8);
 }
 
 #[cfg(feature = "cmd")]

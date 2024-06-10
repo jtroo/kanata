@@ -3502,7 +3502,7 @@ fn parse_unmod(
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
 
-    let mut mods = UnmodMods(0b11111111);
+    let mut mods = UnmodMods::all();
     let mut params = ac_params;
     // Parse the optional first-list that specifies the mod keys to use.
     if let Some(mod_list) = ac_params[0].list(s.vars()) {

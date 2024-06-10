@@ -225,7 +225,7 @@ impl SequenceInputMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnmodMods(pub u8);
+pub struct UnmodMods(u8);
 
 bitflags::bitflags! {
     impl UnmodMods: u8 {
