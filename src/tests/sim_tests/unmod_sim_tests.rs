@@ -1,4 +1,3 @@
-
 use super::*;
 
 #[test]
@@ -26,17 +25,19 @@ fn special_nop_keys() {
     )
     .no_time()
     .to_ascii();
-    assert_eq!("dn:LCtrl dn:RCtrl dn:LShift dn:RShift dn:LGui dn:RGui dn:LAlt dn:RAlt \
-                up:LCtrl up:RCtrl up:LShift up:RShift up:LGui up:RGui up:LAlt up:RAlt dn:A up:A \
-                dn:LCtrl dn:RCtrl dn:LShift dn:RShift dn:LGui dn:RGui dn:LAlt dn:RAlt \
-                up:LCtrl dn:B up:B dn:LCtrl \
-                up:RCtrl dn:C up:C dn:RCtrl \
-                up:LShift dn:D up:D dn:LShift \
-                up:RShift dn:E up:E dn:RShift \
-                up:LAlt dn:F up:F dn:LAlt \
-                up:RAlt dn:G up:G dn:RAlt \
-                up:LGui dn:H up:H dn:LGui \
-                up:RGui dn:I up:I dn:RGui \
-                up:LCtrl up:LShift up:LGui up:LAlt dn:J up:J dn:LCtrl dn:LShift dn:LGui dn:LAlt",
-                result);
+    assert_eq!(
+        "dn:LCtrl dn:RCtrl dn:LShift dn:RShift dn:LGui dn:RGui dn:LAlt dn:RAlt \
+         up:LCtrl up:RCtrl up:LShift up:RShift up:LGui up:RGui up:LAlt up:RAlt dn:A up:A \
+         dn:LCtrl dn:RCtrl dn:LShift dn:RShift dn:LGui dn:RGui dn:LAlt dn:RAlt \
+         up:LCtrl dn:B up:B dn:LCtrl \
+         up:RCtrl dn:C up:C dn:RCtrl \
+         up:LShift dn:D up:D dn:LShift \
+         up:RShift dn:E up:E dn:RShift \
+         up:LAlt dn:F up:F dn:LAlt \
+         up:RAlt dn:G up:G dn:RAlt \
+         up:LGui dn:H up:H dn:LGui \
+         up:RGui dn:I up:I dn:RGui \
+         up:LCtrl up:LShift up:LGui up:LAlt dn:J up:J dn:LCtrl dn:LShift dn:LGui dn:LAlt",
+        result
+    );
 }
