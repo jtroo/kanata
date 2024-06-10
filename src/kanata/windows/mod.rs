@@ -24,7 +24,8 @@ pub fn set_win_altgr_behaviour(b: AltGrBehaviour) {
 impl Kanata {
     #[cfg(all(
         not(feature = "interception_driver"),
-        not(feature = "simulated_output")
+        not(feature = "simulated_output"),
+        not(feature = "win_sendinput_send_scancodes"),
     ))]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
@@ -127,7 +128,11 @@ impl Kanata {
         Ok(())
     }
 
-    #[cfg(any(feature = "interception_driver", feature = "simulated_output"))]
+    #[cfg(any(
+        feature = "interception_driver",
+        feature = "simulated_output",
+        feature = "win_sendinput_send_scancodes"
+    ))]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
         Ok(())
     }
