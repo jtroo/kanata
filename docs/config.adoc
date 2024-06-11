@@ -1532,7 +1532,7 @@ otherwise `caps-word` will be activate as normal.
 The `unmod` action will release all modifiers temporarily
 and send one or more keys.
 After the `unmod` key is released, the released modifiers are pressed again.
-The modifiers affected are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
+The affected modifiers are: `lsft,rsft,lctl,rctl,lmet,rmet,lalt,ralt`.
 
 A variant of `unmod` is `unshift` or `un⇧`.
 This action only releases the `lsft,rsft` keys.
@@ -1550,6 +1550,22 @@ This can be useful for forcing unshifted keys while AltGr is still held.
   ;; In ISO German QWERTZ, force unshifted symbols even if shift is held
   { (unshift ralt 7)
   [ (unshift ralt 8)
+)
+----
+
+Introduced more recently is an optional list as the first parameter of `unmod`.
+The list must be non-empty and must contain only modifier keys,
+which are the keys in the affected modifiers list from earlier in this document section.
+
+When this list exists, the action will temporarily release only the keys listed
+rather than all modifiers.
+
+.Example:
+[source]
+----
+(defalias
+	;; only unshift the alt keys
+	unalt-a (unmod (lalt ralt) a)
 )
 ----
 

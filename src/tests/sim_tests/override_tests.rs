@@ -16,7 +16,7 @@ fn override_with_unmod() {
 (defsrc a b)
 (deflayer base @a @b)
         ",
-        "d:lsft d:a t:50 u:a t:50 d:b t:50 u:b t:50 u:lsft",
+        "d:lsft t:50 d:a t:50 u:a t:50 d:b t:50 u:b t:50",
     )
     .to_ascii()
     .no_time();

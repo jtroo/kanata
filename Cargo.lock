@@ -647,6 +647,7 @@ name = "kanata-parser"
 version = "0.161.0"
 dependencies = [
  "anyhow",
+ "bitflags 2.5.0",
  "bytemuck",
  "itertools",
  "kanata-keyberon",

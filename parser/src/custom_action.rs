@@ -73,10 +73,11 @@ pub enum CustomAction {
         y: u16,
     },
     Unmodded {
-        keys: Vec<KeyCode>,
+        keys: Box<[KeyCode]>,
+        mods: UnmodMods,
     },
     Unshifted {
-        keys: Vec<KeyCode>,
+        keys: Box<[KeyCode]>,
     },
 }
 
@@ -220,5 +221,21 @@ impl SequenceInputMode {
 
     pub fn err_msg() -> String {
         format!("sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UnmodMods(u8);
+
+bitflags::bitflags! {
+    impl UnmodMods: u8 {
+        const LSft = 0b00000001;
+        const RSft = 0b00000010;
+        const LAlt = 0b00000100;
+        const RAlt = 0b00001000;
+        const LCtl = 0b00010000;
+        const RCtl = 0b00100000;
+        const LMet = 0b01000000;
+        const RMet = 0b10000000;
     }
 }

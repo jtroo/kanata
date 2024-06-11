@@ -3567,20 +3567,73 @@ fn parse_unmod(
     if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
-    let mut keys: Vec<KeyCode> = ac_params.iter().try_fold(Vec::new(), |mut keys, param| {
+
+    let mut mods = UnmodMods::all();
+    let mut params = ac_params;
+    // Parse the optional first-list that specifies the mod keys to use.
+    if let Some(mod_list) = ac_params[0].list(s.vars()) {
+        if unmod_type != UNMOD {
+            bail_expr!(
+                &ac_params[0],
+                "{unmod_type} only expects key names but found a list"
+            );
+        }
+        mods = mod_list
+            .iter()
+            .try_fold(UnmodMods::empty(), |mod_flags, mod_key| {
+                let flag = mod_key
+                    .atom(s.vars())
+                    .and_then(str_to_oscode)
+                    .and_then(|osc| match osc {
+                        OsCode::KEY_LEFTSHIFT => Some(UnmodMods::LSft),
+                        OsCode::KEY_RIGHTSHIFT => Some(UnmodMods::RSft),
+                        OsCode::KEY_LEFTCTRL => Some(UnmodMods::LCtl),
+                        OsCode::KEY_RIGHTCTRL => Some(UnmodMods::RCtl),
+                        OsCode::KEY_LEFTMETA => Some(UnmodMods::LMet),
+                        OsCode::KEY_RIGHTMETA => Some(UnmodMods::RMet),
+                        OsCode::KEY_LEFTALT => Some(UnmodMods::LAlt),
+                        OsCode::KEY_RIGHTALT => Some(UnmodMods::RAlt),
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        anyhow_expr!(
+                            mod_key,
+                            "{UNMOD} expects modifier key names within the modifier list"
+                        )
+                    })?;
+                if !(mod_flags & flag).is_empty() {
+                    bail_expr!(mod_key, "duplicate key name in modifier key list");
+                }
+                Ok::<_, ParseError>(mod_flags | flag)
+            })?;
+        if mods.is_empty() {
+            bail_expr!(&ac_params[0], "an empty modifier key list is invalid");
+        }
+        if ac_params[1..].is_empty() {
+            bail!("at least one key is required after the modifier key list");
+        }
+        params = &ac_params[1..];
+    }
+
+    let keys: Vec<KeyCode> = params.iter().try_fold(Vec::new(), |mut keys, param| {
         keys.push(
             param
                 .atom(s.vars())
                 .and_then(str_to_oscode)
-                .ok_or_else(|| anyhow_expr!(&ac_params[0], "{unmod_type} {ERR_MSG}"))?
+                .ok_or_else(|| {
+                    anyhow_expr!(
+                        &ac_params[0],
+                        "{unmod_type} {ERR_MSG}\nfound invalid key name"
+                    )
+                })?
                 .into(),
         );
         Ok::<_, ParseError>(keys)
     })?;
-    keys.shrink_to_fit();
+    let keys = keys.into_boxed_slice();
     match unmod_type {
         UNMOD => Ok(s.a.sref(Action::Custom(
-            s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys })),
+            s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys, mods })),
         ))),
         UNSHIFT => Ok(s.a.sref(Action::Custom(
             s.a.sref(s.a.sref_slice(CustomAction::Unshifted { keys })),

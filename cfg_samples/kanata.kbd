@@ -603,6 +603,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   de{ (unshift ralt 7)
   de[ (unshift ralt 8)
 
+  ;; unmod can optionally take a list as the first parameter,
+  ;; and then will only temporarily remove
+  ;; the listed modifiers instead of all modifiers.
+  unalt-a (unmod (lalt ralt) a)
+
   ;; unicode accepts a single unicode character. The unicode character will
   ;; not be automatically repeated by holding the key down. The alias name
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
