@@ -115,7 +115,7 @@ indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
 
 [features]
-default = ["tcp_server"]
+default = ["tcp_server","win_sendinput_send_scancodes"]
 perf_logging = []
 tcp_server = ["serde_json"]
 win_sendinput_send_scancodes = []
