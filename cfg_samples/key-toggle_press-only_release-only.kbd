@@ -1,0 +1,34 @@
+#|
+
+This configuration showcases all of:
+	- key toggle
+	- press-only
+	- release-only
+
+|#
+
+(deftemplate toggle-key (vkey-name output-key alias)
+	(defvirtualkeys $vkey-name $output-key)
+	(defalias $alias (on-press toggle-vkey $vkey-name))
+)
+
+(deftemplate press-only-release-only-pair
+		(vkey-name output-key press-alias release-alias)
+	(defvirtualkeys $vkey-name $output-key)
+	(defalias $press-alias (on-press press-vkey $vkey-name))
+	(defalias $release-alias (on-press release-vkey $vkey-name))
+)
+
+(template-expand toggle-key v-lctl lctl lcl)
+(template-expand toggle-key v-rctl rctl rcl)
+
+;; t! is a short form of template-expand
+(t! press-only-release-only-pair v-lalt lalt p-a r-a)
+
+(defsrc
+	lctl rctl lalt ralt
+)
+
+(deflayer base
+	@lcl @rcl @p-a @r-a
+)

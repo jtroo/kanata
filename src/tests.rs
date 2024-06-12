@@ -125,6 +125,19 @@ fn parse_home_row_mods() {
 }
 
 #[test]
+fn parse_press_release_toggle_vkeys() {
+    init_log();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from(
+        "./cfg_samples/key-toggle_press-only_release-only.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn sizeof_state() {
     init_log();
     assert_eq!(
