@@ -202,8 +202,26 @@ impl<'a, T> ChordsV2<'a, T> {
     pub(crate) fn tick_chv2(&mut self, active_layer: u16) -> SmolQueue {
         let mut q = SmolQueue::new();
         self.queue.iter_mut().for_each(Queued::tick_qd);
+        let prev_active_chord_len = self.active_chords.len();
         self.active_chords.iter_mut().for_each(tick_ach);
         self.drain_inputs(&mut q, active_layer);
+        if self.active_chords.len() != prev_active_chord_len {
+            // A chord was activated. Forward a no-op press event to potentially trigger
+            // HoldOnOtherKeyPress or PermissiveHold.
+            // FLAW: this does not associate with the actual input keys and thus cannot correctly
+            // trigger the early tap for *-keys variants of kanata tap-hold.
+            q.push_back(Queued::new_press(0, 0));
+        }
+        if self
+            .active_chords
+            .iter()
+            .any(|ach| matches!(ach.status, UnreadReleased | Released))
+        {
+            // A chord was released. Forward a no-op release event to potentially trigger
+            // PermissiveHold.
+            // FLAW: see above
+            q.push_back(Queued::new_release(0, 0));
+        }
         self.clear_released_chords(&mut q);
         self.ticks_to_ignore_chord = self.ticks_to_ignore_chord.saturating_sub(1);
         q

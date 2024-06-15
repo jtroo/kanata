@@ -19,7 +19,7 @@ fn sim_chord_basic_repeated_last_release() {
          d:b t:50 d:a t:50 u:b t:50 u:a t:50 ",
     );
     assert_eq!(
-        "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓C\nt:101ms\nout:↑C",
+        "t:50ms\nout:↓C\nt:102ms\nout:↑C\nt:98ms\nout:↓C\nt:102ms\nout:↑C",
         result
     );
 }
@@ -63,7 +63,7 @@ fn sim_chord_basic_repeated_first_release() {
         d:z t:50 d:b t:50 u:z t:50 u:b t:50 ",
     );
     assert_eq!(
-        "t:50ms\nout:↓D\nt:51ms\nout:↑D\nt:149ms\nout:↓D\nt:51ms\nout:↑D",
+        "t:50ms\nout:↓D\nt:52ms\nout:↑D\nt:148ms\nout:↓D\nt:52ms\nout:↑D",
         result
     );
 }
@@ -96,7 +96,7 @@ fn sim_chord_overlapping_release() {
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a d:b t:100 u:a d:z t:300 u:b t:300",
     );
-    assert_eq!("t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:50ms\nout:↑C", result);
+    assert_eq!("t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:51ms\nout:↑C", result);
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn sim_presses_for_old_chord_repress_into_new_chord() {
         "d:a d:b t:50 u:a t:50 d:z t:50 u:b t:50 d:a d:b t:50 u:a t:50",
     );
     assert_eq!(
-        "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓D\nt:7ms\nout:↑D",
+        "t:50ms\nout:↓C\nt:102ms\nout:↑C\nt:98ms\nout:↓D\nt:10ms\nout:↑D",
         result
     );
 }
@@ -117,7 +117,7 @@ fn sim_chord_activate_largest_overlapping() {
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a t:50 d:b t:50 d:z t:50 d:y t:50 u:b t:50",
     );
-    assert_eq!("t:150ms\nout:↓E\nt:51ms\nout:↑E", result);
+    assert_eq!("t:150ms\nout:↓E\nt:52ms\nout:↑E", result);
 }
 
 static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\
@@ -237,7 +237,7 @@ fn sim_chord_into_tap_hold() {
          d:a t:50 d:b t:148 u:a u:b t:1000",
     );
     assert_eq!(
-        "t:199ms\nout:↓Y\nt:3ms\nout:↑Y\nt:200ms\nout:↓X\nt:8ms\nout:↑X",
+        "t:199ms\nout:↓Y\nt:5ms\nout:↑Y\nt:198ms\nout:↓X\nt:10ms\nout:↑X",
         result
     );
 }
@@ -274,4 +274,50 @@ fn sim_denies_transparent() {
     Kanata::new_from_str(CHORD_WITH_TRANSPARENCY)
         .map(|_| ())
         .expect_err("trans in defchordsv2 should error");
+}
+
+#[test]
+fn sim_chord_eager_tapholdpress_activation() {
+    let result = simulate(
+        "
+    (defcfg concurrent-tap-hold yes)
+    (defsrc caps j k bspc)
+    (deflayer one (tap-hold-press 0 200 esc lctl) j k bspc)
+    (defvirtualkeys bspc bspc)
+    (defchordsv2-experimental
+      (j k) (multi
+        (on-press press-vkey bspc)
+        (on-release release-vkey bspc)
+        (fork XX bspc (nop9))) 75 first-release ()
+    )
+        ",
+        "d:caps t:10 d:j d:k t:100 r:bspc t:10 r:bspc t:10 u:j u:k t:100 u:caps t:1000",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:11ms dn:LCtrl t:2ms dn:BSpace t:97ms \
+         dn:BSpace t:10ms dn:BSpace t:14ms up:BSpace t:96ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn sim_chord_eager_tapholdrelease_activation() {
+    let result = simulate(
+        "
+    (defcfg concurrent-tap-hold yes)
+    (defsrc caps j k bspc)
+    (deflayer one (tap-hold-release 0 200 esc lctl) j k bspc)
+    (defvirtualkeys bspc bspc)
+    (defchordsv2-experimental
+      (j k) (multi (on-press press-vkey bspc) (on-release release-vkey bspc)) 75 first-release ()
+    )
+        ",
+        "d:caps t:10 d:j d:k t:10 u:j u:k t:100 u:caps t:1000",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:20ms dn:LCtrl t:2ms dn:BSpace t:5ms up:BSpace t:93ms up:LCtrl",
+        result
+    );
 }
