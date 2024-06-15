@@ -106,7 +106,7 @@ fn sim_presses_for_old_chord_repress_into_new_chord() {
         "d:a d:b t:50 u:a t:50 d:z t:50 u:b t:50 d:a d:b t:50 u:a t:50",
     );
     assert_eq!(
-        "t:50ms\nout:↓C\nt:101ms\nout:↑C\nt:99ms\nout:↓D\nt:7ms\nout:↑D",
+        "t:50ms\nout:↓C\nt:102ms\nout:↑C\nt:98ms\nout:↓D\nt:10ms\nout:↑D",
         result
     );
 }
@@ -274,4 +274,50 @@ fn sim_denies_transparent() {
     Kanata::new_from_str(CHORD_WITH_TRANSPARENCY)
         .map(|_| ())
         .expect_err("trans in defchordsv2 should error");
+}
+
+#[test]
+fn sim_chord_eager_tapholdpress_activation() {
+    let result = simulate(
+        "
+    (defcfg concurrent-tap-hold yes)
+    (defsrc caps j k bspc)
+    (deflayer one (tap-hold-press 0 200 esc lctl) j k bspc)
+    (defvirtualkeys bspc bspc)
+    (defchordsv2-experimental
+      (j k) (multi
+        (on-press press-vkey bspc)
+        (on-release release-vkey bspc)
+        (fork XX bspc (nop9))) 75 first-release ()
+    )
+        ",
+        "d:caps t:10 d:j d:k t:100 r:bspc t:10 r:bspc t:10 u:j u:k t:100 u:caps t:1000",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:LCtrl t:3ms dn:BSpace t:97ms \
+         dn:BSpace t:10ms dn:BSpace t:14ms up:BSpace t:96ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn sim_chord_eager_tapholdrelease_activation() {
+    let result = simulate(
+        "
+    (defcfg concurrent-tap-hold yes)
+    (defsrc caps j k bspc)
+    (deflayer one (tap-hold-release 0 200 esc lctl) j k bspc)
+    (defvirtualkeys bspc bspc)
+    (defchordsv2-experimental
+      (j k) (multi (on-press press-vkey bspc) (on-release release-vkey bspc)) 75 first-release ()
+    )
+        ",
+        "d:caps t:10 d:j d:k t:10 u:j u:k t:100 u:caps t:1000",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:20ms dn:LCtrl t:12ms dn:BSpace t:3ms up:BSpace t:85ms up:LCtrl",
+        result
+    );
 }

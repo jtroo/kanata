@@ -1020,6 +1020,20 @@ impl From<Event> for Queued {
     }
 }
 impl Queued {
+    pub(crate) fn new_press(i: u8, j: u16) -> Self {
+        Self {
+            since: 0,
+            event: Event::Press(i, j),
+        }
+    }
+
+    pub(crate) fn new_release(i: u8, j: u16) -> Self {
+        Self {
+            since: 0,
+            event: Event::Release(i, j),
+        }
+    }
+
     pub(crate) fn tick_qd(&mut self) {
         self.since = self.since.saturating_add(1);
     }
