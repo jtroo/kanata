@@ -76,6 +76,8 @@ type ActionQueue<'a, T> =
 type Delay = u16;
 pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
 
+const REAL_KEY_ROW: u8 = 0;
+
 const HISTORICAL_EVENT_LEN: usize = 8;
 const EXTRA_WAITING_LEN: usize = 8;
 #[test]
@@ -1054,6 +1056,12 @@ impl LastPressTracker {
     fn tick_lpt(&mut self) {
         self.tap_hold_timeout = self.tap_hold_timeout.saturating_sub(1);
     }
+    fn update_coord(&mut self, coord: KCoord) {
+        if coord.0 == REAL_KEY_ROW {
+            // Only update if it's a real key press.
+            self.coord = coord;
+        }
+    }
 }
 
 impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<'a, C, R, T> {
@@ -1521,7 +1529,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     } else {
                         // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
                         // interrupt tap-dance-eager if real key.
-                        if i == 0 {
+                        if i == REAL_KEY_ROW {
                             // unwrap is here because tde cannot be ref mut
                             self.tap_dance_eager.as_mut().expect("some").set_expired();
                         }
@@ -1674,11 +1682,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     custom.update(self.do_action(tap, coord, delay, is_oneshot, layer_stack));
                 }
                 // Need to set tap_hold_tracker coord AFTER the checks.
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 return custom;
             }
             &OneShot(oneshot) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 let custom =
                     self.do_action(oneshot.action, coord, delay, true, &mut std::iter::empty());
                 // Note - set rpt_action after doing the inner oneshot action. This means that the
@@ -1694,7 +1702,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 return custom;
             }
             &TapDance(td) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 match td.config {
                     TapDanceConfig::Lazy => {
                         self.waiting = Some(WaitingState {
@@ -1742,7 +1750,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
             }
             &Chords(chords) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 self.waiting = Some(WaitingState {
                     coord,
                     timeout: chords.timeout,
@@ -1757,7 +1765,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 });
             }
             &KeyCode(keycode) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 // Most-recent-first!
                 self.historical_keys.push_front(keycode);
                 let _ = self.states.push(NormalKey {
@@ -1790,7 +1798,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
             }
             &MultipleKeyCodes(v) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 for &keycode in *v {
                     self.historical_keys.push_front(keycode);
                     let _ = self.states.push(NormalKey {
@@ -1839,7 +1847,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
             }
             &MultipleActions(v) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 let mut custom = CustomEvent::NoEvent;
                 for action in *v {
                     custom.update(self.do_action(
@@ -1900,7 +1908,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 self.rpt_action = Some(action);
             }
             &Layer(value) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 let _ = self.states.push(LayerModifier { value, coord });
                 if !is_oneshot {
                     self.oneshot
@@ -1911,7 +1919,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 // be used to repeat the previous non-layer-changing action.
             }
             DefaultLayer(value) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 self.set_default_layer(*value);
                 if !is_oneshot {
                     self.oneshot
@@ -1919,7 +1927,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
             }
             Custom(value) => {
-                self.last_press_tracker.coord = coord;
+                self.last_press_tracker.update_coord(coord);
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
