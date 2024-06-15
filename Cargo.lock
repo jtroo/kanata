@@ -657,6 +657,7 @@ dependencies = [
  "parking_lot",
  "patricia_tree",
  "rustc-hash",
+ "simplelog",
  "thiserror",
 ]
 

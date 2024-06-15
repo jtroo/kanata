@@ -2083,7 +2083,8 @@ fn parse_macro_item_impl<'a>(
             Ok((events, &acs[1..]))
         }
         Ok(Action::Custom(custom)) => Ok((vec![SequenceEvent::Custom(custom)], &acs[1..])),
-        _ => {
+        Ok(_) => bail_expr!(&acs[0], "{MACRO_ERR}"),
+        Err(e) => {
             if let Some(submacro) = acs[0].list(s.vars()) {
                 // If it's just a list that's not parsable as a usable action, try parsing the
                 // content.
@@ -2091,13 +2092,20 @@ fn parse_macro_item_impl<'a>(
                 let mut all_events = vec![];
                 while !submacro_remainder.is_empty() {
                     let mut events;
-                    (events, submacro_remainder) = parse_macro_item(submacro_remainder, s)?;
+                    (events, submacro_remainder) =
+                        parse_macro_item(submacro_remainder, s).map_err(|_e| e.clone())?;
                     all_events.append(&mut events);
                 }
                 return Ok((all_events, &acs[1..]));
             }
 
-            let (held_mods, unparsed_str) = parse_mods_held_for_submacro(&acs[0], s)?;
+            let (held_mods, unparsed_str) =
+                parse_mods_held_for_submacro(&acs[0], s).map_err(|mut err| {
+                    if err.msg == MACRO_ERR {
+                        err.msg = format!("{}\n{MACRO_ERR}", &e.msg);
+                    }
+                    err
+                })?;
             let mut all_events = vec![];
 
             // First, press all of the modifiers
@@ -2113,12 +2121,12 @@ fn parse_macro_item_impl<'a>(
                     // Ensure that the unparsed text is empty since otherwise it means there is
                     // invalid text there
                     if !unparsed_str.is_empty() {
-                        bail_expr!(&acs[0], "{MACRO_ERR}")
+                        bail_expr!(&acs[0], "{}\n{MACRO_ERR}", &e.msg)
                     }
                     // Check for a follow-up list
                     rem_start = 2;
                     if acs.len() < 2 {
-                        bail_expr!(&acs[0], "{MACRO_ERR}")
+                        bail_expr!(&acs[0], "{}\n{MACRO_ERR}", &e.msg)
                     }
                     acs[1]
                         .list(s.vars())

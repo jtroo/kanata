@@ -7,8 +7,31 @@ use std::sync::{Mutex, MutexGuard};
 
 mod ambiguous;
 mod environment;
+mod macros;
 
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
+
+fn init_log() {
+    use simplelog::*;
+    use std::sync::OnceLock;
+    static LOG_INIT: OnceLock<()> = OnceLock::new();
+    LOG_INIT.get_or_init(|| {
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_rfc3339();
+        CombinedLogger::init(vec![TermLogger::new(
+            // Note: set to a different level to see logs in tests.
+            // Also, not all tests call init_log so you might have to add the call there too.
+            LevelFilter::Error,
+            log_cfg.build(),
+            TerminalMode::Stderr,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+    });
+}
 
 fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
     match lk.lock() {
@@ -18,6 +41,7 @@ fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
 }
 
 fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
+    init_log();
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     parse_cfg_raw_string(
