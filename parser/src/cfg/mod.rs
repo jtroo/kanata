@@ -2446,6 +2446,8 @@ fn create_defsrc_layer() -> [KanataAction; KEYS_IN_ROW] {
             .map(|osc| Action::KeyCode(osc.into()))
             .unwrap_or(Action::NoOp);
     }
+    // Ensure 0-index is no-op.
+    layer[0] = KanataAction::NoOp;
     layer
 }
 
@@ -3113,6 +3115,10 @@ fn parse_layers(
                 }
             }
         }
+
+        // Very last thing - ensure index 0 is always no-op. This shouldn't have any way to be
+        // physically activated. This enable other code to rely on there always being a no-op key.
+        layers_cfg[layer_level][0][0] = Action::NoOp;
     }
     Ok(layers_cfg)
 }
