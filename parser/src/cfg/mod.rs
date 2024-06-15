@@ -3102,8 +3102,11 @@ fn parse_layers(
             }
         }
         for (osc, layer_action) in layers_cfg[layer_level][0].iter_mut().enumerate() {
-            if s.block_unmapped_keys && *layer_action == Action::Trans && !is_a_button(osc as u16) {
-                *layer_action = Action::NoOp;
+            if *layer_action == DEFAULT_ACTION {
+                *layer_action = match s.block_unmapped_keys && !is_a_button(osc as u16) {
+                    true => Action::NoOp,
+                    false => Action::Trans,
+                };
             }
         }
 

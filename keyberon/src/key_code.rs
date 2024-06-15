@@ -21,6 +21,7 @@ pub enum KeyCode {
     /// The POST fail error.
     PostFail,
     /// An undefined error occured.
+    /// In Kanata, used to mark an unspecified key.
     ErrorUndefined,
     /// `a` and `A`.
     A,

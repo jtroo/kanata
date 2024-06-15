@@ -1,3 +1,4 @@
+use kanata_keyberon::key_code::KeyCode;
 use kanata_keyberon::layout::*;
 
 use crate::cfg::alloc::*;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 // OsCode::KEY_MAX is the biggest OsCode
 pub const KEYS_IN_ROW: usize = OsCode::KEY_MAX as usize;
 pub const LAYER_ROWS: usize = 2;
+pub const DEFAULT_ACTION: KanataAction = KanataAction::KeyCode(KeyCode::ErrorUndefined);
 
 pub type IntermediateLayers = Box<[[Row; LAYER_ROWS]]>;
 
@@ -37,10 +39,7 @@ pub fn new_layers(layers: usize) -> IntermediateLayers {
     // The stack will overflow because of lack of placement new.
     let mut layers = Vec::with_capacity(actual_num_layers);
     for _ in 0..actual_num_layers {
-        layers.push([
-            [KanataAction::Trans; KEYS_IN_ROW],
-            [KanataAction::Trans; KEYS_IN_ROW],
-        ]);
+        layers.push([[DEFAULT_ACTION; KEYS_IN_ROW], [DEFAULT_ACTION; KEYS_IN_ROW]]);
     }
     layers.into_boxed_slice()
 }
