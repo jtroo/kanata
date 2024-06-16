@@ -20,10 +20,11 @@ impl Kanata {
         }; 32];
 
         let keyboards_to_intercept_hwids = kanata.lock().intercept_kb_hwids.clone();
+        let keyboards_to_intercept_hwids_exclude = kanata.lock().intercept_kb_hwids_exclude.clone();
         let mouse_to_intercept_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids.clone();
         let mouse_to_intercept_excluded_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
-            kanata.lock().intercept_mouse_hwids_excluded.clone();
+            kanata.lock().intercept_mouse_hwids_exclude.clone();
         if mouse_to_intercept_hwids.is_some() || mouse_to_intercept_excluded_hwids.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,
@@ -42,7 +43,7 @@ impl Kanata {
                                 dev,
                                 &intrcptn,
                                 &keyboards_to_intercept_hwids,
-                                &None,
+                                &keyboards_to_intercept_hwids_exclude,
                                 &mut is_dev_interceptable,
                             ) {
                                 log::debug!("stroke {:?} is from undesired device", strokes[i]);

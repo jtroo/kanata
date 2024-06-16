@@ -44,6 +44,18 @@ impl Default for CfgLinuxOptions {
     }
 }
 
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "unknown"
+))]
+#[derive(Debug, Clone, Default)]
+pub struct CfgWinterceptOptions {
+    pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+}
+
 #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
 #[derive(Debug, Clone)]
 pub struct CfgOptionsGui {
@@ -114,22 +126,7 @@ pub struct CfgOptions {
         all(feature = "interception_driver", target_os = "windows"),
         target_os = "unknown"
     ))]
-    pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    #[cfg(any(
-        all(feature = "interception_driver", target_os = "windows"),
-        target_os = "unknown"
-    ))]
-    pub windows_interception_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    #[cfg(any(
-        all(feature = "interception_driver", target_os = "windows"),
-        target_os = "unknown"
-    ))]
-    pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    #[cfg(any(
-        all(feature = "interception_driver", target_os = "windows"),
-        target_os = "unknown"
-    ))]
-    pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub wintercept_opts: CfgWinterceptOptions,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
@@ -165,22 +162,7 @@ impl Default for CfgOptions {
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
             ))]
-            windows_interception_mouse_hwids: None,
-            #[cfg(any(
-                all(feature = "interception_driver", target_os = "windows"),
-                target_os = "unknown"
-            ))]
-            windows_interception_mouse_hwids_exclude: None,
-            #[cfg(any(
-                all(feature = "interception_driver", target_os = "windows"),
-                target_os = "unknown"
-            ))]
-            windows_interception_keyboard_hwids: None,
-            #[cfg(any(
-                all(feature = "interception_driver", target_os = "windows"),
-                target_os = "unknown"
-            ))]
-            windows_interception_keyboard_hwids_exclude: None,
+            wintercept_opts: Default::default(),
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
@@ -348,7 +330,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg.windows_interception_mouse_hwids_exclude.is_some() {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids_exclude
+                                .is_some()
+                            {
                                 bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
                             }
                             let v = sexpr_to_str_or_err(val, label)?;
@@ -371,15 +357,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     hwid[i] = b;
                                     Ok(hwid)
                             })?;
-                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                            match cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .as_mut()
+                            {
                                 Some(v) => {
                                     v.push(hwid_slice);
                                 }
                                 None => {
-                                    cfg.windows_interception_mouse_hwids = Some(vec![hwid_slice]);
+                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                        Some(vec![hwid_slice]);
                                 }
                             }
-                            cfg.windows_interception_mouse_hwids
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_hwids
                                 .as_mut()
                                 .unwrap()
                                 .shrink_to_fit();
@@ -391,7 +383,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg.windows_interception_mouse_hwids_exclude.is_some() {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids_exclude
+                                .is_some()
+                            {
                                 bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
@@ -399,15 +395,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-mouse-hwids",
                             )?;
-                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                            match cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .as_mut()
+                            {
                                 Some(v) => {
                                     v.extend(parsed_hwids);
                                 }
                                 None => {
-                                    cfg.windows_interception_mouse_hwids = Some(parsed_hwids);
+                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                        Some(parsed_hwids);
                                 }
                             }
-                            cfg.windows_interception_mouse_hwids
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_hwids
                                 .as_mut()
                                 .unwrap()
                                 .shrink_to_fit();
@@ -419,7 +421,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg.windows_interception_mouse_hwids.is_some() {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .is_some()
+                            {
                                 bail_expr!(val, "{label} and windows-interception-mouse-hwid(s) cannot both be used");
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
@@ -427,7 +433,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-mouse-hwids-exclude",
                             )?;
-                            cfg.windows_interception_mouse_hwids_exclude = Some(parsed_hwids);
+                            cfg.wintercept_opts.windows_interception_mouse_hwids_exclude =
+                                Some(parsed_hwids);
                         }
                     }
                     "windows-interception-keyboard-hwids" => {
@@ -436,7 +443,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg.windows_interception_keyboard_hwids_exclude.is_some() {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_hwids_exclude
+                                .is_some()
+                            {
                                 bail_expr!(val, "{label} and windows-interception-keyboard-hwid-exclude cannot both be used");
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
@@ -444,7 +455,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-keyboard-hwids",
                             )?;
-                            cfg.windows_interception_keyboard_hwids = Some(parsed_hwids);
+                            cfg.wintercept_opts.windows_interception_keyboard_hwids =
+                                Some(parsed_hwids);
                         }
                     }
                     "windows-interception-keyboard-hwids-exclude" => {
@@ -453,7 +465,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg.windows_interception_keyboard_hwids.is_some() {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_hwids
+                                .is_some()
+                            {
                                 bail_expr!(val, "{label} and windows-interception-keyboard-hwid cannot both be used");
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
@@ -461,7 +477,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-keyboard-hwids-exclude",
                             )?;
-                            cfg.windows_interception_keyboard_hwids_exclude = Some(parsed_hwids);
+                            cfg.wintercept_opts
+                                .windows_interception_keyboard_hwids_exclude = Some(parsed_hwids);
                         }
                     }
                     "macos-dev-names-include" => {

@@ -165,11 +165,15 @@ pub struct Kanata {
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which mouse input devices to exclude from processing inputs by kanata. This is
     /// mutually exclusive from `intercept_mouse_hwids` and kanata will panic if both are included.
-    intercept_mouse_hwids_excluded: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    intercept_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    /// Used to know which input device to treat as a mouse for intercepting and processing inputs
+    /// Used to know which input device to treat as a keyboard for intercepting and processing inputs
     /// by kanata.
     intercept_kb_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which keyboard input devices to exclude from processing inputs by kanata. This
+    /// is mutually exclusive from `intercept_kb_hwids` and kanata will panic if both are included.
+    intercept_kb_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
@@ -351,11 +355,22 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids_excluded: cfg.options.windows_interception_mouse_hwids_exclude,
+            intercept_mouse_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            intercept_kb_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -453,11 +468,22 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids_excluded: cfg.options.windows_interception_mouse_hwids_exclude,
+            intercept_mouse_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            intercept_kb_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
