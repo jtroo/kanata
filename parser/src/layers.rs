@@ -19,7 +19,8 @@ pub type KLayers =
     Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>;
 
 pub struct KanataLayers {
-    layers: Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>,
+    pub(crate) layers:
+        Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>,
     _allocations: Arc<Allocations>,
 }
 

@@ -44,7 +44,7 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
     init_log();
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
-    parse_cfg_raw_string(
+    let icfg = parse_cfg_raw_string(
         cfg,
         &mut s,
         &PathBuf::from("test"),
@@ -53,7 +53,17 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
         },
         DEF_LOCAL_KEYS,
         Err("env vars not implemented".into()),
-    )
+    );
+    if let Ok(ref icfg) = icfg {
+        assert!(icfg
+            .klayers
+            .layers
+            .iter()
+            .all(|layer| layer[usize::from(NORMAL_KEY_ROW)]
+                .iter()
+                .all(|action| *action != DEFAULT_ACTION)));
+    }
+    icfg
 }
 
 #[test]
