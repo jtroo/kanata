@@ -281,7 +281,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &args.symlink_path,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_use_trackpoint_property,
+            cfg.options.linux_opts.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -343,13 +343,13 @@ impl Kanata {
             #[cfg(target_os = "macos")]
             include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.options.linux_dev,
+            kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.options.linux_dev_names_include,
+            include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.options.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -370,7 +370,7 @@ impl Kanata {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -405,7 +405,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &None,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_use_trackpoint_property,
+            cfg.options.linux_opts.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -445,13 +445,13 @@ impl Kanata {
             #[cfg(target_os = "macos")]
             include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.options.linux_dev,
+            kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.options.linux_dev_names_include,
+            include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.options.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -472,7 +472,7 @@ impl Kanata {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -550,7 +550,7 @@ impl Kanata {
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
-        Kanata::set_repeat_rate(cfg.options.linux_x11_repeat_delay_rate)?;
+        Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {

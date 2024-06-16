@@ -6,6 +6,44 @@ use crate::custom_action::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Debug, Clone)]
+pub struct CfgLinuxOptions {
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev: Vec<String>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_include: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_exclude: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_continue_if_no_devs_found: bool,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_u_code: crate::keys::OsCode,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_termination: UnicodeTermination,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_use_trackpoint_property: bool,
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+impl Default for CfgLinuxOptions {
+    fn default() -> Self {
+        Self {
+            linux_dev: vec![],
+            linux_dev_names_include: None,
+            linux_dev_names_exclude: None,
+            linux_continue_if_no_devs_found: false,
+            // historically was the only option, so make KEY_U the default
+            linux_unicode_u_code: crate::keys::OsCode::KEY_U,
+            // historically was the only option, so make Enter the default
+            linux_unicode_termination: UnicodeTermination::Enter,
+            linux_x11_repeat_delay_rate: None,
+            linux_use_trackpoint_property: false,
+        }
+    }
+}
+
 #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
 #[derive(Debug, Clone)]
 pub struct CfgOptionsGui {
@@ -69,21 +107,7 @@ pub struct CfgOptions {
     pub trans_resolution_behavior_v2: bool,
     pub chords_v2_min_idle: u16,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev: Vec<String>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev_names_include: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev_names_exclude: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_continue_if_no_devs_found: bool,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_unicode_u_code: crate::keys::OsCode,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_unicode_termination: UnicodeTermination,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_use_trackpoint_property: bool,
+    pub linux_opts: CfgLinuxOptions,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
     pub windows_altgr: AltGrBehaviour,
     #[cfg(any(
@@ -129,23 +153,7 @@ impl Default for CfgOptions {
             trans_resolution_behavior_v2: true,
             chords_v2_min_idle: 5,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev: vec![],
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev_names_include: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev_names_exclude: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_continue_if_no_devs_found: false,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            // historically was the only option, so make KEY_U the default
-            linux_unicode_u_code: crate::keys::OsCode::KEY_U,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            // historically was the only option, so make Enter the default
-            linux_unicode_termination: UnicodeTermination::Enter,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_x11_repeat_delay_rate: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_use_trackpoint_property: false,
+            linux_opts: Default::default(),
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
             windows_altgr: AltGrBehaviour::default(),
             #[cfg(any(
@@ -225,8 +233,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev = parse_dev(val)?;
-                            if cfg.linux_dev.is_empty() {
+                            cfg.linux_opts.linux_dev = parse_dev(val)?;
+                            if cfg.linux_opts.linux_dev.is_empty() {
                                 bail_expr!(
                                     val,
                                     "device list is empty, no devices will be intercepted"
@@ -241,20 +249,20 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
-                            cfg.linux_dev_names_include = Some(dev_names);
+                            cfg.linux_opts.linux_dev_names_include = Some(dev_names);
                         }
                     }
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev_names_exclude = Some(parse_dev(val)?);
+                            cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_unicode_u_code =
+                            cfg.linux_opts.linux_unicode_u_code =
                                 crate::keys::str_to_oscode(v).ok_or_else(|| {
                                     anyhow_expr!(val, "unknown code for {label}: {}", v)
                                 })?;
@@ -264,7 +272,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_unicode_termination = match v {
+                            cfg.linux_opts.linux_unicode_termination = match v {
                                 "enter" => UnicodeTermination::Enter,
                                 "space" => UnicodeTermination::Space,
                                 "enter-space" => UnicodeTermination::EnterSpace,
@@ -286,7 +294,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if delay_rate.len() != 2 {
                                 bail_expr!(val, "{}", ERRMSG)
                             }
-                            cfg.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
+                            cfg.linux_opts.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
                                 delay: match str::parse::<u16>(delay_rate[0]) {
                                     Ok(delay) => delay,
                                     Err(_) => bail_expr!(val, "{}", ERRMSG),
@@ -301,7 +309,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-use-trackpoint-property" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "windows-altgr" => {
@@ -635,7 +643,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-continue-if-no-devs-found" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "movemouse-smooth-diagonals" => {
