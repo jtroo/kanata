@@ -173,7 +173,7 @@ impl Default for CfgOptions {
             windows_interception_keyboard_hwids: None,
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
-            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             gui_opts: Default::default(),
         }
     }
@@ -262,8 +262,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_opts.linux_unicode_u_code =
-                                crate::keys::str_to_oscode(v).ok_or_else(|| {
+                            cfg.linux_opts.linux_unicode_u_code = crate::keys::str_to_oscode(v)
+                                .ok_or_else(|| {
                                     anyhow_expr!(val, "unknown code for {label}: {}", v)
                                 })?;
                         }
@@ -309,7 +309,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-use-trackpoint-property" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_opts.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_use_trackpoint_property =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "windows-altgr" => {
@@ -643,7 +644,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-continue-if-no-devs-found" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_opts.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_continue_if_no_devs_found =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "movemouse-smooth-diagonals" => {
