@@ -8,19 +8,21 @@ struct SortedInputs {
     inputs: SortedChord,
 }
 
-/// Used for cases of followup chord sequences from a prior activation,
-/// e.g.
-/// dy 1 -> Monday
-/// dy 2 -> Tuesday
-///
-/// Inputs will be checked against this before the standard list of possible chords.
-struct PrioritizePossibleChords {
-    chords: Trie<Box<str>>
-}
-
 /// All possible chords.
 struct PossibleChords {
-    chords: Trie<(Box<str>, Option<Trie<Box<str>>>)>
+    chords: Trie<ChordOutput>
+}
+/// A chord.
+///
+/// If any followups exist it will be Some.
+/// E.g. with:
+///   - dy   -> day
+///   - dy 1 -> Monday
+///   - dy 2 -> Tuesday
+/// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
+struct ChordOutput {
+    output: Box<str>,
+    followups: Option<PossibleChords>,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -29,7 +31,6 @@ struct PossibleChords {
 struct SortedChord {
     keys: Vec<u16>,
 }
-
 impl SortedChord {
     fn insert(&mut self, key: u16) {
         match self.keys.binary_search(&key) {
@@ -64,7 +65,7 @@ struct DynamicState {
     /// Using the example above, when dy has been activated, the `1` and `2` activations will be
     /// contained within `prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
-    prioritized_chords: Option<PrioritizePossibleChords>
+    prioritized_chords: Option<PossibleChords>
 }
 
 struct State {
