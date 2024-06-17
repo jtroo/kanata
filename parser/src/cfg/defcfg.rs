@@ -61,6 +61,7 @@ pub struct CfgOptions {
     pub delegate_to_first_layer: bool,
     pub movemouse_inherit_accel_state: bool,
     pub movemouse_smooth_diagonals: bool,
+    pub override_release_on_activation: bool,
     pub dynamic_macro_max_presses: u16,
     pub dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour,
     pub concurrent_tap_hold: bool,
@@ -115,6 +116,7 @@ impl Default for CfgOptions {
             delegate_to_first_layer: false,
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
+            override_release_on_activation: false,
             dynamic_macro_max_presses: 128,
             dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
@@ -586,6 +588,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "movemouse-inherit-accel-state" => {
                         cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, label)?
+                    }
+                    "override-release-on-activation" => {
+                        cfg.override_release_on_activation = parse_defcfg_val_bool(val, label)?
                     }
                     "concurrent-tap-hold" => {
                         cfg.concurrent_tap_hold = parse_defcfg_val_bool(val, label)?

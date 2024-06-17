@@ -362,7 +362,10 @@ impl<'a, T: 'a> State<'a, T> {
     }
     pub fn release_state(&self, s: ReleasableState) -> Option<Self> {
         match (*self, s) {
-            (NormalKey { keycode: k1, .. }, ReleasableState::KeyCode(k2)) => {
+            (
+                NormalKey { keycode: k1, .. } | FakeKey { keycode: k1 },
+                ReleasableState::KeyCode(k2),
+            ) => {
                 if k1 == k2 {
                     None
                 } else {

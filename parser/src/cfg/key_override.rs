@@ -56,6 +56,10 @@ impl OverrideStates {
     fn add_overrides(&self, oscs: &mut Vec<KeyCode>) {
         oscs.extend(self.oscs_to_add.iter().copied().map(KeyCode::from));
     }
+
+    pub fn removed_oscs(&self) -> impl Iterator<Item = OsCode> + '_ {
+        self.oscs_to_remove.iter().copied()
+    }
 }
 
 /// A collection of global key overrides.
@@ -84,12 +88,12 @@ impl Overrides {
         if self.is_empty() {
             return;
         }
+        states.cleanup();
         for kc in kcs.iter().copied() {
             states.update(kc.into(), self);
         }
         kcs.retain(|kc| !states.is_key_overridden((*kc).into()));
         states.add_overrides(kcs);
-        states.cleanup();
     }
 
     pub fn output_non_mods_for_input_non_mod(&self, in_osc: OsCode) -> Vec<OsCode> {

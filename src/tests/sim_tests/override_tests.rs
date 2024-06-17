@@ -25,3 +25,36 @@ fn override_with_unmod() {
         result
     );
 }
+
+#[test]
+fn override_release_mod_change_key() {
+    let result = simulate(
+        "
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+        ",
+        "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10",
+    )
+    .to_ascii()
+    .no_time();
+    assert_eq!("dn:LShift dn:Kb9 up:LShift up:Kb9 dn:A up:A", result);
+}
+
+#[test]
+fn override_eagerly_releases() {
+    let result = simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+        ",
+        "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:Kb9 t:1ms up:Kb9 t:9ms up:LShift",
+        result
+    );
+}

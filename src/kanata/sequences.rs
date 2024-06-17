@@ -317,14 +317,7 @@ pub(super) fn do_successful_sequence_termination(
                     // desired to fix this, a shorter list of keys would
                     // probably be the list of keys that **do** output
                     // characters than those that don't.
-                    OsCode::KEY_LEFTSHIFT
-                    | OsCode::KEY_RIGHTSHIFT
-                    | OsCode::KEY_LEFTMETA
-                    | OsCode::KEY_RIGHTMETA
-                    | OsCode::KEY_LEFTCTRL
-                    | OsCode::KEY_RIGHTCTRL
-                    | OsCode::KEY_LEFTALT
-                    | OsCode::KEY_RIGHTALT => continue,
+                    osc if osc.is_modifier() => continue,
                     osc if matches!(u16::from(osc), KEY_IGNORE_MIN..=KEY_IGNORE_MAX) => continue,
                     _ => {
                         kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
