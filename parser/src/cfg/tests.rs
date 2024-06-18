@@ -1355,6 +1355,7 @@ fn parse_all_defcfg() {
   delegate-to-first-layer yes
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes
+  override-release-on-activation yes
   dynamic-macro-max-presses 1000
   concurrent-tap-hold yes
   rapid-event-delay 5

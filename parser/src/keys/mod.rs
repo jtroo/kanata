@@ -66,6 +66,20 @@ impl OsCode {
         #[cfg(target_os = "macos")]
         return OsCode::from_u16_macos(code);
     }
+
+    pub fn is_modifier(self) -> bool {
+        matches!(
+            self,
+            OsCode::KEY_LEFTSHIFT
+                | OsCode::KEY_RIGHTSHIFT
+                | OsCode::KEY_LEFTMETA
+                | OsCode::KEY_RIGHTMETA
+                | OsCode::KEY_LEFTCTRL
+                | OsCode::KEY_RIGHTCTRL
+                | OsCode::KEY_LEFTALT
+                | OsCode::KEY_RIGHTALT
+        )
+    }
 }
 
 static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {

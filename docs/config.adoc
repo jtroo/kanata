@@ -2188,6 +2188,42 @@ The default (and minimum) value is `5` and the unit is milliseconds.
 )
 ----
 
+[[override-release-on-activation]]
+=== override-release-on-activation
+<<table-of-contents,Back to ToC>>
+
+This configuration item changes activation behaviour from `defoverrides`.
+
+Take this example override:
+
+[source]
+----
+(defoverrides (lsft a) (lsft 9))
+----
+
+The default behaviour is that if `lsft` is released **before** releasing `a`,
+kanata's behaviour would be to send `a`.
+
+A future improvement could be to make the `9` continue to be the key held,
+but that is not implemented today.
+
+The workaround in case the above behaviour negatively impacts your workflow
+is to enable this configuration.
+This configuration will press and then immediately release the `9` output
+as soon as the override activates, meaning you are unlikely as a human to ever
+release `lsft` first.
+
+The effect of this configuration is that the `9` key cannot remain held
+when activated by the override which is important to consider for your use cases.
+
+.Example:
+[source]
+----
+(defcfg
+  override-release-on-activation yes
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>

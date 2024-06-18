@@ -254,6 +254,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; changes will be logged.
   ;;
   ;; log-layer-changes no
+
+  ;; This configuration will press and then immediately release the non-modifier key
+  ;; as soon as the override activates, meaning you are unlikely as a human to ever
+  ;; release modifiers first, which can result in unintended behaviour.
+  ;;
+  ;; The downside of this configuration is that the non-modifier key
+  ;; does not remain held which is important to consider for your use cases.
+  override-release-on-activation yes
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

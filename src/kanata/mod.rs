@@ -11,6 +11,7 @@ use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 #[cfg(feature = "passthru_ahk")]
 use std::sync::mpsc::Sender as ASender;
 
+use kanata_keyberon::action::ReleasableState;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
@@ -186,6 +187,7 @@ pub struct Kanata {
     /// gets stored in this buffer and if the next movemouse action is opposite axis
     /// than the one stored in the buffer, both events are outputted at the same time.
     movemouse_buffer: Option<(Axis, CalculatedMouseMove)>,
+    override_release_on_activation: bool,
     /// Configured maximum for dynamic macro recording, to protect users from themselves if they
     /// have accidentally left it on.
     dynamic_macro_max_presses: u16,
@@ -355,6 +357,7 @@ impl Kanata {
                 .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            override_release_on_activation: cfg.options.override_release_on_activation,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
@@ -454,6 +457,7 @@ impl Kanata {
                 .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
+            override_release_on_activation: cfg.options.override_release_on_activation,
             movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
@@ -511,6 +515,7 @@ impl Kanata {
         self.log_layer_changes =
             get_forced_log_layer_changes().unwrap_or(cfg.options.log_layer_changes);
         self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
+        self.override_release_on_activation = cfg.options.override_release_on_activation;
         self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
@@ -935,6 +940,17 @@ impl Kanata {
 
         self.overrides
             .override_keys(cur_keys, &mut self.override_states);
+        if self.override_release_on_activation {
+            for removed in self.override_states.removed_oscs() {
+                if !removed.is_modifier() {
+                    layout.states.retain(|s| {
+                        s.release_state(ReleasableState::KeyCode(removed.into()))
+                            .is_some()
+                    });
+                }
+            }
+        }
+
         if let Some(caps_word) = &mut self.caps_word {
             if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
                 self.caps_word = None;
