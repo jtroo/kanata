@@ -2209,7 +2209,7 @@ but that is not implemented today.
 
 The workaround in case the above behaviour negatively impacts your workflow
 is to enable this configuration.
-This configuration will press and then immediately release the `a` input
+This configuration will press and then immediately release the `9` output
 as soon as the override activates, meaning you are unlikely as a human to ever
 release `lsft` first.
 
