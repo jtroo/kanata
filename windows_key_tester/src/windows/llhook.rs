@@ -40,6 +40,7 @@ impl Drop for KeyboardHook {
 }
 
 /// Key event received by the low level keyboard hook.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
     pub code: u32,

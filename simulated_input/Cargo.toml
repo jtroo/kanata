@@ -16,13 +16,13 @@ path = "src/sim.rs"
 
 [dependencies]
 anyhow = "1"
-clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default_features = false }
+clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default-features = false }
 dirs = "5.0.1"
-log = { version = "0.4.8", default_features = false }
+log = { version = "0.4.8", default-features = false }
 simplelog = "0.12.0"
 time = "0.3.36"
 
-kanata = { path = ".." , default_features = false }
+kanata = { path = ".." , default-features = false }
 
 [features]
 default = ["simulated_output", "tcp_server"]

@@ -12,7 +12,7 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.12"
-log = { version = "0.4.8", default_features = false }
+log = { version = "0.4.8", default-features = false }
 anyhow = "1"
 parking_lot = "0.12"
 once_cell = "1"

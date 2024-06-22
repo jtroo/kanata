@@ -178,8 +178,7 @@ impl<'a, T> ChordsV2<'a, T> {
     }
 
     pub(crate) fn get_action_chv2(&mut self) -> (QueuedAction<'a, T>, bool) {
-        match self
-            .active_chords
+        self.active_chords
             .iter_mut()
             .find_map(|ach| match ach.status {
                 Unread => {
@@ -191,10 +190,8 @@ impl<'a, T> ChordsV2<'a, T> {
                     Some((Some(((0, ach.coordinate), ach.delay, ach.action)), true))
                 }
                 Releasable | Released => None,
-            }) {
-            Some(v) => v,
-            None => (None, false),
-        }
+            })
+            .unwrap_or_default()
     }
 
     /// Update the times in the queue without activating any chords yet.
