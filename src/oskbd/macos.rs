@@ -11,9 +11,7 @@ use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
 use core_graphics::base::CGFloat;
 use core_graphics::display::{CGDisplay, CGPoint};
-use core_graphics::event::{
-    CGEvent, CGEventField, CGEventTapLocation, CGEventType, CGMouseButton, EventField,
-};
+use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType, CGMouseButton, EventField};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
@@ -263,45 +261,61 @@ impl KbdOut {
         event.post(CGEventTapLocation::HID);
         Ok(())
     }
-
-    pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        let event = Self::make_event()?;
-        let event_type = match _btn {
-            Btn::Left => CGEventType::LeftMouseDown,
-            Btn::Right => CGEventType::RightMouseDown,
-            Btn::Mid => CGEventType::OtherMouseDown,
+    fn button_action(&mut self, _btn: Btn, is_click: bool) -> Result<(), io::Error> {
+        let (event_type, button) = match _btn {
+            Btn::Left => (
+                if is_click {
+                    CGEventType::LeftMouseDown
+                } else {
+                    CGEventType::LeftMouseUp
+                },
+                Some(CGMouseButton::Left),
+            ),
+            Btn::Right => (
+                if is_click {
+                    CGEventType::RightMouseDown
+                } else {
+                    CGEventType::RightMouseUp
+                },
+                Some(CGMouseButton::Right),
+            ),
+            Btn::Mid => (
+                if is_click {
+                    CGEventType::OtherMouseDown
+                } else {
+                    CGEventType::OtherMouseUp
+                },
+                Some(CGMouseButton::Center),
+            ),
             // It's unclear to me which event type to use here, hence unsupported for now
-            Btn::Forward => CGEventType::Null,
-            Btn::Backward => CGEventType::Null,
+            Btn::Forward => (CGEventType::Null, None),
+            Btn::Backward => (CGEventType::Null, None),
         };
         // CGEventType doesn't implement Eq, therefore the casting to u8
         if event_type as u8 == CGEventType::Null as u8 {
             panic!("mouse buttons other than left, right, and middle aren't currently supported")
         }
-        event.set_type(event_type);
+
+        let event_source = Self::make_event_source()?;
+        let event = Self::make_event()?;
+        let mouse_position = event.location();
+        let event =
+            CGEvent::new_mouse_event(event_source, event_type, mouse_position, button.unwrap())
+                .map_err(|_| {
+                    std::io::Error::new(std::io::ErrorKind::Other, "Failed to create mouse event")
+                })?;
+
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
         Ok(())
     }
 
+    pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
+        Self::button_action(self, _btn, true)
+    }
+
     pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        let event = Self::make_event()?;
-        let event_type = match _btn {
-            Btn::Left => CGEventType::LeftMouseUp,
-            Btn::Right => CGEventType::RightMouseUp,
-            Btn::Mid => CGEventType::OtherMouseUp,
-            // It's unclear to me which event type to use here, hence unsupported for now
-            Btn::Forward => CGEventType::Null,
-            Btn::Backward => CGEventType::Null,
-        };
-        // CGEventType doesn't implement Eq, therefore the casting to u8
-        if event_type as u8 == CGEventType::Null as u8 {
-            panic!("mouse buttons other than left, right, and middle aren't currently supported")
-        }
-        event.set_type(event_type);
-        // Mouse control only seems to work with CGEventTapLocation::HID.
-        event.post(CGEventTapLocation::HID);
-        Ok(())
+        Self::button_action(self, _btn, false)
     }
 
     pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
@@ -337,19 +351,21 @@ impl KbdOut {
         Ok(())
     }
 
+    fn make_event_source() -> Result<CGEventSource, Error> {
+        CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
+            Error::new(
+                ErrorKind::Other,
+                "failed to create core graphics event source",
+            )
+        })
+    }
     /// Creates a core graphics event.
     /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
     /// I have not verified that this is the correct parameter.
     /// Note that the CFRelease function mentioned in the docs is automatically called when the
     /// event is dropped, therefore we don't need to care about this ourselves.
     fn make_event() -> Result<CGEvent, Error> {
-        let event_source =
-            CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
-                Error::new(
-                    ErrorKind::Other,
-                    "failed to create core graphics event source",
-                )
-            })?;
+        let event_source = Self::make_event_source()?;
         let event = CGEvent::new(event_source)
             .map_err(|_| Error::new(ErrorKind::Other, "failed to create core graphics event"))?;
         Ok(event)
