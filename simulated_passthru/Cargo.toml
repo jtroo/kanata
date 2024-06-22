@@ -10,11 +10,11 @@ crate-type	= ['lib','cdylib']
 
 [dependencies]
 anyhow = "1"
-log = { version = "0.4.8", default_features = false }
+log = { version = "0.4.8", default-features = false }
 parking_lot = "0.12"
 regex = "1.10.3"
 
-kanata = {path=".." , default_features=false}
+kanata = {path=".." , default-features=false}
 
 lazy_static = "1.4.0"
 
@@ -25,7 +25,7 @@ winapi = { version = "0.3.9", features = [
     "timeapi",
     "mmsystem",
 ] }
-native-windows-gui = { version = "1.0.12", default_features = false }
+native-windows-gui = { version = "1.0.12", default-features = false }
 kanata-interception = { version = "0.2.0", optional = true }
 win_dbg_logger = "0.1.0"
 widestring = "1.1.0"

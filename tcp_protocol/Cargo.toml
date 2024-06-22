@@ -6,6 +6,6 @@ description = "TCP protocol for kanata. This does not follow semver."
 license = "LGPL-3.0-only"
 
 [dependencies]
-serde = { version = "1", features = ["alloc", "derive"], default_features = false }
+serde = { version = "1", features = ["alloc", "derive"], default-features = false }
 serde_derive = "1.0"
-serde_json = { version = "1", features = ["alloc"], default_features = false }
+serde_json = { version = "1", features = ["alloc"], default-features = false }

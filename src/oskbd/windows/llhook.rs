@@ -422,14 +422,16 @@ fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
     let mut input = INPUT {
         type_: INPUT_MOUSE,
         u: unsafe {
-            mem::transmute(MOUSEINPUT {
-                dx,
-                dy,
-                mouseData: data,
-                dwFlags: flags,
-                time: 0,
-                dwExtraInfo: 0,
-            })
+            mem::transmute::<winapi::um::winuser::MOUSEINPUT, winapi::um::winuser::INPUT_u>(
+                MOUSEINPUT {
+                    dx,
+                    dy,
+                    mouseData: data,
+                    dwFlags: flags,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            )
         },
     };
     unsafe { SendInput(1, &mut input as LPINPUT, mem::size_of::<INPUT>() as c_int) };
