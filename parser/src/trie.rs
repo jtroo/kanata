@@ -54,7 +54,8 @@ impl<T> Trie<T> {
     }
 
     pub fn get_or_descendant_exists(&self, key: &TrieKey) -> GetOrDescendentExistsResult<T>
-        where T: Copy
+    where
+        T: Copy,
     {
         let mut descendants = self.inner.iter_prefix(cast_slice(key));
         match descendants.next() {
