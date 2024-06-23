@@ -163,9 +163,17 @@ pub struct Kanata {
     /// by kanata.
     intercept_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    /// Used to know which input device to treat as a mouse for intercepting and processing inputs
+    /// Used to know which mouse input devices to exclude from processing inputs by kanata. This is
+    /// mutually exclusive from `intercept_mouse_hwids` and kanata will panic if both are included.
+    intercept_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which input device to treat as a keyboard for intercepting and processing inputs
     /// by kanata.
     intercept_kb_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which keyboard input devices to exclude from processing inputs by kanata. This
+    /// is mutually exclusive from `intercept_kb_hwids` and kanata will panic if both are included.
+    intercept_kb_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
@@ -277,7 +285,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &args.symlink_path,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_use_trackpoint_property,
+            cfg.options.linux_opts.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -339,17 +347,30 @@ impl Kanata {
             #[cfg(target_os = "macos")]
             include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.options.linux_dev,
+            kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.options.linux_dev_names_include,
+            include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.options.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            intercept_mouse_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -364,7 +385,7 @@ impl Kanata {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -399,7 +420,7 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             &None,
             #[cfg(target_os = "linux")]
-            cfg.options.linux_use_trackpoint_property,
+            cfg.options.linux_opts.linux_use_trackpoint_property,
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
@@ -439,17 +460,30 @@ impl Kanata {
             #[cfg(target_os = "macos")]
             include_names: cfg.options.macos_dev_names_include,
             #[cfg(target_os = "linux")]
-            kbd_in_paths: cfg.options.linux_dev,
+            kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
-            include_names: cfg.options.linux_dev_names_include,
+            include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
-            exclude_names: cfg.options.linux_dev_names_exclude,
+            exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.windows_interception_mouse_hwids,
+            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_kb_hwids: cfg.options.windows_interception_keyboard_hwids,
+            intercept_mouse_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_hwids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_hwids_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -464,7 +498,7 @@ impl Kanata {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
             #[cfg(target_os = "linux")]
-            x11_repeat_rate: cfg.options.linux_x11_repeat_delay_rate,
+            x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -542,7 +576,7 @@ impl Kanata {
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
-        Kanata::set_repeat_rate(cfg.options.linux_x11_repeat_delay_rate)?;
+        Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
@@ -2085,8 +2119,8 @@ fn check_for_exit(_event: &KeyEvent) {
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
     #[cfg(all(not(feature = "simulated_output"), target_os = "linux"))]
     {
-        _kbd_out.update_unicode_termination(_cfg.linux_unicode_termination);
-        _kbd_out.update_unicode_u_code(_cfg.linux_unicode_u_code);
+        _kbd_out.update_unicode_termination(_cfg.linux_opts.linux_unicode_termination);
+        _kbd_out.update_unicode_u_code(_cfg.linux_opts.linux_unicode_u_code);
     }
     Ok(())
 }

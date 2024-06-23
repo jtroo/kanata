@@ -6,6 +6,56 @@ use crate::custom_action::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Debug, Clone)]
+pub struct CfgLinuxOptions {
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev: Vec<String>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_include: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_dev_names_exclude: Option<Vec<String>>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_continue_if_no_devs_found: bool,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_u_code: crate::keys::OsCode,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_unicode_termination: UnicodeTermination,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    pub linux_use_trackpoint_property: bool,
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+impl Default for CfgLinuxOptions {
+    fn default() -> Self {
+        Self {
+            linux_dev: vec![],
+            linux_dev_names_include: None,
+            linux_dev_names_exclude: None,
+            linux_continue_if_no_devs_found: false,
+            // historically was the only option, so make KEY_U the default
+            linux_unicode_u_code: crate::keys::OsCode::KEY_U,
+            // historically was the only option, so make Enter the default
+            linux_unicode_termination: UnicodeTermination::Enter,
+            linux_x11_repeat_delay_rate: None,
+            linux_use_trackpoint_property: false,
+        }
+    }
+}
+
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "unknown"
+))]
+#[derive(Debug, Clone, Default)]
+pub struct CfgWinterceptOptions {
+    pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+}
+
 #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
 #[derive(Debug, Clone)]
 pub struct CfgOptionsGui {
@@ -69,33 +119,14 @@ pub struct CfgOptions {
     pub trans_resolution_behavior_v2: bool,
     pub chords_v2_min_idle: u16,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev: Vec<String>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev_names_include: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_dev_names_exclude: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_continue_if_no_devs_found: bool,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_unicode_u_code: crate::keys::OsCode,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_unicode_termination: UnicodeTermination,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
-    pub linux_use_trackpoint_property: bool,
+    pub linux_opts: CfgLinuxOptions,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
     pub windows_altgr: AltGrBehaviour,
     #[cfg(any(
         all(feature = "interception_driver", target_os = "windows"),
         target_os = "unknown"
     ))]
-    pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    #[cfg(any(
-        all(feature = "interception_driver", target_os = "windows"),
-        target_os = "unknown"
-    ))]
-    pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub wintercept_opts: CfgWinterceptOptions,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_dev_names_include: Option<Vec<String>>,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
@@ -124,38 +155,17 @@ impl Default for CfgOptions {
             trans_resolution_behavior_v2: true,
             chords_v2_min_idle: 5,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev: vec![],
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev_names_include: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_dev_names_exclude: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_continue_if_no_devs_found: false,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            // historically was the only option, so make KEY_U the default
-            linux_unicode_u_code: crate::keys::OsCode::KEY_U,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            // historically was the only option, so make Enter the default
-            linux_unicode_termination: UnicodeTermination::Enter,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_x11_repeat_delay_rate: None,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
-            linux_use_trackpoint_property: false,
+            linux_opts: Default::default(),
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
             windows_altgr: AltGrBehaviour::default(),
             #[cfg(any(
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
             ))]
-            windows_interception_mouse_hwids: None,
-            #[cfg(any(
-                all(feature = "interception_driver", target_os = "windows"),
-                target_os = "unknown"
-            ))]
-            windows_interception_keyboard_hwids: None,
+            wintercept_opts: Default::default(),
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_dev_names_include: None,
-            #[cfg(all(any(target_os = "windows",target_os = "unknown"), feature = "gui"))]
+            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             gui_opts: Default::default(),
         }
     }
@@ -215,8 +225,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev = parse_dev(val)?;
-                            if cfg.linux_dev.is_empty() {
+                            cfg.linux_opts.linux_dev = parse_dev(val)?;
+                            if cfg.linux_opts.linux_dev.is_empty() {
                                 bail_expr!(
                                     val,
                                     "device list is empty, no devices will be intercepted"
@@ -231,21 +241,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
-                            cfg.linux_dev_names_include = Some(dev_names);
+                            cfg.linux_opts.linux_dev_names_include = Some(dev_names);
                         }
                     }
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_dev_names_exclude = Some(parse_dev(val)?);
+                            cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_unicode_u_code =
-                                crate::keys::str_to_oscode(v).ok_or_else(|| {
+                            cfg.linux_opts.linux_unicode_u_code = crate::keys::str_to_oscode(v)
+                                .ok_or_else(|| {
                                     anyhow_expr!(val, "unknown code for {label}: {}", v)
                                 })?;
                         }
@@ -254,7 +264,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_unicode_termination = match v {
+                            cfg.linux_opts.linux_unicode_termination = match v {
                                 "enter" => UnicodeTermination::Enter,
                                 "space" => UnicodeTermination::Space,
                                 "enter-space" => UnicodeTermination::EnterSpace,
@@ -276,7 +286,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if delay_rate.len() != 2 {
                                 bail_expr!(val, "{}", ERRMSG)
                             }
-                            cfg.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
+                            cfg.linux_opts.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
                                 delay: match str::parse::<u16>(delay_rate[0]) {
                                     Ok(delay) => delay,
                                     Err(_) => bail_expr!(val, "{}", ERRMSG),
@@ -291,7 +301,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-use-trackpoint-property" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_use_trackpoint_property = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_use_trackpoint_property =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "windows-altgr" => {
@@ -319,6 +330,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids_exclude
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
+                            }
                             let v = sexpr_to_str_or_err(val, label)?;
                             let hwid = v;
                             log::trace!("win hwid: {hwid}");
@@ -339,15 +357,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     hwid[i] = b;
                                     Ok(hwid)
                             })?;
-                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                            match cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .as_mut()
+                            {
                                 Some(v) => {
                                     v.push(hwid_slice);
                                 }
                                 None => {
-                                    cfg.windows_interception_mouse_hwids = Some(vec![hwid_slice]);
+                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                        Some(vec![hwid_slice]);
                                 }
                             }
-                            cfg.windows_interception_mouse_hwids
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_hwids
                                 .as_mut()
                                 .unwrap()
                                 .shrink_to_fit();
@@ -359,45 +383,58 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            let hwids = sexpr_to_list_or_err(val, label)?;
-                            let mut parsed_hwids = vec![];
-                            for hwid_expr in hwids.iter() {
-                                let hwid = sexpr_to_str_or_err(
-                                    hwid_expr,
-                                    "entry in windows-interception-mouse-hwids",
-                                )?;
-                                log::trace!("win hwid: {hwid}");
-                                let hwid_vec = hwid
-                                .split(',')
-                                .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
-                                    hwid_byte.trim_matches(' ').parse::<u8>().map(|b| {
-                                        hwid_bytes.push(b);
-                                        hwid_bytes
-                                    })
-                                }).map_err(|_| anyhow_expr!(hwid_expr, "Entry in {label} is invalid. Entries should be numbers [0,255] separated by commas"))?;
-                                let hwid_slice = hwid_vec.iter().copied().enumerate()
-                                .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
-                                    let (i, b) = idx_byte;
-                                    if i > HWID_ARR_SZ {
-                                        bail_expr!(hwid_expr, "entry in {label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
-                                    }
-                                    hwid[i] = b;
-                                    Ok(hwid)
-                            });
-                                parsed_hwids.push(hwid_slice?);
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids_exclude
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
                             }
-                            match cfg.windows_interception_mouse_hwids.as_mut() {
+                            let parsed_hwids = sexpr_to_hwids_vec(
+                                val,
+                                label,
+                                "entry in windows-interception-mouse-hwids",
+                            )?;
+                            match cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .as_mut()
+                            {
                                 Some(v) => {
                                     v.extend(parsed_hwids);
                                 }
                                 None => {
-                                    cfg.windows_interception_mouse_hwids = Some(parsed_hwids);
+                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                        Some(parsed_hwids);
                                 }
                             }
-                            cfg.windows_interception_mouse_hwids
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_hwids
                                 .as_mut()
                                 .unwrap()
                                 .shrink_to_fit();
+                        }
+                    }
+                    "windows-interception-mouse-hwids-exclude" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_hwids
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-mouse-hwid(s) cannot both be used");
+                            }
+                            let parsed_hwids = sexpr_to_hwids_vec(
+                                val,
+                                label,
+                                "entry in windows-interception-mouse-hwids-exclude",
+                            )?;
+                            cfg.wintercept_opts.windows_interception_mouse_hwids_exclude =
+                                Some(parsed_hwids);
                         }
                     }
                     "windows-interception-keyboard-hwids" => {
@@ -406,35 +443,42 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            let hwids = sexpr_to_list_or_err(val, label)?;
-                            let mut parsed_hwids = vec![];
-                            for hwid_expr in hwids.iter() {
-                                let hwid = sexpr_to_str_or_err(
-                                    hwid_expr,
-                                    "entry in windows-interception-keyboard-hwids",
-                                )?;
-                                log::trace!("win hwid: {hwid}");
-                                let hwid_vec = hwid
-                                    .split(',')
-                                    .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
-                                        hwid_byte.trim_matches(' ').parse::<u8>().map(|b| {
-                                            hwid_bytes.push(b);
-                                            hwid_bytes
-                                        })
-                                    }).map_err(|_| anyhow_expr!(hwid_expr, "Entry in {label} is invalid. Entries should be numbers [0,255] separated by commas"))?;
-                                let hwid_slice = hwid_vec.iter().copied().enumerate()
-                                    .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
-                                        let (i, b) = idx_byte;
-                                        if i > HWID_ARR_SZ {
-                                            bail_expr!(hwid_expr, "entry in {label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
-                                        }
-                                        hwid[i] = b;
-                                        Ok(hwid)
-                                });
-                                parsed_hwids.push(hwid_slice?);
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_hwids_exclude
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid-exclude cannot both be used");
                             }
-                            parsed_hwids.shrink_to_fit();
-                            cfg.windows_interception_keyboard_hwids = Some(parsed_hwids);
+                            let parsed_hwids = sexpr_to_hwids_vec(
+                                val,
+                                label,
+                                "entry in windows-interception-keyboard-hwids",
+                            )?;
+                            cfg.wintercept_opts.windows_interception_keyboard_hwids =
+                                Some(parsed_hwids);
+                        }
+                    }
+                    "windows-interception-keyboard-hwids-exclude" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_hwids
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid cannot both be used");
+                            }
+                            let parsed_hwids = sexpr_to_hwids_vec(
+                                val,
+                                label,
+                                "entry in windows-interception-keyboard-hwids-exclude",
+                            )?;
+                            cfg.wintercept_opts
+                                .windows_interception_keyboard_hwids_exclude = Some(parsed_hwids);
                         }
                     }
                     "macos-dev-names-include" => {
@@ -580,7 +624,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-continue-if-no-devs-found" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_continue_if_no_devs_found = parse_defcfg_val_bool(val, label)?
+                            cfg.linux_opts.linux_continue_if_no_devs_found =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "movemouse-smooth-diagonals" => {
@@ -749,6 +794,43 @@ fn sexpr_to_list_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a [SExpr]>
         SExpr::Atom(_) => bail_expr!(expr, "The value for {label} must be a list"),
         SExpr::List(l) => Ok(&l.t),
     }
+}
+
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "unknown"
+))]
+fn sexpr_to_hwids_vec(
+    val: &SExpr,
+    label: &str,
+    entry_label: &str,
+) -> Result<Vec<[u8; HWID_ARR_SZ]>> {
+    let hwids = sexpr_to_list_or_err(val, label)?;
+    let mut parsed_hwids = vec![];
+    for hwid_expr in hwids.iter() {
+        let hwid = sexpr_to_str_or_err(hwid_expr, entry_label)?;
+        log::trace!("win hwid: {hwid}");
+        let hwid_vec = hwid
+            .split(',')
+            .try_fold(vec![], |mut hwid_bytes, hwid_byte| {
+                hwid_byte.trim_matches(' ').parse::<u8>().map(|b| {
+                    hwid_bytes.push(b);
+                    hwid_bytes
+                })
+            }).map_err(|_| anyhow_expr!(hwid_expr, "Entry in {label} is invalid. Entries should be numbers [0,255] separated by commas"))?;
+        let hwid_slice = hwid_vec.iter().copied().enumerate()
+            .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
+                let (i, b) = idx_byte;
+                if i > HWID_ARR_SZ {
+                    bail_expr!(hwid_expr, "entry in {label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
+                }
+                hwid[i] = b;
+                Ok(hwid)
+        });
+        parsed_hwids.push(hwid_slice?);
+    }
+    parsed_hwids.shrink_to_fit();
+    Ok(parsed_hwids)
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]

@@ -20,9 +20,12 @@ impl Kanata {
         }; 32];
 
         let keyboards_to_intercept_hwids = kanata.lock().intercept_kb_hwids.clone();
+        let keyboards_to_intercept_hwids_exclude = kanata.lock().intercept_kb_hwids_exclude.clone();
         let mouse_to_intercept_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids.clone();
-        if mouse_to_intercept_hwids.is_some() {
+        let mouse_to_intercept_excluded_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
+            kanata.lock().intercept_mouse_hwids_exclude.clone();
+        if mouse_to_intercept_hwids.is_some() || mouse_to_intercept_excluded_hwids.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,
                 ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
@@ -40,6 +43,7 @@ impl Kanata {
                                 dev,
                                 &intrcptn,
                                 &keyboards_to_intercept_hwids,
+                                &keyboards_to_intercept_hwids_exclude,
                                 &mut is_dev_interceptable,
                             ) {
                                 log::debug!("stroke {:?} is from undesired device", strokes[i]);
@@ -62,11 +66,14 @@ impl Kanata {
                             KeyEvent { code, value }
                         }
                         ic::Stroke::Mouse { state, rolling, .. } => {
-                            if mouse_to_intercept_hwids.is_some() {
+                            if mouse_to_intercept_hwids.is_some()
+                                || mouse_to_intercept_excluded_hwids.is_some()
+                            {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,
                                     &mouse_to_intercept_hwids,
+                                    &mouse_to_intercept_excluded_hwids,
                                     state,
                                     rolling,
                                     &intrcptn,
@@ -132,27 +139,42 @@ fn is_device_interceptable(
     input_dev: ic::Device,
     intrcptn: &ic::Interception,
     allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
+    excluded_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
     cache: &mut HashMap<ic::Device, bool>,
 ) -> bool {
-    match allowed_hwids {
-        None => true,
-        Some(allowed) => match cache.get(&input_dev) {
+    match (allowed_hwids, excluded_hwids) {
+        (None, None) => true,
+        (Some(allowed), None) => match cache.get(&input_dev) {
             Some(v) => *v,
             None => {
                 let mut hwid = [0u8; HWID_ARR_SZ];
                 log::trace!("getting hardware id for input dev: {input_dev}");
                 let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
                 let dev_is_interceptable = allowed.contains(&hwid);
-                log::info!("res {res}; device #{input_dev} hwid {hwid:?} matches allowed keyboard input: {dev_is_interceptable}");
+                log::info!("include check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
                 cache.insert(input_dev, dev_is_interceptable);
                 dev_is_interceptable
             }
         },
+        (None, Some(excluded)) => match cache.get(&input_dev) {
+            Some(v) => *v,
+            None => {
+                let mut hwid = [0u8; HWID_ARR_SZ];
+                log::trace!("getting hardware id for input dev: {input_dev}");
+                let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
+                let dev_is_interceptable = !excluded.contains(&hwid);
+                log::info!("exclude check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
+                cache.insert(input_dev, dev_is_interceptable);
+                dev_is_interceptable
+            }
+        },
+        _ => unreachable!("excluded and allowed should be mutually exclusive"),
     }
 }
 fn mouse_state_to_event(
     input_dev: ic::Device,
     allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
+    excluded_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
     state: ic::MouseState,
     rolling: i16,
     intrcptn: &ic::Interception,
@@ -162,6 +184,7 @@ fn mouse_state_to_event(
         input_dev,
         intrcptn,
         allowed_hwids,
+        excluded_hwids,
         device_interceptability_cache,
     ) {
         return None;
