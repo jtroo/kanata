@@ -1,6 +1,9 @@
 use super::*;
+
 use kanata_parser::trie::Trie;
 use rustc_hash::FxHashSet;
+
+use std::rc::Rc;
 
 /// Tracks current input to check against possible chords.
 /// This does not store by the input order;
@@ -25,7 +28,7 @@ struct ZchPossibleChords {
 /// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
 struct ZchChordOutput {
     zch_output: Box<str>,
-    zch_followups: Option<ZchPossibleChords>,
+    zch_followups: Option<Rc<ZchPossibleChords>>,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -36,15 +39,16 @@ struct ZchSortedChord {
 }
 impl ZchSortedChord {
     fn zch_insert(&mut self, key: u16) {
-        match self.keys.binary_search(&key) {
+        match self.zch_keys.binary_search(&key) {
             Ok(pos) => {} // Element already in vector @ `pos`. Normally this wouldn't be expected
             // to happen but it turns out that key repeat might get in the way of
             // this assumption.
-            Err(pos) => self.keys.insert(pos, key),
+            Err(pos) => self.zch_keys.insert(pos, key),
         }
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
     ZchEnabled,
     ZchDisabled,
@@ -68,7 +72,7 @@ struct ZchDynamicState {
     /// Using the example above, when dy has been activated, the `1` and `2` activations will be
     /// contained within `zch_prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
-    zch_prioritized_chords: Option<ZchPossibleChords>,
+    zch_prioritized_chords: Option<Rc<ZchPossibleChords>>,
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared.
     zch_ticks_since_state_change: u16,
@@ -77,6 +81,9 @@ struct ZchDynamicState {
 }
 
 impl ZchDynamicState {
+    fn zch_is_disabled(&self) -> bool {
+        self.zch_enabled_state == ZchEnabledState::ZchDisabled
+    }
     fn zchd_tick(&mut self) {
         const TICKS_UNTIL_FORCE_STATE_RESET: u16 = 10000;
         self.zch_ticks_since_state_change += 1;
@@ -87,18 +94,19 @@ impl ZchDynamicState {
     fn zchd_reset(&mut self) {
         self.zch_enabled_state = ZchEnabledState::ZchEnabled;
         self.zch_pressed_keys.clear();
-        self.zch_sorted_inputs.zch_inputs.clear();
+        self.zch_sorted_inputs.zch_inputs.zch_keys.clear();
+        self.zch_prioritized_chords = None;
     }
     fn zchd_is_idle(&self) -> bool {
         self.zch_enabled_state == ZchEnabledState::ZchEnabled
-            && self.zch_dynamic.zch_pressed_keys.is_empty()
+            && self.zch_pressed_keys.is_empty()
     }
     fn zchd_press_key(&mut self, osc: OsCode) {
         self.zch_pressed_keys.insert(osc);
-        self.zch_sorted_inputs.zch_inputs.insert(osc);
+        self.zch_sorted_inputs.zch_inputs.zch_insert(osc.into());
     }
     fn zchd_release_key(&mut self, osc: OsCode) {
-        self.zch_pressed_keys.remove(osc);
+        self.zch_pressed_keys.remove(&osc);
         if self.zch_pressed_keys.is_empty() {
             self.zch_enabled_state = ZchEnabledState::ZchEnabled;
         } else {
@@ -151,6 +159,6 @@ impl ZchState {
     /// Returns true if zch state has no further processing so the idling optimization can
     /// activate.
     pub(crate) fn zch_is_idle(&self) -> bool {
-        self.zchd_is_idle()
+        self.zch_dynamic.zchd_is_idle()
     }
 }
