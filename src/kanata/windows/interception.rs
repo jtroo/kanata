@@ -151,7 +151,7 @@ fn is_device_interceptable(
                 log::trace!("getting hardware id for input dev: {input_dev}");
                 let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
                 let dev_is_interceptable = allowed.contains(&hwid);
-                log::info!("res {res}; device #{input_dev} hwid {hwid:?} matches allowed: {dev_is_interceptable}");
+                log::info!("include check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
                 cache.insert(input_dev, dev_is_interceptable);
                 dev_is_interceptable
             }
@@ -163,7 +163,7 @@ fn is_device_interceptable(
                 log::trace!("getting hardware id for input dev: {input_dev}");
                 let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
                 let dev_is_interceptable = !excluded.contains(&hwid);
-                log::info!("res {res}; device #{input_dev} hwid {hwid:?} omitted from exclude: {dev_is_interceptable}");
+                log::info!("exclude check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
                 cache.insert(input_dev, dev_is_interceptable);
                 dev_is_interceptable
             }
