@@ -128,7 +128,7 @@ impl ZchDynamicState {
     }
 }
 
-struct ZchState {
+pub(crate) struct ZchState {
     /// Dynamic state. Maybe doesn't make sense to separate this from zch_chords and to instead
     /// just flatten the structures.
     zchd: ZchDynamicState,
@@ -182,7 +182,7 @@ static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| {
     })
 });
 
-fn zch() -> MutexGuard<'static, ZchState> {
+pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
     match ZCH.lock() {
         Ok(guard) => guard,
         Err(poisoned) => {

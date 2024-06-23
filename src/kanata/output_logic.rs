@@ -104,7 +104,7 @@ fn post_filter_press(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error>
     }
     #[cfg(feature = "zippychord")]
     {
-        kb.press_key(osc)
+        zch().zch_press_key(kb, osc)
     }
 }
 
@@ -115,6 +115,6 @@ fn post_filter_release(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Erro
     }
     #[cfg(feature = "zippychord")]
     {
-        kb.release_key(osc)
+        zch().zch_release_key(kb, osc)
     }
 }
