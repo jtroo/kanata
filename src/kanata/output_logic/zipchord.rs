@@ -65,6 +65,7 @@ impl ZchSortedChord {
 enum ZchEnabledState {
     #[default]
     ZchEnabled,
+    ZchWaitEnable,
     ZchDisabled,
 }
 
@@ -91,6 +92,9 @@ struct ZchDynamicState {
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared.
     zchd_ticks_since_state_change: u16,
+    /// Zch has a time delay between being disabled->pending-enabled->truly-enabled to mitigate
+    /// against unintended activations.
+    zchd_ticks_until_enabled: u16,
     /// Tracks the actually pressed keys to know when state can be reset.
     zchd_pressed_keys: FxHashSet<OsCode>,
 }
@@ -102,12 +106,19 @@ impl ZchDynamicState {
     fn zchd_tick(&mut self) {
         const TICKS_UNTIL_FORCE_STATE_RESET: u16 = 10000;
         self.zchd_ticks_since_state_change += 1;
+        if self.zchd_enabled_state == ZchEnabledState::ZchWaitEnable {
+            self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
+            if self.zchd_ticks_until_enabled == 0 {
+                self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
+            }
+        }
         if self.zchd_ticks_since_state_change > TICKS_UNTIL_FORCE_STATE_RESET {
             self.zchd_reset();
         }
     }
-    fn zchd_state_change(&mut self) {
+    fn zchd_state_change(&mut self, cfg: &ZchConfig) {
         self.zchd_ticks_since_state_change = 0;
+        self.zchd_ticks_until_enabled = cfg.zch_cfg_ticks_wait_enable;
     }
     /// Clean up the state. Not expected to be necessary to call constantly but rather only when
     /// state doesn't seem to be cleaning up on its own enough.
@@ -132,7 +143,7 @@ impl ZchDynamicState {
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.remove(&osc);
         self.zchd_enabled_state = match self.zchd_pressed_keys.is_empty() {
-            true => ZchEnabledState::ZchEnabled,
+            true => ZchEnabledState::ZchWaitEnable,
             false => ZchEnabledState::ZchDisabled,
         };
     }
@@ -145,6 +156,8 @@ pub(crate) struct ZchState {
     /// Chords configured by the user. This is fixed at runtime other than live-reloads replacing
     /// the state.
     zch_chords: ZchPossibleChords,
+    /// Options to configure behaviour.
+    zch_cfg: ZchConfig,
 }
 
 impl ZchState {
@@ -157,7 +170,7 @@ impl ZchState {
         if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() {
             return kb.press_key(osc);
         }
-        self.zchd.zchd_state_change();
+        self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_press_key(osc);
         // check prioritized chords
         // check regular chords
@@ -177,7 +190,7 @@ impl ZchState {
         if self.zch_chords.is_empty() {
             return kb.release_key(osc);
         }
-        self.zchd.zchd_state_change();
+        self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_release_key(osc);
         kb.release_key(osc)
     }
@@ -196,6 +209,7 @@ static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| {
     Mutex::new(ZchState {
         zchd: Default::default(),
         zch_chords: Default::default(),
+        zch_cfg: Default::default(),
     })
 });
 
@@ -206,6 +220,18 @@ pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
             let mut inner = poisoned.into_inner();
             inner.zchd.zchd_reset();
             inner
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ZchConfig {
+    zch_cfg_ticks_wait_enable: u16,
+}
+impl Default for ZchConfig {
+    fn default() -> Self {
+        Self {
+            zch_cfg_ticks_wait_enable: 50,
         }
     }
 }
