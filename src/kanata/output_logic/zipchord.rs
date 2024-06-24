@@ -15,6 +15,11 @@ use std::sync::MutexGuard;
 struct ZchSortedInputs {
     zch_inputs: ZchSortedChord,
 }
+impl ZchSortedInputs {
+    fn zchsi_insert(&mut self, osc: OsCode) {
+        self.zch_inputs.zch_insert(osc.into());
+    }
+}
 
 /// All possible chords.
 #[derive(Debug, Clone, Default)]
@@ -98,6 +103,9 @@ impl ZchDynamicState {
             self.zchd_reset();
         }
     }
+    fn zchd_state_change(&mut self) {
+        self.zchd_ticks_since_state_change = 0;
+    }
     /// Clean up the state. Not expected to be necessary to call constantly but rather only when
     /// state doesn't seem to be cleaning up on its own enough.
     fn zchd_reset(&mut self) {
@@ -116,15 +124,14 @@ impl ZchDynamicState {
     }
     fn zchd_press_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.insert(osc);
-        self.zchd_sorted_inputs.zch_inputs.zch_insert(osc.into());
+        self.zchd_sorted_inputs.zchsi_insert(osc);
     }
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.remove(&osc);
-        if self.zchd_pressed_keys.is_empty() {
-            self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
-        } else {
-            self.zchd_enabled_state = ZchEnabledState::ZchDisabled;
-        }
+        self.zchd_enabled_state = match self.zchd_pressed_keys.is_empty() {
+            true => ZchEnabledState::ZchEnabled,
+            false => ZchEnabledState::ZchDisabled,
+        };
     }
 }
 
@@ -147,22 +154,26 @@ impl ZchState {
         if self.zchd.zchd_is_disabled() {
             return kb.press_key(osc);
         }
-        self.zchd.zchd_ticks_since_state_change = 0;
+        self.zchd.zchd_state_change();
         self.zchd.zchd_press_key(osc);
+        // check prioritized chords
+        // check regular chords
+        // if neither has any potential activation left, disable
+        if todo!() {
+            self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
+            return kb.press_key(osc);
+        }
         todo!()
     }
-    /// Zch handling for key presses.
+    /// Zch handling for key releases.
     pub(crate) fn zch_release_key(
         &mut self,
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zchd.zchd_is_disabled() {
-            return kb.release_key(osc);
-        }
-        self.zchd.zchd_ticks_since_state_change = 0;
+        self.zchd.zchd_state_change();
         self.zchd.zchd_release_key(osc);
-        todo!()
+        kb.release_key(osc)
     }
     /// Tick the zch output state.
     pub(crate) fn zch_tick(&mut self) {
