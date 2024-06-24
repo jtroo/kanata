@@ -23,8 +23,11 @@ impl ZchSortedInputs {
 
 /// All possible chords.
 #[derive(Debug, Clone, Default)]
-struct ZchPossibleChords {
-    zch_chords: Trie<ZchChordOutput>,
+struct ZchPossibleChords(Trie<ZchChordOutput>);
+impl ZchPossibleChords {
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// A chord.
@@ -151,7 +154,7 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zchd.zchd_is_disabled() {
+        if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() {
             return kb.press_key(osc);
         }
         self.zchd.zchd_state_change();
@@ -171,6 +174,9 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
+        if self.zch_chords.is_empty() {
+            return kb.release_key(osc);
+        }
         self.zchd.zchd_state_change();
         self.zchd.zchd_release_key(osc);
         kb.release_key(osc)
