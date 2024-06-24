@@ -45,7 +45,7 @@ struct ZchSortedChord {
 impl ZchSortedChord {
     fn zch_insert(&mut self, key: u16) {
         match self.zch_keys.binary_search(&key) {
-            Ok(pos) => {} // Element already in vector @ `pos`. Normally this wouldn't be expected
+            Ok(_pos) => {} // Element already in vector @ `pos`. Normally this wouldn't be expected
             // to happen but it turns out that key repeat might get in the way of
             // this assumption.
             Err(pos) => self.zch_keys.insert(pos, key),

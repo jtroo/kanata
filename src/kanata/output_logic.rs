@@ -118,3 +118,21 @@ fn post_filter_release(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Erro
         zch().zch_release_key(kb, osc)
     }
 }
+
+pub(super) fn zippy_is_idle() -> bool {
+    #[cfg(not(feature = "zippychord"))]
+    {
+        true
+    }
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_is_idle()
+    }
+}
+
+pub(super) fn zippy_tick() {
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_tick()
+    }
+}

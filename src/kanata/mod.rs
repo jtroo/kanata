@@ -774,6 +774,7 @@ impl Kanata {
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
         tick_record_state(&mut self.dynamic_macro_record_state);
+        zippy_tick();
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
         #[cfg(feature = "simulated_output")]
@@ -2008,6 +2009,7 @@ impl Kanata {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
         self.layout.b().queue.is_empty()
+            && zippy_is_idle()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
             && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
