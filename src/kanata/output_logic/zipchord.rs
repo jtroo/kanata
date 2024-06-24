@@ -206,9 +206,7 @@ impl ZchState {
     }
 }
 
-static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| {
-    Mutex::new(Default::default())
-});
+static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
 
 pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
     match ZCH.lock() {
