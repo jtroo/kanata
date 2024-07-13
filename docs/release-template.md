@@ -2,7 +2,7 @@
 
 <!-- NOTE: GitHub release doc seems to not support multiline paragraph joining as opposed to other places markdown is used in GitHub. Keep paragraphs on one line in this file, as ugly as it is to do so. -->
 
-Link to the appropriate configuration guide version: [guide link](https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc).
+Link to the appropriate configuration guide version: [guide link TODO: FIX LINK](https://github.com/jtroo/kanata/blob/FIXME/docs/config.adoc).
 
 ## Changelog (since <TODO: previous_version_here>)
 
@@ -39,7 +39,7 @@ This variant contains the same output change as in the `scancode` variant below,
 
 ---
 
-**NOTE:** The `kanata_legacy_output.exe` variant has the same input `defsrc` handling as the standard `kanata.exe` file. It uses the same output mechanism as the standard `kanata.exe` variant in version 1.6.1 and earlier. In other words the formerly `experimental_scancode` variant is nwow default binary. The non-legacy variants contain changes for [an issue](https://github.com/jtroo/kanata/issues/567), which is omitted from this legacy variant. The legacy variant is included in case issues are found with the new output mechanism.
+**NOTE:** The `kanata_legacy_output.exe` variant has the same input `defsrc` handling as the standard `kanata.exe` file. It uses the same output mechanism as the standard `kanata.exe` variant in version 1.6.1 and earlier. In other words the formerly `experimental_scancode` variant is now the default binary. The non-legacy variants contain changes for [an issue](https://github.com/jtroo/kanata/issues/567); the fix is omitted from this legacy variant. The legacy variant is included in case issues are found with the new output mechanism.
 
 ---
 
@@ -149,15 +149,11 @@ C:\Users\my_user\Documents\
 ## kanata\_passthru.dll
 
 <details>
-<summary>Explanation</summary>
+<summary>Explanation and instructions</summary>
 
 The Windows `kanata_passthru.dll` file allows using Kanata as a library within AutoHotkey to avoid conflicts between keyboard hooks installed by both. You can channel keyboard input events received by AutoHotkey into Kanata's keyboard engine and get the transformed keyboard output events (per your Kanata config) that AutoHotkey can then send to the OS.
-</details>
 
-<details>
-<summary>Instructions</summary>
-
-Download `kanata_passthru.dll`, then the [simulated_passthru_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief example, place the dll there, open `kanata_passthru.ahk` to read what the example does and then double-click to launch it.
+To make use of this, download `kanata_passthru.dll`, then the [simulated_passthru_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief example, place the dll there, open `kanata_passthru.ahk` to read what the example does and then double-click to launch it.
 </details>
 
 ## sha256 checksums
