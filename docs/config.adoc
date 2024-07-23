@@ -1882,7 +1882,7 @@ activated by a chord.
 ----
 (defcfg concurrent-tap-hold yes)
 (defchordsv2-experimental
-  (a s)    c                200 last-release  (non-chord-layer)
+  (a s)    c                200 all-released  (non-chord-layer)
   (a s d) (macro h e l l o) 250 first-release (non-chord-layer)
   (s d f) (macro b y e)     400 first-release (non-chord-layer)
 )
