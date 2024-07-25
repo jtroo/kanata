@@ -10,7 +10,11 @@ use kanata_parser::keys::*;
 const LP: &str = "cmd-out:";
 
 #[cfg(not(feature = "simulated_output"))]
-pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
+pub(super) fn run_cmd_in_thread(
+    cmd_and_args: Vec<String>,
+    log_level: Option<log::Level>,
+    error_log_level: Option<log::Level>,
+) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut args = cmd_and_args.iter();
         let mut printable_cmd = String::new();
@@ -29,17 +33,31 @@ pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinH
             printable_cmd.push(' ');
             printable_cmd.push_str(arg.as_str());
         }
-        log::info!("Running cmd: {}", printable_cmd);
+        if let Some(level) = log_level {
+            log::log!(level, "Running cmd: {}", printable_cmd);
+        }
         match cmd.output() {
             Ok(output) => {
-                log::info!(
-                    "Successfully ran cmd: {}\nstdout:\n{}\nstderr:\n{}",
-                    printable_cmd,
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                );
+                if let Some(level) = log_level {
+                    log::log!(
+                        level,
+                        "Successfully ran cmd: {}\nstdout:\n{}\nstderr:\n{}",
+                        printable_cmd,
+                        String::from_utf8_lossy(&output.stdout),
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                };
             }
-            Err(e) => log::error!("Failed to execute program {:?}: {}", cmd.get_program(), e),
+            Err(e) => {
+                if let Some(level) = error_log_level {
+                    log::log!(
+                        level,
+                        "Failed to execute program {:?}: {}",
+                        cmd.get_program(),
+                        e
+                    )
+                }
+            }
         };
     })
 }
@@ -218,7 +236,11 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
 }
 
 #[cfg(feature = "simulated_output")]
-pub(super) fn run_cmd_in_thread(cmd_and_args: Vec<String>) -> std::thread::JoinHandle<()> {
+pub(super) fn run_cmd_in_thread(
+    cmd_and_args: Vec<String>,
+    _log_level: Option<log::Level>,
+    _error_log_level: Option<log::Level>,
+) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         println!("cmd:{cmd_and_args:?}");
     })

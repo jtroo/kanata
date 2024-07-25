@@ -1478,6 +1478,30 @@ fn parse_cmd() {
 }
 
 #[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_log() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(deflayer base a)
+(defvar
+    x blah
+    y (nyoom)
+    z (squish squash (splish splosh))
+)
+(defalias
+    1 (cmd-log debug debug hello world)
+    2 (cmd-log error warn (hello world))
+    3 (cmd-log info debug $x $y ($z))
+    4 (cmd-log none none hello world)
+)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
 fn parse_defvar_concat() {
     let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"

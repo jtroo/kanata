@@ -1692,6 +1692,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
         CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
+        CMD_LOG => parse_cmd_log(&ac[1..], s),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
         CAPS_WORD | CAPS_WORD_A => {
@@ -2246,8 +2247,40 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
 }
 
 enum CmdType {
-    Standard,
-    OutputKeys,
+    Standard,   // Execute command in own thread
+    OutputKeys, // Execute command and output stdout
+}
+
+// Parse cmd, but there are 2 arguments before specifying normal log and error log
+fn parse_cmd_log(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_STR: &str =
+        "cmd-log expects at least 3 strings, <log-level> <error-log-level> <cmd...>";
+    if !s.is_cmd_enabled {
+        bail!("cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration");
+    }
+    if ac_params.len() < 3 {
+        bail!(ERR_STR);
+    }
+    let mut cmd = vec![];
+    let log_level =
+        if let Some(Ok(input_mode)) = ac_params[0].atom(s.vars()).map(LogLevel::try_from_str) {
+            input_mode
+        } else {
+            bail_expr!(&ac_params[0], "{ERR_STR}\n{}", LogLevel::err_msg());
+        };
+    let error_log_level =
+        if let Some(Ok(input_mode)) = ac_params[1].atom(s.vars()).map(LogLevel::try_from_str) {
+            input_mode
+        } else {
+            bail_expr!(&ac_params[1], "{ERR_STR}\n{}", LogLevel::err_msg());
+        };
+    collect_strings(&ac_params[2..], &mut cmd, s);
+    if cmd.is_empty() {
+        bail!(ERR_STR);
+    }
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::CmdLog(log_level, error_log_level, cmd)),
+    ))))
 }
 
 fn parse_cmd(

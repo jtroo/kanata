@@ -1615,6 +1615,33 @@ before the rest of your command to achieve this.
 )
 ----
 
+By default, `+cmd+` logs start of command, completion of command, stdout, and stderr. 
+Using the variant `+cmd-log+`, these log levels can be changed, and even disabled. 
+It takes two arguments, `+<log_level>+` and `+<error_log_level>+`. `+<log_level>+` 
+will be the level where the command to run, stdout, and stderr are logged. 
+The error channel is logged only if there is a failure with running the 
+command (typically if the command can't be found, or there is trouble spawning it).
+
+The valid levels are `+debug+`, `+info+`, `+warn+`, `+error+`, and `+none+`.
+
+.Example:
+[source]
+----
+(defalias
+  ;; The first two arguments are the log levels, then just the normal command
+  ;; This will only error if `bash` is not found or something else goes
+  ;; wrong with the initial execution. Any logs produced by bash will not
+  ;; be shown.
+  noisy-cmd (cmd-log none error bash -c "echo hello this produces a log")
+
+  ;; This will only log the output of the command, but it won't start
+  ;; because the command doesn't exist.
+  ignore-failure-cmd (cmd-log info none thiscmddoesnotexist)
+
+  verbose-only-log (cmd-log verbose verbose bash -c "echo yo")
+)
+----
+
 There is a variant of `cmd`: `cmd-output-keys`. This variant reads the output
 of the executed program and reads it as an S-expression, similarly to the
 <<macro, macro action>>. However — unlike macro — only delays, keys, chords, and
