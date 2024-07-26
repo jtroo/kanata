@@ -702,6 +702,36 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; cm1 (cmd bash -c "echo hello world")
   ;; cm2 (cmd rm -fr /tmp/testing)
+
+  ;; One variant of `cmd` is `cmd-log`, which lets you control how
+  ;; running command, stdout, stderr, and execution failure are logged.
+  ;;
+  ;; The command takes two extra arguments at the beginning `<log_level>`,
+  ;; and `<error_log_level>`. `<log_level>` controls where the name
+  ;; of the command is logged, as well as the success message and command 
+  ;; stdout and stderr.
+  ;;
+  ;; `<error_log_level>` is only used if there is a failure executing the initial
+  ;; command. This can be if there is trouble spawning the command, or
+  ;; the command is not found. This means if you use `bash -c "thisisntacommand"`, as
+  ;; long as bash starts up correctly, nothing would be logged to this channel, but
+  ;; something like `thisisntacommand` would be.
+  ;;
+  ;; The log level can be `debug`, `info`, `warn`, `error`, or `none`.
+  ;;
+  ;; cmd-log info error bash -c "echo these are the default levels"
+  ;; cmd-log none none bash -c "echo nothing back in kanata logs"
+  ;; cmd-log none error bash -c "only if command fails"
+  ;; cmd-log debug debug bash -c "echo log, but require changing verbosity levels"
+  ;; cmd-log warn warn bash -c "echo this probably isn't helpful"
+
+  ;; Another variant of `cmd` is `cmd-output-keys`. This reads the output
+  ;; of the command and treats it as an S-Expression, similarly to `macro`.
+  ;; However, only delays, keys, chords, and chorded lists are supported.
+  ;; Other actions are not.
+  ;; 
+  ;; bash: type date-time as YYYY-MM-DD HH:MM
+  ;; cmd-output-keys bash -c "date +'%F %R' | sed 's/./& /g' | sed 's/:/S-;/g' | sed 's/\(.\{20\}\)\(.*\)/\(\1 spc \2\)/'"
 )
 
 ;; The underscore _ means transparent. The key on the base layer will be used

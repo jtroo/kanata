@@ -1326,7 +1326,19 @@ impl Kanata {
                         }
                         CustomAction::Cmd(_cmd) => {
                             #[cfg(feature = "cmd")]
-                            cmds.push(_cmd.clone());
+                            cmds.push((
+                                Some(log::Level::Info),
+                                Some(log::Level::Error),
+                                _cmd.clone(),
+                            ));
+                        }
+                        CustomAction::CmdLog(_log_level, _error_log_level, _cmd) => {
+                            #[cfg(feature = "cmd")]
+                            cmds.push((
+                                _log_level.get_level(),
+                                _error_log_level.get_level(),
+                                _cmd.clone(),
+                            ));
                         }
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
@@ -1992,10 +2004,10 @@ fn test_unmodmods_bits() {
 }
 
 #[cfg(feature = "cmd")]
-fn run_multi_cmd(cmds: Vec<Vec<String>>) {
+fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)>) {
     std::thread::spawn(move || {
-        for cmd in cmds {
-            if let Err(e) = run_cmd_in_thread(cmd).join() {
+        for (cmd_log_level, cmd_error_log_level, cmd) in cmds {
+            if let Err(e) = run_cmd_in_thread(cmd, cmd_log_level, cmd_error_log_level).join() {
                 log::error!("problem joining thread {:?}", e);
             }
         }

@@ -12,6 +12,7 @@ use crate::{cfg::SimpleSExpr, keys::OsCode};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
+    CmdLog(LogLevel, LogLevel, Vec<String>),
     CmdOutputKeys(Vec<String>),
     PushMessage(Vec<SimpleSExpr>),
     Unicode(char),
@@ -221,6 +222,49 @@ impl SequenceInputMode {
 
     pub fn err_msg() -> String {
         format!("sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}")
+    }
+}
+
+const LOG_LEVEL_DEBUG: &str = "debug";
+const LOG_LEVEL_INFO: &str = "info";
+const LOG_LEVEL_WARN: &str = "warn";
+const LOG_LEVEL_ERROR: &str = "error";
+const LOG_LEVEL_NONE: &str = "none";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LogLevel {
+    // No trace here because that wouldn't make sense
+    Debug,
+    Info,
+    Warn,
+    Error,
+    None,
+}
+
+impl LogLevel {
+    pub fn try_from_str(s: &str) -> Result<Self> {
+        match s {
+            LOG_LEVEL_DEBUG => Ok(LogLevel::Debug),
+            LOG_LEVEL_INFO => Ok(LogLevel::Info),
+            LOG_LEVEL_WARN => Ok(LogLevel::Warn),
+            LOG_LEVEL_ERROR => Ok(LogLevel::Error),
+            LOG_LEVEL_NONE => Ok(LogLevel::None),
+            _ => Err(anyhow!(LogLevel::err_msg())),
+        }
+    }
+
+    pub fn get_level(&self) -> Option<log::Level> {
+        match self {
+            LogLevel::Debug => Some(log::Level::Debug),
+            LogLevel::Info => Some(log::Level::Info),
+            LogLevel::Warn => Some(log::Level::Warn),
+            LogLevel::Error => Some(log::Level::Error),
+            LogLevel::None => None,
+        }
+    }
+
+    pub fn err_msg() -> String {
+        format!("log level must be one of: {LOG_LEVEL_DEBUG}, {LOG_LEVEL_INFO}, {LOG_LEVEL_WARN}, {LOG_LEVEL_ERROR}, {LOG_LEVEL_NONE}")
     }
 }
 
