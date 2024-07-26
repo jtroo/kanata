@@ -309,3 +309,26 @@ NOTE: This is for the https://kbdlayout.info/kbdbr[ABNT2 QWERTY layout]. Tested 
 )
 ----
 ====
+
+
+== Swedish QWERTY Localkeys (Windows)[[swedish]]
+
+[%collapsible]
+====
+----
+(deflocalkeys-win
+  §   220
+  +   187
+  ´   219
+  å   221
+  ¨   186
+  ö   192
+  ä   222
+  '   191
+  <   226
+  ,   188
+  .   190
+  -   189
+)
+----
+====
