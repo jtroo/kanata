@@ -327,7 +327,7 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             // ScanCode::AltPrintScreen = 0x55, /* Alt + print screen. */
             // ScanCode::SBCSChar = 0x77,
             OsCode::KEY_HENKAN => (ScanCode::Convert, KeyState::empty()),
-            OsCode::KEY_MUHENKAN => (ScanCode::NoConvert, KeyState::empty()),
+            OsCode::KEY_MUHENKAN => (ScanCode::NonConvert, KeyState::empty()),
             OsCode::KEY_PREVIOUSSONG => (ScanCode::Q, KeyState::E0),
             OsCode::KEY_NEXTSONG => (ScanCode::P, KeyState::E0), // 0x19
             OsCode::KEY_KPENTER => (ScanCode::Enter, KeyState::E0), // 0x1C
