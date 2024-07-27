@@ -104,7 +104,7 @@ pub fn u16_to_osc(input: u16) -> Option<OsCode> {
             0x6E => OsCode::KEY_F23,
             0x76 => OsCode::KEY_F24,
             0x70 => OsCode::KEY_KATAKANA,
-            0x79 => OsCode::KEY_HENKAN,  // Convert
+            0x79 => OsCode::KEY_HENKAN,   // Convert
             0x7B => OsCode::KEY_MUHENKAN, // Noconvert
             // Note: the OEM keys below don't seem to correspond to the same VK OEM
             // mappings as the LLHOOK codes.
