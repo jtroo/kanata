@@ -1,5 +1,6 @@
 use kanata_parser::keys::OsCode;
 
+#[rustfmt::skip]
 #[allow(unused)]
 pub fn u16_to_osc(input: u16) -> Option<OsCode> {
     Some(if input < 0xE000 {
