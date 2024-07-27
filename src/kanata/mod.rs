@@ -2114,8 +2114,7 @@ fn check_for_exit(_event: &KeyEvent) {
             }
             #[cfg(all(
                 not(target_os = "linux"),
-                not(target_os = "windows"),
-                not(feature = "gui")
+                not(all(target_os = "windows", feature = "gui"))
             ))]
             {
                 panic!("{EXIT_MSG}");
