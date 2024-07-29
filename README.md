@@ -188,7 +188,7 @@ cargo install --features cmd,interception_driver
 - Vim-like leader sequences to execute other actions
 - Optionally run a TCP server to interact with other programs
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
-- [Interception driver](http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
+- [Interception driver](https://web.archive.org/web/20240209172129/http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
   - Note that this issue exists, which is outside the control of this project:
     https://github.com/oblitum/Interception/issues/25
 
