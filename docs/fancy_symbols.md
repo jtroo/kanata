@@ -10,19 +10,19 @@
   |⇪             	| capslock                                 	|
   |⎋             	|`escape`                                  	|
   |⭾ ↹           	|`tab`                                     	|
-  |␠ ␣           	|`spacebar`                                	|
-  |␈ ⌫           	|`delete_or_backspace`                     	|
-  |␡ ⌦           	|`delete_forward`                          	|
-  |⏎ ↩ ⌤ ␤       	|`return_or_enter`                         	|
-  |︔ ⸴ ．⁄        	|`semicolon` / `comma` / `period` / `slash`	|
-  |⧵ ＼           	|`backslash`                               	|
+  |␠ ␣           	| `spc` spacebar                             	|
+  |␈ ⌫           	|`bspc` backspace (delete backward)         |
+  |␡ ⌦           	|`del` delete forward                      	|
+  |⏎ ↩ ⌤ ␤       	|`ret` return or enter                     	|
+  |︔ ⸴ ．⁄        	|semicolon `;` / comma `,` / period `.` / slash `/`	|
+  |⧵ ＼           	| backslash `\`                            	|
   |﹨ <           	|`non_us_backslash`                        	|
   |【 「 〔 ⎡       	|`open_bracket`                            	|
   |】 」 〕 ⎣       	|`close_bracket`                           	|
   |ˋ ˜           	|`grave_accent_and_tilde`                  	|
   |‐ ₌           	|`hyphen` `equal_sign`                     	|
-  |▲ ▼ ◀ ▶       	|`up`/`down`/`left`/`right` `_arrow`
-  |⇞ ⇟           	|`page_` `up`/`down`                    	|
+  |▲ ▼ ◀ ▶       	|`up`/`down`/`left`/`right` (arrows)        |
+  |⇞ ⇟           	|`pgup`/`pgdn` (page up, page down)	      |
   |⎀             	|`insert`                               	|
   |⇤ ⤒ ↖         	|`home`                                 	|
   |⇥ ⤓ ↘         	|`end`                                  	|
