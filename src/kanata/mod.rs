@@ -955,12 +955,12 @@ impl Kanata {
                 let kc = match mod_key {
                     UnmodMods::LSft => KeyCode::LShift,
                     UnmodMods::RSft => KeyCode::RShift,
-                    UnmodMods::LAlt => KeyCode::LGui,
-                    UnmodMods::RAlt => KeyCode::RGui,
+                    UnmodMods::LAlt => KeyCode::LAlt,
+                    UnmodMods::RAlt => KeyCode::RAlt,
                     UnmodMods::LCtl => KeyCode::LCtrl,
                     UnmodMods::RCtl => KeyCode::RCtrl,
-                    UnmodMods::LMet => KeyCode::LAlt,
-                    UnmodMods::RMet => KeyCode::RAlt,
+                    UnmodMods::LMet => KeyCode::LGui,
+                    UnmodMods::RMet => KeyCode::RGui,
                     _ => unreachable!("all bits of u8 should be covered"), // test_unmodmods_bits
                 };
                 cur_keys.retain(|k| *k != kc);
