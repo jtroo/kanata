@@ -127,28 +127,6 @@ pub struct HistoricalEvent<T> {
     pub ticks_since_occurrence: u16,
 }
 
-#[derive(Clone)]
-pub struct HistoricalEvents<'a, T> {
-    events: arraydeque::Iter<'a, T>,
-    ticks_since_occurrences: arraydeque::Iter<'a, u16>,
-}
-
-impl<'a, T> Iterator for HistoricalEvents<'a, T>
-where
-    T: Copy,
-{
-    type Item = HistoricalEvent<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let event = *self.events.next()?;
-        let ticks_since_occurrence = *self.ticks_since_occurrences.next()?;
-        Some(HistoricalEvent {
-            event,
-            ticks_since_occurrence,
-        })
-    }
-}
-
 impl<T> History<T>
 where
     T: Copy,

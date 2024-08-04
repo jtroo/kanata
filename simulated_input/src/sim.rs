@@ -29,7 +29,7 @@ pub fn default_sim() -> Vec<PathBuf> {
 /// - reading a text file with a sequence of key events, including key delays
 /// - interpreting them with kanata
 /// - printing out which actions or key/mouse events kanata would execute if the keys were
-/// pressed by a user
+///   pressed by a user
 /// - (optionally) saving the result to a file for reference
 struct Args {
     // Display different platform specific paths based on the target OS
@@ -110,10 +110,6 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
         "kanata_simulated_input v{} starting",
         env!("CARGO_PKG_VERSION")
     );
-    #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-    log::info!("using LLHOOK+SendInput for keyboard IO");
-    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-    log::info!("using the Interception driver for keyboard IO");
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
