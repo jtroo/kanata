@@ -33,10 +33,10 @@ fn unmod_keys_functionality_works() {
          up:RCtrl dn:C up:C dn:RCtrl \
          up:LShift dn:D up:D dn:LShift \
          up:RShift dn:E up:E dn:RShift \
-         up:LAlt dn:F up:F dn:LAlt \
-         up:RAlt dn:G up:G dn:RAlt \
-         up:LGui dn:H up:H dn:LGui \
-         up:RGui dn:I up:I dn:RGui \
+         up:LGui dn:F up:F dn:LGui \
+         up:RGui dn:G up:G dn:RGui \
+         up:LAlt dn:H up:H dn:LAlt \
+         up:RAlt dn:I up:I dn:RAlt \
          up:LCtrl up:LShift up:LGui up:LAlt dn:J up:J dn:LCtrl dn:LShift dn:LGui dn:LAlt",
         result
     );
