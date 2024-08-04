@@ -1,5 +1,6 @@
 use kanata_parser::keys::OsCode;
 
+#[rustfmt::skip]
 #[allow(unused)]
 pub fn u16_to_osc(input: u16) -> Option<OsCode> {
     Some(if input < 0xE000 {
@@ -103,6 +104,8 @@ pub fn u16_to_osc(input: u16) -> Option<OsCode> {
             0x6E => OsCode::KEY_F23,
             0x76 => OsCode::KEY_F24,
             0x70 => OsCode::KEY_KATAKANA,
+            0x79 => OsCode::KEY_HENKAN,   // Convert
+            0x7B => OsCode::KEY_MUHENKAN, // Noconvert
             // Note: the OEM keys below don't seem to correspond to the same VK OEM
             // mappings as the LLHOOK codes.
             // ScanCode::Oem1 = 0x5A, /* VK_OEM_WSCTRL */
@@ -117,8 +120,6 @@ pub fn u16_to_osc(input: u16) -> Option<OsCode> {
             // ScanCode::Help => 0x63,
             // ScanCode::AltPrintScreen = 0x55, /* Alt + print screen. */
             // ScanCode::SBCSChar = 0x77,
-            // ScanCode::Convert = 0x79,
-            // ScanCode::NonConvert = 0x7B,
             _ => return None,
         }
     } else {
