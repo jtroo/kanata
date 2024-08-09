@@ -1,7 +1,10 @@
+[workspace]
+members = ["."]
+
 [package]
 name = "kanata-interception"
 description = "Safe wrapper for Interception. Forked for use with kanata."
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Joe Kaushal <joe.kaushal@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/jtroo/kanata"

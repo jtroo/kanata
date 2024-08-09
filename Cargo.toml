@@ -10,6 +10,8 @@ members = [
     "simulated_passthru",
 ]
 exclude = [
+    "interception",
+    "key-sort-add",
     "wasm",
 ]
 resolver = "2"
