@@ -1,0 +1,32 @@
+(defcfg
+  ;; we are only mapping the keys we want to use for mouse keys
+  process-unmapped-keys yes
+
+  ;; you may wish to only capture a trackpoint and keyboard
+  ;; but not e.g. a trackpad or external mouse
+  ;;linux-dev-names-include (
+  ;;                         "AT Translated Set 2 keyboard"
+  ;;                         "TPPS/2 Elan TrackPoint"
+  ;;                          )
+  ;; optional, but useful with the trackpoint
+  ;;linux-use-trackpoint-property yes
+)
+
+(defsrc
+  k l ;
+  F24
+)
+
+(defalias
+  msk (layer-while-held mouse)
+)
+
+(deflayer qwerty
+  k l ;
+  @msk
+)
+
+(deflayer mouse
+  mlft mmid mrgt
+  XX
+)
