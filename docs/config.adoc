@@ -704,6 +704,10 @@ and without this behaviour,
 rapid typing can result in undesired modified key presses.
 If you want keys to remain pressed, use <<multi>> instead.
 
+WARNING: Output chords are not usable in all positions.
+For example, `+(unmod C-l)+` is an error;
+instead you should use `+(unmod lctl l)+`.
+
 Output chords are typically used do one-off actions such as:
 
 - type a symbol, e.g. `S-1`
@@ -1615,11 +1619,11 @@ before the rest of your command to achieve this.
 )
 ----
 
-By default, `+cmd+` logs start of command, completion of command, stdout, and stderr. 
-Using the variant `+cmd-log+`, these log levels can be changed, and even disabled. 
-It takes two arguments, `+<log_level>+` and `+<error_log_level>+`. `+<log_level>+` 
-will be the level where the command to run, stdout, and stderr are logged. 
-The error channel is logged only if there is a failure with running the 
+By default, `+cmd+` logs start of command, completion of command, stdout, and stderr.
+Using the variant `+cmd-log+`, these log levels can be changed, and even disabled.
+It takes two arguments, `+<log_level>+` and `+<error_log_level>+`. `+<log_level>+`
+will be the level where the command to run, stdout, and stderr are logged.
+The error channel is logged only if there is a failure with running the
 command (typically if the command can't be found, or there is trouble spawning it).
 
 The valid levels are `+debug+`, `+info+`, `+warn+`, `+error+`, and `+none+`.
