@@ -80,6 +80,10 @@ You can check the executable path with:
 which sh
 ```
 
+Also, verify if the path to kanata is included in the line `Environment=PATH=[...]`.
+For example, if executing `which kanata` returns `/home/[user]/.cargo/bin/kanata`, the `PATH` line should be appended with `/home/[user]/.cargo/bin` or `:%h/.cargo/bin`.
+`%h` is one of the specifiers allowed in systemd, more can be found in https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers
+
 Then run:
 ```bash
 systemctl --user daemon-reload
