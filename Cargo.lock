@@ -583,7 +583,7 @@ dependencies = [
  "indoc",
  "inotify",
  "instant",
- "kanata-interception 0.3.0",
+ "kanata-interception",
  "kanata-keyberon",
  "kanata-parser",
  "kanata-tcp-protocol",
@@ -608,18 +608,6 @@ dependencies = [
  "time",
  "winapi",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "kanata-interception"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e43d8fef551ec7944871b21ad005f3728999fc1ebad09f9625db5c692d42f44e"
-dependencies = [
- "bitflags 1.3.2",
- "interception-sys",
- "num_enum",
- "serde",
 ]
 
 [[package]]
@@ -1243,7 +1231,7 @@ dependencies = [
  "anyhow",
  "encode_unicode",
  "kanata",
- "kanata-interception 0.2.0",
+ "kanata-interception",
  "lazy_static",
  "log",
  "native-windows-gui",
@@ -1758,7 +1746,7 @@ dependencies = [
  "anyhow",
  "clap",
  "kanata",
- "kanata-interception 0.2.0",
+ "kanata-interception",
  "log",
  "native-windows-gui",
  "simplelog",
