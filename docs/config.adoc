@@ -83,6 +83,12 @@ order of keys that the `+deflayer+` entries will operate on.
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
 
+IMPORTANT: keys excluded from `defsrc` will not be processed by Kanata
+unless you have `process-unmapped-keys yes` in defcfg.
+This has implications on various actions.
+For example, excluded keys cannot trigger early activation in tap-hold-press/release,
+and cannot be read by fork or switch logic.
+
 It should be noted that the `defsrc` entry is treated as a long sequence; the
 amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
 spaces, tabs, or newlines however you like to visually format `defsrc` to your
@@ -1121,6 +1127,9 @@ than the initial key pressed.
 
 The default name `+one-shot+` corresponds to `+one-shot-press+`.
 
+NOTE: when using one-shot with keys that will be trigger defoverrides,
+you will likely want to use `override-release-on-activation yes` in `defcfg`.
+
 .Example:
 [source]
 ----
@@ -1699,6 +1708,9 @@ Both input and output lists accept 0 or more modifier keys (e.g. lctl, rsft)
 and exactly 1 non-modifier key (e.g. 1, bspc).
 
 Only zero or one `defoverrides` is allowed in a configuration file.
+
+NOTE: depending on your use case
+you may want to adjust <<override-release-on-activation>> in `defcfg`.
 
 .Example:
 [source]
