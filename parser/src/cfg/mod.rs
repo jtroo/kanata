@@ -611,7 +611,10 @@ pub fn parse_cfg_raw_string(
         .find(gen_first_atom_filter("defcfg"))
         .map(|cfg| parse_defcfg(cfg))
         .transpose()?
-        .unwrap_or_default();
+        .unwrap_or_else(|| {
+            log::warn!("No defcfg is defined. Consider whether the process-unmapped-keys defcfg option should be yes vs. no. Adding defcfg with process-unmapped-keys defined will remove this warning.");
+            Default::default()
+        });
     if let Some(spanned) = spanned_root_exprs
         .iter()
         .filter(gen_first_atom_filter_spanned("defcfg"))

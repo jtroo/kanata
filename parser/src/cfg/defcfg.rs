@@ -176,11 +176,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
     let mut seen_keys = HashSet::default();
     let mut cfg = CfgOptions::default();
     let mut exprs = check_first_expr(expr.iter(), "defcfg")?;
+    let mut is_process_unmapped_keys_defined = false;
     // Read k-v pairs from the configuration
     loop {
         let key = match exprs.next() {
             Some(k) => k,
-            None => return Ok(cfg),
+            None => {
+                if !is_process_unmapped_keys_defined {
+                    log::warn!("The item process-unmapped-keys is not defined in defcfg. Consider whether process-unmapped-keys should be yes vs. no.");
+                }
+                return Ok(cfg);
+            }
         };
         let val = match exprs.next() {
             Some(v) => v,
@@ -603,6 +609,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
 
                     "process-unmapped-keys" => {
+                        is_process_unmapped_keys_defined = true;
                         cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
                     }
                     "block-unmapped-keys" => {

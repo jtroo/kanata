@@ -369,12 +369,16 @@ This might be useful
 if you are only mapping a few keys in defsrc
 instead of most of the keys on your keyboard.
 
-Without this, some actions like `+rpt+`, `+tap-hold-release+`, `+one-shot+`,
-will not work correctly for subsequent key presses that are not in defsrc.
+By default, keys excluded from `defsrc` will not work in various scenarios.
+Some examples of when a not-in-defsrc key is pressed:
+
+- antecedent `+tap-hold-press+` activations will not trigger an early hold
+- antecedent `+one-shot+` activations will not be released
+- `fork|switch` logic will not be able to see the key
 
 This option is disabled by default.
-The reason this is not enabled by default is
-because some keys may not work correctly if they are intercepted.
+The reason this is not enabled by default
+is because some keys may not work correctly if they are intercepted.
 For example, see <<windows-only-windows-altgr>>.
 
 .Example:
