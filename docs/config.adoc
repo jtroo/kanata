@@ -83,7 +83,7 @@ order of keys that the `+deflayer+` entries will operate on.
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
 
-IMPORTANT: keys excluded from `defsrc` will not be processed by Kanata
+IMPORTANT: Keys excluded from `defsrc` will not be processed by Kanata
 unless you have `process-unmapped-keys yes` in defcfg.
 This has implications on various actions.
 For example, excluded keys cannot trigger early activation in tap-hold-press/release,
@@ -1127,8 +1127,8 @@ than the initial key pressed.
 
 The default name `+one-shot+` corresponds to `+one-shot-press+`.
 
-NOTE: when using one-shot with keys that will be trigger defoverrides,
-you will likely want to use `override-release-on-activation yes` in `defcfg`.
+NOTE: When using one-shot with keys that will trigger defoverrides,
+you will likely want to adjust <<override-release-on-activation>> to yes in `defcfg`.
 
 .Example:
 [source]
@@ -1709,7 +1709,7 @@ and exactly 1 non-modifier key (e.g. 1, bspc).
 
 Only zero or one `defoverrides` is allowed in a configuration file.
 
-NOTE: depending on your use case
+NOTE: Depending on your use case
 you may want to adjust <<override-release-on-activation>> in `defcfg`.
 
 .Example:
@@ -2268,6 +2268,7 @@ when activated by the override which is important to consider for your use cases
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
+
 By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices from the
 `/dev/input` directories using the `linux-dev` configuration.
