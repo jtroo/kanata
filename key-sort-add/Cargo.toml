@@ -1,3 +1,6 @@
+[workspace]
+members = ["."]
+
 [package]
 name = "key-sort-add"
 version = "0.1.0"

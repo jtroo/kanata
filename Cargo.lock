@@ -612,9 +612,9 @@ dependencies = [
 
 [[package]]
 name = "kanata-interception"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e43d8fef551ec7944871b21ad005f3728999fc1ebad09f9625db5c692d42f44e"
+checksum = "e2e57b9b964d19ac86906ea56e8a88001eb03c2b9cb96e4127225438750bb606"
 dependencies = [
  "bitflags 1.3.2",
  "interception-sys",

@@ -24,7 +24,14 @@ fn main() {
         .map(|l| {
             let mut segments = l.trim_end_matches(',').trim().split(" = ");
             let key = segments.next().expect("a string");
-            let num: u16 = str::parse(segments.next().expect("string after =")).expect("u16");
+            let num: u16 = u16::from_str_radix(
+                segments
+                    .next()
+                    .map(|s| s.trim_start_matches("0x"))
+                    .expect("string after ="),
+                16,
+            )
+            .expect("u16");
             (key.to_owned(), num)
         })
         .collect::<Vec<_>>();
@@ -36,12 +43,12 @@ fn main() {
     for cur in cur_key {
         let prev = prev_key.next().expect("lagging iterator is valid");
         for missing in prev.1 + 1..cur.1 {
-            keys_to_add.push((format!("KEY_{missing}"), missing));
+            keys_to_add.push((format!("KEY_{missing:X?}"), missing));
         }
     }
     keys.append(&mut keys_to_add);
     keys.sort_by_key(|k| k.1);
     for key in keys {
-        println!("{} = {},", key.0, key.1);
+        println!("{} = 0x{:X},", key.0, key.1);
     }
 }
