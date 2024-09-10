@@ -1,5 +1,6 @@
 use super::*;
 
+use kanata_parser::trie::GetOrDescendentExistsResult::*;
 use kanata_parser::trie::Trie;
 use rustc_hash::FxHashSet;
 
@@ -97,6 +98,7 @@ struct ZchDynamicState {
     zchd_ticks_until_enabled: u16,
     /// Tracks the actually pressed keys to know when state can be reset.
     zchd_pressed_keys: FxHashSet<OsCode>,
+    zchd_previous_activation_output: Option<Box<str>>,
 }
 
 impl ZchDynamicState {
@@ -128,6 +130,7 @@ impl ZchDynamicState {
         self.zchd_pressed_keys.clear();
         self.zchd_sorted_inputs.zch_inputs.zch_keys.clear();
         self.zchd_prioritized_chords = None;
+        self.zchd_previous_activation_output = None;
     }
     /// Returns true if dynamic zch state is such that idling optimization can activate.
     fn zchd_is_idle(&self) -> bool {
@@ -173,16 +176,48 @@ impl ZchState {
         }
         self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_press_key(osc);
-        // check prioritized chords
-        // check regular chords
-        // if neither has any potential activation left, disable
-        if todo!() {
-            self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
-            return kb.press_key(osc);
+        // There might be an activation.
+        // - delete typed keys
+        // - output activation
+        //
+        // Deletion of typed keys will be based on input keys if `zchd_previous_activation_output` is
+        // `None` or the previous output otherwise.
+        //
+        // Output activation will save into `zchd_previous_activation_output` if there is potential
+        // for subsequent activations, i.e. if zch_followups is `Some`.
+        let mut activation = NotInTrie;
+        if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
+            activation = pchords
+                .0
+                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zch_inputs.zch_keys);
         }
-        todo!()
+        if !matches!(activation, HasValue(..)) {
+            activation = self
+                .zch_chords
+                .0
+                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zch_inputs.zch_keys);
+        }
+        match activation {
+            HasValue(a) => {
+                // TODO: delete keys associated with either the input or self.zchd.zchd_previous_activation_output
+                self.zchd.zchd_previous_activation_output = Some(a.zch_output);
+                self.zchd.zchd_prioritized_chords = a.zch_followups;
+                todo!("type out activation.zch_output");
+            }
+            InTrie => {
+                self.zchd
+                    .zchd_sorted_inputs
+                    .zch_inputs
+                    .zch_insert(osc.into());
+                return kb.press_key(osc);
+            }
+            NotInTrie => {
+                self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
+                return kb.press_key(osc);
+            }
+        }
     }
-    /// Zch handling for key releases.
+    // Zch handling for key releases.
     pub(crate) fn zch_release_key(
         &mut self,
         kb: &mut KbdOut,

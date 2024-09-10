@@ -55,14 +55,14 @@ impl<T> Trie<T> {
 
     pub fn get_or_descendant_exists(&self, key: &TrieKey) -> GetOrDescendentExistsResult<T>
     where
-        T: Copy,
+        T: Clone,
     {
         let mut descendants = self.inner.iter_prefix(cast_slice(key));
         match descendants.next() {
             None => NotInTrie,
             Some(descendant) => {
                 if descendant.0.len() == key_len(key) {
-                    HasValue(*descendant.1)
+                    HasValue(descendant.1.clone())
                 } else {
                     InTrie
                 }
