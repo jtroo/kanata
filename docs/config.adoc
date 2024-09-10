@@ -233,6 +233,19 @@ NOTE: Please have a read through link:./platform-known-issues.adoc[the known pla
 because they may have implications on what you should include/exclude in `defsrc`.
 The Windows LLHOOK I/O mechanism has the most issues by far.
 
+[[key-names]]
+== Key names for defsrc and deflayermap
+<<table-of-contents,Back to ToC>>
+
+The source of truth for all default key names are the functions
+`str_to_oscode` and `add_default_str_osc_mappings`
+in the link:../parser/src/keys/mod.rs[keys/mod.rs file].
+
+https://www.toptal.com/developers/keycode[This online tool]
+will also work for most keys to tell you the key name.
+It will be shown as the `event.code` field in the web page
+after you press the key.
+
 [[non-us-keyboards]]
 == Non-US keyboards
 <<table-of-contents,Back to ToC>>
@@ -245,9 +258,9 @@ The two sections below can help you understand how to remap all your keys.
 === Browser event.code
 
 Ensure kanata and other key remapping programs are **not** running.
-Then you can use https://www.toptal.com/developers/keycode[this link]
+Then you can use https://www.toptal.com/developers/keycode[this online tool]
 and press the key.
-The `event.code` field tells you the key name.
+The `event.code` field tells you the key name to use in Kanata.
 Alternatively, you can read through
 https://www.w3.org/TR/uievents-code/[this reference].
 Due to the lengthy key names,
