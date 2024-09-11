@@ -1566,6 +1566,10 @@ A variant of `unmod` is `unshift` or `un⇧`.
 This action only releases the `lsft,rsft` keys.
 This can be useful for forcing unshifted keys while AltGr is still held.
 
+NOTE: In case the modifiers to be undone are not part of `defsrc`,
+<<process-unmapped-keys>> needs to be enabled in `defcfg` in order for their
+states to be tracked correctly.
+
 .Example:
 [source]
 ----
