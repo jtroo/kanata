@@ -3071,7 +3071,7 @@ fn parse_layers(
                             bail_expr!(input, "must either use _ or ___ within a layer, not both")
                         }
                         for i in 0..s.mapping_order.len() {
-                            if layers_cfg[layer_level][0][s.mapping_order[i]] == Action::Trans {
+                            if layers_cfg[layer_level][0][s.mapping_order[i]] == DEFAULT_ACTION {
                                 layers_cfg[layer_level][0][s.mapping_order[i]] = *action;
                             }
                         }
@@ -3090,7 +3090,7 @@ fn parse_layers(
                             bail_expr!(input, "must either use __ or ___ within a layer, not both")
                         }
                         for i in 0..layers_cfg[0][0].len() {
-                            if layers_cfg[layer_level][0][i] == Action::Trans
+                            if layers_cfg[layer_level][0][i] == DEFAULT_ACTION
                                 && !s.mapping_order.contains(&i)
                             {
                                 layers_cfg[layer_level][0][i] = *action;
@@ -3114,7 +3114,7 @@ fn parse_layers(
                             );
                         }
                         for i in 0..layers_cfg[0][0].len() {
-                            if layers_cfg[layer_level][0][i] == Action::Trans {
+                            if layers_cfg[layer_level][0][i] == DEFAULT_ACTION {
                                 layers_cfg[layer_level][0][i] = *action;
                             }
                         }
