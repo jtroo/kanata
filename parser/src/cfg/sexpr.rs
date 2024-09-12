@@ -293,12 +293,11 @@ impl<'a> Iterator for PositionCountingBytesIterator<'a> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.bytes.next().map(|b| {
+        self.bytes.next().inspect(|&b| {
             if b == b'\n' {
                 self.line += 1;
                 self.line_beginning = self.source_length - self.bytes.len()
             }
-            b
         })
     }
 }
