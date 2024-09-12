@@ -21,7 +21,7 @@ build_release_windows output_dir:
   cargo build --release --features passthru_ahk --package=simulated_passthru; cp target/release/kanata_passthru.dll "{{output_dir}}\kanata_passthru.dll"
   cargo build --release --features win_manifest,gui    ; cp target/release/kanata.exe "{{output_dir}}\kanata_gui.exe"
   cargo build --release --features win_manifest,gui,cmd; cp target/release/kanata.exe "{{output_dir}}\kanata_gui_cmd_allowed.exe"
-  cargo build --release --features win_manifest,gui    ,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_gui_wintercept.exe"
+  cargo build --release --features win_manifest,gui,interception_driver    ; cp target/release/kanata.exe "{{output_dir}}\kanata_gui_wintercept.exe"
   cargo build --release --features win_manifest,gui,cmd,interception_driver; cp target/release/kanata.exe "{{output_dir}}\kanata_gui_wintercept_cmd_allowed.exe"
   cp cfg_samples/kanata.kbd "{{output_dir}}"
 
