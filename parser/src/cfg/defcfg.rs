@@ -312,13 +312,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-output-device-bus-type" => {
+                        let bus_type = sexpr_to_str_or_err(val, label)?;
+                        match bus_type {
+                            "USB" | "I8042" => {},
+                            _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
+                        };
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let bus_type = sexpr_to_str_or_err(val, label)?;
                             let bus_type = match bus_type {
                                 "USB" => LinuxCfgOutputBusType::BusUsb,
                                 "I8042" => LinuxCfgOutputBusType::BusI8042,
-                                _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
+                                _ => unreachable!("validated earlier"),
                             };
                             cfg.linux_opts.linux_output_bus_type = bus_type;
                         }
