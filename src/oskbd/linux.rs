@@ -2,6 +2,7 @@
 
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
+pub use evdev::BusType;
 use evdev::{uinput, Device, EventType, InputEvent, PropType, RelativeAxisType};
 use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
@@ -324,7 +325,11 @@ pub struct KbdOut {
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
-    pub fn new(symlink_path: &Option<String>, trackpoint: bool) -> Result<Self, io::Error> {
+    pub fn new(
+        symlink_path: &Option<String>,
+        trackpoint: bool,
+        bus_type: BusType,
+    ) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
         // TODO investigate the rare possibility that a device is e.g. a Joystick and a Keyboard or a Mouse at the same time, which could lead to lost events
 
@@ -349,7 +354,7 @@ impl KbdOut {
             .name("kanata")
             // libinput's "disable while typing" feature don't work when bus_type
             // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
-            .input_id(evdev::InputId::new(evdev::BusType::BUS_I8042, 1, 1, 1))
+            .input_id(evdev::InputId::new(bus_type, 1, 1, 1))
             .with_keys(&keys)?
             .with_relative_axes(&relative_axes)?;
         let device = if trackpoint {

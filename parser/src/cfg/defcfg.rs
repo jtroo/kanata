@@ -9,22 +9,15 @@ use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Debug, Clone)]
 pub struct CfgLinuxOptions {
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev_names_include: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev_names_exclude: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_continue_if_no_devs_found: bool,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_unicode_u_code: crate::keys::OsCode,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_unicode_termination: UnicodeTermination,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_use_trackpoint_property: bool,
+    pub linux_output_bus_type: LinuxCfgOutputBusType,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -40,8 +33,15 @@ impl Default for CfgLinuxOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
+            linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
         }
     }
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Debug, Clone, Copy)]
+pub enum LinuxCfgOutputBusType {
+    BusUsb,
+    BusI8042,
 }
 
 #[cfg(any(
@@ -309,6 +309,22 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             cfg.linux_opts.linux_use_trackpoint_property =
                                 parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "linux-output-device-bus-type" => {
+                        let bus_type = sexpr_to_str_or_err(val, label)?;
+                        match bus_type {
+                            "USB" | "I8042" => {},
+                            _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
+                        };
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let bus_type = match bus_type {
+                                "USB" => LinuxCfgOutputBusType::BusUsb,
+                                "I8042" => LinuxCfgOutputBusType::BusI8042,
+                                _ => unreachable!("validated earlier"),
+                            };
+                            cfg.linux_opts.linux_output_bus_type = bus_type;
                         }
                     }
                     "windows-altgr" => {
