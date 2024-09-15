@@ -12,10 +12,7 @@ fn release_standard() {
         ",
     )
     .to_ascii();
-    assert_eq!(
-        "dn:LAlt dn:A t:10ms up:LAlt up:A",
-        result
-    );
+    assert_eq!("dn:LAlt dn:A t:10ms up:LAlt up:A", result);
 }
 
 #[test]
@@ -30,8 +27,5 @@ fn release_reversed() {
         ",
     )
     .to_ascii();
-    assert_eq!(
-        "dn:LAlt dn:A t:10ms up:A up:LAlt",
-        result
-    );
+    assert_eq!("dn:LAlt dn:A t:10ms up:A up:LAlt", result);
 }
