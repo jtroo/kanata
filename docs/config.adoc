@@ -2488,6 +2488,24 @@ changing their behavior as well.
 )
 ----
 
+[[linux-only-linux-output-device-bus-type]]
+=== Linux only: linux-output-device-bus-type
+<<table-of-contents,Back to ToC>>
+
+Kanata on Linux needs to declare a "bus type" for its evdev output device.
+The options are `USB` and `I8042`, with the default as `I8042`.
+Using USB can https://github.com/jtroo/kanata/pull/661[break disable-touchpad-while-typing on Wayland].
+But using I8042 appears to break https://github.com/jtroo/kanata/issues/1131[some other scenarios].
+Thus the output bus type is configurable.
+
+.Example:
+[source]
+----
+(defcfg
+   linux-output-device-bus-type USB
+)
+----
+
 [[macos-only-macos-dev-names-include]]
 === macOS only: macos-dev-names-include
 <<table-of-contents,Back to ToC>>

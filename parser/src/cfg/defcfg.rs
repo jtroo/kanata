@@ -311,14 +311,14 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 parse_defcfg_val_bool(val, label)?
                         }
                     }
-                    "linux-kanata-output-device-bus-type" => {
+                    "linux-output-device-bus-type" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let bus_type = sexpr_to_str_or_err(val, label)?;
                             let bus_type = match bus_type {
                                 "USB" => LinuxCfgOutputBusType::BusUsb,
                                 "I8042" => LinuxCfgOutputBusType::BusI8042,
-                                _ => bail_expr!(val, "Invalid value for linux-kanata-output-device-bus-type.\nExpected one of: USB or I8042"),
+                                _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
                             };
                             cfg.linux_opts.linux_output_bus_type = bus_type;
                         }

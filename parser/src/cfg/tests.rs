@@ -1366,6 +1366,8 @@ fn parse_all_defcfg() {
   linux-unicode-u-code v
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
+  linux-use-trackpoint-property yes
+  linux-output-device-bus-type USB
   tray-icon symbols.ico
   icon-match-layer-name no
   tooltip-layer-changes yes
@@ -1387,6 +1389,35 @@ fn parse_all_defcfg() {
     parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("parses");
+}
+
+#[test]
+fn parse_defcfg_linux_output_bus() {
+    let source = r#"
+(defcfg linux-output-device-bus-type USB)
+(defsrc a)
+(deflayer base a)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+    let source = r#"
+(defcfg linux-output-device-bus-type I8042)
+(defsrc a)
+(deflayer base a)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+    let source = r#"
+(defcfg linux-output-device-bus-type INVALID)
+(defsrc a)
+(deflayer base a)
+"#;
+    let err = parse_cfg(source).expect_err("should err");
+    assert!(err
+        .msg
+        .contains("Invalid value for linux-output-device-bus-type"));
 }
 
 #[test]
