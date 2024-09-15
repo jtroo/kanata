@@ -1476,9 +1476,6 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             "This is a list action and must be in parentheses: ({ac} ...)"
         );
     }
-    if let Some(oscode) = str_to_oscode(ac) {
-        return Ok(s.a.sref(k(oscode.into())));
-    }
     match ac {
         "_" | "‗" | "≝" => {
             if let Some(trans_forbidden_reason) = s.trans_forbidden_reason {
@@ -1551,6 +1548,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         "reverse-release-order" => return custom(CustomAction::ReverseReleaseOrder, &s.a),
         _ => {}
     };
+    if let Some(oscode) = str_to_oscode(ac) {
+        return Ok(s.a.sref(k(oscode.into())));
+    }
     if let Some(alias) = ac.strip_prefix('@') {
         return match s.aliases.get(alias) {
             Some(ac) => {
