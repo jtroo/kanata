@@ -33,14 +33,15 @@ impl Default for CfgLinuxOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
-            linux_output_bus_type: BUS_I8042,
+            linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
         }
     }
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Debug, Clone, Copy)]
 pub enum LinuxCfgOutputBusType {
-    BUS_USB,
-    BUS_I8042,
+    BusUsb,
+    BusI8042,
 }
 
 #[cfg(any(
@@ -313,11 +314,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-kanata-output-device-bus-type" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let bus_type_expr = sexpr_to_str_or_err(val, label)?;
+                            let bus_type = sexpr_to_str_or_err(val, label)?;
                             let bus_type = match bus_type {
-                                "USB" => LinuxCfgOutputBusType::BUS_USB,
-                                "I8042" => LinuxCfgOutputBusType::BUS_I8042,
-                                _ => bail_expr!(bus_type_expr, "Invalid value for linux-kanata-output-device-bus-type.\nExpected one of: USB or I8042"),
+                                "USB" => LinuxCfgOutputBusType::BusUsb,
+                                "I8042" => LinuxCfgOutputBusType::BusI8042,
+                                _ => bail_expr!(val, "Invalid value for linux-kanata-output-device-bus-type.\nExpected one of: USB or I8042"),
                             };
                             cfg.linux_opts.linux_output_bus_type = bus_type;
                         }
