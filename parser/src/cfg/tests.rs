@@ -2013,3 +2013,16 @@ fn disallow_whitespace_in_tooltip_size() {
 ";
     parse_cfg(source).map(|_| ()).expect_err("fails");
 }
+
+#[test]
+fn reverse_release_order_must_be_within_multi() {
+    let source = "
+(defsrc a)
+(deflayer base reverse-release-order)
+";
+    let e = parse_cfg(source).map(|_| ()).expect_err("fails");
+    assert_eq!(
+        e.msg,
+        "reverse-release-order is only allowed inside of a (multi ...) action list"
+    );
+}

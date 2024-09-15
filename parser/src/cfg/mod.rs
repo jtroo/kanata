@@ -1207,6 +1207,7 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     switch_max_key_timing: Cell<u16>,
     trans_forbidden_reason: Option<&'static str>,
+    multi_action_nest_count: Cell<u16>,
     pub lsp_hints: RefCell<LspHints>,
     a: Arc<Allocations>,
 }
@@ -1237,6 +1238,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             switch_max_key_timing: Cell::new(0),
             trans_forbidden_reason: None,
+            multi_action_nest_count: Cell::new(0),
             lsp_hints: Default::default(),
             a: unsafe { Allocations::new() },
         }
@@ -1545,7 +1547,13 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         "dynamic-macro-record-stop" => {
             return custom(CustomAction::DynamicMacroRecordStop(0), &s.a)
         }
-        "reverse-release-order" => return custom(CustomAction::ReverseReleaseOrder, &s.a),
+        "reverse-release-order" => match s.multi_action_nest_count.get() {
+            0 => bail_span!(
+                ac_span,
+                "reverse-release-order is only allowed inside of a (multi ...) action list"
+            ),
+            _ => return custom(CustomAction::ReverseReleaseOrder, &s.a),
+        },
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
@@ -1917,6 +1925,8 @@ fn parse_multi(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAc
     if ac_params.is_empty() {
         bail!("multi expects at least one item after it")
     }
+    s.multi_action_nest_count
+        .replace(s.multi_action_nest_count.get().saturating_add(1));
     let mut actions = Vec::new();
     let mut custom_actions: Vec<&'static CustomAction> = Vec::new();
     for expr in ac_params {
@@ -1966,6 +1976,8 @@ fn parse_multi(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAc
         bail!("Cannot combine multiple tap-hold/tap-dance/chord");
     }
 
+    s.multi_action_nest_count
+        .replace(s.multi_action_nest_count.get().saturating_sub(1));
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(actions)))))
 }
 
