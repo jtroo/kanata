@@ -915,6 +915,7 @@ impl Kanata {
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
+        let mut reverse_release_order = false;
 
         // Deal with unmodded. Unlike other custom actions, this should come before key presses and
         // releases. I don't quite remember why custom actions come after the key processing, but I
@@ -943,6 +944,9 @@ impl Kanata {
                         }
                         CustomAction::Unshifted { keys } => {
                             self.unshifted_keys.retain(|k| !keys.contains(k));
+                        }
+                        CustomAction::ReverseReleaseOrder => {
+                            reverse_release_order = true;
                         }
                         _ => {}
                     }
@@ -1027,7 +1031,11 @@ impl Kanata {
         // Given that there appears to be no practical negative consequences for this bug
         // remaining.
         log::trace!("{:?}", &self.prev_keys);
-        for k in &self.prev_keys {
+        let keys: &mut dyn Iterator<Item = &KeyCode> = match reverse_release_order {
+            false => &mut self.prev_keys.iter(),
+            true => &mut self.prev_keys.iter().rev(),
+        };
+        for k in keys {
             if cur_keys.contains(k) {
                 continue;
             }
@@ -1492,6 +1500,8 @@ impl Kanata {
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::Unmodded { .. }
                         | CustomAction::Unshifted { .. }
+                        // Note: ReverseReleaseOrder is already handled earlier on.
+                        | CustomAction::ReverseReleaseOrder { .. }
                         | CustomAction::CancelMacroOnRelease => {}
                     }
                 }
