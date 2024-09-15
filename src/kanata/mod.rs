@@ -286,6 +286,11 @@ impl Kanata {
             &args.symlink_path,
             #[cfg(target_os = "linux")]
             cfg.options.linux_opts.linux_use_trackpoint_property,
+            #[cfg(target_os = "linux")]
+            match cfg.options.linux_opts.linux_output_bus_type {
+                LinuxCfgOutputBusType::BUS_USB => BUS_TYPE::BUS_USB,
+                LinuxCfgOutputBusType::BUS_I8042 => BUS_TYPE::BUS_I8042,
+            },
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {

@@ -9,22 +9,15 @@ use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Debug, Clone)]
 pub struct CfgLinuxOptions {
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev: Vec<String>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev_names_include: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_dev_names_exclude: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_continue_if_no_devs_found: bool,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_unicode_u_code: crate::keys::OsCode,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_unicode_termination: UnicodeTermination,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_use_trackpoint_property: bool,
+    pub linux_output_bus_type: LinuxCfgOutputBusType,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -40,8 +33,14 @@ impl Default for CfgLinuxOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
+            linux_output_bus_type: BUS_I8042,
         }
     }
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+pub enum LinuxCfgOutputBusType {
+    BUS_USB,
+    BUS_I8042,
 }
 
 #[cfg(any(
@@ -309,6 +308,18 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             cfg.linux_opts.linux_use_trackpoint_property =
                                 parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "linux-kanata-output-device-bus-type" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let bus_type_expr = sexpr_to_str_or_err(val, label)?;
+                            let bus_type = match bus_type {
+                                "USB" => LinuxCfgOutputBusType::BUS_USB,
+                                "I8042" => LinuxCfgOutputBusType::BUS_I8042,
+                                _ => bail_expr!(bus_type_expr, "Invalid value for linux-kanata-output-device-bus-type.\nExpected one of: USB or I8042"),
+                            };
+                            cfg.linux_opts.linux_output_bus_type = bus_type;
                         }
                     }
                     "windows-altgr" => {
