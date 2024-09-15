@@ -20,6 +20,7 @@ mod seq_sim_tests;
 mod switch_sim_tests;
 mod unicode_sim_tests;
 mod unmod_sim_tests;
+mod release_sim_tests;
 
 fn simulate(cfg: &str, sim: &str) -> String {
     init_log();
