@@ -104,11 +104,9 @@ fn sim_presses_for_old_chord_repress_into_new_chord() {
     let result = simulate(
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a d:b t:50 u:a t:50 d:z t:50 u:b t:50 d:a d:b t:50 u:a t:50",
-    );
-    assert_eq!(
-        "t:50ms\nout:↓C\nt:102ms\nout:↑C\nt:98ms\nout:↓D\nt:10ms\nout:↑D",
-        result
-    );
+    )
+    .to_ascii();
+    assert_eq!("t:50ms dn:C t:101ms up:C t:99ms dn:D t:11ms up:D", result);
 }
 
 #[test]
@@ -318,6 +316,26 @@ fn sim_chord_eager_tapholdrelease_activation() {
     .to_ascii();
     assert_eq!(
         "t:20ms dn:LCtrl t:2ms dn:BSpace t:5ms up:BSpace t:93ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn sim_chord_release_nonchord_key_has_correct_order() {
+    let result = simulate(
+        "
+    (defcfg concurrent-tap-hold yes)
+    (defsrc ralt j k)
+    (deflayer base _ _ _)
+    (defchordsv2-experimental
+      (j k) l 75 first-release ()
+    )
+        ",
+        "d:ralt t:1000 d:j t:1 u:ralt t:100 u:j t:100",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:1ms dn:RAlt t:1075ms dn:J t:1ms up:RAlt t:24ms up:J",
         result
     );
 }

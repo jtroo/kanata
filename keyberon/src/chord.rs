@@ -282,9 +282,7 @@ impl<'a, T> ChordsV2<'a, T> {
                 true
             }
             Event::Release(_, j) => {
-                if presses.contains(&j) {
-                    return true;
-                }
+                // Release the key from active chords.
                 achs.iter_mut().for_each(|ach| {
                     if !ach.participating_keys.contains(&j) {
                         return;
@@ -297,8 +295,12 @@ impl<'a, T> ChordsV2<'a, T> {
                         }
                     }
                 });
-                drainq.push_back(*qd);
-                false
+                if presses.is_empty() {
+                    drainq.push_back(*qd);
+                    false
+                } else {
+                    true
+                }
             }
         })
     }
