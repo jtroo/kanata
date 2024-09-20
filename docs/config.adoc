@@ -858,6 +858,27 @@ and that would work as intended.
 It is recommended to avoid `multi` if it can be replaced
 with a different action like `macro` or an output chord.
 
+==== reverse-release-order
+
+Within `multi` you can use include `reverse-release-order`
+to do what the action states: reverse the typical release order from
+if you have multiple keys in multi.
+
+For example, pressing then releasing a key with the action:
+`(multi a b c)` would press a b c in the stated order
+and then release a b c in the stated order.
+Changing it to `(multi a b c reverse-release-order)`
+would press a b c in the stated order
+and then release c b a in the stated order.
+
+.Example:
+[source]
+----
+(defalias
+  S-a-reversed (multi lsft a reverse-release-order)
+)
+----
+
 [[mouse-actions]]
 === Mouse actions
 <<table-of-contents,Back to ToC>>

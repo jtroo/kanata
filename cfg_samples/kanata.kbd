@@ -570,6 +570,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
+  ;; Within multi you can also include reverse-release-order to release keys
+  ;; from last-to-first order instead of first-to-last which is the default.
+  S-a-reversed (multi lsft a reverse-release-order)
+
   ;; Chords using the shortcut syntax. These ones are used for copying/pasting
   ;; from some Linux terminals.
   csv C-S-v

@@ -80,6 +80,7 @@ pub enum CustomAction {
     Unshifted {
         keys: Box<[KeyCode]>,
     },
+    ReverseReleaseOrder,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
