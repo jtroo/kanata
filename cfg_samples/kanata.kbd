@@ -560,6 +560,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This use case for multi is typing an all-caps string.
   alp (multi lsft a b c d e f g h i j k l m n o p q r s t u v w x y z)
 
+  ;; Within multi you can also include reverse-release-order to release keys
+  ;; from last-to-first order instead of first-to-last which is the default.
+  S-a-reversed (multi lsft a reverse-release-order)
+
   ;; Chords using the shortcut syntax. These ones are used for copying/pasting
   ;; from some Linux terminals.
   csv C-S-v
@@ -708,7 +712,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; The command takes two extra arguments at the beginning `<log_level>`,
   ;; and `<error_log_level>`. `<log_level>` controls where the name
-  ;; of the command is logged, as well as the success message and command 
+  ;; of the command is logged, as well as the success message and command
   ;; stdout and stderr.
   ;;
   ;; `<error_log_level>` is only used if there is a failure executing the initial
@@ -729,7 +733,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; of the command and treats it as an S-Expression, similarly to `macro`.
   ;; However, only delays, keys, chords, and chorded lists are supported.
   ;; Other actions are not.
-  ;; 
+  ;;
   ;; bash: type date-time as YYYY-MM-DD HH:MM
   ;; cmd-output-keys bash -c "date +'%F %R' | sed 's/./& /g' | sed 's/:/S-;/g' | sed 's/\(.\{20\}\)\(.*\)/\(\1 spc \2\)/'"
 )
