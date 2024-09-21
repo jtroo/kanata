@@ -247,11 +247,15 @@ pub fn parse_switch_case_bool(
             }
             AllowedListOps::Layer | AllowedListOps::BaseLayer => {
                 if l.len() != 2 {
-                    bail_expr!(op_expr, "{} must have 1 parameter: layer-name", match op {
-                        AllowedListOps::Layer => "layer",
-                        AllowedListOps::BaseLayer => "base-layer",
-                        _ => unreachable!(),
-                    });
+                    bail_expr!(
+                        op_expr,
+                        "{} must have 1 parameter: layer-name",
+                        match op {
+                            AllowedListOps::Layer => "layer",
+                            AllowedListOps::BaseLayer => "base-layer",
+                            _ => unreachable!(),
+                        }
+                    );
                 }
                 let layer = l[1]
                     .atom(s.vars())
