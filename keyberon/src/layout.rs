@@ -1952,6 +1952,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     historical_keys,
                     historical_coords,
                     layers,
+                    // Note on truncating cast: I expect default layer to be in range by other
+                    // assertions.
+                    self.default_layer as u16,
                 ) {
                     action_queue.push_back(Some((coord, 0, ac)));
                 }
