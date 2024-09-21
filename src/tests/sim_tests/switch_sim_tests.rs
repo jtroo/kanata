@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn switch_layer() {
+fn sim_switch_layer() {
     let result = simulate(
         "
          (defcfg)
@@ -10,6 +10,24 @@ fn switch_layer() {
             ((layer base)) x break
             ((layer other)) y break))
          (deflayer base (layer-while-held other) @b)
+         (deflayer other XX @b)
+        ",
+        "d:b u:b t:10 d:a d:b u:b u:a t:10",
+    )
+    .no_time();
+    assert_eq!("out:↓X out:↑X out:↓Y out:↑Y", result);
+}
+
+#[test]
+fn sim_switch_base_layer() {
+    let result = simulate(
+        "
+         (defcfg)
+         (defsrc a b)
+         (defalias b (switch
+            ((base-layer base)) x break
+            ((base-layer other)) y break))
+         (deflayer base (layer-switch other) @b)
          (deflayer other XX @b)
         ",
         "d:b u:b t:10 d:a d:b u:b u:a t:10",
