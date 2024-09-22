@@ -120,6 +120,9 @@ jobs:
     - name: Run clippy gui
       run: cargo clippy --all --features=gui -- -D warnings
 
+    - name: Check gui+cmd+interception
+      run: cargo check --features gui,cmd,interception_driver
+
   build-test-clippy-macos:
     runs-on: ${{ matrix.os }}
     strategy:
