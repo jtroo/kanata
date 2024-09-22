@@ -385,6 +385,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-win";
 #[cfg(all(
     feature = "win_llhook_read_scancodes",
     feature = "win_sendinput_send_scancodes",
+    not(feature = "interception_driver"),
     target_os = "windows"
 ))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-winiov2";
