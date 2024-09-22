@@ -1354,11 +1354,6 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // Process it (SequenceEvent)
                     match seq.cur_event {
                         Some(SequenceEvent::Complete) => {
-                            for fake_key in self.states.clone().iter() {
-                                if let FakeKey { keycode } = *fake_key {
-                                    self.states.retain(|s| s.seq_release(keycode).is_some());
-                                }
-                            }
                             seq.remaining_events = &[];
                         }
                         Some(SequenceEvent::Press(keycode)) => {

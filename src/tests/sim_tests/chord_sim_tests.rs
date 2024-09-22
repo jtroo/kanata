@@ -339,3 +339,29 @@ fn sim_chord_release_nonchord_key_has_correct_order() {
         result
     );
 }
+
+#[test]
+fn sim_chord_simultaneous_macro() {
+    let result = simulate(
+        "
+        (defsrc a b o)
+        (deflayer default
+          (chord base a)
+          (chord base b)
+          (chord base o)
+        )
+        (defchords base 500
+          (a) (macro a z)
+          (b) (macro b)
+          (o) o
+          (a o) o
+        )
+        ",
+        "d:a t:10 d:b t:500",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:502ms dn:A dn:B t:1ms up:A up:B t:1ms dn:Z t:1ms up:Z",
+        result
+    );
+}
