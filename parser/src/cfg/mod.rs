@@ -1558,6 +1558,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
+        if matches!(ac, "comp" | "cmp") {
+            log::warn!("comp/cmp/cmps is not actually a compose key even though its correpsonding code is KEY_COMPOSE. Its actual functionality is context menu which somewhat behaves like right-click.\nTo remove this warning, replace this usage with an equivalent key name such as: menu");
+        }
         return Ok(s.a.sref(k(oscode.into())));
     }
     if let Some(alias) = ac.strip_prefix('@') {
