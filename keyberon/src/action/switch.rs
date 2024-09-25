@@ -48,6 +48,7 @@ const NOT_VAL: u16 = 0x3000;
 const INPUT_VAL: u16 = 851;
 const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
+const BASE_LAYER_VAL: u16 = 854;
 
 // Binary values:
 // 0b0100 ...
@@ -85,6 +86,7 @@ enum OpCodeType {
     TicksSinceLessThan(TicksSinceNthKey),
     TicksSinceGreaterThan(TicksSinceNthKey),
     Layer(u16),
+    BaseLayer(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -136,6 +138,7 @@ impl<'a, T> Switch<'a, T> {
         historical_keys: H1,
         historical_positions: H2,
         layers: L,
+        default_layer: u16,
     ) -> SwitchActions<'a, T, A1, A2, H1, H2, L>
     where
         A1: Iterator<Item = KeyCode> + Clone,
@@ -151,6 +154,7 @@ impl<'a, T> Switch<'a, T> {
             historical_keys,
             historical_positions,
             layers,
+            default_layer,
             case_index: 0,
         }
     }
@@ -172,6 +176,7 @@ where
     historical_keys: H1,
     historical_positions: H2,
     layers: L,
+    default_layer: u16,
     case_index: usize,
 }
 
@@ -195,6 +200,7 @@ where
                 self.historical_keys.clone(),
                 self.historical_positions.clone(),
                 self.layers.clone(),
+                self.default_layer,
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -297,10 +303,16 @@ impl OpCode {
         )
     }
 
-    /// Return OpCodes specifying an active input check.
+    /// Return OpCodes specifying an active layer check.
     pub fn new_layer(layer: u16) -> (Self, Self) {
         assert!(usize::from(layer) < crate::layout::MAX_LAYERS);
         (Self(LAYER_VAL), Self(layer))
+    }
+
+    /// Return OpCodes specifying an base layer check.
+    pub fn new_base_layer(base_layer: u16) -> (Self, Self) {
+        assert!(usize::from(base_layer) < crate::layout::MAX_LAYERS);
+        (Self(BASE_LAYER_VAL), Self(base_layer))
     }
 
     /// Return the interpretation of this `OpCode`.
@@ -316,6 +328,7 @@ impl OpCode {
                     how_far_back: (op2.0 >> 11) as u8 & 0x7,
                 }),
                 LAYER_VAL => OpCodeType::Layer(op2.0),
+                BASE_LAYER_VAL => OpCodeType::BaseLayer(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -360,6 +373,7 @@ fn evaluate_boolean(
     historical_keys: impl Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     layers: impl Iterator<Item = u16> + Clone,
+    default_layer: u16,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -447,6 +461,11 @@ fn evaluate_boolean(
                 current_index += 1;
                 ret = layers.clone().next().map(|l| l == layer).unwrap_or(false)
             }
+            OpCodeType::BaseLayer(base_layer) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = default_layer == base_layer;
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -474,6 +493,7 @@ fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode
         [].iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     )
 }
 
@@ -732,6 +752,7 @@ fn switch_fallthrough() {
         [].iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
@@ -752,6 +773,7 @@ fn switch_break() {
         [].iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
@@ -779,6 +801,7 @@ fn switch_no_actions() {
         [].iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     );
     assert_eq!(actions.next(), None);
 }
@@ -838,6 +861,7 @@ fn switch_historical_1() {
         hist_keycodes.iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
@@ -846,6 +870,7 @@ fn switch_historical_1() {
         hist_keycodes.iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
@@ -854,6 +879,7 @@ fn switch_historical_1() {
         hist_keycodes.iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
@@ -862,6 +888,7 @@ fn switch_historical_1() {
         hist_keycodes.iter().copied(),
         [].iter().copied(),
         [].iter().copied(),
+        0,
     ));
 }
 
@@ -946,6 +973,7 @@ fn switch_historical_bools() {
                 hist_keycodes.iter().copied(),
                 [].iter().copied(),
                 [].iter().copied(),
+                0,
             ),
             expectation
         );
@@ -1061,6 +1089,7 @@ fn switch_historical_ticks_since() {
                 hist_keycodes.iter().copied(),
                 [].iter().copied(),
                 [].iter().copied(),
+                0,
             ),
             expectation
         );
@@ -1294,6 +1323,7 @@ fn switch_inputs() {
                 [].iter().copied(),
                 [].iter().copied(),
                 [].iter().copied(),
+                0,
             ),
             expectation
         );
@@ -1361,6 +1391,7 @@ fn switch_historical_inputs() {
                 [].iter().copied(),
                 historical_inputs.iter().copied(),
                 [].iter().copied(),
+                0,
             ),
             expectation
         );

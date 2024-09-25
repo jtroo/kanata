@@ -90,6 +90,7 @@ pub fn parse_switch_case_bool(
             Input,
             InputHistory,
             Layer,
+            BaseLayer,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -115,6 +116,7 @@ pub fn parse_switch_case_bool(
                 "input" => Some(AllowedListOps::Input),
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
+                "base-layer" => Some(AllowedListOps::BaseLayer),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -123,6 +125,7 @@ pub fn parse_switch_case_bool(
                     "lists inside key match must begin with one of: or | and | not | key-history"
                 )
             })?;
+
         match op {
             AllowedListOps::KeyHistory => {
                 if l.len() != 3 {
@@ -242,9 +245,17 @@ pub fn parse_switch_case_bool(
                     .set(std::cmp::max(s.switch_max_key_timing.get(), ticks_since));
                 Ok(())
             }
-            AllowedListOps::Layer => {
+            AllowedListOps::Layer | AllowedListOps::BaseLayer => {
                 if l.len() != 2 {
-                    bail_expr!(op_expr, "layer must have 1 parameter: layer-name");
+                    bail_expr!(
+                        op_expr,
+                        "{} must have 1 parameter: layer-name",
+                        match op {
+                            AllowedListOps::Layer => "layer",
+                            AllowedListOps::BaseLayer => "base-layer",
+                            _ => unreachable!(),
+                        }
+                    );
                 }
                 let layer = l[1]
                     .atom(s.vars())
@@ -254,7 +265,11 @@ pub fn parse_switch_case_bool(
                         *idx as u16
                     })
                     .ok_or_else(|| anyhow_expr!(&l[1], "not a known layer name"))?;
-                let (op1, op2) = OpCode::new_layer(layer);
+                let (op1, op2) = match op {
+                    AllowedListOps::Layer => OpCode::new_layer(layer),
+                    AllowedListOps::BaseLayer => OpCode::new_base_layer(layer),
+                    _ => unreachable!(),
+                };
                 ops.extend(&[op1, op2]);
                 Ok(())
             }

@@ -3537,6 +3537,27 @@ otherwise it evaluates to false.
 )
 ----
 
+==== base-layer
+
+The `base-layer` list item evaluates to true
+if the configured layer name is the base layer.
+The base layer is the most recently switched-to layer
+from a `layer-switch` action,
+or the first layer defined in your configuration
+if `layer-switch` has never been activated.
+
+.Example:
+[source]
+----
+(defalias switch-layer-example
+  (switch
+     ((base-layer base)) x break
+    ((base-layer other)) y break
+                 () z break
+  )
+)
+----
+
 
 [[templates]]
 === Templates
