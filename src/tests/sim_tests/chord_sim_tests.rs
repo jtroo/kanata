@@ -382,3 +382,24 @@ fn sim_chord_error_on_duplicate_keyset() {
         "",
     );
 }
+
+#[test]
+fn sim_chord_oneshot() {
+    let result = simulate(
+        "
+(defcfg concurrent-tap-hold yes)
+(defsrc)(deflayer base)
+(defchordsv2-experimental
+  (a b) (one-shot 2500 rsft) 35 first-release ()
+)
+        ",
+        "d:a t:10 d:b t:10 u:a t:10 u:b t:3000 \
+         d:a t:10 d:b t:10 u:a t:10 u:b t:500 d:c u:c t:3000",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:RShift t:2500ms up:RShift t:530ms \
+         dn:RShift t:521ms dn:C t:5ms up:RShift up:C",
+        result
+    );
+}

@@ -1583,7 +1583,13 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         });
         match action {
             NoOp => {
-                if !is_oneshot {
+                // There is an interaction between oneshot and chordsv2 here.
+                // chordsv2 sends fake queued press/release events at the coordinate level in order
+                // to trigger other "waiting" style actions, namely tap-hold. However, these can
+                // potentially interfere with oneshot by triggering early oneshot activation. This
+                // is resolved by ignoring actions at the coordinate at which the fake events are
+                // sent.
+                if !is_oneshot && coord != TRIGGER_TAPHOLD_COORD {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }

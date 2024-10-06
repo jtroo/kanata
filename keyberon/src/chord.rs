@@ -22,6 +22,8 @@ macro_rules! no_chord_activations {
     }};
 }
 
+pub(crate) const TRIGGER_TAPHOLD_COORD: (u8, u16) = (0, 0);
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ReleaseBehaviour {
     OnFirstRelease,
@@ -207,7 +209,10 @@ impl<'a, T> ChordsV2<'a, T> {
             // HoldOnOtherKeyPress or PermissiveHold.
             // FLAW: this does not associate with the actual input keys and thus cannot correctly
             // trigger the early tap for *-keys variants of kanata tap-hold.
-            q.push_back(Queued::new_press(0, 0));
+            q.push_back(Queued::new_press(
+                TRIGGER_TAPHOLD_COORD.0,
+                TRIGGER_TAPHOLD_COORD.1,
+            ));
         }
         if self
             .active_chords
@@ -217,7 +222,10 @@ impl<'a, T> ChordsV2<'a, T> {
             // A chord was released. Forward a no-op release event to potentially trigger
             // PermissiveHold.
             // FLAW: see above
-            q.push_back(Queued::new_release(0, 0));
+            q.push_back(Queued::new_release(
+                TRIGGER_TAPHOLD_COORD.0,
+                TRIGGER_TAPHOLD_COORD.1,
+            ));
         }
         self.clear_released_chords(&mut q);
         self.ticks_to_ignore_chord = self.ticks_to_ignore_chord.saturating_sub(1);
