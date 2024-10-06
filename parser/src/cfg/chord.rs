@@ -48,16 +48,8 @@ pub(crate) fn parse_defchordv2(
         .iter()
         .filter_map(|r| r.as_ref().err())
         .collect::<Vec<_>>();
-    if !unsuccessful.is_empty() {
-        bail_expr!(
-            &exprs[0],
-            "Error parsing chord definition:\n{}",
-            unsuccessful
-                .iter()
-                .map(|e| e.msg.clone())
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
+    if let Some(e) = unsuccessful.first() {
+        return Err((*e).clone());
     }
     let successful = all_chords.into_iter().filter_map(Result::ok).collect_vec();
 
