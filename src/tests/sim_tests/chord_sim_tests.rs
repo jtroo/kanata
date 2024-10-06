@@ -365,3 +365,20 @@ fn sim_chord_simultaneous_macro() {
         result
     );
 }
+
+#[test]
+#[should_panic]
+fn sim_chord_error_on_duplicate_keyset() {
+    simulate(
+        "
+(defcfg concurrent-tap-hold yes)
+(defsrc)
+(deflayer base)
+(defchordsv2-experimental
+ (1 2) (one-shot 2000 lsft) 20 all-released ()
+ (2 1) (one-shot 2000 lctl) 20 all-released ()
+)
+        ",
+        "",
+    );
+}
