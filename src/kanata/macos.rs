@@ -15,6 +15,7 @@ impl Kanata {
         info!("entering the event loop");
 
         let k = kanata.lock();
+        let allow_hardware_repeat = k.allow_hardware_repeat;
         let mut kb = match KbdIn::new(k.include_names.clone()) {
             Ok(kbd_in) => kbd_in,
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
@@ -39,6 +40,10 @@ impl Kanata {
             };
 
             check_for_exit(&key_event);
+
+            if key_event.value == KeyValue::Repeat && !allow_hardware_repeat {
+                continue;
+            }
 
             if !MAPPED_KEYS.lock().contains(&key_event.code) {
                 log::debug!("{key_event:?} is not mapped");

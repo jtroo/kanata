@@ -102,6 +102,7 @@ impl Default for CfgOptionsGui {
 pub struct CfgOptions {
     pub process_unmapped_keys: bool,
     pub block_unmapped_keys: bool,
+    pub allow_hardware_repeat: bool,
     pub enable_cmd: bool,
     pub sequence_timeout: u16,
     pub sequence_input_mode: SequenceInputMode,
@@ -138,6 +139,7 @@ impl Default for CfgOptions {
         Self {
             process_unmapped_keys: false,
             block_unmapped_keys: false,
+            allow_hardware_repeat: true,
             enable_cmd: false,
             sequence_timeout: 1000,
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
@@ -630,6 +632,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "block-unmapped-keys" => {
                         cfg.block_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                    }
+                    "allow-hardware-repeat" => {
+                        cfg.allow_hardware_repeat = parse_defcfg_val_bool(val, label)?
                     }
                     "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
                     "sequence-backtrack-modcancel" => {
