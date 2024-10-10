@@ -103,6 +103,7 @@ pub struct CfgOptions {
     pub process_unmapped_keys: bool,
     pub block_unmapped_keys: bool,
     pub allow_hardware_repeat: bool,
+    pub start_alias: Option<String>,
     pub enable_cmd: bool,
     pub sequence_timeout: u16,
     pub sequence_input_mode: SequenceInputMode,
@@ -140,6 +141,7 @@ impl Default for CfgOptions {
             process_unmapped_keys: false,
             block_unmapped_keys: false,
             allow_hardware_repeat: true,
+            start_alias: None,
             enable_cmd: false,
             sequence_timeout: 1000,
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
@@ -636,6 +638,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "allow-hardware-repeat" => {
                         cfg.allow_hardware_repeat = parse_defcfg_val_bool(val, label)?
                     }
+                    "alias-to-trigger-on-load" => {
+                        cfg.start_alias = parse_defcfg_val_string(val, label)?
+                    }
                     "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
                     "sequence-backtrack-modcancel" => {
                         cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, label)?
@@ -697,6 +702,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                 bail_expr!(key, "Lists are not allowed in as keys in defcfg");
             }
         }
+    }
+}
+
+fn parse_defcfg_val_string(expr: &SExpr, _label: &str) -> Result<Option<String>> {
+    match expr {
+        SExpr::Atom(v) => Ok(Some(v.t.clone())),
+        _ => Ok(None),
     }
 }
 
