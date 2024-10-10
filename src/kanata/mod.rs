@@ -18,6 +18,7 @@ use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time;
+use std::time::SystemTime;
 
 use crate::oskbd::{KeyEvent, *};
 #[cfg(feature = "tcp_server")]
@@ -219,6 +220,8 @@ pub struct Kanata {
     #[cfg(all(target_os = "windows", feature = "gui"))]
     /// Various GUI-related options.
     pub gui_opts: CfgOptionsGui,
+    /// timestamp
+    pub automousekeys_timestamp: Option<SystemTime>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -405,6 +408,7 @@ impl Kanata {
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
+            automousekeys_timestamp: None,
         })
     }
 
@@ -523,6 +527,7 @@ impl Kanata {
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
+            automousekeys_timestamp: None,
         })
     }
 
