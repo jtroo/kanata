@@ -2328,6 +2328,39 @@ Windows, and will be silently ignored.
 )
 ----
 
+[[alias-to-trigger-on-load]]
+=== alias-to-trigger-on-load
+<<table-of-contents,Back to ToC>>
+
+Select an alias to execute when first starting, and after each
+live-reload of the config. You can use this to run external
+commands, or to stack layers (with layer-while-held).
+
+The name of an alias, without a leading "@", is expected as a
+parameter.  The example below will beep at startup (assuming
+your system has a beep command), and will already be blocking
+the swapped "i" and "o" keys.
+
+.Example:
+[source]
+----
+(defcfg
+  alias-to-trigger-on-load S
+  danger-enable-cmd yes
+)
+
+(deffakekeys B (layer-while-held block))
+
+(defalias
+  P (on-press toggle-vkey B)
+  S (macro @P (cmd beep))
+)
+
+(defsrc i o p )
+(deflayer base o i @P )
+(deflayer block • • _ )
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 <<table-of-contents,Back to ToC>>
