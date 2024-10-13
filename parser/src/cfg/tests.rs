@@ -603,6 +603,15 @@ fn test_include_bad2_has_original_filename() {
 }
 
 #[test]
+fn test_include_ignore_optional_filename() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/include-good-optional-absent.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn parse_bad_submacro() {
     // Test exists since it used to crash. It should not crash.
     let _lk = lock(&CFG_PARSE_LOCK);

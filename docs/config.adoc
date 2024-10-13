@@ -1801,6 +1801,8 @@ The path will be relative to the defined configuration file.
 At the time of writing, includes can only be placed at the top level.
 The included files also cannot contain includes themselves.
 
+Non-existing files will be ignored.
+
 .Example:
 ----
 ;; This is in the file initially read by kanata, e.g. kanata.kbd
