@@ -635,6 +635,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; is the unicode character itself and is referenced by @🙁 in deflayer.
   🙁 (unicode 🙁)
 
+  ;; You may output parentheses or double quotes using unicode
+  ;; by quotes as well as special quoting syntax.
+  lp1 (unicode r#"("#)
+  rp1 (unicode r#")"#)
+  dq (unicode r#"""#)
+  lp2 (unicode "(")
+  rp2 (unicode ")")
+
   ;; fork accepts two actions and a key list. The first (left) action will
   ;; activate by default. The second (right) action will activate if any of
   ;; the keys in the third parameter (right-trigger-keys) are currently active.

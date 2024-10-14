@@ -700,6 +700,26 @@ NOTE: If using Linux, make sure to look at the
 )
 ----
 
+If you want output parentheses `+( )+` via unicode you can quote them.
+
+[source]
+----
+(defalias
+  lp (unicode "(")
+  rp (unicode ")")
+)
+----
+
+If you want to output double quotes via unicode
+you need a special quoting syntax.
+
+[source]
+----
+(defalias
+  dq (unicode r#"""#)
+)
+----
+
 [[output-chordscombos]]
 === Output chords/combos
 <<table-of-contents,Back to ToC>>
