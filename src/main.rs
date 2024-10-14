@@ -63,6 +63,10 @@ kanata.kbd in the current working directory and
     #[arg(short, long)]
     list: bool,
 
+    /// Disable logging, except for errors. Takes precedent over debug and trace.
+    #[arg(short, long)]
+    quiet: bool,
+
     /// Enable debug logging.
     #[arg(short, long)]
     debug: bool,
@@ -112,10 +116,11 @@ mod cli {
 
         let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
-        let log_lvl = match (args.debug, args.trace) {
-            (_, true) => LevelFilter::Trace,
-            (true, false) => LevelFilter::Debug,
-            (false, false) => LevelFilter::Info,
+        let log_lvl = match (args.debug, args.trace, args.quiet) {
+            (_, true, false) => LevelFilter::Trace,
+            (true, false, false) => LevelFilter::Debug,
+            (false, false, false) => LevelFilter::Info,
+            (_, _, true) => LevelFilter::Error,
         };
 
         let mut log_cfg = ConfigBuilder::new();

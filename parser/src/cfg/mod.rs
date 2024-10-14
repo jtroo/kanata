@@ -353,6 +353,9 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
     layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
+    if let Some(s) = icfg.start_action {
+        layout.bm().action_queue.push_front(Some(((1, 0), 0, s)));
+    }
     let mut fake_keys: HashMap<String, usize> = s
         .virtual_keys
         .iter()
@@ -405,6 +408,7 @@ pub struct IntermediateCfg {
     pub sequences: KeySeqsToFKeys,
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
+    pub start_action: Option<&'static KanataAction>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -798,6 +802,14 @@ pub fn parse_cfg_raw_string(
         .collect::<Vec<_>>();
     parse_aliases(&alias_exprs, s, &env_vars)?;
 
+    let start_action = cfg
+        .start_alias
+        .as_ref()
+        .and_then(|start| s.aliases.get(start).copied());
+    if let (Some(_), None) = (cfg.start_alias.as_ref(), start_action) {
+        bail!("alias-to-trigger-on-load was given, but alias could not be found")
+    }
+
     let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
 
     resolve_chord_groups(&mut klayers, s)?;
@@ -874,6 +886,7 @@ pub fn parse_cfg_raw_string(
         sequences,
         overrides,
         chords_v2,
+        start_action,
     })
 }
 

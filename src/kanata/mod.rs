@@ -219,6 +219,7 @@ pub struct Kanata {
     #[cfg(all(target_os = "windows", feature = "gui"))]
     /// Various GUI-related options.
     pub gui_opts: CfgOptionsGui,
+    pub allow_hardware_repeat: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -405,6 +406,7 @@ impl Kanata {
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
+            allow_hardware_repeat: cfg.options.allow_hardware_repeat,
         })
     }
 
@@ -523,6 +525,7 @@ impl Kanata {
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
+            allow_hardware_repeat: cfg.options.allow_hardware_repeat,
         })
     }
 

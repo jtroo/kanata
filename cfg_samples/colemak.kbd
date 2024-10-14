@@ -1,0 +1,63 @@
+;;
+;;  Learn Colemak, a few keys at a time.
+;;
+;;  The "j" key moves around the keyboard each step,
+;;  until you reach the full Colemak layout.
+;;
+;;  To select the layout for your current step, press the
+;;  letter "m" and the number of your current step, as a chord.
+;;
+;;  Check out:  https://dreymar.colemak.org/tarmak-intro.html
+;;        and:  https://colemak.com
+;;
+
+(defsrc
+  q w e r t y u i o p
+  a s d f g h j k l ;
+  z x c v b n m
+)
+
+(deflayer colemak_j1
+  _ _ j _ _ _ _ _ _ _
+  _ _ _ _ _ _ n e _ _
+  _ _ _ _ _ k _
+)
+
+(deflayer colemak_j2
+  _ _ f _ g _ _ _ _ _
+  _ _ _ t j _ n e _ _
+  _ _ _ _ _ k _
+)
+
+(deflayer colemak_j3
+  _ _ f j g _ _ _ _ _
+  _ r s t d _ n e _ _
+  _ _ _ _ _ k _
+)
+
+(deflayer colemak_j4
+  _ _ f p g j _ _ y ;
+  _ r s t d _ n e _ o
+  _ _ _ _ _ k _
+)
+
+(deflayer colemak
+  _ _ f p g j l u y ;
+  _ r s t d _ n e i o
+  _ _ _ _ _ k _
+)
+
+(defcfg
+  process-unmapped-keys   yes
+  concurrent-tap-hold     yes
+  allow-hardware-repeat   no
+)
+
+(defchordsv2-experimental
+  (m 1) (layer-switch colemak_j1) 300 all-released ()
+  (m 2) (layer-switch colemak_j2) 300 all-released ()
+  (m 3) (layer-switch colemak_j3) 300 all-released ()
+  (m 4) (layer-switch colemak_j4) 300 all-released ()
+  (m 5) (layer-switch colemak) 300 all-released ()
+)
+
