@@ -233,37 +233,57 @@ impl KbdIn {
     }
 }
 
-pub fn is_input_device(device: &Device) -> bool {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum DeviceType {
+    Keyboard,
+    KeyboardMouse,
+    Mouse,
+    Other,
+}
+
+pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     use evdev::Key;
+    if device.name() == Some("kanata") {
+        return false;
+    }
     let is_keyboard = device
         .supported_keys()
         .map_or(false, |keys| keys.contains(Key::KEY_ENTER));
     let is_mouse = device
         .supported_relative_axes()
         .map_or(false, |axes| axes.contains(RelativeAxisType::REL_X));
-    if is_keyboard || is_mouse {
-        if device.name() == Some("kanata") {
-            return false;
+    let device_type = match (is_keyboard, is_mouse) {
+        (true, true) => DeviceType::KeyboardMouse,
+        (true, false) => DeviceType::Keyboard,
+        (false, true) => DeviceType::Mouse,
+        (false, false) => DeviceType::Other,
+    };
+    let device_name = device.name().unwrap_or("unknown device name");
+    match (detect_mode, device_type) {
+        (_, DeviceType::Other) => {
+            log::debug!("Use for input: false. Non-input device: {}", device_name,);
+            false
         }
-        log::debug!(
-            "Detected {}: name={} physical_path={:?}",
-            if is_keyboard && is_mouse {
-                "Keyboard/Mouse"
-            } else if is_keyboard {
-                "Keyboard"
-            } else {
-                "Mouse"
-            },
-            device.name().unwrap_or("unknown device name"),
-            device.physical_path()
-        );
-        true
-    } else {
-        log::trace!(
-            "Detected other device: {}",
-            device.name().unwrap_or("unknown device name")
-        );
-        false
+        (DeviceDetectMode::Any, _)
+        | (DeviceDetectMode::KeyboardMouse, DeviceType::Keyboard | DeviceType::KeyboardMouse)
+        | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
+            log::debug!(
+                "Use for input: true. detect type {:?}; device type {:?}, device name: {}",
+                detect_mode,
+                device_type,
+                device_name,
+            );
+            true
+        }
+        _ => {
+            log::debug!(
+                "Use for input: false. detect type {:?}; device type {:?}, device name: {}",
+                detect_mode,
+                device_type,
+                device_name,
+            );
+            true
+        }
     }
 }
 

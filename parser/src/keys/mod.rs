@@ -312,13 +312,13 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(target_os = "windows")]
         "PrintScreen" | "prtsc" | "prnt" => OsCode::KEY_PRINT,
 
+        // NOTE: these are linux and interception-only due to missing implementation for LLHOOK.
+        // Unknown: is macOS supported? I haven't reviewed.
         "mlft" | "mouseleft" | "🖰1" | "‹🖰" => OsCode::BTN_LEFT,
         "mrgt" | "mouseright" | "🖰2" | "🖰›" => OsCode::BTN_RIGHT,
         "mmid" | "mousemid" | "🖰3" => OsCode::BTN_MIDDLE,
         "mbck" | "mousebackward" | "🖰4" => OsCode::BTN_SIDE,
         "mfwd" | "mouseforward" | "🖰5" => OsCode::BTN_EXTRA,
-
-        // NOTE: these are linux and interception-only due to missing implementation for LLHOOK
         "mwu" | "mousewheelup" => OsCode::MouseWheelUp,
         "mwd" | "mousewheeldown" => OsCode::MouseWheelDown,
         "mwl" | "mousewheelleft" => OsCode::MouseWheelLeft,
