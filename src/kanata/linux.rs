@@ -26,6 +26,7 @@ impl Kanata {
             k.continue_if_no_devices,
             k.include_names.clone(),
             k.exclude_names.clone(),
+            k.device_detect_mode,
         ) {
             Ok(kbd_in) => kbd_in,
             Err(e) => {

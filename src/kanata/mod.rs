@@ -181,6 +181,9 @@ pub struct Kanata {
     /// Config items from `defcfg`.
     #[cfg(target_os = "linux")]
     pub x11_repeat_rate: Option<KeyRepeatSettings>,
+    /// Determines what types of devices to grab based on autodetection mode.
+    #[cfg(target_os = "linux")]
+    pub device_detect_mode: DeviceDetectMode,
     /// Fake key actions that are waiting for a certain duration of keyboard idling.
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
     /// Number of ticks since kanata was idle.
@@ -392,6 +395,12 @@ impl Kanata {
             },
             #[cfg(target_os = "linux")]
             x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
+            #[cfg(target_os = "linux")]
+            device_detect_mode: cfg
+                .options
+                .linux_opts
+                .linux_device_detect_mode
+                .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
@@ -511,6 +520,12 @@ impl Kanata {
             },
             #[cfg(target_os = "linux")]
             x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
+            #[cfg(target_os = "linux")]
+            device_detect_mode: cfg
+                .options
+                .linux_opts
+                .linux_device_detect_mode
+                .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,

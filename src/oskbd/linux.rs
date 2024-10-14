@@ -23,8 +23,9 @@ use std::thread;
 
 use super::*;
 use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
+use kanata_parser::cfg::*;
+use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
-use kanata_parser::{cfg::UnicodeTermination, custom_action::*};
 
 pub struct KbdIn {
     devices: HashMap<Token, (Device, String)>,
@@ -37,6 +38,7 @@ pub struct KbdIn {
     _inotify: Inotify,
     include_names: Option<Vec<String>>,
     exclude_names: Option<Vec<String>>,
+    device_detect_mode: DeviceDetectMode,
 }
 
 const INOTIFY_TOKEN_VALUE: usize = 0;
@@ -50,6 +52,7 @@ impl KbdIn {
         continue_if_no_devices: bool,
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
+        device_detect_mode: DeviceDetectMode,
     ) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
 
@@ -61,7 +64,11 @@ impl KbdIn {
                 missing_device_paths.as_mut().expect("initialized"),
             )
         } else {
-            discover_devices(include_names.as_deref(), exclude_names.as_deref())
+            discover_devices(
+                include_names.as_deref(),
+                exclude_names.as_deref(),
+                device_detect_mode,
+            )
         };
         if devices.is_empty() {
             if continue_if_no_devices {
@@ -92,6 +99,7 @@ impl KbdIn {
             token_counter: INOTIFY_TOKEN_VALUE + 1,
             include_names,
             exclude_names,
+            device_detect_mode,
         };
 
         for (device, dev_path) in devices.into_iter() {
@@ -215,19 +223,23 @@ impl KbdIn {
             std::thread::sleep(std::time::Duration::from_millis(
                 WAIT_DEVICE_MS.load(Ordering::SeqCst),
             ));
-            discover_devices(self.include_names.as_deref(), self.exclude_names.as_deref())
-                .into_iter()
-                .try_for_each(|(dev, path)| {
-                    if !self
-                        .devices
-                        .values()
-                        .any(|(_, registered_path)| &path == registered_path)
-                    {
-                        self.register_device(dev, path)
-                    } else {
-                        Ok(())
-                    }
-                })?;
+            discover_devices(
+                self.include_names.as_deref(),
+                self.exclude_names.as_deref(),
+                self.device_detect_mode,
+            )
+            .into_iter()
+            .try_for_each(|(dev, path)| {
+                if !self
+                    .devices
+                    .values()
+                    .any(|(_, registered_path)| &path == registered_path)
+                {
+                    self.register_device(dev, path)
+                } else {
+                    Ok(())
+                }
+            })?;
         }
         Ok(())
     }
@@ -341,6 +353,7 @@ pub struct KbdOut {
     raw_buf: Vec<InputEvent>,
     pub unicode_termination: Cell<UnicodeTermination>,
     pub unicode_u_code: Cell<OsCode>,
+    pub device_detect_mode: DeviceDetectMode,
 }
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
@@ -644,6 +657,7 @@ fn devices_from_input_paths(
 fn discover_devices(
     include_names: Option<&[String]>,
     exclude_names: Option<&[String]>,
+    device_detect_mode: DeviceDetectMode,
 ) -> Vec<(Device, String)> {
     log::info!("looking for devices in /dev/input");
     let devices: Vec<_> = evdev::enumerate()
@@ -656,7 +670,7 @@ fn discover_devices(
             )
         })
         .filter(|pd| {
-            is_input_device(&pd.0)
+            is_input_device(&pd.0, device_detect_mode)
                 && match include_names {
                     None => true,
                     Some(include_names) => {
