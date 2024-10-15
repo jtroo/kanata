@@ -34,7 +34,11 @@ impl KbdOut {
         Ok(Self { tx_kout: None })
     }
     #[cfg(target_os = "linux")]
-    pub fn new(_: &Option<String>) -> Result<Self, io::Error> {
+    pub fn new(
+        _s: &Option<String>,
+        _tp: bool,
+        _bustype: evdev::BusType,
+    ) -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
     }
     #[cfg(target_os = "linux")]
