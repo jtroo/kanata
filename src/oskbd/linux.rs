@@ -23,7 +23,8 @@ use std::thread;
 
 use super::*;
 use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
-use kanata_parser::cfg::*;
+use kanata_parser::cfg::DeviceDetectMode;
+use kanata_parser::cfg::UnicodeTermination;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
@@ -277,7 +278,7 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
             false
         }
         (DeviceDetectMode::Any, _)
-        | (DeviceDetectMode::KeyboardMouse, DeviceType::Keyboard | DeviceType::KeyboardMouse)
+        | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
             log::debug!(
                 "Use for input: true. detect type {:?}; device type {:?}, device name: {}",
@@ -353,7 +354,6 @@ pub struct KbdOut {
     raw_buf: Vec<InputEvent>,
     pub unicode_termination: Cell<UnicodeTermination>,
     pub unicode_u_code: Cell<OsCode>,
-    pub device_detect_mode: DeviceDetectMode,
 }
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]

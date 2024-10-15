@@ -8,10 +8,16 @@ use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum DeviceDetectMode {
+pub enum DeviceDetectMode {
     KeyboardOnly,
     KeyboardMice,
     Any,
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+impl std::fmt::Display for DeviceDetectMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -349,12 +355,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         };
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            let detect_mode = match detect_mode {
+                            let detect_mode = Some(match detect_mode {
                                 "any" => DeviceDetectMode::Any,
                                 "keyboard-only" => DeviceDetectMode::KeyboardOnly,
                                 "keyboard-mice" => DeviceDetectMode::KeyboardMice,
                                 _ => unreachable!("validated earlier"),
-                            };
+                            });
                             cfg.linux_opts.linux_device_detect_mode = detect_mode;
                         }
                     }
