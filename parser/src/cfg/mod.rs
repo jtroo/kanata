@@ -611,6 +611,7 @@ pub fn parse_cfg_raw_string(
     }
     replace_custom_str_oscode_mapping(&local_keys.unwrap_or_default());
 
+    #[allow(unused_mut)]
     let mut cfg = root_exprs
         .iter()
         .find(gen_first_atom_filter("defcfg"))
