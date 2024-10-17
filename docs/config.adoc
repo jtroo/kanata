@@ -2497,6 +2497,41 @@ this behaviour by setting `linux-continue-if-no-devs-found`.
 )
 ----
 
+[[linux-only-linux-device-detect-mode]]
+=== Linux only: linux-device-detect-mode
+<<table-of-contents,Back to ToC>>
+
+Kanata on Linux automatically detects and grabs input devices
+when none of the explicit device configurations are in use.
+In case kanata is undesirably grabbing mouse-like devices,
+you can use a configuration item to change detection behaviour.
+
+The configuration is `linux-device-detect-mode` and it has the options:
+
+[cols="1,2"]
+|===
+| `keyboard-only`
+| Grab devices that seem to be a keyboard only.
+
+| `keyboard-mice`
+| Grab devices that seem to be a keyboard only
+and devices that declare **both** keyboard and mouse functionality.
+
+| `any`
+| Grab all keyboard-like and mouse-like devices.
+|===
+
+The default behaviour is:
+
+[cols="1,2"]
+|===
+| When any mouse buttons or mouse scroll events are in `defsrc`:
+| `any`
+
+| Otherwise:
+| `keyboard-mice`
+|===
+
 [[linux-only-linux-unicode-u-code]]
 === Linux only: linux-unicode-u-code
 <<table-of-contents,Back to ToC>>

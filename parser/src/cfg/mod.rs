@@ -611,7 +611,8 @@ pub fn parse_cfg_raw_string(
     }
     replace_custom_str_oscode_mapping(&local_keys.unwrap_or_default());
 
-    let cfg = root_exprs
+    #[allow(unused_mut)]
+    let mut cfg = root_exprs
         .iter()
         .find(gen_first_atom_filter("defcfg"))
         .map(|cfg| parse_defcfg(cfg))
@@ -644,7 +645,14 @@ pub fn parse_cfg_raw_string(
             "Exactly one defsrc is allowed, found more. Delete the extras."
         )
     }
-    let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
+    let (mut mapped_keys, mapping_order, _mouse_in_defsrc) = parse_defsrc(src_expr, &cfg)?;
+    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    if cfg.linux_opts.linux_device_detect_mode.is_none() {
+        cfg.linux_opts.linux_device_detect_mode = Some(match _mouse_in_defsrc {
+            MouseInDefsrc::MouseUsed => DeviceDetectMode::Any,
+            MouseInDefsrc::NoMouse => DeviceDetectMode::KeyboardMice,
+        });
+    }
 
     let var_exprs = root_exprs
         .iter()
@@ -1041,13 +1049,23 @@ fn parse_deflocalkeys(
     Ok(localkeys)
 }
 
+#[derive(Debug, Copy, Clone)]
+enum MouseInDefsrc {
+    MouseUsed,
+    NoMouse,
+}
+
 /// Parse mapped keys from an expression starting with defsrc. Returns the key mapping as well as
 /// a vec of the indexes in order. The length of the returned vec should be matched by the length
 /// of all layer declarations.
-fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<usize>)> {
+fn parse_defsrc(
+    expr: &[SExpr],
+    defcfg: &CfgOptions,
+) -> Result<(MappedKeys, Vec<usize>, MouseInDefsrc)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = MappedKeys::default();
     let mut ordered_codes = Vec::new();
+    let mut is_mouse_used = MouseInDefsrc::NoMouse;
     for expr in exprs {
         let s = match expr {
             SExpr::Atom(a) => &a.t,
@@ -1055,6 +1073,22 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
         };
         let oscode = str_to_oscode(s)
             .ok_or_else(|| anyhow_expr!(expr, "Unknown key in defsrc: \"{}\"", s))?;
+        is_mouse_used = match (is_mouse_used, oscode) {
+            (
+                MouseInDefsrc::NoMouse,
+                OsCode::BTN_LEFT
+                | OsCode::BTN_RIGHT
+                | OsCode::BTN_MIDDLE
+                | OsCode::BTN_SIDE
+                | OsCode::BTN_EXTRA
+                | OsCode::MouseWheelUp
+                | OsCode::MouseWheelDown
+                | OsCode::MouseWheelLeft
+                | OsCode::MouseWheelRight,
+            ) => MouseInDefsrc::MouseUsed,
+            _ => is_mouse_used,
+        };
+
         if mkeys.contains(&oscode) {
             bail_expr!(expr, "Repeat declaration of key in defsrc: \"{}\"", s)
         }
@@ -1077,7 +1111,7 @@ fn parse_defsrc(expr: &[SExpr], defcfg: &CfgOptions) -> Result<(MappedKeys, Vec<
     }
 
     mkeys.shrink_to_fit();
-    Ok((mkeys, ordered_codes))
+    Ok((mkeys, ordered_codes, is_mouse_used))
 }
 
 type LayerIndexes = HashMap<String, usize>;
