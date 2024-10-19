@@ -34,6 +34,15 @@ impl ZchPossibleChords {
     }
 }
 
+/// Zch output can be uppercase or lowercase characters.
+/// The parser should ensure all `OsCode`s within `Lowercase` and `Uppercase`
+/// are visible characters that can be backspaced.
+#[derive(Debug, Clone, Copy)]
+pub enum ZchOutput {
+    Lowercase(OsCode),
+    Uppercase(OsCode),
+}
+
 /// A chord.
 ///
 /// If any followups exist it will be Some.
@@ -44,7 +53,7 @@ impl ZchPossibleChords {
 /// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
 #[derive(Debug, Clone)]
 struct ZchChordOutput {
-    zch_output: Box<[OsCode]>,
+    zch_output: Box<[ZchOutput]>,
     zch_followups: Option<Arc<ZchPossibleChords>>,
 }
 
@@ -93,6 +102,8 @@ struct ZchDynamicState {
     /// contained within `zchd_prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
     zchd_prioritized_chords: Option<Arc<ZchPossibleChords>>,
+    /// Tracks the previous output because it may need to be erased (see `zchd_prioritized_chords).
+    zchd_previous_activation_output: Option<Box<[ZchOutput]>>,
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
     /// Windows lock screen weirdness.
@@ -105,7 +116,6 @@ struct ZchDynamicState {
     zchd_ticks_until_enabled: u16,
     /// Tracks the actually pressed keys to know when state can be reset.
     zchd_pressed_keys: FxHashSet<OsCode>,
-    zchd_previous_activation_output: Option<Box<[OsCode]>>,
 }
 
 impl ZchDynamicState {
@@ -177,7 +187,7 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() {
+        if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() || osc.is_modifier() {
             return kb.press_key(osc);
         }
         self.zchd.zchd_state_change(&self.zch_cfg);
@@ -224,9 +234,28 @@ impl ZchState {
                     kb.press_key(OsCode::KEY_BACKSPACE)?;
                     kb.release_key(OsCode::KEY_BACKSPACE)?;
                 }
-                self.zchd.zchd_previous_activation_output = Some(a.zch_output);
                 self.zchd.zchd_prioritized_chords = a.zch_followups;
-                todo!("type out activation.zch_output");
+                let mut released_lsft = false;
+                for key_to_send in &a.zch_output {
+                    match key_to_send {
+                        ZchOutput::Lowercase(osc) => {
+                            kb.press_key(*osc)?;
+                            kb.release_key(*osc)?;
+                        }
+                        ZchOutput::Uppercase(osc) => {
+                            kb.press_key(OsCode::KEY_LEFTSHIFT)?;
+                            kb.press_key(*osc)?;
+                            kb.release_key(*osc)?;
+                            kb.release_key(OsCode::KEY_LEFTSHIFT)?;
+                        }
+                    }
+                    if !released_lsft {
+                        released_lsft = true;
+                        kb.release_key(OsCode::KEY_LEFTSHIFT)?;
+                    }
+                };
+                self.zchd.zchd_previous_activation_output = Some(a.zch_output);
+                Ok(())
             }
             InTrie => {
                 self.zchd
@@ -248,7 +277,7 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() {
+        if self.zch_chords.is_empty() || osc.is_modifier() {
             return kb.release_key(osc);
         }
         self.zchd.zchd_state_change(&self.zch_cfg);
