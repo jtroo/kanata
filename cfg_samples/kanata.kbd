@@ -86,6 +86,13 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;; linux-continue-if-no-devs-found yes
 
+  ;; Kanata on Linux automatically detects and grabs input devices
+  ;; when none of the explicit device configurations are in use.
+  ;; In case kanata is undesirably grabbing mouse-like devices,
+  ;; you can use a configuration item to change detection behaviour.
+  ;;
+  ;; linux-device-detect-mode keyboard-only
+
   ;; On Linux, you can ask kanata to run `xset r rate <delay> <rate>` on startup
   ;; and on live reload via the config below. The first number is the delay in ms
   ;; and the second number is the repeat rate in repeats/second.

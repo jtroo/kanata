@@ -7,6 +7,20 @@ use crate::custom_action::*;
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DeviceDetectMode {
+    KeyboardOnly,
+    KeyboardMice,
+    Any,
+}
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
+impl std::fmt::Display for DeviceDetectMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Debug, Clone)]
 pub struct CfgLinuxOptions {
     pub linux_dev: Vec<String>,
@@ -18,6 +32,7 @@ pub struct CfgLinuxOptions {
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
     pub linux_use_trackpoint_property: bool,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
+    pub linux_device_detect_mode: Option<DeviceDetectMode>,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -34,6 +49,7 @@ impl Default for CfgLinuxOptions {
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
+            linux_device_detect_mode: None,
         }
     }
 }
@@ -329,6 +345,23 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 _ => unreachable!("validated earlier"),
                             };
                             cfg.linux_opts.linux_output_bus_type = bus_type;
+                        }
+                    }
+                    "linux-device-detect-mode" => {
+                        let detect_mode = sexpr_to_str_or_err(val, label)?;
+                        match detect_mode {
+                            "any" | "keyboard-only" | "keyboard-mice" => {},
+                            _ => bail_expr!(val, "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"),
+                        };
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let detect_mode = Some(match detect_mode {
+                                "any" => DeviceDetectMode::Any,
+                                "keyboard-only" => DeviceDetectMode::KeyboardOnly,
+                                "keyboard-mice" => DeviceDetectMode::KeyboardMice,
+                                _ => unreachable!("validated earlier"),
+                            });
+                            cfg.linux_opts.linux_device_detect_mode = detect_mode;
                         }
                     }
                     "windows-altgr" => {

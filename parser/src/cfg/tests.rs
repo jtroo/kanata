@@ -6,6 +6,7 @@ use kanata_keyberon::action::BooleanOperator::*;
 use std::sync::{Mutex, MutexGuard};
 
 mod ambiguous;
+mod device_detect;
 mod environment;
 mod macros;
 
@@ -62,6 +63,8 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
             .all(|layer| layer[usize::from(NORMAL_KEY_ROW)]
                 .iter()
                 .all(|action| *action != DEFAULT_ACTION)));
+        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        assert!(icfg.options.linux_opts.linux_device_detect_mode.is_some());
     }
     icfg
 }
