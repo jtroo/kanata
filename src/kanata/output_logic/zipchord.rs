@@ -20,6 +20,9 @@ impl ZchSortedInputs {
     fn zchsi_insert(&mut self, osc: OsCode) {
         self.zch_inputs.zch_insert(osc.into());
     }
+    fn zchsi_len(&self) -> usize {
+        self.zch_inputs.zch_keys.len()
+    }
 }
 
 /// All possible chords.
@@ -91,10 +94,14 @@ struct ZchDynamicState {
     /// activation is no longer possible.
     zchd_prioritized_chords: Option<Arc<ZchPossibleChords>>,
     /// Tracker for time until previous state change to know if potential stale data should be
-    /// cleared.
+    /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
+    /// Windows lock screen weirdness.
+    ///
+    /// This counts upwards to a "reset state" number.
     zchd_ticks_since_state_change: u16,
     /// Zch has a time delay between being disabled->pending-enabled->truly-enabled to mitigate
-    /// against unintended activations.
+    /// against unintended activations. This counts downwards from a configured number until 0, and
+    /// at 0 the state transitions from pending-enabled to truly-enabled if applicable.
     zchd_ticks_until_enabled: u16,
     /// Tracks the actually pressed keys to know when state can be reset.
     zchd_pressed_keys: FxHashSet<OsCode>,
@@ -122,10 +129,9 @@ impl ZchDynamicState {
         self.zchd_ticks_since_state_change = 0;
         self.zchd_ticks_until_enabled = cfg.zch_cfg_ticks_wait_enable;
     }
-    /// Clean up the state. Not expected to be necessary to call constantly but rather only when
-    /// state doesn't seem to be cleaning up on its own enough.
+    /// Clean up the state.
     fn zchd_reset(&mut self) {
-        log::warn!("zchd reset state");
+        log::debug!("zchd reset state");
         self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
         self.zchd_pressed_keys.clear();
         self.zchd_sorted_inputs.zch_inputs.zch_keys.clear();
@@ -186,12 +192,15 @@ impl ZchState {
         // Output activation will save into `zchd_previous_activation_output` if there is potential
         // for subsequent activations, i.e. if zch_followups is `Some`.
         let mut activation = NotInTrie;
+        let mut is_activated_by_pchord = false;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
                 .0
                 .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zch_inputs.zch_keys);
         }
-        if !matches!(activation, HasValue(..)) {
+        if matches!(activation, HasValue(..)) {
+            is_activated_by_pchord = true;
+        } else {
             activation = self
                 .zch_chords
                 .0
@@ -199,7 +208,22 @@ impl ZchState {
         }
         match activation {
             HasValue(a) => {
-                // TODO: delete keys associated with either the input or self.zchd.zchd_previous_activation_output
+                let num_backspaces_to_send = match is_activated_by_pchord {
+                    true => {
+                        self.zchd.zchd_sorted_inputs.zchsi_len()
+                            + self
+                                .zchd
+                                .zchd_previous_activation_output
+                                .as_ref()
+                                .expect("prev activation should be some if pchords is some")
+                                .len()
+                    }
+                    false => self.zchd.zchd_sorted_inputs.zchsi_len(),
+                };
+                for _ in 0..num_backspaces_to_send {
+                    kb.press_key(OsCode::KEY_BACKSPACE)?;
+                    kb.release_key(OsCode::KEY_BACKSPACE)?;
+                }
                 self.zchd.zchd_previous_activation_output = Some(a.zch_output);
                 self.zchd.zchd_prioritized_chords = a.zch_followups;
                 todo!("type out activation.zch_output");
@@ -212,6 +236,7 @@ impl ZchState {
                 return kb.press_key(osc);
             }
             NotInTrie => {
+                self.zchd.zchd_reset();
                 self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
                 return kb.press_key(osc);
             }
