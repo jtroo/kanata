@@ -120,7 +120,7 @@ This issue in the Interception driver exists: https://github.com/oblitum/Interce
 
 ### Description
 
-These variants use the [Interception driver](http://www.oblita.com/interception) instead of Windows hooks. You will need to install the driver using the assets from the linked website or from the [copy in this repo](https://github.com/jtroo/kanata/tree/main/assets). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications, including administrator-privileged apps.
+These variants use the [Interception driver](https://github.com/oblitum/Interception) instead of Windows hooks. You will need to install the driver using the release or from the [copy in this repo](https://github.com/jtroo/kanata/tree/main/assets). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications.
 
 ### Steps to install the driver
 
