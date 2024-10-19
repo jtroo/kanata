@@ -44,7 +44,7 @@ impl ZchPossibleChords {
 /// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
 #[derive(Debug, Clone)]
 struct ZchChordOutput {
-    zch_output: Box<str>,
+    zch_output: Box<[OsCode]>,
     zch_followups: Option<Arc<ZchPossibleChords>>,
 }
 
@@ -105,7 +105,7 @@ struct ZchDynamicState {
     zchd_ticks_until_enabled: u16,
     /// Tracks the actually pressed keys to know when state can be reset.
     zchd_pressed_keys: FxHashSet<OsCode>,
-    zchd_previous_activation_output: Option<Box<str>>,
+    zchd_previous_activation_output: Option<Box<[OsCode]>>,
 }
 
 impl ZchDynamicState {
