@@ -115,9 +115,10 @@ pub(crate) struct ZchState {
     zchd: ZchDynamicState,
     /// Chords configured by the user. This is fixed at runtime other than live-reloads replacing
     /// the state.
-    zch_chords: ZchPossibleChords,
+    pub(crate) zch_chords: ZchPossibleChords,
     /// Options to configure behaviour.
-    zch_cfg: ZchConfig,
+    /// TODO: needs parser configuration.
+    pub(crate) zch_cfg: ZchConfig,
 }
 
 impl ZchState {
@@ -254,7 +255,7 @@ pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
 }
 
 #[derive(Debug)]
-struct ZchConfig {
+pub(crate) struct ZchConfig {
     zch_cfg_ticks_wait_enable: u16,
 }
 impl Default for ZchConfig {

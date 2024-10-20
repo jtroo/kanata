@@ -3,7 +3,7 @@ use super::*;
 #[cfg(feature = "zippychord")]
 mod zipchord;
 #[cfg(feature = "zippychord")]
-use zipchord::*;
+pub(crate) use zipchord::*;
 
 // Functions to send keys except those that fall in the ignorable range.
 // And also have been repurposed to have additional logic to send mouse events, out of convenience.

@@ -274,6 +274,8 @@ pub struct Cfg {
     pub fake_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
+    /// Zipchord-like configuration.
+    pub zippy: Option<ZchPossibleChords>,
 }
 
 /// Parse a new configuration from a file.
@@ -325,6 +327,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
         overrides: icfg.overrides,
         fake_keys,
         switch_max_key_timing,
+        zippy: icfg.zippy,
     })
 }
 
@@ -376,6 +379,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         overrides: icfg.overrides,
         fake_keys,
         switch_max_key_timing,
+        zippy: icfg.zippy,
     })
 }
 
@@ -412,6 +416,7 @@ pub struct IntermediateCfg {
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
     pub start_action: Option<&'static KanataAction>,
+    pub zippy: Option<ZchPossibleChords>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -882,11 +887,10 @@ pub fn parse_cfg_raw_string(
         .iter()
         .filter(gen_first_atom_filter("defzippy-experimental"))
         .collect::<Vec<_>>();
-    // TODO: save into parser state
-    let _zippy = match zippy_exprs.len() {
+    let zippy = match zippy_exprs.len() {
         0 => None,
         1 => {
-            let zippy = parse_zippy(chords_v2_exprs[0], s)?;
+            let zippy = parse_zippy(chords_v2_exprs[0], s, file_content_provider)?;
             Some(zippy)
         }
         _ => {
@@ -922,6 +926,7 @@ pub fn parse_cfg_raw_string(
         overrides,
         chords_v2,
         start_action,
+        zippy,
     })
 }
 

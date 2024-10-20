@@ -32,11 +32,7 @@
 //!   -> note: do observe the two spaces between 'w' and 'a'
 use super::*;
 
-use crate::anyhow_expr;
 use crate::bail_expr;
-use crate::trie::GetOrDescendentExistsResult::*;
-
-use std::fs;
 
 use parking_lot::Mutex;
 
@@ -122,7 +118,19 @@ pub enum ZchOutput {
     Uppercase(OsCode),
 }
 
-pub(crate) fn parse_zippy(exprs: &[SExpr], s: &ParserState) -> Result<ZchPossibleChords> {
+pub(crate) fn parse_zippy(exprs: &[SExpr], s: &ParserState, f: &mut FileContentProvider) -> Result<ZchPossibleChords> {
+    parse_zippy_inner(exprs, s, f)
+}
+
+#[cfg(not(feature = "zippychord"))]
+fn parse_zippy_inner(exprs: &[SExpr], _s: &ParserState, _f: &mut FileContentProvider) -> Result<ZchPossibleChords> {
+    bail_expr!(&exprs[0], "Kanata was not compiled with the \"zippychord\" feature. This configuration is unsupported")
+}
+
+#[cfg(feature = "zippychord")]
+fn parse_zippy_inner(exprs: &[SExpr], s: &ParserState, f: &mut FileContentProvider) -> Result<ZchPossibleChords> {
+    use crate::anyhow_expr;
+    use crate::trie::GetOrDescendentExistsResult::*;
     if exprs.len() != 2 {
         bail_expr!(
             &exprs[0],
@@ -133,7 +141,7 @@ pub(crate) fn parse_zippy(exprs: &[SExpr], s: &ParserState) -> Result<ZchPossibl
     let Some(file_name) = exprs[1].atom(s.vars()) else {
         bail_expr!(&exprs[1], "Filename must be a string, not a list.");
     };
-    let input_data = fs::read_to_string(file_name)
+    let input_data = f.get_file_content(file_name.as_ref())
         .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
     let res = input_data
         .lines()

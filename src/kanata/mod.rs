@@ -326,6 +326,10 @@ impl Kanata {
         set_win_altgr_behaviour(cfg.options.windows_altgr);
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_chords = cfg.zippy.unwrap_or_default();
+        }
 
         Ok(Self {
             kbd_out,
