@@ -23,13 +23,13 @@ fn sim_zippychord_capitalize() {
     assert_eq!(
         "dn:A t:10ms dn:B t:10ms dn:Space t:10ms \
          dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-         up:A dn:LShift dn:A up:A up:LShift up:LShift \
-         dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T \
+         dn:LShift up:A dn:A up:LShift \
+         dn:L up:L dn:P up:P dn:H up:H up:A dn:A up:B dn:B dn:E up:E dn:T up:T \
          t:1ms up:A t:1ms up:B t:1ms up:C t:1ms up:Space t:296ms \
          dn:A t:10ms dn:B t:10ms dn:Space t:10ms \
          dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-         up:A dn:LShift dn:A up:A up:LShift up:LShift \
-         dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T",
+         dn:LShift up:A dn:A up:LShift \
+         dn:L up:L dn:P up:P dn:H up:H up:A dn:A up:B dn:B dn:E up:E dn:T up:T",
         result
     );
 }
@@ -44,10 +44,10 @@ fn sim_zippychord_followup_with_prev() {
     .to_ascii();
     assert_eq!(
         "dn:D t:10ms dn:BSpace up:BSpace \
-        up:D dn:D up:D up:LShift dn:A up:A up:Y dn:Y up:Y \
-        t:10ms up:D t:1ms up:Y t:9ms \
-        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        dn:LShift dn:M up:M up:LShift up:LShift dn:O up:O dn:N up:N dn:D up:D dn:A up:A dn:Y up:Y",
+         up:D dn:D dn:A up:A up:Y dn:Y \
+         t:10ms up:D t:1ms up:Y t:9ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:LShift dn:M up:M up:LShift dn:O up:O dn:N up:N dn:D up:D dn:A up:A dn:Y up:Y",
         result
     );
 }
@@ -63,7 +63,7 @@ fn sim_zippychord_followup_no_prev() {
     assert_eq!(
         "dn:R t:10ms up:R t:10ms dn:D t:1ms \
         dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        dn:R up:R up:LShift dn:E up:E dn:C up:C dn:I up:I dn:P up:P dn:I up:I dn:E up:E dn:N up:N dn:T up:T",
+        dn:R up:R dn:E up:E dn:C up:C dn:I up:I dn:P up:P dn:I up:I dn:E up:E dn:N up:N dn:T up:T",
         result
     );
 }
@@ -78,12 +78,17 @@ fn sim_zippychord_overlap() {
     .to_ascii();
     assert_eq!(
         "dn:R t:10ms dn:BSpace up:BSpace \
-        up:R dn:R up:R up:LShift dn:E up:E up:Q dn:Q up:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:10ms \
+        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:10ms \
         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        dn:R up:R up:LShift dn:E up:E dn:Q up:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
+        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
         dn:Space up:Space \
-        up:A dn:A up:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T dn:A up:A dn:N up:N dn:C up:C dn:E up:E",
+        up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E",
         result
     );
 }
+
+// TODO:
+// - test for lsft-already-pressed capitalization state
+// - test for rsft-already-pressed capitalization state
+// - test for caps-word state

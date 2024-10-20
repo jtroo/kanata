@@ -786,7 +786,7 @@ impl Kanata {
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
         tick_record_state(&mut self.dynamic_macro_record_state);
-        zippy_tick();
+        zippy_tick(self.caps_word.is_some());
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
         #[cfg(feature = "simulated_output")]
