@@ -1,12 +1,13 @@
 use super::*;
 
-static ZIPPY_CFG: &str = "(defsrc)(deflayer base)(defzippy-experimental file)";
+static ZIPPY_CFG: &str = "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy-experimental file)";
 static ZIPPY_FILE_CONTENT: &str = "
 dy	day
 dy 1	Monday
  abc	Alphabet
 r df	recipient
  w  a	Washington
+xy	WxYz
 rq	request
 rqa	request␣assistance
 ";
@@ -88,7 +89,99 @@ fn sim_zippychord_overlap() {
     );
 }
 
-// TODO:
-// - test for lsft-already-pressed capitalization state
-// - test for rsft-already-pressed capitalization state
-// - test for caps-word state
+#[test]
+fn sim_zippychord_lsft() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lsft t:10 d:d t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:D t:10ms dn:BSpace up:BSpace up:D dn:D up:LShift dn:A up:A up:Y dn:Y dn:LShift",
+        result
+    );
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lsft t:10 d:x t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:X t:10ms dn:BSpace up:BSpace \
+         dn:W up:W up:LShift up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z dn:LShift",
+        result
+    );
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lsft t:10 d:d u:lsft t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:D t:1ms up:LShift t:9ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
+        result
+    );
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lsft t:10 d:x u:lsft t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:X t:1ms up:LShift t:9ms dn:BSpace up:BSpace \
+         dn:LShift dn:W up:W up:LShift up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_rsft() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:rsft t:10 d:d t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RShift t:10ms dn:D t:10ms dn:BSpace up:BSpace up:D dn:D up:RShift dn:A up:A up:Y dn:Y dn:RShift",
+        result
+    );
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:rsft t:10 d:x t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RShift t:10ms dn:X t:10ms dn:BSpace up:BSpace \
+         dn:W up:W up:RShift up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z dn:RShift",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_caps_word() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lalt t:10 d:d t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:LShift dn:D t:10ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
+        result
+    );
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:lalt t:10 d:x t:10 d:y t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:LShift dn:X t:10ms dn:BSpace up:BSpace \
+         dn:W up:W up:X dn:X up:Y dn:Y dn:Z up:Z",
+        result
+    );
+}
+

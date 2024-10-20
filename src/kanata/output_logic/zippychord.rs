@@ -250,8 +250,8 @@ impl ZchState {
                         }
                         ZchOutput::Uppercase(osc) => {
                             if !self.zchd.zchd_is_caps_word_active
-                                && !self.zchd.zchd_is_lsft_active
-                                && !self.zchd.zchd_is_rsft_active
+                                && (released_lsft
+                                    || !self.zchd.zchd_is_lsft_active && !self.zchd.zchd_is_rsft_active)
                             {
                                 kb.press_key(OsCode::KEY_LEFTSHIFT)?;
                             }
@@ -263,8 +263,8 @@ impl ZchState {
                                 kb.release_key(*osc)?;
                             }
                             if !self.zchd.zchd_is_caps_word_active
-                                && !self.zchd.zchd_is_lsft_active
-                                && !self.zchd.zchd_is_rsft_active
+                                && (released_lsft
+                                    || !self.zchd.zchd_is_lsft_active && !self.zchd.zchd_is_rsft_active)
                             {
                                 kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                             }
@@ -272,8 +272,8 @@ impl ZchState {
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     if !released_lsft {
-                        released_lsft = true;
                         if !self.zchd.zchd_is_caps_word_active {
+                            released_lsft = true;
                             if self.zchd.zchd_is_lsft_active {
                                 kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                             }
