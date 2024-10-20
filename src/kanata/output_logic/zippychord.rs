@@ -67,7 +67,7 @@ struct ZchDynamicState {
     zchd_prioritized_chords: Option<Arc<parking_lot::Mutex<ZchPossibleChords>>>,
     /// Tracks the previous output character count
     /// because it may need to be erased (see `zchd_prioritized_chords).
-    zchd_previous_activation_output_count: Option<u16>,
+    zchd_previous_activation_output_count: u16,
     /// In case of output being empty for interim chord activations, this tracks the number of
     /// characters that need to be erased.
     zchd_characters_to_delete_on_next_activation: u16,
@@ -113,7 +113,7 @@ impl ZchDynamicState {
         self.zchd_pressed_keys.clear();
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
-        self.zchd_previous_activation_output_count = None;
+        self.zchd_previous_activation_output_count = 0;
         self.zchd_characters_to_delete_on_next_activation = 0;
     }
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -199,14 +199,13 @@ impl ZchState {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
-                    self.zchd.zchd_previous_activation_output_count = Some(self.zchd.zchd_input_keys.zchik_keys().len() as u16);
+                    self.zchd.zchd_previous_activation_output_count =
+                        self.zchd.zchd_input_keys.zchik_keys().len() as u16;
                     kb.press_key(osc)?;
                 } else {
                     for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation
                         + if is_prioritized_activation {
-                            self.zchd.zchd_previous_activation_output_count.expect(
-                                "previous activation should exist for prioritized activation",
-                            )
+                            self.zchd.zchd_previous_activation_output_count
                         } else {
                             0
                         })
@@ -215,8 +214,7 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    self.zchd.zchd_previous_activation_output_count =
-                        Some(a.zch_output.len() as u16);
+                    self.zchd.zchd_previous_activation_output_count = a.zch_output.len() as u16;
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
