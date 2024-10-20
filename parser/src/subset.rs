@@ -84,16 +84,16 @@ impl<K, V> SubsetMap<K, V> where K: Clone + PartialEq + Ord + Hash, V: Clone {
 
 
     /// Gets using a potentially unsorted key. Sorts the key then calls
-    /// ssm_get_or_subset_exists_ksorted.
-    pub fn ssm_get_or_subset_exists(&self, mut key: impl AsMut<[K]>) -> GetOrIsSubsetOfKnownKey<V>
+    /// ssm_get_or_is_subset_ksorted.
+    pub fn ssm_get_or_is_subset(&self, mut key: impl AsMut<[K]>) -> GetOrIsSubsetOfKnownKey<V>
     {
         key.as_mut().sort();
-        self.ssm_get_or_subset_exists_ksorted(key.as_mut())
+        self.ssm_get_or_is_subset_ksorted(key.as_mut())
     }
 
     /// Gets using a sorted key. Failure to enforce a sorted key results in defined but unspecified
     /// behaviour.
-    pub fn ssm_get_or_subset_exists_ksorted(&self, get_key: impl AsRef<[K]>) -> GetOrIsSubsetOfKnownKey<V>
+    pub fn ssm_get_or_is_subset_ksorted(&self, get_key: impl AsRef<[K]>) -> GetOrIsSubsetOfKnownKey<V>
     {
         let get_key = get_key.as_ref();
         if get_key.is_empty() {

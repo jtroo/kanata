@@ -1,6 +1,6 @@
 use super::*;
 
-use kanata_parser::trie::GetOrDescendentExistsResult::*;
+use kanata_parser::subset::GetOrIsSubsetOfKnownKey::*;
 use rustc_hash::FxHashSet;
 
 use std::sync::Arc;
@@ -145,18 +145,18 @@ impl ZchState {
         //
         // Output activation will save into `zchd_previous_activation_output` if there is potential
         // for subsequent activations, i.e. if zch_followups is `Some`.
-        let mut activation = NotInTrie;
+        let mut activation = Neither;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
                 .lock()
                 .0
-                .get_or_descendant_exists(&self.zchd.zchd_input_keys.zchik_keys());
+                .ssm_get_or_is_subset_ksorted(&self.zchd.zchd_input_keys.zchik_keys());
         }
         if !matches!(activation, HasValue(..)) {
             activation = self
                 .zch_chords
                 .0
-                .get_or_descendant_exists(self.zchd.zchd_input_keys.zchik_keys());
+                .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
         }
         match activation {
             HasValue(a) => {
@@ -179,7 +179,7 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                 }
-                self.zchd.zchd_prioritized_chords = a.zch_followups;
+                self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
                 for key_to_send in &a.zch_output {
                     match key_to_send {
@@ -210,7 +210,7 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                     }
                 }
-                self.zchd.zchd_previous_activation_output = Some(a.zch_output);
+                self.zchd.zchd_previous_activation_output = Some(a.zch_output.clone());
 
                 // Note: it is incorrect to clear input keys.
                 // Zippychord will eagerly output chords even if there is an overlapping chord that
@@ -228,11 +228,11 @@ impl ZchState {
 
                 Ok(())
             }
-            InTrie => {
+            IsSubset => {
                 self.zchd.zchd_input_keys.zchik_insert(osc);
                 return kb.press_key(osc);
             }
-            NotInTrie => {
+            Neither => {
                 self.zchd.zchd_reset();
                 self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
                 return kb.press_key(osc);

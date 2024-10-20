@@ -33,14 +33,13 @@
 use super::*;
 
 use crate::bail_expr;
+use crate::subset::*;
 
 use parking_lot::Mutex;
 
 /// All possible chords.
-/// TODO: this should not be a Trie but instead HashMap like chordsv2 with possibility for nested
-/// hashmap.
 #[derive(Debug, Clone, Default)]
-pub struct ZchPossibleChords(pub Trie<ZchChordOutput>);
+pub struct ZchPossibleChords(pub SubsetMap<u16, Arc<ZchChordOutput>>);
 impl ZchPossibleChords {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -146,7 +145,8 @@ fn parse_zippy_inner(
     f: &mut FileContentProvider,
 ) -> Result<ZchPossibleChords> {
     use crate::anyhow_expr;
-    use crate::trie::GetOrDescendentExistsResult::*;
+    use crate::subset::GetOrIsSubsetOfKnownKey::*;
+
     if exprs.len() != 2 {
         bail_expr!(
             &exprs[0],
@@ -165,7 +165,7 @@ fn parse_zippy_inner(
         .enumerate()
         .filter(|(_, line)| !line.trim().is_empty() && !line.trim().starts_with("//"))
         .try_fold(
-            Arc::new(Mutex::new(ZchPossibleChords(Trie::new()))),
+            Arc::new(Mutex::new(ZchPossibleChords(SubsetMap::ssm_new()))),
             |zch, (line_number, line)| {
                 let Some((input, output)) = line.split_once('\t') else {
                     bail_expr!(
@@ -251,7 +251,7 @@ fn parse_zippy_inner(
                     let output_for_input_chord = possible_chords_map
                         .lock()
                         .0
-                        .get_or_descendant_exists(input_chord.zchik_keys());
+                        .ssm_get_or_is_subset_ksorted(input_chord.zchik_keys());
                     match (input_left_to_parse.is_empty(), output_for_input_chord) {
                         (true, HasValue(_)) => {
                             bail_expr!(
@@ -261,29 +261,29 @@ fn parse_zippy_inner(
                         );
                         }
                         (true, _) => {
-                            possible_chords_map.lock().0.insert(
+                            possible_chords_map.lock().0.ssm_insert_ksorted(
                                 input_chord.zchik_keys(),
-                                ZchChordOutput {
+                                Arc::new(ZchChordOutput {
                                     zch_output: output,
                                     zch_followups: None,
-                                },
+                                }),
                             );
                             break;
                         }
                         (false, HasValue(next_nested_map)) => {
-                            match next_nested_map.zch_followups {
+                            match &next_nested_map.zch_followups {
                                 None => {
-                                    let map = Arc::new(Mutex::new(ZchPossibleChords(Trie::new())));
+                                    let map = Arc::new(Mutex::new(ZchPossibleChords(SubsetMap::ssm_new())));
                                     next_map = Some(map.clone());
                                     possible_chords_map
                                         .lock()
                                         .0
-                                        .insert(
+                                        .ssm_insert_ksorted(
                                             input_chord.zchik_keys(),
                                             ZchChordOutput {
-                                                zch_output: next_nested_map.zch_output,
+                                                zch_output: next_nested_map.zch_output.clone(),
                                                 zch_followups: Some(map),
-                                            },
+                                            }.into(),
                                         );
                                 },
                                 Some(followup) => {
@@ -292,14 +292,14 @@ fn parse_zippy_inner(
                             }
                         }
                         (false, _) => {
-                            let map = Arc::new(Mutex::new(ZchPossibleChords(Trie::new())));
+                            let map = Arc::new(Mutex::new(ZchPossibleChords(SubsetMap::ssm_new())));
                             next_map = Some(map.clone());
-                            possible_chords_map.lock().0.insert(
+                            possible_chords_map.lock().0.ssm_insert_ksorted(
                                 input_chord.zchik_keys(),
-                                ZchChordOutput {
+                                Arc::new(ZchChordOutput {
                                     zch_output: Box::new([]),
                                     zch_followups: Some(map),
-                                },
+                                }),
                             );
                         }
                     };
