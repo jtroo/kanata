@@ -176,7 +176,7 @@ fn parse_zippy_inner(exprs: &[SExpr], s: &ParserState, f: &mut FileContentProvid
                             let osc = str_to_oscode(key_name).ok_or_else(|| {
                                 anyhow_expr!(
                                     &exprs[1],
-                                    "Unknown output key {}:\n{}: {line}",
+                                    "Unknown output key name '{}':\n{}: {line}",
                                     out_char,
                                     line_number + 1,
                                 )
@@ -223,7 +223,7 @@ fn parse_zippy_inner(exprs: &[SExpr], s: &ParserState, f: &mut FileContentProvid
                             let osc = str_to_oscode(key_name).ok_or_else(|| {
                                 anyhow_expr!(
                                     &exprs[1],
-                                    "Found an unknown key name: {key_name}:\n{}: {line}",
+                                    "Unknown input key name: '{key_name}':\n{}: {line}",
                                     line_number + 1
                                 )
                             })?;
@@ -231,13 +231,11 @@ fn parse_zippy_inner(exprs: &[SExpr], s: &ParserState, f: &mut FileContentProvid
                             Ok(())
                         })?;
 
-                    match (
-                        input_left_to_parse.is_empty(),
-                        possible_chords_map
-                            .lock()
-                            .0
-                            .get_or_descendant_exists(input_chord.zchsi_keys()),
-                    ) {
+                    let map = possible_chords_map
+                        .lock()
+                        .0
+                        .get_or_descendant_exists(input_chord.zchsi_keys());
+                    match (input_left_to_parse.is_empty(), map) {
                         (true, HasValue(_)) => {
                             bail_expr!(
                             &exprs[1],

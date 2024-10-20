@@ -890,7 +890,7 @@ pub fn parse_cfg_raw_string(
     let zippy = match zippy_exprs.len() {
         0 => None,
         1 => {
-            let zippy = parse_zippy(chords_v2_exprs[0], s, file_content_provider)?;
+            let zippy = parse_zippy(zippy_exprs[0], s, file_content_provider)?;
             Some(zippy)
         }
         _ => {
