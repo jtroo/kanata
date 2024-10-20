@@ -7,3 +7,4 @@ pub mod layers;
 pub mod lsp_hints;
 pub mod sequences;
 pub mod trie;
+pub mod subset;

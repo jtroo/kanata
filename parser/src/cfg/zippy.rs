@@ -37,6 +37,8 @@ use crate::bail_expr;
 use parking_lot::Mutex;
 
 /// All possible chords.
+/// TODO: this should not be a Trie but instead HashMap like chordsv2 with possibility for nested
+/// hashmap.
 #[derive(Debug, Clone, Default)]
 pub struct ZchPossibleChords(pub Trie<ZchChordOutput>);
 impl ZchPossibleChords {
@@ -80,16 +82,18 @@ impl ZchInputKeys {
 
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 /// Sorted consistently by some arbitrary key order;
-/// as opposed to an example of insert/input order.
+/// as opposed to, for example, simple the user press order.
 pub struct ZchSortedChord {
     zch_keys: Vec<u16>,
 }
 impl ZchSortedChord {
     pub fn zch_insert(&mut self, key: u16) {
         match self.zch_keys.binary_search(&key) {
-            Ok(_pos) => {} // Element already in vector @ `pos`. Normally this wouldn't be expected
-            // to happen but it turns out that key repeat might get in the way of
-            // this assumption.
+            // Q: what is the meaning of Ok vs. Err?
+            // A: Ok means the element already in vector @ `pos`. Normally this wouldn't be
+            // expected to happen but it turns out that key repeat might get in the way of this
+            // assumption. Err means element does not exist and returns the correct insert position.
+            Ok(_pos) => {}
             Err(pos) => self.zch_keys.insert(pos, key),
         }
     }

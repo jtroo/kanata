@@ -212,7 +212,19 @@ impl ZchState {
                 }
                 self.zchd.zchd_previous_activation_output = Some(a.zch_output);
 
-                // Note:
+                // Note: it is incorrect to clear input keys.
+                // Zippychord will eagerly output chords even if there is an overlapping chord that
+                // may be activated earlier.
+                // E.g.
+                // ab => Abba
+                // abc => Alphabet
+                //
+                // If (b a) are typed, "Abba" is outputted.
+                // If (b a) are continued to be held and (c) is subsequently pressed,
+                // "Abba" gets erased and "Alphabet" is outputted.
+                //
+                // WRONG:
+                // self.zchd.zchd_input_keys.zchik_clear()
 
                 Ok(())
             }
