@@ -189,10 +189,18 @@ impl ZchState {
                 for key_to_send in &a.zch_output {
                     match key_to_send {
                         ZchOutput::Lowercase(osc) => {
+                            if self.zchd.zchd_pressed_keys.contains(osc) {
+                                kb.release_key(*osc)?;
+                                self.zchd.zchd_pressed_keys.remove(osc);
+                            }
                             kb.press_key(*osc)?;
                             kb.release_key(*osc)?;
                         }
                         ZchOutput::Uppercase(osc) => {
+                            if self.zchd.zchd_pressed_keys.contains(osc) {
+                                kb.release_key(*osc)?;
+                                self.zchd.zchd_pressed_keys.remove(osc);
+                            }
                             kb.press_key(OsCode::KEY_LEFTSHIFT)?;
                             kb.press_key(*osc)?;
                             kb.release_key(*osc)?;
@@ -200,6 +208,8 @@ impl ZchState {
                         }
                     }
                     if !released_lsft {
+                        // TODO: continue to not respect shift key, but do respect caps-word in
+                        // kanata. Might want to re-press shift at the end though?
                         released_lsft = true;
                         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                     }
