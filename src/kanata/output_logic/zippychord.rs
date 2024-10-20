@@ -190,9 +190,9 @@ impl ZchState {
         match activation {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
-                    self.zchd.zchd_characters_to_delete_on_next_activation +=
-                        self.zchd.zchd_input_keys.zchik_len() as u16;
+                    kb.press_key(osc)?;
                 } else {
+                    // TODO: something is broken about backspace count
                     let num_backspaces_to_send = match &self.zchd.zchd_previous_activation_output {
                         Some(prev_output) => {
                             usize::from(self.zchd.zchd_characters_to_delete_on_next_activation)
@@ -258,7 +258,7 @@ impl ZchState {
                 Ok(())
             }
             IsSubset => {
-                self.zchd.zchd_input_keys.zchik_insert(osc);
+                self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                 kb.press_key(osc)
             }
             Neither => {

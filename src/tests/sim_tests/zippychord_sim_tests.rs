@@ -7,6 +7,8 @@ dy 1	Monday
  abc	Alphabet
 r df	recipient
  w  a	Washington
+rq	request
+rqa	request␣assistance
 ";
 
 #[test]
@@ -53,9 +55,23 @@ fn sim_zippychord_followup_no_prev() {
     )
     .to_ascii();
     assert_eq!(
-        "t:10ms up:R t:10ms dn:D t:1ms \
+        "dn:R t:10ms up:R t:10ms dn:D t:1ms \
         dn:BSpace up:BSpace dn:BSpace up:BSpace \
         dn:R up:R up:LShift dn:E up:E dn:C up:C dn:I up:I dn:P up:P dn:I up:I dn:E up:E dn:N up:N dn:T up:T",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_overlap() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:r t:10  d:q t:10 d:a t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "",
         result
     );
 }
