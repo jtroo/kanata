@@ -71,7 +71,13 @@ fn sim_zippychord_overlap() {
     )
     .to_ascii();
     assert_eq!(
-        "",
+        "dn:R t:10ms dn:BSpace up:BSpace \
+        up:R dn:R up:R up:LShift dn:E up:E up:Q dn:Q up:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:10ms \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        dn:R up:R up:LShift dn:E up:E dn:Q up:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
+        dn:Space up:Space \
+        up:A dn:A up:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T dn:A up:A dn:N up:N dn:C up:C dn:E up:E",
         result
     );
 }
