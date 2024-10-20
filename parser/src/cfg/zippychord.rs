@@ -81,7 +81,7 @@ impl ZchInputKeys {
         &self.zch_inputs.zch_keys
     }
     pub fn zchik_is_empty(&self) -> bool {
-        self.zch_inputs.zch_keys.len() == 0
+        self.zch_inputs.zch_keys.is_empty()
     }
 }
 
