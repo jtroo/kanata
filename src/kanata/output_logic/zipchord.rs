@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
-// TODO: special case followup chord sequence with zero output characters and avoid backspacing on
-// completion. Just make sure to erase.
+// TODO: suffixes - only active while disabled, to complete a word.
+// TODO: prefix vs. non-prefix: one outputs space, the other not (I guess can be done in parser).
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
@@ -37,9 +37,12 @@ struct ZchDynamicState {
     /// Using the example above, when dy has been activated, the `1` and `2` activations will be
     /// contained within `zchd_prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
-    zchd_prioritized_chords: Option<Arc<ZchPossibleChords>>,
+    zchd_prioritized_chords: Option<Arc<parking_lot::Mutex<ZchPossibleChords>>>,
     /// Tracks the previous output because it may need to be erased (see `zchd_prioritized_chords).
     zchd_previous_activation_output: Option<Box<[ZchOutput]>>,
+    /// In case of output being empty for interim chord activations, this tracks the number of
+    /// characters that need to be erased.
+    zchd_characters_to_delete_on_next_activation: u16,
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
     /// Windows lock screen weirdness.
@@ -83,6 +86,7 @@ impl ZchDynamicState {
         self.zchd_sorted_inputs.zchsi_keys();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output = None;
+        self.zchd_characters_to_delete_on_next_activation = 0;
     }
     /// Returns true if dynamic zch state is such that idling optimization can activate.
     fn zchd_is_idle(&self) -> bool {
@@ -141,6 +145,7 @@ impl ZchState {
         let mut is_activated_by_pchord = false;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
+                .lock()
                 .0
                 .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zchsi_keys());
         }
@@ -154,21 +159,28 @@ impl ZchState {
         }
         match activation {
             HasValue(a) => {
-                let num_backspaces_to_send = match is_activated_by_pchord {
-                    true => {
-                        self.zchd.zchd_sorted_inputs.zchsi_len()
-                            + self
-                                .zchd
-                                .zchd_previous_activation_output
-                                .as_ref()
-                                .expect("prev activation should be some if pchords is some")
-                                .len()
+                if a.zch_output.is_empty() {
+                    self.zchd.zchd_characters_to_delete_on_next_activation +=
+                        self.zchd.zchd_sorted_inputs.zchsi_len() as u16;
+                } else {
+                    let num_backspaces_to_send = match is_activated_by_pchord {
+                        true => {
+                            usize::from(self.zchd.zchd_characters_to_delete_on_next_activation)
+                                + self.zchd.zchd_sorted_inputs.zchsi_len()
+                                + self
+                                    .zchd
+                                    .zchd_previous_activation_output
+                                    .as_ref()
+                                    .expect("prev activation should be some if pchords is some")
+                                    .len()
+                        }
+                        false => self.zchd.zchd_sorted_inputs.zchsi_len(),
+                    };
+                    self.zchd.zchd_characters_to_delete_on_next_activation = 0;
+                    for _ in 0..num_backspaces_to_send {
+                        kb.press_key(OsCode::KEY_BACKSPACE)?;
+                        kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
-                    false => self.zchd.zchd_sorted_inputs.zchsi_len(),
-                };
-                for _ in 0..num_backspaces_to_send {
-                    kb.press_key(OsCode::KEY_BACKSPACE)?;
-                    kb.release_key(OsCode::KEY_BACKSPACE)?;
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups;
                 let mut released_lsft = false;
@@ -194,9 +206,7 @@ impl ZchState {
                 Ok(())
             }
             InTrie => {
-                self.zchd
-                    .zchd_sorted_inputs
-                    .zchsi_insert(osc);
+                self.zchd.zchd_sorted_inputs.zchsi_insert(osc);
                 return kb.press_key(osc);
             }
             NotInTrie => {

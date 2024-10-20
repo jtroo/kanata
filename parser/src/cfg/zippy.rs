@@ -34,8 +34,11 @@ use super::*;
 
 use crate::anyhow_expr;
 use crate::bail_expr;
+use crate::trie::GetOrDescendentExistsResult::*;
 
 use std::fs;
+
+use parking_lot::Mutex;
 
 /// All possible chords.
 #[derive(Debug, Clone, Default)]
@@ -56,7 +59,11 @@ pub struct ZchSortedInputs {
 }
 impl ZchSortedInputs {
     pub fn zchsi_new() -> Self {
-        Self { zch_inputs: ZchSortedChord { zch_keys: Vec::new() }}
+        Self {
+            zch_inputs: ZchSortedChord {
+                zch_keys: Vec::new(),
+            },
+        }
     }
     pub fn zchsi_contains(&mut self, osc: OsCode) -> bool {
         self.zch_inputs.zch_keys.contains(&osc.into())
@@ -103,7 +110,7 @@ impl ZchSortedChord {
 #[derive(Debug, Clone)]
 pub struct ZchChordOutput {
     pub zch_output: Box<[ZchOutput]>,
-    pub zch_followups: Option<Arc<ZchPossibleChords>>,
+    pub zch_followups: Option<Arc<Mutex<ZchPossibleChords>>>,
 }
 
 /// Zch output can be uppercase or lowercase characters.
@@ -115,7 +122,6 @@ pub enum ZchOutput {
     Uppercase(OsCode),
 }
 
-// TODO: implement
 pub(crate) fn parse_zippy(exprs: &[SExpr], s: &ParserState) -> Result<ZchPossibleChords> {
     if exprs.len() != 2 {
         bail_expr!(
@@ -129,64 +135,146 @@ pub(crate) fn parse_zippy(exprs: &[SExpr], s: &ParserState) -> Result<ZchPossibl
     };
     let input_data = fs::read_to_string(file_name)
         .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
-    input_data
+    let res = input_data
         .lines()
         .enumerate()
         .filter(|(_, line)| !line.trim().is_empty() && !line.trim().starts_with("//"))
-        .try_fold(ZchPossibleChords(Trie::new()), |zch, (line_number, line)| {
-            let Some((input, output)) = line.split_once('\t') else {
-                bail_expr!(
-                    &exprs[1],
-                    "Input and output are separated by a tab, but found no tab:\n{}: {line}",
-                    line_number + 1
-                );
-            };
-            if input.is_empty() {
-                bail_expr!(
-                    &exprs[1],
-                    "No input defined; line must not begin with a tab:\n{}: {line}",
-                    line_number + 1
-                );
-            }
-            let mut input_left_to_parse = input;
-            let mut chord_chars;
-            let mut input_chord = ZchSortedInputs::zchsi_new();
-            let mut is_space_included;
-            let mut char_buf: [u8; 4] = [0; 4];
-
-            while !input_left_to_parse.is_empty() {
-                input_chord.zchsi_clear();
-
-                // Check for a starting space.
-                (is_space_included, input_left_to_parse) = match input_left_to_parse.strip_prefix(' ') {
-                    None => (false, input_left_to_parse),
-                    Some(i) => (true, i),
+        .try_fold(
+            Arc::new(Mutex::new(ZchPossibleChords(Trie::new()))),
+            |zch, (line_number, line)| {
+                let Some((input, output)) = line.split_once('\t') else {
+                    bail_expr!(
+                        &exprs[1],
+                        "Input and output are separated by a tab, but found no tab:\n{}: {line}",
+                        line_number + 1
+                    );
                 };
-                if is_space_included {
-                    input_chord.zchsi_insert(OsCode::KEY_SPACE);
+                if input.is_empty() {
+                    bail_expr!(
+                        &exprs[1],
+                        "No input defined; line must not begin with a tab:\n{}: {line}",
+                        line_number + 1
+                    );
                 }
 
-                // Parse chord until next space.
-                (chord_chars, input_left_to_parse) = match input_left_to_parse.split_once(' ') {
-                    Some(split) => split,
-                    None => (input_left_to_parse, ""),
+                let mut char_buf: [u8; 4] = [0; 4];
+
+                let output = {
+                    output
+                        .chars()
+                        .try_fold(vec![], |mut zch_output, out_char| -> Result<_> {
+                            let out_key = out_char.to_lowercase().next().unwrap();
+                            let key_name = out_key.encode_utf8(&mut char_buf);
+                            let osc = str_to_oscode(key_name).ok_or_else(|| {
+                                anyhow_expr!(
+                                    &exprs[1],
+                                    "Unknown output key {}:\n{}: {line}",
+                                    out_char,
+                                    line_number + 1,
+                                )
+                            })?;
+                            let out = match out_char.is_uppercase() {
+                                true => ZchOutput::Uppercase(osc),
+                                false => ZchOutput::Lowercase(osc),
+                            };
+                            zch_output.push(out);
+                            Ok(zch_output)
+                        })?
+                        .into_boxed_slice()
                 };
+                let mut input_left_to_parse = input;
+                let mut chord_chars;
+                let mut input_chord = ZchSortedInputs::zchsi_new();
+                let mut is_space_included;
+                let mut possible_chords_map = zch.clone();
+                let mut next_map;
 
-                chord_chars.chars().try_fold((), |_, chord_char| -> Result<()> {
-                    let key_name = chord_char.encode_utf8(&mut char_buf);
-                    let osc = str_to_oscode(key_name).ok_or_else(|| {
-                        anyhow_expr!(
+                while !input_left_to_parse.is_empty() {
+                    input_chord.zchsi_clear();
+
+                    // Check for a starting space.
+                    (is_space_included, input_left_to_parse) =
+                        match input_left_to_parse.strip_prefix(' ') {
+                            None => (false, input_left_to_parse),
+                            Some(i) => (true, i),
+                        };
+                    if is_space_included {
+                        input_chord.zchsi_insert(OsCode::KEY_SPACE);
+                    }
+
+                    // Parse chord until next space.
+                    (chord_chars, input_left_to_parse) = match input_left_to_parse.split_once(' ') {
+                        Some(split) => split,
+                        None => (input_left_to_parse, ""),
+                    };
+
+                    chord_chars
+                        .chars()
+                        .try_fold((), |_, chord_char| -> Result<()> {
+                            let key_name = chord_char.encode_utf8(&mut char_buf);
+                            let osc = str_to_oscode(key_name).ok_or_else(|| {
+                                anyhow_expr!(
+                                    &exprs[1],
+                                    "Found an unknown key name: {key_name}:\n{}: {line}",
+                                    line_number + 1
+                                )
+                            })?;
+                            input_chord.zchsi_insert(osc);
+                            Ok(())
+                        })?;
+
+                    match (
+                        input_left_to_parse.is_empty(),
+                        possible_chords_map
+                            .lock()
+                            .0
+                            .get_or_descendant_exists(input_chord.zchsi_keys()),
+                    ) {
+                        (true, HasValue(_)) => {
+                            bail_expr!(
                             &exprs[1],
-                            "Found an unknown key name: {key_name}:\n{}: {line}",
+                            "Found duplicate input chord, which is disallowed {input}:\n{}: {line}",
                             line_number + 1
-                        )
-                    })?;
-                    input_chord.zchsi_insert(osc);
-                    Ok(())
-                })?;
-
-                // TODO: insert into possible chords
-            }
-            Ok(zch)
-        })
+                        );
+                        }
+                        (true, _) => {
+                            possible_chords_map.lock().0.insert(
+                                input_chord.zchsi_keys(),
+                                ZchChordOutput {
+                                    zch_output: output,
+                                    zch_followups: None,
+                                },
+                            );
+                            break;
+                        }
+                        (false, HasValue(mut next_nested_map)) => {
+                            next_map = Some(
+                                next_nested_map
+                                    .zch_followups
+                                    .get_or_insert_with(|| {
+                                        Arc::new(Mutex::new(ZchPossibleChords(Trie::new())))
+                                    })
+                                    .clone(),
+                            );
+                        }
+                        (false, _) => {
+                            let map = Arc::new(Mutex::new(ZchPossibleChords(Trie::new())));
+                            next_map = Some(map.clone());
+                            possible_chords_map.lock().0.insert(
+                                input_chord.zchsi_keys(),
+                                ZchChordOutput {
+                                    zch_output: Box::new([]),
+                                    zch_followups: Some(map),
+                                },
+                            );
+                        }
+                    };
+                    if let Some(map) = next_map.take() {
+                        possible_chords_map = map;
+                    }
+                }
+                Ok(zch)
+            },
+        )?;
+    Ok(Arc::into_inner(res).expect("no other refs").into_inner())
 }

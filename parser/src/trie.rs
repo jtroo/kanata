@@ -45,7 +45,9 @@ impl<T> Trie<T> {
 
     pub fn descendant_exists(&self, key: impl AsRef<[u16]>) -> bool {
         // Length of the [u8] interpretation of the [u16] key is doubled.
-        self.inner.longest_common_prefix_len(cast_slice(key.as_ref())) == key_len(key)
+        self.inner
+            .longest_common_prefix_len(cast_slice(key.as_ref()))
+            == key_len(key)
     }
 
     pub fn insert(&mut self, key: impl AsRef<[u16]>, val: T) {
