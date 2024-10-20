@@ -328,7 +328,7 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_chords = cfg.zippy.unwrap_or_default();
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
         Ok(Self {
@@ -457,7 +457,7 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_chords = cfg.zippy.unwrap_or_default();
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
         Ok(Self {
@@ -611,7 +611,7 @@ impl Kanata {
         }
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_chords = cfg.zippy.unwrap_or_default();
+            zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;

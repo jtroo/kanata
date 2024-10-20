@@ -5,7 +5,7 @@ fn sim_zippychord_capitalize() {
     let result = simulate_with_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file)",
         "d:a t:10 d:b t:10 d:c t:300",
-        Some("abc\tAlphabet"),
+        Some("abc\tAlphabet\n"),
     )
     .to_ascii();
     assert_eq!(
@@ -13,6 +13,24 @@ fn sim_zippychord_capitalize() {
          dn:BSpace up:BSpace dn:BSpace up:BSpace \
          up:A dn:LShift dn:A up:A up:LShift up:LShift \
          dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_followup() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file)",
+        "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
+        Some("dy\tday\ndy 1\tMonday\n"),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:10ms dn:BSpace up:BSpace \
+        up:D dn:D up:D up:LShift dn:A up:A up:Y dn:Y up:Y \
+        t:10ms up:D t:1ms up:Y t:9ms \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        dn:LShift dn:M up:M up:LShift up:LShift dn:O up:O dn:N up:N dn:D up:D dn:A up:A dn:Y up:Y",
         result
     );
 }

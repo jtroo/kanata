@@ -115,13 +115,17 @@ pub(crate) struct ZchState {
     zchd: ZchDynamicState,
     /// Chords configured by the user. This is fixed at runtime other than live-reloads replacing
     /// the state.
-    pub(crate) zch_chords: ZchPossibleChords,
+    zch_chords: ZchPossibleChords,
     /// Options to configure behaviour.
     /// TODO: needs parser configuration.
-    pub(crate) zch_cfg: ZchConfig,
+    zch_cfg: ZchConfig,
 }
 
 impl ZchState {
+    pub(crate) fn zch_configure(&mut self, chords: ZchPossibleChords) {
+        self.zchd.zchd_reset();
+        self.zch_chords = chords;
+    }
     /// Zch handling for key presses.
     pub(crate) fn zch_press_key(
         &mut self,
@@ -210,11 +214,13 @@ impl ZchState {
                     if !released_lsft {
                         // TODO: continue to not respect shift key, but do respect caps-word in
                         // kanata. Might want to re-press shift at the end though?
+                        // Also maybe don't blindly release; do so only if actually pressed?
                         released_lsft = true;
                         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                     }
                 }
                 self.zchd.zchd_previous_activation_output = Some(a.zch_output);
+                self.zchd.zchd_sorted_inputs.zchsi_clear();
                 Ok(())
             }
             InTrie => {
