@@ -80,11 +80,14 @@ impl ZchInputKeys {
     pub fn zchik_keys(&self) -> &[u16] {
         &self.zch_inputs.zch_keys
     }
+    pub fn zchik_is_empty(&self) -> bool {
+        self.zch_inputs.zch_keys.len() == 0
+    }
 }
 
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 /// Sorted consistently by some arbitrary key order;
-/// as opposed to, for example, simple the user press order.
+/// as opposed to, for example, simply the user press order.
 pub struct ZchSortedChord {
     zch_keys: Vec<u16>,
 }
