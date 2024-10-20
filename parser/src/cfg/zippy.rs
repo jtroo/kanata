@@ -50,30 +50,30 @@ impl ZchPossibleChords {
 /// instead it is by some consistent ordering for
 /// hashing into the possible chord map.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ZchSortedInputs {
+pub struct ZchInputKeys {
     zch_inputs: ZchSortedChord,
 }
-impl ZchSortedInputs {
-    pub fn zchsi_new() -> Self {
+impl ZchInputKeys {
+    pub fn zchik_new() -> Self {
         Self {
             zch_inputs: ZchSortedChord {
                 zch_keys: Vec::new(),
             },
         }
     }
-    pub fn zchsi_contains(&mut self, osc: OsCode) -> bool {
+    pub fn zchik_contains(&mut self, osc: OsCode) -> bool {
         self.zch_inputs.zch_keys.contains(&osc.into())
     }
-    pub fn zchsi_insert(&mut self, osc: OsCode) {
+    pub fn zchik_insert(&mut self, osc: OsCode) {
         self.zch_inputs.zch_insert(osc.into());
     }
-    pub fn zchsi_len(&self) -> usize {
+    pub fn zchik_len(&self) -> usize {
         self.zch_inputs.zch_keys.len()
     }
-    pub fn zchsi_clear(&mut self) {
+    pub fn zchik_clear(&mut self) {
         self.zch_inputs.zch_keys.clear()
     }
-    pub fn zchsi_keys(&self) -> &[u16] {
+    pub fn zchik_keys(&self) -> &[u16] {
         &self.zch_inputs.zch_keys
     }
 }
@@ -205,13 +205,13 @@ fn parse_zippy_inner(
                 };
                 let mut input_left_to_parse = input;
                 let mut chord_chars;
-                let mut input_chord = ZchSortedInputs::zchsi_new();
+                let mut input_chord = ZchInputKeys::zchik_new();
                 let mut is_space_included;
                 let mut possible_chords_map = zch.clone();
                 let mut next_map: Option<Arc<Mutex<_>>>;
 
                 while !input_left_to_parse.is_empty() {
-                    input_chord.zchsi_clear();
+                    input_chord.zchik_clear();
 
                     // Check for a starting space.
                     (is_space_included, input_left_to_parse) =
@@ -220,7 +220,7 @@ fn parse_zippy_inner(
                             Some(i) => (true, i),
                         };
                     if is_space_included {
-                        input_chord.zchsi_insert(OsCode::KEY_SPACE);
+                        input_chord.zchik_insert(OsCode::KEY_SPACE);
                     }
 
                     // Parse chord until next space.
@@ -240,14 +240,14 @@ fn parse_zippy_inner(
                                     line_number + 1
                                 )
                             })?;
-                            input_chord.zchsi_insert(osc);
+                            input_chord.zchik_insert(osc);
                             Ok(())
                         })?;
 
                     let output_for_input_chord = possible_chords_map
                         .lock()
                         .0
-                        .get_or_descendant_exists(input_chord.zchsi_keys());
+                        .get_or_descendant_exists(input_chord.zchik_keys());
                     match (input_left_to_parse.is_empty(), output_for_input_chord) {
                         (true, HasValue(_)) => {
                             bail_expr!(
@@ -258,7 +258,7 @@ fn parse_zippy_inner(
                         }
                         (true, _) => {
                             possible_chords_map.lock().0.insert(
-                                input_chord.zchsi_keys(),
+                                input_chord.zchik_keys(),
                                 ZchChordOutput {
                                     zch_output: output,
                                     zch_followups: None,
@@ -275,7 +275,7 @@ fn parse_zippy_inner(
                                         .lock()
                                         .0
                                         .insert(
-                                            input_chord.zchsi_keys(),
+                                            input_chord.zchik_keys(),
                                             ZchChordOutput {
                                                 zch_output: next_nested_map.zch_output,
                                                 zch_followups: Some(map),
@@ -291,7 +291,7 @@ fn parse_zippy_inner(
                             let map = Arc::new(Mutex::new(ZchPossibleChords(Trie::new())));
                             next_map = Some(map.clone());
                             possible_chords_map.lock().0.insert(
-                                input_chord.zchsi_keys(),
+                                input_chord.zchik_keys(),
                                 ZchChordOutput {
                                     zch_output: Box::new([]),
                                     zch_followups: Some(map),

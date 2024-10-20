@@ -20,9 +20,8 @@ enum ZchEnabledState {
 
 #[derive(Debug, Default)]
 struct ZchDynamicState {
-    /// Input sorted not by input order but by some consistent ordering such that it can be used to
-    /// compare against a Trie.
-    zchd_sorted_inputs: ZchSortedInputs,
+    /// Input to compare against configured available chords to output.
+    zchd_input_keys: ZchInputKeys,
     /// Whether chording should be enabled or disabled.
     /// Chording will be disabled if:
     /// - further presses cannot possibly activate a chord
@@ -83,7 +82,7 @@ impl ZchDynamicState {
         log::debug!("zchd reset state");
         self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
         self.zchd_pressed_keys.clear();
-        self.zchd_sorted_inputs.zchsi_keys();
+        self.zchd_input_keys.zchik_keys();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output = None;
         self.zchd_characters_to_delete_on_next_activation = 0;
@@ -97,7 +96,7 @@ impl ZchDynamicState {
     }
     fn zchd_press_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.insert(osc);
-        self.zchd_sorted_inputs.zchsi_insert(osc);
+        self.zchd_input_keys.zchik_insert(osc);
     }
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.remove(&osc);
@@ -147,40 +146,32 @@ impl ZchState {
         // Output activation will save into `zchd_previous_activation_output` if there is potential
         // for subsequent activations, i.e. if zch_followups is `Some`.
         let mut activation = NotInTrie;
-        let mut is_activated_by_pchord = false;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
                 .lock()
                 .0
-                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zchsi_keys());
+                .get_or_descendant_exists(&self.zchd.zchd_input_keys.zchik_keys());
         }
-        if matches!(activation, HasValue(..)) {
-            is_activated_by_pchord = true;
-        } else {
+        if !matches!(activation, HasValue(..)) {
             activation = self
                 .zch_chords
                 .0
-                .get_or_descendant_exists(self.zchd.zchd_sorted_inputs.zchsi_keys());
+                .get_or_descendant_exists(self.zchd.zchd_input_keys.zchik_keys());
         }
         match activation {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation +=
-                        self.zchd.zchd_sorted_inputs.zchsi_len() as u16;
+                        self.zchd.zchd_input_keys.zchik_len() as u16;
                 } else {
-                    let num_backspaces_to_send = match is_activated_by_pchord {
-                        true => {
+                    let num_backspaces_to_send = match &self.zchd.zchd_previous_activation_output {
+                        Some(prev_output) => {
                             usize::from(self.zchd.zchd_characters_to_delete_on_next_activation)
-                                + self.zchd.zchd_sorted_inputs.zchsi_len()
-                                + self
-                                    .zchd
-                                    .zchd_previous_activation_output
-                                    .as_ref()
-                                    .expect("prev activation should be some if pchords is some")
-                                    .len()
-                                - 1 // subtract one because most recent press isn't actually sent
+                                + self.zchd.zchd_input_keys.zchik_len()
+                                + prev_output.len()
+                                - 1 // subtract one because most recent press isn't sent
                         }
-                        false => self.zchd.zchd_sorted_inputs.zchsi_len() - 1,
+                        None => self.zchd.zchd_input_keys.zchik_len() - 1,
                     };
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
                     for _ in 0..num_backspaces_to_send {
@@ -220,11 +211,13 @@ impl ZchState {
                     }
                 }
                 self.zchd.zchd_previous_activation_output = Some(a.zch_output);
-                self.zchd.zchd_sorted_inputs.zchsi_clear();
+
+                // Note:
+
                 Ok(())
             }
             InTrie => {
-                self.zchd.zchd_sorted_inputs.zchsi_insert(osc);
+                self.zchd.zchd_input_keys.zchik_insert(osc);
                 return kb.press_key(osc);
             }
             NotInTrie => {
