@@ -15,12 +15,18 @@ rqa	request␣assistance
 fn sim_zippychord_capitalize() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
-        "d:a t:10 d:b t:10 d:spc t:10 d:c t:300",
+        "d:a t:10 d:b t:10 d:spc t:10 d:c u:a u:b u:c u:spc t:300 \
+         d:a t:10 d:b t:10 d:spc t:10 d:c t:300",
         Some(ZIPPY_FILE_CONTENT),
     )
     .to_ascii();
     assert_eq!(
         "dn:A t:10ms dn:B t:10ms dn:Space t:10ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         up:A dn:LShift dn:A up:A up:LShift up:LShift \
+         dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T \
+         t:1ms up:A t:1ms up:B t:1ms up:C t:1ms up:Space t:296ms \
+         dn:A t:10ms dn:B t:10ms dn:Space t:10ms \
          dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
          up:A dn:LShift dn:A up:A up:LShift up:LShift \
          dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T",
