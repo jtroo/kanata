@@ -93,6 +93,9 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
+mod zippy;
+pub use zippy::*;
+
 use crate::lsp_hints::{self, LspHints};
 
 mod str_ext;
@@ -875,6 +878,30 @@ pub fn parse_cfg_raw_string(
         .into());
     }
 
+    let zippy_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defzippy-experimental"))
+        .collect::<Vec<_>>();
+    // TODO: save into parser state
+    let _zippy = match zippy_exprs.len() {
+        0 => None,
+        1 => {
+            let zippy = parse_zippy(chords_v2_exprs[0], s)?;
+            Some(zippy)
+        }
+        _ => {
+            let spanned = spanned_root_exprs
+                .iter()
+                .filter(gen_first_atom_filter_spanned("defzippy-experimental"))
+                .nth(1)
+                .expect("> 2 overrides");
+            bail_span!(
+                spanned,
+                "Only one defzippy allowed, found more.\nDelete the extras."
+            )
+        }
+    };
+
     #[cfg(feature = "lsp")]
     LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
         s.lsp_hints
@@ -928,6 +955,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defvar"
                 | "deftemplate"
                 | "defchordsv2-experimental"
+                | "defzippy-experimental"
                 | "defseq" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })

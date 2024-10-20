@@ -1,78 +1,14 @@
 use super::*;
 
 use kanata_parser::trie::GetOrDescendentExistsResult::*;
-use kanata_parser::trie::Trie;
 use rustc_hash::FxHashSet;
 
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
-/// Tracks current input to check against possible chords.
-/// This does not store by the input order;
-/// instead it is by some consistent ordering for
-/// hashing into the possible chord map.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ZchSortedInputs {
-    zch_inputs: ZchSortedChord,
-}
-impl ZchSortedInputs {
-    fn zchsi_insert(&mut self, osc: OsCode) {
-        self.zch_inputs.zch_insert(osc.into());
-    }
-    fn zchsi_len(&self) -> usize {
-        self.zch_inputs.zch_keys.len()
-    }
-}
-
-/// All possible chords.
-#[derive(Debug, Clone, Default)]
-struct ZchPossibleChords(Trie<ZchChordOutput>);
-impl ZchPossibleChords {
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-/// Zch output can be uppercase or lowercase characters.
-/// The parser should ensure all `OsCode`s within `Lowercase` and `Uppercase`
-/// are visible characters that can be backspaced.
-#[derive(Debug, Clone, Copy)]
-pub enum ZchOutput {
-    Lowercase(OsCode),
-    Uppercase(OsCode),
-}
-
-/// A chord.
-///
-/// If any followups exist it will be Some.
-/// E.g. with:
-///   - dy   -> day
-///   - dy 1 -> Monday
-///   - dy 2 -> Tuesday
-/// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
-#[derive(Debug, Clone)]
-struct ZchChordOutput {
-    zch_output: Box<[ZchOutput]>,
-    zch_followups: Option<Arc<ZchPossibleChords>>,
-}
-
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
-/// Sorted consistently by some arbitrary key order;
-/// as opposed to an example of insert/input order.
-struct ZchSortedChord {
-    zch_keys: Vec<u16>,
-}
-impl ZchSortedChord {
-    fn zch_insert(&mut self, key: u16) {
-        match self.zch_keys.binary_search(&key) {
-            Ok(_pos) => {} // Element already in vector @ `pos`. Normally this wouldn't be expected
-            // to happen but it turns out that key repeat might get in the way of
-            // this assumption.
-            Err(pos) => self.zch_keys.insert(pos, key),
-        }
-    }
-}
+// TODO: special case followup chord sequence with zero output characters and avoid backspacing on
+// completion. Just make sure to erase.
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
@@ -144,7 +80,7 @@ impl ZchDynamicState {
         log::debug!("zchd reset state");
         self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
         self.zchd_pressed_keys.clear();
-        self.zchd_sorted_inputs.zch_inputs.zch_keys.clear();
+        self.zchd_sorted_inputs.zchsi_keys();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output = None;
     }
@@ -206,7 +142,7 @@ impl ZchState {
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
                 .0
-                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zch_inputs.zch_keys);
+                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zchsi_keys());
         }
         if matches!(activation, HasValue(..)) {
             is_activated_by_pchord = true;
@@ -214,7 +150,7 @@ impl ZchState {
             activation = self
                 .zch_chords
                 .0
-                .get_or_descendant_exists(&self.zchd.zchd_sorted_inputs.zch_inputs.zch_keys);
+                .get_or_descendant_exists(self.zchd.zchd_sorted_inputs.zchsi_keys());
         }
         match activation {
             HasValue(a) => {
@@ -253,15 +189,14 @@ impl ZchState {
                         released_lsft = true;
                         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                     }
-                };
+                }
                 self.zchd.zchd_previous_activation_output = Some(a.zch_output);
                 Ok(())
             }
             InTrie => {
                 self.zchd
                     .zchd_sorted_inputs
-                    .zch_inputs
-                    .zch_insert(osc.into());
+                    .zchsi_insert(osc);
                 return kb.press_key(osc);
             }
             NotInTrie => {
@@ -315,7 +250,7 @@ struct ZchConfig {
 impl Default for ZchConfig {
     fn default() -> Self {
         Self {
-            zch_cfg_ticks_wait_enable: 50,
+            zch_cfg_ticks_wait_enable: 300,
         }
     }
 }
