@@ -68,6 +68,9 @@ impl ZchInputKeys {
     pub fn zchik_insert(&mut self, osc: OsCode) {
         self.zch_inputs.zch_insert(osc.into());
     }
+    pub fn zchik_remove(&mut self, osc: OsCode) {
+        self.zch_inputs.zch_keys.retain(|k| *k != osc.into());
+    }
     pub fn zchik_len(&self) -> usize {
         self.zch_inputs.zch_keys.len()
     }

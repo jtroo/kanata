@@ -13,13 +13,13 @@ r df	recipient
 fn sim_zippychord_capitalize() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
-        "d:spc t:10 d:a t:10 d:b t:10 d:c t:300",
+        "d:a t:10 d:b t:10 d:spc t:10 d:c t:300",
         Some(ZIPPY_FILE_CONTENT),
     )
     .to_ascii();
     assert_eq!(
-        "dn:A t:10ms dn:B t:10ms dn:Space t:10ms\
-         dn:BSpace up:BSpace dn:BSpace up:BSpace  dn:BSpace up:BSpace \
+        "dn:A t:10ms dn:B t:10ms dn:Space t:10ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
          up:A dn:LShift dn:A up:A up:LShift up:LShift \
          dn:L up:L dn:P up:P dn:H up:H dn:A up:A up:B dn:B up:B dn:E up:E dn:T up:T",
         result
@@ -27,7 +27,7 @@ fn sim_zippychord_capitalize() {
 }
 
 #[test]
-fn sim_zippychord_followup() {
+fn sim_zippychord_followup_with_prev() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
         "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
@@ -45,7 +45,7 @@ fn sim_zippychord_followup() {
 }
 
 #[test]
-fn sim_zippychord_followup_noprev() {
+fn sim_zippychord_followup_no_prev() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
         "d:r t:10 u:r t:10 d:d d:f t:10 t:300",
@@ -53,7 +53,9 @@ fn sim_zippychord_followup_noprev() {
     )
     .to_ascii();
     assert_eq!(
-        "",
+        "t:10ms up:R t:10ms dn:D t:1ms \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        dn:R up:R up:LShift dn:E up:E dn:C up:C dn:I up:I dn:P up:P dn:I up:I dn:E up:E dn:N up:N dn:T up:T",
         result
     );
 }

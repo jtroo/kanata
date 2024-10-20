@@ -100,6 +100,7 @@ impl ZchDynamicState {
     }
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.remove(&osc);
+        self.zchd_input_keys.zchik_remove(osc);
         self.zchd_enabled_state = match self.zchd_pressed_keys.is_empty() {
             true => ZchEnabledState::ZchWaitEnable,
             false => ZchEnabledState::ZchDisabled,
