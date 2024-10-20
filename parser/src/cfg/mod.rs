@@ -430,15 +430,13 @@ fn parse_cfg_raw(p: &Path, s: &mut ParserState) -> MResult<IntermediateCfg> {
             relative_main_cfg_file_dir.join(filepath)
         };
 
-        let abs_filepath: PathBuf = filepath_relative_to_loaded_kanata_cfg
-            .canonicalize()
-            .map_err(|e| {
-                format!(
-                    "Failed to resolve relative path: {}: {}",
-                    filepath_relative_to_loaded_kanata_cfg.to_string_lossy(),
-                    e
-                )
-            })?;
+        let Ok(abs_filepath) = filepath_relative_to_loaded_kanata_cfg.canonicalize() else {
+            log::info!(
+                "Failed to resolve relative path: {}. Ignoring this file.",
+                filepath_relative_to_loaded_kanata_cfg.to_string_lossy()
+            );
+            return Ok("".to_owned());
+        };
 
         // Forbid loading the same file multiple times.
         // This prevents a potential recursive infinite loop of includes
