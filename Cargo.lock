@@ -584,9 +584,9 @@ dependencies = [
  "inotify",
  "instant",
  "kanata-interception",
- "kanata-keyberon 0.171.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-parser 0.171.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanata-tcp-protocol 0.171.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
+ "kanata-parser",
+ "kanata-tcp-protocol",
  "karabiner-driverkit",
  "log",
  "miette",
@@ -633,18 +633,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-keyberon"
-version = "0.171.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7dddde2e42e6732083ed131042ef1d2108cf3a6fc4a6950164444cc3e230ae4"
-dependencies = [
- "arraydeque",
- "heapless",
- "kanata-keyberon-macros",
- "rustc-hash",
-]
-
-[[package]]
 name = "kanata-keyberon-macros"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -662,7 +650,7 @@ dependencies = [
  "bitflags 2.5.0",
  "bytemuck",
  "itertools",
- "kanata-keyberon 0.171.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanata-keyberon",
  "log",
  "miette",
  "once_cell",
@@ -670,26 +658,6 @@ dependencies = [
  "patricia_tree",
  "rustc-hash",
  "simplelog",
- "thiserror",
-]
-
-[[package]]
-name = "kanata-parser"
-version = "0.171.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0acac6155bedefe14325998c7d3e3c5285a5001a046310133a5e19247a6a8c20"
-dependencies = [
- "anyhow",
- "bitflags 2.5.0",
- "bytemuck",
- "itertools",
- "kanata-keyberon 0.171.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log",
- "miette",
- "once_cell",
- "parking_lot",
- "patricia_tree",
- "rustc-hash",
  "thiserror",
 ]
 
@@ -716,23 +684,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanata-tcp-protocol"
-version = "0.171.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c0ea390c667756ad0450e3b71b85d436105b990107defc21b29f70be00223f3"
-dependencies = [
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "kanata_example_tcp_client"
 version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "kanata-tcp-protocol 0.171.2",
+ "kanata-tcp-protocol",
  "log",
  "serde_json",
  "simplelog",
