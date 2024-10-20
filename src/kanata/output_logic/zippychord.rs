@@ -190,23 +190,14 @@ impl ZchState {
         match activation {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
+                    self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     kb.press_key(osc)?;
                 } else {
-                    // TODO: something is broken about backspace count
-                    let num_backspaces_to_send = match &self.zchd.zchd_previous_activation_output {
-                        Some(prev_output) => {
-                            usize::from(self.zchd.zchd_characters_to_delete_on_next_activation)
-                                + self.zchd.zchd_input_keys.zchik_len()
-                                + prev_output.len()
-                                - 1 // subtract one because most recent press isn't sent
-                        }
-                        None => self.zchd.zchd_input_keys.zchik_len() - 1,
-                    };
-                    self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    for _ in 0..num_backspaces_to_send {
+                    for _ in 0..self.zchd.zchd_characters_to_delete_on_next_activation {
                         kb.press_key(OsCode::KEY_BACKSPACE)?;
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
+                    self.zchd.zchd_characters_to_delete_on_next_activation = 0;
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
@@ -219,6 +210,7 @@ impl ZchState {
                             }
                             kb.press_key(*osc)?;
                             kb.release_key(*osc)?;
+                            self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                         }
                         ZchOutput::Uppercase(osc) => {
                             if self.zchd.zchd_pressed_keys.contains(osc) {
@@ -229,6 +221,7 @@ impl ZchState {
                             kb.press_key(*osc)?;
                             kb.release_key(*osc)?;
                             kb.release_key(OsCode::KEY_LEFTSHIFT)?;
+                            self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                         }
                     }
                     if !released_lsft {
