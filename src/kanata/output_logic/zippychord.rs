@@ -9,6 +9,7 @@ use std::sync::MutexGuard;
 
 // TODO: suffixes - only active while disabled, to complete a word.
 // TODO: prefix vs. non-prefix: one outputs space, the other not (I guess can be done in parser).
+// TODO: smart spacing around words
 
 static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
 
