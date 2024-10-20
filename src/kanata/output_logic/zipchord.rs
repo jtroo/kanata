@@ -174,8 +174,9 @@ impl ZchState {
                                     .as_ref()
                                     .expect("prev activation should be some if pchords is some")
                                     .len()
+                                - 1 // subtract one because most recent press isn't actually sent
                         }
-                        false => self.zchd.zchd_sorted_inputs.zchsi_len(),
+                        false => self.zchd.zchd_sorted_inputs.zchsi_len() - 1,
                     };
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
                     for _ in 0..num_backspaces_to_send {

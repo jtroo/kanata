@@ -21,6 +21,7 @@ mod seq_sim_tests;
 mod switch_sim_tests;
 mod unicode_sim_tests;
 mod unmod_sim_tests;
+mod zippychord_sim_tests;
 
 fn simulate<S: AsRef<str>>(cfg: S, sim: S) -> String {
     simulate_with_file_content(cfg, sim, None)
@@ -32,7 +33,8 @@ fn simulate_with_file_content<S: AsRef<str>>(cfg: S, sim: S, file_content: Optio
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut k = Kanata::new_from_str(cfg.as_ref(), file_content.map(|s| s.as_ref().to_owned())).expect("failed to parse cfg");
+    let mut k = Kanata::new_from_str(cfg.as_ref(), file_content.map(|s| s.as_ref().to_owned()))
+        .expect("failed to parse cfg");
     for pair in sim.as_ref().split_whitespace() {
         match pair.split_once(':') {
             Some((kind, val)) => match kind {

@@ -290,12 +290,10 @@ pub fn new_from_str(cfg_text: &str, file_content: Option<String>) -> MResult<Cfg
         &mut s,
         &PathBuf::from("configuration"),
         &mut FileContentProvider {
-            get_file_content_fn: &mut move |_| {
-                match &file_content {
-                    Some(s) => Ok(s.clone()),
-                    None => Err("include is not supported".into()),
-                }
-            }
+            get_file_content_fn: &mut move |_| match &file_content {
+                Some(s) => Ok(s.clone()),
+                None => Err("include is not supported".into()),
+            },
         },
         DEF_LOCAL_KEYS,
         Err("environment variables are not supported".into()),
