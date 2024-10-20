@@ -455,6 +455,10 @@ impl Kanata {
         };
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_chords = cfg.zippy.unwrap_or_default();
+        }
 
         Ok(Self {
             kbd_out,
@@ -604,6 +608,10 @@ impl Kanata {
             self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
             self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
             self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
+        }
+        #[cfg(feature = "zippychord")]
+        {
+            zch().zch_chords = cfg.zippy.unwrap_or_default();
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
