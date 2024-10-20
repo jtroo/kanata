@@ -317,7 +317,7 @@ fn parse_file_with_utf8_bom() {
 #[cfg(feature = "zippychord")]
 fn parse_zippychord_file() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    new_from_file(&std::path::PathBuf::from("./test_cfgs/zippychord.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/testzch.kbd")).unwrap();
 }
 
 #[test]

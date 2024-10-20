@@ -82,7 +82,7 @@ where
     ) -> SsmKeyExistedBeforeInsert {
         let mut key_existed = SsmKeyExistedBeforeInsert::NotThere;
         for k in key.as_ref().iter().cloned() {
-            let keyvals_for_key_item = self.map.entry(k).or_insert(Vec::new());
+            let keyvals_for_key_item = self.map.entry(k).or_default();
             match keyvals_for_key_item
                 .binary_search_by(|probe| probe.key.as_ref().cmp(key.as_ref()))
             {

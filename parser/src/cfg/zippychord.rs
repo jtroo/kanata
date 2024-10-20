@@ -105,9 +105,10 @@ impl ZchSortedChord {
 ///
 /// If any followups exist it will be Some.
 /// E.g. with:
-///   - dy   -> day
-///   - dy 1 -> Monday
-///   - dy 2 -> Tuesday
+/// - dy   -> day
+/// - dy 1 -> Monday
+/// - dy 2 -> Tuesday
+///
 /// the output will be "day" and the Monday+Tuesday chords will be in `followups`.
 #[derive(Debug, Clone)]
 pub struct ZchChordOutput {

@@ -38,9 +38,9 @@ impl Default for ZchConfig {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
     #[default]
-    ZchEnabled,
-    ZchWaitEnable,
-    ZchDisabled,
+    Enabled,
+    WaitEnable,
+    Disabled,
 }
 
 #[derive(Debug, Default)]
@@ -51,6 +51,8 @@ struct ZchDynamicState {
     /// Chording will be disabled if:
     /// - further presses cannot possibly activate a chord
     /// - a release happens with no chord having been activated
+    ///   TODO: is the above true or even desirable?
+    ///
     /// Once disabled, chording will be enabled when:
     /// - all keys have been released
     zchd_enabled_state: ZchEnabledState,
@@ -83,15 +85,15 @@ struct ZchDynamicState {
 
 impl ZchDynamicState {
     fn zchd_is_disabled(&self) -> bool {
-        self.zchd_enabled_state == ZchEnabledState::ZchDisabled
+        self.zchd_enabled_state == ZchEnabledState::Disabled
     }
     fn zchd_tick(&mut self) {
         const TICKS_UNTIL_FORCE_STATE_RESET: u16 = 10000;
         self.zchd_ticks_since_state_change += 1;
-        if self.zchd_enabled_state == ZchEnabledState::ZchWaitEnable {
+        if self.zchd_enabled_state == ZchEnabledState::WaitEnable {
             self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
             if self.zchd_ticks_until_enabled == 0 {
-                self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
+                self.zchd_enabled_state = ZchEnabledState::Enabled;
             }
         }
         if self.zchd_ticks_since_state_change > TICKS_UNTIL_FORCE_STATE_RESET {
@@ -105,7 +107,7 @@ impl ZchDynamicState {
     /// Clean up the state.
     fn zchd_reset(&mut self) {
         log::debug!("zchd reset state");
-        self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
+        self.zchd_enabled_state = ZchEnabledState::Enabled;
         self.zchd_pressed_keys.clear();
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
@@ -114,7 +116,7 @@ impl ZchDynamicState {
     }
     /// Returns true if dynamic zch state is such that idling optimization can activate.
     fn zchd_is_idle(&self) -> bool {
-        let is_idle = self.zchd_enabled_state == ZchEnabledState::ZchEnabled
+        let is_idle = self.zchd_enabled_state == ZchEnabledState::Enabled
             && self.zchd_pressed_keys.is_empty();
         log::trace!("zch is idle: {is_idle}");
         is_idle
@@ -127,8 +129,8 @@ impl ZchDynamicState {
         self.zchd_pressed_keys.remove(&osc);
         self.zchd_input_keys.zchik_remove(osc);
         self.zchd_enabled_state = match self.zchd_pressed_keys.is_empty() {
-            true => ZchEnabledState::ZchWaitEnable,
-            false => ZchEnabledState::ZchDisabled,
+            true => ZchEnabledState::WaitEnable,
+            false => ZchEnabledState::Disabled,
         };
     }
 }
@@ -176,7 +178,7 @@ impl ZchState {
             activation = pchords
                 .lock()
                 .0
-                .ssm_get_or_is_subset_ksorted(&self.zchd.zchd_input_keys.zchik_keys());
+                .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
         }
         if !matches!(activation, HasValue(..)) {
             activation = self
@@ -256,12 +258,12 @@ impl ZchState {
             }
             IsSubset => {
                 self.zchd.zchd_input_keys.zchik_insert(osc);
-                return kb.press_key(osc);
+                kb.press_key(osc)
             }
             Neither => {
                 self.zchd.zchd_reset();
-                self.zchd.zchd_enabled_state = ZchEnabledState::ZchDisabled;
-                return kb.press_key(osc);
+                self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
+                kb.press_key(osc)
             }
         }
     }
