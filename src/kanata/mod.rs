@@ -1428,11 +1428,8 @@ impl Kanata {
                                 }
                             }
                             #[cfg(feature = "tcp_server")]
-                            match self.tcp_server_address {
-                                None => {
-                                    log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
-                                }
-                                Some(_) => {}
+                            if self.tcp_server_address.is_none() {
+                                log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
                             }
                             #[cfg(not(feature = "tcp_server"))]
                             log::warn!(
