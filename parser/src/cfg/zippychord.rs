@@ -276,22 +276,22 @@ fn parse_zippy_inner(
                         (false, HasValue(next_nested_map)) => {
                             match &next_nested_map.zch_followups {
                                 None => {
-                                    let map = Arc::new(Mutex::new(ZchPossibleChords(SubsetMap::ssm_new())));
+                                    let map = Arc::new(Mutex::new(ZchPossibleChords(
+                                        SubsetMap::ssm_new(),
+                                    )));
                                     next_map = Some(map.clone());
-                                    possible_chords_map
-                                        .lock()
-                                        .0
-                                        .ssm_insert_ksorted(
-                                            input_chord.zchik_keys(),
-                                            ZchChordOutput {
-                                                zch_output: next_nested_map.zch_output.clone(),
-                                                zch_followups: Some(map),
-                                            }.into(),
-                                        );
-                                },
+                                    possible_chords_map.lock().0.ssm_insert_ksorted(
+                                        input_chord.zchik_keys(),
+                                        ZchChordOutput {
+                                            zch_output: next_nested_map.zch_output.clone(),
+                                            zch_followups: Some(map),
+                                        }
+                                        .into(),
+                                    );
+                                }
                                 Some(followup) => {
                                     next_map = Some(followup.clone());
-                                },
+                                }
                             }
                         }
                         (false, _) => {

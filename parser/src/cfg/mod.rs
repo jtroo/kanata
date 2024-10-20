@@ -93,8 +93,8 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
-mod zippy;
-pub use zippy::*;
+mod zippychord;
+pub use zippychord::*;
 
 use crate::lsp_hints::{self, LspHints};
 

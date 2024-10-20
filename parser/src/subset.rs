@@ -5,8 +5,8 @@
 //! you should ensure values are cheaply clonable. If the value is not, consider putting it inside
 //! `Rc` or `Arc`.
 
-use std::hash::Hash;
 use rustc_hash::FxHashMap;
+use std::hash::Hash;
 
 #[derive(Debug, Clone)]
 pub struct SubsetMap<K, V> {
@@ -19,7 +19,10 @@ struct SsmKeyValue<K, V> {
     value: V,
 }
 
-impl<K, V> SsmKeyValue<K, V> where K: Clone {
+impl<K, V> SsmKeyValue<K, V>
+where
+    K: Clone,
+{
     fn ssmkv_new(key: impl AsRef<[K]>, value: V) -> Self {
         Self {
             key: key.as_ref().to_vec().into_boxed_slice(),
@@ -43,13 +46,21 @@ pub enum SsmKeyExistedBeforeInsert {
 
 use GetOrIsSubsetOfKnownKey::*;
 
-impl<K, V> Default for SubsetMap<K, V> where K: Clone + PartialEq + Ord + Hash, V: Clone {
+impl<K, V> Default for SubsetMap<K, V>
+where
+    K: Clone + PartialEq + Ord + Hash,
+    V: Clone,
+{
     fn default() -> Self {
         Self::ssm_new()
     }
 }
 
-impl<K, V> SubsetMap<K, V> where K: Clone + PartialEq + Ord + Hash, V: Clone {
+impl<K, V> SubsetMap<K, V>
+where
+    K: Clone + PartialEq + Ord + Hash,
+    V: Clone,
+{
     pub fn ssm_new() -> Self {
         Self {
             map: FxHashMap::default(),
@@ -64,37 +75,43 @@ impl<K, V> SubsetMap<K, V> where K: Clone + PartialEq + Ord + Hash, V: Clone {
 
     /// Inserts a sorted key. Failure to enforce that the key is sorted results in defined but
     /// unspecified behaviour.
-    pub fn ssm_insert_ksorted(&mut self, key: impl AsRef<[K]>, val: V) -> SsmKeyExistedBeforeInsert {
+    pub fn ssm_insert_ksorted(
+        &mut self,
+        key: impl AsRef<[K]>,
+        val: V,
+    ) -> SsmKeyExistedBeforeInsert {
         let mut key_existed = SsmKeyExistedBeforeInsert::NotThere;
         for k in key.as_ref().iter().cloned() {
-            let keyvals_for_key_item = self.map.entry(k)
-                .or_insert(Vec::new());
-            match keyvals_for_key_item.binary_search_by(|probe| probe.key.as_ref().cmp(key.as_ref())) {
+            let keyvals_for_key_item = self.map.entry(k).or_insert(Vec::new());
+            match keyvals_for_key_item
+                .binary_search_by(|probe| probe.key.as_ref().cmp(key.as_ref()))
+            {
                 Ok(pos) => {
                     key_existed = SsmKeyExistedBeforeInsert::Existed;
                     keyvals_for_key_item[pos] = SsmKeyValue::ssmkv_new(key.as_ref(), val.clone());
-                },
+                }
                 Err(pos) => {
-                    keyvals_for_key_item.insert(pos, SsmKeyValue::ssmkv_new(key.as_ref(), val.clone()));
+                    keyvals_for_key_item
+                        .insert(pos, SsmKeyValue::ssmkv_new(key.as_ref(), val.clone()));
                 }
             }
         }
         key_existed
     }
 
-
     /// Gets using a potentially unsorted key. Sorts the key then calls
     /// ssm_get_or_is_subset_ksorted.
-    pub fn ssm_get_or_is_subset(&self, mut key: impl AsMut<[K]>) -> GetOrIsSubsetOfKnownKey<V>
-    {
+    pub fn ssm_get_or_is_subset(&self, mut key: impl AsMut<[K]>) -> GetOrIsSubsetOfKnownKey<V> {
         key.as_mut().sort();
         self.ssm_get_or_is_subset_ksorted(key.as_mut())
     }
 
     /// Gets using a sorted key. Failure to enforce a sorted key results in defined but unspecified
     /// behaviour.
-    pub fn ssm_get_or_is_subset_ksorted(&self, get_key: impl AsRef<[K]>) -> GetOrIsSubsetOfKnownKey<V>
-    {
+    pub fn ssm_get_or_is_subset_ksorted(
+        &self,
+        get_key: impl AsRef<[K]>,
+    ) -> GetOrIsSubsetOfKnownKey<V> {
         let get_key = get_key.as_ref();
         if get_key.is_empty() {
             return match self.is_empty() {
@@ -105,10 +122,10 @@ impl<K, V> SubsetMap<K, V> where K: Clone + PartialEq + Ord + Hash, V: Clone {
         match self.map.get(&get_key[0]) {
             None => Neither,
             Some(keyvals_for_key_item) => {
-                match keyvals_for_key_item.binary_search_by(|probe| probe.key.as_ref().cmp(get_key.as_ref())) {
-                    Ok(pos) => {
-                        HasValue(keyvals_for_key_item[pos].value.clone())
-                    },
+                match keyvals_for_key_item
+                    .binary_search_by(|probe| probe.key.as_ref().cmp(get_key.as_ref()))
+                {
+                    Ok(pos) => HasValue(keyvals_for_key_item[pos].value.clone()),
                     Err(_) => {
                         for kv in keyvals_for_key_item.iter() {
                             if get_key.iter().all(|kitem| kv.key.contains(kitem)) {
