@@ -65,8 +65,9 @@ struct ZchDynamicState {
     /// contained within `zchd_prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
     zchd_prioritized_chords: Option<Arc<parking_lot::Mutex<ZchPossibleChords>>>,
-    /// Tracks the previous output because it may need to be erased (see `zchd_prioritized_chords).
-    zchd_previous_activation_output: Option<Box<[ZchOutput]>>,
+    /// Tracks the previous output character count
+    /// because it may need to be erased (see `zchd_prioritized_chords).
+    zchd_previous_activation_output_count: Option<u16>,
     /// In case of output being empty for interim chord activations, this tracks the number of
     /// characters that need to be erased.
     zchd_characters_to_delete_on_next_activation: u16,
@@ -112,7 +113,7 @@ impl ZchDynamicState {
         self.zchd_pressed_keys.clear();
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
-        self.zchd_previous_activation_output = None;
+        self.zchd_previous_activation_output_count = None;
         self.zchd_characters_to_delete_on_next_activation = 0;
     }
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -129,6 +130,9 @@ impl ZchDynamicState {
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_pressed_keys.remove(&osc);
         self.zchd_input_keys.zchik_remove(osc);
+        if self.zchd_input_keys.zchik_len() == 0 {
+            self.zchd_characters_to_delete_on_next_activation = 0;
+        }
         self.zchd_enabled_state = match self.zchd_pressed_keys.is_empty() {
             true => ZchEnabledState::WaitEnable,
             false => ZchEnabledState::Disabled,
@@ -169,10 +173,11 @@ impl ZchState {
         // - delete typed keys
         // - output activation
         //
-        // Deletion of typed keys will be based on input keys if `zchd_previous_activation_output` is
+        // Deletion of typed keys will be based on input keys if
+        // `zchd_previous_activation_output_count` is
         // `None` or the previous output otherwise.
         //
-        // Output activation will save into `zchd_previous_activation_output` if there is potential
+        // Output activation will save into `zchd_previous_activation_output_count` if there is potential
         // for subsequent activations, i.e. if zch_followups is `Some`.
         let mut activation = Neither;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
@@ -181,23 +186,37 @@ impl ZchState {
                 .0
                 .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
         }
+        let mut is_prioritized_activation = false;
         if !matches!(activation, HasValue(..)) {
             activation = self
                 .zch_chords
                 .0
                 .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
+        } else {
+            is_prioritized_activation = true;
         }
         match activation {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
+                    self.zchd.zchd_previous_activation_output_count = Some(1);
                     kb.press_key(osc)?;
                 } else {
-                    for _ in 0..self.zchd.zchd_characters_to_delete_on_next_activation {
+                    for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation
+                        + if is_prioritized_activation {
+                            self.zchd.zchd_previous_activation_output_count.expect(
+                                "previous activation should exist for prioritized activation",
+                            )
+                        } else {
+                            0
+                        })
+                    {
                         kb.press_key(OsCode::KEY_BACKSPACE)?;
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
+                    self.zchd.zchd_previous_activation_output_count =
+                        Some(a.zch_output.len() as u16);
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
@@ -232,7 +251,6 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                     }
                 }
-                self.zchd.zchd_previous_activation_output = Some(a.zch_output.clone());
 
                 // Note: it is incorrect to clear input keys.
                 // Zippychord will eagerly output chords even if there is an overlapping chord that
