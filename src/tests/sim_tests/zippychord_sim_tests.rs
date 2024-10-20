@@ -1,6 +1,7 @@
 use super::*;
 
-static ZIPPY_CFG: &str = "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy-experimental file)";
+static ZIPPY_CFG: &str =
+    "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy-experimental file)";
 static ZIPPY_FILE_CONTENT: &str = "
 dy	day
 dy 1	Monday
