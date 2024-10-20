@@ -10,6 +10,31 @@ use std::sync::MutexGuard;
 // TODO: suffixes - only active while disabled, to complete a word.
 // TODO: prefix vs. non-prefix: one outputs space, the other not (I guess can be done in parser).
 
+static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
+
+pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
+    match ZCH.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            let mut inner = poisoned.into_inner();
+            inner.zchd.zchd_reset();
+            inner
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct ZchConfig {
+    zch_cfg_ticks_wait_enable: u16,
+}
+impl Default for ZchConfig {
+    fn default() -> Self {
+        Self {
+            zch_cfg_ticks_wait_enable: 300,
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
     #[default]
@@ -82,7 +107,7 @@ impl ZchDynamicState {
         log::debug!("zchd reset state");
         self.zchd_enabled_state = ZchEnabledState::ZchEnabled;
         self.zchd_pressed_keys.clear();
-        self.zchd_input_keys.zchik_keys();
+        self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output = None;
         self.zchd_characters_to_delete_on_next_activation = 0;
@@ -123,8 +148,8 @@ pub(crate) struct ZchState {
 
 impl ZchState {
     pub(crate) fn zch_configure(&mut self, chords: ZchPossibleChords) {
-        self.zchd.zchd_reset();
         self.zch_chords = chords;
+        self.zchd.zchd_reset();
     }
     /// Zch handling for key presses.
     pub(crate) fn zch_press_key(
@@ -261,30 +286,5 @@ impl ZchState {
     /// activate.
     pub(crate) fn zch_is_idle(&self) -> bool {
         self.zchd.zchd_is_idle()
-    }
-}
-
-static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
-
-pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
-    match ZCH.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => {
-            let mut inner = poisoned.into_inner();
-            inner.zchd.zchd_reset();
-            inner
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct ZchConfig {
-    zch_cfg_ticks_wait_enable: u16,
-}
-impl Default for ZchConfig {
-    fn default() -> Self {
-        Self {
-            zch_cfg_ticks_wait_enable: 300,
-        }
     }
 }
