@@ -6,9 +6,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
-// TODO: suffixes - only active while disabled, to complete a word.
-// TODO: prefix vs. non-prefix: one outputs space, the other not (I guess can be done in parser).
-// TODO: smart spacing around words
+// Maybe-todos:
+// ---
+// Feature-parity: smart spacing around words
+//       - fixup whitespace around punctuation?
+// Feature-parity: suffixes - only active while disabled, to complete a word.
+// Feature-parity: prefix vs. non-prefix. Assuming smart spacing is implemented and enabled,
+//                 standard activations would output space one outputs space, but not prefixes.
+//                 I guess can be done in parser.
 
 static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
 
@@ -183,21 +188,28 @@ impl ZchState {
             }
             _ => {}
         }
+
         if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() || osc.is_modifier() {
+            if osc.is_grammatical_or_structural() {
+                // Motivation: if a key is pressed that can potentially be followed by a brand new
+                // word, quickly re-enable zippychording so user doesn't have to wait for the
+                // "not-regular-typing-anymore" timeout.
+                self.zchd.zchd_enabled_state = ZchEnabledState::Enabled;
+            }
             return kb.press_key(osc);
         }
+
         self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_press_key(osc);
+
         // There might be an activation.
         // - delete typed keys
         // - output activation
         //
-        // Deletion of typed keys will be based on input keys if
-        // `zchd_previous_activation_output_count` is
-        // `None` or the previous output otherwise.
-        //
-        // Output activation will save into `zchd_previous_activation_output_count` if there is potential
-        // for subsequent activations, i.e. if zch_followups is `Some`.
+        // Key deletion needs to remove typed keys as well as past activations that need to be
+        // cleaned up, e.g. either the previous chord in a "combo chord" or an eagerly-activated
+        // chord using fewer keys, but user has still held that chord and pressed further keys,
+        // activating a chord with the same+extra keys.
         let mut activation = Neither;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
             activation = pchords
@@ -214,6 +226,7 @@ impl ZchState {
         } else {
             is_prioritized_activation = true;
         }
+
         match activation {
             HasValue(a) => {
                 if a.zch_output.is_empty() {
@@ -310,10 +323,12 @@ impl ZchState {
 
                 Ok(())
             }
+
             IsSubset => {
                 self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                 kb.press_key(osc)
             }
+
             Neither => {
                 self.zchd.zchd_reset();
                 self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
