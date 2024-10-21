@@ -275,7 +275,7 @@ pub struct Cfg {
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
     /// Zipchord-like configuration.
-    pub zippy: Option<ZchPossibleChords>,
+    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
 }
 
 /// Parse a new configuration from a file.
@@ -419,7 +419,7 @@ pub struct IntermediateCfg {
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
     pub start_action: Option<&'static KanataAction>,
-    pub zippy: Option<ZchPossibleChords>,
+    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation

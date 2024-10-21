@@ -28,18 +28,6 @@ pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct ZchConfig {
-    zch_cfg_ticks_wait_enable: u16,
-}
-impl Default for ZchConfig {
-    fn default() -> Self {
-        Self {
-            zch_cfg_ticks_wait_enable: 300,
-        }
-    }
-}
-
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 enum ZchEnabledState {
     #[default]
@@ -169,8 +157,9 @@ pub(crate) struct ZchState {
 
 impl ZchState {
     /// Configure zippychord behaviour.
-    pub(crate) fn zch_configure(&mut self, chords: ZchPossibleChords) {
-        self.zch_chords = chords;
+    pub(crate) fn zch_configure(&mut self, cfg: (ZchPossibleChords, ZchConfig)) {
+        self.zch_chords = cfg.0;
+        self.zch_cfg = cfg.1;
         self.zchd.zchd_reset();
     }
 
