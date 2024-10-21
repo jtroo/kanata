@@ -143,11 +143,11 @@ impl ZchDynamicState {
 
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_input_keys.zchik_remove(osc);
-        if self.zchd_input_keys.zchik_is_empty() {
-            self.zchd_characters_to_delete_on_next_activation = 0;
-        }
         self.zchd_enabled_state = match self.zchd_input_keys.zchik_is_empty() {
-            true => ZchEnabledState::WaitEnable,
+            true => {
+                self.zchd_characters_to_delete_on_next_activation = 0;
+                ZchEnabledState::WaitEnable
+            }
             false => ZchEnabledState::Disabled,
         };
     }
@@ -286,18 +286,17 @@ impl ZchState {
                         }
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
-                    if !released_lsft {
-                        if !self.zchd.zchd_is_caps_word_active {
-                            released_lsft = true;
-                            if self.zchd.zchd_is_lsft_active {
-                                kb.release_key(OsCode::KEY_LEFTSHIFT)?;
-                            }
-                            if self.zchd.zchd_is_rsft_active {
-                                kb.release_key(OsCode::KEY_RIGHTSHIFT)?;
-                            }
+                    if !released_lsft && !self.zchd.zchd_is_caps_word_active {
+                        released_lsft = true;
+                        if self.zchd.zchd_is_lsft_active {
+                            kb.release_key(OsCode::KEY_LEFTSHIFT)?;
+                        }
+                        if self.zchd.zchd_is_rsft_active {
+                            kb.release_key(OsCode::KEY_RIGHTSHIFT)?;
                         }
                     }
                 }
+
                 if !self.zchd.zchd_is_caps_word_active {
                     if self.zchd.zchd_is_lsft_active {
                         kb.press_key(OsCode::KEY_LEFTSHIFT)?;
