@@ -1344,12 +1344,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     seq.tapped = None;
                 } else {
                     // Pull the next SequenceEvent
-                    match seq.remaining_events {
-                        [e, tail @ ..] => {
-                            seq.cur_event = Some(*e);
-                            seq.remaining_events = tail;
-                        }
-                        [] => (),
+                    if let [e, tail @ ..] = seq.remaining_events {
+                        seq.cur_event = Some(*e);
+                        seq.remaining_events = tail;
                     }
                     // Process it (SequenceEvent)
                     match seq.cur_event {

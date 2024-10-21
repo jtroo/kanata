@@ -219,7 +219,7 @@ impl TryFrom<Stroke> for OsCode {
 
 #[allow(unused)]
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OsCode {
     KEY_RESERVED = 0,
     KEY_ESC = 1,

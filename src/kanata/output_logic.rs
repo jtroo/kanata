@@ -1,5 +1,10 @@
 use super::*;
 
+#[cfg(feature = "zippychord")]
+mod zippychord;
+#[cfg(feature = "zippychord")]
+pub(crate) use zippychord::*;
+
 // Functions to send keys except those that fall in the ignorable range.
 // And also have been repurposed to have additional logic to send mouse events, out of convenience.
 //
@@ -46,7 +51,7 @@ pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Err
                 let direction = osc_to_wheel_direction(osc);
                 kb.scroll(direction, HI_RES_SCROLL_UNITS_IN_LO_RES)
             }
-            _ => kb.press_key(osc),
+            _ => post_filter_press(kb, osc),
         },
     }
 }
@@ -64,7 +69,7 @@ pub(super) fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::E
                 // of release.
                 Ok(())
             }
-            _ => kb.release_key(osc),
+            _ => post_filter_release(kb, osc),
         },
     }
 }
@@ -89,5 +94,45 @@ fn osc_to_wheel_direction(osc: OsCode) -> MWheelDirection {
         MouseWheelLeft => Left,
         MouseWheelRight => Right,
         _ => unreachable!("called osc_to_wheel_direction with bad value {osc}"),
+    }
+}
+
+fn post_filter_press(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    #[cfg(not(feature = "zippychord"))]
+    {
+        kb.press_key(osc)
+    }
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_press_key(kb, osc)
+    }
+}
+
+fn post_filter_release(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+    #[cfg(not(feature = "zippychord"))]
+    {
+        kb.release_key(osc)
+    }
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_release_key(kb, osc)
+    }
+}
+
+pub(super) fn zippy_is_idle() -> bool {
+    #[cfg(not(feature = "zippychord"))]
+    {
+        true
+    }
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_is_idle()
+    }
+}
+
+pub(super) fn zippy_tick(_caps_word_is_active: bool) {
+    #[cfg(feature = "zippychord")]
+    {
+        zch().zch_tick(_caps_word_is_active)
     }
 }
