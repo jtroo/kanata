@@ -197,14 +197,17 @@ fn parse_zippy_inner(
                         .try_fold(vec![], |mut zch_output, out_char| -> Result<_> {
                             let out_key = out_char.to_lowercase().next().unwrap();
                             let key_name = out_key.encode_utf8(&mut char_buf);
-                            let osc = str_to_oscode(key_name).ok_or_else(|| {
-                                anyhow_expr!(
-                                    &exprs[1],
-                                    "Unknown output key name '{}':\n{}: {line}",
-                                    out_char,
-                                    line_number + 1,
-                                )
-                            })?;
+                            let osc = match key_name as &str {
+                                " " => OsCode::KEY_SPACE,
+                                _ => str_to_oscode(key_name).ok_or_else(|| {
+                                    anyhow_expr!(
+                                        &exprs[1],
+                                        "Unknown output key name '{}':\n{}: {line}",
+                                        out_char,
+                                        line_number + 1,
+                                    )
+                                })?,
+                            };
                             let out = match out_char.is_uppercase() {
                                 true => ZchOutput::Uppercase(osc),
                                 false => ZchOutput::Lowercase(osc),
