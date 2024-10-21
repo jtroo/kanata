@@ -128,11 +128,23 @@ pub enum ZchOutput {
     Uppercase(OsCode),
 }
 
+#[derive(Debug)]
+pub struct ZchConfig {
+    pub zch_cfg_ticks_wait_enable: u16,
+}
+impl Default for ZchConfig {
+    fn default() -> Self {
+        Self {
+            zch_cfg_ticks_wait_enable: 300,
+        }
+    }
+}
+
 pub(crate) fn parse_zippy(
     exprs: &[SExpr],
     s: &ParserState,
     f: &mut FileContentProvider,
-) -> Result<ZchPossibleChords> {
+) -> Result<(ZchPossibleChords, ZchConfig)> {
     parse_zippy_inner(exprs, s, f)
 }
 
@@ -141,7 +153,7 @@ fn parse_zippy_inner(
     exprs: &[SExpr],
     _s: &ParserState,
     _f: &mut FileContentProvider,
-) -> Result<ZchPossibleChords> {
+) -> Result<(ZchPossibleChords, ZchConfig)> {
     bail_expr!(&exprs[0], "Kanata was not compiled with the \"zippychord\" feature. This configuration is unsupported")
 }
 
@@ -150,23 +162,40 @@ fn parse_zippy_inner(
     exprs: &[SExpr],
     s: &ParserState,
     f: &mut FileContentProvider,
-) -> Result<ZchPossibleChords> {
+) -> Result<(ZchPossibleChords, ZchConfig)> {
     use crate::anyhow_expr;
     use crate::subset::GetOrIsSubsetOfKnownKey::*;
 
-    if exprs.len() != 2 {
+    if exprs.len() < 2 {
         bail_expr!(
             &exprs[0],
-            "There must be exactly one filename following this definition.\nFound {}",
+            "There must be a filename following the zippy definition.\nFound {}",
             exprs.len() - 1
         );
     }
+
     let Some(file_name) = exprs[1].atom(s.vars()) else {
         bail_expr!(&exprs[1], "Filename must be a string, not a list.");
     };
     let input_data = f
         .get_file_content(file_name.as_ref())
         .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
+
+    let mut config = ZchConfig::default();
+
+    // Parse other zippy configurations
+    // Parse cfgs as name-value pairs
+    let mut pairs = exprs[2..].chunks_exact(2);
+    for pair in pairs.by_ref() {
+        let _config_name = &pair[0];
+        let _config_value = &pair[0];
+        // todo: add charaters with mappings
+    }
+    let rem = pairs.remainder();
+    if !rem.is_empty() {
+        bail_expr!(&rem[0], "zippy config name must be followed by the config value");
+    }
+
     let res = input_data
         .lines()
         .enumerate()
@@ -320,5 +349,5 @@ fn parse_zippy_inner(
                 Ok(zch)
             },
         )?;
-    Ok(Arc::into_inner(res).expect("no other refs").into_inner())
+    Ok((Arc::into_inner(res).expect("no other refs").into_inner(), config))
 }
