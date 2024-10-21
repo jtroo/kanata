@@ -130,12 +130,19 @@ pub enum ZchOutput {
 
 #[derive(Debug)]
 pub struct ZchConfig {
+    /// When, during typing, chord fails to activate, zippychord functionality becomes temporarily
+    /// disabled. This is to avoid accidental chord activations when typing normally, as opposed to
+    /// intentionally trying to activate a chord. The duration of temporary disabling is determined
+    /// by this configuration item. Re-enabling also happens when word-splitting characters are
+    /// typed, for example typing  a space or a comma, but a pause of all typing activity lasting a
+    /// number of milliseconds equal to this configuration will also re-enable chording even if
+    /// typing within a single word.
     pub zch_cfg_ticks_wait_enable: u16,
 }
 impl Default for ZchConfig {
     fn default() -> Self {
         Self {
-            zch_cfg_ticks_wait_enable: 300,
+            zch_cfg_ticks_wait_enable: 500,
         }
     }
 }
@@ -187,13 +194,25 @@ fn parse_zippy_inner(
     // Parse cfgs as name-value pairs
     let mut pairs = exprs[2..].chunks_exact(2);
     for pair in pairs.by_ref() {
-        let _config_name = &pair[0];
-        let _config_value = &pair[0];
-        // todo: add charaters with mappings
+        let config_name = &pair[0];
+        let config_value = &pair[1];
+        match config_name.atom(s.vars()).ok_or_else(|| {
+            anyhow_expr!(
+                config_name,
+                "A configuration name must be a string, not a list"
+            )
+        })? {
+            "idle-reactivate-time" => {
+                config.zch_cfg_ticks_wait_enable =
+                    parse_u16(config_value, s, "idle-reactivate-time")?;
+            }
+            "key-name-mappings" => {todo!()}
+            _ => bail_expr!(config_name, "Unknown zippy configuration name"),
+        }
     }
     let rem = pairs.remainder();
     if !rem.is_empty() {
-        bail_expr!(&rem[0], "zippy config name must be followed by the config value");
+        bail_expr!(&rem[0], "zippy config name is missing its value");
     }
 
     let res = input_data
@@ -349,5 +368,8 @@ fn parse_zippy_inner(
                 Ok(zch)
             },
         )?;
-    Ok((Arc::into_inner(res).expect("no other refs").into_inner(), config))
+    Ok((
+        Arc::into_inner(res).expect("no other refs").into_inner(),
+        config,
+    ))
 }
