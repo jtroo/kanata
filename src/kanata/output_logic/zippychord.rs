@@ -232,7 +232,8 @@ impl ZchState {
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     self.zchd.zchd_previous_activation_output_count =
-                        self.zchd.zchd_input_keys.zchik_keys().len() as u16;
+                        self.zchd.zchd_input_keys.zchik_keys().len() as u16
+                            + self.zchd.zchd_previous_activation_output_count;
                     kb.press_key(osc)?;
                 } else {
                     for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation

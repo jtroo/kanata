@@ -11,6 +11,8 @@ r df	recipient
 xy	WxYz
 rq	request
 rqa	request␣assistance
+.g	git
+.g f p	git fetch -p
 ";
 
 #[test]
@@ -214,6 +216,25 @@ fn sim_zippychord_caps_word() {
          t:10ms up:X t:1ms up:LShift up:Y t:9ms dn:Space t:1ms up:Space \
          t:9ms dn:Y t:1ms dn:BSpace up:BSpace dn:LShift dn:W up:W up:LShift \
          up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_triple_combo() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:. d:g t:10 u:. u:g d:f t:10 u:f d:p t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Dot t:1ms dn:BSpace up:BSpace up:G dn:G dn:I up:I dn:T up:T t:9ms up:Dot t:1ms up:G \
+         t:1ms dn:F t:8ms up:F t:1ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:G up:G dn:I up:I dn:T up:T dn:Space up:Space \
+         dn:F up:F dn:E up:E dn:T up:T dn:C up:C dn:H up:H dn:Space up:Space \
+         dn:Minus up:Minus up:P dn:P",
         result
     );
 }
