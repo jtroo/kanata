@@ -126,6 +126,7 @@ impl ZchDynamicState {
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output_count = 0;
+        self.zchd_ticks_since_state_change = 0;
         self.zchd_characters_to_delete_on_next_activation = 0;
     }
 
