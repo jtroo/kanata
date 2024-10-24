@@ -73,6 +73,10 @@ struct ZchDynamicState {
     /// against unintended activations. This counts downwards from a configured number until 0, and
     /// at 0 the state transitions from pending-enabled to truly-enabled if applicable.
     zchd_ticks_until_enabled: u16,
+    /// Zch has a time delay between being disabled->pending-enabled->truly-enabled to mitigate
+    /// against unintended activations. This counts downwards from a configured number until 0, and
+    /// at 0 the state transitions from pending-enabled to truly-enabled if applicable.
+    zchd_ticks_until_disable: u16,
     /// Current state of caps-word, which is a factor in handling capitalization.
     zchd_is_caps_word_active: bool,
     /// Current state of lsft which is a factor in handling capitalization.
@@ -85,23 +89,48 @@ impl ZchDynamicState {
     fn zchd_is_disabled(&self) -> bool {
         self.zchd_enabled_state == ZchEnabledState::Disabled
     }
+
     fn zchd_tick(&mut self, is_caps_word_active: bool) {
         const TICKS_UNTIL_FORCE_STATE_RESET: u16 = 10000;
         self.zchd_ticks_since_state_change += 1;
         self.zchd_is_caps_word_active = is_caps_word_active;
-        if self.zchd_enabled_state == ZchEnabledState::WaitEnable {
-            self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
-            if self.zchd_ticks_until_enabled == 0 {
-                self.zchd_enabled_state = ZchEnabledState::Enabled;
+        match self.zchd_enabled_state {
+            ZchEnabledState::WaitEnable => {
+                self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
+                if self.zchd_ticks_until_enabled == 0 {
+                    self.zchd_enabled_state = ZchEnabledState::Enabled;
+                }
             }
+            ZchEnabledState::Enabled => {
+                // Only run disable-check logic if ticks is already greater than zero, because zero
+                // means deadline has never been triggered by an press yet.
+                if self.zchd_ticks_until_disable > 0 {
+                    self.zchd_ticks_until_disable = self.zchd_ticks_until_disable.saturating_sub(1);
+                    if self.zchd_ticks_until_disable == 0 {
+                        self.zchd_enabled_state = ZchEnabledState::Disabled;
+                    }
+                }
+            }
+            ZchEnabledState::Disabled => {}
         }
         if self.zchd_ticks_since_state_change > TICKS_UNTIL_FORCE_STATE_RESET {
             self.zchd_reset();
         }
     }
+
     fn zchd_state_change(&mut self, cfg: &ZchConfig) {
         self.zchd_ticks_since_state_change = 0;
         self.zchd_ticks_until_enabled = cfg.zch_cfg_ticks_wait_enable;
+    }
+
+    fn zchd_activate_chord_deadline(&mut self, deadline_ticks: u16) {
+        if self.zchd_ticks_until_disable == 0 {
+            self.zchd_ticks_until_disable = deadline_ticks;
+        }
+    }
+
+    fn zchd_restart_deadline(&mut self, deadline_ticks: u16) {
+        self.zchd_ticks_until_disable = deadline_ticks;
     }
 
     /// Clean up the state.
@@ -115,6 +144,8 @@ impl ZchDynamicState {
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output_count = 0;
         self.zchd_ticks_since_state_change = 0;
+        self.zchd_ticks_until_disable = 0;
+        self.zchd_ticks_until_enabled = 0;
         self.zchd_characters_to_delete_on_next_activation = 0;
     }
 
@@ -151,7 +182,6 @@ pub(crate) struct ZchState {
     /// the state.
     zch_chords: ZchPossibleChords,
     /// Options to configure behaviour.
-    /// TODO: needs parser configuration.
     zch_cfg: ZchConfig,
 }
 
@@ -189,6 +219,10 @@ impl ZchState {
             return kb.press_key(osc);
         }
 
+        // Zippychording is enabled. Ensure the deadline to disable it if no chord activates is
+        // active.
+        self.zchd
+            .zchd_activate_chord_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);
         self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_press_key(osc);
 
@@ -219,6 +253,8 @@ impl ZchState {
 
         match activation {
             HasValue(a) => {
+                self.zchd
+                    .zchd_restart_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     self.zchd.zchd_previous_activation_output_count +=

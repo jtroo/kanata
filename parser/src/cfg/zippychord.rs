@@ -138,11 +138,25 @@ pub struct ZchConfig {
     /// number of milliseconds equal to this configuration will also re-enable chording even if
     /// typing within a single word.
     pub zch_cfg_ticks_wait_enable: u16,
+
+    /// Assuming zippychording is enabled, when the first press happens this deadline will begin
+    /// and if no chords are completed within the deadline, zippychording will be disabled
+    /// temporarily (see `zch_cfg_ticks_wait_enable`). You may want a long or short deadline
+    /// depending on your use case. If you are primarily typing normally, with chords being used
+    /// occasionally being used, you may want a short deadline so that regular typing will be
+    /// unlikely to activate any chord. However, if you primarily type with chords, you may want a
+    /// longer deadline to give you more time to complete the intended chord (e.g. in case of
+    /// overlaps). With a long deadline you should be very intentional about pressing and releasing
+    /// an individual key to begin a sequence of regular typing to trigger the disabling of
+    /// zippychord. If, after the first press, a chord activates, this deadline will reset to
+    /// enable further chord activations.
+    pub zch_cfg_ticks_chord_deadline: u16,
 }
 impl Default for ZchConfig {
     fn default() -> Self {
         Self {
             zch_cfg_ticks_wait_enable: 500,
+            zch_cfg_ticks_chord_deadline: 100,
         }
     }
 }
@@ -206,7 +220,13 @@ fn parse_zippy_inner(
                 config.zch_cfg_ticks_wait_enable =
                     parse_u16(config_value, s, "idle-reactivate-time")?;
             }
-            "key-name-mappings" => {todo!()}
+            "on-first-press-chord-deadline" => {
+                config.zch_cfg_ticks_chord_deadline =
+                    parse_u16(config_value, s, "on-first-press-chord-deadline")?;
+            }
+            "key-name-mappings" => {
+                todo!()
+            }
             _ => bail_expr!(config_name, "Unknown zippy configuration name"),
         }
     }
