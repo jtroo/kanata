@@ -36,6 +36,13 @@ enum ZchEnabledState {
     Disabled,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum ZchLastPressClassification {
+    IsChord,
+    #[default]
+    NotChord,
+}
+
 #[derive(Debug, Default)]
 struct ZchDynamicState {
     /// Input to compare against configured available chords to output.
@@ -83,6 +90,8 @@ struct ZchDynamicState {
     zchd_is_lsft_active: bool,
     /// Current state of rsft which is a factor in handling capitalization.
     zchd_is_rsft_active: bool,
+    /// Tracks whether last press was part of a chord or not.
+    zchd_last_press: ZchLastPressClassification,
 }
 
 impl ZchDynamicState {
@@ -172,13 +181,22 @@ impl ZchDynamicState {
 
     fn zchd_release_key(&mut self, osc: OsCode) {
         self.zchd_input_keys.zchik_remove(osc);
-        self.zchd_enabled_state = match self.zchd_input_keys.zchik_is_empty() {
-            true => {
+        match (self.zchd_last_press, self.zchd_input_keys.zchik_is_empty()) {
+            (ZchLastPressClassification::NotChord, true) => {
+                self.zchd_enabled_state = ZchEnabledState::WaitEnable;
                 self.zchd_characters_to_delete_on_next_activation = 0;
-                ZchEnabledState::WaitEnable
             }
-            false => ZchEnabledState::Disabled,
-        };
+            (ZchLastPressClassification::NotChord, false) => {
+                self.zchd_enabled_state = ZchEnabledState::Disabled;
+            }
+            (ZchLastPressClassification::IsChord, true) => {
+                if self.zchd_prioritized_chords.is_none() {
+                    self.zchd_previous_activation_output_count = 0;
+                    self.zchd_characters_to_delete_on_next_activation = 0;
+                }
+            }
+            (ZchLastPressClassification::IsChord, false) => {}
+        }
     }
 }
 
@@ -219,7 +237,7 @@ impl ZchState {
         }
 
         if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() || osc.is_modifier() {
-            if osc_triggers_quick_enable(osc) {
+            if !self.zch_chords.is_empty() && osc_triggers_quick_enable(osc) {
                 // Motivation: if a key is pressed that can potentially be followed by a brand new
                 // word, quickly re-enable zippychording so user doesn't have to wait for the
                 // "not-regular-typing-anymore" timeout.
@@ -355,15 +373,18 @@ impl ZchState {
                 // WRONG:
                 // self.zchd.zchd_input_keys.zchik_clear()
 
+                self.zchd.zchd_last_press = ZchLastPressClassification::IsChord;
                 Ok(())
             }
 
             IsSubset => {
+                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
                 self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                 kb.press_key(osc)
             }
 
             Neither => {
+                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
                 self.zchd.zchd_soft_reset();
                 self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
                 kb.press_key(osc)
