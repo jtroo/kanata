@@ -87,7 +87,10 @@ struct ZchDynamicState {
 
 impl ZchDynamicState {
     fn zchd_is_disabled(&self) -> bool {
-        self.zchd_enabled_state == ZchEnabledState::Disabled
+        matches!(
+            self.zchd_enabled_state,
+            ZchEnabledState::Disabled | ZchEnabledState::WaitEnable
+        )
     }
 
     fn zchd_tick(&mut self, is_caps_word_active: bool) {
