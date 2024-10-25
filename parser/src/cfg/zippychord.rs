@@ -156,7 +156,7 @@ impl Default for ZchConfig {
     fn default() -> Self {
         Self {
             zch_cfg_ticks_wait_enable: 500,
-            zch_cfg_ticks_chord_deadline: 100,
+            zch_cfg_ticks_chord_deadline: 500,
         }
     }
 }

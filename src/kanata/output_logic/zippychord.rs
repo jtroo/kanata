@@ -136,13 +136,19 @@ impl ZchDynamicState {
         self.zchd_ticks_until_disable = deadline_ticks;
     }
 
-    /// Clean up the state.
+    /// Clean up the state, potentially causing inaccuracies with regards to what the user is
+    /// currently still pressing.
     fn zchd_reset(&mut self) {
         log::debug!("zchd reset state");
         self.zchd_enabled_state = ZchEnabledState::Enabled;
         self.zchd_is_caps_word_active = false;
         self.zchd_is_lsft_active = false;
         self.zchd_is_rsft_active = false;
+        self.zchd_soft_reset();
+    }
+
+    fn zchd_soft_reset(&mut self) {
+        log::debug!("zchd soft reset state");
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output_count = 0;
@@ -217,7 +223,7 @@ impl ZchState {
                 // Motivation: if a key is pressed that can potentially be followed by a brand new
                 // word, quickly re-enable zippychording so user doesn't have to wait for the
                 // "not-regular-typing-anymore" timeout.
-                self.zchd.zchd_enabled_state = ZchEnabledState::Enabled;
+                self.zchd.zchd_soft_reset()
             }
             return kb.press_key(osc);
         }
@@ -358,7 +364,7 @@ impl ZchState {
             }
 
             Neither => {
-                self.zchd.zchd_reset();
+                self.zchd.zchd_soft_reset();
                 self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
                 kb.press_key(osc)
             }
