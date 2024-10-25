@@ -334,7 +334,7 @@ impl ZchState {
 
                 // Note: it is incorrect to clear input keys.
                 // Zippychord will eagerly output chords even if there is an overlapping chord that
-                // may be activated earlier.
+                // may be activated later by an additional keypress before any releases happen.
                 // E.g.
                 // ab => Abba
                 // abc => Alphabet
