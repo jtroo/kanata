@@ -140,7 +140,6 @@ impl ZchDynamicState {
     /// currently still pressing.
     fn zchd_reset(&mut self) {
         log::debug!("zchd reset state");
-        self.zchd_enabled_state = ZchEnabledState::Enabled;
         self.zchd_is_caps_word_active = false;
         self.zchd_is_lsft_active = false;
         self.zchd_is_rsft_active = false;
@@ -149,6 +148,7 @@ impl ZchDynamicState {
 
     fn zchd_soft_reset(&mut self) {
         log::debug!("zchd soft reset state");
+        self.zchd_enabled_state = ZchEnabledState::Enabled;
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output_count = 0;
