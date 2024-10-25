@@ -210,7 +210,7 @@ impl ZchState {
         }
 
         if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() || osc.is_modifier() {
-            if osc.is_grammatical_or_structural() {
+            if osc_triggers_quick_enable(osc) {
                 // Motivation: if a key is pressed that can potentially be followed by a brand new
                 // word, quickly re-enable zippychording so user doesn't have to wait for the
                 // "not-regular-typing-anymore" timeout.
@@ -395,4 +395,34 @@ impl ZchState {
     pub(crate) fn zch_is_idle(&self) -> bool {
         self.zchd.zchd_is_idle()
     }
+}
+
+/// Currently only returns true if the key is space.
+fn osc_triggers_quick_enable(osc: OsCode) -> bool {
+    matches!(osc, OsCode::KEY_SPACE)
+    // Old implementation.
+    // ~~Returns true if punctuation or whitespace. Also backspace, delete, arrow keys.~~
+    // OsCode::KEY_BACKSPACE
+    //     | OsCode::KEY_DELETE
+    //     | OsCode::KEY_ENTER
+    //     | OsCode::KEY_SPACE
+    //     | OsCode::KEY_TAB
+    //     | OsCode::KEY_COMMA
+    //     | OsCode::KEY_DOT
+    //     | OsCode::KEY_SEMICOLON
+    //     | OsCode::KEY_APOSTROPHE
+    //     | OsCode::KEY_SLASH
+    //     | OsCode::KEY_BACKSLASH
+    //     | OsCode::KEY_GRAVE
+    //     | OsCode::KEY_MINUS
+    //     | OsCode::KEY_LEFTBRACE
+    //     | OsCode::KEY_RIGHTBRACE
+    //     | OsCode::KEY_UP
+    //     | OsCode::KEY_DOWN
+    //     | OsCode::KEY_LEFT
+    //     | OsCode::KEY_RIGHT
+    //     | OsCode::KEY_HOME
+    //     | OsCode::KEY_END
+    //     | OsCode::KEY_PAGEUP
+    //     | OsCode::KEY_PAGEDOWN
 }

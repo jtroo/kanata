@@ -80,36 +80,6 @@ impl OsCode {
                 | OsCode::KEY_RIGHTALT
         )
     }
-
-    /// Returns true if punctuation or whitespace. Also backspace, delete, arrow keys.
-    pub fn is_grammatical_or_structural(self) -> bool {
-        matches!(
-            self,
-            OsCode::KEY_BACKSPACE
-                | OsCode::KEY_DELETE
-                | OsCode::KEY_ENTER
-                | OsCode::KEY_SPACE
-                | OsCode::KEY_TAB
-                | OsCode::KEY_COMMA
-                | OsCode::KEY_DOT
-                | OsCode::KEY_SEMICOLON
-                | OsCode::KEY_APOSTROPHE
-                | OsCode::KEY_SLASH
-                | OsCode::KEY_BACKSLASH
-                | OsCode::KEY_GRAVE
-                | OsCode::KEY_MINUS
-                | OsCode::KEY_LEFTBRACE
-                | OsCode::KEY_RIGHTBRACE
-                | OsCode::KEY_UP
-                | OsCode::KEY_DOWN
-                | OsCode::KEY_LEFT
-                | OsCode::KEY_RIGHT
-                | OsCode::KEY_HOME
-                | OsCode::KEY_END
-                | OsCode::KEY_PAGEUP
-                | OsCode::KEY_PAGEDOWN
-        )
-    }
 }
 
 static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {

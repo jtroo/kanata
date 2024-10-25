@@ -3975,3 +3975,40 @@ And key names are defined in the https://github.com/jtroo/kanata/blob/main/parse
 for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1
 
 Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
+
+[[zippychord]]
+=== Zippychord
+<<table-of-contents,Back to ToC>>
+
+Zippychord is yet another chording mechanism in Kanata.
+The inspiration behind it is primarily the
+https://github.com/psoukie/zipchord[zipchord project].
+The name is similar; it is named "zippy" instead of "zip" because
+Kanata's implementation is not a port and does not aim for 100%
+behavioural compatibility.
+
+The intended use case is accelerating and reducing effort of typing.
+The inputs are keycodes and the outputs are also purely keycodes.
+In other words, all other actions are unsupported;
+e.g. layers, switch, one-shot.
+
+Unlike chords(v1) and chordsv2, zippychord behaves on output keycodes.
+This is similar to how sequences operate.
+
+To give an example, if one configures zippychord with a line like:
+
+[source]
+----
+gi	git
+----
+
+then either of the following typing event sequences
+will erase the input characters
+and then proceed to type the output "git"
+like if it was `(macro bspc bspc g i t)`.
+
+[source]
+----
+(press g) (press i)
+(press i) (press g)
+----
