@@ -38,8 +38,9 @@ enum ZchEnabledState {
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 enum ZchLastPressClassification {
-    IsChord,
     #[default]
+    IsChord,
+    IsQuickEnable,
     NotChord,
 }
 
@@ -110,6 +111,7 @@ impl ZchDynamicState {
             ZchEnabledState::WaitEnable => {
                 self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
                 if self.zchd_ticks_until_enabled == 0 {
+                    log::debug!("zippy wait enable->enable");
                     self.zchd_enabled_state = ZchEnabledState::Enabled;
                 }
             }
@@ -119,6 +121,7 @@ impl ZchDynamicState {
                 if self.zchd_ticks_until_disable > 0 {
                     self.zchd_ticks_until_disable = self.zchd_ticks_until_disable.saturating_sub(1);
                     if self.zchd_ticks_until_disable == 0 {
+                        log::debug!("zippy enable->disable");
                         self.zchd_enabled_state = ZchEnabledState::Disabled;
                     }
                 }
@@ -158,6 +161,7 @@ impl ZchDynamicState {
     fn zchd_soft_reset(&mut self) {
         log::debug!("zchd soft reset state");
         self.zchd_enabled_state = ZchEnabledState::Enabled;
+        self.zchd_last_press = ZchLastPressClassification::IsChord;
         self.zchd_input_keys.zchik_clear();
         self.zchd_prioritized_chords = None;
         self.zchd_previous_activation_output_count = 0;
@@ -183,19 +187,32 @@ impl ZchDynamicState {
         self.zchd_input_keys.zchik_remove(osc);
         match (self.zchd_last_press, self.zchd_input_keys.zchik_is_empty()) {
             (ZchLastPressClassification::NotChord, true) => {
+                log::debug!("all released->zippy wait enable");
                 self.zchd_enabled_state = ZchEnabledState::WaitEnable;
                 self.zchd_characters_to_delete_on_next_activation = 0;
             }
             (ZchLastPressClassification::NotChord, false) => {
+                log::debug!("release but not all->zippy disable");
                 self.zchd_enabled_state = ZchEnabledState::Disabled;
             }
             (ZchLastPressClassification::IsChord, true) => {
+                log::debug!("all released->zippy enabled");
                 if self.zchd_prioritized_chords.is_none() {
+                    log::debug!("no continuation->zippy clear key erase state");
                     self.zchd_previous_activation_output_count = 0;
-                    self.zchd_characters_to_delete_on_next_activation = 0;
                 }
+                self.zchd_characters_to_delete_on_next_activation = 0;
+                self.zchd_ticks_until_disable = 0;
             }
-            (ZchLastPressClassification::IsChord, false) => {}
+            (ZchLastPressClassification::IsChord, false) => {
+                log::debug!("some released->zippy enabled");
+                self.zchd_ticks_until_disable = 0;
+            }
+            (ZchLastPressClassification::IsQuickEnable, _) => {
+                log::debug!("quick enable release->clear characters");
+                self.zchd_previous_activation_output_count = 0;
+                self.zchd_characters_to_delete_on_next_activation = 0;
+            }
         }
     }
 }
@@ -236,14 +253,20 @@ impl ZchState {
             _ => {}
         }
 
-        if self.zch_chords.is_empty() || self.zchd.zchd_is_disabled() || osc.is_modifier() {
-            if !self.zch_chords.is_empty() && osc_triggers_quick_enable(osc) {
+        if self.zch_chords.is_empty() || osc.is_modifier() {
+            return kb.press_key(osc);
+        }
+        if osc_triggers_quick_enable(osc) {
+            if self.zchd.zchd_is_disabled() {
+                log::debug!("zippy quick enable");
                 // Motivation: if a key is pressed that can potentially be followed by a brand new
                 // word, quickly re-enable zippychording so user doesn't have to wait for the
                 // "not-regular-typing-anymore" timeout.
-                self.zchd.zchd_soft_reset()
+                self.zchd.zchd_soft_reset();
+                return kb.press_key(osc);
+            } else {
+                self.zchd.zchd_last_press = ZchLastPressClassification::IsQuickEnable;
             }
-            return kb.press_key(osc);
         }
 
         // Zippychording is enabled. Ensure the deadline to disable it if no chord activates is
