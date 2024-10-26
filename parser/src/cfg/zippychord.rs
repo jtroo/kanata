@@ -198,43 +198,136 @@ fn parse_zippy_inner(
     let Some(file_name) = exprs[1].atom(s.vars()) else {
         bail_expr!(&exprs[1], "Filename must be a string, not a list.");
     };
-    let input_data = f
-        .get_file_content(file_name.as_ref())
-        .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
 
     let mut config = ZchConfig::default();
 
+    const KEY_NAME_MAPPINGS: &'static str = "key-name-mappings";
+    const IDLE_REACTIVATE_TIME: &'static str = "idle-reactivate-time";
+    const CHORD_DEADLINE: &'static str = "on-first-press-chord-deadline";
+
+    let mut idle_reactivate_time_seen = false;
+    let mut key_name_mappings_seen = false;
+    let mut chord_deadline_seen = false;
+
     // Parse other zippy configurations
-    // Parse cfgs as name-value pairs
     let mut pairs = exprs[2..].chunks_exact(2);
     for pair in pairs.by_ref() {
         let config_name = &pair[0];
         let config_value = &pair[1];
+
         match config_name.atom(s.vars()).ok_or_else(|| {
             anyhow_expr!(
                 config_name,
                 "A configuration name must be a string, not a list"
             )
         })? {
-            "idle-reactivate-time" => {
+            IDLE_REACTIVATE_TIME => {
+                if idle_reactivate_time_seen {
+                    bail_expr!(
+                        config_name,
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+                idle_reactivate_time_seen = true;
                 config.zch_cfg_ticks_wait_enable =
-                    parse_u16(config_value, s, "idle-reactivate-time")?;
+                    parse_u16(config_value, s, IDLE_REACTIVATE_TIME)?;
             }
-            "on-first-press-chord-deadline" => {
-                config.zch_cfg_ticks_chord_deadline =
-                    parse_u16(config_value, s, "on-first-press-chord-deadline")?;
+
+            CHORD_DEADLINE => {
+                if chord_deadline_seen {
+                    bail_expr!(
+                        config_name,
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+                chord_deadline_seen = true;
+                config.zch_cfg_ticks_chord_deadline = parse_u16(config_value, s, CHORD_DEADLINE)?;
             }
-            "key-name-mappings" => {
-                todo!()
+
+            KEY_NAME_MAPPINGS => {
+                if key_name_mappings_seen {
+                    bail_expr!(
+                        config_name,
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+                key_name_mappings_seen = true;
+                let mut mappings = config_value
+                    .list(s.vars())
+                    .ok_or_else(|| {
+                        anyhow_expr!(
+                            config_value,
+                            "{KEY_NAME_MAPPINGS} must be followed by a list"
+                        )
+                    })?
+                    .chunks_exact(2);
+
+                for mapping_pair in mappings.by_ref() {
+                    let input = mapping_pair[0]
+                        .atom(None)
+                        .ok_or_else(|| {
+                            anyhow_expr!(&mapping_pair[0], "key mapping does not use lists")
+                        })?
+                        .trim_atom_quotes();
+                    if input.chars().count() != 1 {
+                        bail_expr!(&mapping_pair[0], "Inputs should be exactly one character");
+                    }
+                    let input_char = input.chars().next();
+
+                    let output = mapping_pair[1].atom(s.vars()).ok_or_else(|| {
+                        anyhow_expr!(&mapping_pair[1], "key mapping does not use lists")
+                    })?;
+                    let (output_mods, output_key) = parse_mod_prefix(output)?;
+                    if output_mods.contains(&KeyCode::LShift)
+                        && output_mods.contains(&KeyCode::RShift)
+                    {
+                        bail_expr!(
+                            &mapping_pair[1],
+                            "Both shifts are used which is redundant, use only one."
+                        );
+                    }
+                    if output_mods
+                        .iter()
+                        .any(|m| !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt))
+                    {
+                        bail_expr!(&mapping_pair[1], "Only S- and AG-/RA- are supported.");
+                    }
+                    let output_osc = str_to_oscode(output_key)
+                        .ok_or_else(|| anyhow_expr!(&mapping_pair[1], "unknown key name"))?;
+                    match output_mods.len() {
+                        0 => {
+                            todo!("raw osc")
+                        }
+                        1 => {
+                            todo!("check whether shift or altgr")
+                        }
+                        2 => {
+                            todo!("both shift and altgr")
+                        }
+                        _ => {
+                            unreachable!("contains max of: altgr and one of the shifts")
+                        }
+                    }
+                }
+
+                let rem = mappings.remainder();
+                if !rem.is_empty() {
+                    bail_expr!(&rem[0], "zippy input is missing its output mapping");
+                }
             }
             _ => bail_expr!(config_name, "Unknown zippy configuration name"),
         }
     }
+
     let rem = pairs.remainder();
     if !rem.is_empty() {
         bail_expr!(&rem[0], "zippy config name is missing its value");
     }
 
+    // process zippy file
+    let input_data = f
+        .get_file_content(file_name.as_ref())
+        .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
     let res = input_data
         .lines()
         .enumerate()
@@ -258,7 +351,6 @@ fn parse_zippy_inner(
                 }
 
                 let mut char_buf: [u8; 4] = [0; 4];
-
                 let output = {
                     output
                         .chars()
