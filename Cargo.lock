@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.7.0"
+version = "1.7.0-next"
 dependencies = [
  "anyhow",
  "clap",

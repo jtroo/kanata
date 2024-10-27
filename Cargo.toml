@@ -18,7 +18,7 @@ resolver = "2"
 
 [package]
 name = "kanata"
-version = "1.7.0"
+version = "1.7.0-next"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["keyboard", "layout", "remapping"]
