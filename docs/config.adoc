@@ -12,9 +12,9 @@ See below for links to specific guide versions.
 
 Links to specific guide versions:
 
+* https://github.com/jtroo/kanata/blob/v1.7.0/docs/config.adoc[v1.7.0]
 * https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
 * https://github.com/jtroo/kanata/blob/v1.6.0/docs/config.adoc[v1.6.0]
-* https://github.com/jtroo/kanata/blob/v1.5.0/docs/config.adoc[v1.5.0]
 
 The configuration file uses S-expression syntax from Lisps. If you are not
 familiar with any Lisp-like programming language, do not be too worried. This
