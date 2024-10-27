@@ -70,3 +70,8 @@ cov:
   cargo llvm-cov --no-report --workspace --features=cmd,interception_driver,win_sendinput_send_scancodes
   cargo llvm-cov --no-report --features=simulated_output -- sim_tests
   cargo llvm-cov report --html
+
+publish:
+  cd keyberon && cargo publish
+  cd tcp_protocol && cargo publish
+  cd parser && cargo publish
