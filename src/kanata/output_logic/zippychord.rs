@@ -40,7 +40,6 @@ enum ZchEnabledState {
 enum ZchLastPressClassification {
     #[default]
     IsChord,
-    IsQuickEnable,
     NotChord,
 }
 
@@ -96,13 +95,6 @@ struct ZchDynamicState {
 }
 
 impl ZchDynamicState {
-    fn zchd_is_disabled(&self) -> bool {
-        matches!(
-            self.zchd_enabled_state,
-            ZchEnabledState::Disabled | ZchEnabledState::WaitEnable
-        )
-    }
-
     fn zchd_tick(&mut self, is_caps_word_active: bool) {
         const TICKS_UNTIL_FORCE_STATE_RESET: u16 = 10000;
         self.zchd_ticks_since_state_change += 1;
@@ -208,11 +200,6 @@ impl ZchDynamicState {
                 log::debug!("some released->zippy enabled");
                 self.zchd_ticks_until_disable = 0;
             }
-            (ZchLastPressClassification::IsQuickEnable, _) => {
-                log::debug!("quick enable release->clear characters");
-                self.zchd_previous_activation_output_count = 0;
-                self.zchd_characters_to_delete_on_next_activation = 0;
-            }
         }
     }
 }
@@ -255,18 +242,6 @@ impl ZchState {
 
         if self.zch_chords.is_empty() || osc.is_modifier() {
             return kb.press_key(osc);
-        }
-        if osc_triggers_quick_enable(osc) {
-            if self.zchd.zchd_is_disabled() {
-                log::debug!("zippy quick enable");
-                // Motivation: if a key is pressed that can potentially be followed by a brand new
-                // word, quickly re-enable zippychording so user doesn't have to wait for the
-                // "not-regular-typing-anymore" timeout.
-                self.zchd.zchd_soft_reset();
-                return kb.press_key(osc);
-            } else {
-                self.zchd.zchd_last_press = ZchLastPressClassification::IsQuickEnable;
-            }
         }
 
         // Zippychording is enabled. Ensure the deadline to disable it if no chord activates is
@@ -440,37 +415,6 @@ impl ZchState {
     pub(crate) fn zch_is_idle(&self) -> bool {
         self.zchd.zchd_is_idle()
     }
-}
-
-/// Maybe not a good idea, TODO: delete?
-fn osc_triggers_quick_enable(_osc: OsCode) -> bool {
-    false
-    // matches!(osc, OsCode::KEY_SPACE)
-    // Old implementation.
-    // ~~Returns true if punctuation or whitespace. Also backspace, delete, arrow keys.~~
-    // OsCode::KEY_BACKSPACE
-    //     | OsCode::KEY_DELETE
-    //     | OsCode::KEY_ENTER
-    //     | OsCode::KEY_SPACE
-    //     | OsCode::KEY_TAB
-    //     | OsCode::KEY_COMMA
-    //     | OsCode::KEY_DOT
-    //     | OsCode::KEY_SEMICOLON
-    //     | OsCode::KEY_APOSTROPHE
-    //     | OsCode::KEY_SLASH
-    //     | OsCode::KEY_BACKSLASH
-    //     | OsCode::KEY_GRAVE
-    //     | OsCode::KEY_MINUS
-    //     | OsCode::KEY_LEFTBRACE
-    //     | OsCode::KEY_RIGHTBRACE
-    //     | OsCode::KEY_UP
-    //     | OsCode::KEY_DOWN
-    //     | OsCode::KEY_LEFT
-    //     | OsCode::KEY_RIGHT
-    //     | OsCode::KEY_HOME
-    //     | OsCode::KEY_END
-    //     | OsCode::KEY_PAGEUP
-    //     | OsCode::KEY_PAGEDOWN
 }
 
 fn type_osc(osc: OsCode, kb: &mut KbdOut, zchd: &ZchDynamicState) -> Result<(), std::io::Error> {
