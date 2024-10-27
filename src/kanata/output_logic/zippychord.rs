@@ -301,7 +301,21 @@ impl ZchState {
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
+
+                #[cfg(feature = "interception_driver")]
+                let mut send_count = 0;
+
                 for key_to_send in &a.zch_output {
+                    #[cfg(feature = "interception_driver")]
+                    {
+                        send_count += 1;
+                        if send_count % 5 == 0 {
+                            std::thread::sleep(std::time::Duration::from_millis(1));
+                        }
+                    }
+                    // Note: every 5 keys on Windows Interception, do a sleep because
+                    // sending too quickly apparently causes weird behaviour...
+                    // I guess there's some buffer in the Interception code that is filling up.
                     match key_to_send {
                         ZchOutput::Lowercase(osc) => {
                             type_osc(*osc, kb, &self.zchd)?;
