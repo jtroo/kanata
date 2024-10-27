@@ -329,36 +329,28 @@ impl ZchState {
                 for key_to_send in &a.zch_output {
                     match key_to_send {
                         ZchOutput::Lowercase(osc) => {
-                            if self.zchd.zchd_input_keys.zchik_contains(*osc) {
-                                kb.release_key(*osc)?;
-                                kb.press_key(*osc)?;
-                            } else {
-                                kb.press_key(*osc)?;
-                                kb.release_key(*osc)?;
-                            }
+                            type_osc(*osc, kb, &self.zchd)?;
                         }
                         ZchOutput::Uppercase(osc) => {
-                            if !self.zchd.zchd_is_caps_word_active
-                                && (released_lsft
-                                    || !self.zchd.zchd_is_lsft_active
-                                        && !self.zchd.zchd_is_rsft_active)
-                            {
-                                kb.press_key(OsCode::KEY_LEFTSHIFT)?;
-                            }
-                            if self.zchd.zchd_input_keys.zchik_contains(*osc) {
-                                kb.release_key(*osc)?;
-                                kb.press_key(*osc)?;
-                            } else {
-                                kb.press_key(*osc)?;
-                                kb.release_key(*osc)?;
-                            }
-                            if !self.zchd.zchd_is_caps_word_active
-                                && (released_lsft
-                                    || !self.zchd.zchd_is_lsft_active
-                                        && !self.zchd.zchd_is_rsft_active)
-                            {
-                                kb.release_key(OsCode::KEY_LEFTSHIFT)?;
-                            }
+                            maybe_press_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            type_osc(*osc, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                        }
+                        ZchOutput::AltGr(osc) => {
+                            // Note, unlike shift which probably has a good reason to be maybe
+                            // already held during chording, I don't currently see ralt as having
+                            // any reason to already be held during chording; just use normal
+                            // characters.
+                            kb.press_key(OsCode::KEY_RIGHTALT)?;
+                            type_osc(*osc, kb, &self.zchd)?;
+                            kb.release_key(OsCode::KEY_RIGHTALT)?;
+                        }
+                        ZchOutput::ShiftAltGr(osc) => {
+                            kb.press_key(OsCode::KEY_RIGHTALT)?;
+                            maybe_press_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            type_osc(*osc, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            kb.release_key(OsCode::KEY_RIGHTALT)?;
                         }
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
@@ -478,4 +470,41 @@ fn osc_triggers_quick_enable(osc: OsCode) -> bool {
     //     | OsCode::KEY_END
     //     | OsCode::KEY_PAGEUP
     //     | OsCode::KEY_PAGEDOWN
+}
+
+fn type_osc(osc: OsCode, kb: &mut KbdOut, zchd: &ZchDynamicState) -> Result<(), std::io::Error> {
+    if zchd.zchd_input_keys.zchik_contains(osc) {
+        kb.release_key(osc)?;
+        kb.press_key(osc)?;
+    } else {
+        kb.press_key(osc)?;
+        kb.release_key(osc)?;
+    }
+    Ok(())
+}
+
+fn maybe_press_sft_during_activation(
+    sft_already_released: bool,
+    kb: &mut KbdOut,
+    zchd: &ZchDynamicState,
+) -> Result<(), std::io::Error> {
+    if !zchd.zchd_is_caps_word_active
+        && (sft_already_released || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
+    {
+        kb.press_key(OsCode::KEY_LEFTSHIFT)?;
+    }
+    Ok(())
+}
+
+fn maybe_release_sft_during_activation(
+    sft_already_released: bool,
+    kb: &mut KbdOut,
+    zchd: &ZchDynamicState,
+) -> Result<(), std::io::Error> {
+    if !zchd.zchd_is_caps_word_active
+        && (sft_already_released || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
+    {
+        kb.release_key(OsCode::KEY_LEFTSHIFT)?;
+    }
+    Ok(())
 }

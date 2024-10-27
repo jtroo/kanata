@@ -62,7 +62,7 @@ impl ZchInputKeys {
             },
         }
     }
-    pub fn zchik_contains(&mut self, osc: OsCode) -> bool {
+    pub fn zchik_contains(&self, osc: OsCode) -> bool {
         self.zch_inputs.zch_keys.contains(&osc.into())
     }
     pub fn zchik_insert(&mut self, osc: OsCode) {
@@ -119,13 +119,15 @@ pub struct ZchChordOutput {
     pub zch_followups: Option<Arc<Mutex<ZchPossibleChords>>>,
 }
 
-/// Zch output can be uppercase or lowercase characters.
-/// The parser should ensure all `OsCode`s within `Lowercase` and `Uppercase`
-/// are visible characters that can be backspaced.
+/// Zch output can be uppercase, lowercase, altgr, and shift-altgr characters.
+/// The parser should ensure all `OsCode`s in variants containing them
+/// are visible characters that are backspacable.
 #[derive(Debug, Clone, Copy)]
 pub enum ZchOutput {
     Lowercase(OsCode),
     Uppercase(OsCode),
+    AltGr(OsCode),
+    ShiftAltGr(OsCode),
 }
 
 #[derive(Debug)]
@@ -201,13 +203,14 @@ fn parse_zippy_inner(
 
     let mut config = ZchConfig::default();
 
-    const KEY_NAME_MAPPINGS: &'static str = "key-name-mappings";
-    const IDLE_REACTIVATE_TIME: &'static str = "idle-reactivate-time";
-    const CHORD_DEADLINE: &'static str = "on-first-press-chord-deadline";
+    const KEY_NAME_MAPPINGS: &str = "key-name-mappings";
+    const IDLE_REACTIVATE_TIME: &str = "idle-reactivate-time";
+    const CHORD_DEADLINE: &str = "on-first-press-chord-deadline";
 
     let mut idle_reactivate_time_seen = false;
     let mut key_name_mappings_seen = false;
     let mut chord_deadline_seen = false;
+    let mut user_cfg_char_to_output: HashMap<char, ZchOutput> = HashMap::default();
 
     // Parse other zippy configurations
     let mut pairs = exprs[2..].chunks_exact(2);
@@ -272,7 +275,7 @@ fn parse_zippy_inner(
                     if input.chars().count() != 1 {
                         bail_expr!(&mapping_pair[0], "Inputs should be exactly one character");
                     }
-                    let input_char = input.chars().next();
+                    let input_char = input.chars().next().expect("count is 1");
 
                     let output = mapping_pair[1].atom(s.vars()).ok_or_else(|| {
                         anyhow_expr!(&mapping_pair[1], "key mapping does not use lists")
@@ -290,23 +293,24 @@ fn parse_zippy_inner(
                         .iter()
                         .any(|m| !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt))
                     {
-                        bail_expr!(&mapping_pair[1], "Only S- and AG-/RA- are supported.");
+                        bail_expr!(&mapping_pair[1], "Only S- and AG- are supported.");
                     }
                     let output_osc = str_to_oscode(output_key)
                         .ok_or_else(|| anyhow_expr!(&mapping_pair[1], "unknown key name"))?;
-                    match output_mods.len() {
-                        0 => {
-                            todo!("raw osc")
-                        }
-                        1 => {
-                            todo!("check whether shift or altgr")
-                        }
-                        2 => {
-                            todo!("both shift and altgr")
-                        }
+                    let output = match output_mods.len() {
+                        0 => ZchOutput::Lowercase(output_osc),
+                        1 => match output_mods[0] {
+                            KeyCode::LShift | KeyCode::RShift => ZchOutput::Uppercase(output_osc),
+                            KeyCode::RAlt => ZchOutput::AltGr(output_osc),
+                            _ => unreachable!("forbidden by earlier parsing"),
+                        },
+                        2 => ZchOutput::ShiftAltGr(output_osc),
                         _ => {
-                            unreachable!("contains max of: altgr and one of the shifts")
+                            unreachable!("contains at most: altgr and one of the shifts")
                         }
+                    };
+                    if user_cfg_char_to_output.insert(input_char, output).is_some() {
+                        bail_expr!(&mapping_pair[0], "Duplicate character, not allowed");
                     }
                 }
 
@@ -355,6 +359,11 @@ fn parse_zippy_inner(
                     output
                         .chars()
                         .try_fold(vec![], |mut zch_output, out_char| -> Result<_> {
+                            if let Some(out) = user_cfg_char_to_output.get(&out_char) {
+                                zch_output.push(*out);
+                                return Ok(zch_output);
+                            }
+
                             let out_key = out_char.to_lowercase().next().unwrap();
                             let key_name = out_key.encode_utf8(&mut char_buf);
                             let osc = match key_name as &str {
