@@ -73,6 +73,31 @@ fn sim_zippychord_followup_no_prev() {
 }
 
 #[test]
+fn sim_zippychord_washington() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:spc u:spc t:10
+         d:spc u:spc t:10
+         d:spc u:spc t:10
+         d:w d:spc t:10
+         u:w u:spc t:10
+         d:a d:spc t:10
+         u:a u:spc t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Space t:1ms up:Space t:9ms dn:Space t:1ms up:Space t:9ms dn:Space t:1ms up:Space \
+         t:9ms dn:W t:1ms dn:Space t:9ms up:W t:1ms up:Space t:9ms \
+         dn:A t:1ms dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:LShift dn:W up:W up:LShift \
+         up:A dn:A dn:S up:S dn:H up:H dn:I up:I dn:N up:N dn:G up:G dn:T up:T dn:O up:O dn:N up:N \
+         t:9ms up:A t:1ms up:Space",
+        result
+    );
+}
+
+#[test]
 fn sim_zippychord_overlap() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,

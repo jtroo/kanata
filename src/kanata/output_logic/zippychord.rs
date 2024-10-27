@@ -442,9 +442,10 @@ impl ZchState {
     }
 }
 
-/// Currently only returns true if the key is space.
-fn osc_triggers_quick_enable(osc: OsCode) -> bool {
-    matches!(osc, OsCode::KEY_SPACE)
+/// Maybe not a good idea, TODO: delete?
+fn osc_triggers_quick_enable(_osc: OsCode) -> bool {
+    false
+    // matches!(osc, OsCode::KEY_SPACE)
     // Old implementation.
     // ~~Returns true if punctuation or whitespace. Also backspace, delete, arrow keys.~~
     // OsCode::KEY_BACKSPACE
