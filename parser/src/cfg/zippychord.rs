@@ -203,7 +203,7 @@ fn parse_zippy_inner(
 
     let mut config = ZchConfig::default();
 
-    const KEY_NAME_MAPPINGS: &str = "key-name-mappings";
+    const KEY_NAME_MAPPINGS: &str = "output-character-mappings";
     const IDLE_REACTIVATE_TIME: &str = "idle-reactivate-time";
     const CHORD_DEADLINE: &str = "on-first-press-chord-deadline";
 
