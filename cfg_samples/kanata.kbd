@@ -1391,3 +1391,39 @@ Syntax (5-tuples):
   (a b z)   (macro h e l l o) 250 first-release (arrows)
   (a b z y) (macro b y e)     400 first-release (arrows)
 )
+
+#|
+
+Yet another chording implementation - zippychord:
+
+(defzippy-experimental
+  zippy.txt
+  on-first-press-chord-deadline 500
+  idle-reactivate-time          500
+  output-character-mappings (
+    % S-5
+    "(" S-9
+    ")" S-0
+    : S-;
+    < S-,
+    > S-.
+    r#"""# S-'
+    | S-\
+    _ S--
+  )
+)
+
+Example file content of zippy.txt:
+---
+dy	day
+dy 1	Monday
+ abc	Alphabet
+r df	recipient
+ w  a	Washington
+rq	request
+rqa	request␣assistance
+---
+
+You can read in more detail in the configuration guide.
+
+|#
