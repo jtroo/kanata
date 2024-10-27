@@ -76,10 +76,7 @@ fn sim_zippychord_followup_no_prev() {
 fn sim_zippychord_washington() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
-        "d:spc u:spc t:10
-         d:spc u:spc t:10
-         d:spc u:spc t:10
-         d:w d:spc t:10
+        "d:w d:spc t:10
          u:w u:spc t:10
          d:a d:spc t:10
          u:a u:spc t:300",
@@ -87,8 +84,7 @@ fn sim_zippychord_washington() {
     )
     .to_ascii();
     assert_eq!(
-        "dn:Space t:1ms up:Space t:9ms dn:Space t:1ms up:Space t:9ms dn:Space t:1ms up:Space \
-         t:9ms dn:W t:1ms dn:Space t:9ms up:W t:1ms up:Space t:9ms \
+        "dn:W t:1ms dn:Space t:9ms up:W t:1ms up:Space t:9ms \
          dn:A t:1ms dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
          dn:LShift dn:W up:W up:LShift \
          up:A dn:A dn:S up:S dn:H up:H dn:I up:I dn:N up:N dn:G up:G dn:T up:T dn:O up:O dn:N up:N \
@@ -219,19 +215,19 @@ fn sim_zippychord_rsft() {
 fn sim_zippychord_caps_word() {
     let result = simulate_with_file_content(
         ZIPPY_CFG,
-        "d:lalt u:lalt t:10 d:d t:10 d:y t:10 u:d u:y t:10 d:spc u:spc t:10 d:d d:y t:10",
+        "d:lalt u:lalt t:10 d:d t:10 d:y t:10 u:d u:y t:10 d:spc u:spc t:2000 d:d d:y t:10",
         Some(ZIPPY_FILE_CONTENT),
     )
     .to_ascii();
     assert_eq!(
         "t:10ms dn:LShift dn:D t:10ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y \
          t:10ms up:D t:1ms up:LShift up:Y t:9ms dn:Space t:1ms up:Space \
-         t:9ms dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
+         t:1999ms dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
         result
     );
     let result = simulate_with_file_content(
         ZIPPY_CFG,
-        "d:lalt t:10 d:y t:10 d:x t:10 u:x u:y t:10 d:spc u:spc t:10 d:y d:x t:10",
+        "d:lalt t:10 d:y t:10 d:x t:10 u:x u:y t:10 d:spc u:spc t:1000 d:y d:x t:10",
         Some(ZIPPY_FILE_CONTENT),
     )
     .to_ascii();
@@ -239,7 +235,7 @@ fn sim_zippychord_caps_word() {
         "t:10ms dn:LShift dn:Y t:10ms dn:BSpace up:BSpace \
          dn:W up:W up:X dn:X up:Y dn:Y dn:Z up:Z \
          t:10ms up:X t:1ms up:LShift up:Y t:9ms dn:Space t:1ms up:Space \
-         t:9ms dn:Y t:1ms dn:BSpace up:BSpace dn:LShift dn:W up:W up:LShift \
+         t:999ms dn:Y t:1ms dn:BSpace up:BSpace dn:LShift dn:W up:W up:LShift \
          up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z",
         result
     );
@@ -260,6 +256,20 @@ fn sim_zippychord_triple_combo() {
          dn:G up:G dn:I up:I dn:T up:T dn:Space up:Space \
          dn:F up:F dn:E up:E dn:T up:T dn:C up:C dn:H up:H dn:Space up:Space \
          dn:Minus up:Minus up:P dn:P",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_disabled_by_typing() {
+    let result = simulate_with_file_content(
+        ZIPPY_CFG,
+        "d:v u:v t:10 d:d d:y t:100",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:V t:1ms up:V t:9ms dn:D t:1ms dn:Y",
         result
     );
 }

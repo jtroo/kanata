@@ -105,6 +105,7 @@ impl ZchDynamicState {
                 if self.zchd_ticks_until_enabled == 0 {
                     log::debug!("zippy wait enable->enable");
                     self.zchd_enabled_state = ZchEnabledState::Enabled;
+                    self.zchd_ticks_until_disable = 0;
                 }
             }
             ZchEnabledState::Enabled => {
@@ -195,6 +196,7 @@ impl ZchDynamicState {
                 }
                 self.zchd_characters_to_delete_on_next_activation = 0;
                 self.zchd_ticks_until_disable = 0;
+                self.zchd_enabled_state = ZchEnabledState::Enabled;
             }
             (ZchLastPressClassification::IsChord, false) => {
                 log::debug!("some released->zippy enabled");
@@ -240,7 +242,10 @@ impl ZchState {
             _ => {}
         }
 
-        if self.zch_chords.is_empty() || osc.is_modifier() {
+        if self.zch_chords.is_empty()
+            || osc.is_modifier()
+            || self.zchd.zchd_enabled_state != ZchEnabledState::Enabled
+        {
             return kb.press_key(osc);
         }
 
