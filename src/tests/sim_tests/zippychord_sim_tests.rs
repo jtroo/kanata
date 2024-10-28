@@ -268,8 +268,5 @@ fn sim_zippychord_disabled_by_typing() {
         Some(ZIPPY_FILE_CONTENT),
     )
     .to_ascii();
-    assert_eq!(
-        "dn:V t:1ms up:V t:9ms dn:D t:1ms dn:Y",
-        result
-    );
+    assert_eq!("dn:V t:1ms up:V t:9ms dn:D t:1ms dn:Y", result);
 }

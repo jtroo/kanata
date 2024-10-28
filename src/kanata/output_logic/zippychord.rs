@@ -393,8 +393,8 @@ impl ZchState {
             }
 
             Neither => {
-                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
                 self.zchd.zchd_soft_reset();
+                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
                 self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
                 kb.press_key(osc)
             }

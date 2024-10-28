@@ -24,7 +24,7 @@ fn init_log() {
         CombinedLogger::init(vec![TermLogger::new(
             // Note: set to a different level to see logs in tests.
             // Also, not all tests call init_log so you might have to add the call there too.
-            LevelFilter::Debug,
+            LevelFilter::Off,
             log_cfg.build(),
             TerminalMode::Stderr,
             ColorChoice::AlwaysAnsi,

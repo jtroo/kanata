@@ -3991,13 +3991,13 @@ When using this you are at higher likelihood of bugs and breaking changes.
 [source]
 ----
 (defzippy-experimental
-  $filename ;; required
+  $zippy-filename ;; required
   on-first-press-chord-deadline $deadline-millis  ;; optional
   idle-reactivate-time          $idle-time-millis ;; optional
   output-character-mappings (                     ;; optional
     $character1 $output-mapping1
     $character2 $output-mapping2
-    ...
+    ;; ...
     $characterN $output-mappingN
   )
 )
@@ -4005,22 +4005,25 @@ When using this you are at higher likelihood of bugs and breaking changes.
 
 [cols="1,2"]
 |===
-| `$filename`
+| `$zippy-filename`
 | Relative or absolute file path.
-If relative, its path is relative to the kanata configuration file's location.
+If relative, its path is relative to
+the directory containing the kanata configuration file.
 
 | `$deadline-millis` for `on-first-press-chord-deadline`
-| Number of milliseconds after a press, while zippy is enabled,
-to complete a chord; after which if no chord activates, zippy
-is temporarily disabled.
+| Number of milliseconds.
+After the first press while zippy is enabled,
+if no chord activates within this configured time,
+zippy is temporarily disabled.
 
 | `$idle-time-millis` for `idle-reactivate-time`
-| Number of milliseconds after typing ends that zippy will be re-enabled
-from being temporarily disabled.
+| Number of milliseconds.
+After typing ends and this configured number of milliseconds elapses,
+zippy will be re-enabled from being temporarily disabled.
 
 | `$characterN` for `output-character-mappings`
-| A single unicode character that can be used in the output column
-of the zippy configuration file.
+| A single unicode character for use
+in the output column of the zippy configuration file.
 
 | `$output-mappingN` for `output-character-mappings`
 | Key or output chord to tell kanata how to type `$characterN`
@@ -4030,11 +4033,76 @@ The output chord may contain `AG-` to tell kanata to press with AltGr
 and may contain `S-` to tell kanata to press with Shift.
 |===
 
+Regarding output mappings,
+you can configure the output of the special-lisp-syntax characters
+`+) ( "+` via these lines:
+
+[source]
+----
+    ")"    $right-paren-output
+    "("    $left-paren-output
+    r#"""# $double-quote-output
+----
+
+As an example, for the US layout these should be the correct lines:
+
+[source]
+----
+    ")"     S-0
+    "("     S-9
+    r#"""#  S-'
+----
+
 ===== Configuration syntax within the zippy configuration file
 
+[source]
+----
+// This is a comment.
+//          inputs            ↹  outputs
+$chord1 $follow-chord1.1...1.M	$output1
+$chord2 $follow-chord2.1...2.M	$output2
+;; ...
+$chordN $follow-chordN.1...N.M	$outputN
+----
 
+The format is two columns separated by a single Tab character.
+The first column is input and the second is output.
 
-==== Guide
+[cols="1,2"]
+|===
+|`$chordN`
+| A set of characters.
+The order is not important; this represents all input keys being
+pressed simultaneously according to kanata.
+You can use space by including it as the first character in the chord.
+For example, ` ap`.
+When there are 0 optional follow chords,
+the corresponding output on the same line `$outputN` will activate.
+
+| `$chord-followN.M`
+| 0 or more chords, used the same way as `$chordN`.
+Having follow chords means the `$outputN` on the same line
+will activate upon first activating the earlier chord(s) in the same line,
+releasing all keys, and pressing the keys in `$chord-followN.M`.
+Follow chords are separated from the previous chord by a space.
+If using a space in the follow chord, use two spaces; e.g. ` ap  bc`.
+
+| `$outputN`
+| The characters to type when the chord and optional follow chord(s)
+are all pressed by the user.
+This is separated from the input `$chordN $follow-chordN.1...N.M` column
+by a single Tab character.
+The characters are typed in sequence
+and must all be singular-name key names
+as one would configure in `defsrc`.
+As an exception, capitalized single-character key names
+will be parsed successfully
+and these will be outputted alongside "shift" to output the capital key.
+Additionally, `output-character-mappings` configuration can be used
+to inform kanata of additional mappings that may use Shift or AltGr.
+|===
+
+==== Description
 
 Zippychord is yet another chording mechanism in Kanata.
 The inspiration behind it is primarily the
@@ -4100,5 +4168,5 @@ gi c a m	git commit --amend -m 'FIX_THIS_COMMIT_MESSAGE'
 When you begin with the `(g i)` chord, you can follow up
 with various character sequences to output different git commands.
 This use case is quite similar to git aliases.
-One advantage of zippychord is eagerly showing you
-the true command you are running as you type.
+One advantage of zippychord is that it eagerly shows you
+the true underlying command as you type.
