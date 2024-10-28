@@ -4073,8 +4073,8 @@ The first column is input and the second is output.
 |===
 |`$chordN`
 | A set of characters.
-You can use space by including it as the first character in the chord.
-For example, `+ ap+`.
+You can use space by including it as the first character in the chord;
+see `Alphabet` in the sample zippy file below.
 With 0 optional follow chords,
 the corresponding output on the same line (`$outputN`)
 will activate when zippy is enabled
@@ -4087,7 +4087,8 @@ Having follow chords means the `$outputN` on the same line
 will activate upon first activating the earlier chord(s) in the same line,
 releasing all keys, and pressing the keys in `$chord-followN.M`.
 Follow chords are separated from the previous chord by a space.
-If using a space in the follow chord, use two spaces; e.g. `+ ab  cd+`.
+If using a space in the follow chord, use two spaces;
+see `Washington` as an example in the sample configuration.
 
 | `$outputN`
 | The characters to type when the chord and optional follow chord(s)
@@ -4103,6 +4104,19 @@ and these will be outputted alongside Shift to output the capital key.
 Additionally, `output-character-mappings` configuration can be used
 to inform kanata of additional mappings that may use Shift or AltGr.
 |===
+
+==== Sample zippy file content
+
+[source]
+----
+dy	day
+dy 1	Monday
+dy 2	Tuesday
+ abc	alphabet
+ w  a	Washington
+gi	git
+gi f p	git fetch -p
+----
 
 ==== Description
 
