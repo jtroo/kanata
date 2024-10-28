@@ -43,6 +43,13 @@ enum ZchLastPressClassification {
     NotChord,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum ZchSmartSpaceState {
+    #[default]
+    NoActivation,
+    Sent,
+}
+
 #[derive(Debug, Default)]
 struct ZchDynamicState {
     /// Input to compare against configured available chords to output.
@@ -66,10 +73,10 @@ struct ZchDynamicState {
     zchd_prioritized_chords: Option<Arc<parking_lot::Mutex<ZchPossibleChords>>>,
     /// Tracks the previous output character count
     /// because it may need to be erased (see `zchd_prioritized_chords).
-    zchd_previous_activation_output_count: u16,
+    zchd_previous_activation_output_count: i16,
     /// In case of output being empty for interim chord activations, this tracks the number of
     /// characters that need to be erased.
-    zchd_characters_to_delete_on_next_activation: u16,
+    zchd_characters_to_delete_on_next_activation: i16,
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
     /// Windows lock screen weirdness.
@@ -92,6 +99,9 @@ struct ZchDynamicState {
     zchd_is_rsft_active: bool,
     /// Tracks whether last press was part of a chord or not.
     zchd_last_press: ZchLastPressClassification,
+    /// Tracks smart spacing state so punctuation can know whether a space needs to be erased or
+    /// not.
+    zchd_smart_space_state: ZchSmartSpaceState,
 }
 
 impl ZchDynamicState {
@@ -162,6 +172,7 @@ impl ZchDynamicState {
         self.zchd_ticks_until_disable = 0;
         self.zchd_ticks_until_enabled = 0;
         self.zchd_characters_to_delete_on_next_activation = 0;
+        self.zchd_smart_space_state = ZchSmartSpaceState::NoActivation;
     }
 
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -244,8 +255,14 @@ impl ZchState {
 
         if self.zch_chords.is_empty()
             || osc.is_modifier()
-            || self.zchd.zchd_enabled_state != ZchEnabledState::Enabled
         {
+            return kb.press_key(osc);
+        }
+        if osc.is_punctuation() && self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent {
+            kb.press_key(OsCode::KEY_BACKSPACE)?;
+            kb.release_key(OsCode::KEY_BACKSPACE)?;
+        }
+        if self.zchd.zchd_enabled_state != ZchEnabledState::Enabled {
             return kb.press_key(osc);
         }
 
@@ -288,7 +305,7 @@ impl ZchState {
                 if a.zch_output.is_empty() {
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     self.zchd.zchd_previous_activation_output_count +=
-                        self.zchd.zchd_input_keys.zchik_keys().len() as u16;
+                        self.zchd.zchd_input_keys.zchik_keys().len() as i16;
                     kb.press_key(osc)?;
                 } else {
                     for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation
@@ -302,7 +319,7 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    self.zchd.zchd_previous_activation_output_count = a.zch_output.len() as u16;
+                    self.zchd.zchd_previous_activation_output_count = a.zch_output.len() as i16;
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
@@ -347,7 +364,19 @@ impl ZchState {
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                         }
                     }
-                    self.zchd.zchd_characters_to_delete_on_next_activation += 1;
+
+                    if osc == OsCode::KEY_BACKSPACE {
+                        self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
+                        // Improvement: there are many other keycodes that might be sent that
+                        // aren't printable. But for now, just include backspace.
+                        // backspace might be fairly common to do something like:
+                        // 1. stp     -> staple
+                        // 2. ing     -> stapleing
+                        // 3. ing ei  -> stapling
+                    } else {
+                        self.zchd.zchd_characters_to_delete_on_next_activation += 1;
+                    }
+
                     if !released_lsft && !self.zchd.zchd_is_caps_word_active {
                         released_lsft = true;
                         if self.zchd.zchd_is_lsft_active {
@@ -358,6 +387,8 @@ impl ZchState {
                         }
                     }
                 }
+
+                // TODO: smart spacing
 
                 if !self.zchd.zchd_is_caps_word_active {
                     if self.zchd.zchd_is_lsft_active {

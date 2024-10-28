@@ -80,6 +80,15 @@ impl OsCode {
                 | OsCode::KEY_RIGHTALT
         )
     }
+
+    pub fn is_punctuation(self) -> bool {
+        matches!(
+            self,
+            OsCode::KEY_DOT
+                | OsCode::KEY_SEMICOLON
+                | OsCode::KEY_COMMA
+        )
+    }
 }
 
 static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {
