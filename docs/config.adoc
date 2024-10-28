@@ -4074,7 +4074,7 @@ The first column is input and the second is output.
 |`$chordN`
 | A set of characters.
 You can use space by including it as the first character in the chord;
-see `Alphabet` in the sample zippy file below.
+for an example see `Alphabet` in the sample below.
 With 0 optional follow chords,
 the corresponding output on the same line (`$outputN`)
 will activate when zippy is enabled
@@ -4088,7 +4088,7 @@ will activate upon first activating the earlier chord(s) in the same line,
 releasing all keys, and pressing the keys in `$chord-followN.M`.
 Follow chords are separated from the previous chord by a space.
 If using a space in the follow chord, use two spaces;
-see `Washington` as an example in the sample configuration.
+for an example see `Washington` in the sample below.
 
 | `$outputN`
 | The characters to type when the chord and optional follow chord(s)
