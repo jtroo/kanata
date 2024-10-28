@@ -321,7 +321,7 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    self.zchd.zchd_previous_activation_output_count = a.zch_output.len() as i16;
+                    self.zchd.zchd_previous_activation_output_count = ZchOutput::display_len(&a.zch_output);
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;
@@ -337,17 +337,21 @@ impl ZchState {
                             std::thread::sleep(std::time::Duration::from_millis(1));
                         }
                     }
+
+                    let typed_osc;
                     // Note: every 5 keys on Windows Interception, do a sleep because
                     // sending too quickly apparently causes weird behaviour...
                     // I guess there's some buffer in the Interception code that is filling up.
                     match key_to_send {
                         ZchOutput::Lowercase(osc) => {
                             type_osc(*osc, kb, &self.zchd)?;
+                            typed_osc = osc;
                         }
                         ZchOutput::Uppercase(osc) => {
                             maybe_press_sft_during_activation(released_lsft, kb, &self.zchd)?;
                             type_osc(*osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            typed_osc = osc;
                         }
                         ZchOutput::AltGr(osc) => {
                             // Note, unlike shift which probably has a good reason to be maybe
@@ -357,6 +361,7 @@ impl ZchState {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
                             type_osc(*osc, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
+                            typed_osc = osc;
                         }
                         ZchOutput::ShiftAltGr(osc) => {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
@@ -364,10 +369,11 @@ impl ZchState {
                             type_osc(*osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
+                            typed_osc = osc;
                         }
                     }
 
-                    if osc == OsCode::KEY_BACKSPACE {
+                    if *typed_osc == OsCode::KEY_BACKSPACE {
                         self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
                         // Improvement: there are many other keycodes that might be sent that
                         // aren't printable. But for now, just include backspace.

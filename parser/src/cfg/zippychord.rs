@@ -137,6 +137,15 @@ impl ZchOutput {
             Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => osc,
         }
     }
+    pub fn display_len(outs: impl AsRef<[Self]>) -> i16 {
+        outs.as_ref().iter().copied().fold(0i16, |mut len, out| {
+            len += match out.osc() {
+                OsCode::KEY_BACKSPACE => -1,
+                _ => 1,
+            };
+            len
+        })
+    }
 }
 
 /// User configuration for smart space.
