@@ -4009,6 +4009,7 @@ When using this you are at higher likelihood of bugs and breaking changes.
 | Relative or absolute file path.
 If relative, its path is relative to
 the directory containing the kanata configuration file.
+This must be the first item following `defzippy-experimental`.
 
 | `$deadline-millis` for `on-first-press-chord-deadline`
 | Number of milliseconds.
@@ -4061,7 +4062,7 @@ As an example, for the US layout these should be the correct lines:
 //          inputs            ↹  outputs
 $chord1 $follow-chord1.1...1.M	$output1
 $chord2 $follow-chord2.1...2.M	$output2
-;; ...
+// ...
 $chordN $follow-chordN.1...N.M	$outputN
 ----
 
@@ -4072,12 +4073,13 @@ The first column is input and the second is output.
 |===
 |`$chordN`
 | A set of characters.
-The order is not important; this represents all input keys being
-pressed simultaneously according to kanata.
 You can use space by including it as the first character in the chord.
-For example, ` ap`.
-When there are 0 optional follow chords,
-the corresponding output on the same line `$outputN` will activate.
+For example, `+ ap+`.
+With 0 optional follow chords,
+the corresponding output on the same line (`$outputN`)
+will activate when zippy is enabled
+and all the defined chord keys are pressed simultaneously.
+The order of presses is not important.
 
 | `$chord-followN.M`
 | 0 or more chords, used the same way as `$chordN`.
@@ -4085,7 +4087,7 @@ Having follow chords means the `$outputN` on the same line
 will activate upon first activating the earlier chord(s) in the same line,
 releasing all keys, and pressing the keys in `$chord-followN.M`.
 Follow chords are separated from the previous chord by a space.
-If using a space in the follow chord, use two spaces; e.g. ` ap  bc`.
+If using a space in the follow chord, use two spaces; e.g. `+ ab  cd+`.
 
 | `$outputN`
 | The characters to type when the chord and optional follow chord(s)
@@ -4097,7 +4099,7 @@ and must all be singular-name key names
 as one would configure in `defsrc`.
 As an exception, capitalized single-character key names
 will be parsed successfully
-and these will be outputted alongside "shift" to output the capital key.
+and these will be outputted alongside Shift to output the capital key.
 Additionally, `output-character-mappings` configuration can be used
 to inform kanata of additional mappings that may use Shift or AltGr.
 |===
