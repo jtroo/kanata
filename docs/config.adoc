@@ -2678,8 +2678,7 @@ You can use one of the listed values to change what kanata does with the key:
 
 Without these workarounds,
 you should instead ensure you set `process-unmapped-keys no`
-or omit the configuration; it defaults to no,
-**and** also omit `ralt` from `defsrc`.
+**and** also omit both `ralt` and `lctl` from `defsrc`.
 
 .Example:
 [source]
@@ -2691,7 +2690,7 @@ or omit the configuration; it defaults to no,
 
 For more context, see: https://github.com/jtroo/kanata/issues/55.
 
-NOTE: Even with these workarounds, putting `+lctl+`+`+ralt+` in your defsrc may not
+NOTE: Even with these workarounds, putting `+lctl+` and `+ralt+` in your defsrc may not
 work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv
 
