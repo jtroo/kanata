@@ -6,6 +6,7 @@ static ZIPPY_FILE_CONTENT: &str = "
 dy	day
 dy 1	Monday
  abc	Alphabet
+pr	pre ⌫
 r df	recipient
  w  a	Washington
 xy	WxYz
@@ -269,4 +270,97 @@ fn sim_zippychord_disabled_by_typing() {
     )
     .to_ascii();
     assert_eq!("dn:V t:1ms up:V t:9ms dn:D t:1ms dn:Y", result);
+}
+
+#[test]
+fn sim_zippychord_smartspace_full() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space full)",
+        "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
+         t:9ms up:D t:1ms up:Y t:99ms dn:BSpace up:BSpace dn:Dot t:10ms up:Dot",
+        result
+    );
+
+    // Test that prefix works as intended.
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space add-space-only)",
+        "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
+         dn:Space up:Space dn:BSpace up:BSpace \
+         t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_smartspace_spaceonly() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space add-space-only)",
+        "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
+         t:9ms up:D t:1ms up:Y t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
+
+    // Test that prefix works as intended.
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space add-space-only)",
+        "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
+         dn:Space up:Space dn:BSpace up:BSpace \
+         t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_smartspace_none() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space none)",
+        "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y \
+         t:9ms up:D t:1ms up:Y t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
+
+    // Test that prefix works as intended.
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space add-space-only)",
+        "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
+         dn:Space up:Space dn:BSpace up:BSpace \
+         t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
 }
