@@ -130,6 +130,27 @@ pub enum ZchOutput {
     ShiftAltGr(OsCode),
 }
 
+impl ZchOutput {
+    pub fn osc(self) -> OsCode {
+        use ZchOutput::*;
+        match self {
+            Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => osc,
+        }
+    }
+}
+
+/// User configuration for smart space.
+///
+/// - `Full`         = add spaces after words, remove these spaces after typing punctuation.
+/// - `AddSpaceOnly` = add spaces after words
+/// - `Disabled`     = do nothing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZchSmartSpaceCfg {
+    Full,
+    AddSpaceOnly,
+    Disabled,
+}
+
 #[derive(Debug)]
 pub struct ZchConfig {
     /// When, during typing, chord fails to activate, zippychord functionality becomes temporarily
@@ -153,12 +174,17 @@ pub struct ZchConfig {
     /// zippychord. If, after the first press, a chord activates, this deadline will reset to
     /// enable further chord activations.
     pub zch_cfg_ticks_chord_deadline: u16,
+
+    /// User configuration for smart space. See `pub enum ZchSmartSpaceCfg`.
+    pub zch_cfg_smart_space: ZchSmartSpaceCfg,
 }
+
 impl Default for ZchConfig {
     fn default() -> Self {
         Self {
             zch_cfg_ticks_wait_enable: 500,
             zch_cfg_ticks_chord_deadline: 500,
+            zch_cfg_smart_space: ZchSmartSpaceCfg::Disabled,
         }
     }
 }
@@ -206,10 +232,12 @@ fn parse_zippy_inner(
     const KEY_NAME_MAPPINGS: &str = "output-character-mappings";
     const IDLE_REACTIVATE_TIME: &str = "idle-reactivate-time";
     const CHORD_DEADLINE: &str = "on-first-press-chord-deadline";
+    const SMART_SPACE: &str = "smart-space";
 
     let mut idle_reactivate_time_seen = false;
     let mut key_name_mappings_seen = false;
     let mut chord_deadline_seen = false;
+    let mut smart_space_seen = false;
     let mut user_cfg_char_to_output: HashMap<char, ZchOutput> = HashMap::default();
 
     // Parse other zippy configurations
@@ -245,6 +273,27 @@ fn parse_zippy_inner(
                 }
                 chord_deadline_seen = true;
                 config.zch_cfg_ticks_chord_deadline = parse_u16(config_value, s, CHORD_DEADLINE)?;
+            }
+
+            SMART_SPACE => {
+                if smart_space_seen {
+                    bail_expr!(
+                        config_name,
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+                smart_space_seen = true;
+                config.zch_cfg_smart_space = config_value
+                    .atom(s.vars())
+                    .and_then(|val| match val {
+                        "none" => Some(ZchSmartSpaceCfg::Disabled),
+                        "full" => Some(ZchSmartSpaceCfg::Full),
+                        "add-space-only" => Some(ZchSmartSpaceCfg::AddSpaceOnly),
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        anyhow_expr!(&config_value, "Must be: none | full | add-space-only")
+                    })?;
             }
 
             KEY_NAME_MAPPINGS => {

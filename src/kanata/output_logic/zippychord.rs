@@ -46,7 +46,7 @@ enum ZchLastPressClassification {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 enum ZchSmartSpaceState {
     #[default]
-    NoActivation,
+    Inactive,
     Sent,
 }
 
@@ -58,7 +58,6 @@ struct ZchDynamicState {
     /// Chording will be disabled if:
     /// - further presses cannot possibly activate a chord
     /// - a release happens with no chord having been activated
-    ///   TODO: is the above true or even desirable?
     ///
     /// Once disabled, chording will be enabled when:
     /// - all keys have been released
@@ -172,7 +171,7 @@ impl ZchDynamicState {
         self.zchd_ticks_until_disable = 0;
         self.zchd_ticks_until_enabled = 0;
         self.zchd_characters_to_delete_on_next_activation = 0;
-        self.zchd_smart_space_state = ZchSmartSpaceState::NoActivation;
+        self.zchd_smart_space_state = ZchSmartSpaceState::Inactive;
     }
 
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -243,25 +242,28 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
+        if self.zch_chords.is_empty() {
+            return kb.press_key(osc);
+        }
         match osc {
             OsCode::KEY_LEFTSHIFT => {
                 self.zchd.zchd_is_lsft_active = true;
+                return kb.press_key(osc);
             }
             OsCode::KEY_RIGHTSHIFT => {
                 self.zchd.zchd_is_rsft_active = true;
+                return kb.press_key(osc);
+            }
+            osc if osc.is_modifier() => {
+                return kb.press_key(osc);
             }
             _ => {}
         }
-
-        if self.zch_chords.is_empty()
-            || osc.is_modifier()
-        {
-            return kb.press_key(osc);
-        }
-        if osc.is_punctuation() && self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent {
+        if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent && osc.is_punctuation() {
             kb.press_key(OsCode::KEY_BACKSPACE)?;
             kb.release_key(OsCode::KEY_BACKSPACE)?;
         }
+        self.zchd.zchd_smart_space_state = ZchSmartSpaceState::Inactive;
         if self.zchd.zchd_enabled_state != ZchEnabledState::Enabled {
             return kb.press_key(osc);
         }
@@ -388,7 +390,21 @@ impl ZchState {
                     }
                 }
 
-                // TODO: smart spacing
+                if self.zch_cfg.zch_cfg_smart_space != ZchSmartSpaceCfg::Disabled
+                    && !matches!(
+                        a.zch_output
+                            .last()
+                            .expect("empty outputs are not expected")
+                            .osc(),
+                        OsCode::KEY_SPACE | OsCode::KEY_BACKSPACE
+                    )
+                {
+                    if self.zch_cfg.zch_cfg_smart_space == ZchSmartSpaceCfg::Full {
+                        self.zchd.zchd_smart_space_state = ZchSmartSpaceState::Sent;
+                    }
+                    kb.press_key(OsCode::KEY_SPACE)?;
+                    kb.release_key(OsCode::KEY_SPACE)?;
+                }
 
                 if !self.zchd.zchd_is_caps_word_active {
                     if self.zchd.zchd_is_lsft_active {

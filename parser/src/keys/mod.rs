@@ -84,9 +84,7 @@ impl OsCode {
     pub fn is_punctuation(self) -> bool {
         matches!(
             self,
-            OsCode::KEY_DOT
-                | OsCode::KEY_SEMICOLON
-                | OsCode::KEY_COMMA
+            OsCode::KEY_DOT | OsCode::KEY_SEMICOLON | OsCode::KEY_COMMA
         )
     }
 }
