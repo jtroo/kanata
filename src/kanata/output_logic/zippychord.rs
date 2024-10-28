@@ -321,7 +321,8 @@ impl ZchState {
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    self.zchd.zchd_previous_activation_output_count = ZchOutput::display_len(&a.zch_output);
+                    self.zchd.zchd_previous_activation_output_count =
+                        ZchOutput::display_len(&a.zch_output);
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
                 let mut released_lsft = false;

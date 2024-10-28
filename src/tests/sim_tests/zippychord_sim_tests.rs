@@ -288,7 +288,7 @@ fn sim_zippychord_prefix() {
          dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
          dn:P up:P dn:U up:U dn:L up:L dn:L up:L dn:Space up:Space \
          dn:R up:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:1ms up:Q",
-         result
+        result
     );
     let result = simulate_with_file_content(
         ZIPPY_CFG,
@@ -302,7 +302,7 @@ fn sim_zippychord_prefix() {
         "dn:P dn:BSpace \
          dn:P dn:R dn:E dn:Space dn:BSpace \
          dn:BSpace dn:BSpace dn:BSpace dn:P dn:A dn:R dn:T dn:N dn:E dn:R",
-         result
+        result
     );
 }
 
@@ -318,7 +318,7 @@ fn sim_zippychord_smartspace_full() {
     assert_eq!(
         "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
          t:9ms up:D t:1ms up:Y t:99ms dn:BSpace up:BSpace dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 
     // Test that prefix works as intended.
@@ -333,7 +333,7 @@ fn sim_zippychord_smartspace_full() {
         "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
          dn:Space up:Space dn:BSpace up:BSpace \
          t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 }
 
@@ -349,7 +349,7 @@ fn sim_zippychord_smartspace_spaceonly() {
     assert_eq!(
         "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
          t:9ms up:D t:1ms up:Y t:99ms dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 
     // Test that prefix works as intended.
@@ -364,7 +364,7 @@ fn sim_zippychord_smartspace_spaceonly() {
         "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
          dn:Space up:Space dn:BSpace up:BSpace \
          t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 }
 
@@ -380,7 +380,7 @@ fn sim_zippychord_smartspace_none() {
     assert_eq!(
         "dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y \
          t:9ms up:D t:1ms up:Y t:99ms dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 
     // Test that prefix works as intended.
@@ -395,6 +395,6 @@ fn sim_zippychord_smartspace_none() {
         "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
          dn:Space up:Space dn:BSpace up:BSpace \
          t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
-         result
+        result
     );
 }
