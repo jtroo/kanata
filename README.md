@@ -15,28 +15,28 @@
 
 ## What does this do?
 
-This is a cross-platform software keyboard remapper for Linux, macOS and Windows. A short summary of
-the features:
+This is a cross-platform software keyboard remapper for Linux, macOS and Windows.
+A short summary of the features:
 
 - multiple layers of key functionality
 - advanced key behaviour customization (e.g. tap-hold, macros, unicode)
-- cross-platform human readable configuration file
-
-Check out the [examples directory](./cfg_samples)
-and the [online simulator](https://jtroo.github.io).
 
 To see all of the features, see the [configuration guide](./docs/config.adoc).
-The configuration guide aims to be up-to-date with main and may have features not in your version.
-See the applicable link in the [releases page](https://github.com/jtroo/kanata/releases).
 
-The most similar project is [kmonad](https://github.com/kmonad/kmonad),
-which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
+You can find pre-built binaries in the [releases page](https://github.com/jtroo/kanata/releases)
+or read on for build instructions.
 
 You can see a [list of known issues here](./docs/platform-known-issues.adoc).
 
-### Demo video
+### Demo
 
+#### Demo video
 [Showcase of multi-layer functionality (30s, 1.7 MB)](https://user-images.githubusercontent.com/6634136/183001314-f64a7e26-4129-4f20-bf26-7165a6e02c38.mp4).
+
+#### Online simulator
+
+You can check out the [online simulator](https://jtroo.github.io)
+to test configuration validity and test input simulation.
 
 ## Why is this useful?
 
@@ -59,7 +59,7 @@ You will need to keep the window that starts kanata running to keep kanata activ
 Some tips for running kanata in the background:
 
 - Windows: https://github.com/jtroo/kanata/discussions/193
-- Linux: https://github.com/jtroo/kanata/discussions/130
+- Linux: https://github.com/jtroo/kanata/discussions/130#discussioncomment-10227272
 - Run from tray icon: [kanata-tray](https://github.com/rszyma/kanata-tray)
 
 ### Pre-built executables
@@ -177,7 +177,7 @@ cargo install --features cmd,interception_driver
 
 ## Notable features
 
-- Human readable configuration file.
+- Human-readable configuration file.
   - [Minimal example](./cfg_samples/minimal.kbd)
   - [Full guide](./docs/config.adoc)
   - [Simple example with explanations](./cfg_samples/simple.kbd)
@@ -294,7 +294,10 @@ exists.
 
 ## Similar Projects
 
-- [kmonad](https://github.com/kmonad/kmonad): The inspiration for kanata (Linux, Windows, Mac)
+The most similar project is [kmonad](https://github.com/kmonad/kmonad),
+which served as the inspiration for kanata. [Here's a comparison document](./docs/kmonad_comparison.md).
+Other similar projects:
+
 - [QMK](https://docs.qmk.fm/#/): Open source keyboard firmware
 - [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware
 - [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with layers, a TCP server, and audio support
