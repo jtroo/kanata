@@ -81,6 +81,24 @@ impl OsCode {
         )
     }
 
+    #[cfg(feature = "zippychord")]
+    pub fn is_zippy_ignored(self) -> bool {
+        matches!(
+            self,
+            OsCode::KEY_LEFTSHIFT
+                | OsCode::KEY_RIGHTSHIFT
+                | OsCode::KEY_LEFTMETA
+                | OsCode::KEY_RIGHTMETA
+                | OsCode::KEY_LEFTCTRL
+                | OsCode::KEY_RIGHTCTRL
+                | OsCode::KEY_LEFTALT
+                | OsCode::KEY_RIGHTALT
+                | OsCode::KEY_ESC
+                | OsCode::KEY_BACKSPACE
+                | OsCode::KEY_DELETE
+        )
+    }
+
     pub fn is_punctuation(self) -> bool {
         matches!(
             self,

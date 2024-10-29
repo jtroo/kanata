@@ -61,6 +61,7 @@ struct ZchDynamicState {
     ///
     /// Once disabled, chording will be enabled when:
     /// - all keys have been released
+    /// - zchd_ticks_until_enabled shrinks to 0
     zchd_enabled_state: ZchEnabledState,
     /// Is Some when a chord has been activated which has possible follow-up chords.
     /// E.g. dy -> day
@@ -73,8 +74,8 @@ struct ZchDynamicState {
     /// Tracks the previous output character count
     /// because it may need to be erased (see `zchd_prioritized_chords).
     zchd_previous_activation_output_count: i16,
-    /// In case of output being empty for interim chord activations, this tracks the number of
-    /// characters that need to be erased.
+    /// Tracks the number of characters typed to complete an activation, which will be erased if an
+    /// activation completes succesfully.
     zchd_characters_to_delete_on_next_activation: i16,
     /// Tracker for time until previous state change to know if potential stale data should be
     /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
@@ -86,9 +87,9 @@ struct ZchDynamicState {
     /// against unintended activations. This counts downwards from a configured number until 0, and
     /// at 0 the state transitions from pending-enabled to truly-enabled if applicable.
     zchd_ticks_until_enabled: u16,
-    /// Zch has a time delay between being disabled->pending-enabled->truly-enabled to mitigate
-    /// against unintended activations. This counts downwards from a configured number until 0, and
-    /// at 0 the state transitions from pending-enabled to truly-enabled if applicable.
+    /// There is a deadline between the first press happening and a chord activation being
+    /// possible; after which if a chord has not been activated, zippychording is disabled. This
+    /// state is the counter for this deadline.
     zchd_ticks_until_disable: u16,
     /// Current state of caps-word, which is a factor in handling capitalization.
     zchd_is_caps_word_active: bool,
@@ -97,9 +98,11 @@ struct ZchDynamicState {
     /// Current state of rsft which is a factor in handling capitalization.
     zchd_is_rsft_active: bool,
     /// Tracks whether last press was part of a chord or not.
+    /// Upon releasing keys, this state determines if zippychording should remain enabled or
+    /// disabled.
     zchd_last_press: ZchLastPressClassification,
-    /// Tracks smart spacing state so punctuation can know whether a space needs to be erased or
-    /// not.
+    /// Tracks smart spacing state so punctuation characters
+    /// can know whether a space needs to be erased or not.
     zchd_smart_space_state: ZchSmartSpaceState,
 }
 
@@ -119,7 +122,7 @@ impl ZchDynamicState {
             }
             ZchEnabledState::Enabled => {
                 // Only run disable-check logic if ticks is already greater than zero, because zero
-                // means deadline has never been triggered by an press yet.
+                // means deadline has never been triggered by any press.
                 if self.zchd_ticks_until_disable > 0 {
                     self.zchd_ticks_until_disable = self.zchd_ticks_until_disable.saturating_sub(1);
                     if self.zchd_ticks_until_disable == 0 {
@@ -254,7 +257,7 @@ impl ZchState {
                 self.zchd.zchd_is_rsft_active = true;
                 return kb.press_key(osc);
             }
-            osc if osc.is_modifier() => {
+            osc if osc.is_zippy_ignored() => {
                 return kb.press_key(osc);
             }
             _ => {}
@@ -460,6 +463,9 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
+        if self.zch_chords.is_empty() {
+            return kb.press_key(osc);
+        }
         match osc {
             OsCode::KEY_LEFTSHIFT => {
                 self.zchd.zchd_is_lsft_active = false;
@@ -469,7 +475,7 @@ impl ZchState {
             }
             _ => {}
         }
-        if self.zch_chords.is_empty() || osc.is_modifier() {
+        if osc.is_zippy_ignored() {
             return kb.release_key(osc);
         }
         self.zchd.zchd_state_change(&self.zch_cfg);
