@@ -3994,6 +3994,7 @@ When using this you are at higher likelihood of bugs and breaking changes.
   $zippy-filename ;; required
   on-first-press-chord-deadline $deadline-millis  ;; optional
   idle-reactivate-time          $idle-time-millis ;; optional
+  smart-space                   $smart-space-cfg  ;; optional
   output-character-mappings (                     ;; optional
     $character1 $output-mapping1
     $character2 $output-mapping2
@@ -4021,6 +4022,17 @@ zippy is temporarily disabled.
 | Number of milliseconds.
 After typing ends and this configured number of milliseconds elapses,
 zippy will be re-enabled from being temporarily disabled.
+
+| `$smart-space-cfg` for `smart-space`
+| Determines the smart space behaviour.
+The options are `none | add-space-only | full`.
+With `none`, outputs are typed as-is.
+With `add-space-only`, spaces are automatically added after outputs
+which end with neither a space or a backspace ⌫.
+With `full`, the `add-space-only` behaviour applies
+and additional behaviour is active:
+typing punctuation — `, . ;` — after a zippy activation
+will delete a prior automatically-added space.
 
 | `$characterN` for `output-character-mappings`
 | A single unicode character for use
