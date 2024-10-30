@@ -1912,7 +1912,7 @@ VAR_NAME=var_value
 == Input chords / combos (v2)
 <<table-of-contents,Back to ToC>>
 
-You may define a single `+defchordsv2-experimental+` configuration item.
+You may define a single `+defchordsv2+` configuration item.
 This enables you to define global input chord behaviour.
 One might also find this functionality called another name of "combos"
 in other projects.
@@ -1924,16 +1924,12 @@ When activating a chord, the order of presses is not important;
 when all keys belonging to a chord are pressed,
 the action activates regardless of press order.
 
-WARNING: As the name suggests, this is a new feature.
-Using this feature puts you at higher risk
-of encountering bugs or future breaking changes.
-
-The `+defchordsv2-experimental+` feature is configured as shown below:
+The `+defchordsv2+` feature is configured as shown below:
 
 .Syntax example
 [source]
 ----
-(defchordsv2-experimental
+(defchordsv2
   (participating-keys1) action1 timeout1 release-behaviour1 (disabled-layers1)
     ...
   (participating-keysN) actionN timeoutN release-behaviourN (disabled-layersN)
@@ -1972,10 +1968,10 @@ only when all of the participants have been released.
 | A list of layer names on which this chord is disabled.
 |===
 
-Input chords have a related `defcfg` item: <<chords-v2-min-idle-experimental>>.
+Input chords have a related `defcfg` item: <<chords-v2-min-idle>>.
 When any non-chord activation happens,
 a timeout begins with duration configured by
-`chords-v2-min-idle-experimental` (unit: milliseconds).
+`chords-v2-min-idle` (unit: milliseconds).
 Until this timeout expires, all inputs will immediately skip
 chords processing and be processed by the active layer.
 
@@ -1988,7 +1984,7 @@ activated by a chord.
 [source]
 ----
 (defcfg concurrent-tap-hold yes)
-(defchordsv2-experimental
+(defchordsv2
   (a s)    c                200 all-released  (non-chord-layer)
   (a s d) (macro h e l l o) 250 first-release (non-chord-layer)
   (s d f) (macro b y e)     400 first-release (non-chord-layer)
@@ -2276,8 +2272,8 @@ you can set reduce the value to a number 0 to 4.
 )
 ----
 
-[[chords-v2-min-idle-experimental]]
-=== chords-v2-min-idle-experimental
+[[chords-v2-min-idle]]
+=== chords-v2-min-idle
 <<table-of-contents,Back to ToC>>
 
 This configuration affects the timer during which chords processing is disabled.
@@ -2289,7 +2285,7 @@ The default (and minimum) value is `5` and the unit is milliseconds.
 [source]
 ----
 (defcfg
-  chords-v2-min-idle-experimental 200
+  chords-v2-min-idle 200
 )
 ----
 
@@ -3199,7 +3195,7 @@ For example, chording `(d a y)` and then `(t u e)` will output
 (defvar rls-sft (on-press tap-vkey rls-sft))
 (deftemplate rls-sft () $rls-sft 5)
 
-(defchordsv2-experimental
+(defchordsv2
 	(d a y) (macro sldr d (t! rls-sft) a y spc nop0) 200 first-release ()
 	(h l o) (macro h (t! rls-sft) e l l o sldr spc nop0) 200 first-release ()
 )

@@ -1378,7 +1378,7 @@ Global input chords.
 
 Syntax (5-tuples):
 
-    (defchordsv2-experimental
+    (defchordsv2
       (participating-keys1) action1 timeout1 release-behaviour1 (disabled-layers1)
         ...
       (participating-keysN) actionN timeoutN release-behaviourN (disabled-layersN)
@@ -1386,7 +1386,7 @@ Syntax (5-tuples):
 
 |#
 
-(defchordsv2-experimental
+(defchordsv2
   (a b)      c                200 all-released  (arrows)
   (a b z)   (macro h e l l o) 250 first-release (arrows)
   (a b z y) (macro b y e)     400 first-release (arrows)

@@ -721,7 +721,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             ),
                         };
                     }
-                    "chords-v2-min-idle-experimental" => {
+                    "chords-v2-min-idle" | "chords-v2-min-idle-experimental" => {
+                        if label == "chords-v2-min-idle-experimental" {
+                            log::warn!("You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
+                                        Using -experimental will be invalid in the future.")
+                        }
                         let min_idle = parse_cfg_val_u16(val, label, true)?;
                         if min_idle < 5 {
                             bail_expr!(val, "{label} must be 5-65535");

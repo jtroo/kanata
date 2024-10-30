@@ -53,7 +53,7 @@
   allow-hardware-repeat   no
 )
 
-(defchordsv2-experimental
+(defchordsv2
   (m 1) (layer-switch colemak_j1) 300 all-released ()
   (m 2) (layer-switch colemak_j2) 300 all-released ()
   (m 3) (layer-switch colemak_j3) 300 all-released ()

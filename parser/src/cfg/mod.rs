@@ -659,16 +659,18 @@ pub fn parse_cfg_raw_string(
     let vars = parse_vars(&var_exprs, &mut lsp_hints)?;
 
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
-    let deflayer_spanned_filter = |exprs: &&Spanned<Vec<SExpr>>| -> bool {
-        if exprs.t.is_empty() {
+    let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
+        if exprs.is_empty() {
             return false;
         }
-        if let SExpr::Atom(atom) = &exprs.t[0] {
+        if let SExpr::Atom(atom) = &exprs[0] {
             deflayer_labels.contains(&atom.t.as_str())
         } else {
             false
         }
     };
+    let deflayer_spanned_filter =
+        |exprs: &&Spanned<Vec<SExpr>>| -> bool { deflayer_filter(&&exprs.t) };
     let layer_exprs = spanned_root_exprs
         .iter()
         .filter(deflayer_spanned_filter)
@@ -698,16 +700,6 @@ pub fn parse_cfg_raw_string(
         .map(|(name, _)| (*name).clone())
         .collect::<Vec<_>>();
 
-    let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
-        if exprs.is_empty() {
-            return false;
-        }
-        if let SExpr::Atom(atom) = &exprs[0] {
-            deflayer_labels.contains(&atom.t.as_str())
-        } else {
-            false
-        }
-    };
     let layer_strings = spanned_root_exprs
         .iter()
         .filter(|expr| deflayer_filter(&&expr.t))
@@ -841,10 +833,23 @@ pub fn parse_cfg_raw_string(
         }
     };
 
+    let defchordsv2_filter = |exprs: &&Vec<SExpr>| -> bool {
+        if exprs.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &exprs[0] {
+            matches!(atom.t.as_str(), "defchordsv2" | "defchordsv2-experimental")
+        } else {
+            false
+        }
+    };
+    let defchordsv2_spanned_filter =
+        |exprs: &&Spanned<Vec<SExpr>>| -> bool { defchordsv2_filter(&&exprs.t) };
+
     s.trans_forbidden_reason = Some("Transparent action is forbidden within chordsv2");
     let chords_v2_exprs = root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defchordsv2-experimental"))
+        .filter(defchordsv2_filter)
         .collect::<Vec<_>>();
     let chords_v2 = match chords_v2_exprs.len() {
         0 => None,
@@ -855,7 +860,7 @@ pub fn parse_cfg_raw_string(
         _ => {
             let spanned = spanned_root_exprs
                 .iter()
-                .filter(gen_first_atom_filter_spanned("defchordsv2-experimental"))
+                .filter(defchordsv2_spanned_filter)
                 .nth(1)
                 .expect("> 2 overrides");
             bail_span!(
@@ -925,6 +930,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defchords"
                 | "defvar"
                 | "deftemplate"
+                | "defchordsv2"
                 | "defchordsv2-experimental"
                 | "defseq" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
