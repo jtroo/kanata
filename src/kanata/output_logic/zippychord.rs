@@ -464,7 +464,7 @@ impl ZchState {
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
         if self.zch_chords.is_empty() {
-            return kb.press_key(osc);
+            return kb.release_key(osc);
         }
         match osc {
             OsCode::KEY_LEFTSHIFT => {
