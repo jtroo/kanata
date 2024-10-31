@@ -16,6 +16,8 @@ rq	request
 rqa	request␣assistance
 .g	git
 .g f p	git fetch -p
+12	hi
+1234	bye
 ";
 
 #[test]
@@ -112,6 +114,15 @@ fn sim_zippychord_overlap() {
         up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
         dn:Space up:Space \
         up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E",
+        result
+    );
+    let result =
+        simulate_with_file_content(ZIPPY_CFG, "d:1 d:2 d:3 d:4 t:20", Some(ZIPPY_FILE_CONTENT))
+            .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace dn:H up:H dn:I up:I t:1ms dn:Kb3 t:1ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:B up:B dn:Y up:Y dn:E up:E",
         result
     );
 }
@@ -395,6 +406,61 @@ fn sim_zippychord_smartspace_none() {
         "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E \
          dn:Space up:Space dn:BSpace up:BSpace \
          t:9ms up:P t:1ms up:R t:99ms dn:Dot t:10ms up:Dot",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_smartspace_overlap() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space full)",
+        "d:r t:10 d:q t:10 d:a t:10",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:R t:10ms dn:BSpace up:BSpace \
+        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T dn:Space up:Space t:10ms \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
+        dn:Space up:Space \
+        up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E \
+        dn:Space up:Space",
+        result
+    );
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space full)",
+        "d:1 d:2 d:3 d:4 t:20",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace dn:H up:H dn:I up:I dn:Space up:Space \
+         t:1ms dn:Kb3 t:1ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:B up:B dn:Y up:Y dn:E up:E dn:Space up:Space",
+        result
+    );
+}
+
+#[test]
+fn sim_zippychord_smartspace_followup() {
+    let result = simulate_with_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space full)",
+        "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:10ms dn:BSpace up:BSpace \
+         up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
+         t:10ms up:D t:1ms up:Y t:9ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:LShift dn:M up:M up:LShift dn:O up:O dn:N up:N dn:D up:D dn:A up:A dn:Y up:Y dn:Space up:Space",
         result
     );
 }

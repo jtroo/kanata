@@ -263,6 +263,7 @@ impl ZchState {
             _ => {}
         }
         if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent && osc.is_punctuation() {
+            self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
             kb.press_key(OsCode::KEY_BACKSPACE)?;
             kb.release_key(OsCode::KEY_BACKSPACE)?;
         }
@@ -400,17 +401,31 @@ impl ZchState {
                 }
 
                 if self.zch_cfg.zch_cfg_smart_space != ZchSmartSpaceCfg::Disabled
-                    && !matches!(
-                        a.zch_output
-                            .last()
-                            .expect("empty outputs are not expected")
-                            .osc(),
-                        OsCode::KEY_SPACE | OsCode::KEY_BACKSPACE
-                    )
+                    && a.zch_output
+                        .last()
+                        .map(|out| !matches!(out.osc(), OsCode::KEY_SPACE | OsCode::KEY_BACKSPACE))
+                        .unwrap_or(false)
+                // if output empty, don't add space
                 {
                     if self.zch_cfg.zch_cfg_smart_space == ZchSmartSpaceCfg::Full {
                         self.zchd.zchd_smart_space_state = ZchSmartSpaceState::Sent;
                     }
+
+                    // It might look unusual to add to both.
+                    // This is correct to do.
+                    // zchd_previous_activation_output_count only applies to followup activations,
+                    // which should only occur after a full release+repress of a new chord.
+                    // The full release will set zchd_characters_to_delete_on_next_activation to 0.
+                    // Overlapping chords do not use zchd_previous_activation_output_count but
+                    // instead keep track of characters to delete via
+                    // zchd_characters_to_delete_on_next_activation,
+                    // which is incremented both by typing characters
+                    // to achieve a chord in the first place,
+                    // as well as by chord activations that are overlapped
+                    // by the intended final chord.
+                    self.zchd.zchd_previous_activation_output_count += 1;
+                    self.zchd.zchd_characters_to_delete_on_next_activation += 1;
+
                     kb.press_key(OsCode::KEY_SPACE)?;
                     kb.release_key(OsCode::KEY_SPACE)?;
                 }
