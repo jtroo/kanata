@@ -16,6 +16,8 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
+use objc::runtime::Class;
+use objc::{msg_send, sel, sel_impl};
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
@@ -235,7 +237,6 @@ impl KbdOut {
         event.post(CGEventTapLocation::AnnotatedSession);
         Ok(())
     }
-
     pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         event.set_type(CGEventType::ScrollWheel);
@@ -319,14 +320,36 @@ impl KbdOut {
     }
 
     pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
+        let pressed = Self::pressed_buttons();
+
+        let event_type = if pressed & 1 > 0 {
+            CGEventType::LeftMouseDragged
+        } else if pressed & 2 > 0 {
+            CGEventType::RightMouseDragged
+        } else {
+            CGEventType::MouseMoved
+        };
+
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
-        let display = CGDisplay::main();
         Self::apply_calculated_move(&_mv, &mut mouse_position);
-        display
-            .move_cursor_to_point(mouse_position)
-            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move mouse"))?;
+        if let Ok(event) = CGEvent::new_mouse_event(
+            Self::make_event_source()?,
+            event_type,
+            mouse_position,
+            CGMouseButton::Left,
+        ) {
+            event.post(CGEventTapLocation::HID);
+        }
         Ok(())
+    }
+
+    fn pressed_buttons() -> usize {
+        if let Some(ns_event) = Class::get("NSEvent") {
+            unsafe { msg_send![ns_event, pressedMouseButtons] }
+        } else {
+            0
+        }
     }
 
     pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
