@@ -12,6 +12,13 @@ pub(crate) fn parse_defchordv2(
     exprs: &[SExpr],
     s: &ParserState,
 ) -> Result<ChordsForKeys<'static, KanataCustom>> {
+    if exprs[0].atom(None).expect("should be atom") == "defchordsv2-experimental" {
+        log::warn!(
+            "You should replace defchordsv2-experimental with defchordsv2.\n\
+             Using -experimental will be invalid in the future."
+        );
+    }
+
     let mut chunks = exprs[1..].chunks_exact(5);
     let mut chords_container = ChordsForKeys::<'static, KanataCustom> {
         mapping: FxHashMap::default(),

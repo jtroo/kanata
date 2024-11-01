@@ -6,7 +6,7 @@ static SIMPLE_NONOVERLAPPING_CHORD_CFG: &str = "\
 (defalias c c)
 (defvar d d)
 (deflayer base) \
-(defchordsv2-experimental \
+(defchordsv2 \
   (a b) @c 200 all-released () \
   (b z) $d 200 first-release () \
 )";
@@ -69,7 +69,8 @@ fn sim_chord_basic_repeated_first_release() {
 }
 
 static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
-(defcfg process-unmapped-keys yes concurrent-tap-hold yes)
+(defcfg process-unmapped-keys yes concurrent-tap-hold yes
+ chords-v2-min-idle-experimental 5)
 (defsrc)
 (deflayer base)
 (defchordsv2-experimental
@@ -127,7 +128,7 @@ static SIMPLE_DISABLED_LAYER_CHORD_CFG: &str = "\
                  1 (layer-while-held 1))
 (deflayermap (3) 2 (layer-while-held 2)
                  1 (layer-while-held 1))
-(defchordsv2-experimental
+(defchordsv2
   (a b) x 200 all-released (1)
   (c d) y 200 all-released (2)
   (e f) z 200 all-released (3)
@@ -223,7 +224,7 @@ static CHORD_INTO_TAP_HOLD_CFG: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
 (deflayer base)
-(defchordsv2-experimental
+(defchordsv2
   (a b) (tap-hold 200 200 x y) 200 all-released ()
 )";
 
@@ -244,7 +245,7 @@ static CHORD_WITH_PENDING_UNDERLYING_TAP_HOLD: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
 (deflayermap (base) a (tap-hold 200 200 a b))
-(defchordsv2-experimental
+(defchordsv2
   (b c) d 100 all-released ()
 )";
 
@@ -263,7 +264,7 @@ static CHORD_WITH_TRANSPARENCY: &str = "\
 (defcfg process-unmapped-keys yes concurrent-tap-hold yes)
 (defsrc)
 (deflayer base)
-(defchordsv2-experimental
+(defchordsv2
   (a b) _ 100 all-released ()
 )";
 
@@ -282,7 +283,7 @@ fn sim_chord_eager_tapholdpress_activation() {
     (defsrc caps j k bspc)
     (deflayer one (tap-hold-press 0 200 esc lctl) j k bspc)
     (defvirtualkeys bspc bspc)
-    (defchordsv2-experimental
+    (defchordsv2
       (j k) (multi
         (on-press press-vkey bspc)
         (on-release release-vkey bspc)
@@ -307,7 +308,7 @@ fn sim_chord_eager_tapholdrelease_activation() {
     (defsrc caps j k bspc)
     (deflayer one (tap-hold-release 0 200 esc lctl) j k bspc)
     (defvirtualkeys bspc bspc)
-    (defchordsv2-experimental
+    (defchordsv2
       (j k) (multi (on-press press-vkey bspc) (on-release release-vkey bspc)) 75 first-release ()
     )
         ",
@@ -327,7 +328,7 @@ fn sim_chord_release_nonchord_key_has_correct_order() {
     (defcfg concurrent-tap-hold yes)
     (defsrc ralt j k)
     (deflayer base _ _ _)
-    (defchordsv2-experimental
+    (defchordsv2
       (j k) l 75 first-release ()
     )
         ",
@@ -374,7 +375,7 @@ fn sim_chord_error_on_duplicate_keyset() {
 (defcfg concurrent-tap-hold yes)
 (defsrc)
 (deflayer base)
-(defchordsv2-experimental
+(defchordsv2
  (1 2) (one-shot 2000 lsft) 20 all-released ()
  (2 1) (one-shot 2000 lctl) 20 all-released ()
 )
@@ -389,7 +390,7 @@ fn sim_chord_oneshot() {
         "
 (defcfg concurrent-tap-hold yes)
 (defsrc)(deflayer base)
-(defchordsv2-experimental
+(defchordsv2
   (a b) (one-shot 2500 rsft) 35 first-release ()
 )
         ",
