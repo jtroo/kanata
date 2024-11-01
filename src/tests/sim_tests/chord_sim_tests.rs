@@ -69,10 +69,11 @@ fn sim_chord_basic_repeated_first_release() {
 }
 
 static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
-(defcfg process-unmapped-keys yes concurrent-tap-hold yes)
+(defcfg process-unmapped-keys yes concurrent-tap-hold yes
+ chords-v2-min-idle-experimental 5)
 (defsrc)
 (deflayer base)
-(defchordsv2
+(defchordsv2-experimental
   (a b) c 200 all-released ()
   (a b z) d 250 first-release ()
   (a b z y) e 400 first-release ()
