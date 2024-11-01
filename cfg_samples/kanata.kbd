@@ -1396,11 +1396,16 @@ Syntax (5-tuples):
 
 Yet another chording implementation - zippychord:
 
+
+;; This is a sample for US international layout.
 (defzippy-experimental
   zippy.txt
   on-first-press-chord-deadline 500
   idle-reactivate-time          500
+  smart-space-punctuation (? ! . , ; :)
   output-character-mappings (
+    ! S-1
+    ? S-/
     % S-5
     "(" S-9
     ")" S-0
@@ -1422,9 +1427,9 @@ dy 1	Monday
 r df	recipient
  w  a	Washington
 rq	request
-rqa	request␣assistance
+rqa	request assistance
 ---
 
-You can read in more detail in the configuration guide.
+You can read about zippychord in more detail in the configuration guide.
 
 |#

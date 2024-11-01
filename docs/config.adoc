@@ -3995,13 +3995,14 @@ When using this you are at higher likelihood of bugs and breaking changes.
   on-first-press-chord-deadline $deadline-millis  ;; optional
   idle-reactivate-time          $idle-time-millis ;; optional
   smart-space                   $smart-space-cfg  ;; optional
-  output-character-mappings (                     ;; optional
+  smart-space-punctuation (                       ;; optional
+    $punc1 $punc2 ... $puncN)
+  output-character-mappings (    ;; optional
     $character1 $output-mapping1
     $character2 $output-mapping2
     ;; ...
     $characterN $output-mappingN
   )
-  smart-space-punctuation ($punc1 ... $puncN)
 )
 ----
 
@@ -4035,6 +4036,13 @@ and additional behaviour is active:
 typing punctuation — US-layout `, . ;` by default —
 after a zippy activation will delete a prior automatically-added space.
 
+| `$puncN` for `smart-space-punctuation`
+| A character defined in `output-character-mappings`
+or a known key name, which shall be considered as punctuation.
+The full list within `smart-space-punctuation`
+will overwrite the default punctuation list
+considered by smart-space.
+
 | `$characterN` for `output-character-mappings`
 | A single unicode character for use
 in the output column of the zippy configuration file.
@@ -4045,13 +4053,6 @@ when seen in the zippy file output column.
 Must be a single key or output chord.
 The output chord may contain `AG-` to tell kanata to press with AltGr
 and may contain `S-` to tell kanata to press with Shift.
-
-| `$puncN` for `smart-space-punctuation`
-| A character defined in `output-character-mappings`
-or a known key name, which shall be considered as punctuation.
-The full list of within `smart-space-punctuation`
-will overwrite the default punctuation list
-considered by smart-space.
 |===
 
 Regarding output mappings,
@@ -4124,6 +4125,33 @@ and these will be outputted alongside Shift to output the capital key.
 Additionally, `output-character-mappings` configuration can be used
 to inform kanata of additional mappings that may use Shift or AltGr.
 |===
+
+==== Sample kanata configuration
+
+[source]
+----
+(defzippy-experimental
+  zippy.txt
+  on-first-press-chord-deadline 500
+  idle-reactivate-time          500
+  smart-space-punctuation (? ! . , ; :)
+  output-character-mappings (
+    ;; This should work for US international.
+    ! S-1
+    ? S-/
+    % S-5
+    "(" S-9
+    ")" S-0
+    : S-;
+    < S-,
+    > S-.
+    r#"""# S-'
+    | S-\
+    _ S--
+    ® AG-r
+  )
+)
+----
 
 ==== Sample zippy file content
 

@@ -122,7 +122,7 @@ pub struct ZchChordOutput {
 /// Zch output can be uppercase, lowercase, altgr, and shift-altgr characters.
 /// The parser should ensure all `OsCode`s in variants containing them
 /// are visible characters that are backspacable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZchOutput {
     Lowercase(OsCode),
     Uppercase(OsCode),
@@ -188,7 +188,7 @@ pub struct ZchConfig {
     pub zch_cfg_smart_space: ZchSmartSpaceCfg,
 
     /// Define keys for punctuation, which is relevant to smart space auto-erasure of added spaces.
-    pub zch_cfg_smart_space_punctuation: Box<[ZchOutput]>,
+    pub zch_cfg_smart_space_punctuation: HashSet<ZchOutput>,
 }
 
 impl Default for ZchConfig {
@@ -197,12 +197,14 @@ impl Default for ZchConfig {
             zch_cfg_ticks_wait_enable: 500,
             zch_cfg_ticks_chord_deadline: 500,
             zch_cfg_smart_space: ZchSmartSpaceCfg::Disabled,
-            zch_cfg_smart_space_punctuation: vec![
-                ZchOutput::Lowercase(OsCode::KEY_DOT),
-                ZchOutput::Lowercase(OsCode::KEY_COMMA),
-                ZchOutput::Lowercase(OsCode::KEY_SEMICOLON),
-            ]
-            .into_boxed_slice(),
+            zch_cfg_smart_space_punctuation: {
+                let mut puncs = HashSet::default();
+                puncs.insert(ZchOutput::Lowercase(OsCode::KEY_DOT));
+                puncs.insert(ZchOutput::Lowercase(OsCode::KEY_COMMA));
+                puncs.insert(ZchOutput::Lowercase(OsCode::KEY_SEMICOLON));
+                puncs.shrink_to_fit();
+                puncs
+            },
         }
     }
 }
@@ -435,7 +437,9 @@ fn parse_zippy_inner(
 
                 Ok(puncs)
             })?
-            .into_boxed_slice();
+            .into_iter()
+            .collect();
+        config.zch_cfg_smart_space_punctuation.shrink_to_fit();
     }
 
     // process zippy file
