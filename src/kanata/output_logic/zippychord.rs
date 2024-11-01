@@ -97,6 +97,8 @@ struct ZchDynamicState {
     zchd_is_lsft_active: bool,
     /// Current state of rsft which is a factor in handling capitalization.
     zchd_is_rsft_active: bool,
+    /// Current state of altgr which is a factor in smart space erasure.
+    zchd_is_altgr_active: bool,
     /// Tracks whether last press was part of a chord or not.
     /// Upon releasing keys, this state determines if zippychording should remain enabled or
     /// disabled.
@@ -160,6 +162,7 @@ impl ZchDynamicState {
         self.zchd_is_caps_word_active = false;
         self.zchd_is_lsft_active = false;
         self.zchd_is_rsft_active = false;
+        self.zchd_is_altgr_active = false;
         self.zchd_soft_reset();
     }
 
@@ -257,12 +260,29 @@ impl ZchState {
                 self.zchd.zchd_is_rsft_active = true;
                 return kb.press_key(osc);
             }
+            OsCode::KEY_RIGHTALT => {
+                self.zchd.zchd_is_altgr_active = true;
+                return kb.press_key(osc);
+            }
             osc if osc.is_zippy_ignored() => {
                 return kb.press_key(osc);
             }
             _ => {}
         }
-        if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent && osc.is_punctuation() {
+        if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent
+            && self
+                .zch_cfg
+                .zch_cfg_smart_space_punctuation
+                .contains(&match (
+                    self.zchd.zchd_is_lsft_active | self.zchd.zchd_is_rsft_active,
+                    self.zchd.zchd_is_altgr_active,
+                ) {
+                    (false, false) => ZchOutput::Lowercase(osc),
+                    (true, false) => ZchOutput::Uppercase(osc),
+                    (false, true) => ZchOutput::AltGr(osc),
+                    (true, true) => ZchOutput::ShiftAltGr(osc),
+                })
+        {
             self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
             kb.press_key(OsCode::KEY_BACKSPACE)?;
             kb.release_key(OsCode::KEY_BACKSPACE)?;
@@ -329,10 +349,14 @@ impl ZchState {
                         ZchOutput::display_len(&a.zch_output);
                 }
                 self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
-                let mut released_lsft = false;
+                let mut released_sft = false;
 
                 #[cfg(feature = "interception_driver")]
                 let mut send_count = 0;
+
+                if self.zchd.zchd_is_altgr_active {
+                    kb.release_key(OsCode::KEY_RIGHTALT)?;
+                }
 
                 for key_to_send in &a.zch_output {
                     #[cfg(feature = "interception_driver")]
@@ -352,16 +376,21 @@ impl ZchState {
                             osc
                         }
                         ZchOutput::Uppercase(osc) => {
-                            maybe_press_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
                             type_osc(*osc, kb, &self.zchd)?;
-                            maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
                             osc
                         }
                         ZchOutput::AltGr(osc) => {
-                            // Note, unlike shift which probably has a good reason to be maybe
-                            // already held during chording, I don't currently see ralt as having
-                            // any reason to already be held during chording; just use normal
-                            // characters.
+                            // A note regarding maybe_press|release_sft
+                            // in contrast to always pressing|releasing altgr:
+                            //
+                            // The maybe-logic is valuable with Shift to capitalize the first
+                            // typed output during activation.
+                            // However, altgr - if already held -
+                            // does not seem useful to keep held on the first typed output so it is
+                            // always released at the beginning and pressed at the end if it was
+                            // previously being held.
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
                             type_osc(*osc, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
@@ -369,9 +398,9 @@ impl ZchState {
                         }
                         ZchOutput::ShiftAltGr(osc) => {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
-                            maybe_press_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
                             type_osc(*osc, kb, &self.zchd)?;
-                            maybe_release_sft_during_activation(released_lsft, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                             osc
                         }
@@ -389,8 +418,8 @@ impl ZchState {
                         self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                     }
 
-                    if !released_lsft && !self.zchd.zchd_is_caps_word_active {
-                        released_lsft = true;
+                    if !released_sft && !self.zchd.zchd_is_caps_word_active {
+                        released_sft = true;
                         if self.zchd.zchd_is_lsft_active {
                             kb.release_key(OsCode::KEY_LEFTSHIFT)?;
                         }
@@ -431,12 +460,16 @@ impl ZchState {
                 }
 
                 if !self.zchd.zchd_is_caps_word_active {
+                    // When expanding, lsft/rsft will be released after the first press.
                     if self.zchd.zchd_is_lsft_active {
                         kb.press_key(OsCode::KEY_LEFTSHIFT)?;
                     }
                     if self.zchd.zchd_is_rsft_active {
                         kb.press_key(OsCode::KEY_RIGHTSHIFT)?;
                     }
+                }
+                if self.zchd.zchd_is_altgr_active {
+                    kb.press_key(OsCode::KEY_RIGHTALT)?;
                 }
 
                 // Note: it is incorrect to clear input keys.

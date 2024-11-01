@@ -122,7 +122,7 @@ pub struct ZchChordOutput {
 /// Zch output can be uppercase, lowercase, altgr, and shift-altgr characters.
 /// The parser should ensure all `OsCode`s in variants containing them
 /// are visible characters that are backspacable.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZchOutput {
     Lowercase(OsCode),
     Uppercase(OsCode),
@@ -186,6 +186,9 @@ pub struct ZchConfig {
 
     /// User configuration for smart space. See `pub enum ZchSmartSpaceCfg`.
     pub zch_cfg_smart_space: ZchSmartSpaceCfg,
+
+    /// Define keys for punctuation, which is relevant to smart space auto-erasure of added spaces.
+    pub zch_cfg_smart_space_punctuation: Box<[ZchOutput]>,
 }
 
 impl Default for ZchConfig {
@@ -194,6 +197,12 @@ impl Default for ZchConfig {
             zch_cfg_ticks_wait_enable: 500,
             zch_cfg_ticks_chord_deadline: 500,
             zch_cfg_smart_space: ZchSmartSpaceCfg::Disabled,
+            zch_cfg_smart_space_punctuation: vec![
+                ZchOutput::Lowercase(OsCode::KEY_DOT),
+                ZchOutput::Lowercase(OsCode::KEY_COMMA),
+                ZchOutput::Lowercase(OsCode::KEY_SEMICOLON),
+            ]
+            .into_boxed_slice(),
         }
     }
 }
@@ -242,14 +251,16 @@ fn parse_zippy_inner(
     const IDLE_REACTIVATE_TIME: &str = "idle-reactivate-time";
     const CHORD_DEADLINE: &str = "on-first-press-chord-deadline";
     const SMART_SPACE: &str = "smart-space";
+    const SMART_SPACE_PUNCTUATION: &str = "smart-space-punctuation";
 
     let mut idle_reactivate_time_seen = false;
     let mut key_name_mappings_seen = false;
     let mut chord_deadline_seen = false;
     let mut smart_space_seen = false;
-    let mut user_cfg_char_to_output: HashMap<char, ZchOutput> = HashMap::default();
+    let mut smart_space_punctuation_seen = false;
+    let mut smart_space_punctuation_val_expr = None;
 
-    // Parse other zippy configurations
+    let mut user_cfg_char_to_output: HashMap<char, ZchOutput> = HashMap::default();
     let mut pairs = exprs[2..].chunks_exact(2);
     for pair in pairs.by_ref() {
         let config_name = &pair[0];
@@ -303,6 +314,18 @@ fn parse_zippy_inner(
                     .ok_or_else(|| {
                         anyhow_expr!(&config_value, "Must be: none | full | add-space-only")
                     })?;
+            }
+
+            SMART_SPACE_PUNCTUATION => {
+                if smart_space_punctuation_seen {
+                    bail_expr!(
+                        config_name,
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+                smart_space_punctuation_seen = true;
+                // Need to save and parse this later since it makes use of KEY_NAME_MAPPINGS.
+                smart_space_punctuation_val_expr = Some(config_value);
             }
 
             KEY_NAME_MAPPINGS => {
@@ -384,6 +407,35 @@ fn parse_zippy_inner(
     let rem = pairs.remainder();
     if !rem.is_empty() {
         bail_expr!(&rem[0], "zippy config name is missing its value");
+    }
+
+    if let Some(val) = smart_space_punctuation_val_expr {
+        config.zch_cfg_smart_space_punctuation = val
+            .list(s.vars())
+            .ok_or_else(|| {
+                anyhow_expr!(val, "{SMART_SPACE_PUNCTUATION} must be followed by a list")
+            })?
+            .iter()
+            .try_fold(vec![], |mut puncs, punc_expr| -> Result<Vec<ZchOutput>> {
+                let punc = punc_expr
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(&punc_expr, "Lists are not allowed"))?;
+
+                if punc.chars().count() == 1 {
+                    let c = punc.chars().next().expect("checked count above");
+                    if let Some(out) = user_cfg_char_to_output.get(&c) {
+                        puncs.push(*out);
+                        return Ok(puncs);
+                    }
+                }
+
+                let osc = str_to_oscode(punc)
+                    .ok_or_else(|| anyhow_expr!(&punc_expr, "Unknown key name"))?;
+                puncs.push(ZchOutput::Lowercase(osc));
+
+                Ok(puncs)
+            })?
+            .into_boxed_slice();
     }
 
     // process zippy file
