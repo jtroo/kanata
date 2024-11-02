@@ -24,7 +24,7 @@ use kanata_keyberon::key_code::KeyCode;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
-pub const LLHOOK_IDLE_TIME_CLEAR_INPUTS: u64 = 60;
+pub const LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS: u64 = 60;
 
 type HookFn = dyn FnMut(InputEvent) -> bool;
 
