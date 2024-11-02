@@ -354,7 +354,7 @@ impl ZchState {
                 #[cfg(feature = "interception_driver")]
                 let mut send_count = 0;
 
-                if self.zchd.zchd_is_altgr_active {
+                if self.zchd.zchd_is_altgr_active && !a.zch_output.is_empty() {
                     kb.release_key(OsCode::KEY_RIGHTALT)?;
                 }
 
@@ -468,7 +468,7 @@ impl ZchState {
                         kb.press_key(OsCode::KEY_RIGHTSHIFT)?;
                     }
                 }
-                if self.zchd.zchd_is_altgr_active {
+                if self.zchd.zchd_is_altgr_active && !a.zch_output.is_empty() {
                     kb.press_key(OsCode::KEY_RIGHTALT)?;
                 }
 

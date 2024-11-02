@@ -464,3 +464,108 @@ fn sim_zippychord_smartspace_followup() {
         result
     );
 }
+
+const CUSTOM_PUNC_CFG: &str = "\
+(defsrc)
+(deflayer base)
+(defzippy-experimental file
+ smart-space full
+ smart-space-punctuation (z ! ® *)
+ output-character-mappings (
+   ® AG-r
+   * S-AG-v
+   ! S-1))";
+
+#[test]
+fn sim_zippychord_smartspace_custom_punc() {
+    // 1 without lsft: no smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:D t:10ms dn:BSpace up:BSpace \
+         up:D dn:D dn:A up:A up:Y dn:Y dn:Space up:Space \
+         t:10ms up:D t:1ms up:Y t:9ms \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:LShift dn:M up:M up:LShift dn:O up:O dn:N up:N dn:D up:D dn:A up:A dn:Y up:Y dn:Space up:Space",
+        result
+    );
+
+    // S-1 = !: smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:1 d:2 t:10 u:1 u:2 t:10 d:lsft d:1 u:1 u:lsft t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace \
+         dn:H up:H dn:I up:I dn:Space up:Space t:9ms \
+         up:Kb1 t:1ms up:Kb2 t:9ms \
+         dn:LShift t:1ms dn:BSpace up:BSpace dn:Kb1 t:1ms up:Kb1 t:1ms up:LShift",
+        result
+    );
+
+    // z: smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:1 d:2 t:10 u:1 u:2 t:10 d:z u:z t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace \
+         dn:H up:H dn:I up:I dn:Space up:Space t:9ms \
+         up:Kb1 t:1ms up:Kb2 t:9ms \
+         dn:BSpace up:BSpace dn:Z t:1ms up:Z",
+        result
+    );
+
+    // r no altgr: no smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:1 d:2 t:10 u:1 u:2 t:10 d:r u:r t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace \
+         dn:H up:H dn:I up:I dn:Space up:Space t:9ms \
+         up:Kb1 t:1ms up:Kb2 t:9ms \
+         dn:R t:1ms up:R",
+        result
+    );
+
+    // r with altgr: smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:1 d:2 t:10 u:1 u:2 t:10 d:ralt d:r u:r u:ralt t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace \
+         dn:H up:H dn:I up:I dn:Space up:Space t:9ms \
+         up:Kb1 t:1ms up:Kb2 t:9ms \
+         dn:RAlt t:1ms dn:BSpace up:BSpace dn:R t:1ms up:R t:1ms up:RAlt",
+        result
+    );
+
+    // v with altgr+lsft: smart-space-erase
+    let result = simulate_with_file_content(
+        CUSTOM_PUNC_CFG,
+        "d:1 d:2 t:10 u:1 u:2 t:10 d:ralt d:lsft d:v u:v u:ralt u:lsft t:300",
+        Some(ZIPPY_FILE_CONTENT),
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Kb1 t:1ms dn:BSpace up:BSpace \
+         dn:H up:H dn:I up:I dn:Space up:Space t:9ms \
+         up:Kb1 t:1ms up:Kb2 t:9ms \
+         dn:RAlt t:1ms dn:LShift t:1ms dn:BSpace up:BSpace dn:V t:1ms up:V t:1ms up:RAlt t:1ms up:LShift",
+        result
+    );
+}
