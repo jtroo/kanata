@@ -1979,6 +1979,11 @@ impl Kanata {
         });
     }
 
+    /// Returns `true` if kanata's processing thread loop can block on the channel instead of doing
+    /// a non-blocking channel read and then sleeping for ~1ms.
+    ///
+    /// In addition to doing the logic for the above, this mutates the `waiting_for_idle` state
+    /// used by the `on-idle` action for virtual keys.
     pub fn can_block_update_idle_waiting(&mut self, ms_elapsed: u16) -> bool {
         let k = self;
         let is_idle = k.is_idle();
