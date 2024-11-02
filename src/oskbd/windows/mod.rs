@@ -128,15 +128,8 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
 
             let code_u32 = code as u32;
             kb_input.dwFlags |= KEYEVENTF_SCANCODE;
-            #[cfg(not(feature = "win_llhook_read_scancodes"))]
-            {
-                kb_input.wScan = MapVirtualKeyA(code_u32, 0) as u16;
-            }
-            #[cfg(feature = "win_llhook_read_scancodes")]
-            {
-                kb_input.wScan =
-                    osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
-            }
+            kb_input.wScan =
+                osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
             if kb_input.wScan == 0 {
                 kb_input.dwFlags &= !KEYEVENTF_SCANCODE;
                 kb_input.wVk = code;
@@ -150,7 +143,11 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
         }
         #[cfg(not(feature = "win_sendinput_send_scancodes"))]
         {
-            kb_input.wVk = code;
+            use kanata_parser::keys::*;
+            kb_input.wVk = match code {
+                VK_KPENTER_FAKE => VK_RETURN as u16,
+                _ => code,
+            };
         }
 
         let mut inputs: [INPUT; 1] = mem::zeroed();
