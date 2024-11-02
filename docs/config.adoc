@@ -3970,3 +3970,262 @@ And key names are defined in the https://github.com/jtroo/kanata/blob/main/parse
 for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1
 
 Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
+
+[[zippychord]]
+=== Zippychord
+<<table-of-contents,Back to ToC>>
+
+==== Reference
+
+You may define a single `+defzippy-experimental+` configuration item.
+As suggested by the -experimental label, this feature is relatively recent.
+When using this you are at higher likelihood of bugs and breaking changes.
+
+===== Configuration syntax within the kanata configuration
+
+[source]
+----
+(defzippy-experimental
+  $zippy-filename ;; required
+  on-first-press-chord-deadline $deadline-millis  ;; optional
+  idle-reactivate-time          $idle-time-millis ;; optional
+  smart-space                   $smart-space-cfg  ;; optional
+  smart-space-punctuation (                       ;; optional
+    $punc1 $punc2 ... $puncN)
+  output-character-mappings (    ;; optional
+    $character1 $output-mapping1
+    $character2 $output-mapping2
+    ;; ...
+    $characterN $output-mappingN
+  )
+)
+----
+
+[cols="1,2"]
+|===
+| `$zippy-filename`
+| Relative or absolute file path.
+If relative, its path is relative to
+the directory containing the kanata configuration file.
+This must be the first item following `defzippy-experimental`.
+
+| `$deadline-millis` for `on-first-press-chord-deadline`
+| Number of milliseconds.
+After the first press while zippy is enabled,
+if no chord activates within this configured time,
+zippy is temporarily disabled.
+
+| `$idle-time-millis` for `idle-reactivate-time`
+| Number of milliseconds.
+After typing ends and this configured number of milliseconds elapses,
+zippy will be re-enabled from being temporarily disabled.
+
+| `$smart-space-cfg` for `smart-space`
+| Determines the smart space behaviour.
+The options are `none | add-space-only | full`.
+With `none`, outputs are typed as-is.
+With `add-space-only`, spaces are automatically added after outputs
+which end with neither a space or a backspace ⌫.
+With `full`, the `add-space-only` behaviour applies
+and additional behaviour is active:
+typing punctuation — US-layout `, . ;` by default —
+after a zippy activation will delete a prior automatically-added space.
+
+| `$puncN` for `smart-space-punctuation`
+| A character defined in `output-character-mappings`
+or a known key name, which shall be considered as punctuation.
+The full list within `smart-space-punctuation`
+will overwrite the default punctuation list
+considered by smart-space.
+
+| `$characterN` for `output-character-mappings`
+| A single unicode character for use
+in the output column of the zippy configuration file.
+
+| `$output-mappingN` for `output-character-mappings`
+| Key or output chord to tell kanata how to type `$characterN`
+when seen in the zippy file output column.
+Must be a single key or output chord.
+The output chord may contain `AG-` to tell kanata to press with AltGr
+and may contain `S-` to tell kanata to press with Shift.
+|===
+
+Regarding output mappings,
+you can configure the output of the special-lisp-syntax characters
+`+) ( "+` via these lines:
+
+[source]
+----
+    ")"    $right-paren-output
+    "("    $left-paren-output
+    r#"""# $double-quote-output
+----
+
+As an example, for the US layout these should be the correct lines:
+
+[source]
+----
+    ")"     S-0
+    "("     S-9
+    r#"""#  S-'
+----
+
+===== Configuration syntax within the zippy configuration file
+
+[source]
+----
+// This is a comment.
+//          inputs            ↹  outputs
+$chord1 $follow-chord1.1...1.M	$output1
+$chord2 $follow-chord2.1...2.M	$output2
+// ...
+$chordN $follow-chordN.1...N.M	$outputN
+----
+
+The format is two columns separated by a single Tab character.
+The first column is input and the second is output.
+
+[cols="1,2"]
+|===
+|`$chordN`
+| A set of characters.
+You can use space by including it as the first character in the chord;
+for an example see `Alphabet` in the sample below.
+With 0 optional follow chords,
+the corresponding output on the same line (`$outputN`)
+will activate when zippy is enabled
+and all the defined chord keys are pressed simultaneously.
+The order of presses is not important.
+
+| `$chord-followN.M`
+| 0 or more chords, used the same way as `$chordN`.
+Having follow chords means the `$outputN` on the same line
+will activate upon first activating the earlier chord(s) in the same line,
+releasing all keys, and pressing the keys in `$chord-followN.M`.
+Follow chords are separated from the previous chord by a space.
+If using a space in the follow chord, use two spaces;
+for an example see `Washington` in the sample below.
+
+| `$outputN`
+| The characters to type when the chord and optional follow chord(s)
+are all pressed by the user.
+This is separated from the input `$chordN $follow-chordN.1...N.M` column
+by a single Tab character.
+The characters are typed in sequence
+and must all be singular-name key names
+as one would configure in `defsrc`.
+As an exception, capitalized single-character key names
+will be parsed successfully
+and these will be outputted alongside Shift to output the capital key.
+Additionally, `output-character-mappings` configuration can be used
+to inform kanata of additional mappings that may use Shift or AltGr.
+|===
+
+==== Sample kanata configuration
+
+[source]
+----
+(defzippy-experimental
+  zippy.txt
+  on-first-press-chord-deadline 500
+  idle-reactivate-time          500
+  smart-space-punctuation (? ! . , ; :)
+  output-character-mappings (
+    ;; This should work for US international.
+    ! S-1
+    ? S-/
+    % S-5
+    "(" S-9
+    ")" S-0
+    : S-;
+    < S-,
+    > S-.
+    r#"""# S-'
+    | S-\
+    _ S--
+    ® AG-r
+  )
+)
+----
+
+==== Sample zippy file content
+
+[source]
+----
+dy	day
+dy 1	Monday
+dy 2	Tuesday
+ abc	alphabet
+ w  a	Washington
+gi	git
+gi f p	git fetch -p
+----
+
+==== Description
+
+Zippychord is yet another chording mechanism in Kanata.
+The inspiration behind it is primarily the
+https://github.com/psoukie/zipchord[zipchord project].
+The name is similar; it is named "zippy" instead of "zip" because
+Kanata's implementation is not a port and does not aim for 100%
+behavioural compatibility.
+
+The intended use case is shorthands, or accelerating character output.
+Within zippychord, inputs are keycode chords or sequences,
+and the outputs are also purely keycodes.
+In other words, all other actions are unsupported;
+e.g. layers, switch, one-shot.
+
+Zippychord behaves on outputted keycodes, i.e. the key outputs
+after kanata has finished processing your
+inputs, layers, switch logic and other configurations.
+This is similar to how sequences operate
+and is unlike chords(v1) and chordsv2.
+Furthermore, outputs are all eager like `visible-backspaced` on sequences.
+If a zippchord activation occurs, typed keys are backspaced.
+
+To give an example, if one configures zippychord with a line like:
+
+[source]
+----
+gi	git
+----
+
+then either of the following typing event sequences
+will erase the input characters
+and then proceed to type the output "git"
+like if it was `(macro bspc bspc g i t)`.
+
+[source]
+----
+(press g) (press i)
+(press i) (press g)
+----
+
+Note that there aren't any release events listed.
+To contrast, the following event sequence would not result in an activation:
+
+[source]
+----
+(press g) (release g) (press i)
+----
+
+Zippychord supports fully overlapping chords and sequences.
+For example, this configuration is allowed:
+
+[source]
+----
+gi	git␣
+gi s	git␣status
+gi c	git checkout␣
+gi c b	git checkout -b␣
+gi c a	git commit --amend␣
+gi c n	git commit --amend --no-edit
+gi c a m	git commit --amend -m 'FIX_THIS_COMMIT_MESSAGE'
+----
+
+When you begin with the `(g i)` chord, you can follow up
+with various character sequences to output different git commands.
+This use case is quite similar to git aliases.
+One advantage of zippychord is that it eagerly shows you
+the true underlying command as you type.

@@ -93,6 +93,9 @@ pub use key_outputs::*;
 mod permutations;
 use permutations::*;
 
+mod zippychord;
+pub use zippychord::*;
+
 use crate::lsp_hints::{self, LspHints};
 
 mod str_ext;
@@ -221,7 +224,7 @@ type TapHoldCustomFunc =
     ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
 
 pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a &'a [&'a CustomAction]>;
-pub type KeySeqsToFKeys = Trie;
+pub type KeySeqsToFKeys = Trie<(u8, u16)>;
 
 pub struct KanataLayout {
     layout: KLayout,
@@ -271,6 +274,8 @@ pub struct Cfg {
     pub fake_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
+    /// Zipchord-like configuration.
+    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
 }
 
 /// Parse a new configuration from a file.
@@ -278,14 +283,17 @@ pub fn new_from_file(p: &Path) -> MResult<Cfg> {
     parse_cfg(p)
 }
 
-pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
+pub fn new_from_str(cfg_text: &str, file_content: Option<String>) -> MResult<Cfg> {
     let mut s = ParserState::default();
     let icfg = parse_cfg_raw_string(
         cfg_text,
         &mut s,
         &PathBuf::from("configuration"),
         &mut FileContentProvider {
-            get_file_content_fn: &mut |_| Err("include is not supported".into()),
+            get_file_content_fn: &mut move |_| match &file_content {
+                Some(s) => Ok(s.clone()),
+                None => Err("include is not supported".into()),
+            },
         },
         DEF_LOCAL_KEYS,
         Err("environment variables are not supported".into()),
@@ -322,6 +330,7 @@ pub fn new_from_str(cfg_text: &str) -> MResult<Cfg> {
         overrides: icfg.overrides,
         fake_keys,
         switch_max_key_timing,
+        zippy: icfg.zippy,
     })
 }
 
@@ -373,6 +382,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         overrides: icfg.overrides,
         fake_keys,
         switch_max_key_timing,
+        zippy: icfg.zippy,
     })
 }
 
@@ -409,6 +419,7 @@ pub struct IntermediateCfg {
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
     pub start_action: Option<&'static KanataAction>,
+    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -878,6 +889,29 @@ pub fn parse_cfg_raw_string(
         .into());
     }
 
+    let zippy_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defzippy-experimental"))
+        .collect::<Vec<_>>();
+    let zippy = match zippy_exprs.len() {
+        0 => None,
+        1 => {
+            let zippy = parse_zippy(zippy_exprs[0], s, file_content_provider)?;
+            Some(zippy)
+        }
+        _ => {
+            let spanned = spanned_root_exprs
+                .iter()
+                .filter(gen_first_atom_filter_spanned("defzippy-experimental"))
+                .nth(1)
+                .expect("> 2 overrides");
+            bail_span!(
+                spanned,
+                "Only one defzippy allowed, found more.\nDelete the extras."
+            )
+        }
+    };
+
     #[cfg(feature = "lsp")]
     LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
         s.lsp_hints
@@ -898,6 +932,7 @@ pub fn parse_cfg_raw_string(
         overrides,
         chords_v2,
         start_action,
+        zippy,
     })
 }
 
@@ -932,6 +967,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deftemplate"
                 | "defchordsv2"
                 | "defchordsv2-experimental"
+                | "defzippy-experimental"
                 | "defseq" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })

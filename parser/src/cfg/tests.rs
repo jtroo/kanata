@@ -314,6 +314,13 @@ fn parse_file_with_utf8_bom() {
 }
 
 #[test]
+#[cfg(feature = "zippychord")]
+fn parse_zippychord_file() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/testzch.kbd")).unwrap();
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))

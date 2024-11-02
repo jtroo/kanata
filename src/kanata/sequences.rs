@@ -93,7 +93,7 @@ pub(super) fn do_sequence_press_logic(
     k: &KeyCode,
     mod_mask: u16,
     kbd_out: &mut KbdOut,
-    sequences: &kanata_parser::trie::Trie,
+    sequences: &kanata_parser::trie::Trie<(u8, u16)>,
     sequence_backtrack_modcancel: bool,
     layout: &mut BorrowedKLayout,
 ) -> Result<(), anyhow::Error> {

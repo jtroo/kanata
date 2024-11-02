@@ -269,10 +269,9 @@ static CHORD_WITH_TRANSPARENCY: &str = "\
 )";
 
 #[test]
+#[should_panic]
 fn sim_denies_transparent() {
-    Kanata::new_from_str(CHORD_WITH_TRANSPARENCY)
-        .map(|_| ())
-        .expect_err("trans in defchordsv2 should error");
+    simulate(CHORD_WITH_TRANSPARENCY, "");
 }
 
 #[test]

@@ -118,7 +118,7 @@ indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
 
 [features]
-default = ["tcp_server","win_sendinput_send_scancodes"]
+default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []
 tcp_server = ["serde_json"]
 win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
@@ -137,6 +137,7 @@ gui = ["win_manifest","kanata-parser/gui",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
+zippychord = ["kanata-parser/zippychord"]
 
 [profile.release]
 opt-level = "z"
