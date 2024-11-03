@@ -98,23 +98,24 @@ impl Kanata {
     /// Kanata has no information available from the larger Windows system
     /// to confirm that the physical key is actually released
     /// but that the process didn't see the event.
-    /// E.g. there is the `GetKeyboardState` API
+    /// E.g. there is the `GetAsyncKeyState` API
     /// and this will be useful when the missed release has a key output,
     /// but not with the layer example.
     /// There does not appear to be any "raw input" mechanism
     /// to see the snapshot of the current state of physical keyboard keys.
     ///
-    /// For (2), consider that this might be fixed purely within Kanata
-    /// by checking Kanata's active action states,
+    /// For (2), consider that this might be fixed purely within Kanata's
+    /// event handling and processing, by checking Kanata's active action states,
     /// and if there are no active states corresponding to a released event,
     /// to send a release of the original input.
     /// This would result in extra release events though;
     /// for example if the `A` key action is `(macro a)`,
     /// the above logic will result in a second SendInput release event of `A`.
+    /// Instead, this function checks against the outside Windows state.
     ///
     /// The solution makes use of the following states:
     /// - `MAPPED_KEYS` (MK)
-    /// - `GetKeyboardState` WinAPI (GKS)
+    /// - `GetAsyncKeyState` WinAPI (GKS)
     /// - `PRESSED_KEYS` (PK)
     /// - `self.prev_keys` (SPV)
     ///
@@ -126,28 +127,19 @@ impl Kanata {
     /// 1. For all of SPV, check that it is pressed in GKS.
     ///    If a key is not pressed, find the coordinate of this state.
     ///    Clear in PK and clear all states with the same coordinate as key output.
-    /// 2. For all active in GKS and exists in MK, check it is in SPV.
-    ///    If not in SPV, call SendInput to release.
+    /// 2. For all keys in MK and active in GKS, check it is in SPV.
+    ///    If not in SPV, call SendInput to release in Windows.
     #[cfg(not(feature = "simulated_input"))]
     pub(crate) fn win_synchronize_keystates(&mut self) {
         use kanata_keyberon::layout::*;
-        use winapi::um::errhandlingapi::*;
         use winapi::um::winuser::*;
 
         log::debug!("synchronizing win keystates");
-        let mut win_key_states = [0u8; 256];
-        let res = unsafe { GetKeyboardState(win_key_states.as_mut_ptr()) };
-        if res == 0 {
-            let err_code = unsafe { GetLastError() };
-            log::error!("GetKeyboardState returned error code: {err_code}");
-            return;
-        }
-
         for pvk in self.prev_keys.iter() {
             // Check 1 : each pvk is expected to be pressed.
             let osc: OsCode = pvk.into();
-            let idx = usize::from(osc);
-            let vk_state = win_key_states[idx];
+            let vk = i32::from(osc);
+            let vk_state = unsafe { GetAsyncKeyState(vk) } as u32;
             let is_pressed_in_windows = vk_state >= 0b1000000;
             if is_pressed_in_windows {
                 continue;
@@ -189,10 +181,16 @@ impl Kanata {
             drop(pressed_keys);
         }
 
-        for (vk, vk_state) in win_key_states.iter().copied().enumerate() {
+        let mapped_keys = MAPPED_KEYS.lock();
+        for mapped_osc in mapped_keys.iter().copied() {
             // Check 2: each active win vk mapped in Kanata should have a value in pvk
+            let vk = i32::from(mapped_osc);
+            if vk >= 256 {
+                continue;
+            }
+            let vk_state = unsafe { GetAsyncKeyState(vk) } as u32;
             let is_pressed_in_windows = vk_state >= 0b1000000;
-            if is_pressed_in_windows {
+            if !is_pressed_in_windows {
                 continue;
             }
             let vk = vk as u16;
@@ -202,12 +200,10 @@ impl Kanata {
             if self.prev_keys.contains(&osc.into()) {
                 continue;
             }
-            if !MAPPED_KEYS.lock().contains(&osc) {
-                continue;
-            }
             log::error!("Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}");
             let _ = release_key(&mut self.kbd_out, osc);
         }
+        drop(mapped_keys);
     }
 }
 
