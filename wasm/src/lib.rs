@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use kanata_state_machine::{oskbd::*, *};
+use rustc_hash::FxHashMap;
 use wasm_bindgen::prelude::*;
 
 use std::sync::Once;
@@ -15,7 +16,8 @@ pub fn init() {
 
 #[wasm_bindgen]
 pub fn check_config(cfg: &str) -> JsValue {
-    let res = Kanata::new_from_str(cfg, None);
+    let (cfg, files) = split_cfg_and_sim_files(cfg);
+    let res = Kanata::new_from_str(&cfg, files);
     JsValue::from_str(&match res {
         Ok(_) => "Config is good!".to_owned(),
         Err(e) => format!("{e:?}"),
@@ -30,8 +32,49 @@ pub fn simulate(cfg: &str, sim: &str) -> JsValue {
     })
 }
 
-pub fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
-    let mut k = Kanata::new_from_str(cfg, None)?;
+fn split_cfg_and_sim_files(original_cfg: &str) -> (String, FxHashMap<String, String>) {
+    let mut cfg = String::new();
+    let mut file_name = None;
+    let mut file = String::new();
+    let mut sim_files = Default::default();
+
+    let mut original_lines = original_cfg.lines();
+    const FILE_PREFIX: &str = "=== file:";
+
+    // Parse main configuration.
+    // Must not consume whole iterator here.
+    #[allow(clippy::while_let_on_iterator)]
+    while let Some(line) = original_lines.next() {
+        if line.starts_with(FILE_PREFIX) {
+            file_name = line.strip_prefix(FILE_PREFIX);
+            break;
+        }
+        cfg.push_str(line);
+        cfg.push('\n');
+    }
+    if file_name.is_none() {
+        return (cfg, sim_files);
+    }
+
+    // Parse simulated sim_files.
+    for line in original_lines {
+        if line.starts_with(FILE_PREFIX) {
+            sim_files.insert(file_name.unwrap().to_string(), file.clone());
+            file_name = line.strip_prefix(FILE_PREFIX);
+            file.clear();
+            continue;
+        }
+        file.push_str(line);
+        file.push('\n');
+    }
+    // Save the last file
+    sim_files.insert(file_name.unwrap().to_string(), file.clone());
+    (cfg, sim_files)
+}
+
+fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
+    let (cfg, files) = split_cfg_and_sim_files(cfg);
+    let mut k = Kanata::new_from_str(&cfg, files)?;
     let mut accumulated_ticks = 0;
     for l in sim.lines() {
         for pair in l.split_whitespace() {

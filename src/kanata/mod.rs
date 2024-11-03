@@ -430,7 +430,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    pub fn new_from_str(cfg: &str, file_content: Option<String>) -> Result<Self> {
+    pub fn new_from_str(cfg: &str, file_content: HashMap<String, String>) -> Result<Self> {
         let cfg = match cfg::new_from_str(cfg, file_content) {
             Ok(c) => c,
             Err(e) => {

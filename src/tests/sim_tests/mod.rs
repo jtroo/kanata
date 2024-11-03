@@ -10,6 +10,8 @@ use crate::{
     str_to_oscode, Kanata,
 };
 
+use rustc_hash::FxHashMap;
+
 mod block_keys_tests;
 mod capsword_sim_tests;
 mod chord_sim_tests;
@@ -24,17 +26,20 @@ mod unmod_sim_tests;
 mod zippychord_sim_tests;
 
 fn simulate<S: AsRef<str>>(cfg: S, sim: S) -> String {
-    simulate_with_file_content(cfg, sim, None)
+    simulate_with_file_content(cfg, sim, Default::default())
 }
 
-fn simulate_with_file_content<S: AsRef<str>>(cfg: S, sim: S, file_content: Option<S>) -> String {
+fn simulate_with_file_content<S: AsRef<str>>(
+    cfg: S,
+    sim: S,
+    file_content: FxHashMap<String, String>,
+) -> String {
     init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let mut k = Kanata::new_from_str(cfg.as_ref(), file_content.map(|s| s.as_ref().to_owned()))
-        .expect("failed to parse cfg");
+    let mut k = Kanata::new_from_str(cfg.as_ref(), file_content).expect("failed to parse cfg");
     for pair in sim.as_ref().split_whitespace() {
         match pair.split_once(':') {
             Some((kind, val)) => match kind {

@@ -20,13 +20,19 @@ rqa	request␣assistance
 1234	bye
 ";
 
+fn simulate_with_zippy_file_content(cfg: &str, input: &str, content: &str) -> String {
+    let mut fcontent = FxHashMap::default();
+    fcontent.insert("file".into(), content.into());
+    simulate_with_file_content(cfg, input, fcontent)
+}
+
 #[test]
 fn sim_zippychord_capitalize() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:a t:10 d:b t:10 d:spc t:10 d:c u:a u:b u:c u:spc t:300 \
          d:a t:10 d:b t:10 d:spc t:10 d:c t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -45,10 +51,10 @@ fn sim_zippychord_capitalize() {
 
 #[test]
 fn sim_zippychord_followup_with_prev() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -63,10 +69,10 @@ fn sim_zippychord_followup_with_prev() {
 
 #[test]
 fn sim_zippychord_followup_no_prev() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:r t:10 u:r t:10 d:d d:f t:10 t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -79,13 +85,13 @@ fn sim_zippychord_followup_no_prev() {
 
 #[test]
 fn sim_zippychord_washington() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:w d:spc t:10
          u:w u:spc t:10
          d:a d:spc t:10
          u:a u:spc t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -100,10 +106,10 @@ fn sim_zippychord_washington() {
 
 #[test]
 fn sim_zippychord_overlap() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:r t:10  d:q t:10 d:a t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -117,7 +123,7 @@ fn sim_zippychord_overlap() {
         result
     );
     let result =
-        simulate_with_file_content(ZIPPY_CFG, "d:1 d:2 d:3 d:4 t:20", Some(ZIPPY_FILE_CONTENT))
+        simulate_with_zippy_file_content(ZIPPY_CFG, "d:1 d:2 d:3 d:4 t:20", ZIPPY_FILE_CONTENT)
             .to_ascii();
     assert_eq!(
         "dn:Kb1 t:1ms dn:BSpace up:BSpace dn:H up:H dn:I up:I t:1ms dn:Kb3 t:1ms \
@@ -130,20 +136,20 @@ fn sim_zippychord_overlap() {
 #[test]
 fn sim_zippychord_lsft() {
     // test lsft behaviour while pressed
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lsft t:10 d:d t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
         "dn:LShift t:10ms dn:D t:10ms dn:BSpace up:BSpace up:D dn:D up:LShift dn:A up:A up:Y dn:Y dn:LShift",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lsft t:10 d:x t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -153,20 +159,20 @@ fn sim_zippychord_lsft() {
     );
 
     // ensure lsft-held behaviour goes away when released
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lsft t:10 d:d u:lsft t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
         "dn:LShift t:10ms dn:D t:1ms up:LShift t:9ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lsft t:10 d:x u:lsft t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -179,20 +185,20 @@ fn sim_zippychord_lsft() {
 #[test]
 fn sim_zippychord_rsft() {
     // test rsft behaviour while pressed
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:rsft t:10 d:d t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
         "dn:RShift t:10ms dn:D t:10ms dn:BSpace up:BSpace up:D dn:D up:RShift dn:A up:A up:Y dn:Y dn:RShift",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:rsft t:10 d:x t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -202,20 +208,20 @@ fn sim_zippychord_rsft() {
     );
 
     // ensure rsft-held behaviour goes away when released
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:rsft t:10 d:d u:rsft t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
         "dn:RShift t:10ms dn:D t:1ms up:RShift t:9ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:rsft t:10 d:x u:rsft t:10 d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -227,10 +233,10 @@ fn sim_zippychord_rsft() {
 
 #[test]
 fn sim_zippychord_caps_word() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lalt u:lalt t:10 d:d t:10 d:y t:10 u:d u:y t:10 d:spc u:spc t:2000 d:d d:y t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -239,10 +245,10 @@ fn sim_zippychord_caps_word() {
          t:1999ms dn:D t:1ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:lalt t:10 d:y t:10 d:x t:10 u:x u:y t:10 d:spc u:spc t:1000 d:y d:x t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -257,10 +263,10 @@ fn sim_zippychord_caps_word() {
 
 #[test]
 fn sim_zippychord_triple_combo() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:. d:g t:10 u:. u:g d:f t:10 u:f d:p t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -276,10 +282,10 @@ fn sim_zippychord_triple_combo() {
 
 #[test]
 fn sim_zippychord_disabled_by_typing() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:v u:v t:10 d:d d:y t:100",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!("dn:V t:1ms up:V t:9ms dn:D t:1ms dn:Y", result);
@@ -287,10 +293,10 @@ fn sim_zippychord_disabled_by_typing() {
 
 #[test]
 fn sim_zippychord_prefix() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:p d:r u:p u:r t:10 d:q u:q t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -301,10 +307,10 @@ fn sim_zippychord_prefix() {
          dn:R up:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:1ms up:Q",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
         "d:p d:r d:a t:10 u:d u:r u:a",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii()
     .no_time()
@@ -319,11 +325,11 @@ fn sim_zippychord_prefix() {
 
 #[test]
 fn sim_zippychord_smartspace_full() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space full)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -333,11 +339,11 @@ fn sim_zippychord_smartspace_full() {
     );
 
     // Test that prefix works as intended.
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -350,11 +356,11 @@ fn sim_zippychord_smartspace_full() {
 
 #[test]
 fn sim_zippychord_smartspace_spaceonly() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space add-space-only)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -364,11 +370,11 @@ fn sim_zippychord_smartspace_spaceonly() {
     );
 
     // Test that prefix works as intended.
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -381,11 +387,11 @@ fn sim_zippychord_smartspace_spaceonly() {
 
 #[test]
 fn sim_zippychord_smartspace_none() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space none)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -395,11 +401,11 @@ fn sim_zippychord_smartspace_none() {
     );
 
     // Test that prefix works as intended.
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -412,11 +418,11 @@ fn sim_zippychord_smartspace_none() {
 
 #[test]
 fn sim_zippychord_smartspace_overlap() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space full)",
         "d:r t:10 d:q t:10 d:a t:10",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -430,11 +436,11 @@ fn sim_zippychord_smartspace_overlap() {
         dn:Space up:Space",
         result
     );
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space full)",
         "d:1 d:2 d:3 d:4 t:20",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -448,11 +454,11 @@ fn sim_zippychord_smartspace_overlap() {
 
 #[test]
 fn sim_zippychord_smartspace_followup() {
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         "(defsrc)(deflayer base)(defzippy-experimental file
          smart-space full)",
         "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -479,10 +485,10 @@ const CUSTOM_PUNC_CFG: &str = "\
 #[test]
 fn sim_zippychord_smartspace_custom_punc() {
     // 1 without lsft: no smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -495,10 +501,10 @@ fn sim_zippychord_smartspace_custom_punc() {
     );
 
     // S-1 = !: smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:1 d:2 t:10 u:1 u:2 t:10 d:lsft d:1 u:1 u:lsft t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -510,10 +516,10 @@ fn sim_zippychord_smartspace_custom_punc() {
     );
 
     // z: smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:1 d:2 t:10 u:1 u:2 t:10 d:z u:z t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -525,10 +531,10 @@ fn sim_zippychord_smartspace_custom_punc() {
     );
 
     // r no altgr: no smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:1 d:2 t:10 u:1 u:2 t:10 d:r u:r t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -540,10 +546,10 @@ fn sim_zippychord_smartspace_custom_punc() {
     );
 
     // r with altgr: smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:1 d:2 t:10 u:1 u:2 t:10 d:ralt d:r u:r u:ralt t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(
@@ -555,10 +561,10 @@ fn sim_zippychord_smartspace_custom_punc() {
     );
 
     // v with altgr+lsft: smart-space-erase
-    let result = simulate_with_file_content(
+    let result = simulate_with_zippy_file_content(
         CUSTOM_PUNC_CFG,
         "d:1 d:2 t:10 u:1 u:2 t:10 d:ralt d:lsft d:v u:v u:ralt u:lsft t:300",
-        Some(ZIPPY_FILE_CONTENT),
+        ZIPPY_FILE_CONTENT,
     )
     .to_ascii();
     assert_eq!(

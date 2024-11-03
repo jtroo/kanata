@@ -358,7 +358,7 @@ impl ZchState {
                     kb.release_key(OsCode::KEY_RIGHTALT)?;
                 }
 
-                for key_to_send in &a.zch_output {
+                for key_to_send in a.zch_output.iter().copied() {
                     #[cfg(feature = "interception_driver")]
                     {
                         // Note: every 5 keys on Windows Interception, do a sleep because
@@ -372,12 +372,12 @@ impl ZchState {
 
                     let typed_osc = match key_to_send {
                         ZchOutput::Lowercase(osc) => {
-                            type_osc(*osc, kb, &self.zchd)?;
+                            type_osc(osc, kb, &self.zchd)?;
                             osc
                         }
                         ZchOutput::Uppercase(osc) => {
                             maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
-                            type_osc(*osc, kb, &self.zchd)?;
+                            type_osc(osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
                             osc
                         }
@@ -392,21 +392,21 @@ impl ZchState {
                             // always released at the beginning and pressed at the end if it was
                             // previously being held.
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
-                            type_osc(*osc, kb, &self.zchd)?;
+                            type_osc(osc, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                             osc
                         }
                         ZchOutput::ShiftAltGr(osc) => {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
                             maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
-                            type_osc(*osc, kb, &self.zchd)?;
+                            type_osc(osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                             osc
                         }
                     };
 
-                    if *typed_osc == OsCode::KEY_BACKSPACE {
+                    if typed_osc == OsCode::KEY_BACKSPACE {
                         self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
                         // Improvement: there are many other keycodes that might be sent that
                         // aren't printable. But for now, just include backspace.

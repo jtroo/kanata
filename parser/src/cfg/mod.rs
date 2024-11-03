@@ -283,16 +283,18 @@ pub fn new_from_file(p: &Path) -> MResult<Cfg> {
     parse_cfg(p)
 }
 
-pub fn new_from_str(cfg_text: &str, file_content: Option<String>) -> MResult<Cfg> {
+pub fn new_from_str(cfg_text: &str, file_content: HashMap<String, String>) -> MResult<Cfg> {
     let mut s = ParserState::default();
     let icfg = parse_cfg_raw_string(
         cfg_text,
         &mut s,
         &PathBuf::from("configuration"),
         &mut FileContentProvider {
-            get_file_content_fn: &mut move |_| match &file_content {
+            get_file_content_fn: &mut move |fname| match file_content
+                .get(fname.to_string_lossy().as_ref())
+            {
                 Some(s) => Ok(s.clone()),
-                None => Err("include is not supported".into()),
+                None => Err("File is not known".into()),
             },
         },
         DEF_LOCAL_KEYS,
