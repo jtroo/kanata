@@ -77,6 +77,61 @@ impl Kanata {
         native_windows_gui::dispatch_thread_events();
         Ok(())
     }
+
+    /// On Windows with LLHOOK/SendInput APIs,
+    /// Kanata does not have as much control
+    /// over the full system's keystates as one would want;
+    /// unlike in Linux or with the Interception driver.
+    /// Sometimes Kanata can miss events; e.g. a release is
+    /// missed and a keystate remains pressed within Kanata (1),
+    /// or a press is missed in Kanata but the release is caught,
+    /// and thus the keystate remains pressed within the Windows system
+    /// because Kanata consumed the release and didn't know what to do about it (2).
+    ///
+    /// For (1), `release_normalkey_states` theoretically fixes the issue
+    /// after 60s of Kanata being idle,
+    /// but that is a long time and doesn't seem to work consistently.
+    /// Unfortunately this does not seem to be easily fixable in all cases.
+    /// For example, a press consumed by Kanata could result in
+    /// **only** a `(layer-while-held ...)` action as the output;
+    /// if the corresponding release were missed,
+    /// Kanata has no information available from the larger Windows system
+    /// to confirm that the physical key is actually released
+    /// but that the process didn't see the event.
+    /// E.g. there is the `GetKeyboardState` API
+    /// and this will be useful when the missed release has a key output,
+    /// but not with the layer example.
+    /// There does not appear to be any "raw input" mechanism
+    /// to see the snapshot of the current state of physical keyboard keys.
+    ///
+    /// For (2), consider that this might be fixed purely within Kanata
+    /// by checking Kanata's active action states,
+    /// and if there are no active states corresponding to a released event,
+    /// to send a release of the original input.
+    /// This would result in extra release events though;
+    /// for example if the `A` key action is `(macro a)`,
+    /// the above logic will result in a second SendInput release event of `A`.
+    ///
+    /// The solution makes use of the following states:
+    /// - `MAPPED_KEYS` (MK)
+    /// - `GetKeyboardState` WinAPI (GKS)
+    /// - `PRESSED_KEYS` (PK)
+    /// - `self.prev_keys` (SPV)
+    ///
+    /// If a discrepancy is detected,
+    /// this procedure releases Windows keys via SendInput
+    /// and/or clears internal Kanata states.
+    ///
+    /// The checks are:
+    /// 1. For all of SPV, check that it is pressed in GKS.
+    ///    If a key is not pressed, find the coordinate of this state.
+    ///    Clear in PK and clear all states with the same coordinate as key output.
+    /// 2. For all active in GKS and exists in MK, check it is in SPV.
+    ///    If not in SPV, call SendInput to release.
+    fn win_synchronize_keystates(&mut self) {
+        log::debug!("synchronizing win keystates");
+        todo!()
+    }
 }
 
 fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {

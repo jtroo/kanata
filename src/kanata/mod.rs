@@ -1788,6 +1788,15 @@ impl Kanata {
                     k.can_block_update_idle_waiting(ms_elapsed)
                 };
                 if can_block {
+                    log::debug!("checking win keystates");
+
+                    #[cfg(all(
+                        target_os = "windows",
+                        not(feature = "interception_driver"),
+                        not(feature = "simulated_input"),
+                    ))]
+                    kanata.lock().win_synchronize_keystates();
+
                     log::trace!("blocking on channel");
                     match rx.recv() {
                         Ok(kev) => {
