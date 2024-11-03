@@ -10,7 +10,7 @@ edition = "2021"
 crate-type = [ "cdylib", "rlib" ]
 
 [dependencies]
-wasm-bindgen = "0.2.92"
+wasm-bindgen = "0.2.95"
 kanata = { path = ".." , default-features = false, features = [ "simulated_output", "wasm" ] }
 anyhow = "1.0.81"
 log = "0.4.21"

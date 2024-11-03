@@ -1074,9 +1074,11 @@ impl Kanata {
         // Given that there appears to be no practical negative consequences for this bug
         // remaining.
         log::trace!("{:?}", &self.prev_keys);
+        let mut fwd_release = self.prev_keys.iter();
+        let mut rev_release = self.prev_keys.iter().rev();
         let keys: &mut dyn Iterator<Item = &KeyCode> = match reverse_release_order {
-            false => &mut self.prev_keys.iter(),
-            true => &mut self.prev_keys.iter().rev(),
+            false => &mut fwd_release,
+            true => &mut rev_release,
         };
         for k in keys {
             if cur_keys.contains(k) {
