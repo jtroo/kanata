@@ -308,6 +308,7 @@ Other similar projects:
 - [keyd](https://github.com/rvaiya/keyd): Linux-only key remapper very similar to QMK, kmonad, and kanata
 - [xremap](https://github.com/k0kubun/xremap): Linux-only application-aware key remapper inspired more by Emacs key sequences vs. QMK layers/Vim modes
 - [keymapper](https://github.com/houmain/keymapper): Context-aware cross-platform key remapper with a different transformation model (Linux, Windows, Mac)
+- [mouseless](https://github.com/jbensmann/mouseless): Linux-only mouse-focused key remapper that also has layers, key combo and tap-hold capabilities
 
 ### Why the list?
 
