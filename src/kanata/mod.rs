@@ -88,9 +88,11 @@ pub struct Kanata {
     /// Handle to the keyberon library layout.
     pub layout: cfg::KanataLayout,
     /// Reusable vec (to save on allocations) that stores the currently active output keys.
+    /// This can be cleared and reused in various procedures as buffer space.
     pub cur_keys: Vec<KeyCode>,
     /// Reusable vec (to save on allocations) that stores the active output keys from the previous
-    /// tick.
+    /// tick. This must only be updated once per tick and must not be modified outside of the one
+    /// procedure that updates it.
     pub prev_keys: Vec<KeyCode>,
     /// Used for printing layer info to the info log when changing layers.
     pub layer_info: Vec<LayerInfo>,
@@ -1788,8 +1790,6 @@ impl Kanata {
                     k.can_block_update_idle_waiting(ms_elapsed)
                 };
                 if can_block {
-                    log::debug!("checking win keystates");
-
                     #[cfg(all(
                         target_os = "windows",
                         not(feature = "interception_driver"),

@@ -130,9 +130,9 @@ impl Kanata {
     ///    If not in SPV, call SendInput to release.
     #[cfg(not(feature = "simulated_input"))]
     pub(crate) fn win_synchronize_keystates(&mut self) {
-        use winapi::um::winuser::*;
-        use winapi::um::errhandlingapi::*;
         use kanata_keyberon::layout::*;
+        use winapi::um::errhandlingapi::*;
+        use winapi::um::winuser::*;
 
         log::debug!("synchronizing win keystates");
         let mut win_key_states = [0u8; 256];
@@ -144,62 +144,69 @@ impl Kanata {
         }
 
         for pvk in self.prev_keys.iter() {
-            // Each pvk is expected to be pressed.
+            // Check 1 : each pvk is expected to be pressed.
             let osc: OsCode = pvk.into();
             let idx = usize::from(osc);
-            let wks = win_key_states[idx];
-            let is_pressed_in_windows = wks >= 0b1000000;
+            let vk_state = win_key_states[idx];
+            let is_pressed_in_windows = vk_state >= 0b1000000;
             if is_pressed_in_windows {
                 continue;
             }
 
-            log::error!("Unexpected keycode is pressed in kanata but not in Windows. Clearing it: {pvk}");
+            log::error!("Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}");
             // Need to clear internal state about this key.
-                // find coordinate(s) in keyberon associated with pvk
-                let mut coords_to_clear = Vec::<KCoord>::new();
-                let layout = self.layout.bm();
-                layout
-                    .states
-                    .retain(|s| {
-                        let retain = match s.keycode() {
-                            Some(k) => k != *pvk,
-                            _ => true,
-                        };
-                        if !retain {
-                            if let Some(coord) = s.coord() {
-                                coords_to_clear.push(coord);
-                            }
-                        }
-                        retain
-                    });
-
-                // Clear other states other than keycode associated with a keycode that needs to be
-                // cleaned up.
-                layout.states.retain(|s| {
-                    match s.coord() {
-                        Some(c) => !coords_to_clear.contains(&c),
-                        None => false,
+            // find coordinate(s) in keyberon associated with pvk
+            let mut coords_to_clear = Vec::<KCoord>::new();
+            let layout = self.layout.bm();
+            layout.states.retain(|s| {
+                let retain = match s.keycode() {
+                    Some(k) => k != *pvk,
+                    _ => true,
+                };
+                if !retain {
+                    if let Some(coord) = s.coord() {
+                        coords_to_clear.push(coord);
                     }
-                });
-
-                // Clear PRESSED_KEYS for coordinates associated with real and not virtual keys
-                let mut pressed_keys = PRESSED_KEYS.lock();
-                for osc in coords_to_clear
-                    .iter()
-                    .copied()
-                    .filter_map(|c| {
-                        match c {
-                            (FAKE_KEY_ROW, _) => None,
-                            (_, kc) => Some(OsCode::from(kc)),
-                        }
-                    })
-                {
-                    pressed_keys.remove(&osc);
                 }
-                drop(pressed_keys);
+                retain
+            });
+
+            // Clear other states other than keycode associated with a keycode that needs to be
+            // cleaned up.
+            layout.states.retain(|s| match s.coord() {
+                Some(c) => !coords_to_clear.contains(&c),
+                None => false,
+            });
+
+            // Clear PRESSED_KEYS for coordinates associated with real and not virtual keys
+            let mut pressed_keys = PRESSED_KEYS.lock();
+            for osc in coords_to_clear.iter().copied().filter_map(|c| match c {
+                (FAKE_KEY_ROW, _) => None,
+                (_, kc) => Some(OsCode::from(kc)),
+            }) {
+                pressed_keys.remove(&osc);
+            }
+            drop(pressed_keys);
         }
 
-        for (vk, state) in win_key_states.iter().copied().enumerate() {
+        for (vk, vk_state) in win_key_states.iter().copied().enumerate() {
+            // Check 2: each active win vk mapped in Kanata should have a value in pvk
+            let is_pressed_in_windows = vk_state >= 0b1000000;
+            if is_pressed_in_windows {
+                continue;
+            }
+            let vk = vk as u16;
+            let Some(osc) = OsCode::from_u16(vk) else {
+                continue;
+            };
+            if self.prev_keys.contains(&osc.into()) {
+                continue;
+            }
+            if !MAPPED_KEYS.lock().contains(&osc) {
+                continue;
+            }
+            log::error!("Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}");
+            let _ = release_key(&mut self.kbd_out, osc);
         }
     }
 }
