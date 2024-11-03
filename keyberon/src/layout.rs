@@ -293,14 +293,14 @@ impl<'a, T> Clone for State<'a, T> {
     }
 }
 impl<'a, T: 'a> State<'a, T> {
-    fn keycode(&self) -> Option<KeyCode> {
+    pub fn keycode(&self) -> Option<KeyCode> {
         match self {
             NormalKey { keycode, .. } => Some(*keycode),
             FakeKey { keycode } => Some(*keycode),
             _ => None,
         }
     }
-    fn coord(&self) -> Option<KCoord> {
+    pub fn coord(&self) -> Option<KCoord> {
         match self {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }

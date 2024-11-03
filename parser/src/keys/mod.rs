@@ -1189,6 +1189,12 @@ impl From<OsCode> for u32 {
     }
 }
 
+impl From<OsCode> for i32 {
+    fn from(item: OsCode) -> Self {
+        item.as_u16() as i32
+    }
+}
+
 impl From<OsCode> for u16 {
     fn from(item: OsCode) -> Self {
         item.as_u16()
