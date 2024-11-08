@@ -1785,7 +1785,7 @@ The number of milliseconds must be 0-65535.
 WARNING: The maximum milliseconds value of this configuration item
 across your whole configuration
 will be a lower bound of how long it takes for kanata to become idle
-and stop processing its state machine every approxmately 1ms.
+and stop processing its state machine every approximately 1ms.
 
 .Example:
 [source]
