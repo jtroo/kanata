@@ -1385,7 +1385,7 @@ The actions supported in `+macro+` are:
 * <<mouse-actions,mouse actions>>
 * <<repeat-key,repeat>>
 * <<live-reload,live reload>>
-* <<fake-keys,virtual keys/fake keys>>
+* <<virtual-keys,virtual keys>>
 * <<sequences,sequence leader>>
 * <<arbitrary-code,arbitrary keycode>>
 * <<dynamic-macro,dynamic macro>>
@@ -1501,26 +1501,6 @@ while recording with `(dynamic-macro-record 0)` will be ignored.
   dst (dynamic-macro-record-stop-truncate 1)
 )
 ----
-
-[[fork]]
-=== fork
-<<table-of-contents,Back to ToC>>
-
-The fork action accepts two actions and a key list.
-The first (left) action will activate by default.
-The second (right) action will activate
-if any of the keys in the third parameter (right-trigger-keys) are currently active.
-
-.Example:
-[source]
-----
-(defalias
-  frk (fork k @special (lalt ralt))
-)
-----
-
-TIP: the keys `nop0-nop9` can be used as no-op outputs that
-can still be checked within `fork`, unlike what `XX` does.
 
 [[caps-word]]
 === caps-word
@@ -1641,6 +1621,292 @@ rather than all modifiers.
 	unalt-a (unmod (lalt ralt) a)
 )
 ----
+
+[[fork]]
+=== fork
+<<table-of-contents,Back to ToC>>
+
+The fork action accepts two actions and a key list.
+The first (left) action will activate by default.
+The second (right) action will activate
+if any of the keys in the third parameter (right-trigger-keys) are currently active.
+
+.Example:
+[source]
+----
+(defalias
+  frk (fork k @special (lalt ralt))
+)
+----
+
+TIP: the keys `nop0-nop9` can be used as no-op outputs that
+can still be checked within `fork`, unlike what `XX` does.
+
+[[switch]]
+=== switch
+<<table-of-contents,Back to ToC>>
+
+Conceptually, the `switch` action is similar to <<fork>>
+but has more capabilities as well as more complexity.
+The `switch` action accepts multiple cases.
+One case is a triple of:
+
+- logic check
+- action: to activate if logic check evaluates to true
+- `fallthrough|break`: choose to continue vs. stop evaluating cases
+
+The default use of the logic check behaves similarly to fork.
+
+For example, the the logic check `(a b c)` will activate the corresponding action
+if any of a, b, or c are currently pressed.
+
+TIP: the keys `nop0-nop9` can be used as no-op outputs that
+can still be checked within `switch`, unlike what `XX` does.
+
+The logic check also accepts the boolean operators `and|or|not` to allow more
+complex use cases.
+
+The order of cases matters.
+For example, if two different cases match the currently pressed keys,
+the case listed earlier in the configuration will activate first.
+If the early case uses break, the second case will not activate.
+Otherwise if fallthrough is used,
+the second case will activate sequentially after the first case.
+This idea generalizes to more than two cases,
+but the two case example is hopefully simple and effective enough.
+
+.Example:
+[source]
+----
+(defalias
+  swt (switch
+    ;; case 1
+    ((and a b (or c d) (or e f))) @ac1 break
+    ;; case 2
+    (a b c) @ac2 fallthrough
+    ;; case 3
+    () @ac3 break
+  )
+)
+----
+
+Below is a description of how this example behaves.
+
+==== Case 1
+
+----
+((and a b (or c d) (or e f))) a break
+----
+
+Translating case 1's logic check to some other common languages
+might look like:
+
+----
+(a && b && (c || d) && (e || f))
+----
+
+If the logic check passes, the action `@ac1` will activate.
+No other action will activate since `break` is used.
+
+==== Cases 2 and 3
+
+----
+(a b c) c fallthrough
+() b break
+----
+
+Case 2's key check behaves like that of `fork`, i.e.
+
+    (or a b c)
+
+or for some other common languages:
+
+    a || b || c
+
+If this logic check passes and the case 1 does not pass,
+the action `@ac2` will activate first.
+Since the logic check of case 3 always passes, `@ac3` will activate next.
+
+If neither case 1 or case 2 pass their logic checks,
+case 3 will always activate with `@ac3`.
+
+[[key-history-and-key-timing]]
+==== key-history and key-timing
+
+In addition to simple keys there are two list items
+that can be used within the case logic check
+that compare against your typed key history:
+
+* `key-history`
+* `key-timing`
+
+The `key-history` item compares the order that keys were typed.
+It accepts, in order:
+
+* a key
+* the key recency
+
+The key recency must be in the range 1-8,
+where 1 is the most recent key that was pressed
+and 8 is 8th most recent key pressed.
+
+.Example:
+[source]
+----
+(defalias
+  swh (switch
+    ((key-history a 1)) S-a break
+    ((key-history b 1)) S-b break
+    ((key-history c 1)) S-c break
+    ((key-history d 8)) (macro d d d) break
+    () XX break
+  )
+)
+----
+
+The `key-timing` compares how long ago recent key typing events occurred.
+It accepts, in order,
+
+* the key recency
+* a comparison string, which is one of: `less-than|greater-than|lt|gt`
+* number of milliseconds to compare against
+
+The key recency must be in the range 1-8,
+where 1 is the most recent key that was pressed
+and 8 is 8th most recent key pressed.
+Most use cases are expected to use a value of 1 for this parameter,
+but perhaps you can find a creative use for the other values.
+
+The comparison string determines how the actual key event timing
+will be compared to the provided timing.
+
+The number of milliseconds must be 0-65535.
+
+WARNING: The maximum milliseconds value of this configuration item
+across your whole configuration
+will be a lower bound of how long it takes for kanata to become idle
+and stop processing its state machine every approxmately 1ms.
+
+.Example:
+[source]
+----
+(defalias
+  swh (switch
+    ((key-timing 1 less-than 200)) S-a break
+    ((key-timing 1 greater-than 500)) S-b break
+    ((key-timing 2 lt 1000)) S-c break
+    ((key-timing 8 gt 2000)) (macro d d d) break
+    () XX break
+  )
+)
+----
+
+==== not
+
+The examples presented so far have not included the `not` boolean operator.
+This operator will now be discussed.
+Syntactically, the `not` operator is used similarly to `or|and`.
+Functionally, it means "not **any** of" the list elements.
+
+.Example:
+[source]
+----
+(defalias
+  swn (switch
+    ((not x y z)) S-a break
+    ;; the above and below cases are equivalent in logic
+    ((not (or x y z))) S-a break
+  )
+)
+----
+
+In potentially more familiar notation, both cases have the logic:
+
+    !(x || y || z)
+
+==== input
+
+Until now, all `switch` logic has been associated to key code outputs.
+It is also possible to operate on inputs.
+Inputs can be either real keys or "virtual" (fake) keys.
+
+.Example:
+[source]
+----
+(defalias switch-input-example
+  (switch
+    ((input real lctl)) $ac1 break
+    ((input virtual vk1)) $ac2 break
+    () $ac3 break
+  )
+)
+----
+
+Similar to `key-history` for regular active keys,
+`input-history` also exists.
+
+NOTE:
+A perhaps surprising (but hopefully logical) behaviour of input-history
+when compared to key-history is that, at the time of switch activation,
+the history of `input-history` for recency `1` will be the just-pressed input.
+Whereas with `key-history` for example, the key that will be next outputted
+is of course still undetermined, so is not in the history.
+The consequence of this is that you should use a recency of `2`
+when referring to the previously pressed input
+because the current input is in the recency `1` slot.
+
+.Example:
+[source]
+----
+(defalias switch-input-history-example
+  (switch
+    ((input-history real lsft 2)) $var1 break
+    ((input-history virtual vk2 2)) $var1 break
+    () $ac3 break
+  )
+)
+----
+
+==== layer
+
+The `layer` list item can be used in `switch` logic to operate on the active layer.
+It accepts a single layer name
+and evaluates to true if the configured layer name is the active layer,
+otherwise it evaluates to false.
+
+.Example:
+[source]
+----
+(defalias switch-layer-example
+  (switch
+     ((layer base)) x break
+    ((layer other)) y break
+                 () z break
+  )
+)
+----
+
+==== base-layer
+
+The `base-layer` list item evaluates to true
+if the configured layer name is the base layer.
+The base layer is the most recently switched-to layer
+from a `layer-switch` action,
+or the first layer defined in your configuration
+if `layer-switch` has never been activated.
+
+.Example:
+[source]
+----
+(defalias switch-layer-example
+  (switch
+     ((base-layer base)) x break
+    ((base-layer other)) y break
+                 () z break
+  )
+)
+----
+
 
 [[cmd]]
 === cmd
@@ -2899,10 +3165,9 @@ a non-applicable operating system.
 )
 ----
 
-== Advanced/weird features[[advanced-weird-features]]
-
-[[fake-keys]]
-=== Virtual keys (a.k.a. fake keys)
+== Advanced features[[advanced-features]]
+[[virtual-keys]]
+=== Virtual keys
 <<table-of-contents,Back to ToC>>
 
 You can define up to 767 virtual keys.
@@ -2974,7 +3239,7 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
   isf (on-idle 1000 tap-vkey sft)
 )
 
-(deflayer use-fake-keys
+(deflayer use-virtual-keys
   @psf @rsf @tal @mac a s d f @isf
 )
 ----
@@ -3041,7 +3306,7 @@ The aforementioned `+<key action>+` can be one of four values:
   isf (on-idle-fakekey sft tap 1000)
 )
 
-(deflayer use-fake-keys
+(deflayer use-virtual-keys
   @psf @rsf @pal @ral a s d f @isf
 )
 ----
@@ -3052,7 +3317,7 @@ For more context, you can read the
 https://github.com/jtroo/kanata/issues/80[issue that sparked the creation of virtual keys].
 
 Something notable about virtual keys is that they don't always interrupt the state
-of an active `+tap-dance-eager+`. If a `macro` action is assigned to a fake
+of an active `+tap-dance-eager+`. If a `macro` action is assigned to a virtual
 key, this won't interrupt a tap dance. However, most other action types,
 notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
 
@@ -3400,270 +3665,6 @@ $env:VAR_NAME = "var_value"
 # bash
 VAR_NAME=var_value
 ----
-
-[[switch]]
-=== switch
-<<table-of-contents,Back to ToC>>
-
-The `switch` action accepts multiple cases.
-One case is a triple of:
-
-- logic check
-- action: to activate if logic check evaluates to true
-- `fallthrough|break`: choose to continue vs. stop evaluating cases
-
-The default use of the logic check behaves similarly to fork.
-
-For example, the the logic check `(a b c)` will activate the corresponding action
-if any of a, b, or c are currently pressed.
-
-TIP: the keys `nop0-nop9` can be used as no-op outputs that
-can still be checked within `switch`, unlike what `XX` does.
-
-The logic check also accepts the boolean operators `and|or|not` to allow more
-complex use cases.
-
-The order of cases matters.
-For example, if two different cases match the currently pressed keys,
-the case listed earlier in the configuration will activate first.
-If the early case uses break, the second case will not activate.
-Otherwise if fallthrough is used,
-the second case will activate sequentially after the first case.
-This idea generalizes to more than two cases,
-but the two case example is hopefully simple and effective enough.
-
-.Example:
-[source]
-----
-(defalias
-  swt (switch
-    ;; case 1
-    ((and a b (or c d) (or e f))) @ac1 break
-    ;; case 2
-    (a b c) @ac2 fallthrough
-    ;; case 3
-    () @ac3 break
-  )
-)
-----
-
-Below is a description of how this example behaves.
-
-==== Case 1
-
-----
-((and a b (or c d) (or e f))) a break
-----
-
-Translating case 1's logic check to some other common languages
-might look like:
-
-----
-(a && b && (c || d) && (e || f))
-----
-
-If the logic check passes, the action `@ac1` will activate.
-No other action will activate since `break` is used.
-
-==== Cases 2 and 3
-
-----
-(a b c) c fallthrough
-() b break
-----
-
-Case 2's key check behaves like that of `fork`, i.e.
-
-    (or a b c)
-
-or for some other common languages:
-
-    a || b || c
-
-If this logic check passes and the case 1 does not pass,
-the action `@ac2` will activate first.
-Since the logic check of case 3 always passes, `@ac3` will activate next.
-
-If neither case 1 or case 2 pass their logic checks,
-case 3 will always activate with `@ac3`.
-
-[[key-history-and-key-timing]]
-==== key-history and key-timing
-
-In addition to simple keys there are two list items
-that can be used within the case logic check
-that compare against your typed key history:
-
-* `key-history`
-* `key-timing`
-
-The `key-history` item compares the order that keys were typed.
-It accepts, in order:
-
-* a key
-* the key recency
-
-The key recency must be in the range 1-8,
-where 1 is the most recent key that was pressed
-and 8 is 8th most recent key pressed.
-
-.Example:
-[source]
-----
-(defalias
-  swh (switch
-    ((key-history a 1)) S-a break
-    ((key-history b 1)) S-b break
-    ((key-history c 1)) S-c break
-    ((key-history d 8)) (macro d d d) break
-    () XX break
-  )
-)
-----
-
-The `key-timing` compares how long ago recent key typing events occurred.
-It accepts, in order,
-
-* the key recency
-* a comparison string, which is one of: `less-than|greater-than|lt|gt`
-* number of milliseconds to compare against
-
-The key recency must be in the range 1-8,
-where 1 is the most recent key that was pressed
-and 8 is 8th most recent key pressed.
-Most use cases are expected to use a value of 1 for this parameter,
-but perhaps you can find a creative use for the other values.
-
-The comparison string determines how the actual key event timing
-will be compared to the provided timing.
-
-The number of milliseconds must be 0-65535.
-
-WARNING: The maximum milliseconds value of this configuration item
-across your whole configuration
-will be a lower bound of how long it takes for kanata to become idle
-and stop processing its state machine every approxmately 1ms.
-
-.Example:
-[source]
-----
-(defalias
-  swh (switch
-    ((key-timing 1 less-than 200)) S-a break
-    ((key-timing 1 greater-than 500)) S-b break
-    ((key-timing 2 lt 1000)) S-c break
-    ((key-timing 8 gt 2000)) (macro d d d) break
-    () XX break
-  )
-)
-----
-
-==== not
-
-The examples presented so far have not included the `not` boolean operator.
-This operator will now be discussed.
-Syntactically, the `not` operator is used similarly to `or|and`.
-Functionally, it means "not **any** of" the list elements.
-
-.Example:
-[source]
-----
-(defalias
-  swn (switch
-    ((not x y z)) S-a break
-    ;; the above and below cases are equivalent in logic
-    ((not (or x y z))) S-a break
-  )
-)
-----
-
-In potentially more familiar notation, both cases have the logic:
-
-    !(x || y || z)
-
-==== input
-
-Until now, all `switch` logic has been associated to key code outputs.
-It is also possible to operate on inputs.
-Inputs can be either real keys or "virtual" (fake) keys.
-
-.Example:
-[source]
-----
-(defalias switch-input-example
-  (switch
-    ((input real lctl)) $ac1 break
-    ((input virtual vk1)) $ac2 break
-    () $ac3 break
-  )
-)
-----
-
-Similar to `key-history` for regular active keys,
-`input-history` also exists.
-
-NOTE:
-A perhaps surprising (but hopefully logical) behaviour of input-history
-when compared to key-history is that, at the time of switch activation,
-the history of `input-history` for recency `1` will be the just-pressed input.
-Whereas with `key-history` for example, the key that will be next outputted
-is of course still undetermined, so is not in the history.
-The consequence of this is that you should use a recency of `2`
-when referring to the previously pressed input
-because the current input is in the recency `1` slot.
-
-.Example:
-[source]
-----
-(defalias switch-input-history-example
-  (switch
-    ((input-history real lsft 2)) $var1 break
-    ((input-history virtual vk2 2)) $var1 break
-    () $ac3 break
-  )
-)
-----
-
-==== layer
-
-The `layer` list item can be used in `switch` logic to operate on the active layer.
-It accepts a single layer name
-and evaluates to true if the configured layer name is the active layer,
-otherwise it evaluates to false.
-
-.Example:
-[source]
-----
-(defalias switch-layer-example
-  (switch
-     ((layer base)) x break
-    ((layer other)) y break
-                 () z break
-  )
-)
-----
-
-==== base-layer
-
-The `base-layer` list item evaluates to true
-if the configured layer name is the base layer.
-The base layer is the most recently switched-to layer
-from a `layer-switch` action,
-or the first layer defined in your configuration
-if `layer-switch` has never been activated.
-
-.Example:
-[source]
-----
-(defalias switch-layer-example
-  (switch
-     ((base-layer base)) x break
-    ((base-layer other)) y break
-                 () z break
-  )
-)
-----
-
 
 [[templates]]
 === Templates
