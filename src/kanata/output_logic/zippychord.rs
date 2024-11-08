@@ -8,8 +8,6 @@ use std::sync::MutexGuard;
 
 // Maybe-todos:
 // ---
-// Feature-parity: smart spacing around words
-//       - fixup whitespace around punctuation?
 // Feature-parity: suffixes - only active while disabled, to complete a word.
 // Feature-parity: prefix vs. non-prefix. Assuming smart spacing is implemented and enabled,
 //                 standard activations would output space one outputs space, but not prefixes.

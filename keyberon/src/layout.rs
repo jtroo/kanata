@@ -1592,6 +1592,13 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
                 self.rpt_action = Some(action);
             }
+            Src => {
+                let action = &self.src_keys[usize::from(coord.1)];
+                // Risk: infinite recursive resulting in stack overflow.
+                // In practice this is not expected to happen.
+                // The `src_keys` actions are all expected to be `KeyCode` or `NoOp` actions.
+                self.do_action(action, coord, delay, is_oneshot, &mut std::iter::empty());
+            }
             Trans => {
                 // Transparent action should be resolved to non-transparent one near the top
                 // of `do_action`.

@@ -125,6 +125,9 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
                 }
             }
         }
+        Action::Src => {
+            add_kc_output(osc_slot, osc_slot, outputs, overrides);
+        }
         Action::NoOp
         | Action::Trans
         | Action::Repeat
