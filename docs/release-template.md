@@ -72,7 +72,7 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtr
 **WARNING**: feature support on macOS [is limited](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc#macos).
 
 ### For macOS 11 and newer:
-- Install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
+- Install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-5.0.0.pkg).
 
 To activate it:
 
