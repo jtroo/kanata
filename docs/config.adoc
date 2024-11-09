@@ -641,15 +641,20 @@ default to the corresponding `defsrc` key. If `+_+` is pressed on the active
 while-held layer, the base layer's behaviour will activate.
 (alternatively you can use `+‗+` `+≝+`)
 
+A similar concept to transparent key is the `+use-defsrc+` action.
+When activated, the underlying `defsrc` key will be the output action.
+
 .Example:
 [source]
 ----
 (defsrc
   a b c d
 )
-
+(defalias
+  src use-defsrc
+)
 (deflayer remap-only-c-to-d
-  _ ‗ d ≝
+  _ _ d @src
 )
 ----
 
