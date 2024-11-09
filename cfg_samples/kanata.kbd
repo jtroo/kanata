@@ -771,8 +771,12 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 
 ;; The underscore _ means transparent. The key on the base layer will be used
 ;; instead. XX means no-op. The key will do nothing.
+;;
+;; A similar concept to transparent, use-defsrc means the key will always
+;; behave as the key as defined by defsrc.
+(defalias src use-defsrc)
 (deflayer numbers
-  _    _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
+  @src _    _    _    _    _    nlk  kp7  kp8  kp9  _    _    _    _
   _    _    _    _    _    XX   _    kp4  kp5  kp6  -    _    _    _
   _    _    C-z  _    _    XX   _    kp1  kp2  kp3  +    _    _
   _    C-z  C-x  C-c  C-v  XX   _    kp0  kp0  .    /    _

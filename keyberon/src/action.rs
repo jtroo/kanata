@@ -385,6 +385,9 @@ where
     /// The maximum number of actions that can activate the same time is governed by
     /// `ACTION_QUEUE_LEN`.
     Switch(&'a Switch<'a, T>),
+    /// Disregard the entire layer stack, i.e. the current base layer and any while-held layers,
+    /// and select the action from `Layout.src_keys`.
+    Src,
 }
 
 impl<'a, T> Action<'a, T> {

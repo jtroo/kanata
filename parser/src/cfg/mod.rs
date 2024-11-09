@@ -1644,6 +1644,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             ),
             _ => return custom(CustomAction::ReverseReleaseOrder, &s.a),
         },
+        "use-defsrc" => {
+            return Ok(s.a.sref(Action::Src));
+        }
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
@@ -2729,6 +2732,7 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
         }
         Action::NoOp
         | Action::Trans
+        | Action::Src
         | Action::Repeat
         | Action::KeyCode(_)
         | Action::MultipleKeyCodes(_)
@@ -2784,6 +2788,7 @@ fn fill_chords(
         Action::NoOp
         | Action::Trans
         | Action::Repeat
+        | Action::Src
         | Action::KeyCode(_)
         | Action::MultipleKeyCodes(_)
         | Action::Layer(_)
@@ -3151,21 +3156,9 @@ fn parse_layers(
                 let mut defsrc_anykey_used = false;
                 let mut unmapped_anykey_used = false;
                 let mut both_anykey_used = false;
-                for triplet in pairs.by_ref() {
-                    let input = &triplet[0];
-                    let action = &triplet[1];
-
-                    // TODO: remove me some time after April 2024 to reduce code bloat somewhat.
-                    const MAPSTRS: &[&str] = &[":", "->", ">>", "maps-to", "→", "🞂"];
-                    const MAPSTR_ERR: &str = "Seems you are using a retired configuration style.\n\
-                            You should remove all mapping strings from deflayermap;\n\
-                            deflayermap now uses pairs instead of triples.";
-                    if input.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
-                        bail_expr!(input, "{MAPSTR_ERR}");
-                    }
-                    if action.atom(s.vars()).is_some_and(|x| MAPSTRS.contains(&x)) {
-                        bail_expr!(action, "{MAPSTR_ERR}");
-                    }
+                for pair in pairs.by_ref() {
+                    let input = &pair[0];
+                    let action = &pair[1];
 
                     let action = parse_action(action, s)?;
                     if input.atom(s.vars()).is_some_and(|x| x == "_") {
