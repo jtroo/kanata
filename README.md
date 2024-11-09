@@ -104,7 +104,7 @@ Build and run yourself in Windows.
 
 Build and run yourself in macOS:
 
-For macOS version 11 and newer: Install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-3.1.0.pkg).
+For macOS version 11 and newer: Install the [Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-5.0.0.pkg).
 
 To activate it:
 
