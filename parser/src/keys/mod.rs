@@ -1135,6 +1135,25 @@ pub enum OsCode {
     MouseWheelLeft = 747,
     MouseWheelRight = 748,
 
+    KEY_749 = 749,
+    KEY_750 = 750,
+    KEY_751 = 751,
+    KEY_752 = 752,
+    KEY_753 = 753,
+    KEY_754 = 754,
+    KEY_755 = 755,
+    KEY_756 = 756,
+    KEY_757 = 757,
+    KEY_758 = 758,
+    KEY_759 = 759,
+    KEY_760 = 760,
+    KEY_761 = 761,
+    KEY_762 = 762,
+    KEY_763 = 763,
+    KEY_764 = 764,
+    KEY_765 = 765,
+    KEY_766 = 766,
+
     KEY_MAX = 767,
 }
 
