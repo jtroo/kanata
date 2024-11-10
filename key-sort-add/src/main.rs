@@ -1,3 +1,5 @@
+//! one:
+//!
 //! Takes a file formatted as:
 //!
 //!     KEY_RESERVED = 0,
@@ -11,11 +13,21 @@
 //! Outputs to stdout a sorted version of the file with numeric gaps filled in with:
 //!
 //!     KEY_X = X,
+//!
+//! two: mapping.txt to ensure KeyCode and OsCode can simply be transmuted into each other.
 
 use std::io::Read;
 
 fn main() {
-    let mut f = std::fs::File::open(std::env::args().nth(1).expect("filename parameter"))
+    match std::env::args().nth(1).expect("function parameter").as_str() {
+        "one" => one(),
+        "two" => two(),
+        _ => panic!("unknown capabality"),
+    }
+}
+
+fn one() {
+    let mut f = std::fs::File::open(std::env::args().nth(2).expect("filename parameter"))
         .expect("file open");
     let mut s = String::new();
     f.read_to_string(&mut s).expect("read file");
@@ -29,7 +41,7 @@ fn main() {
                     .next()
                     .map(|s| s.trim_start_matches("0x"))
                     .expect("string after ="),
-                16,
+                10,
             )
             .expect("u16");
             (key.to_owned(), num)
@@ -43,12 +55,76 @@ fn main() {
     for cur in cur_key {
         let prev = prev_key.next().expect("lagging iterator is valid");
         for missing in prev.1 + 1..cur.1 {
-            keys_to_add.push((format!("KEY_{missing:X?}"), missing));
+            keys_to_add.push((format!("K{missing}"), missing));
         }
     }
     keys.append(&mut keys_to_add);
     keys.sort_by_key(|k| k.1);
     for key in keys {
-        println!("{} = 0x{:X},", key.0, key.1);
+        println!("{} = {},", key.0, key.1);
+    }
+}
+
+fn two() {
+    use std::collections::HashMap;
+
+    let mut f = std::fs::File::open(std::env::args().nth(2).expect("filename parameter"))
+        .expect("file open");
+    let mut s = String::new();
+    f.read_to_string(&mut s).expect("read file");
+    let mut lines = s.lines();
+
+    // filter out useless lines
+    while let Some(line) = lines.next() {
+        if line == "=== kc to osc" {
+            break;
+        }
+    }
+
+    // parse kc to osc
+    let mut kc_to_osc: HashMap<&str, &str> = HashMap::new();
+    while let Some(line) = lines.next() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if line == "=== osc to u16" {
+            break;
+        }
+        let (kc, osc) = line.split_once(" => ").expect("arrow separator");
+        let kc = kc.trim_start_matches("KeyCode::");
+        let osc = osc.trim_end_matches(',')
+                .trim_start_matches("OsCode::");
+        kc_to_osc.insert(kc, osc);
+    }
+
+    // parse osc to u16
+    let mut osc_vals: HashMap<&str, u16> = HashMap::new();
+    while let Some(line) = lines.next() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if line == "=== all kcs" {
+            break;
+        }
+        let (kc, num) = line.split_once(" = ").expect("equal separator");
+        let num = num.trim_end_matches(',').parse::<u16>().expect("u16");
+        osc_vals.insert(kc, num);
+    }
+
+    // parse kcs
+    let mut kc_vals: Vec<(&str, Option<u16>)> = vec![];
+    while let Some(line) = lines.next() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let kc = line.trim_end_matches(',');
+        let val: Option<u16> = kc_to_osc.get(&kc)
+            .and_then(|osc| osc_vals.get(osc))
+            .copied();
+        kc_vals.push((kc, val));
+    }
+
+    for (kc, val) in kc_vals.iter() {
+        println!("{kc} = {},", val.unwrap_or(65535));
     }
 }
