@@ -5,7 +5,14 @@ fn macro_cancel_on_press() {
     let cfg = "\
 (defsrc a b c)
 (deflayer base (macro-cancel-on-press z 100 y) (macro x 100 w) c)";
+    test_on_press(cfg);
+    let cfg = "\
+(defsrc a b c)
+(deflayer base (macro-repeat-cancel-on-press z 100 y 100) (macro x 100 w) c)";
+    test_on_press(cfg);
+}
 
+fn test_on_press(cfg: &str) {
     // Cancellation should happen.
     let result = simulate(cfg, "d:a t:50 d:c t:100").to_ascii();
     assert_eq!("t:1ms dn:Z t:1ms up:Z t:48ms dn:C", result);

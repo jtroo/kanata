@@ -28,6 +28,10 @@ pub const MACRO_REPEAT_RELEASE_CANCEL: &str = "macro-repeat-release-cancel";
 pub const MACRO_REPEAT_RELEASE_CANCEL_A: &str = "macro⟳↑⤫";
 pub const MACRO_CANCEL_ON_NEXT_PRESS: &str = "macro-cancel-on-press";
 pub const MACRO_REPEAT_CANCEL_ON_NEXT_PRESS: &str = "macro-repeat-cancel-on-press";
+pub const MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE: &str =
+    "macro-release-cancel-and-cancel-on-press";
+pub const MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE: &str =
+    "macro-repeat-release-cancel-and-cancel-on-press";
 pub const UNICODE: &str = "unicode";
 pub const SYM: &str = "🔣";
 pub const ONE_SHOT: &str = "one-shot";
@@ -225,6 +229,8 @@ pub fn is_list_action(ac: &str) -> bool {
         ON_IDLE,
         MACRO_CANCEL_ON_NEXT_PRESS,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS,
+        MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
+        MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
     ];
     LIST_ACTIONS.contains(&ac)
 }

@@ -1422,7 +1422,7 @@ needs the delay of `5` to work correctly.
 ----
 
 [[macro-release-cancel]]
-==== `macro-release-cancel`
+==== macro-release-cancel
 
 The `macro-release-cancel` variant of the `+macro+` action
 will cancel all active macros
@@ -1450,7 +1450,7 @@ and the rest of the macro does not run.
 ----
 
 [[macro-cancel-on-press]]
-==== `macro-cancel-on-press`
+==== macro-cancel-on-press
 
 The `macro-cancel-on-press` variant of the `macro action`
 enables a cancellation trigger for all active macros including itself,
@@ -1462,6 +1462,21 @@ The trigger is enabled while the macro is in progress.
 (defalias
   1 1
   1!@ (macro-cancel-on-press @1 500 bspc S-1 500 bspc S-2)
+)
+----
+
+[[macro-release-cancel-and-cancel-on-press]]
+==== macro-release-cancel-and-cancel-on-press
+
+The `macro-release-cancel-and-cancel-on-press` variant
+combines the cancel behaviours
+of both the release-cancel and cancel-on-press.
+
+[source]
+----
+(defalias
+  1 1
+  1!@ (macro-release-cancel-and-cancel-on-press @1 500 bspc S-1 500 bspc S-2)
 )
 ----
 
@@ -1482,6 +1497,7 @@ only the most recently pressed macro will be repeated.
   mr1 (macro-repeat mltp)
   mr2 (macro-repeat-release-cancel mltp)
   mr3 (macro-repeat-cancel-on-press mltp)
+  mr4 (macro-repeat-release-cancel-and-cancel-on-press mltp)
 )
 ----
 

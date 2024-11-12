@@ -689,7 +689,7 @@ impl Kanata {
                     layout.active_sequences.clear();
                     layout
                         .states
-                        .retain(|s| !matches!(s, State::FakeKey { .. }));
+                        .retain(|s| !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. }));
                 }
                 Event::Press(0, evc)
             }
@@ -1653,7 +1653,7 @@ impl Kanata {
                             self.macro_on_press_cancel_duration = 0;
                             layout
                                 .states
-                                .retain(|s| !matches!(s, State::FakeKey { .. }));
+                                .retain(|s| !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. }));
                             pbtn
                         }
                         CustomAction::SendArbitraryCode(code) => {
