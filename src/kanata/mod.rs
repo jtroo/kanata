@@ -687,9 +687,9 @@ impl Kanata {
                     self.macro_on_press_cancel_duration = 0;
                     let layout = self.layout.bm();
                     layout.active_sequences.clear();
-                    layout
-                        .states
-                        .retain(|s| !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. }));
+                    layout.states.retain(|s| {
+                        !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. })
+                    });
                 }
                 Event::Press(0, evc)
             }
@@ -1651,9 +1651,12 @@ impl Kanata {
                             log::debug!("cancelling all macros: releasable macro");
                             layout.active_sequences.clear();
                             self.macro_on_press_cancel_duration = 0;
-                            layout
-                                .states
-                                .retain(|s| !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. }));
+                            layout.states.retain(|s| {
+                                !matches!(
+                                    s,
+                                    State::FakeKey { .. } | State::RepeatingSequence { .. }
+                                )
+                            });
                             pbtn
                         }
                         CustomAction::SendArbitraryCode(code) => {

@@ -2176,10 +2176,10 @@ fn parse_macro_cancel_on_next_press_cancel_on_release(
     };
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
         *macro_action,
-        Action::Custom(
-            s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnNextPress(macro_duration))),
-        ),
-        Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnRelease))),
+        Action::Custom(s.a.sref(s.a.sref_vec(vec![
+            &CustomAction::CancelMacroOnRelease,
+            s.a.sref(CustomAction::CancelMacroOnNextPress(macro_duration)),
+        ]))),
     ])))))
 }
 
