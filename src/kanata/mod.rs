@@ -683,6 +683,7 @@ impl Kanata {
                     self.dynamic_macros.insert(macro_id, recorded_macro);
                 }
                 if self.macro_on_press_cancel_duration > 0 {
+                    log::debug!("cancelling all macros: other press");
                     self.macro_on_press_cancel_duration = 0;
                     let layout = self.layout.bm();
                     layout.active_sequences.clear();
@@ -1647,8 +1648,9 @@ impl Kanata {
                             pbtn
                         }
                         CustomAction::CancelMacroOnRelease => {
-                            log::debug!("cancelling all macros");
+                            log::debug!("cancelling all macros: releasable macro");
                             layout.active_sequences.clear();
+                            self.macro_on_press_cancel_duration = 0;
                             layout
                                 .states
                                 .retain(|s| !matches!(s, State::FakeKey { .. }));

@@ -2143,7 +2143,9 @@ fn parse_macro_cancel_on_next_press(
 ) -> Result<&'static KanataAction> {
     let macro_action = parse_macro(ac_params, s, repeat)?;
     let macro_duration = match macro_action {
-        Action::Sequence { events } => macro_sequence_event_total_duration(events),
+        Action::RepeatableSequence { events } | Action::Sequence { events } => {
+            macro_sequence_event_total_duration(events)
+        }
         _ => unreachable!("parse_macro should return sequence action"),
     };
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
