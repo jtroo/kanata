@@ -64,6 +64,7 @@ pub enum CustomAction {
     LiveReloadFile(String),
     Repeat,
     CancelMacroOnRelease,
+    CancelMacroOnNextPress(u32),
     DynamicMacroRecord(u16),
     DynamicMacroRecordStop(u16),
     DynamicMacroPlay(u16),

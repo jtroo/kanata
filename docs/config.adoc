@@ -1421,11 +1421,17 @@ needs the delay of `5` to work correctly.
 )
 ----
 
-There is a variant of the `+macro+` action that will cancel all active macros
-upon releasing the key: `+macro-release-cancel+` or `+macro↑⤫+`. It is parsed identically to
-the non-cancelling version. An example use case for this action is holding down
-a key to get different outputs, similar to tap-dance but one can see which keys
-are being outputted.
+[[macro-release-cancel]]
+==== macro-release-cancel
+
+The `macro-release-cancel` variant of the `+macro+` action
+will cancel all active macros
+upon releasing the key.
+Shorter unicode variant: `+macro↑⤫+`.
+This variant is parsed identically to the non-cancelling version.
+An example use case for this action is holding down
+a key to get different outputs,
+similar to tap-dance but one can see which keys are being outputted.
 
 E.g. in the example below, when holding the key, first `1` is typed, then
 replaced by `!` after 500ms, and finally that is replaced by `@` after another
@@ -1443,7 +1449,43 @@ and the rest of the macro does not run.
 )
 ----
 
-There are further variants of the two `macro` actions which repeat while held.
+[[macro-cancel-on-press]]
+==== macro-cancel-on-press
+
+The `macro-cancel-on-press` variant of the `macro action`
+enables a cancellation trigger for all active macros including itself,
+which is activated when a physical press of any other key happens.
+The trigger is enabled while the macro is in progress.
+
+[source]
+----
+(defalias
+  1 1
+  1!@ (macro-cancel-on-press @1 500 bspc S-1 500 bspc S-2)
+)
+----
+
+[[macro-release-cancel-and-cancel-on-press]]
+==== macro-release-cancel-and-cancel-on-press
+
+The `macro-release-cancel-and-cancel-on-press` variant
+combines the cancel behaviours
+of both the release-cancel and cancel-on-press.
+
+[source]
+----
+(defalias
+  1 1
+  1!@ (macro-release-cancel-and-cancel-on-press @1 500 bspc S-1 500 bspc S-2)
+)
+----
+
+
+[[macro-repeat]]
+==== macro-repeat
+
+There are further `macro-repeat` variants of the three `macro` actions described previously.
+These variants repeat while held.
 The repeat will only occur once all macros have completed,
 including the held macro key.
 If multiple repeating macros are being held simulaneously,
@@ -1453,9 +1495,9 @@ only the most recently pressed macro will be repeated.
 ----
 (defalias
   mr1 (macro-repeat mltp)
-  mr2 (macro⟳ mltp)
   mr2 (macro-repeat-release-cancel mltp)
-  mr2 (macro⟳↑⤫ mltp)
+  mr3 (macro-repeat-cancel-on-press mltp)
+  mr4 (macro-repeat-release-cancel-and-cancel-on-press mltp)
 )
 ----
 

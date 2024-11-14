@@ -225,6 +225,9 @@ pub struct Kanata {
     /// Various GUI-related options.
     pub gui_opts: CfgOptionsGui,
     pub allow_hardware_repeat: bool,
+    /// When > 0, it means macros should be cancelled on the next press.
+    /// Upon cancelling this should be set to 0.
+    pub macro_on_press_cancel_duration: u32,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -422,6 +425,7 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
+            macro_on_press_cancel_duration: 0,
         })
     }
 
@@ -551,6 +555,7 @@ impl Kanata {
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
+            macro_on_press_cancel_duration: 0,
         })
     }
 
@@ -641,6 +646,7 @@ impl Kanata {
         let cur_layer = self.layout.bm().current_layer();
         self.prev_layer = cur_layer;
         self.print_layer(cur_layer);
+        self.macro_on_press_cancel_duration = 0;
 
         #[cfg(not(target_os = "linux"))]
         {
@@ -675,6 +681,15 @@ impl Kanata {
                     self.dynamic_macro_max_presses,
                 ) {
                     self.dynamic_macros.insert(macro_id, recorded_macro);
+                }
+                if self.macro_on_press_cancel_duration > 0 {
+                    log::debug!("cancelling all macros: other press");
+                    self.macro_on_press_cancel_duration = 0;
+                    let layout = self.layout.bm();
+                    layout.active_sequences.clear();
+                    layout.states.retain(|s| {
+                        !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. })
+                    });
                 }
                 Event::Press(0, evc)
             }
@@ -787,6 +802,7 @@ impl Kanata {
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
+        self.macro_on_press_cancel_duration = self.macro_on_press_cancel_duration.saturating_sub(1);
         tick_record_state(&mut self.dynamic_macro_record_state);
         zippy_tick(self.caps_word.is_some());
         self.prev_keys.clear();
@@ -1517,6 +1533,9 @@ impl Kanata {
                                 &self.dynamic_macros,
                             );
                         }
+                        CustomAction::CancelMacroOnNextPress(duration) => {
+                            self.macro_on_press_cancel_duration = *duration;
+                        }
                         CustomAction::SendArbitraryCode(code) => {
                             self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
                         }
@@ -1629,11 +1648,15 @@ impl Kanata {
                             pbtn
                         }
                         CustomAction::CancelMacroOnRelease => {
-                            log::debug!("cancelling all macros");
+                            log::debug!("cancelling all macros: releasable macro");
                             layout.active_sequences.clear();
-                            layout
-                                .states
-                                .retain(|s| !matches!(s, State::FakeKey { .. }));
+                            self.macro_on_press_cancel_duration = 0;
+                            layout.states.retain(|s| {
+                                !matches!(
+                                    s,
+                                    State::FakeKey { .. } | State::RepeatingSequence { .. }
+                                )
+                            });
                             pbtn
                         }
                         CustomAction::SendArbitraryCode(code) => {
@@ -2045,6 +2068,7 @@ impl Kanata {
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
             && self.move_mouse_state_vertical.is_none()
+            && self.macro_on_press_cancel_duration == 0
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()

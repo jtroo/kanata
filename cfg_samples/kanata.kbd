@@ -603,12 +603,16 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   tbm (macro A-(tab 200 tab 200 tab) 200 S-A-(tab 200 tab 200 tab))
   hpy (macro S-i spc a m spc S-(h a p p y) spc m y S-f r S-i e S-n d @🙃)
 
-  rls (macro-release-cancel 1 500 bspc S-1 500 bspc S-2)
+  rls (macro-release-cancel Digit1 500 bspc S-1 500 bspc S-2)
+  cop (macro-cancel-on-press Digit1 500 bspc S-1 500 bspc S-2)
+  rlpr (macro-release-cancel-and-cancel-on-press Digit1 500 bspc S-1 500 bspc S-2)
 
   ;; repeat variants will repeat while held, once ALL macros have ended,
   ;; including the held macro.
   mr1 (macro-repeat mltp)
   mr2 (macro-repeat-release-cancel mltp)
+  mr3 (macro-repeat-cancel-on-press mltp)
+  mr4 (macro-repeat-release-cancel-and-cancel-on-press mltp)
 
   ;; Kanata also supports dynamic macros. Dynamic macros can be nested, but
   ;; cannot recurse.

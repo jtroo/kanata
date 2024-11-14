@@ -1744,6 +1744,18 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         MACRO_REPEAT_RELEASE_CANCEL | MACRO_REPEAT_RELEASE_CANCEL_A => {
             parse_macro_release_cancel(&ac[1..], s, RepeatMacro::Yes)
         }
+        MACRO_CANCEL_ON_NEXT_PRESS => {
+            parse_macro_cancel_on_next_press(&ac[1..], s, RepeatMacro::No)
+        }
+        MACRO_REPEAT_CANCEL_ON_NEXT_PRESS => {
+            parse_macro_cancel_on_next_press(&ac[1..], s, RepeatMacro::Yes)
+        }
+        MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE => {
+            parse_macro_cancel_on_next_press_cancel_on_release(&ac[1..], s, RepeatMacro::No)
+        }
+        MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE => {
+            parse_macro_cancel_on_next_press_cancel_on_release(&ac[1..], s, RepeatMacro::Yes)
+        }
         UNICODE | SYM => parse_unicode(&ac[1..], s),
         ONE_SHOT | ONE_SHOT_PRESS | ONE_SHOT_PRESS_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstPress)
@@ -2128,6 +2140,56 @@ fn parse_macro_release_cancel(
         *macro_action,
         Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnRelease))),
     ])))))
+}
+
+fn parse_macro_cancel_on_next_press(
+    ac_params: &[SExpr],
+    s: &ParserState,
+    repeat: RepeatMacro,
+) -> Result<&'static KanataAction> {
+    let macro_action = parse_macro(ac_params, s, repeat)?;
+    let macro_duration = match macro_action {
+        Action::RepeatableSequence { events } | Action::Sequence { events } => {
+            macro_sequence_event_total_duration(events)
+        }
+        _ => unreachable!("parse_macro should return sequence action"),
+    };
+    Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
+        *macro_action,
+        Action::Custom(
+            s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnNextPress(macro_duration))),
+        ),
+    ])))))
+}
+
+fn parse_macro_cancel_on_next_press_cancel_on_release(
+    ac_params: &[SExpr],
+    s: &ParserState,
+    repeat: RepeatMacro,
+) -> Result<&'static KanataAction> {
+    let macro_action = parse_macro(ac_params, s, repeat)?;
+    let macro_duration = match macro_action {
+        Action::RepeatableSequence { events } | Action::Sequence { events } => {
+            macro_sequence_event_total_duration(events)
+        }
+        _ => unreachable!("parse_macro should return sequence action"),
+    };
+    Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
+        *macro_action,
+        Action::Custom(s.a.sref(s.a.sref_vec(vec![
+            &CustomAction::CancelMacroOnRelease,
+            s.a.sref(CustomAction::CancelMacroOnNextPress(macro_duration)),
+        ]))),
+    ])))))
+}
+
+fn macro_sequence_event_total_duration<T>(events: &[SequenceEvent<T>]) -> u32 {
+    events.iter().fold(0, |duration, event| {
+        duration.saturating_add(match event {
+            SequenceEvent::Delay { duration: d } => *d,
+            _ => 1,
+        })
+    })
 }
 
 #[derive(PartialEq)]
