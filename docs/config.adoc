@@ -3225,9 +3225,13 @@ Virtual keys can be activated via special actions:
 Activate a virtual key action when pressing the associated input key.
 * `(on-release  <action> <virtual key name>)` or `on↑`:
 Activate a virtual key action when releasing the associated input key.
-* `(on-idle <milliseconds> <action> <virtual key name>)`:
+* `(on-idle <idle time> <action> <virtual key name>)`:
 Activate a virtual key action when kanata has been idle
 for at least `idle time` milliseconds.
+* `(hold-for-duration <hold time> <virtual key name>`):
+Press a virtual key for `hold time` milliseconds.
+If `hold-for-duration` retriggered on a virtual key before release,
+the time will be reset with no additional press/release events.
 
 The `<action>` parameter can be one of:
 
@@ -3284,10 +3288,11 @@ will not yet be counting even if you no longer have any keyboard keys pressed.
   mac (on-press tap-vkey vkmacro)
 
   isf (on-idle 1000 tap-vkey sft)
+  hfd (hold-for-duration 1000 met)
 )
 
 (deflayer use-virtual-keys
-  @psf @rsf @tal @mac a s d f @isf
+  @psf @rsf @tal @mac a s d f @isf @hfd
 )
 ----
 

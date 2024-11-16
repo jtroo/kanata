@@ -188,6 +188,10 @@ pub struct Kanata {
     pub device_detect_mode: DeviceDetectMode,
     /// Fake key actions that are waiting for a certain duration of keyboard idling.
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
+    /// Fake key actions that are being held and are pending release.
+    /// The key is the coordinate and the value is the number of ticks until release should be
+    /// done.
+    pub vkeys_pending_release: HashMap<Coord, u16>,
     /// Number of ticks since kanata was idle.
     pub ticks_since_idle: u16,
     /// If a mousemove action is active and another mousemove action is activated,
@@ -411,6 +415,7 @@ impl Kanata {
                 .linux_device_detect_mode
                 .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
+            vkeys_pending_release: HashMap::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
@@ -541,6 +546,7 @@ impl Kanata {
                 .linux_device_detect_mode
                 .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
+            vkeys_pending_release: HashMap::default(),
             ticks_since_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
@@ -796,6 +802,23 @@ impl Kanata {
         Ok(())
     }
 
+    fn tick_held_vkeys(&mut self) {
+        if self.vkeys_pending_release.is_empty() {
+            return;
+        }
+        let layout = self.layout.bm();
+        self.vkeys_pending_release.retain(|coord, deadline| {
+            *deadline = deadline.saturating_sub(1);
+            match deadline {
+                0 => {
+                    layout.event(Event::Release(coord.x, coord.y));
+                    false
+                }
+                _ => true,
+            }
+        });
+    }
+
     fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
@@ -807,6 +830,7 @@ impl Kanata {
         zippy_tick(self.caps_word.is_some());
         self.prev_keys.clear();
         self.prev_keys.append(&mut self.cur_keys);
+        self.tick_held_vkeys();
         #[cfg(feature = "simulated_output")]
         {
             self.kbd_out.tick();
@@ -1557,6 +1581,17 @@ impl Kanata {
                             self.ticks_since_idle = 0;
                             self.waiting_for_idle.insert(*fkd);
                         }
+                        CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
+                            let x = fk_hfd.coord.x;
+                            let y = fk_hfd.coord.y;
+                            let duration = fk_hfd.hold_duration;
+                            self.vkeys_pending_release.entry(fk_hfd.coord)
+                                .and_modify(|d| *d = duration)
+                                .or_insert_with(|| {
+                                    layout.event(Event::Press(x, y));
+                                    duration
+                                });
+                        }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::Unmodded { .. }
@@ -2072,6 +2107,7 @@ impl Kanata {
             && self.move_mouse_state_horizontal.is_none()
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
+            && self.vkeys_pending_release.is_empty()
             && !self.layout.b().states.iter().any(|s| {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))

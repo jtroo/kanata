@@ -263,3 +263,22 @@ pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
         }),
     )))))
 }
+
+pub(crate) fn parse_hold_for_duration(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "hold-for-duration expects two parameters: <hold-duration> <key-name>";
+    if ac_params.len() != 2 {
+        bail!("{ERR_MSG}");
+    }
+    let hold_duration = parse_non_zero_u16(&ac_params[0], s, "hold-duration")?;
+    let coord = parse_vkey_coord(&ac_params[1], s)?;
+
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::FakeKeyHoldForDuration(FakeKeyHoldForDuration {
+            coord,
+            hold_duration,
+        }),
+    )))))
+}

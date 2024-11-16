@@ -27,6 +27,7 @@ pub enum CustomAction {
         action: FakeKeyAction,
     },
     FakeKeyOnIdle(FakeKeyOnIdle),
+    FakeKeyHoldForDuration(FakeKeyHoldForDuration),
     Delay(u16),
     DelayOnRelease(u16),
     MWheel {
@@ -125,6 +126,14 @@ pub struct FakeKeyOnIdle {
     pub coord: Coord,
     pub action: FakeKeyAction,
     pub idle_duration: u16,
+}
+
+/// Information for an action that presses a fake key / vkey that becomes released on a
+/// renewable-when-reactivated deadline.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FakeKeyHoldForDuration {
+    pub coord: Coord,
+    pub hold_duration: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

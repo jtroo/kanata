@@ -116,6 +116,7 @@ pub const ON_PRESS_A: &str = "on↓";
 pub const ON_RELEASE: &str = "on-release";
 pub const ON_RELEASE_A: &str = "on↑";
 pub const ON_IDLE: &str = "on-idle";
+pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -227,6 +228,7 @@ pub fn is_list_action(ac: &str) -> bool {
         ON_RELEASE,
         ON_RELEASE_A,
         ON_IDLE,
+        HOLD_FOR_DURATION,
         MACRO_CANCEL_ON_NEXT_PRESS,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS,
         MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,

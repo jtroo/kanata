@@ -1151,6 +1151,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   pal (on-press-fakekey pal tap)
   ral (on-press-fakekey ral tap)
   rdl (on-idle-fakekey ral tap 1000)
+  hfd (hold-for-duration 1000 met)
 
   ;; Test of on-press-fakekey and on-release-fakekey in a macro
   t1 (macro-release-cancel @fsp 5 a b c @fsr 5 c b a)
