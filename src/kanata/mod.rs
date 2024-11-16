@@ -1585,8 +1585,12 @@ impl Kanata {
                             let x = fk_hfd.coord.x;
                             let y = fk_hfd.coord.y;
                             let duration = fk_hfd.hold_duration;
-                            self.vkeys_pending_release.insert(fk_hfd.coord, duration);
-                            layout.event(Event::Press(x, y))
+                            self.vkeys_pending_release.entry(fk_hfd.coord)
+                                .and_modify(|d| *d = duration)
+                                .or_insert_with(|| {
+                                    layout.event(Event::Press(x, y));
+                                    duration
+                                });
                         }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
