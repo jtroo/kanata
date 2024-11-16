@@ -6,7 +6,7 @@
 This document describes how to create a kanata configuration file. The kanata
 configuration file will determine your keyboard behaviour upon running kanata.
 
-NOTE: The configuration guide you are reading
+IMPORTANT: The configuration guide you are reading
 may have content not applicable to the version you are using.
 See below for links to specific guide versions.
 
@@ -86,8 +86,10 @@ separated by whitespace.
 IMPORTANT: Keys excluded from `defsrc` will not be processed by Kanata
 unless you have `process-unmapped-keys yes` in defcfg.
 This has implications on various actions.
-For example, excluded keys cannot trigger early activation in tap-hold-press/release,
-and cannot be read by fork or switch logic.
+For example, excluded keys can activate before a `tap-hold` decision has been made,
+excluded keys cannot trigger early activation
+in actions such as `tap-hold-press` or `tap-dance`
+and cannot be read by `fork` or `switch` logic.
 
 It should be noted that the `defsrc` entry is treated as a long sequence; the
 amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
@@ -3759,16 +3761,16 @@ you wouldn't want this. Rather than retyping the code with `fork` and
 [source]
 ----
 (deftemplate alt-fork (original-action new-action)
-  (fork $original-action (multi (unmod ralt lalt) $new-action) (lalt ralt))
+  (fork $original-action (multi (unmod (ralt lalt) nop0) $new-action) (lalt ralt))
 )
 (defsrc 1 2 3)
 (defalias fn1 (template-expand alt-fork 1 f1))
 ;; Templates are a simple text substitution, so the above is exactly equivalent to:
-;; (defalias fn1 (fork 1 (multi (unmod ralt lalt) f1) (lalt ralt)))
+;; (defalias fn1 (fork 1 (multi (unmod (ralt lalt) nop0) f1) (lalt ralt)))
 (defalias fn2 (template-expand alt-fork 2 f2))
 ;; You can use t! as a short form of template-expand
 (defalias fn3 (t! alt-fork 3 f3))
-(deflayer default (@fn1 @fn2 @fn3))
+(deflayer default @fn1 @fn2 @fn3)
 ----
 
 .Example 2:
@@ -4075,21 +4077,23 @@ zippy will be re-enabled from being temporarily disabled.
 
 | `$smart-space-cfg` for `smart-space`
 | Determines the smart space behaviour.
-The options are `none | add-space-only | full`.
+The options are `none`, `add-space-only`, and `full`.
 With `none`, outputs are typed as-is.
 With `add-space-only`, spaces are automatically added after outputs
 which end with neither a space or a backspace ⌫.
-With `full`, the `add-space-only` behaviour applies
-and additional behaviour is active:
-typing punctuation — US-layout `, . ;` by default —
+With `full`, the `add-space-only` behaviour applios
+alongside additional behaviour:
+typing punctuation (default characters: `, . ;`)
 after a zippy activation will delete a prior automatically-added space.
 
 | `$puncN` for `smart-space-punctuation`
 | A character defined in `output-character-mappings`
 or a known key name, which shall be considered as punctuation.
-The full list within `smart-space-punctuation`
+The `smart-space-punctuation` configuration
 will overwrite the default punctuation list
-considered by smart-space.
+considered by smart-space;
+if you want to want to include the default characters,
+you include them in the configuration.
 
 | `$characterN` for `output-character-mappings`
 | A single unicode character for use
