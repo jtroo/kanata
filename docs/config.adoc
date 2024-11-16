@@ -3230,7 +3230,8 @@ Activate a virtual key action when kanata has been idle
 for at least `idle time` milliseconds.
 * `(hold-for-duration <hold time> <virtual key name>`):
 Press a virtual key for `hold time` milliseconds.
-If the action is retriggered, the time is reset.
+If `hold-for-duration` retriggered on a virtual key before release,
+the time will be reset with no additional press/release events.
 
 The `<action>` parameter can be one of:
 
