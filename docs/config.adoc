@@ -77,19 +77,35 @@ a multi-line comment block
 === defsrc
 <<table-of-contents,Back to ToC>>
 
+**Reference**
+
 Your configuration file must have exactly one `defsrc` entry. This defines the
 order of keys that the `+deflayer+` entries will operate on.
 
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
 
+.Syntax
+[source]
+----
+(defsrc $key1 $key2 ... $keyN)
+----
+
+[cols="1,2"]
+|===
+| `$keyN`: The name of a key.
+| This can be a default key name or one defined in <<deflocalkeys>>.
+|===
+
 IMPORTANT: Keys excluded from `defsrc` will not be processed by Kanata
 unless you have `process-unmapped-keys yes` in defcfg.
 This has implications on various actions.
-For example, excluded keys can activate before a `tap-hold` decision has been made,
+For example, excluded keys can activate while a `tap-hold` decision is still pending,
 excluded keys cannot trigger early activation
 in actions such as `tap-hold-press` or `tap-dance`
 and cannot be read by `fork` or `switch` logic.
+
+**Description**
 
 It should be noted that the `defsrc` entry is treated as a long sequence; the
 amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
@@ -105,6 +121,7 @@ if you're unable to find the key you're looking for.
 An example `defsrc` containing the US QWERTY keyboard keys as an
 approximately 60% keyboard layout:
 
+.Example
 [source]
 ----
 (defsrc
@@ -125,8 +142,29 @@ For non-US keyboards, see <<non-us-keyboards,this section>>.
 === deflayer
 <<table-of-contents,Back to ToC>>
 
+**Reference**
+
 Your configuration file must have at least one `+deflayer+` entry. This defines
 how each physical key mapped in `+defsrc+` behaves when kanata runs.
+
+.Syntax
+[source]
+----
+(deflayer $layerName $action1 $action2 ... $actionN)
+----
+
+[cols="1,2"]
+|===
+| `$layerName`
+| A string representing the layer name.
+This is name used to reference this layer in other actions.
+
+| `$actionN`
+| The action that activates while this layer is active
+when the corresponding `defsrc` input key is pressed.
+|===
+
+**Description**
 
 A `+deflayer+` configuration entry is followed by the layer name then a list of
 keys or actions. The usable key names are the same as in defsrc. Actions are
@@ -141,6 +179,7 @@ using actions.
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
 
+.Example
 [source]
 ----
 (defsrc
@@ -172,9 +211,9 @@ instead of relying on matching the `defsrc` ordering.
 This has the advantage of terser configuration
 when only a few keys on a layer need to be mapped.
 When practicing a new configuration, the standard `deflayer` has an advantage
-of looking more like physical keyboard layout, which may be helpful to some.
+of looking more like a physical keyboard layout, which may be helpful to some.
 
-Within `deflayermap` the very first item must be the layer name.
+Within `deflayermap`, the very first item must be the layer name.
 The layer name must be in parentheses unlike with `deflayer`.
 After the layer name, the layer is configured via pairs of items:
 
@@ -273,6 +312,7 @@ or Interception when using key names according to the browser `event.code`.
 The default `kanata.exe` does not do mappings according to the browser `event.code`
 key names.
 
+[[deflocalkeys]]
 === deflocalkeys
 
 You can use `deflocalkeys` to define additional key names that can be
