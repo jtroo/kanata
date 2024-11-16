@@ -1784,6 +1784,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         ON_PRESS | ON_PRESS_A => parse_on_press(&ac[1..], s),
         ON_RELEASE | ON_RELEASE_A => parse_on_release(&ac[1..], s),
         ON_IDLE => parse_on_idle(&ac[1..], s),
+        HOLD_FOR_DURATION => parse_hold_for_duration(&ac[1..], s),
         MWHEEL_UP | MWHEEL_UP_A => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
         MWHEEL_DOWN | MWHEEL_DOWN_A => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_LEFT | MWHEEL_LEFT_A => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
