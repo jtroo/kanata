@@ -97,13 +97,15 @@ separated by whitespace.
 (defsrc $key1 $key2 ... $keyN)
 ----
 
-[cols="1,2"]
+[cols="1,5"]
 |===
-| `$keyN`: The name of a key.
-| This can be a default key name or one defined in <<deflocalkeys>>.
+| `$keyN`
+| The name of a key. This can be a default key name or one defined in <<deflocalkeys>>.
+When physically pressing this input key, the action defined
+at the same order position on the active layer will activate.
 |===
 
-IMPORTANT: Keys excluded from `defsrc` will not be processed by Kanata
+Keys excluded from `defsrc` will not be processed by Kanata
 unless you have `process-unmapped-keys yes` in defcfg.
 This has implications on various actions.
 For example, excluded keys can activate while a `tap-hold` decision is still pending,
@@ -158,7 +160,7 @@ how each physical key mapped in `+defsrc+` behaves when kanata runs.
 (deflayer $layerName $action1 $action2 ... $actionN)
 ----
 
-[cols="1,2"]
+[cols="1,5"]
 |===
 | `$layerName`
 | A string representing the layer name.
@@ -226,17 +228,18 @@ instead of relying on matching the `defsrc` ordering.
  $inputN $actionN)
 ----
 
-[cols="1,2"]
+[cols="1,5"]
 |===
 | `$layerName`
 | A string representing the layer name.
 This is name used to reference this layer in other actions.
 
 | `$inputN`
-|
+| The input key mapped to the corresponding output.
 
-|
-|
+| `$actionN`
+| The action that activates while this layer is active
+when the corresponding input key is pressed.
 |===
 
 **Description**
@@ -273,7 +276,7 @@ you can use one of `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
 the keys that are not explicitly mapped in the layer,
 e.g. in the example above, these affect keys other than `caps`.
 
-[cols="1,2"]
+[cols="1,6"]
 |===
 | `&#95;`
 | Map all unmapped keys in this layer that are defined in `defsrc`.
@@ -2292,33 +2295,33 @@ The `+defchordsv2+` feature is configured as shown below:
 
 The configuration is made up of 5-tuples of:
 
-[cols="1,2"]
+[cols="1,3"]
 |===
-| 1. A list of participating keys
+| `$participating-keysN`
 | These are key names you would use in `defsrc`.
 A minimum of two keys must be defined per chord.
 The list must be unique per chord.
 
-| 2. Associated action
+| `$actionN`
 | These are actions as you would configure in `deflayer` or `defalias`.
 The action activates if all participating keys are activated
 within the timeout.
 
-| 3. Timeout to fulfill the chord
+| `$timeoutN`
 | The time (unit: milliseconds) within which,
 if all participating keys are pressed,
 the chord action will activate;
 otherwise the key presses are handled by the active layer.
 The time begins when the first participant is pressed.
 
-| 4. Release behaviour
+| `$release-behaviourN`
 | This must be either `first-release` or `all-released`;
 `first-release` means the chord action will be released
 when the first participant is released,
 while `all-released` means the chord action will be released
 only when all of the participants have been released.
 
-|5. Disabled layers
+| `$disabled-layersN`
 | A list of layer names on which this chord is disabled.
 |===
 
@@ -2840,7 +2843,7 @@ you can use a configuration item to change detection behaviour.
 
 The configuration is `linux-device-detect-mode` and it has the options:
 
-[cols="1,2"]
+[cols="1,4"]
 |===
 | `keyboard-only`
 | Grab devices that seem to be a keyboard only.
@@ -2855,13 +2858,13 @@ and devices that declare **both** keyboard and mouse functionality.
 
 The default behaviour is:
 
-[cols="1,2"]
+[cols="1,4"]
 |===
-| When any mouse buttons or mouse scroll events are in `defsrc`:
-| `any`
-
-| Otherwise:
 | `keyboard-mice`
+| When no mouse events are in `defsrc`.
+
+| `any`
+| When any mouse buttons or mouse scroll events are in `defsrc`.
 |===
 
 [[linux-only-linux-unicode-u-code]]
@@ -4043,7 +4046,7 @@ When using this you are at higher likelihood of bugs and breaking changes.
 )
 ----
 
-[cols="1,2"]
+[cols="1,4"]
 |===
 | `$zippy-filename`
 | Relative or absolute file path.
@@ -4051,18 +4054,18 @@ If relative, its path is relative to
 the directory containing the kanata configuration file.
 This must be the first item following `defzippy-experimental`.
 
-| `$deadline-millis` for `on-first-press-chord-deadline`
+| `$deadline-millis`
 | Number of milliseconds.
 After the first press while zippy is enabled,
 if no chord activates within this configured time,
 zippy is temporarily disabled.
 
-| `$idle-time-millis` for `idle-reactivate-time`
+| `$idle-time-millis`
 | Number of milliseconds.
 After typing ends and this configured number of milliseconds elapses,
 zippy will be re-enabled from being temporarily disabled.
 
-| `$smart-space-cfg` for `smart-space`
+| `$smart-space-cfg`
 | Determines the smart space behaviour.
 The options are `none`, `add-space-only`, and `full`.
 With `none`, outputs are typed as-is.
@@ -4073,7 +4076,7 @@ alongside additional behaviour:
 typing punctuation (default characters: `, . ;`)
 after a zippy activation will delete a prior automatically-added space.
 
-| `$puncN` for `smart-space-punctuation`
+| `$puncN`
 | A character defined in `output-character-mappings`
 or a known key name, which shall be considered as punctuation.
 The `smart-space-punctuation` configuration
@@ -4082,11 +4085,11 @@ considered by smart-space;
 if you want to want to include the default characters,
 you include them in the configuration.
 
-| `$characterN` for `output-character-mappings`
+| `$characterN`
 | A single unicode character for use
 in the output column of the zippy configuration file.
 
-| `$output-mappingN` for `output-character-mappings`
+| `$output-mappingN`
 | Key or output chord to tell kanata how to type `$characterN`
 when seen in the zippy file output column.
 Must be a single key or output chord.
@@ -4129,7 +4132,7 @@ $chordN $follow-chordN.1...N.M	$outputN
 The format is two columns separated by a single Tab character.
 The first column is input and the second is output.
 
-[cols="1,2"]
+[cols="1,4"]
 |===
 |`$chordN`
 | A set of characters.
