@@ -111,7 +111,7 @@ separated by whitespace.
 
 [cols="1,6"]
 |===
-| `$keyN`
+| `$key`
 | The name of a key. This can be a default key name or one defined in <<deflocalkeys>>.
 When physically pressing this input key, the action defined
 at the same order position on the active layer will activate.
@@ -161,16 +161,16 @@ how each physical key mapped in `+defsrc+` behaves when kanata runs.
 .Syntax
 [source]
 ----
-(deflayer $layerName $action1 $action2 ... $actionN)
+(deflayer $layer-name $action1 $action2 ... $actionN)
 ----
 
 [cols="1,5"]
 |===
-| `$layerName`
+| `$layer-name`
 | A string representing the layer name.
 This name is used to reference this layer in other actions.
 
-| `$actionN`
+| `$action`
 | The action that activates while this layer is active
 when the corresponding `defsrc` input key is pressed.
 |===
@@ -225,7 +225,7 @@ instead of relying on matching the `defsrc` ordering.
 .Syntax
 [source]
 ----
-(deflayermap ($layerName)
+(deflayermap ($layer-name)
  $input1 $action1
  $input2 $action2
  ...
@@ -234,14 +234,14 @@ instead of relying on matching the `defsrc` ordering.
 
 [cols="1,5"]
 |===
-| `$layerName`
+| `$layer-name`
 | A string representing the layer name.
 This name is used to reference this layer in other actions.
 
-| `$inputN`
+| `$input`
 | The input key mapped to the corresponding output.
 
-| `$actionN`
+| `$action`
 | The action that activates while this layer is active
 when the corresponding input key is pressed.
 |===
@@ -378,10 +378,10 @@ used in `defsrc`, `deflayer`, and anywhere else in the configuration.
 | `$variant`
 | One of: `win winiov2 wintercept linux macos`
 
-| `$key-nameN`
+| `$key-name`
 | A key name of your choice that can be used in the rest of the configuration.
 
-| `$key-numberN`
+| `$key-number`
 | A key number that varies based on the kanata variant you are using.
 |===
 
@@ -546,12 +546,12 @@ for an action.
 
 [cols="1,5"]
 |===
-| `$alias-nameN`
+| `$alias-name`
 | The chosen name for the shortcut label for the action.
 It can be used in the rest of the configuration
 by prefixing the name with the `@` character.
 
-| `$actionN`
+| `$action`
 | The ouput action used wherever the alias name is referenced.
 |===
 
@@ -619,8 +619,36 @@ configuration file easier to read.
 [[variables]]
 === Variables
 
+**Reference**
+
 Using the `defvar` configuration entry,
 you can introduce a shortcut label for an arbitrary string or list.
+
+.Syntax
+[source]
+----
+(defvar
+  $var-name1 $var-value1
+  $var-name2 $var-value2
+  ...
+  $var-nameN $var-valueN)
+----
+
+[cols="1,5"]
+|===
+| `$var-name`
+| The chosen name for the shortcut label for the action.
+It can be used in the rest of the configuration
+by prefixing the name with the `@` character.
+
+| `$var-value`
+| An arbitrary string or list that will be substituted
+wherever the variable is used.
+A variable can be used by prefixing the variable name with `$`.
+|===
+
+**Description**
+
 Unlike an alias, a variable does not need to be a valid standalone action.
 In other words,
 a variable can be used as components of actions.
@@ -2361,31 +2389,31 @@ The configuration is made up of 5-tuples of:
 
 [cols="1,3"]
 |===
-| `$participating-keysN`
+| `$participating-keys`
 | These are key names you would use in `defsrc`.
 A minimum of two keys must be defined per chord.
 The list must be unique per chord.
 
-| `$actionN`
+| `$action`
 | These are actions as you would configure in `deflayer` or `defalias`.
 The action activates if all participating keys are activated
 within the timeout.
 
-| `$timeoutN`
+| `$timeout`
 | The time (unit: milliseconds) within which,
 if all participating keys are pressed,
 the chord action will activate;
 otherwise the key presses are handled by the active layer.
 The time begins when the first participant is pressed.
 
-| `$release-behaviourN`
+| `$release-behaviour`
 | This must be either `first-release` or `all-released`;
 `first-release` means the chord action will be released
 when the first participant is released,
 while `all-released` means the chord action will be released
 only when all of the participants have been released.
 
-| `$disabled-layersN`
+| `$disabled-layers`
 | A list of layer names on which this chord is disabled.
 |===
 
@@ -4139,7 +4167,7 @@ alongside additional behaviour:
 typing punctuation (default characters: `, . ;`)
 after a zippy activation will delete a prior automatically-added space.
 
-| `$puncN`
+| `$punc`
 | A character defined in `output-character-mappings`
 or a known key name, which shall be considered as punctuation.
 The `smart-space-punctuation` configuration
@@ -4148,12 +4176,12 @@ considered by smart-space;
 if you want to want to include the default characters,
 you include them in the configuration.
 
-| `$characterN`
+| `$character`
 | A single unicode character for use
 in the output column of the zippy configuration file.
 
-| `$output-mappingN`
-| Key or output chord to tell kanata how to type `$characterN`
+| `$output-mapping`
+| Key or output chord to tell kanata how to type `$character`
 when seen in the zippy file output column.
 Must be a single key or output chord.
 The output chord may contain `AG-` to tell kanata to press with AltGr
@@ -4196,36 +4224,36 @@ The first column is input and the second is output.
 
 [cols="1,4"]
 |===
-|`$chordN`
+|`$chord`
 | A set of characters.
 You can use space by including it as the first character in the chord;
 for an example see `Alphabet` in the sample below.
 With 0 optional follow chords,
-the corresponding output on the same line (`$outputN`)
+the corresponding output on the same line (`$output`)
 will activate when zippy is enabled
 and all the defined chord keys are pressed simultaneously.
 The order of presses is not important.
 
-| `$chord-followN.M`
-| 0 or more chords, used the same way as `$chordN`.
-Having follow chords means the `$outputN` on the same line
+| `$chord-follow`
+| 0 or more chords, used the same way as `$chord`.
+Having follow chords means the `$output` on the same line
 will activate upon first activating the earlier chord(s) in the same line,
 releasing all keys, and pressing the keys in `$chord-followN.M`.
 Follow chords are separated from the previous chord by a space.
 If using a space in the follow chord, use two spaces;
 for an example see `Washington` in the sample below.
 
-| `$outputN`
+| `$output`
 | The characters to type when the chord and optional follow chord(s)
 are all pressed by the user.
-This is separated from the input `$chordN $follow-chordN.1...N.M` column
+This is separated from the input chord column
 by a single Tab character.
 The characters are typed in sequence
 and must all be singular-name key names
 as one would configure in `defsrc`.
 As an exception, capitalized single-character key names
 will be parsed successfully
-and these will be outputted alongside Shift to output the capital key.
+and these will be outputted alongside Shift to output the capitalized key.
 Additionally, `output-character-mappings` configuration can be used
 to inform kanata of additional mappings that may use Shift or AltGr.
 |===
