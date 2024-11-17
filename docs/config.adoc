@@ -41,18 +41,14 @@ Useful terminology to learn early:
 |===
 | string
 | A sequence of characters.
-Optionally surrounded within quotes.
+Optionally surrounded by quotes.
 Examples: `backspace`, `"string with spaces and 1 number"`.
 
 | list
-| A sequence of strings or nested lists within parentheses.
+| A sequence of strings or nested lists within round brackets.
 List items are separated by any amount of whitespace characters,
-or by parentheses.
+or by round brackets.
 Examples: `(lrld-num 1)`, `(tap-dance 200 (f1(unicode 😀)f2(unicode 🙂)))`.
-Unlike the second example above,
-it is encouraged to have spaces after closing parentheses
-unless they are immediately followed by more closing parentheses
-or by the end of the line.
 |===
 
 If you have any questions, confusions, suggestions, etc., feel free to
@@ -930,6 +926,16 @@ When activated, the underlying `defsrc` key will be the output action.
 [[no-op]]
 === No-op
 
+**Reference**
+
+[cols="1,6"]
+|===
+| `XX`
+| String action that will output nothing.
+|===
+
+**Description**
+
 You may use the action `+XX+` as a "no operation" key, meaning pressing the key
 will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
@@ -940,16 +946,38 @@ Alternatively you can use `+✗+` `+∅+` `+•+` to mean no-op.
 .Example:
 [source]
 ----
-(deflayer contains-no-op
-  XX ✗ • f)
+(deflayer contains-no-ops
+  XX ✗ ∅ •)
 ----
 
 [[unicode]]
 === Unicode
 
+**Reference**
+
+List action that outputs a single unicode codepoint.
+The unicode codepoint will not be repeatedly typed if you hold the key down.
+
+.Syntax
+[source]
+----
+(unicode $unicode-codepoint)
+----
+
+[cols="1,4"]
+|===
+| `$unicode-codepoint`
+| One unicode codepoint.
+Be warned that many emojis/glyphs/graphemes
+are composed of multiple codepoints.
+|===
+
+**Description**
+
 The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
-a composed character, so 🤲, but not 🤲🏿). The character will not be repeatedly
-typed if you hold the key down.
+a composed character, so 🤲, but not 🤲🏿).
+If you want to output a glyph that is composed of multiple codepoints,
+you can use <<macro>> with multiple `unicode` actions.
 
 You may use a unicode character as an alias if desired or in its simplified form `+🔣😀+`
 (vs the usual `+(🔣 😀)+`).
@@ -960,6 +988,7 @@ application.
 NOTE: If using Linux, make sure to look at the
 <<linux-only-linux-unicode-u-code,unicode behaviour customization>> in defcfg.
 
+.Example
 [source]
 ----
 (defalias
@@ -974,6 +1003,7 @@ NOTE: If using Linux, make sure to look at the
 
 If you want output parentheses `+( )+` via unicode you can quote them.
 
+.Example with parentheses
 [source]
 ----
 (defalias
@@ -985,6 +1015,7 @@ If you want output parentheses `+( )+` via unicode you can quote them.
 If you want to output double quotes via unicode
 you need a special quoting syntax.
 
+.Example use of double-quote within a string
 [source]
 ----
 (defalias
@@ -995,9 +1026,72 @@ you need a special quoting syntax.
 [[output-chordscombos]]
 === Output chords/combos
 
+**Reference**
+
+Prefixing a known key name with the following strings
+will output the key alongside the specified modifier.
+Multiple prefixes can be combined to add more modifiers
+to the same key output.
+Duplicate prefixes are not allowed.
+
+[cols="1,6"]
+|===
+| `+C-+`
+| Left Control
+
+| `+RC-+`
+| Right Control
+
+| `+A-+`
+| Left Alt
+
+| `+RA-+`
+| Right Alt, also known as AltGr
+
+| `+AG-+`
+| Also means Right Alt/AltGr
+
+| `+S-+`
+| Left Shift
+
+| `+RS-+`
+| Right Shift
+
+| `+M-+`
+| Left Meta
+
+| `+RM-+`
+| Right Meta
+|===
+
+A special behaviour of output chords is that if another key is pressed,
+all of the chord keys will be released
+before the newly pressed key action activates.
+The modifier keys are often not desired for subsequent actions
+and without this behaviour,
+rapid typing can result in undesired modified key presses.
+If you want keys to remain pressed, use <<multi>> instead.
+
+**Description**
+
 You may want to remap a key to automatically be pressed in combination with
-modifiers such as Control or Shift. You can achieve this by prefixing the
-normal key name with one or more of:
+modifiers such as Control or Shift.
+Output chords are a way for you to achieve this.
+
+Output chords are typically used do one-off actions such as:
+
+- type a symbol, e.g. `S-1` to output `!` for the US layout.
+- type an accented character,
+e.g. `RA-a` to output `á` for the US international layout.
+- do a special action like `C-c` to send `SIGTERM` in the terminal
+
+It should be noted that output chords are not usable in all configuration items.
+If you get an unknown key error where you expected an output chord to be usable,
+you must split the output chord into its component keys.
+For example, `+(unmod C-l)+` is an error;
+instead you should use `+(unmod lctl l)+`.
+
+The output chord prefix strings are:
 
 * `+C-+`: Left Control (also `+‹⎈+` `+‹⌃+` or without the `+‹+` side indicator)
 * `+RC-+`: Right Control (also `+⎈›+` `+⌃›+`)
@@ -1007,26 +1101,6 @@ normal key name with one or more of:
 * `+RS-+`: Right Shift (also `+⇧›+`)
 * `+M-+`: Left Meta, a.k.a. Windows, GUI, Command, Super (also `+‹⌘+` `+‹❖+` `+‹◆+` or without the `+‹+` side indicator))
 * `+RM-+`: Right Meta (also `+⌘›+` `+❖›+` `+◆›+`)
-
-These modifiers may be combined together if desired.
-
-NOTE: A special behaviour of output chords is that if another key is pressed,
-all of the chord keys will be released
-before the newly pressed key action activates.
-The modifier keys are often not desired for subsequent actions
-and without this behaviour,
-rapid typing can result in undesired modified key presses.
-If you want keys to remain pressed, use <<multi>> instead.
-
-WARNING: Output chords are not usable in all positions.
-For example, `+(unmod C-l)+` is an error;
-instead you should use `+(unmod lctl l)+`.
-
-Output chords are typically used do one-off actions such as:
-
-- type a symbol, e.g. `S-1`
-- type a special/accented character, e.g. `RA-a`
-- do a special action like `C-c` to send `SIGTERM` in the terminal
 
 .Example:
 [source]
@@ -1046,6 +1120,19 @@ Output chords are typically used do one-off actions such as:
 
 [[repeat-key]]
 === Repeat key
+
+**Reference**
+
+[cols="1,5"]
+|===
+| `rpt`
+| String action that outputs the single most-recently typed key.
+
+| `rpt-any`
+| String action that outputs the most-recently outputted action.
+|===
+
+**Description**
 
 The action `+rpt+` repeats the most recently typed key. Holding down this key
 will not repeatedly send the key. The intended use case is to be able to use a
