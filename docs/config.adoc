@@ -19,7 +19,7 @@ endif::[]
 The **Reference** sections are shorter
 and are intended for reviewing how precisely to configure different sections.
 The **Description** sections are longer
-and contain more details such as advice or motivation.
+and contain more details such as advice, motivation, and examples.
 
 The configuration guide you are reading
 may have content not applicable to the version you are using.
@@ -118,7 +118,7 @@ in actions such as `tap-hold-press` or `tap-dance`
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (defsrc $key1 $key2 ... $keyN)
@@ -148,7 +148,7 @@ if you're unable to find the key you're looking for.
 An example `defsrc` containing the US QWERTY keyboard keys as an
 approximately 60% keyboard layout:
 
-.Example
+.Example:
 [source]
 ----
 (defsrc
@@ -173,7 +173,7 @@ For non-US keyboards, see <<non-us-keyboards,this section>>.
 Your configuration file must have at least one `+deflayer+` entry. This defines
 how each physical key mapped in `+defsrc+` behaves when kanata runs.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (deflayer $layer-name $action1 $action2 ... $actionN)
@@ -205,7 +205,7 @@ using actions.
 An example `defsrc` and `deflayer` that remaps QWERTY to the Dvorak layout
 would be:
 
-.Example
+.Example:
 [source]
 ----
 (defsrc
@@ -242,7 +242,7 @@ or define most of your keyboard keys within <<defsrc>> when using `deflayermap`.
 Otherwise many actions do not behave as intended.
 See one of the links for more context.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (deflayermap ($layer-name)
@@ -380,7 +380,7 @@ key names.
 You can use `deflocalkeys` to define additional key names that can be
 used in `defsrc`, `deflayer`, and anywhere else in the configuration.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (deflocalkeys-$variant
@@ -551,7 +551,7 @@ it will be useful to first learn about aliases and variables.
 Using the `defalias` configuration entry, you can introduce a shortcut label
 for an action.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (defalias
@@ -641,7 +641,7 @@ configuration file easier to read.
 Using the `defvar` configuration entry,
 you can introduce a shortcut label for an arbitrary string or list.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (defvar
@@ -814,7 +814,7 @@ activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 
 A list action that changes the active base layer.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (layer-switch $layer-name)
@@ -850,7 +850,7 @@ defined in a `deflayer` entry.
 
 A list action that changes the active layer while the key is held.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (layer-while-held $layer-name)
@@ -960,7 +960,7 @@ Alternatively you can use `+✗+` `+∅+` `+•+` to mean no-op.
 List action that outputs a single unicode codepoint.
 The unicode codepoint will not be repeatedly typed if you hold the key down.
 
-.Syntax
+.Syntax:
 [source]
 ----
 (unicode $unicode-codepoint)
@@ -990,7 +990,7 @@ application.
 NOTE: If using Linux, make sure to look at the
 <<linux-only-linux-unicode-u-code,unicode behaviour customization>> in defcfg.
 
-.Example
+.Example:
 [source]
 ----
 (defalias
@@ -1167,15 +1167,30 @@ and would output `ctrl+c` in the example case.
 [[release-a-key-or-layer]]
 === Release a key or layer
 
+**Reference**
+
+[cols="1,2"]
+|===
+| `(release-key $key)`
+| List action that releases the defined key from output actions.
+Notably this does not act on key inputs.
+
+| `(release-layer $layer-name)`
+| String action that releases any `layer-while-held` activations.
+|===
+
+**Description**
+
 You can release a held key or layer via these actions:
 
 * `release-key` or `key↑`: release a key, accepts `defsrc` compatible names
 * `release-layer` or `layer↑`: release a while-held layer
 
-NOTE:
 A lower-level detail of these actions is that they operate on output states
 as opposed to virtually releasing an input key.
-This does have some practical significance but for the most part it is not important.
+This does have some practical significance.
+For example, if the action `(macro-repeat a 50)` were on the `a` key,
+activating `(release-key a)` will not stop the repeating macro.
 
 An example practical use case for `release-key` is seen in the `multi` section
 directly below.
@@ -1185,6 +1200,24 @@ There is currently no known practical use case for
 
 [[multi]]
 === multi
+
+**Reference**
+
+Activate multiple actions in sequence.
+
+.Syntax:
+[source]
+----
+(multi $action1 $action2 ... $actionN)
+----
+
+[cols="1,3"]
+|===
+| `$action`
+| An output action.
+|===
+
+**Description**
 
 The `+multi+` action executes multiple keys or actions in order but also
 simultaneously. It accepts one or more actions.
@@ -1237,6 +1270,20 @@ with a different action like `macro` or an output chord.
 
 ==== reverse-release-order
 
+**Reference**
+
+String item that can be used inside of `(multi ...)`
+to reverse the release order of any keys that were pressed
+as part of `multi`.
+
+.Syntax:
+[source]
+----
+(multi ... reverse-release-order)
+----
+
+**Description**
+
 Within `multi` you can use include `reverse-release-order`
 to do what the action states: reverse the typical release order from
 if you have multiple keys in multi.
@@ -1264,6 +1311,49 @@ vertical/horizontal scrolling, and move the mouse.
 
 [[mouse-buttons]]
 ==== Mouse buttons
+
+**Reference**
+
+You can activate mouse actions with the string actions below.
+
+[cols="1,5"]
+|===
+| `mlft`
+| Hold left mouse button.
+
+| `mmid`
+| Hold middle mouse button.
+
+| `mrgt`
+| Hold right mouse button.
+
+| `mfwd`
+| Hold forward mouse button.
+
+| `mbck`
+| Hold backward mouse button.
+
+| `mltp`
+| Tap left mouse button.
+
+| `mmtp`
+| Tap middle mouse button.
+
+| `mrtp`
+| Tap right mouse button.
+
+| `mftp`
+| Tap forward mouse button.
+
+| `mbtp`
+| Tap backward mouse button.
+|===
+
+In Linux and Windows-Interception,
+the hold actions can be used within `defsrc` and `deflayermap`
+to remap mouse buttons like keyboard keys.
+
+**Description**
 
 The mouse button actions are:
 
@@ -1925,7 +2015,7 @@ You can use `caps-word-custom` or `word⇪-custom` instead of `caps-word`
 if you want to manually define which keys are capitalized (2nd parameter)
 and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 
-.Example
+.Example:
 [source]
 ----
 (defalias
@@ -1944,11 +2034,11 @@ and what the extra non-terminal+non-capitalized keys should be (3rd parameter).
 ==== caps-word-toggle[[caps-word-toggle]]
 
 There are `-toggle` variants of the `caps-word` actions.
-By default repressing `caps-word` will keep `caps-word` active.
+By default re-pressing `caps-word` will keep `caps-word` active.
 The `-toggle` variants will end `caps-word` if it is currently active,
 otherwise `caps-word` will be activate as normal.
 
-.Example
+.Example:
 [source]
 ----
 (defalias
@@ -2528,7 +2618,7 @@ An empty string for `env-var-value` — `""` — will use the configuration
 if the environment variable an empty string
 and also if the variable is unset/missing entirely.
 
-.Example
+.Example:
 [source]
 ----
 (environment (LAPTOP lp1)
@@ -2622,7 +2712,7 @@ you must enable `concurrent-tap-hold`.
 This is enforced for a more responsive `tap-hold` experience when
 activated by a chord.
 
-.Example
+.Example:
 [source]
 ----
 (defcfg concurrent-tap-hold yes)
