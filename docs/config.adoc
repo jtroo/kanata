@@ -1,7 +1,5 @@
-= Configuration
-:toc:
-:toc-placement!:
-:toc-title!:
+= Kanata Configuration Guide
+:toc: left
 
 This document describes how to create a kanata configuration file. The kanata
 configuration file will determine your keyboard behaviour upon running kanata.
@@ -28,10 +26,6 @@ If you have ideas for how to improve this document or any other part of the proj
 please be welcome to make a pull request or file an issue.
 
 '''
-
-[[table-of-contents]]
-== Table of contents
-toc::[]
 
 == Forcefully exit kanata [[force-exit]]
 <<table-of-contents,Back to ToC>>
@@ -205,13 +199,43 @@ see https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 
 ==== deflayermap
 
+**Reference**
+
 An alternative method for defining a layer exists: `deflayermap`.
 This method maps inputs to actions by explicitly defined by input-output pairs
 instead of relying on matching the `defsrc` ordering.
-This has the advantage of terser configuration
+
+.Syntax
+[source]
+----
+(deflayermap ($layerName)
+ $input1 $action1
+ $input2 $action2
+ ...
+ $inputN $actionN)
+----
+
+[cols="1,2"]
+|===
+| `$layerName`
+| A string representing the layer name.
+This is name used to reference this layer in other actions.
+
+| `$inputN`
+| An input key name.
+
+| `$actionN`
+| The action that activates while this layer is active
+when the corresponding input key is pressed.
+|===
+
+**Description**
+
+The `deflayermap` variant has the advantage of terser configuration
 when only a few keys on a layer need to be mapped.
 When practicing a new configuration, the standard `deflayer` has an advantage
-of looking more like a physical keyboard layout, which may be helpful to some.
+of looking more like a physical keyboard layout,
+which may be helpful to some.
 
 Within `deflayermap`, the very first item must be the layer name.
 The layer name must be in parentheses unlike with `deflayer`.
@@ -234,19 +258,25 @@ An example complete configuration that maps Caps Lock to Escape is:
 The input key takes the same role as `defsrc` keys.
 The output action takes the role that items in the normal `deflayer` have.
 
-Instead of specifying an input key,
-you can use either `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
+As special input key names,
+you can use one of `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
 the keys that are not explicitly mapped in the layer,
 e.g. in the example above, these affect keys other than `caps`.
 
-`&#95;` maps only keys that are in defsrc.
+[cols="1,2"]
+|===
+| `&#95;`
+| Map all unmapped keys in this layer that are defined in `defsrc`.
 
-`&#95;&#95;` excludes mapping keys that are in defsrc.
+| `&#95;&#95;`
+| Map all unmapped keys in this layer that are not defined in `defsrc`.
 
-`&#95;&#95;&#95;` maps all keys that are not explicitly mapped in the layer.
+| `&#95;&#95;&#95;`
+| Map all unmapped keys in this layer.
+|===
 
 IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
-or map most of your keyboard keys within defsrc when using `deflayermap`.
+or define most of your keyboard keys within `defsrc` when using `deflayermap`.
 Otherwise actions such as `tap-hold` do not behave as intended.
 
 [[review-of-required-configuration-entries]]
@@ -384,10 +414,9 @@ In Windows uning `winIOv2`, the winIOv2 executable variant
 will give the correct number in the `code: <number>` section.
 
 In Windows using Interception, the interception version of the keyboard tester
-will give the correct number i the `num: <number>` section.
-Between the hook and interception versions, some
+will give the correct number in the `num: <number>` section.
+Between the default and Interception versions, some
 keys may agree but others may not; do be aware that they are **not** compatible!
-
 However, Interception and winIOv2 should generally agree with each other.
 
 Ideas for improving the user-friendliness of this system are welcome! As
@@ -427,13 +456,13 @@ instead of most of the keys on your keyboard.
 By default, keys excluded from `defsrc` will not work in various scenarios.
 Some examples of when a not-in-defsrc key is pressed:
 
-- antecedent `+tap-hold-press+` activations will not trigger an early hold
-- antecedent `+one-shot+` activations will not be released
-- `fork|switch` logic will not be able to see the key
+- antecedent `+tap-hold-press+` actions will not trigger their early hold
+- antecedent `+one-shot+` actions will not be released
+- `fork|switch` logic will not see the key
 
 This option is disabled by default.
 The reason this is not enabled by default
-is because some keys may not work correctly if they are intercepted.
+is because some keys may not work correctly if they are processed by Kanata.
 For example, see <<windows-only-windows-altgr>>.
 
 .Example:
@@ -445,7 +474,6 @@ For example, see <<windows-only-windows-altgr>>.
 ----
 
 == Aliases and variables[[aliases-and-vars]]
-<<table-of-contents,Back to ToC>>
 
 Before learning about actions,
 it will be useful to first learn about aliases and variables.
