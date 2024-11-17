@@ -350,7 +350,7 @@ https://www.w3.org/TR/uievents-code/[this reference].
 Due to the lengthy key names,
 you may want to use `deflayermap` if remapping using these key names.
 
-WARNING: On Windows, you should use either `kanata_winIOv2.exe`
+IMPORTANT: On Windows, you should use either `kanata_winIOv2.exe`
 or Interception when using key names according to the browser `event.code`.
 The default `kanata.exe` does not do mappings according to the browser `event.code`
 key names.
