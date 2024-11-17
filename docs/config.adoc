@@ -27,6 +27,9 @@ please be welcome to make a pull request or file an issue.
 
 '''
 
+[[table-of-contents]]
+toc::[]
+
 == Forcefully exit kanata [[force-exit]]
 <<table-of-contents,Back to ToC>>
 
