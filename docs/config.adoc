@@ -168,7 +168,7 @@ how each physical key mapped in `+defsrc+` behaves when kanata runs.
 |===
 | `$layerName`
 | A string representing the layer name.
-This is name used to reference this layer in other actions.
+This name is used to reference this layer in other actions.
 
 | `$actionN`
 | The action that activates while this layer is active
@@ -236,7 +236,7 @@ instead of relying on matching the `defsrc` ordering.
 |===
 | `$layerName`
 | A string representing the layer name.
-This is name used to reference this layer in other actions.
+This name is used to reference this layer in other actions.
 
 | `$inputN`
 | The input key mapped to the corresponding output.
