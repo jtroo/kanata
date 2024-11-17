@@ -88,6 +88,14 @@ a multi-line comment block
 Your configuration file must have exactly one `defsrc` entry. This defines the
 order of keys that the `+deflayer+` entries will operate on.
 
+Keys excluded from `defsrc` will not be processed by Kanata
+unless you have `process-unmapped-keys yes` in <<introduction-defcfg,defcfg>>.
+This has implications on various actions.
+For example, excluded keys can activate while a `tap-hold` decision is still pending,
+excluded keys cannot trigger early activation
+in actions such as `tap-hold-press` or `tap-dance`
+and cannot be read by `fork` or `switch` logic.
+
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
 
@@ -97,21 +105,13 @@ separated by whitespace.
 (defsrc $key1 $key2 ... $keyN)
 ----
 
-[cols="1,5"]
+[cols="1,6"]
 |===
 | `$keyN`
 | The name of a key. This can be a default key name or one defined in <<deflocalkeys>>.
 When physically pressing this input key, the action defined
 at the same order position on the active layer will activate.
 |===
-
-Keys excluded from `defsrc` will not be processed by Kanata
-unless you have `process-unmapped-keys yes` in defcfg.
-This has implications on various actions.
-For example, excluded keys can activate while a `tap-hold` decision is still pending,
-excluded keys cannot trigger early activation
-in actions such as `tap-hold-press` or `tap-dance`
-and cannot be read by `fork` or `switch` logic.
 
 **Description**
 
@@ -244,6 +244,10 @@ when the corresponding input key is pressed.
 
 **Description**
 
+IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
+or define most of your keyboard keys within <<defsrc>> when using `deflayermap`.
+Otherwise actions such as `tap-hold` do not behave as intended.
+
 The `deflayermap` variant has the advantage of terser configuration
 when only a few keys on a layer need to be mapped.
 When practicing a new configuration, the standard `deflayer` has an advantage
@@ -264,14 +268,13 @@ An example complete configuration that maps Caps Lock to Escape is:
 ;; defsrc is still necessary
 (defsrc)
 (deflayermap (base-layer)
-  caps esc
-)
+  caps esc)
 ----
 
 The input key takes the same role as `defsrc` keys.
 The output action takes the role that items in the normal `deflayer` have.
 
-As special input key names,
+As special input names,
 you can use one of `&#95;`, `&#95;&#95;`, or `&#95;&#95;&#95;` to map all
 the keys that are not explicitly mapped in the layer,
 e.g. in the example above, these affect keys other than `caps`.
@@ -287,10 +290,6 @@ e.g. in the example above, these affect keys other than `caps`.
 | `&#95;&#95;&#95;`
 | Map all unmapped keys in this layer.
 |===
-
-IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
-or define most of your keyboard keys within `defsrc` when using `deflayermap`.
-Otherwise actions such as `tap-hold` do not behave as intended.
 
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
@@ -463,10 +462,10 @@ if you are only mapping a few keys in defsrc
 instead of most of the keys on your keyboard.
 
 By default, keys excluded from `defsrc` will not work in various scenarios.
-Some examples of when a not-in-defsrc key is pressed:
+Some examples:
 
-- antecedent `+tap-hold-press+` activations will not trigger an early hold
-- antecedent `+one-shot+` activations will not be released
+- prior `+tap-hold-press+` actions will not trigger an early hold
+- prior `+one-shot+` actions will not be released
 - `fork|switch` logic will not be able to see the key
 
 This option is disabled by default.
