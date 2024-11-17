@@ -91,10 +91,14 @@ order of keys that the `+deflayer+` entries will operate on.
 Keys excluded from `defsrc` will not be processed by Kanata
 unless you have `process-unmapped-keys yes` in <<introduction-defcfg,defcfg>>.
 This has implications on various actions.
-For example, excluded keys can activate while a `tap-hold` decision is still pending,
-excluded keys cannot trigger early activation
+For example:
+
+- Pressing an excluded key will type a letter
+while a prior `tap-hold` decision is still pending,
+resulting in potentially incorrect results.
+- Excluded keys do not trigger early activation
 in actions such as `tap-hold-press` or `tap-dance`
-and cannot be read by `fork` or `switch` logic.
+- Excluded keys cannot be read by `fork` or `switch` logic.
 
 A `defsrc` entry is composed of `defsrc` followed by key names that are
 separated by whitespace.
@@ -354,8 +358,55 @@ key names.
 [[deflocalkeys]]
 === deflocalkeys
 
+**Reference**
+
 You can use `deflocalkeys` to define additional key names that can be
-used in `defsrc`, `deflayer` and anywhere else in the configuration.
+used in `defsrc`, `deflayer`, and anywhere else in the configuration.
+
+.Syntax
+[source]
+----
+(deflocalkeys-$variant
+  $key-name1 $key-number1
+  $key-name2 $key-number2
+  ...
+  $key-nameN $key-numberN)
+----
+
+[cols="1,5"]
+|===
+| `$variant`
+| One of: `win winiov2 wintercept linux macos`
+
+| `$key-nameN`
+| A key name of your choice that can be used in the rest of the configuration.
+
+| `$key-numberN`
+| A key number that varies based on the kanata variant you are using.
+|===
+
+Only one of each deflocalkeys-* variant is allowed. The variants that are not
+applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
+are both ignored when using the default Windows `kanata.exe` binary.
+
+**Description**
+
+The `deflocalkeys` configurations are not strictly necessary.
+Their purpose is to help you match your physical keyboard's appearance
+to your kanata configuration,
+in the hopes it will be more readable and less confusing.
+In the underlying hardware, all keyboard positions send the same scan codes
+according to their position, regardless of what is printed on the key cap.
+The scan code names are typically referred to by the corresponding US layout name.
+It is the job of the operating system to translate the same scan code
+to the correct outputs according to the configured locale and layout.
+
+You can find configurations that others have made in
+https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document].
+If you do not see your keyboard there and are not confident in using
+the available tools,
+please feel welcome to ask for help in a discussion or issue.
+Please contribute to the document if you are able!
 
 There are five variants of deflocalkeys:
 
@@ -364,17 +415,6 @@ There are five variants of deflocalkeys:
 - `deflocalkeys-wintercept`
 - `deflocalkeys-linux`
 - `deflocalkeys-macos`
-
-Only one of each deflocalkeys-* variant is allowed. The variants that are not
-applicable will be ignored, e.g. `deflocalkeys-linux` and `deflocalkeys-wintercept`
-are both ignored when using the default Windows kanata binary.
-
-You can find configurations that others have made in
-https://github.com/jtroo/kanata/blob/main/docs/locales.adoc[this document].
-If you do not see your keyboard there and are not confident in using
-the available tools,
-please feel welcome to ask for help in a discussion or issue.
-Please contribute to the document if you are able!
 
 .Example:
 [source]
@@ -466,7 +506,7 @@ Some examples:
 
 - prior `+tap-hold-press+` actions will not trigger an early hold
 - prior `+one-shot+` actions will not be released
-- `fork|switch` logic will not be able to see the key
+- `fork` and `switch` logic will not see the key
 
 This option is disabled by default.
 The reason this is not enabled by default
