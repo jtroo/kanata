@@ -1,8 +1,20 @@
-= Kanata Configuration Guide
-:toc: left
+= Configuration
+:toc:
+:toc-placement!:
+:toc-title!:
 
-This document describes how to create a kanata configuration file. The kanata
-configuration file will determine your keyboard behaviour upon running kanata.
+This document describes how to create a kanata configuration file.
+The kanata configuration file will determine your keyboard behaviour upon running kanata.
+
+== How to read the guide
+
+If viewing on GitHub, see the triple bullet-lines at the upper right
+to open or close a Table of Contents sidebar.
+
+The **Reference** sections is brief text
+intended for reviewing how precisely to configure items.
+The **Description** sections are longer
+and contain more details such as advice or motivation.
 
 IMPORTANT: The configuration guide you are reading
 may have content not applicable to the version you are using.
@@ -13,6 +25,8 @@ Links to specific guide versions:
 * https://github.com/jtroo/kanata/blob/v1.7.0/docs/config.adoc[v1.7.0]
 * https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
 * https://github.com/jtroo/kanata/blob/v1.6.0/docs/config.adoc[v1.6.0]
+
+== Preamble
 
 The configuration file uses S-expression syntax from Lisps. If you are not
 familiar with any Lisp-like programming language, do not be too worried. This
@@ -28,6 +42,7 @@ please be welcome to make a pull request or file an issue.
 '''
 
 [[table-of-contents]]
+== Table of contents
 toc::[]
 
 == Forcefully exit kanata [[force-exit]]
@@ -225,11 +240,10 @@ instead of relying on matching the `defsrc` ordering.
 This is name used to reference this layer in other actions.
 
 | `$inputN`
-| An input key name.
+|
 
-| `$actionN`
-| The action that activates while this layer is active
-when the corresponding input key is pressed.
+|
+|
 |===
 
 **Description**
@@ -417,9 +431,10 @@ In Windows uning `winIOv2`, the winIOv2 executable variant
 will give the correct number in the `code: <number>` section.
 
 In Windows using Interception, the interception version of the keyboard tester
-will give the correct number in the `num: <number>` section.
-Between the default and Interception versions, some
+will give the correct number i the `num: <number>` section.
+Between the hook and interception versions, some
 keys may agree but others may not; do be aware that they are **not** compatible!
+
 However, Interception and winIOv2 should generally agree with each other.
 
 Ideas for improving the user-friendliness of this system are welcome! As
@@ -459,13 +474,13 @@ instead of most of the keys on your keyboard.
 By default, keys excluded from `defsrc` will not work in various scenarios.
 Some examples of when a not-in-defsrc key is pressed:
 
-- antecedent `+tap-hold-press+` actions will not trigger their early hold
-- antecedent `+one-shot+` actions will not be released
-- `fork|switch` logic will not see the key
+- antecedent `+tap-hold-press+` activations will not trigger an early hold
+- antecedent `+one-shot+` activations will not be released
+- `fork|switch` logic will not be able to see the key
 
 This option is disabled by default.
 The reason this is not enabled by default
-is because some keys may not work correctly if they are processed by Kanata.
+is because some keys may not work correctly if they are intercepted.
 For example, see <<windows-only-windows-altgr>>.
 
 .Example:
@@ -477,6 +492,7 @@ For example, see <<windows-only-windows-altgr>>.
 ----
 
 == Aliases and variables[[aliases-and-vars]]
+<<table-of-contents,Back to ToC>>
 
 Before learning about actions,
 it will be useful to first learn about aliases and variables.
