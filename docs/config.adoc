@@ -2,11 +2,6 @@
 ifndef::env-github[]
 :toc: left
 endif::[]
-ifdef::env-github[]
-:toc: macro
-:toc-title!:
-:toclevels: 2
-endif::[]
 
 This document describes how to create a kanata configuration file.
 The kanata configuration file will determine your keyboard behaviour upon running kanata.
@@ -17,8 +12,9 @@ ifdef::env-github[]
 See the triple bullet-lines at the upper right
 to open or close a Table of Contents sidebar.
 endif::[]
-
+ifndef::env-github[]
 See the sidebar for the table of contents.
+endif::[]
 
 The **Reference** sections are shorter
 and are intended for reviewing how precisely to configure different sections.
@@ -45,13 +41,6 @@ https://github.com/jtroo/kanata/discussions/new/choose[start a discussion]
 or https://github.com/jtroo/kanata/issues/new/choose[file an issue].
 If you have ideas for how to improve this document or any other part of the project,
 please be welcome to make a pull request or file an issue.
-
-ifdef::env-github[]
-'''
-[[table-of-contents]]
-== Table of contents
-toc::[]
-endif::[]
 
 == Forcefully exit kanata [[force-exit]]
 
