@@ -529,8 +529,33 @@ it will be useful to first learn about aliases and variables.
 [[aliases]]
 === Aliases
 
+**Reference**
+
 Using the `defalias` configuration entry, you can introduce a shortcut label
 for an action.
+
+.Syntax
+[source]
+----
+(defalias
+  $alias-name1 $action1
+  $alias-name2 $action2
+  ...
+  $alias-nameN $actionN)
+----
+
+[cols="1,5"]
+|===
+| `$alias-nameN`
+| The chosen name for the shortcut label for the action.
+It can be used in the rest of the configuration
+by prefixing the name with the `@` character.
+
+| `$actionN`
+| The ouput action used wherever the alias name is referenced.
+|===
+
+**Description**
 
 The `defalias` entry reads pairs of items in a sequence
 where the first item in the pair is the alias name and the second item is the
@@ -4059,14 +4084,13 @@ Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator
 [[zippychord]]
 === Zippychord
 
-==== Reference
+**Reference**
 
 You may define a single `+defzippy-experimental+` configuration item.
 As suggested by the -experimental label, this feature is relatively recent.
 When using this you are at higher likelihood of bugs and breaking changes.
 
-===== Configuration syntax within the kanata configuration
-
+.Configuration syntax within the kanata configuration
 [source]
 ----
 (defzippy-experimental
@@ -4156,8 +4180,7 @@ As an example, for the US layout these should be the correct lines:
     r#"""#  S-'
 ----
 
-===== Configuration syntax within the zippy configuration file
-
+.Configuration syntax within the zippy configuration file
 [source]
 ----
 // This is a comment.
@@ -4207,8 +4230,9 @@ Additionally, `output-character-mappings` configuration can be used
 to inform kanata of additional mappings that may use Shift or AltGr.
 |===
 
-==== Sample kanata configuration
+**Examples**
 
+.Sample kanata configuration
 [source]
 ----
 (defzippy-experimental
@@ -4234,7 +4258,7 @@ to inform kanata of additional mappings that may use Shift or AltGr.
 )
 ----
 
-==== Sample zippy file content
+.Sample zippy file content
 
 [source]
 ----
@@ -4247,7 +4271,7 @@ gi	git
 gi f p	git fetch -p
 ----
 
-==== Description
+**Description**
 
 Zippychord is yet another chording mechanism in Kanata.
 The inspiration behind it is primarily the
