@@ -234,8 +234,13 @@ see https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 **Reference**
 
 An alternative method for defining a layer exists: `deflayermap`.
-This method maps inputs to actions by explicitly defined by input-output pairs
-instead of relying on matching the `defsrc` ordering.
+This method maps inputs to actions by defining input-output pairs,
+ignoring `defsrc` entirely.
+
+You will likely want to either enable <<process-unmapped-keys>>
+or define most of your keyboard keys within <<defsrc>> when using `deflayermap`.
+Otherwise many actions do not behave as intended.
+See one of the links for more context.
 
 .Syntax
 [source]
@@ -263,9 +268,6 @@ when the corresponding input key is pressed.
 
 **Description**
 
-IMPORTANT: You will likely want to either enable <<process-unmapped-keys>>
-or define most of your keyboard keys within <<defsrc>> when using `deflayermap`.
-Otherwise actions such as `tap-hold` do not behave as intended.
 
 The `deflayermap` variant has the advantage of terser configuration
 when only a few keys on a layer need to be mapped.
@@ -519,8 +521,8 @@ instead of most of the keys on your keyboard.
 By default, keys excluded from `defsrc` will not work in various scenarios.
 Some examples:
 
-- prior `+tap-hold-press+` actions will not trigger an early hold
-- prior `+one-shot+` actions will not be released
+- The early hold for prior `+tap-hold-press+` actions will not
+- Prior `+one-shot+` actions will not be released
 - `fork` and `switch` logic will not see the key
 
 This option is disabled by default.
