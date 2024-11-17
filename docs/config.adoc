@@ -36,6 +36,25 @@ familiar with any Lisp-like programming language, do not be too worried. This
 document will hopefully be a sufficient guide to help you customize your
 keyboard behaviour to your exact liking.
 
+Useful terminology to learn early:
+[cols="1,5"]
+|===
+| string
+| A sequence of characters.
+Optionally surrounded within quotes.
+Examples: `backspace`, `"string with spaces and 1 number"`.
+
+| list
+| A sequence of strings or nested lists within parentheses.
+List items are separated by any amount of whitespace characters,
+or by parentheses.
+Examples: `(lrld-num 1)`, `(tap-dance 200 (f1(unicode 😀)f2(unicode 🙂)))`.
+Unlike the second example above,
+it is encouraged to have spaces after closing parentheses
+unless they are immediately followed by more closing parentheses
+or by the end of the line.
+|===
+
 If you have any questions, confusions, suggestions, etc., feel free to
 https://github.com/jtroo/kanata/discussions/new/choose[start a discussion]
 or https://github.com/jtroo/kanata/issues/new/choose[file an issue].
@@ -713,15 +732,45 @@ This section explains the available actions.
 [[live-reload]]
 === Live reload
 
+**Reference**
+
+Live reload variants:
+
+[cols="1,5"]
+|===
+| `lrld`
+| String action that live-reloads the currently-used configuration file.
+
+| `lrld-next`
+| String action that live-reloads the configuration file specified
+consecutively later in the command line order.
+Cycles to the first-specified file
+if currently using the last file specified.
+
+| `lrld-prev`
+| String action that live-reloads the configuration file specified
+consecutively earlier in the command line order.
+Cycles to the last-specified file
+if currently using the first file specified.
+
+| `(lrld-num $n)`
+| List action that live-reloads the n'th file
+as specified in the command line order.
+The first file specified is `n=1`.
+|===
+
+Live reload does not read or apply changes to device-related configurations.
+Examples of device-related configurations:
+`linux-dev`, `macos-dev-names-include`, `linux-use-trackpoint-property`,
+`windows-only-windows-interception-keyboard-hwids`.
+
+**Description**
+
 You can put the `+lrld+` action onto a key to live reload your configuration file.
 If kanata can't parse the file,
 the previous configuration will continue to be used.
 When live reload is activated,
 the active kanata layer will be the first `deflayer` defined in the configuration.
-
-NOTE: live reload does not read or apply changes to device-related configurations,
-such as `linux-dev`, `macos-dev-names-include`, `linux-use-trackpoint-property`
-or `windows-only-windows-interception-keyboard-hwids`.
 
 .Example:
 [source]
@@ -763,9 +812,29 @@ activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 [[layer-switch]]
 === layer-switch
 
-This action allows you to switch to another "base" layer. This is permanent
-until a `layer-switch` to another layer is activated. The concept of a base
-layer makes more sense when looking at the next action: `layer-while-held`.
+**Reference**
+
+A list action that changes the active base layer.
+
+.Syntax
+[source]
+----
+(layer-switch $layer-name)
+----
+
+[cols="1,5"]
+|===
+| `$layer-name`
+| Layer name to switch to.
+|===
+
+
+**Description**
+
+This action allows you to switch to another "base" layer.
+This is permanent until a `layer-switch` to another layer is activated.
+The concept of a base layer makes more sense
+when looking at the next action: `layer-while-held`.
 
 This action accepts a single subsequent string which must be a layer name
 defined in a `deflayer` entry.
@@ -778,6 +847,24 @@ defined in a `deflayer` entry.
 
 [[layer-while-held]]
 === layer-while-held
+
+**Reference**
+
+A list action that changes the active layer while the key is held.
+
+.Syntax
+[source]
+----
+(layer-while-held $layer-name)
+----
+
+[cols="1,5"]
+|===
+| `$layer-name`
+| Layer name to activate while key is held.
+|===
+
+**Description**
 
 This action allows you to temporarily change to another layer while the key
 remains held. When the key is released, you go back to the currently active
@@ -799,12 +886,34 @@ inaccurate with regards to its meaning.
 [[transparent-key]]
 === Transparent key
 
+**Reference**
+
+[cols="1,5"]
+|===
+| `+_+`
+| String action that activates the action of the layer "underneath" the active one.
+|===
+
+**Description**
+
 If you use a single underscore for a key `+_+` then it acts as a "transparent"
 key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
 while-held layer. When `+_+` is pressed on the active base layer, the key will
 default to the corresponding `defsrc` key. If `+_+` is pressed on the active
 while-held layer, the base layer's behaviour will activate.
-(alternatively you can use `+‗+` `+≝+`)
+
+[[use-defsrc]]
+=== use-defsrc
+
+**Reference**
+
+[cols="1,6"]
+|===
+| `use-defsrc`
+| String action that outputs the corresponding `defsrc` input key.
+|===
+
+**Description**
 
 A similar concept to transparent key is the `+use-defsrc+` action.
 When activated, the underlying `defsrc` key will be the output action.
@@ -812,15 +921,10 @@ When activated, the underlying `defsrc` key will be the output action.
 .Example:
 [source]
 ----
-(defsrc
-  a b c d
-)
-(defalias
-  src use-defsrc
-)
+(defsrc a b c d)
+(defalias src use-defsrc)
 (deflayer remap-only-c-to-d
-  _ _ d @src
-)
+  _ _ d @src)
 ----
 
 [[no-op]]
@@ -830,14 +934,14 @@ You may use the action `+XX+` as a "no operation" key, meaning pressing the key
 will do nothing. This might be desirable in place of a transparent key on a
 layer that is not fully mapped so that a key that is intentionally not mapped
 will do nothing as opposed to typing a letter.
-(alternatively you can use `+✗+` `+∅+` `+•+`)
+
+Alternatively you can use `+✗+` `+∅+` `+•+` to mean no-op.
 
 .Example:
 [source]
 ----
 (deflayer contains-no-op
-  XX ✗ • f
-)
+  XX ✗ • f)
 ----
 
 [[unicode]]
