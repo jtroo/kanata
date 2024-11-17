@@ -1,12 +1,11 @@
-= Configuration
-
+= Kanata Configuration Guide
+ifndef::env-github[]
+:toc: left
+endif::[]
 ifdef::env-github[]
 :toc: macro
 :toc-title!:
 :toclevels: 2
-endif::[]
-ifndef::env-github[]
-:toc: left
 endif::[]
 
 This document describes how to create a kanata configuration file.
@@ -21,16 +20,14 @@ endif::[]
 
 See the sidebar for the table of contents.
 
-The **Reference** sections is brief text
-intended for reviewing how precisely to configure items.
+The **Reference** sections are shorter
+and are intended for reviewing how precisely to configure different sections.
 The **Description** sections are longer
 and contain more details such as advice or motivation.
 
-IMPORTANT: The configuration guide you are reading
+The configuration guide you are reading
 may have content not applicable to the version you are using.
 See below for links to specific guide versions.
-
-Links to specific guide versions:
 
 * https://github.com/jtroo/kanata/blob/v1.7.0/docs/config.adoc[v1.7.0]
 * https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
@@ -49,9 +46,8 @@ or https://github.com/jtroo/kanata/issues/new/choose[file an issue].
 If you have ideas for how to improve this document or any other part of the project,
 please be welcome to make a pull request or file an issue.
 
-'''
-
 ifdef::env-github[]
+'''
 [[table-of-contents]]
 == Table of contents
 toc::[]
