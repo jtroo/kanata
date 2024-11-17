@@ -1,15 +1,25 @@
 = Configuration
-:toc:
-:toc-placement!:
+
+ifdef::env-github[]
+:toc: macro
 :toc-title!:
+:toclevels: 2
+endif::[]
+ifndef::env-github[]
+:toc: left
+endif::[]
 
 This document describes how to create a kanata configuration file.
 The kanata configuration file will determine your keyboard behaviour upon running kanata.
 
 == How to read the guide
 
-If viewing on GitHub, see the triple bullet-lines at the upper right
+ifdef::env-github[]
+See the triple bullet-lines at the upper right
 to open or close a Table of Contents sidebar.
+endif::[]
+
+See the sidebar for the table of contents.
 
 The **Reference** sections is brief text
 intended for reviewing how precisely to configure items.
@@ -41,12 +51,13 @@ please be welcome to make a pull request or file an issue.
 
 '''
 
+ifdef::env-github[]
 [[table-of-contents]]
 == Table of contents
 toc::[]
+endif::[]
 
 == Forcefully exit kanata [[force-exit]]
-<<table-of-contents,Back to ToC>>
 
 Though this isn't configuration-related,
 it may be important for you to know that pressing and holding all of the
@@ -60,7 +71,6 @@ This mechanism works on the key input **before** any remappings done by kanata.
 
 [[comments]]
 == Comments
-<<table-of-contents,Back to ToC>>
 
 You can add comments to your configuration file. Comments are prefixed with two
 semicolons. E.g:
@@ -87,7 +97,6 @@ a multi-line comment block
 
 [[defsrc]]
 === defsrc
-<<table-of-contents,Back to ToC>>
 
 **Reference**
 
@@ -152,7 +161,6 @@ For non-US keyboards, see <<non-us-keyboards,this section>>.
 
 [[deflayer]]
 === deflayer
-<<table-of-contents,Back to ToC>>
 
 **Reference**
 
@@ -298,7 +306,6 @@ Otherwise actions such as `tap-hold` do not behave as intended.
 
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
-<<table-of-contents,Back to ToC>>
 
 If you're reading in order, you have now seen all of the required entries:
 
@@ -323,7 +330,6 @@ The Windows LLHOOK I/O mechanism has the most issues by far.
 
 [[key-names]]
 == Key names for defsrc and deflayermap
-<<table-of-contents,Back to ToC>>
 
 The source of truth for all default key names are the functions
 `str_to_oscode` and `add_default_str_osc_mappings`
@@ -336,7 +342,6 @@ after you press the key.
 
 [[non-us-keyboards]]
 == Non-US keyboards
-<<table-of-contents,Back to ToC>>
 
 For non-US keyboard users, you may have some keys on your keyboard with characters
 that are not allowed in `defsrc` by default, at least according to the symbol shown
@@ -444,7 +449,6 @@ is very welcome so that future users can have an easier time 🙂.
 
 [[introduction-defcfg]]
 == Introduction to defcfg
-<<table-of-contents,Back to ToC>>
 
 Your configuration file may include a single `defcfg` entry.
 The `defcfg` can be empty or omitted.
@@ -461,7 +465,6 @@ All other options can be found later in the <<optional-defcfg-options>> section.
 
 [[process-unmapped-keys]]
 === process-unmapped-keys
-<<table-of-contents,Back to ToC>>
 
 The `process-unmapped-keys` option in `defcfg` is probably the most
 generally impactful option.
@@ -492,14 +495,12 @@ For example, see <<windows-only-windows-altgr>>.
 ----
 
 == Aliases and variables[[aliases-and-vars]]
-<<table-of-contents,Back to ToC>>
 
 Before learning about actions,
 it will be useful to first learn about aliases and variables.
 
 [[aliases]]
 === Aliases
-<<table-of-contents,Back to ToC>>
 
 Using the `defalias` configuration entry, you can introduce a shortcut label
 for an action.
@@ -565,7 +566,6 @@ configuration file easier to read.
 
 [[variables]]
 === Variables
-<<table-of-contents,Back to ToC>>
 
 Using the `defvar` configuration entry,
 you can introduce a shortcut label for an arbitrary string or list.
@@ -632,7 +632,6 @@ This section explains the available actions.
 
 [[live-reload]]
 === Live reload
-<<table-of-contents,Back to ToC>>
 
 You can put the `+lrld+` action onto a key to live reload your configuration file.
 If kanata can't parse the file,
@@ -683,7 +682,6 @@ activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 
 [[layer-switch]]
 === layer-switch
-<<table-of-contents,Back to ToC>>
 
 This action allows you to switch to another "base" layer. This is permanent
 until a `layer-switch` to another layer is activated. The concept of a base
@@ -700,7 +698,6 @@ defined in a `deflayer` entry.
 
 [[layer-while-held]]
 === layer-while-held
-<<table-of-contents,Back to ToC>>
 
 This action allows you to temporarily change to another layer while the key
 remains held. When the key is released, you go back to the currently active
@@ -721,7 +718,6 @@ inaccurate with regards to its meaning.
 
 [[transparent-key]]
 === Transparent key
-<<table-of-contents,Back to ToC>>
 
 If you use a single underscore for a key `+_+` then it acts as a "transparent"
 key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
@@ -749,7 +745,6 @@ When activated, the underlying `defsrc` key will be the output action.
 
 [[no-op]]
 === No-op
-<<table-of-contents,Back to ToC>>
 
 You may use the action `+XX+` as a "no operation" key, meaning pressing the key
 will do nothing. This might be desirable in place of a transparent key on a
@@ -767,7 +762,6 @@ will do nothing as opposed to typing a letter.
 
 [[unicode]]
 === Unicode
-<<table-of-contents,Back to ToC>>
 
 The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
 a composed character, so 🤲, but not 🤲🏿). The character will not be repeatedly
@@ -816,7 +810,6 @@ you need a special quoting syntax.
 
 [[output-chordscombos]]
 === Output chords/combos
-<<table-of-contents,Back to ToC>>
 
 You may want to remap a key to automatically be pressed in combination with
 modifiers such as Control or Shift. You can achieve this by prefixing the
@@ -869,7 +862,6 @@ Output chords are typically used do one-off actions such as:
 
 [[repeat-key]]
 === Repeat key
-<<table-of-contents,Back to ToC>>
 
 The action `+rpt+` repeats the most recently typed key. Holding down this key
 will not repeatedly send the key. The intended use case is to be able to use a
@@ -901,7 +893,6 @@ and would output `ctrl+c` in the example case.
 
 [[release-a-key-or-layer]]
 === Release a key or layer
-<<table-of-contents,Back to ToC>>
 
 You can release a held key or layer via these actions:
 
@@ -921,7 +912,6 @@ There is currently no known practical use case for
 
 [[multi]]
 === multi
-<<table-of-contents,Back to ToC>>
 
 The `+multi+` action executes multiple keys or actions in order but also
 simultaneously. It accepts one or more actions.
@@ -995,14 +985,12 @@ and then release c b a in the stated order.
 
 [[mouse-actions]]
 === Mouse actions
-<<table-of-contents,Back to ToC>>
 
 You can click the left, middle, and right buttons using kanata actions, do
 vertical/horizontal scrolling, and move the mouse.
 
 [[mouse-buttons]]
 ==== Mouse buttons
-<<table-of-contents,Back to ToC>>
 
 The mouse button actions are:
 
@@ -1047,7 +1035,6 @@ The actions are as follows:
 
 [[mouse-wheel]]
 ==== Mouse wheel
-<<table-of-contents,Back to ToC>>
 
 The mouse wheel actions are:
 
@@ -1079,7 +1066,6 @@ you will probably get way more events than you intended.
 
 [[mouse-movement]]
 ==== Mouse movement
-<<table-of-contents,Back to ToC>>
 
 The mouse movement actions are:
 
@@ -1110,7 +1096,6 @@ There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inh
 
 [[set-mouse]]
 ==== Set absolute mouse position
-<<table-of-contents,Back to ToC>>
 
 The action `setmouse` or `set🖱` sets the absolute mouse position.
 
@@ -1131,7 +1116,6 @@ Experimentation will be needed.
 
 [[mouse-speed]]
 ==== Modify the speed of mouse movements
-<<table-of-contents,Back to ToC>>
 
 The action `movemouse-speed` or `🖱speed` modifies the speed at which `movemouse` and
 `movemouse-accel` function at runtime. It does this by expanding or shrinking
@@ -1154,7 +1138,6 @@ WARNING: Due to the nature of pixels being whole numbers, some values such as
 
 [[mouse-all-actions-example]]
 ==== Mouse all actions example
-<<table-of-contents,Back to ToC>>
 
 [source]
 ----
@@ -1190,7 +1173,6 @@ WARNING: Due to the nature of pixels being whole numbers, some values such as
 
 [[tap-dance]]
 === tap-dance
-<<table-of-contents,Back to ToC>>
 
 The `+tap-dance+` action allows repeated tapping of a key to result in
 different actions. It is followed by a timeout (unit: ms) and a list
@@ -1238,7 +1220,6 @@ In the example below, repeated taps will, in order:
 
 [[one-shot]]
 === one-shot
-<<table-of-contents,Back to ToC>>
 
 The `+one-shot+` action is similar to "sticky keys", if you know what that is.
 This activates an action or key until either the timeout expires or a different
@@ -1297,7 +1278,6 @@ you will likely want to adjust <<override-release-on-activation>> to yes in `def
 
 [[tap-hold]]
 === tap-hold
-<<table-of-contents,Back to ToC>>
 
 WARNING: The `tap-hold` action and all variants can behave unexpectedly on Linux
 with respect to repeat of antecedent key presses.
@@ -1456,7 +1436,6 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 
 [[macro]]
 === macro
-<<table-of-contents,Back to ToC>>
 
 The `+macro+` action will tap a sequence of keys with optional
 delays. This is different from `+multi+` because in the `+multi+` action,
@@ -1592,7 +1571,6 @@ only the most recently pressed macro will be repeated.
 
 [[dynamic-macro]]
 === dynamic-macro
-<<table-of-contents,Back to ToC>>
 
 The dynamic-macro actions allow for recording and playing key presses. The
 dynamic macro records physical key presses, as opposed to kanata's outputs.
@@ -1640,7 +1618,6 @@ while recording with `(dynamic-macro-record 0)` will be ignored.
 
 [[caps-word]]
 === caps-word
-<<table-of-contents,Back to ToC>>
 
 The `caps-word` or `word⇪` action triggers a state where the `lsft` key
 will be added to the active key list
@@ -1712,7 +1689,6 @@ otherwise `caps-word` will be activate as normal.
 ----
 
 === unmod[[unmod]]
-<<table-of-contents,Back to ToC>>
 
 The `unmod` action will release all modifiers temporarily
 and send one or more keys.
@@ -1760,7 +1736,6 @@ rather than all modifiers.
 
 [[fork]]
 === fork
-<<table-of-contents,Back to ToC>>
 
 The fork action accepts two actions and a key list.
 The first (left) action will activate by default.
@@ -1780,7 +1755,6 @@ can still be checked within `fork`, unlike what `XX` does.
 
 [[switch]]
 === switch
-<<table-of-contents,Back to ToC>>
 
 Conceptually, the `switch` action is similar to <<fork>>
 but has more capabilities as well as more complexity.
@@ -2046,7 +2020,6 @@ if `layer-switch` has never been activated.
 
 [[cmd]]
 === cmd
-<<table-of-contents,Back to ToC>>
 
 WARNING: This action does not work unless you use the appropriate binary
 or - if compiling yourself - the appropriate feature flag.
@@ -2137,7 +2110,6 @@ chorded lists are supported. Other actions are not supported.
 
 [[arbitrary-code]]
 === arbitrary-code
-<<table-of-contents,Back to ToC>>
 
 The `arbitrary-code` action allows sending an arbitrary number to kanata's
 output mechanism. The press is sent when pressed, and the release sent when
@@ -2159,7 +2131,6 @@ SendInput.
 
 [[global-overrides]]
 == Global overrides
-<<table-of-contents,Back to ToC>>
 
 The `defoverrides` optional configuration item allows you to create global
 key overrides, irrespective of what actions are used to generate those keys.
@@ -2192,7 +2163,6 @@ you may want to adjust <<override-release-on-activation>> in `defcfg`.
 ----
 
 == Include other files[[include]]
-<<table-of-contents,Back to ToC>>
 
 The `include` optional configuration item
 allows you to include other files into the configuration.
@@ -2224,7 +2194,6 @@ Non-existing files will be ignored.
 
 [[platform]]
 == Platform-specific configuration
-<<table-of-contents,Back to ToC>>
 
 If you put any top-level configuration item
 within a list beginning with `platform`,
@@ -2270,7 +2239,6 @@ The valid values for applicable platforms are:
 
 [[environment]]
 == Environment-conditional configuration
-<<table-of-contents,Back to ToC>>
 
 .Syntax:
 [source]
@@ -2312,7 +2280,6 @@ VAR_NAME=var_value
 
 [[input-chords-v2]]
 == Input chords / combos (v2)
-<<table-of-contents,Back to ToC>>
 
 You may define a single `+defchordsv2+` configuration item.
 This enables you to define global input chord behaviour.
@@ -2402,7 +2369,6 @@ which are configured differently and can be defined per-layer.
 
 [[danger-enable-cmd]]
 === danger-enable-cmd
-<<table-of-contents,Back to ToC>>
 
 This option can be used to enable the `cmd` action in your configuration. The
 `+cmd+` action allows kanata to execute programs with arguments passed to them.
@@ -2425,7 +2391,6 @@ value `yes`.
 
 [[sequence-timeout]]
 === sequence-timeout
-<<table-of-contents,Back to ToC>>
 
 This option customizes the key sequence timeout (unit: ms). Its default value
 is 1000. The purpose of this item is explained in <<sequences>>.
@@ -2440,7 +2405,6 @@ is 1000. The purpose of this item is explained in <<sequences>>.
 
 [[sequence-input-mode]]
 === sequence-input-mode
-<<table-of-contents,Back to ToC>>
 
 This option customizes the key sequence input mode. Its default value when not
 configured is `hidden-suppressed`.
@@ -2473,7 +2437,6 @@ See <<sequences>> for more about sequences.
 
 [[sequence-backtrack-modcancel]]
 === sequence-backtrack-modcancel
-<<table-of-contents,Back to ToC>>
 
 This option customizes the behaviour of key sequences
 when modifiers are used.
@@ -2504,7 +2467,6 @@ for more context about this specific configuration.
 
 [[log-layer-changes]]
 === log-layer-changes
-<<table-of-contents,Back to ToC>>
 
 By default, kanata will log layer changes. However, logging has some processing
 overhead. If you do not care for the logging, you can choose to disable it.
@@ -2527,7 +2489,6 @@ when experimenting vs. stable usage.
 
 [[delegate-to-first-layer]]
 === delegate-to-first-layer
-<<table-of-contents,Back to ToC>>
 
 
 By default, transparent keys on layers
@@ -2551,7 +2512,6 @@ For more context, see https://github.com/jtroo/kanata/issues/435.
 
 [[movemouse-inherit-accel-state]]
 === movemouse-inherit-accel-state
-<<table-of-contents,Back to ToC>>
 
 By default `movemouse-accel` actions will track the acceleration
 state for vertical and horizontal axes separately.
@@ -2570,7 +2530,6 @@ movement actions will be inherited if others are already being pressed.
 
 [[movemouse-smooth-diagonals]]
 === movemouse-smooth-diagonals
-<<table-of-contents,Back to ToC>>
 
 By default, mouse movements move one direction at a time
 and vertical/horizontal movements are on independent timers.
@@ -2588,7 +2547,6 @@ synchronize the mouse movements.
 ----
 
 === dynamic-macro-max-presses [[dynamic-macro-max-presses]]
-<<table-of-contents,Back to ToC>>
 
 This configuration allows you to customize the length limit on dynamic macros.
 The default length limit is 128 keys.
@@ -2621,7 +2579,6 @@ even if a previous tap-hold action is still held and has not expired.
 
 [[block-unmapped-keys]]
 === block-unmapped-keys
-<<table-of-contents,Back to ToC>>
 
 If you desire to use only a subset of your keyboard
 you can use `block-unmapped-keys` to make every key
@@ -2640,7 +2597,6 @@ NOTE: this only functions correctly if you also set
 
 [[rapid-event-delay]]
 === rapid-event-delay
-<<table-of-contents,Back to ToC>>
 
 This configuration applies to the following events:
 
@@ -2676,7 +2632,6 @@ you can set reduce the value to a number 0 to 4.
 
 [[chords-v2-min-idle]]
 === chords-v2-min-idle
-<<table-of-contents,Back to ToC>>
 
 This configuration affects the timer during which chords processing is disabled.
 NOTE: For more info, see <<input-chords-v2>>.
@@ -2693,7 +2648,6 @@ The default (and minimum) value is `5` and the unit is milliseconds.
 
 [[override-release-on-activation]]
 === override-release-on-activation
-<<table-of-contents,Back to ToC>>
 
 This configuration item changes activation behaviour from `defoverrides`.
 
@@ -2729,7 +2683,6 @@ when activated by the override which is important to consider for your use cases
 
 [[allow-hardware-repeat]]
 === allow-hardware-repeat
-<<table-of-contents,Back to ToC>>
 
 By default, any repeat-key events generated by the physical keyboard (or operating system)
 will be passed through to the application.  On Linux, under Wayland, this is wasted effort
@@ -2750,7 +2703,6 @@ Windows, and will be silently ignored.
 
 [[alias-to-trigger-on-load]]
 === alias-to-trigger-on-load
-<<table-of-contents,Back to ToC>>
 
 Select an alias to execute when first starting, and after each
 live-reload of the config. You can use this to run external
@@ -2783,7 +2735,6 @@ the swapped "i" and "o" keys.
 
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
-<<table-of-contents,Back to ToC>>
 
 By default, kanata will try to detect which input devices are keyboards and try
 to intercept them all. However, you may specify exact keyboard devices from the
@@ -2835,7 +2786,6 @@ item contains spaces.
 
 [[linux-only-linux-dev-names-include]]
 === Linux only: linux-dev-names-include
-<<table-of-contents,Back to ToC>>
 
 In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be included.
@@ -2861,7 +2811,6 @@ registering /dev/input/eventX: "Name goes here"
 
 [[linux-only-linux-dev-names-exclude]]
 === Linux only: linux-dev-names-exclude
-<<table-of-contents,Back to ToC>>
 
 In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be excluded.
@@ -2884,7 +2833,6 @@ but in practice it probably only makes sense to use one and not both.
 
 [[linux-only-linux-continue-if-no-devs-found]]
 === Linux only: linux-continue-if-no-devs-found
-<<table-of-contents,Back to ToC>>
 
 By default, kanata will crash if no input devices are found. You can change
 this behaviour by setting `linux-continue-if-no-devs-found`.
@@ -2899,7 +2847,6 @@ this behaviour by setting `linux-continue-if-no-devs-found`.
 
 [[linux-only-linux-device-detect-mode]]
 === Linux only: linux-device-detect-mode
-<<table-of-contents,Back to ToC>>
 
 Kanata on Linux automatically detects and grabs input devices
 when none of the explicit device configurations are in use.
@@ -2934,7 +2881,6 @@ The default behaviour is:
 
 [[linux-only-linux-unicode-u-code]]
 === Linux only: linux-unicode-u-code
-<<table-of-contents,Back to ToC>>
 
 Unicode on Linux works by pressing Ctrl+Shift+U, typing the unicode hex value,
 then pressing Enter. However, if you do remapping in userspace, e.g. via
@@ -2958,7 +2904,6 @@ is sent. Then you can use this configuration to change kanata's behaviour.
 
 [[linux-only-linux-unicode-termination]]
 === Linux only: linux-unicode-termination
-<<table-of-contents,Back to ToC>>
 
 Unicode on Linux terminates with the Enter key by default. This may not work in
 some applications. The termination is configurable with the following options:
@@ -2977,7 +2922,6 @@ some applications. The termination is configurable with the following options:
 ----
 
 === Linux only: linux-x11-repeat-delay-rate[[linux-only-x11-repeat-rate]]
-<<table-of-contents,Back to ToC>>
 
 On Linux, you can tell kanata to run `xset r rate <delay> <rate>`
 on startup and on live reload
@@ -2998,7 +2942,6 @@ This configuration item does not affect Wayland or no-desktop environments.
 
 [[linux-only-linux-use-trackpoint-property]]
 === Linux only: linux-use-trackpoint-property
-<<table-of-contents,Back to ToC>>
 
 On linux, you can ask kanata to label itself as a trackpoint. This has several
 effects on libinput including enabling middle mouse button scrolling and using a
@@ -3020,7 +2963,6 @@ changing their behavior as well.
 
 [[linux-only-linux-output-device-bus-type]]
 === Linux only: linux-output-device-bus-type
-<<table-of-contents,Back to ToC>>
 
 Kanata on Linux needs to declare a "bus type" for its evdev output device.
 The options are `USB` and `I8042`, with the default as `I8042`.
@@ -3038,7 +2980,6 @@ Thus the output bus type is configurable.
 
 [[macos-only-macos-dev-names-include]]
 === macOS only: macos-dev-names-include
-<<table-of-contents,Back to ToC>>
 
 This option defines a list of device names that should be included.
 By default, kanata will try to detect which input devices are keyboards and try
@@ -3062,7 +3003,6 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
 
 [[windows-only-windows-altgr]]
 === Windows only: windows-altgr
-<<table-of-contents,Back to ToC>>
 
 There is an option for Windows to mitigate the strange behaviour of AltGr (ralt)
 if you're using `process-unmapped-keys yes` or have the key in your defsrc.
@@ -3093,7 +3033,6 @@ work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv
 
 === Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
-<<table-of-contents,Back to ToC>>
 
 This defcfg item allows you to intercept mouse buttons for a specific mouse device.
 This only works with the Interception driver
@@ -3123,7 +3062,6 @@ https://github.com/jtroo/kanata/issues/108[Relevant issue].
 ----
 
 === Windows only: windows-interception-mouse-hwids[[windows-only-windows-interception-mouse-hwids]]
-<<table-of-contents,Back to ToC>>
 
 This item has a similar purpose as the singular version documented above,
 but is instead a list of strings that allows multiple mice to be intercepted.
@@ -3143,7 +3081,6 @@ the singular version will behave as if added to the list.
 ----
 
 === Windows only: windows-interception-keyboard-hwids[[windows-only-windows-interception-keyboard-hwids]]
-<<table-of-contents,Back to ToC>>
 
 This defcfg item allows you to intercept only specific keyboards.
 Its value must be a list of strings
@@ -3173,7 +3110,6 @@ they are an arbitrary length and can be very long.
 
 [[windows-only-tray-icon]]
 === Windows only: tray-icon
-<<table-of-contents,Back to ToC>>
 
 Show a custom tray icon file for a <<windows-only-win-tray>> gui-enabled build of kanata on Windows.
 Accepts either the full path (including the file name with an extension) to the icon file
@@ -3201,7 +3137,6 @@ See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 
 [[windows-only-icon-match-layer-name]]
 === Windows only: icon-match-layer-name
-<<table-of-contents,Back to ToC>>
 
 When enabled, attempt to switch to a custom tray icon that matches the name of the active layer
 if the layer doesn't specify an explicit icon. If no icon file is found, the default icon will be used (see <<windows-only-tray-icon>>).
@@ -3210,55 +3145,46 @@ See https://github.com/jtroo/kanata/blob/main/cfg_samples/tray-icon/tray-icon.kb
 
 [[windows-only-tooltip-layer-changes]]
 === Windows only: tooltip-layer-changes
-<<table-of-contents,Back to ToC>>
 
 Show a custom layer icon near the mouse pointer position. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-show-blank]]
 === Windows only: tooltip-show-blank
-<<table-of-contents,Back to ToC>>
 
 Show a blank square when instead of an icon if a layer isn't configured to have one. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-no-base]]
 === Windows only: tooltip-no-base
-<<table-of-contents,Back to ToC>>
 
 Don't show a tooltip layer icon for the base layer (1st deflayer). Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-duration]]
 === Windows only: tooltip-duration
-<<table-of-contents,Back to ToC>>
 
 Set duration (in ms) for showing a custom layer icon near the mouse pointer position. 0 to never hide. Defaults to 500. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-tooltip-size]]
 === Windows only: tooltip-size
-<<table-of-contents,Back to ToC>>
 
 Set the size (comma-separated Width,Height without spaces) for a custom layer icon near the mouse pointer position. Defaults to 24,24. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-cfg-reload]]
 === Windows only: notify-cfg-reload
-<<table-of-contents,Back to ToC>>
 
 Show system notification message on config reload. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-cfg-reload-silent]]
 === Windows only: notify-cfg-reload-silent
-<<table-of-contents,Back to ToC>>
 
 Disable sound for the system notification message on config reload. Defaults to false. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[windows-only-notify-error]]
 === Windows only: notify-error
-<<table-of-contents,Back to ToC>>
 
 Show system notification message on kanata errors. Defaults to true. Requires <<windows-only-win-tray>> gui-enabled build.
 
 [[using-multiple-defcfg-options]]
 === Using multiple defcfg options
-<<table-of-contents,Back to ToC>>
 
 The `defcfg` entry is treated as a list with pairs of strings. For example:
 
@@ -3304,7 +3230,6 @@ a non-applicable operating system.
 == Advanced features[[advanced-features]]
 [[virtual-keys]]
 === Virtual keys
-<<table-of-contents,Back to ToC>>
 
 You can define up to 767 virtual keys.
 These keys are not directly mapped to any physical key presses or releases.
@@ -3464,7 +3389,6 @@ notably a "normal" key action like `+rsft+` will still interrupt a tap dance.
 
 [[sequences]]
 === Sequences
-<<table-of-contents,Back to ToC>>
 
 The `+sldr+` action makes kanata go into "sequence" mode. The action name is
 short for "sequence leader". This comes from Vim which has the concept of a configurable
@@ -3661,7 +3585,6 @@ to read about how chords in sequences behave.
 
 [[input-chords]]
 === Input chords
-<<table-of-contents,Back to ToC>>
 
 Not to be confused with <<output-chords-combos,output chords>>, `+chord+`
 actions allow you to perform various actions based on which specific combination
@@ -3755,7 +3678,6 @@ Using a macro will guarantee a rapid press+release for the output keys.
 
 [[defaliasenvcond]]
 === defaliasenvcond
-<<table-of-contents,Back to ToC>>
 
 NOTE: this configuration item is older and instead you may want to use
 the newer and more generalized <<environment>> configuration.
@@ -3809,7 +3731,6 @@ VAR_NAME=var_value
 
 [[templates]]
 === Templates
-<<table-of-contents,Back to ToC>>
 
 The top-level configuration item `deftemplate`
 declares a template that can be expanded multiple times
@@ -4007,7 +3928,6 @@ all the subsequent items in the list concatenated to each other.
 
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
-<<table-of-contents,Back to ToC>>
 
 This is not currently configurable without modifying the source code, but if
 you're willing and/or capable, there is a tap-hold behaviour that is currently
@@ -4024,7 +3944,6 @@ https://github.com/jtroo/kanata/issues/128[motivation for custom tap-hold behavi
 
 [[fancy-key-symbols]]
 === Fancy key symbols
-<<table-of-contents,Back to ToC>>
 
 Instead of using the same `+a-z+` letters for special keys, e.g., `+lsft+` for `+LeftShift+`
 you can use much shorter, yet more visible, key symbols like `+‹⇧+`.
@@ -4037,7 +3956,6 @@ https://github.com/jtroo/kanata/blob/main/cfg_samples/fancy_symbols.kbd[example 
 
 [[windows-only-work-elevated]]
 === Windows only: enable in elevated windows
-<<table-of-contents,Back to ToC>>
 
 The default `kanata.exe` binary doesn't work in elevated windows (run with administrative privileges),
 e.g., `Control Panel`. However, you can use AutoHotkey's "EnableUIAccess" script to self-sign the binary,
@@ -4054,7 +3972,6 @@ cargo build --win_manifest
 
 [[windows-only-win-tray]]
 === Windows only: win-tray
-<<table-of-contents,Back to ToC>>
 
 Kanata can be compiled as a Windows GUI tray app with the feature flag `gui`.
 This can simplify launching the app on user login by placing a `.lnk`
@@ -4078,7 +3995,6 @@ only available via an app capable of viewing `OutputDebugString` debugs, e.g., h
 
 [[test-your-config]]
 === Test your config
-<<table-of-contents,Back to ToC>>
 
 Kanata has a `+kanata_simulated_input+` tool
 to help test your configuration in a predictable manner.
@@ -4115,7 +4031,6 @@ Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator
 
 [[zippychord]]
 === Zippychord
-<<table-of-contents,Back to ToC>>
 
 ==== Reference
 
