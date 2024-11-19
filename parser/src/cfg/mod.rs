@@ -1769,6 +1769,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         ONE_SHOT_RELEASE_PCANCEL | ONE_SHOT_RELEASE_PCANCEL_A => {
             parse_one_shot(&ac[1..], s, OneShotEndConfig::EndOnFirstReleaseOrRepress)
         }
+        ONE_SHOT_PAUSE_PROCESSING => parse_one_shot_pause_processing(&ac[1..], s),
         TAP_DANCE => parse_tap_dance(&ac[1..], s, TapDanceConfig::Lazy),
         TAP_DANCE_EAGER => parse_tap_dance(&ac[1..], s, TapDanceConfig::Eager),
         CHORD => parse_chord(&ac[1..], s),
@@ -2561,6 +2562,18 @@ fn parse_one_shot(
         action,
         end_config,
     }))))
+}
+
+fn parse_one_shot_pause_processing(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "one-shot-pause-processing expects a time";
+    if ac_params.len() != 1 {
+        bail!(ERR_MSG);
+    }
+    let timeout = parse_non_zero_u16(&ac_params[0], s, "time (milliseconds)")?;
+    Ok(s.a.sref(Action::OneShotIgnoreEventsTicks(timeout)))
 }
 
 fn parse_tap_dance(

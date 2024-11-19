@@ -43,6 +43,7 @@ pub const ONE_SHOT_PRESS_PCANCEL: &str = "one-shot-press-pcancel";
 pub const ONE_SHOT_PRESS_PCANCEL_A: &str = "one-shot↓⤫";
 pub const ONE_SHOT_RELEASE_PCANCEL: &str = "one-shot-release-pcancel";
 pub const ONE_SHOT_RELEASE_PCANCEL_A: &str = "one-shot↑⤫";
+pub const ONE_SHOT_PAUSE_PROCESSING: &str = "one-shot-pause-processing";
 pub const TAP_DANCE: &str = "tap-dance";
 pub const TAP_DANCE_EAGER: &str = "tap-dance-eager";
 pub const CHORD: &str = "chord";
@@ -233,6 +234,7 @@ pub fn is_list_action(ac: &str) -> bool {
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS,
         MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
+        ONE_SHOT_PAUSE_PROCESSING,
     ];
     LIST_ACTIONS.contains(&ac)
 }
