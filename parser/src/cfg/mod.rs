@@ -2805,6 +2805,7 @@ fn find_chords_coords(chord_groups: &mut [ChordGroup], coord: (u8, u16), action:
         | Action::RepeatableSequence { .. }
         | Action::CancelSequences
         | Action::ReleaseState(_)
+        | Action::OneShotIgnoreEventsTicks(_)
         | Action::Custom(_) => {}
         Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
             find_chords_coords(chord_groups, coord, tap);
@@ -2860,6 +2861,7 @@ fn fill_chords(
         | Action::RepeatableSequence { .. }
         | Action::CancelSequences
         | Action::ReleaseState(_)
+        | Action::OneShotIgnoreEventsTicks(_)
         | Action::Custom(_) => None,
         Action::HoldTap(&hta @ HoldTapAction { tap, hold, .. }) => {
             let new_tap = fill_chords(chord_groups, &tap, s);
