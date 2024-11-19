@@ -843,6 +843,13 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   opp (one-shot-press-pcancel 500 lsft)
   orp (one-shot-release-pcancel 500 lsft)
 
+  ;; one-shot-pause-processing can be useful in some cases
+  ;; to preserve an activated one-shot state when it otherwise
+  ;; would get deactivated by some action that isn't intended
+  ;; to consume the one-shot.
+  ;; The unit is number of milliseconds.
+  ops (one-shot-pause-processing 5)
+
   ;; Alias for tap-dance which will activate one of the actions in the action
   ;; list depending on how many taps were done. Tapping once will output the
   ;; first action and tapping N times will output the N'th action.

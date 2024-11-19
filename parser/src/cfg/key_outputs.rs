@@ -136,6 +136,7 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
         | Action::Sequence { .. }
         | Action::RepeatableSequence { .. }
         | Action::CancelSequences
+        | Action::OneShotIgnoreEventsTicks(_)
         | Action::ReleaseState(_) => {}
     };
 }
