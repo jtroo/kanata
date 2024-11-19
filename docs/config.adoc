@@ -1399,6 +1399,40 @@ The actions are as follows:
 [[mouse-wheel]]
 ==== Mouse wheel
 
+**Reference**
+
+The `mwheel-*` actions allow you to emulate a mouse wheel.
+Holding the action will repeatedly scroll
+according to the action configuration.
+
+.Syntax:
+[source]
+----
+(mwheel-$variant $interval $distance)
+----
+
+[cols="1,4"]
+|===
+| `$variant`
+| One of `up down left right` representing the scroll direction to use.
+
+| `$interval`
+| Number of milliseconds between scroll actions.
+
+| `$distance`
+| Distance to travel per activation.
+The number `120` represents a complete notch on
+standard resolution mice and in some environments,
+120 or a multiple of it should be what is used.
+|===
+
+You may use these key names within `defsrc`
+to remap scroll events as if they were keys,
+corresponding to up, down, left, right respectively:
+`mwu`, `mwd`, `mwl`, `mwr`.
+
+**Description**
+
 The mouse wheel actions are:
 
 * `mwheel-up` or `🖱☸↑`: vertical scroll up
@@ -1429,6 +1463,59 @@ you will probably get way more events than you intended.
 
 [[mouse-movement]]
 ==== Mouse movement
+
+**Reference**
+
+The `movemouse-*` actions allow you to move the mouse cursor.
+Holding the action will repeatedly move the cursor
+according to the configuration.
+
+.Syntax:
+[source]
+----
+(movemouse-$variant $interval $distance)
+----
+
+[cols="1,4"]
+|===
+| `$variant`
+| One of `up down left right` representing the direction to move.
+
+| `$interval`
+| Number of milliseconds between move activations.
+
+| `$distance`
+| Distance to travel per activation in unit of pixels.
+|===
+
+There is a move mouse variant that increases distance per activation
+at a constant rate until a maximum is reached.
+
+.Syntax:
+[source]
+----
+(movemouse-accel-$variant $interval $acceleration-time $min $max)
+----
+
+[cols="1,4"]
+|===
+| `$variant`
+| One of `up down left right` representing the direction to move.
+
+| `$interval`
+| Number of milliseconds between move activations.
+
+| `$acceletaion-time`
+| Number of milliseconds until max distance per activation is reached.
+
+| `$min`
+| Initial distance to travel per activation in unit of pixels.
+
+| `$max`
+| Maximum distance to travel per activation in unit of pixels.
+|===
+
+**Description**
 
 The mouse movement actions are:
 
