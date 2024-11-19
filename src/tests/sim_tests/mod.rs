@@ -17,6 +17,7 @@ mod capsword_sim_tests;
 mod chord_sim_tests;
 mod layer_sim_tests;
 mod macro_sim_tests;
+mod oneshot_tests;
 mod override_tests;
 mod release_sim_tests;
 mod repeat_sim_tests;

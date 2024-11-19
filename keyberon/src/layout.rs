@@ -892,6 +892,9 @@ pub struct OneShotState {
     ///
     /// May also be reused for other purposes...
     pub pause_input_processing_ticks: u16,
+
+    /// Number of ticks to ignore press events for.
+    pub ticks_to_ignore_events: u16,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -905,11 +908,13 @@ impl OneShotState {
         if self.keys.is_empty() {
             return None;
         }
+        self.ticks_to_ignore_events = self.ticks_to_ignore_events.saturating_sub(1);
         self.timeout = self.timeout.saturating_sub(1);
         if self.release_on_next_tick || self.timeout == 0 {
             self.release_on_next_tick = false;
             self.timeout = 0;
             self.pause_input_processing_ticks = 0;
+            self.ticks_to_ignore_events = 0;
             self.keys.clear();
             self.other_pressed_keys.clear();
             Some(self.released_keys.drain(..).collect())
@@ -920,7 +925,7 @@ impl OneShotState {
 
     fn handle_press(&mut self, key: OneShotHandlePressKey) -> OneShotCoords {
         let mut oneshot_coords = ArrayDeque::new();
-        if self.keys.is_empty() {
+        if self.keys.is_empty() || self.ticks_to_ignore_events > 0 {
             return oneshot_coords;
         }
         match key {
@@ -1067,6 +1072,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 release_on_next_tick: false,
                 on_press_release_delay: 0,
                 pause_input_processing_ticks: 0,
+                ticks_to_ignore_events: 0,
             },
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
@@ -1686,6 +1692,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.event(Event::Release(overflow.0, overflow.1));
                 }
                 return custom;
+            }
+            &OneShotIgnoreEventsTicks(ticks) => {
+                self.last_press_tracker.update_coord(coord);
+                self.rpt_action = Some(action);
+                self.oneshot.ticks_to_ignore_events = ticks;
             }
             &TapDance(td) => {
                 self.last_press_tracker.update_coord(coord);

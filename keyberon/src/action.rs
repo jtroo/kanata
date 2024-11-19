@@ -358,6 +358,8 @@ where
     /// key will hold space until either another key is pressed or the timeout occurs, which will
     /// probably send many undesired space characters to your active application.
     OneShot(&'a OneShot<'a, T>),
+    /// An action to ignore processing of events for OneShot.
+    OneShotIgnoreEventsTicks(u16),
     /// Tap-dance key. When tapping the key N times in quck succession, activates the N'th action
     /// in `actions`. The action will activate in the following conditions:
     ///
