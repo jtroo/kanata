@@ -1584,6 +1584,55 @@ In the example below, repeated taps will, in order:
 [[one-shot]]
 === one-shot
 
+**Reference**
+
+Activate keys or layers for a time without keeping the input key held,
+for one subsequent key.
+Activating other one-shot actions,
+while one or more are already active,
+will reset the timeout,
+and overlap the one-shot actions.
+
+
+.Syntax:
+[source]
+----
+($one-shot-variant $timeout $action)
+----
+
+Values for `$variant`:
+[cols="1,3"]
+|===
+| `one-shot-press`
+| End on the first press of another key.
+This is also the variant selected by the name `one-shot`.
+
+| `+one-shot-release+`
+| End on the first release of a newly pressed key.
+
+| `+one-shot-press-pcancel+`
+| End on the first press of another key
+  or on re-press of another active one-shot key
+
+| `+one-shot-release-pcancel+`
+| End on the first release of a newly pressed key
+  or on re-press of another active one-shot key.
+|===
+
+Other items:
+[cols="1,3"]
+|===
+| `$timeout`
+| Number of milliseconds after which
+if not deactivated due to user input,
+one-shot will deactivate on its own.
+
+| `$action`
+| Layer action, key, or output chord.
+|===
+
+**Description**
+
 The `+one-shot+` action is similar to "sticky keys", if you know what that is.
 This activates an action or key until either the timeout expires or a different
 key is used. The `+one-shot+` action must be followed by a timeout (unit:
@@ -1638,6 +1687,47 @@ you will likely want to adjust <<override-release-on-activation>> to yes in `def
 )
 ----
 
+[[one-shot-pause-processing]]
+==== one-shot-pause-processing
+
+**Reference**
+
+Pause `one-shot` processing of new input keypresses for a time,
+to allow actions that are not intended to consume `one-shot`
+to take place.
+
+.Syntax:
+[source]
+----
+(one-shot-pause-processing $time)
+----
+
+[cols="1,5"]
+|===
+| `time`
+| Number of milliseconds to ignore processing.
+Something notable is that one virtual key press or releas
+(tap is a separate press and subsequent release)
+will take 1ms to process.
+If using virtual keys this number must be larger
+than the number of virtual key events that are taking place.
+|===
+
+**Description**
+
+The `one-shot-pause-processing` list action allows you to pause the
+key press processing of one-shot activations.
+An example of when this is useful the following sequence:
+
+- Activate a layer-while-held
+- Activate a one-shot action on that layer
+- Release the layer-while-held key, which has an `(on-release ...)` action
+  associated with it.
+- The on-release action is not intended to consume one-shot activations
+
+In the scenario above, by default the on-release activation
+would trigger deactivation of one-shot;
+thus the pause processing action must be used to stop this from happening.
 
 [[tap-hold]]
 === tap-hold
