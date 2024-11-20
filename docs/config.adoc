@@ -2376,8 +2376,6 @@ The duration is refreshed upon typing a non-terminating character.
 but which do not terminate the caps-word state.
 |===
 
-
-
 **Description**
 
 The `caps-word` or `word⇪` action triggers a state where the `lsft` key
@@ -2451,6 +2449,30 @@ otherwise `caps-word` will be activate as normal.
 
 === unmod[[unmod]]
 
+**Reference**
+
+The `unmod` action will dactivate modifier keys while outputting
+one or more defined keys.
+
+.Syntax:
+[source]
+----
+(unmod $key1 $key2 ... $keyN)
+(unmod ($mod1 $mod2 ... $modN) $key1 $key2 ... $keyN)
+----
+
+[cols="1,5"]
+|===
+| `$key`
+| A key name to output while unmodded.
+
+| `$mod`
+| By default `unmod` will deactivate all modifier keys.
+An optional list as the first parameter
+allows specfying a subset of modifiers to deactivate during the action.
+
+**Description**
+
 The `unmod` action will release all modifiers temporarily
 and send one or more keys.
 After the `unmod` key is released, the released modifiers are pressed again.
@@ -2479,7 +2501,7 @@ states to be tracked correctly.
 )
 ----
 
-Introduced more recently is an optional list as the first parameter of `unmod`.
+An list may optionally be used as the first parameter of `unmod`.
 The list must be non-empty and must contain only modifier keys,
 which are the keys in the affected modifiers list from earlier in this document section.
 
