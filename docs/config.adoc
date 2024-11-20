@@ -2259,6 +2259,40 @@ only the most recently pressed macro will be repeated.
 [[dynamic-macro]]
 === dynamic-macro
 
+**Reference**
+
+Record and replay key inputs.
+
+.Syntax:
+[source]
+----
+(dynamic-macro-record $id)
+(dynamic-macro-play   $id)
+(dynamic-macro-record-stop)
+(dynamic-macro-record-stop-truncate $count)
+----
+
+[cols="1,3"]
+|===
+| `dynamic-macro-record`
+| Record a dynamicro macro which will be saved with the defined `$id`.
+
+| `dynamic-macro-play`
+| Play back a macro saved with the defined `$id`.
+
+| `dynamic-macro-record-stop`
+| Stop and save a macro recording.
+This can also be achieved by recording a new macro
+or re-pressing record with the same `$id`.
+
+| `dynamic-macro-record-stop-truncate`
+| Stop and save a macro recording while truncating `$count` events
+from the end of the recording.
+This can be useful if the record/stop button is on a different layer.
+|===
+
+**Description**
+
 The dynamic-macro actions allow for recording and playing key presses. The
 dynamic macro records physical key presses, as opposed to kanata's outputs.
 This allows the dynamic macro to replicate any action, but it means that if
