@@ -1857,6 +1857,74 @@ In brief, the workaround is to use `tap-hold` inside of <<multi,multi>>,
 combined with another key action that behaves as a no-op like `f24`. +
 Example: `(multi f24 (tap-hold ...))`
 
+**Reference**
+
+The `tap-hold` action lets you activate different actions
+depending it a key is tapped or held.
+
+.Syntax:
+[source]
+----
+(tap-hold $tap-timeout $hold-timeout $tap-action $hold-action)
+----
+
+[cols="1,4"]
+|===
+| `$tap-timeout`
+| Number of milliseconds for the window that a tap into re-press with hold
+results in the `$tap-action` being held.
+
+| `$hold-timeout`
+| Number of milliseconds after which the `$hold-action` activates.
+Releasing the key before this elapses
+results in `$tap-action` activating.
+
+| `$tap-action`
+| Action to activate when the input is determined to be a "tap".
+
+| `$hold-action`
+| Action to activate when the input is determined to be a "hold".
+|===
+
+.Variants:
+----
+(tap-hold-press $tap-timeout $hold-timeout $tap-action $hold-action)
+(tap-hold-release $tap-timeout $hold-timeout $tap-action $hold-action)
+(tap-hold-press-timeout $tap-timeout $hold-timeout $tap-action $hold-action $timeout-action)
+(tap-hold-release-timeout $tap-timeout $hold-timeout $tap-action $hold-action $timeout-action)
+(tap-hold-release-keys $tap-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-except-keys $tap-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+----
+
+[cols="1,2"]
+|===
+| `$tap-hold-press`
+| Activate `$hold-action` early if held and another input key is pressed.
+
+| `$tap-hold-release`
+| Activate `$hold-action` early if held and another input key is pressed and released.
+
+| `$tap-hold-press-timeout`
+| Activate `$hold-action` if held and another input key is pressed.
+If the defined timeout elapses, `$timeout-action` will activate.
+
+| `$tap-hold-release-timeout`
+| Activate `$hold-action` early if held and another input key is pressed and released.
+If the defined timeout elapses, `$timeout-action` will activate.
+
+| `$tap-hold-release-keys`
+| Activate `$hold-action` early if held and another input key is pressed and released.
+The `$tap-keys` parameter is a list of key names.
+Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold activates.
+
+| `$tap-hold-except-keys`
+| The `$tap-keys` parameter is a list of key names.
+Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold activates.
+No key is ever output unless the key is released or another key is pressed,
+which differs from the default `tap-hold` behaviour.
+|===
+**Description**
+
 The `+tap-hold+` action allows you to have one action/key for a "tap" and a
 different action/key for a "hold". A tap is a rapid press then release of the
 key whereas a hold is a long press.
