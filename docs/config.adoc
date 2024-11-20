@@ -1624,6 +1624,37 @@ WARNING: Due to the nature of pixels being whole numbers, some values such as
 [[tap-dance]]
 === tap-dance
 
+**Reference**
+
+The `tap-dance` action allows performing different actions
+based on number of consecutive taps of the same key.
+
+.Syntax:
+[source]
+----
+(tap-dance $timeout $action-list)
+----
+
+[cols="1,4"]
+|===
+| `timeout`
+| Number of milliseconds after which the tap-dance ends.
+
+| `$action-list`
+| A list of actions that can be selected, ordered by number of taps.
+|===
+
+The `tap-dance-eager` variant will eagerly perform actions.
+Use of `macro` and `bspc` can help to backtrack for the 2nd tap onwards.
+
+.Syntax:
+[source]
+----
+(tap-dance-eager $timeout $action-list)
+----
+
+**Description**
+
 The `+tap-dance+` action allows repeated tapping of a key to result in
 different actions. It is followed by a timeout (unit: ms) and a list
 of keys or actions. Each time the key is pressed, its timeout will reset. The
