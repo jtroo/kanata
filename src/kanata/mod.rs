@@ -1582,12 +1582,11 @@ impl Kanata {
                             self.waiting_for_idle.insert(*fkd);
                         }
                         CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
-                            let x = fk_hfd.coord.x;
-                            let y = fk_hfd.coord.y;
                             let duration = fk_hfd.hold_duration;
                             self.vkeys_pending_release.entry(fk_hfd.coord)
                                 .and_modify(|d| *d = duration)
                                 .or_insert_with(|| {
+                                    let Coord { x, y } = fk_hfd.coord;
                                     layout.event(Event::Press(x, y));
                                     duration
                                 });
