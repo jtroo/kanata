@@ -2094,6 +2094,34 @@ Numbers can be used to delay the sequence by the defined number of milliseconds.
 or an output-chord-prefixed list of more macro-actions.
 |===
 
+.Variants:
+----
+(macro-release-cancel ...)
+(macro-cancel-on-press ...)
+(macro-release-cancel-and-cancel-on-press ...)
+(macro-repeat ...)
+(macro-repeat-$cancel-variant ...)
+----
+[cols="1,2"]
+|===
+| `macro-release-cancel`
+| Cancel all active macros if the key is released.
+
+| `macro-cancel-on-press`
+| Cancel all active macros if a different key is pressed.
+
+| `macro-release-cancel-and-cancel-on-press`
+| Cancel all active macros if either the key is released or a different key is pressed.
+
+| `macro-repeat`
+| Repeat the macro while held.
+
+| `macro-repeat-$cancel-variant`
+| Repeat the macro while held.
+Cancels the final repeat according the the behaviour of one of the variants:
+`release-cancel`, `cancel-on-press`, `release-cancel-and-cancel-on-press`.
+|===
+
 **Description**
 
 The `+macro+` action will tap a sequence of keys with optional
