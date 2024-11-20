@@ -2340,6 +2340,46 @@ while recording with `(dynamic-macro-record 0)` will be ignored.
 [[caps-word]]
 === caps-word
 
+**Reference**
+
+The `caps-word` action puts Kanata into a state where
+typed keys are automatically shifted by `lsft`.
+The state persists until terminated by timeout
+or by typing a key that ends the state.
+Typing a non-terminating key refreshes the timeout duration.
+
+The `-toggle` variants will end the caps-word state
+if pressed while caps-word is active,
+whereas the re-pressing the standard variants
+will keep the state active and refresh the timeout duration.
+
+.Syntax:
+[source]
+----
+(caps-word $timeout)
+(caps-word-toggle $timeout)
+(caps-word-custom $timeout $shifted-list $non-terminal-list)
+(caps-word-custom-toggle $timeout $shifted-list $non-terminal-list)
+----
+
+[cols="1,4"]
+|===
+| `$timeout`
+| Number of milliseconds after which the caps-word state ends.
+The duration is refreshed upon typing a non-terminating character.
+
+| `$shifted-list`
+| List of input keys that will be automatically shifted.
+
+| `$non-terminal-list`
+| List of input keys that are not shifted
+but which do not terminate the caps-word state.
+|===
+
+
+
+**Description**
+
 The `caps-word` or `word⇪` action triggers a state where the `lsft` key
 will be added to the active key list
 when a set of specific keys are active.
