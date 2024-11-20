@@ -2369,10 +2369,10 @@ will keep the state active and refresh the timeout duration.
 The duration is refreshed upon typing a non-terminating character.
 
 | `$shifted-list`
-| List of input keys that will be automatically shifted.
+| List of keys that will be automatically shifted.
 
 | `$non-terminal-list`
-| List of input keys that are not shifted
+| List of keys that are not shifted
 but which do not terminate the caps-word state.
 |===
 
@@ -2470,6 +2470,7 @@ one or more defined keys.
 | By default `unmod` will deactivate all modifier keys.
 An optional list as the first parameter
 allows specfying a subset of modifiers to deactivate during the action.
+|===
 
 **Description**
 
@@ -2520,24 +2521,69 @@ rather than all modifiers.
 [[fork]]
 === fork
 
-The fork action accepts two actions and a key list.
-The first (left) action will activate by default.
-The second (right) action will activate
-if any of the keys in the third parameter (right-trigger-keys) are currently active.
+**Reference**
 
-.Example:
+The fork action allows choosing between a default and an alternate action
+based on whether specific keys are active.
+
+.Syntax:
 [source]
 ----
-(defalias
-  frk (fork k @special (lalt ralt))
-)
+(fork $left-action $right-action $right-trigger-keys)
 ----
 
-TIP: the keys `nop0-nop9` can be used as no-op outputs that
+[cols="1,3"]
+|===
+| `$left-action`
+| Action to activate by default.
+
+| `$right-action`
+| Action to activate if any of `$right-trigger-keys` are active.
+
+| `$right-trigger-keys`
+| List of keys that, if active when fork activates,
+causes `$right-action` to happen in place of `$left-action`.
+|===
+
+TIP: The keys `nop0-nop9` can be used as no-op outputs that
 can still be checked within `fork`, unlike what `XX` does.
 
 [[switch]]
 === switch
+
+**Reference**
+
+The `switch` action allows conditionally activating 0 or more actions
+depending on various conditional checks.
+
+.Syntax:
+[source]
+----
+(switch
+  $logic-check1 $action1 $post-activate1
+  $logic-check2 $action2 $post-activate2
+  ...
+  $logic-checkN $actionN $post-activateN)
+----
+
+[cols="1,4"]
+|===
+| `$logic-check`
+| The condition, which if it evaluates to true,
+will trigger the corresponding action.
+
+| `$action`
+| Action to activate when logic evaluates to true.
+
+| `$post-activate`
+| Valid values are `fallthrough` and `break`.
+With `fallthrough`, when an action activates
+switch will continue evaluating further logic checks
+and potentially trigger more actions.
+With `break`, further actions will not activate.
+|===
+
+**Description**
 
 Conceptually, the `switch` action is similar to <<fork>>
 but has more capabilities as well as more complexity.
