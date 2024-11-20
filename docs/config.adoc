@@ -2076,6 +2076,26 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 [[macro]]
 === macro
 
+**Reference**
+
+The macro action taps the configured sequence of keys or actions.
+Numbers can be used to delay the sequence by the defined number of milliseconds.
+
+.Syntax:
+[source]
+----
+(macro $macro-action1 $macro-action2 ... $macro-actionN)
+----
+
+[cols="1,4"]
+|===
+| `$macro-action`
+| A delay, key, action within the subset allowed within macros,
+or an output-chord-prefixed list of more macro-actions.
+|===
+
+**Description**
+
 The `+macro+` action will tap a sequence of keys with optional
 delays. This is different from `+multi+` because in the `+multi+` action,
 all keys are held, whereas in `+macro+`, keys are pressed then released.
@@ -2097,7 +2117,7 @@ The actions supported in `+macro+` are:
 * <<mouse-actions,mouse actions>>
 * <<repeat-key,repeat>>
 * <<live-reload,live reload>>
-* <<virtual-keys,virtual keys>>
+* <<virtual-keys,virtual key actions>>
 * <<sequences,sequence leader>>
 * <<arbitrary-code,arbitrary keycode>>
 * <<dynamic-macro,dynamic macro>>
