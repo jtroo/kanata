@@ -2553,8 +2553,8 @@ can still be checked within `fork`, unlike what `XX` does.
 
 **Reference**
 
-The `switch` action allows conditionally activating 0 or more actions
-depending on various conditional checks.
+The `switch` action allows conditionally activating 0 or more actions,
+depending on conditional checks.
 
 .Syntax:
 [source]
@@ -2581,6 +2581,76 @@ With `fallthrough`, when an action activates
 switch will continue evaluating further logic checks
 and potentially trigger more actions.
 With `break`, further actions will not activate.
+|===
+
+The logic check is a list.
+The items within the list can either be key names or a special list check.
+A key name item evaluates to true if that key name
+is a currently active key output of Kanata upon activating `switch`
+The outer-most list evaluates to true as whole
+if any of the items evaluates to true.
+
+.Syntax of logic check:
+[source]
+----
+($item1 $item2 ... $itemN)
+----
+
+.Syntax of special checks:
+[source]
+----
+(or  $item1 $item2 ... $itemN)
+(and $item1 $item2 ... $itemN)
+(not $item1 $item2 ... $itemN)
+(key-history $key-name $recency)
+(key-timing  $recency $comparator $time)
+(input         $input-type $key-name)
+(input-history $input-type $key-name $recency)
+(layer      $layer-name)
+(base-layer $layer-name)
+----
+
+[cols="1,4"]
+|===
+| `or`
+| Evaluates to true if any `$item` is true.
+
+| `and`
+| Evaluates to true if all of `$item` are true.
+
+| `not`
+| Evaluates to true if all of `$item` are false.
+
+| `key-history`
+| Evaluates to true if the key in the `$recency` slot matches `$key-name`.
+
+| `key-timing`
+| The valid values for `$comparator` are `less-than` and `greater-than`,
+with `lt` and `gt` as shorthand if desired.
+This item evaluates to true if the key with the corresponding `$recency`
+was pressed — for `lt` more recently than, or for `gt` later than —
+the defined `$time` with unit milliseconds.
+A `$recency` of 1 is the most recent key pressed according to Kanata processing.
+The max recency is 8.
+
+| `input`
+| Evaluates to true if the `$key-name` is currently pressed.
+The `$input-type` must be either `real` or `virtual`.
+If using `real`, this will check against the defsrc inputs.
+If using `virtual`, this will check against virtual key activations.
+
+| `input-history`
+| Evaluates to true if the input in the `$recency` slot matches `$key-name`.
+Two input types use the same history with respect to recency slots.
+A `$recency` of 1 is the most recent input i.e. the input activating `switch` itself.
+The max recency is 8.
+
+| `layer`
+| Evaluates to true if the active layer matches `$layer-name`.
+
+| `base-layer`
+| Evaluates to true if the most-recently-switched-to layer
+from a `layer-switch` action matches `$layer-name`.
 |===
 
 **Description**
