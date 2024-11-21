@@ -1176,7 +1176,8 @@ and would output `ctrl+c` in the example case.
 Notably this does not act on key inputs.
 
 | `(release-layer $layer-name)`
-| String action that releases any `layer-while-held` activations.
+| List action that releases `layer-while-held` activations
+for the given layer name.
 |===
 
 **Description**
