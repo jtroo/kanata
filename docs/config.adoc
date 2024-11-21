@@ -2851,15 +2851,13 @@ Inputs can be either real keys or "virtual" (fake) keys.
 )
 ----
 
-Similar to `key-history` for regular active keys,
-`input-history` also exists.
-
-NOTE:
-A perhaps surprising (but hopefully logical) behaviour of input-history
+Similar to `key-history` for regular active keys, `input-history` also exists.
+A perhaps surprising, but hopefully logical, behaviour of input-history
 when compared to key-history is that, at the time of switch activation,
 the history of `input-history` for recency `1` will be the just-pressed input.
+In other words recency `1` is the input activating the `switch` action itself.
 Whereas with `key-history` for example, the key that will be next outputted
-is of course still undetermined, so is not in the history.
+may determined by the switch logic itself, so is not in the history.
 The consequence of this is that you should use a recency of `2`
 when referring to the previously pressed input
 because the current input is in the recency `1` slot.
@@ -2924,6 +2922,40 @@ WARNING: This action does not work unless you use the appropriate binary
 or - if compiling yourself - the appropriate feature flag.
 Additionally you must add the <<danger-enable-cmd>> `defcfg` option.
 
+**Reference**
+
+The `cmd` action allows you to execute arbitrary binaries with arbitrary arguments.
+The `cmd-log` variant behaves similarly but allows customization
+of the stdout and stderr log levels within Kanata's output logging.
+The `cmd-output-keys` is like `cmd`, but stdout of the command
+will be parsed as a list of keys, output chords, and delays similar to <<macro>>
+and be typed as kanata outputs.
+
+.Syntax:
+[source]
+----
+(cmd $binary $arg1 $arg2 ... $argN)
+(cmd-log $stdout-log-level $stderr-log-level)
+(cmd-output-keys $binary $arg1 $arg2 ... $argN)
+----
+
+[cols="1,3"]
+|===
+| `$binary`
+| Executable binary to run.
+
+| `$arg`
+| Argument passed into the binary.
+
+| `$stdout-log-level`
+| Log level for stdout of the command. Must be `+debug+`, `+info+`, `+warn+`, `+error+`, or `+none+`.
+
+| `$stdout-log-level`
+| Log level for stderr of the command. Must be `+debug+`, `+info+`, `+warn+`, `+error+`, or `+none+`.
+|===
+
+**Description**
+
 The `+cmd+` action executes a program with arguments. It accepts one or more
 strings. The first string is the program that will be run and the following
 strings are arguments to that program. The arguments are provided to the
@@ -2934,14 +2966,15 @@ Lists will be flattened such that arguments are provided to the program
 in the order written in the config file, regardless of list nesting.
 To be technical, it would be a depth-first flattening (similar to DFS).
 
-NOTE: commands are executed directly and not via a shell, so you cannot make
+Commands are executed directly and not via a shell, so you cannot make
 use of environment variables or symbols with special meaning.
 For example `+~+` or `+$HOME+` in Linux will not be
 substituted with your home directory.
 If you want to execute with a shell program
 use the shell as the first parameter, e.g. `bash` or `powershell.exe`.
 
-NOTE: the command will be executed as the user that kanata was started with.
+The user executing the command
+is the user that kanata was started with.
 For example, if kanata was started by root,
 the command will be run by the root user.
 If you need to execute as a different user,
