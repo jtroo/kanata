@@ -3056,9 +3056,7 @@ SendInput.
 
 [source]
 ----
-(defalias
-  ab1 (arbitrary-code 700)
-)
+(defalias ab1 (arbitrary-code 700))
 ----
 
 [[global-overrides]]
@@ -5025,11 +5023,11 @@ or a known key name, which shall be considered as punctuation.
 The `smart-space-punctuation` configuration
 will overwrite the default punctuation list
 considered by smart-space;
-if you want to want to include the default characters,
-you include them in the configuration.
+if you want to include the default characters,
+you must include them in this configuration.
 
 | `$character`
-| A single unicode character for use
+| A single unicode codepoint for use
 in the output column of the zippy configuration file.
 
 | `$output-mapping`
