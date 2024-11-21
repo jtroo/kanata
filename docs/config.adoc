@@ -1638,7 +1638,7 @@ based on number of consecutive taps of the same key.
 
 [cols="1,4"]
 |===
-| `timeout`
+| `$timeout`
 | Number of milliseconds after which the tap-dance ends.
 
 | `$action-list`
