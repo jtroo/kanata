@@ -11,9 +11,9 @@ The kanata configuration file will determine your keyboard behaviour upon runnin
 ifdef::env-github[]
 See the triple bullet-lines at the upper right
 to open or close a Table of Contents sidebar.
-endif::[]
-ifndef::env-github[]
-See the sidebar for the table of contents.
+
+You may want to view the guide rendered to HTML.
+https://jtroo.github.io/config.html[Link to guide]
 endif::[]
 
 The **Reference** sections are shorter
@@ -25,9 +25,16 @@ The configuration guide you are reading
 may have content not applicable to the version you are using.
 See below for links to specific guide versions.
 
+ifdef::env-github[]
 * https://github.com/jtroo/kanata/blob/v1.7.0/docs/config.adoc[v1.7.0]
 * https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
 * https://github.com/jtroo/kanata/blob/v1.6.0/docs/config.adoc[v1.6.0]
+endif::[]
+ifndef::env-github[]
+* link:/config-1.7.0.html[v1.7.0]
+* link:/config-1.6.1.html[v1.6.1]
+* link:/config-1.6.0.html[v1.6.0]
+endif::[]
 
 == Preamble
 
@@ -100,23 +107,8 @@ a multi-line comment block
 
 **Reference**
 
-Your configuration file must have exactly one `defsrc` entry. This defines the
-order of keys that the `+deflayer+` entries will operate on.
-
-Keys excluded from `defsrc` will not be processed by Kanata
-unless you have `process-unmapped-keys yes` in <<introduction-defcfg,defcfg>>.
-This has implications on various actions.
-For example:
-
-- Pressing an excluded key will type a letter
-while a prior `tap-hold` decision is still pending,
-resulting in potentially incorrect results.
-- Excluded keys do not trigger early activation
-in actions such as `tap-hold-press` or `tap-dance`
-- Excluded keys cannot be read by `fork` or `switch` logic.
-
-A `defsrc` entry is composed of `defsrc` followed by key names that are
-separated by whitespace.
+Your configuration file must have exactly one `defsrc` list.
+This defines the order of keys that the `+deflayer+` entries will operate on.
 
 .Syntax:
 [source]
@@ -134,10 +126,25 @@ at the same order position on the active layer will activate.
 
 **Description**
 
-It should be noted that the `defsrc` entry is treated as a long sequence; the
-amount of whitespace (spaces, tabs, newlines) are not relevant. You may use
-spaces, tabs, or newlines however you like to visually format `defsrc` to your
-liking.
+The `defsrc` configuration entry defines which of your key inputs
+will be processed by kanata and how the keys map to defined layers.
+Keys excluded from `defsrc` will not be processed by Kanata
+unless you have `process-unmapped-keys yes` in <<introduction-defcfg,defcfg>>.
+
+Keys not processed by Kanata has implications on various actions.
+For example:
+
+- Pressing an excluded key will type a letter
+while a prior `tap-hold` decision is still pending,
+resulting in potentially incorrect results.
+- Excluded keys do not trigger early activation
+in actions such as `tap-hold-press` or `tap-dance`
+- Excluded keys cannot be read by `fork` or `switch` logic.
+
+The `defsrc` entry is treated as a long sequence.
+The amount of whitespace (spaces, tabs, newlines) are not relevant.
+You may use spaces, tabs, or newlines however you like
+to visually format `defsrc` to your liking.
 
 The primary source of all key names are the
 `str_to_oscode` and `default_mappings` functions in
@@ -163,7 +170,7 @@ approximately 60% keyboard layout:
 Note that some keyboards have a Menu key instead of a right Meta key.
 In this case you can use `menu` instead of `rmet`.
 
-For non-US keyboards, see <<non-us-keyboards,this section>>.
+For non-US keyboards, see <<non-us-keyboards,the non-US keyboards section>>.
 
 [[deflayer]]
 === deflayer
@@ -332,7 +339,7 @@ An example minimal configuration is:
 This will make kanata remap your `a b c` keys to `1 2 3`. This is almost
 certainly undesirable but is a valid configuration.
 
-NOTE: Please have a read through link:./platform-known-issues.adoc[the known platform issues]
+NOTE: Please have a read through link:https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc[the known platform issues]
 because they may have implications on what you should include/exclude in `defsrc`.
 The Windows LLHOOK I/O mechanism has the most issues by far.
 
@@ -341,7 +348,7 @@ The Windows LLHOOK I/O mechanism has the most issues by far.
 
 The source of truth for all default key names are the functions
 `str_to_oscode` and `add_default_str_osc_mappings`
-in the link:../parser/src/keys/mod.rs[keys/mod.rs file].
+in the link:https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[keys/mod.rs file].
 
 https://www.toptal.com/developers/keycode[This online tool]
 will also work for most keys to tell you the key name.
@@ -4930,7 +4937,7 @@ to help test your configuration in a predictable manner.
 
 You can try it out on https://jtroo.github.io/[GitHub pages].
 
-Code for the CLI tool can be found under link:../simulated_input/[simulated_input].
+Code for the CLI tool can be found under link:https://github.com/jtroo/kanata/blob/main/simulated_input/[simulated_input].
 
 Instead of physically typing to test something
 and wondering whether you didn't get the expected result because your config is wrong or
