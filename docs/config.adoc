@@ -4385,8 +4385,8 @@ alongside templates to define sequences below.
 
 If 10 special nop keys do not seem sufficient,
 you can get creative with your sequences and treat some as a prefix modifier.
-For example, you can get 28 "keys" by treating `nop0-nop6` as normal
-while treating `nop7-nop9` as prefixes:
+For example, you can get 24 "keys" by treating `nop0-nop5` as normal
+while treating `nop6-nop9` as prefixes that are always followed by a second nop key.
 
 .Example:
 [source]
@@ -4394,16 +4394,14 @@ while treating `nop7-nop9` as prefixes:
 (defalias
   nop0 nop0
   ;; ...
-  nop6 nop6
-  nop7 (macro nop7 nop0)
+  nop5 nop5
+  nop6 (macro nop6 nop0)
   ;; ...
-  nop13 (macro nop7 nop6)
-  nop14 (macro nop8 nop0)
+  nop11 (macro nop6 nop5)
   ;; ...
-  nop20 (macro nop8 nop6)
-  nop21 (macro nop9 nop0)
+  nop18 (macro nop9 nop0)
   ;; ...
-  nop27 (macro nop9 nop6)
+  nop23 (macro nop9 nop5)
 )
 ----
 
