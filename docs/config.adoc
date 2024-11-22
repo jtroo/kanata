@@ -1,4 +1,5 @@
 = Kanata Configuration Guide
+:last-update-label!:
 ifndef::env-github[]
 :toc: left
 endif::[]
@@ -13,7 +14,7 @@ See the triple bullet-lines at the upper right
 to open or close a Table of Contents sidebar.
 
 You may want to view the guide rendered to HTML.
-https://jtroo.github.io/config.html[Link to guide]
+https://jtroo.github.io/config.html[Link to guide].
 endif::[]
 
 The **Reference** sections are shorter
@@ -5222,4 +5223,4 @@ When you begin with the `(g i)` chord, you can follow up
 with various character sequences to output different git commands.
 This use case is quite similar to git aliases.
 One advantage of zippychord is that it eagerly shows you
-the true underlying command as you type.
+the true underlying command as you type.= Document Title
