@@ -3,6 +3,7 @@ use super::HashSet;
 use super::{error::*, TrimAtomQuotes};
 use crate::cfg::check_first_expr;
 use crate::custom_action::*;
+use crate::keys::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
@@ -117,6 +118,7 @@ impl Default for CfgOptionsGui {
 #[derive(Debug)]
 pub struct CfgOptions {
     pub process_unmapped_keys: bool,
+    pub process_unmapped_keys_exceptions: Option<Vec<(OsCode, SExpr)>>,
     pub block_unmapped_keys: bool,
     pub allow_hardware_repeat: bool,
     pub start_alias: Option<String>,
@@ -155,6 +157,7 @@ impl Default for CfgOptions {
     fn default() -> Self {
         Self {
             process_unmapped_keys: false,
+            process_unmapped_keys_exceptions: None,
             block_unmapped_keys: false,
             allow_hardware_repeat: true,
             start_alias: None,
@@ -663,8 +666,37 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
 
                     "process-unmapped-keys" => {
                         is_process_unmapped_keys_defined = true;
-                        cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                        if let Some(list) = val.list(None) {
+                            let err = "Expected (all-except key1 ... keyN).";
+                            if list.len() < 2 {
+                                bail_expr!(val, "{err}");
+                            }
+                            match list[0].atom(None) {
+                                Some("all-except") => {}
+                                _ => {
+                                    bail_expr!(val, "{err}");
+                                }
+                            };
+                            // Note: deflocalkeys should already be parsed when parsing defcfg,
+                            // so can use safely use str_to_oscode here; it will include user
+                            // configurations already.
+                            let mut key_exceptions: Vec<(OsCode, SExpr)> = vec![];
+                            for key_expr in list[1..].iter() {
+                                let key = key_expr.atom(None).and_then(str_to_oscode).ok_or_else(
+                                    || anyhow_expr!(key_expr, "Expected a known key name."),
+                                )?;
+                                if key_exceptions.iter().any(|k_exc| k_exc.0 == key) {
+                                    bail_expr!(key_expr, "Duplicate key name is not allowed.");
+                                }
+                                key_exceptions.push((key, key_expr.clone()));
+                            }
+                            cfg.process_unmapped_keys = true;
+                            cfg.process_unmapped_keys_exceptions = Some(key_exceptions);
+                        } else {
+                            cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                        }
                     }
+
                     "block-unmapped-keys" => {
                         cfg.block_unmapped_keys = parse_defcfg_val_bool(val, label)?
                     }

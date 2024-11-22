@@ -6,6 +6,7 @@ use kanata_keyberon::action::BooleanOperator::*;
 use std::sync::{Mutex, MutexGuard};
 
 mod ambiguous;
+mod defcfg;
 mod device_detect;
 mod environment;
 mod macros;

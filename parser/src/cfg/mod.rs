@@ -1138,6 +1138,21 @@ fn parse_defsrc(
         ordered_codes.push(oscode.into());
     }
 
+    let mapped_exceptions = match &defcfg.process_unmapped_keys_exceptions {
+        Some(excluded_keys) => {
+            for excluded_key in excluded_keys.iter() {
+                if mkeys.contains(&excluded_key.0) {
+                    bail_expr!(&excluded_key.1, "Keys cannot be included in defsrc and also excepted in process-unmapped-keys");
+                }
+            }
+            excluded_keys
+                .iter()
+                .map(|excluded_key| excluded_key.0)
+                .collect()
+        }
+        None => vec![],
+    };
+
     log::info!("process unmapped keys: {}", defcfg.process_unmapped_keys);
     if defcfg.process_unmapped_keys {
         for osc in 0..KEYS_IN_ROW as u16 {
@@ -1145,7 +1160,9 @@ fn parse_defsrc(
                 match KeyCode::from(osc) {
                     KeyCode::No => {}
                     _ => {
-                        mkeys.insert(osc);
+                        if !mapped_exceptions.contains(&osc) {
+                            mkeys.insert(osc);
+                        }
                     }
                 }
             }
@@ -3827,11 +3844,14 @@ fn parse_unmod(
                     .ok_or_else(|| {
                         anyhow_expr!(
                             mod_key,
-                            "{UNMOD} expects modifier key names within the modifier list"
+                            "{UNMOD} expects modifier key names within the modifier list."
                         )
                     })?;
                 if !(mod_flags & flag).is_empty() {
-                    bail_expr!(mod_key, "duplicate key name in modifier key list");
+                    bail_expr!(
+                        mod_key,
+                        "Duplicate key name in modifier key list is not allowed."
+                    );
                 }
                 Ok::<_, ParseError>(mod_flags | flag)
             })?;
