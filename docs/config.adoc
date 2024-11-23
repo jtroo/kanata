@@ -536,14 +536,13 @@ Some examples:
 This option is disabled by default.
 The reason this is not enabled by default
 is because some keys may not work correctly if they are intercepted.
-For example, see <<windows-only-windows-altgr>>.
+A known issue being AltGr/ralt/Right Alt; see <<windows-only-windows-altgr>>.
 
 .Example:
 [source]
 ----
-(defcfg
-  process-unmapped-keys yes
-)
+(defcfg process-unmapped-keys yes)
+(defcfg process-unmapped-keys (all-except lctl ralt))
 ----
 
 == Aliases and variables[[aliases-and-vars]]
@@ -3954,7 +3953,8 @@ You can use one of the listed values to change what kanata does with the key:
 ** This adds an `lctl` release when `ralt` is released
 
 Without these workarounds,
-you should instead ensure you set `process-unmapped-keys no`
+you should use `process-unmapped-keys (all-except lctl ralt))`,
+or use `process-unmapped-keys no`
 **and** also omit both `ralt` and `lctl` from `defsrc`.
 
 .Example:
