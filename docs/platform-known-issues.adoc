@@ -38,7 +38,7 @@ which map to the binaries
 ** https://github.com/jtroo/kanata/issues/250
 ** https://github.com/jtroo/kanata/issues/430
 ** https://github.com/espanso/espanso/issues/1488
-* AltGr can misbehave
+* AltGr / ralt / Right Alt can misbehave
 ** https://github.com/jtroo/kanata/blob/main/docs/config.adoc#windows-only-windows-altgr
 * NumLock state can mess with arrow keys in unexpected ways
 ** Does not affect winiov2 variant
