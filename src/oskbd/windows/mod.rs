@@ -128,8 +128,39 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
 
             let code_u32 = code as u32;
             kb_input.dwFlags |= KEYEVENTF_SCANCODE;
-            kb_input.wScan =
-                osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
+            #[cfg(not(feature = "win_llhook_read_scancodes"))]
+            {
+                // This MapVirtualKeyA is needed to translate back to the proper scancode
+                // associated with with the virtual key.
+                // E.g. take this example:
+                //
+                // - KEY_A is the code here
+                // - OS layout is AZERTY
+                // - No remapping, e.g. active layer is:
+                //   - (deflayermap (active-layer) a a)
+                //
+                // This means kanata received a key press at US-layout position Q. However,
+                // translating KEY_A via osc_to_u16 will result in the scancode assocated with
+                // US-layout position A, but we want to output the position Q scancode. It is
+                // MapVirtualKeyA that does the correct translation for this based on the user's OS
+                // layout.
+                kb_input.wScan = MapVirtualKeyA(code_u32, 0) as u16;
+                if kb_input.wScan == 0 {
+                    // The known scenario for this is VK_KPENTER_FAKE which isn't a real VK so
+                    // MapVirtualKeyA is expected to return 0. This fake VK is used to
+                    // distinguish the key within kanata since in Windows there is no output VK for
+                    // the enter key at the numpad.
+                    //
+                    // The osc_to_u16 function knows the scancode for keypad enter though, and it
+                    // isn't known to change based on language layout so this seems fine to do.
+                    kb_input.wScan = osc_to_u16(code.into()).unwrap_or(0);
+                }
+            }
+            #[cfg(feature = "win_llhook_read_scancodes")]
+            {
+                kb_input.wScan =
+                    osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
+            }
             if kb_input.wScan == 0 {
                 kb_input.dwFlags &= !KEYEVENTF_SCANCODE;
                 kb_input.wVk = code;
