@@ -1141,10 +1141,12 @@ fn parse_defsrc(
     let mapped_exceptions = match &defcfg.process_unmapped_keys_exceptions {
         Some(excluded_keys) => {
             for excluded_key in excluded_keys.iter() {
+                log::debug!("process unmapped keys exception: {:?}", excluded_key);
                 if mkeys.contains(&excluded_key.0) {
-                    bail_expr!(&excluded_key.1, "Keys cannot be included in defsrc and also excepted in process-unmapped-keys");
+                    bail_expr!(&excluded_key.1, "Keys cannot be included in defsrc and also excepted in process-unmapped-keys.");
                 }
             }
+
             excluded_keys
                 .iter()
                 .map(|excluded_key| excluded_key.0)
