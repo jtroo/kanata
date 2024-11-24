@@ -184,6 +184,17 @@ impl Kanata {
         let mapped_keys = MAPPED_KEYS.lock();
         for mapped_osc in mapped_keys.iter().copied() {
             // Check 2: each active win vk mapped in Kanata should have a value in pvk
+            if matches!(
+                mapped_osc,
+                OsCode::BTN_LEFT
+                    | OsCode::BTN_RIGHT
+                    | OsCode::BTN_MIDDLE
+                    | OsCode::BTN_SIDE
+                    | OsCode::BTN_EXTRA
+            ) {
+                // Skip mouse. Probably not under primary control of Kanata.
+                continue;
+            }
             let vk = i32::from(mapped_osc);
             if vk >= 256 {
                 continue;
