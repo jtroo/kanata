@@ -674,7 +674,7 @@ fn discover_devices(
         })
         .filter(|pd| {
             let is_input = is_input_device(&pd.0, device_detect_mode);
-            match include_names {
+            (match include_names {
                 None => is_input,
                 Some(include_names) => {
                     let name = pd.0.name().unwrap_or("");
@@ -686,8 +686,7 @@ fn discover_devices(
                         false
                     }
                 }
-            }
-            &&match exclude_names {
+            }) && (match exclude_names {
                 None => true,
                 Some(exclude_names) => {
                     let name = pd.0.name().unwrap_or("");
@@ -698,7 +697,7 @@ fn discover_devices(
                         true
                     }
                 }
-            }
+            })
         })
         .collect();
     devices
