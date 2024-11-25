@@ -274,14 +274,17 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     let device_name = device.name().unwrap_or("unknown device name");
     match (detect_mode, device_type) {
         (_, DeviceType::Other) => {
-            log::debug!("Use for input: false. Non-input device: {}", device_name,);
+            log::debug!(
+                "Use for input autodetect: false. Non-input device: {}",
+                device_name,
+            );
             false
         }
         (DeviceDetectMode::Any, _)
         | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
             log::debug!(
-                "Use for input: true. detect type {:?}; device type {:?}, device name: {}",
+                "Use for input autodetect: true. detect type {:?}; device type {:?}, device name: {}",
                 detect_mode,
                 device_type,
                 device_name,
@@ -290,7 +293,7 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
         }
         _ => {
             log::debug!(
-                "Use for input: false. detect type {:?}; device type {:?}, device name: {}",
+                "Use for input autodetect: false. detect type {:?}; device type {:?}, device name: {}",
                 detect_mode,
                 device_type,
                 device_name,
@@ -670,32 +673,31 @@ fn discover_devices(
             )
         })
         .filter(|pd| {
-            is_input_device(&pd.0, device_detect_mode)
-                && match include_names {
-                    None => true,
-                    Some(include_names) => {
-                        let name = pd.0.name().unwrap_or("");
-                        if include_names.iter().any(|include| name == include) {
-                            log::info!("device [{}:{name}] is included", &pd.1);
-                            true
-                        } else {
-                            log::info!("device [{}:{name}] is ignored", &pd.1);
-                            false
-                        }
+            let is_input = is_input_device(&pd.0, device_detect_mode);
+            (match include_names {
+                None => is_input,
+                Some(include_names) => {
+                    let name = pd.0.name().unwrap_or("");
+                    if include_names.iter().any(|include| name == include) {
+                        log::info!("device [{}:{name}] is included", &pd.1);
+                        true
+                    } else {
+                        log::info!("device [{}:{name}] is ignored", &pd.1);
+                        false
                     }
                 }
-                && match exclude_names {
-                    None => true,
-                    Some(exclude_names) => {
-                        let name = pd.0.name().unwrap_or("");
-                        if exclude_names.iter().any(|exclude| name == exclude) {
-                            log::info!("device [{}:{name}] is excluded", &pd.1);
-                            false
-                        } else {
-                            true
-                        }
+            }) && (match exclude_names {
+                None => true,
+                Some(exclude_names) => {
+                    let name = pd.0.name().unwrap_or("");
+                    if exclude_names.iter().any(|exclude| name == exclude) {
+                        log::info!("device [{}:{name}] is excluded", &pd.1);
+                        false
+                    } else {
+                        true
                     }
                 }
+            })
         })
         .collect();
     devices

@@ -346,7 +346,9 @@ impl ZchState {
                     self.zchd.zchd_previous_activation_output_count =
                         ZchOutput::display_len(&a.zch_output);
                 }
-                self.zchd.zchd_prioritized_chords = a.zch_followups.clone();
+                self.zchd
+                    .zchd_prioritized_chords
+                    .clone_from(&a.zch_followups);
                 let mut released_sft = false;
 
                 #[cfg(feature = "interception_driver")]
