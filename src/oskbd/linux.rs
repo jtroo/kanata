@@ -283,22 +283,24 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
         (DeviceDetectMode::Any, _)
         | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
+            let use_input = true;
             log::debug!(
-                "Use for input autodetect: true. detect type {:?}; device type {:?}, device name: {}",
+                "Use for input autodetect: {use_input}. detect type {:?}; device type {:?}, device name: {}",
                 detect_mode,
                 device_type,
                 device_name,
             );
-            true
+            use_input
         }
         _ => {
+            let use_input = false;
             log::debug!(
-                "Use for input autodetect: false. detect type {:?}; device type {:?}, device name: {}",
+                "Use for input autodetect: {use_input}. detect type {:?}; device type {:?}, device name: {}",
                 detect_mode,
                 device_type,
                 device_name,
             );
-            true
+            use_input
         }
     }
 }
