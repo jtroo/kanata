@@ -232,6 +232,55 @@ fn sim_zippychord_rsft() {
 }
 
 #[test]
+fn sim_zippychord_ralt() {
+    // test ralt behaviour while pressed
+    let result = simulate_with_zippy_file_content(
+        ZIPPY_CFG,
+        "d:ralt t:10 d:d t:10 d:y t:10",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RAlt t:10ms dn:D t:10ms dn:BSpace up:BSpace up:RAlt up:D dn:D dn:A up:A up:Y dn:Y dn:RAlt",
+        result
+    );
+    let result = simulate_with_zippy_file_content(
+        ZIPPY_CFG,
+        "d:ralt t:10 d:x t:10 d:y t:10",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RAlt t:10ms dn:X t:10ms dn:BSpace up:BSpace \
+         up:RAlt dn:LShift dn:W up:W up:LShift up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z dn:RAlt",
+        result
+    );
+
+    // ensure rsft-held behaviour goes away when released
+    let result = simulate_with_zippy_file_content(
+        ZIPPY_CFG,
+        "d:ralt t:10 d:d u:ralt t:10 d:y t:10",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RAlt t:10ms dn:D t:1ms up:RAlt t:9ms dn:BSpace up:BSpace up:D dn:D dn:A up:A up:Y dn:Y",
+        result
+    );
+    let result = simulate_with_zippy_file_content(
+        ZIPPY_CFG,
+        "d:ralt t:10 d:x u:ralt t:10 d:y t:10",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:RAlt t:10ms dn:X t:1ms up:RAlt t:9ms dn:BSpace up:BSpace \
+         dn:LShift dn:W up:W up:LShift up:X dn:X dn:LShift up:Y dn:Y up:LShift dn:Z up:Z",
+        result
+    );
+}
+
+#[test]
 fn sim_zippychord_caps_word() {
     let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,

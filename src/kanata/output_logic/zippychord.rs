@@ -521,6 +521,9 @@ impl ZchState {
             OsCode::KEY_RIGHTSHIFT => {
                 self.zchd.zchd_is_rsft_active = false;
             }
+            OsCode::KEY_RIGHTALT => {
+                self.zchd.zchd_is_altgr_active = false;
+            }
             _ => {}
         }
         if osc.is_zippy_ignored() {
