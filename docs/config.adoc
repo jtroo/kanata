@@ -3540,24 +3540,25 @@ This configuration applies to the following events:
 
 * the release of one-shot-press activation
 * the release of the tapped key in a tap-hold activation
+* a non-eager tap-dance activation from interruption by another key
+* input chord activations, both v1 and v2
 
-These events are delayed the defined number of milliseconds (approximate).
+Key event processing is paused the defined number of milliseconds (approximate).
 The default value is 5.
 
-While the release is delayed, further processing of inputs is also paused.
-This means that there will be a minor input latency impact in the mentioned scenarios.
-Since 5ms is 1 frame for a 200 Hz refresh rate,
+There will be a minor input latency impact in the mentioned scenarios.
+Since 5ms is 1 frame at 200 Hz refresh rate,
 in most scenarios this will not be perceptible.
 
 The reason for this configuration existing is that some environments
-do not process the scenarios correctly due to the rapidity of the release.
+do not process the scenarios correctly due to the rapidity of key events.
 Kanata does send the events in the correct order,
 so the fault is more in the environment,
 but kanata provides a workaround anyway.
 
 If you are negatively impacted by the latency increase of these events
 and your environment is not impacted by increased rapidity,
-you can set reduce the value to a number 0 to 4.
+you can reduce the value to a number between 0 and 4.
 
 .Example:
 [source]
