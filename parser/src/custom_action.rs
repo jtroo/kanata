@@ -64,6 +64,9 @@ pub enum CustomAction {
     LiveReloadNum(u16),
     LiveReloadFile(String),
     Repeat,
+    AltRepeat {
+        substitutions: Vec<(KeyCode, KeyCode)>,
+    },
     CancelMacroOnRelease,
     CancelMacroOnNextPress(u32),
     DynamicMacroRecord(u16),

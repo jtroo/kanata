@@ -118,6 +118,8 @@ pub const ON_RELEASE: &str = "on-release";
 pub const ON_RELEASE_A: &str = "on↑";
 pub const ON_IDLE: &str = "on-idle";
 pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
+pub const ALT_REPEAT: &str = "alt-repeat";
+pub const ALT_REPEAT_A: &str = "arpt";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -235,6 +237,8 @@ pub fn is_list_action(ac: &str) -> bool {
         MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         ONE_SHOT_PAUSE_PROCESSING,
+        ALT_REPEAT,
+        ALT_REPEAT_A,
     ];
     LIST_ACTIONS.contains(&ac)
 }
