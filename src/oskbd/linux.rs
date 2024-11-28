@@ -152,7 +152,7 @@ impl KbdIn {
                         .map(|evs| evs.into_iter().for_each(|ev| input_events.push(ev)))
                     {
                         // Currently the kind() is uncategorized... not helpful, need to match
-                        // on os error (19)
+                        // on os error. code 19 is ENODEV, "no such device".
                         match e.raw_os_error() {
                             Some(19) => {
                                 self.poll
