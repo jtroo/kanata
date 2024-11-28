@@ -2141,8 +2141,12 @@ not. This is not possible with `+multi+`.
 
 The `+macro+` action accepts one or more keys, some actions, chords, and delays
 (unit: ms).  It also accepts a list prefixed with <<output-chordscombos,output chord>>
-modifiers where the list is subject to the aforementioned restrictions. The
-number keys will be parsed as delays, so they must be aliased to be used in a macro.
+modifiers where the list is subject to the aforementioned restrictions.
+
+IMPORTANT: The number keys `0-9` will be parsed as millisecond delays
+whereas in other contexts they would be parsed as key names.
+To use the numbered keys they must be aliased
+or otherwise use the key names `Digit0-Digit9`.
 
 Up to 4 macros can be active at the same time.
 
