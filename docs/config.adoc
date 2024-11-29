@@ -5228,4 +5228,4 @@ When you begin with the `(g i)` chord, you can follow up
 with various character sequences to output different git commands.
 This use case is quite similar to git aliases.
 One advantage of zippychord is that it eagerly shows you
-the true underlying command as you type.= Document Title
+the true underlying command as you type.
