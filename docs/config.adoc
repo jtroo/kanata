@@ -2869,7 +2869,7 @@ when compared to key-history is that, at the time of switch activation,
 the history of `input-history` for recency `1` will be the just-pressed input.
 In other words recency `1` is the input activating the `switch` action itself.
 Whereas with `key-history` for example, the key that will be next outputted
-may determined by the switch logic itself, so is not in the history.
+may be determined by the switch logic itself, so is not in the history.
 The consequence of this is that you should use a recency of `2`
 when referring to the previously pressed input
 because the current input is in the recency `1` slot.
