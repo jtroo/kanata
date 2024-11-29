@@ -1139,6 +1139,10 @@ The output chord prefix strings are:
 
 | `rpt-any`
 | String action that outputs the most-recently outputted action.
+
+| `arpt`
+| String action that outputs the single most-recently typed key unless a
+aubstitution is specified.
 |===
 
 **Description**
@@ -1168,6 +1172,19 @@ and would output `ctrl+c` in the example case.
 ----
 (deflayer has-repeat-any
   rpt-any a s d f
+)
+----
+
+the `arpt` (or `alt-repeat`) action functions the same way as `rpt` but takes a
+list of keycode pairs as argument. If the last keycode correspond with the
+first keycode in a pair, then the associated keycode will be sent instead.
+
+In the example below, `s` and `f` are repeated as usual, but pressing `arpt`
+after `a` or `d` will send `q` and `e` respectively
+
+----
+(deflayer has-alt-repeat
+  (arpt (a q d e)) a s d f
 )
 ----
 
