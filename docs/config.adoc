@@ -2614,10 +2614,10 @@ if any of the items evaluates to true.
 (or  $item1 $item2 ... $itemN)
 (and $item1 $item2 ... $itemN)
 (not $item1 $item2 ... $itemN)
-(key-history $key-name $recency)
-(key-timing  $recency $comparator $time)
+(key-history $key-name $key-recency)
+(key-timing  $key-recency $comparator $time)
 (input         $input-type $key-name)
-(input-history $input-type $key-name $recency)
+(input-history $input-type $key-name $input-recency)
 (layer      $layer-name)
 (base-layer $layer-name)
 ----
@@ -2634,16 +2634,16 @@ if any of the items evaluates to true.
 | Evaluates to true if all of `$item` are false.
 
 | `key-history`
-| Evaluates to true if the key in the `$recency` slot matches `$key-name`.
+| Evaluates to true if the key in the recency slot matches `$key-name`.
+A `$key-recency` of 1 is the most recent key pressed according to Kanata processing.
+The max recency is 8.
 
 | `key-timing`
 | The valid values for `$comparator` are `less-than` and `greater-than`,
 with `lt` and `gt` as shorthand if desired.
-This item evaluates to true if the key with the corresponding `$recency`
+This item evaluates to true if the key with the corresponding recency
 was pressed — for `lt` more recently than, or for `gt` later than —
 the defined `$time` with unit milliseconds.
-A `$recency` of 1 is the most recent key pressed according to Kanata processing.
-The max recency is 8.
 
 | `input`
 | Evaluates to true if the `$key-name` is currently pressed.
@@ -2652,9 +2652,9 @@ If using `real`, this will check against the defsrc inputs.
 If using `virtual`, this will check against virtual key activations.
 
 | `input-history`
-| Evaluates to true if the input in the `$recency` slot matches `$key-name`.
+| Evaluates to true if the input in the `$input-recency` slot matches `$key-name`.
 Two input types use the same history with respect to recency slots.
-A `$recency` of 1 is the most recent input i.e. the input activating `switch` itself.
+A recency of 1 is the most recent input i.e. the input activating `switch` itself.
 The max recency is 8.
 
 | `layer`
