@@ -1126,6 +1126,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
             }
+            // Similar issue happens for the quick tap-hold tap as with on-press release;
+            // the rapidity of the release can cause issues. See pause_input_processing_delay
+            // comments for more detail.
+            self.oneshot.pause_input_processing_ticks = self.oneshot.pause_input_processing_delay;
             self.do_action(hold, coord, delay, false, &mut layer_stack.into_iter())
         } else {
             CustomEvent::NoEvent
