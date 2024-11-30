@@ -19,7 +19,7 @@ pub(crate) struct MultiKeyBuffer<'a, T> {
     ac: *mut Action<'a, T>,
 }
 
-unsafe impl<'a, T> Send for MultiKeyBuffer<'a, T> {}
+unsafe impl<T> Send for MultiKeyBuffer<'_, T> {}
 
 impl<'a, T> MultiKeyBuffer<'a, T> {
     /// Create a new instance of `MultiKeyBuffer`.
@@ -77,7 +77,7 @@ impl<'a, T> MultiKeyBuffer<'a, T> {
     }
 }
 
-impl<'a, T> Drop for MultiKeyBuffer<'a, T> {
+impl<T> Drop for MultiKeyBuffer<'_, T> {
     fn drop(&mut self) {
         unsafe {
             drop(Box::from_raw(self.ac));

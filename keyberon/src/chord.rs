@@ -141,7 +141,7 @@ pub struct ChordsV2<'a, T> {
     next_coord: Cell<u16>,
 }
 
-impl<'a, T> std::fmt::Debug for ChordsV2<'a, T> {
+impl<T> std::fmt::Debug for ChordsV2<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ChordsV2")
     }
@@ -179,17 +179,17 @@ impl<'a, T> ChordsV2<'a, T> {
         &self.chords
     }
 
-    pub(crate) fn get_action_chv2(&mut self) -> (QueuedAction<'a, T>, bool) {
+    pub(crate) fn get_action_chv2(&mut self) -> QueuedAction<'a, T> {
         self.active_chords
             .iter_mut()
             .find_map(|ach| match ach.status {
                 Unread => {
                     ach.status = Releasable;
-                    Some((Some(((0, ach.coordinate), ach.delay, ach.action)), false))
+                    Some(Some(((0, ach.coordinate), ach.delay, ach.action)))
                 }
                 UnreadReleased => {
                     ach.status = Released;
-                    Some((Some(((0, ach.coordinate), ach.delay, ach.action)), true))
+                    Some(Some(((0, ach.coordinate), ach.delay, ach.action)))
                 }
                 Releasable | Released => None,
             })

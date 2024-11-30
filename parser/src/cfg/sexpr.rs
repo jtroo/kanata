@@ -289,7 +289,7 @@ impl<'a> PositionCountingBytesIterator<'a> {
     }
 }
 
-impl<'a> Iterator for PositionCountingBytesIterator<'a> {
+impl Iterator for PositionCountingBytesIterator<'_> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {

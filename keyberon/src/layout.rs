@@ -233,7 +233,7 @@ pub enum CustomEvent<'a, T: 'a> {
     /// The given custom action key is released.
     Release(&'a T),
 }
-impl<'a, T> CustomEvent<'a, T> {
+impl<T> CustomEvent<'_, T> {
     /// Update an event according to a new event.
     ///
     ///The event can only be modified in the order `NoEvent < Press <
@@ -286,8 +286,8 @@ pub enum State<'a, T: 'a> {
     SeqCustomActive(&'a T),
     Tombstone,
 }
-impl<'a, T> Copy for State<'a, T> {}
-impl<'a, T> Clone for State<'a, T> {
+impl<T> Copy for State<'_, T> {}
+impl<T> Clone for State<'_, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -390,7 +390,7 @@ pub struct TapDanceEagerState<'a, T: 'a> {
     num_taps: u16,
 }
 
-impl<'a, T> TapDanceEagerState<'a, T> {
+impl<T> TapDanceEagerState<'_, T> {
     fn tick_tde(&mut self) {
         self.timeout = self.timeout.saturating_sub(1);
     }
@@ -885,8 +885,8 @@ pub struct OneShotState {
     /// When too short, applications or desktop environments process
     /// the key release before the next press,
     /// even if temporally the release was sent after.
-    pub on_press_release_delay: u16,
-    /// If on_press_release_delay is used, this will be >0,
+    pub pause_input_processing_delay: u16,
+    /// If pause_input_processing_delay is used, this will be >0,
     /// meaning input processing should be paused to prevent extra presses
     /// from coming in while OneShot has not yet been released.
     ///
@@ -946,8 +946,8 @@ impl OneShotState {
                     self.end_config,
                     OneShotEndConfig::EndOnFirstPress | OneShotEndConfig::EndOnFirstPressOrRepress
                 ) {
-                    self.timeout = core::cmp::min(self.on_press_release_delay, self.timeout);
-                    self.pause_input_processing_ticks = self.on_press_release_delay;
+                    self.timeout = core::cmp::min(self.pause_input_processing_delay, self.timeout);
+                    self.pause_input_processing_ticks = self.pause_input_processing_delay;
                 } else {
                     let _ = self.other_pressed_keys.push_back(pressed_coord);
                 }
@@ -1070,7 +1070,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 released_keys: ArrayDeque::new(),
                 other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
-                on_press_release_delay: 0,
+                pause_input_processing_delay: 0,
                 pause_input_processing_ticks: 0,
                 ticks_to_ignore_events: 0,
             },
@@ -1204,9 +1204,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
             }
             // Similar issue happens for the quick tap-hold tap as with on-press release;
-            // the rapidity of the release can cause issues. See on_press_release_delay
+            // the rapidity of the release can cause issues. See pause_input_processing_delay
             // comments for more detail.
-            self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
+            self.oneshot.pause_input_processing_ticks = self.oneshot.pause_input_processing_delay;
             ret
         } else {
             CustomEvent::NoEvent
@@ -1259,11 +1259,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         let active_layer = self.current_layer() as u16;
         if let Some(chv2) = self.chords_v2.as_mut() {
             self.queue.extend(chv2.tick_chv2(active_layer).drain(0..));
-            if let (qac @ Some(_), pause_input_processing) = chv2.get_action_chv2() {
-                self.action_queue.push_back(qac);
-                if pause_input_processing {
-                    self.oneshot.pause_input_processing_ticks = self.oneshot.on_press_release_delay;
-                }
+            if let chord_action @ Some(_) = chv2.get_action_chv2() {
+                self.action_queue.push_back(chord_action);
+                self.oneshot.pause_input_processing_ticks =
+                    self.oneshot.pause_input_processing_delay;
             }
         }
         if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
@@ -2861,7 +2860,7 @@ mod test {
             k(B),
         ]]];
         let mut layout = Layout::new(LAYERS);
-        layout.oneshot.on_press_release_delay = 1;
+        layout.oneshot.pause_input_processing_delay = 1;
 
         // Test:
         // 1. press one-shot
@@ -2973,7 +2972,7 @@ mod test {
             k(B),
         ]]];
         let mut layout = Layout::new(LAYERS);
-        layout.oneshot.on_press_release_delay = 1;
+        layout.oneshot.pause_input_processing_delay = 1;
 
         // Test:
         // 1. press one-shot
@@ -3284,7 +3283,7 @@ mod test {
             [[k(A), k(B), k(C), k(D)]],
         ];
         let mut layout = Layout::new(LAYERS);
-        layout.oneshot.on_press_release_delay = 1;
+        layout.oneshot.pause_input_processing_delay = 1;
 
         layout.event(Press(0, 0));
         layout.event(Release(0, 0));
@@ -3340,7 +3339,7 @@ mod test {
             [[k(A), k(B), k(C)]],
         ];
         let mut layout = Layout::new(LAYERS);
-        layout.oneshot.on_press_release_delay = 1;
+        layout.oneshot.pause_input_processing_delay = 1;
 
         layout.event(Press(0, 0));
         layout.event(Release(0, 0));

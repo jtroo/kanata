@@ -314,7 +314,7 @@ pub fn new_from_str(cfg_text: &str, file_content: HashMap<String, String>) -> MR
     );
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
-    layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
+    layout.bm().oneshot.pause_input_processing_delay = icfg.options.rapid_event_delay;
     let mut fake_keys: HashMap<String, usize> = s
         .virtual_keys
         .iter()
@@ -363,7 +363,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     );
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
-    layout.bm().oneshot.on_press_release_delay = icfg.options.rapid_event_delay;
+    layout.bm().oneshot.pause_input_processing_delay = icfg.options.rapid_event_delay;
     if let Some(s) = icfg.start_action {
         layout.bm().action_queue.push_front(Some(((1, 0), 0, s)));
     }

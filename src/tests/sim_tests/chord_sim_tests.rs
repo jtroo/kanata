@@ -236,7 +236,7 @@ fn sim_chord_into_tap_hold() {
          d:a t:50 d:b t:148 u:a u:b t:1000",
     );
     assert_eq!(
-        "t:199ms\nout:↓Y\nt:5ms\nout:↑Y\nt:198ms\nout:↓X\nt:10ms\nout:↑X",
+        "t:199ms\nout:↓Y\nt:10ms\nout:↑Y\nt:193ms\nout:↓X\nt:10ms\nout:↑X",
         result
     );
 }
@@ -293,7 +293,7 @@ fn sim_chord_eager_tapholdpress_activation() {
     )
     .to_ascii();
     assert_eq!(
-        "t:11ms dn:LCtrl t:2ms dn:BSpace t:97ms \
+        "t:11ms dn:LCtrl t:7ms dn:BSpace t:92ms \
          dn:BSpace t:10ms dn:BSpace t:14ms up:BSpace t:96ms up:LCtrl",
         result
     );
@@ -315,7 +315,7 @@ fn sim_chord_eager_tapholdrelease_activation() {
     )
     .to_ascii();
     assert_eq!(
-        "t:20ms dn:LCtrl t:2ms dn:BSpace t:5ms up:BSpace t:93ms up:LCtrl",
+        "t:20ms dn:LCtrl t:7ms dn:BSpace t:5ms up:BSpace t:88ms up:LCtrl",
         result
     );
 }

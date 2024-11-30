@@ -31,7 +31,7 @@ pub enum SequenceEvent<'a, T: 'a> {
     Complete,
 }
 
-impl<'a, T> Debug for SequenceEvent<'a, T> {
+impl<T> Debug for SequenceEvent<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoOp => write!(f, "NoOp"),
@@ -90,7 +90,7 @@ pub enum HoldTapConfig<'a> {
     Custom(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
 }
 
-impl<'a> Debug for HoldTapConfig<'a> {
+impl Debug for HoldTapConfig<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
@@ -101,7 +101,7 @@ impl<'a> Debug for HoldTapConfig<'a> {
     }
 }
 
-impl<'a> PartialEq for HoldTapConfig<'a> {
+impl PartialEq for HoldTapConfig<'_> {
     fn eq(&self, other: &Self) -> bool {
         #[allow(clippy::match_like_matches_macro)]
         match (self, other) {
@@ -392,7 +392,7 @@ where
     Src,
 }
 
-impl<'a, T> Action<'a, T> {
+impl<T> Action<'_, T> {
     /// Gets the layer number if the action is the `Layer` action.
     pub fn layer(self) -> Option<usize> {
         match self {
