@@ -3,6 +3,7 @@
 ifndef::env-github[]
 :toc: left
 endif::[]
+:stylesheet: config-stylesheet.css
 
 This document describes how to create a kanata configuration file.
 The kanata configuration file will determine your keyboard behaviour upon running kanata.

@@ -75,3 +75,7 @@ publish:
   cd keyberon && cargo publish
   cd tcp_protocol && cargo publish
   cd parser && cargo publish
+
+cfg_to_html output_dir:
+  cd docs ; asciidoctor config.adoc
+  cd docs ; mv config.html "{{output_dir}}config.html"
