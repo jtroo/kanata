@@ -3895,7 +3895,7 @@ fn parse_unmod(
 }
 
 fn parse_alt_repeat(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    let Some(list) = ac_params.get(0).and_then(|s| s.list(None)) else {
+    let Some(list) = ac_params.first().and_then(|s| s.list(None)) else {
         bail!("alt-repeat needs a list of previous-next keycodes")
     };
     if list.len() % 2 != 0 {
@@ -3912,7 +3912,11 @@ fn parse_alt_repeat(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         }
     }
     use itertools::Itertools;
-    let substitutions = key_list.iter().tuples().map(|(a, b)| (a.into(), b.into())).collect();
+    let substitutions = key_list
+        .iter()
+        .tuples()
+        .map(|(a, b)| (a.into(), b.into()))
+        .collect();
     custom(CustomAction::AltRepeat { substitutions }, &s.a)
 }
 
