@@ -2808,7 +2808,7 @@ and 8 is 8th most recent key pressed.
 
 NOTE: If the default action for this type of `switch` is a `repeat` key, then
 you should consider using an `alt-repeat` key, as the syntax is a lot more
-compact and simpler. For more information, check the <<repeat>> section.
+compact and simpler. For more information, check the <<repeat-key>> section.
 
 The `key-timing` compares how long ago recent key typing events occurred.
 It accepts, in order,
