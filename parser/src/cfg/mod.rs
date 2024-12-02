@@ -2477,25 +2477,35 @@ fn parse_cmd_log(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     ))))
 }
 
+#[allow(unused_variables)]
 fn parse_cmd(
     ac_params: &[SExpr],
     s: &ParserState,
     cmd_type: CmdType,
 ) -> Result<&'static KanataAction> {
-    const ERR_STR: &str = "cmd expects at least one string";
-    if !s.is_cmd_enabled {
-        bail!("cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration");
+    #[cfg(not(feature = "cmd"))]
+    {
+        bail!(
+            "cmd is not enabled for this kanata executable. Use a cmd_allowed prebuilt executable or compile with the feature: cmd."
+        );
     }
-    let mut cmd = vec![];
-    collect_strings(ac_params, &mut cmd, s);
-    if cmd.is_empty() {
-        bail!(ERR_STR);
+    #[cfg(feature = "cmd")]
+    {
+        const ERR_STR: &str = "cmd expects at least one string";
+        if !s.is_cmd_enabled {
+            bail!("To use cmd you must put in defcfg: danger-enable-cmd yes.");
+        }
+        let mut cmd = vec![];
+        collect_strings(ac_params, &mut cmd, s);
+        if cmd.is_empty() {
+            bail!(ERR_STR);
+        }
+        Ok(s.a
+            .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
+                CmdType::Standard => CustomAction::Cmd(cmd),
+                CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
+            })))))
     }
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
-            CmdType::Standard => CustomAction::Cmd(cmd),
-            CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
-        })))))
 }
 
 /// Recurse through all levels of list nesting and collect into a flat list of strings.
