@@ -173,14 +173,19 @@ impl ZchDynamicState {
         self.zchd_last_press = ZchLastPressClassification::NotChord;
         self.zchd_enabled_state = ZchEnabledState::Disabled;
         self.zchd_input_keys.zchik_clear();
-        self.zchd_prioritized_chords = None;
-        self.zchd_prior_activation = None;
-        self.zchd_prior_activation_output_count = 0;
         self.zchd_ticks_since_state_change = 0;
         self.zchd_ticks_until_disable = 0;
         self.zchd_ticks_until_enabled = 0;
-        self.zchd_characters_to_delete_on_next_activation = 0;
         self.zchd_smart_space_state = ZchSmartSpaceState::Inactive;
+        self.zchd_clear_history();
+    }
+
+    fn zchd_clear_history(&mut self) {
+        log::debug!("zchd clear historical data");
+        self.zchd_characters_to_delete_on_next_activation = 0;
+        self.zchd_prioritized_chords = None;
+        self.zchd_prior_activation = None;
+        self.zchd_prior_activation_output_count = 0;
     }
 
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -201,7 +206,7 @@ impl ZchDynamicState {
             (ZchLastPressClassification::NotChord, true) => {
                 log::debug!("all released->zippy wait enable");
                 self.zchd_enabled_state = ZchEnabledState::WaitEnable;
-                self.zchd_characters_to_delete_on_next_activation = 0;
+                self.zchd_clear_history();
             }
             (ZchLastPressClassification::NotChord, false) => {
                 log::debug!("release but not all->zippy disable");
