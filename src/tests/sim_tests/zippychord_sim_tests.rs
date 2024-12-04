@@ -115,9 +115,6 @@ fn sim_zippychord_overlap() {
     assert_eq!(
         "dn:R t:10ms dn:BSpace up:BSpace \
         up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:10ms \
-        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
         dn:Space up:Space \
         up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E",
         result
@@ -351,8 +348,8 @@ fn sim_zippychord_prefix() {
     assert_eq!(
         "dn:P t:1ms dn:BSpace up:BSpace up:P dn:P up:R dn:R dn:E up:E dn:Space up:Space \
          dn:BSpace up:BSpace t:1ms up:P t:1ms up:R t:7ms \
-         dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-         dn:P up:P dn:U up:U dn:L up:L dn:L up:L dn:Space up:Space \
+         dn:BSpace up:BSpace dn:BSpace up:BSpace \
+         dn:U up:U dn:L up:L dn:L up:L dn:Space up:Space \
          dn:R up:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T t:1ms up:Q",
         result
     );
@@ -367,7 +364,7 @@ fn sim_zippychord_prefix() {
     assert_eq!(
         "dn:P dn:BSpace \
          dn:P dn:R dn:E dn:Space dn:BSpace \
-         dn:BSpace dn:BSpace dn:BSpace dn:P dn:A dn:R dn:T dn:N dn:E dn:R",
+         dn:BSpace dn:BSpace dn:A dn:R dn:T dn:N dn:E dn:R",
         result
     );
 }
@@ -477,10 +474,7 @@ fn sim_zippychord_smartspace_overlap() {
     assert_eq!(
         "dn:R t:10ms dn:BSpace up:BSpace \
         up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T dn:Space up:Space t:10ms \
-        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \
-        up:R dn:R dn:E up:E up:Q dn:Q dn:U up:U dn:E up:E dn:S up:S dn:T up:T \
-        dn:Space up:Space \
+        dn:BSpace up:BSpace dn:Space up:Space \
         up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E \
         dn:Space up:Space",
         result

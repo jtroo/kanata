@@ -69,13 +69,15 @@ struct ZchDynamicState {
     /// contained within `zchd_prioritized_chords`. This is cleared if the input is such that an
     /// activation is no longer possible.
     zchd_prioritized_chords: Option<Arc<parking_lot::Mutex<ZchPossibleChords>>>,
-    /// Tracks the previous output character count
+    /// Tracks the prior output character count
     /// because it may need to be erased (see `zchd_prioritized_chords).
-    zchd_previous_activation_output_count: i16,
+    zchd_prior_activation_output_count: i16,
     /// Tracks the number of characters typed to complete an activation, which will be erased if an
     /// activation completes succesfully.
     zchd_characters_to_delete_on_next_activation: i16,
-    /// Tracker for time until previous state change to know if potential stale data should be
+    /// Tracks past activation for additional computation.
+    zchd_prior_activation: Option<Arc<ZchChordOutput>>,
+    /// Tracker for time until prior state change to know if potential stale data should be
     /// cleared. This is a contingency in case of bugs or weirdness with OS interactions, e.g.
     /// Windows lock screen weirdness.
     ///
@@ -127,7 +129,7 @@ impl ZchDynamicState {
                     self.zchd_ticks_until_disable = self.zchd_ticks_until_disable.saturating_sub(1);
                     if self.zchd_ticks_until_disable == 0 {
                         log::debug!("zippy enable->disable");
-                        self.zchd_enabled_state = ZchEnabledState::Disabled;
+                        self.zchd_soft_reset();
                     }
                 }
             }
@@ -157,25 +159,33 @@ impl ZchDynamicState {
     /// currently still pressing.
     fn zchd_reset(&mut self) {
         log::debug!("zchd reset state");
+        self.zchd_soft_reset();
         self.zchd_is_caps_word_active = false;
         self.zchd_is_lsft_active = false;
         self.zchd_is_rsft_active = false;
         self.zchd_is_altgr_active = false;
-        self.zchd_soft_reset();
+        self.zchd_last_press = ZchLastPressClassification::IsChord;
+        self.zchd_enabled_state = ZchEnabledState::Enabled;
     }
 
     fn zchd_soft_reset(&mut self) {
         log::debug!("zchd soft reset state");
-        self.zchd_enabled_state = ZchEnabledState::Enabled;
-        self.zchd_last_press = ZchLastPressClassification::IsChord;
+        self.zchd_last_press = ZchLastPressClassification::NotChord;
+        self.zchd_enabled_state = ZchEnabledState::Disabled;
         self.zchd_input_keys.zchik_clear();
-        self.zchd_prioritized_chords = None;
-        self.zchd_previous_activation_output_count = 0;
         self.zchd_ticks_since_state_change = 0;
         self.zchd_ticks_until_disable = 0;
         self.zchd_ticks_until_enabled = 0;
-        self.zchd_characters_to_delete_on_next_activation = 0;
         self.zchd_smart_space_state = ZchSmartSpaceState::Inactive;
+        self.zchd_clear_history();
+    }
+
+    fn zchd_clear_history(&mut self) {
+        log::debug!("zchd clear historical data");
+        self.zchd_characters_to_delete_on_next_activation = 0;
+        self.zchd_prioritized_chords = None;
+        self.zchd_prior_activation = None;
+        self.zchd_prior_activation_output_count = 0;
     }
 
     /// Returns true if dynamic zch state is such that idling optimization can activate.
@@ -196,17 +206,17 @@ impl ZchDynamicState {
             (ZchLastPressClassification::NotChord, true) => {
                 log::debug!("all released->zippy wait enable");
                 self.zchd_enabled_state = ZchEnabledState::WaitEnable;
-                self.zchd_characters_to_delete_on_next_activation = 0;
+                self.zchd_clear_history();
             }
             (ZchLastPressClassification::NotChord, false) => {
                 log::debug!("release but not all->zippy disable");
-                self.zchd_enabled_state = ZchEnabledState::Disabled;
+                self.zchd_soft_reset();
             }
             (ZchLastPressClassification::IsChord, true) => {
                 log::debug!("all released->zippy enabled");
                 if self.zchd_prioritized_chords.is_none() {
                     log::debug!("no continuation->zippy clear key erase state");
-                    self.zchd_previous_activation_output_count = 0;
+                    self.zchd_clear_history();
                 }
                 self.zchd_characters_to_delete_on_next_activation = 0;
                 self.zchd_ticks_until_disable = 0;
@@ -302,7 +312,7 @@ impl ZchState {
         // - output activation
         //
         // Key deletion needs to remove typed keys as well as past activations that need to be
-        // cleaned up, e.g. either the previous chord in a "combo chord" or an eagerly-activated
+        // cleaned up, e.g. either the antecedent in a "combo chord" or an eagerly-activated
         // chord using fewer keys, but user has still held that chord and pressed further keys,
         // activating a chord with the same+extra keys.
         let mut activation = Neither;
@@ -324,41 +334,82 @@ impl ZchState {
 
         match activation {
             HasValue(a) => {
+                // Find the longest common prefix length between the prior activation and the new
+                // activation. This value affects both:
+                // - the number of backspaces that need to be done
+                // - the number of characters that actually need to be typed by the activation
+                let common_prefix_len_from_past_activation = self
+                    .zchd
+                    .zchd_prior_activation
+                    .as_ref()
+                    .map(|prior_activation| {
+                        let current_activation_output = &a.zch_output;
+                        let mut len: i16 = 0;
+                        for (past, current) in prior_activation
+                            .zch_output
+                            .iter()
+                            .copied()
+                            .zip(current_activation_output.iter().copied())
+                        {
+                            if past.osc() == OsCode::KEY_BACKSPACE
+                                || current.osc() == OsCode::KEY_BACKSPACE
+                                || past != current
+                            {
+                                break;
+                            }
+                            len += 1;
+                        }
+                        len
+                    })
+                    .unwrap_or(0);
+                self.zchd.zchd_prior_activation = Some(a.clone());
+
                 self.zchd
                     .zchd_restart_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);
-                if a.zch_output.is_empty() {
-                    self.zchd.zchd_characters_to_delete_on_next_activation += 1;
-                    self.zchd.zchd_previous_activation_output_count +=
-                        self.zchd.zchd_input_keys.zchik_keys().len() as i16;
-                    kb.press_key(osc)?;
-                } else {
+                if !a.zch_output.is_empty() {
+                    // Zippychording eagerly types characters that form a chord and also eagerly
+                    // outputs chords that are of a maybe-to-be-activated-later chord with more
+                    // participating keys. This procedure erases both classes of typed characters
+                    // in order to have the correct typed output for this chord activation.
                     for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation
                         + if is_prioritized_activation {
-                            self.zchd.zchd_previous_activation_output_count
+                            self.zchd.zchd_prior_activation_output_count
                         } else {
                             0
-                        })
+                        }
+                        - common_prefix_len_from_past_activation)
                     {
                         kb.press_key(OsCode::KEY_BACKSPACE)?;
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
                     self.zchd.zchd_characters_to_delete_on_next_activation = 0;
-                    self.zchd.zchd_previous_activation_output_count =
+                    self.zchd.zchd_prior_activation_output_count =
                         ZchOutput::display_len(&a.zch_output);
+                } else {
+                    // Followup chords may consist of an empty output; eventually in the followup
+                    // chain has an activation output that is not empty. For empty outputs, do not
+                    // do any backspacing.
+                    self.zchd.zchd_characters_to_delete_on_next_activation += 1;
+                    self.zchd.zchd_prior_activation_output_count +=
+                        self.zchd.zchd_input_keys.zchik_keys().len() as i16;
+                    kb.press_key(osc)?;
                 }
+
                 self.zchd
                     .zchd_prioritized_chords
                     .clone_from(&a.zch_followups);
                 let mut released_sft = false;
-
                 #[cfg(feature = "interception_driver")]
                 let mut send_count = 0;
-
                 if self.zchd.zchd_is_altgr_active && !a.zch_output.is_empty() {
                     kb.release_key(OsCode::KEY_RIGHTALT)?;
                 }
-
-                for key_to_send in a.zch_output.iter().copied() {
+                for key_to_send in a
+                    .zch_output
+                    .iter()
+                    .copied()
+                    .skip(common_prefix_len_from_past_activation as usize)
+                {
                     #[cfg(feature = "interception_driver")]
                     {
                         // Note: every 5 keys on Windows Interception, do a sleep because
@@ -433,8 +484,7 @@ impl ZchState {
                     && a.zch_output
                         .last()
                         .map(|out| !matches!(out.osc(), OsCode::KEY_SPACE | OsCode::KEY_BACKSPACE))
-                        .unwrap_or(false)
-                // if output empty, don't add space
+                        .unwrap_or(false /* if output is empty, don't do smart spacing */)
                 {
                     if self.zch_cfg.zch_cfg_smart_space == ZchSmartSpaceCfg::Full {
                         self.zchd.zchd_smart_space_state = ZchSmartSpaceState::Sent;
@@ -442,17 +492,17 @@ impl ZchState {
 
                     // It might look unusual to add to both.
                     // This is correct to do.
-                    // zchd_previous_activation_output_count only applies to followup activations,
+                    // zchd_prior_activation_output_count only applies to followup activations,
                     // which should only occur after a full release+repress of a new chord.
                     // The full release will set zchd_characters_to_delete_on_next_activation to 0.
-                    // Overlapping chords do not use zchd_previous_activation_output_count but
+                    // Overlapping chords do not use zchd_prior_activation_output_count but
                     // instead keep track of characters to delete via
                     // zchd_characters_to_delete_on_next_activation,
                     // which is incremented both by typing characters
                     // to achieve a chord in the first place,
                     // as well as by chord activations that are overlapped
                     // by the intended final chord.
-                    self.zchd.zchd_previous_activation_output_count += 1;
+                    self.zchd.zchd_prior_activation_output_count += 1;
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
 
                     kb.press_key(OsCode::KEY_SPACE)?;
@@ -498,8 +548,6 @@ impl ZchState {
 
             Neither => {
                 self.zchd.zchd_soft_reset();
-                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
-                self.zchd.zchd_enabled_state = ZchEnabledState::Disabled;
                 kb.press_key(osc)
             }
         }
