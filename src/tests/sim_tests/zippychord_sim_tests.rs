@@ -30,7 +30,7 @@ fn simulate_with_zippy_file_content(cfg: &str, input: &str, content: &str) -> St
 fn sim_zippychord_capitalize() {
     let result = simulate_with_zippy_file_content(
         ZIPPY_CFG,
-        "d:a t:10 d:b t:10 d:spc t:10 d:c u:a u:b u:c u:spc t:2000 \
+        "d:a t:10 d:b t:10 d:spc t:10 d:c u:a u:b u:c u:spc t:300 \
          d:a t:10 d:b t:10 d:spc t:10 d:c t:300",
         ZIPPY_FILE_CONTENT,
     )

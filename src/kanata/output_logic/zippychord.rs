@@ -216,7 +216,7 @@ impl ZchDynamicState {
                 log::debug!("all released->zippy enabled");
                 if self.zchd_prioritized_chords.is_none() {
                     log::debug!("no continuation->zippy clear key erase state");
-                    self.zchd_prior_activation_output_count = 0;
+                    self.zchd_clear_history();
                 }
                 self.zchd_characters_to_delete_on_next_activation = 0;
                 self.zchd_ticks_until_disable = 0;
