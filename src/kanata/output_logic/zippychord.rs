@@ -91,6 +91,8 @@ struct ZchDynamicState {
     /// possible; after which if a chord has not been activated, zippychording is disabled. This
     /// state is the counter for this deadline.
     zchd_ticks_until_disable: u16,
+    /// Track number of activations within the same hold.
+    zchd_same_hold_activation_count: u16,
     /// Current state of caps-word, which is a factor in handling capitalization.
     zchd_is_caps_word_active: bool,
     /// Current state of lsft which is a factor in handling capitalization.
@@ -221,6 +223,7 @@ impl ZchDynamicState {
                 self.zchd_characters_to_delete_on_next_activation = 0;
                 self.zchd_ticks_until_disable = 0;
                 self.zchd_enabled_state = ZchEnabledState::Enabled;
+                self.zchd_same_hold_activation_count = 0;
             }
             (ZchLastPressClassification::IsChord, false) => {
                 log::debug!("some released->zippy enabled");
@@ -338,31 +341,37 @@ impl ZchState {
                 // activation. This value affects both:
                 // - the number of backspaces that need to be done
                 // - the number of characters that actually need to be typed by the activation
-                let common_prefix_len_from_past_activation = self
-                    .zchd
-                    .zchd_prior_activation
-                    .as_ref()
-                    .map(|prior_activation| {
-                        let current_activation_output = &a.zch_output;
-                        let mut len: i16 = 0;
-                        for (past, current) in prior_activation
-                            .zch_output
-                            .iter()
-                            .copied()
-                            .zip(current_activation_output.iter().copied())
-                        {
-                            if past.osc() == OsCode::KEY_BACKSPACE
-                                || current.osc() == OsCode::KEY_BACKSPACE
-                                || past != current
+                let common_prefix_len_from_past_activation = if !is_prioritized_activation
+                    && self.zchd.zchd_same_hold_activation_count == 0
+                {
+                    0
+                } else {
+                    self.zchd
+                        .zchd_prior_activation
+                        .as_ref()
+                        .map(|prior_activation| {
+                            let current_activation_output = &a.zch_output;
+                            let mut len: i16 = 0;
+                            for (past, current) in prior_activation
+                                .zch_output
+                                .iter()
+                                .copied()
+                                .zip(current_activation_output.iter().copied())
                             {
-                                break;
+                                if past.osc() == OsCode::KEY_BACKSPACE
+                                    || current.osc() == OsCode::KEY_BACKSPACE
+                                    || past != current
+                                {
+                                    break;
+                                }
+                                len += 1;
                             }
-                            len += 1;
-                        }
-                        len
-                    })
-                    .unwrap_or(0);
+                            len
+                        })
+                        .unwrap_or(0)
+                };
                 self.zchd.zchd_prior_activation = Some(a.clone());
+                self.zchd.zchd_same_hold_activation_count += 1;
 
                 self.zchd
                     .zchd_restart_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);

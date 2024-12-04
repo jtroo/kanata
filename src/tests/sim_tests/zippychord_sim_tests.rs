@@ -618,3 +618,21 @@ fn sim_zippychord_smartspace_custom_punc() {
         result
     );
 }
+
+#[test]
+fn sim_zippychord_non_followup_subsequent_with_potential_followups_available() {
+    let result = simulate_with_zippy_file_content(
+        "(defsrc)(deflayer base)(defzippy-experimental file
+         smart-space full)",
+        "d:g d:. t:10 u:g u:. t:1000 d:g d:. t:10 u:g u:. t:1000",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:G t:1ms dn:BSpace up:BSpace up:G dn:G dn:I up:I dn:T up:T dn:Space up:Space t:9ms \
+         up:G t:1ms up:Dot t:999ms \
+         dn:G t:1ms dn:BSpace up:BSpace up:G dn:G dn:I up:I dn:T up:T dn:Space up:Space t:9ms \
+         up:G t:1ms up:Dot",
+        result
+    );
+}
