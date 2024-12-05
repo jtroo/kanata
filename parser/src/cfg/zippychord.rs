@@ -128,23 +128,48 @@ pub enum ZchOutput {
     Uppercase(OsCode),
     AltGr(OsCode),
     ShiftAltGr(OsCode),
+    NoEraseLowercase(OsCode),
+    NoEraseUppercase(OsCode),
+    NoEraseAltGr(OsCode),
+    NoEraseShiftAltGr(OsCode),
 }
 
 impl ZchOutput {
     pub fn osc(self) -> OsCode {
         use ZchOutput::*;
         match self {
-            Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => osc,
+            Lowercase(osc)
+            | Uppercase(osc)
+            | AltGr(osc)
+            | ShiftAltGr(osc)
+            | NoEraseLowercase(osc)
+            | NoEraseUppercase(osc)
+            | NoEraseAltGr(osc)
+            | NoEraseShiftAltGr(osc) => osc,
+        }
+    }
+    pub fn osc_is_noerase(self) -> (OsCode, bool) {
+        use ZchOutput::*;
+        match self {
+            Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => (osc, false),
+            NoEraseLowercase(osc)
+            | NoEraseUppercase(osc)
+            | NoEraseAltGr(osc)
+            | NoEraseShiftAltGr(osc) => (osc, true),
         }
     }
     pub fn display_len(outs: impl AsRef<[Self]>) -> i16 {
         outs.as_ref().iter().copied().fold(0i16, |mut len, out| {
-            len += match out.osc() {
-                OsCode::KEY_BACKSPACE => -1,
-                _ => 1,
-            };
+            len += out.output_char_count();
             len
         })
+    }
+    pub fn output_char_count(self) -> i16 {
+        match self.osc_is_noerase() {
+            (OsCode::KEY_BACKSPACE, _) => -1,
+            (_, false) => 1,
+            (_, true) => 0,
+        }
     }
 }
 
@@ -352,7 +377,7 @@ fn parse_zippy_inner(
                     let input = mapping_pair[0]
                         .atom(None)
                         .ok_or_else(|| {
-                            anyhow_expr!(&mapping_pair[0], "key mapping does not use lists")
+                            anyhow_expr!(&mapping_pair[0], "key mapping input does not use lists")
                         })?
                         .trim_atom_quotes();
                     if input.chars().count() != 1 {
@@ -360,9 +385,37 @@ fn parse_zippy_inner(
                     }
                     let input_char = input.chars().next().expect("count is 1");
 
-                    let output = mapping_pair[1].atom(s.vars()).ok_or_else(|| {
-                        anyhow_expr!(&mapping_pair[1], "key mapping does not use lists")
-                    })?;
+                    let (output, is_noerase) = match mapping_pair[1].atom(s.vars()) {
+                        Some(o) => (o, false),
+                        None => {
+                            const NO_ERASE: &str = "no-erase";
+                            // unwrap note: must be list if not atom
+                            let output_list = mapping_pair[1].list(s.vars()).unwrap();
+                            if output_list.len() != 2 {
+                                bail_expr!(&mapping_pair[1], "Unknown output action");
+                            }
+                            output_list[0]
+                                .atom(s.vars())
+                                .and_then(|name| match name {
+                                    NO_ERASE => Some(()),
+                                    _ => None,
+                                })
+                                .ok_or_else(|| {
+                                    anyhow_expr!(
+                                        &output_list[0],
+                                        "Unknown output type. Must be: no-erase"
+                                    )
+                                })?;
+                            let output = output_list[1].atom(s.vars()).ok_or_else(|| {
+                                anyhow_expr!(
+                                    &output_list[1],
+                                    "Unknown output type. Must be: no-erase"
+                                )
+                            })?;
+                            (output, true)
+                        }
+                    };
+
                     let (output_mods, output_key) = parse_mod_prefix(output)?;
                     if output_mods.contains(&KeyCode::LShift)
                         && output_mods.contains(&KeyCode::RShift)
@@ -381,13 +434,25 @@ fn parse_zippy_inner(
                     let output_osc = str_to_oscode(output_key)
                         .ok_or_else(|| anyhow_expr!(&mapping_pair[1], "unknown key name"))?;
                     let output = match output_mods.len() {
-                        0 => ZchOutput::Lowercase(output_osc),
+                        0 => match is_noerase {
+                            false => ZchOutput::Lowercase(output_osc),
+                            true => ZchOutput::NoEraseLowercase(output_osc),
+                        },
                         1 => match output_mods[0] {
-                            KeyCode::LShift | KeyCode::RShift => ZchOutput::Uppercase(output_osc),
-                            KeyCode::RAlt => ZchOutput::AltGr(output_osc),
+                            KeyCode::LShift | KeyCode::RShift => match is_noerase {
+                                false => ZchOutput::Uppercase(output_osc),
+                                true => ZchOutput::NoEraseUppercase(output_osc),
+                            },
+                            KeyCode::RAlt => match is_noerase {
+                                false => ZchOutput::AltGr(output_osc),
+                                true => ZchOutput::NoEraseAltGr(output_osc),
+                            },
                             _ => unreachable!("forbidden by earlier parsing"),
                         },
-                        2 => ZchOutput::ShiftAltGr(output_osc),
+                        2 => match is_noerase {
+                            false => ZchOutput::ShiftAltGr(output_osc),
+                            true => ZchOutput::NoEraseShiftAltGr(output_osc),
+                        },
                         _ => {
                             unreachable!("contains at most: altgr and one of the shifts")
                         }

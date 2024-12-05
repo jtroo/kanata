@@ -430,18 +430,16 @@ impl ZchState {
                         }
                     }
 
-                    let typed_osc = match key_to_send {
-                        ZchOutput::Lowercase(osc) => {
+                    match key_to_send {
+                        ZchOutput::Lowercase(osc) | ZchOutput::NoEraseLowercase(osc) => {
                             type_osc(osc, kb, &self.zchd)?;
-                            osc
                         }
-                        ZchOutput::Uppercase(osc) => {
+                        ZchOutput::Uppercase(osc) | ZchOutput::NoEraseUppercase(osc) => {
                             maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
                             type_osc(osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
-                            osc
                         }
-                        ZchOutput::AltGr(osc) => {
+                        ZchOutput::AltGr(osc) | ZchOutput::NoEraseAltGr(osc) => {
                             // A note regarding maybe_press|release_sft
                             // in contrast to always pressing|releasing altgr:
                             //
@@ -454,29 +452,18 @@ impl ZchState {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
                             type_osc(osc, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
-                            osc
                         }
-                        ZchOutput::ShiftAltGr(osc) => {
+                        ZchOutput::ShiftAltGr(osc) | ZchOutput::NoEraseShiftAltGr(osc) => {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
                             maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
                             type_osc(osc, kb, &self.zchd)?;
                             maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
-                            osc
                         }
                     };
 
-                    if typed_osc == OsCode::KEY_BACKSPACE {
-                        self.zchd.zchd_characters_to_delete_on_next_activation -= 1;
-                        // Improvement: there are many other keycodes that might be sent that
-                        // aren't printable. But for now, just include backspace.
-                        // backspace might be fairly common to do something like:
-                        // 1. stp     -> staple
-                        // 2. ing     -> stapleing
-                        // 3. ing ei  -> stapling
-                    } else {
-                        self.zchd.zchd_characters_to_delete_on_next_activation += 1;
-                    }
+                    self.zchd.zchd_characters_to_delete_on_next_activation +=
+                        key_to_send.output_char_count();
 
                     if !released_sft && !self.zchd.zchd_is_caps_word_active {
                         released_sft = true;
