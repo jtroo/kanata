@@ -687,4 +687,3 @@ fn sim_zippychord_noerase() {
         result,
     );
 }
-

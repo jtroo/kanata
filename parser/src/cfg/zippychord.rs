@@ -32,6 +32,7 @@
 //!   -> note: do observe the two spaces between 'w' and 'a'
 use super::*;
 
+use crate::anyhow_expr;
 use crate::bail_expr;
 use crate::subset::*;
 
@@ -148,7 +149,7 @@ impl ZchOutput {
             | NoEraseShiftAltGr(osc) => osc,
         }
     }
-    pub fn osc_is_noerase(self) -> (OsCode, bool) {
+    pub fn osc_and_is_noerase(self) -> (OsCode, bool) {
         use ZchOutput::*;
         match self {
             Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => (osc, false),
@@ -165,11 +166,36 @@ impl ZchOutput {
         })
     }
     pub fn output_char_count(self) -> i16 {
-        match self.osc_is_noerase() {
+        match self.osc_and_is_noerase() {
             (OsCode::KEY_BACKSPACE, _) => -1,
             (_, false) => 1,
             (_, true) => 0,
         }
+    }
+}
+
+const NO_ERASE: &str = "no-erase";
+const SINGLE_OUTPUT_MULTI_KEY: &str = "single-output";
+
+enum ZchIoMappingType {
+    NoErase,
+    SingleOutput,
+}
+impl ZchIoMappingType {
+    fn try_parse(expr: &SExpr, vars: Option<&HashMap<String, SExpr>>) -> Result<Self> {
+        use ZchIoMappingType::*;
+        expr.atom(vars)
+            .and_then(|name| match name {
+                NO_ERASE => Some(NoErase),
+                SINGLE_OUTPUT_MULTI_KEY => Some(SingleOutput),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                anyhow_expr!(
+                    &expr,
+                    "Unknown output type. Must be one of:\nno-erase | single-output"
+                )
+            })
     }
 }
 
@@ -257,7 +283,6 @@ fn parse_zippy_inner(
     s: &ParserState,
     f: &mut FileContentProvider,
 ) -> Result<(ZchPossibleChords, ZchConfig)> {
-    use crate::anyhow_expr;
     use crate::subset::GetOrIsSubsetOfKnownKey::*;
 
     if exprs.len() < 2 {
@@ -287,7 +312,7 @@ fn parse_zippy_inner(
     let mut smart_space_punctuation_seen = false;
     let mut smart_space_punctuation_val_expr = None;
 
-    let mut user_cfg_char_to_output: HashMap<char, ZchOutput> = HashMap::default();
+    let mut user_cfg_char_to_output: HashMap<char, Vec<ZchOutput>> = HashMap::default();
     let mut pairs = exprs[2..].chunks_exact(2);
     for pair in pairs.by_ref() {
         let config_name = &pair[0];
@@ -385,78 +410,74 @@ fn parse_zippy_inner(
                     }
                     let input_char = input.chars().next().expect("count is 1");
 
-                    let (output, is_noerase) = match mapping_pair[1].atom(s.vars()) {
-                        Some(o) => (o, false),
+                    let output = match mapping_pair[1].atom(s.vars()) {
+                        Some(o) => vec![parse_single_zippy_output_mapping(
+                            o,
+                            &mapping_pair[1],
+                            false,
+                        )?],
                         None => {
-                            const NO_ERASE: &str = "no-erase";
-                            // unwrap note: must be list if not atom
+                            // note for unwrap below: must be list if not atom
                             let output_list = mapping_pair[1].list(s.vars()).unwrap();
-                            if output_list.len() != 2 {
-                                bail_expr!(&mapping_pair[1], "Unknown output action");
+                            if output_list.len() == 0 {
+                                bail_expr!(
+                                    &mapping_pair[1],
+                                    "Empty list is invalid for zippy output mapping."
+                                );
                             }
-                            output_list[0]
-                                .atom(s.vars())
-                                .and_then(|name| match name {
-                                    NO_ERASE => Some(()),
-                                    _ => None,
-                                })
-                                .ok_or_else(|| {
-                                    anyhow_expr!(
-                                        &output_list[0],
-                                        "Unknown output type. Must be: no-erase"
-                                    )
-                                })?;
-                            let output = output_list[1].atom(s.vars()).ok_or_else(|| {
-                                anyhow_expr!(
-                                    &output_list[1],
-                                    "Unknown output type. Must be: no-erase"
-                                )
-                            })?;
-                            (output, true)
+                            let output_type =
+                                ZchIoMappingType::try_parse(&output_list[0], s.vars())?;
+                            match output_type {
+                                ZchIoMappingType::NoErase => {
+                                    const ERR: &str = "expects a single key or output chord.";
+                                    if output_list.len() != 2 {
+                                        anyhow_expr!(&output_list[1], "{NO_ERASE} {ERR}");
+                                    }
+                                    let output =
+                                        output_list[1].atom(s.vars()).ok_or_else(|| {
+                                            anyhow_expr!(&output_list[1], "{NO_ERASE} {ERR}")
+                                        })?;
+                                    vec![parse_single_zippy_output_mapping(
+                                        output,
+                                        &output_list[1],
+                                        true,
+                                    )?]
+                                }
+                                ZchIoMappingType::SingleOutput => {
+                                    if output_list.len() < 2 {
+                                        anyhow_expr!(&output_list[1], "{SINGLE_OUTPUT_MULTI_KEY} expects one or more keys or output chords.");
+                                    }
+                                    let all_params_except_last =
+                                        &output_list[1..output_list.len() - 1];
+                                    let mut outs = vec![];
+                                    for expr in all_params_except_last {
+                                        let output = expr
+                                            .atom(s.vars())
+                                            .ok_or_else(|| {
+                                                anyhow_expr!(&output_list[1], "{SINGLE_OUTPUT_MULTI_KEY} does not allow list parameters.")
+                                            })?;
+                                        let out = parse_single_zippy_output_mapping(
+                                            output,
+                                            &output_list[1],
+                                            true,
+                                        )?;
+                                        outs.push(out);
+                                    }
+                                    let last_expr = &output_list.last().unwrap(); // non-empty, checked length already
+                                    let last_out = last_expr
+                                        .atom(s.vars())
+                                        .ok_or_else(|| {
+                                            anyhow_expr!(last_expr, "{SINGLE_OUTPUT_MULTI_KEY} does not allow list parameters.")
+                                        })?;
+                                    outs.push(parse_single_zippy_output_mapping(
+                                        last_out, last_expr, false,
+                                    )?);
+                                    outs
+                                }
+                            }
                         }
                     };
 
-                    let (output_mods, output_key) = parse_mod_prefix(output)?;
-                    if output_mods.contains(&KeyCode::LShift)
-                        && output_mods.contains(&KeyCode::RShift)
-                    {
-                        bail_expr!(
-                            &mapping_pair[1],
-                            "Both shifts are used which is redundant, use only one."
-                        );
-                    }
-                    if output_mods
-                        .iter()
-                        .any(|m| !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt))
-                    {
-                        bail_expr!(&mapping_pair[1], "Only S- and AG- are supported.");
-                    }
-                    let output_osc = str_to_oscode(output_key)
-                        .ok_or_else(|| anyhow_expr!(&mapping_pair[1], "unknown key name"))?;
-                    let output = match output_mods.len() {
-                        0 => match is_noerase {
-                            false => ZchOutput::Lowercase(output_osc),
-                            true => ZchOutput::NoEraseLowercase(output_osc),
-                        },
-                        1 => match output_mods[0] {
-                            KeyCode::LShift | KeyCode::RShift => match is_noerase {
-                                false => ZchOutput::Uppercase(output_osc),
-                                true => ZchOutput::NoEraseUppercase(output_osc),
-                            },
-                            KeyCode::RAlt => match is_noerase {
-                                false => ZchOutput::AltGr(output_osc),
-                                true => ZchOutput::NoEraseAltGr(output_osc),
-                            },
-                            _ => unreachable!("forbidden by earlier parsing"),
-                        },
-                        2 => match is_noerase {
-                            false => ZchOutput::ShiftAltGr(output_osc),
-                            true => ZchOutput::NoEraseShiftAltGr(output_osc),
-                        },
-                        _ => {
-                            unreachable!("contains at most: altgr and one of the shifts")
-                        }
-                    };
                     if user_cfg_char_to_output.insert(input_char, output).is_some() {
                         bail_expr!(&mapping_pair[0], "Duplicate character, not allowed");
                     }
@@ -489,9 +510,16 @@ fn parse_zippy_inner(
                     .ok_or_else(|| anyhow_expr!(&punc_expr, "Lists are not allowed"))?;
 
                 if punc.chars().count() == 1 {
-                    let c = punc.chars().next().expect("checked count above");
+                    let c = punc.chars().next().unwrap(); // checked count above
                     if let Some(out) = user_cfg_char_to_output.get(&c) {
-                        puncs.push(*out);
+                        if out.len() > 1 {
+                            bail_expr!(
+                                punc_expr,
+                                "This character is a single-output with multiple keys\n
+                                       and is not yet supported as use for punctuation."
+                            );
+                        }
+                        puncs.push(out[0]);
                         return Ok(puncs);
                     }
                 }
@@ -539,7 +567,7 @@ fn parse_zippy_inner(
                         .chars()
                         .try_fold(vec![], |mut zch_output, out_char| -> Result<_> {
                             if let Some(out) = user_cfg_char_to_output.get(&out_char) {
-                                zch_output.push(*out);
+                                zch_output.extend(out.iter());
                                 return Ok(zch_output);
                             }
 
@@ -672,4 +700,51 @@ fn parse_zippy_inner(
         Arc::into_inner(res).expect("no other refs").into_inner(),
         config,
     ))
+}
+
+fn parse_single_zippy_output_mapping(
+    output: &str,
+    output_expr: &SExpr,
+    is_noerase: bool,
+) -> Result<ZchOutput> {
+    let (output_mods, output_key) = parse_mod_prefix(output)?;
+    if output_mods.contains(&KeyCode::LShift) && output_mods.contains(&KeyCode::RShift) {
+        bail_expr!(
+            output_expr,
+            "Both shifts are used which is redundant, use only one."
+        );
+    }
+    if output_mods
+        .iter()
+        .any(|m| !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt))
+    {
+        bail_expr!(output_expr, "Only S- and AG- are supported.");
+    }
+    let output_osc =
+        str_to_oscode(output_key).ok_or_else(|| anyhow_expr!(output_expr, "unknown key name"))?;
+    let output = match output_mods.len() {
+        0 => match is_noerase {
+            false => ZchOutput::Lowercase(output_osc),
+            true => ZchOutput::NoEraseLowercase(output_osc),
+        },
+        1 => match output_mods[0] {
+            KeyCode::LShift | KeyCode::RShift => match is_noerase {
+                false => ZchOutput::Uppercase(output_osc),
+                true => ZchOutput::NoEraseUppercase(output_osc),
+            },
+            KeyCode::RAlt => match is_noerase {
+                false => ZchOutput::AltGr(output_osc),
+                true => ZchOutput::NoEraseAltGr(output_osc),
+            },
+            _ => unreachable!("forbidden by earlier parsing"),
+        },
+        2 => match is_noerase {
+            false => ZchOutput::ShiftAltGr(output_osc),
+            true => ZchOutput::NoEraseShiftAltGr(output_osc),
+        },
+        _ => {
+            unreachable!("contains at most: altgr and one of the shifts")
+        }
+    };
+    Ok(output)
 }
