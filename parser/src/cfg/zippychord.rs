@@ -419,7 +419,7 @@ fn parse_zippy_inner(
                         None => {
                             // note for unwrap below: must be list if not atom
                             let output_list = mapping_pair[1].list(s.vars()).unwrap();
-                            if output_list.len() == 0 {
+                            if output_list.is_empty() {
                                 bail_expr!(
                                     &mapping_pair[1],
                                     "Empty list is invalid for zippy output mapping."
