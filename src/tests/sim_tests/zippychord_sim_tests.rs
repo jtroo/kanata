@@ -636,3 +636,95 @@ fn sim_zippychord_non_followup_subsequent_with_potential_followups_available() {
         result
     );
 }
+
+const DEAD_KEYS_CFG: &str = "\
+(defsrc)
+(deflayer base)
+(defzippy-experimental file
+ smart-space full
+ output-character-mappings (
+   ’ (no-erase ')
+   ‘ (no-erase `)
+   é (single-output ' e)
+   è (single-output ` e)
+ ))";
+static DEAD_KEYS_FILE_CONTENT: &str = "
+by	h’elo
+bye	by‘e
+by d	ft‘a’ng
+by d a	aye
+cy	hélo
+cye	byè
+cy d	ftéèng
+cy d a	aye
+";
+
+#[test]
+fn sim_zippychord_noerase() {
+    let result = simulate_with_zippy_file_content(
+        DEAD_KEYS_CFG,
+        "d:b d:y t:100 d:e u:b u:y u:e t:1000",
+        DEAD_KEYS_FILE_CONTENT,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:B dn:BSpace dn:H dn:Quote dn:E dn:L dn:O dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:B dn:Y dn:Grave dn:E dn:Space",
+        result,
+    );
+
+    let result = simulate_with_zippy_file_content(
+        DEAD_KEYS_CFG,
+        "d:b d:y t:100 u:b u:y d:d t:10 u:d d:a t:10 u:a t:1000",
+        DEAD_KEYS_FILE_CONTENT,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:B dn:BSpace dn:H dn:Quote dn:E dn:L dn:O dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:F dn:T dn:Grave dn:A dn:Quote dn:N dn:G dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:A dn:Y dn:E dn:Space",
+        result,
+    );
+}
+
+#[test]
+fn sim_zippychord_single_output() {
+    let result = simulate_with_zippy_file_content(
+        DEAD_KEYS_CFG,
+        "d:c d:y t:100 d:e u:c u:y u:e t:1000",
+        DEAD_KEYS_FILE_CONTENT,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:C dn:BSpace dn:H dn:Quote dn:E dn:L dn:O dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:B dn:Y dn:Grave dn:E dn:Space",
+        result,
+    );
+
+    let result = simulate_with_zippy_file_content(
+        DEAD_KEYS_CFG,
+        "d:c d:y t:100 u:c u:y d:d t:10 u:d d:a t:10 u:a t:1000",
+        DEAD_KEYS_FILE_CONTENT,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:C dn:BSpace dn:H dn:Quote dn:E dn:L dn:O dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:F dn:T dn:Quote dn:E dn:Grave dn:E dn:N dn:G dn:Space \
+         dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace dn:BSpace \
+         dn:A dn:Y dn:E dn:Space",
+        result,
+    );
+}
