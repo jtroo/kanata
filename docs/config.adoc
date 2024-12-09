@@ -5025,7 +5025,7 @@ The options are `none`, `add-space-only`, and `full`.
 With `none`, outputs are typed as-is.
 With `add-space-only`, spaces are automatically added after outputs
 which end with neither a space or a backspace ⌫.
-With `full`, the `add-space-only` behaviour applios
+With `full`, the `add-space-only` behaviour applies
 alongside additional behaviour:
 typing punctuation (default characters: `, . ;`)
 after a zippy activation will delete a prior automatically-added space.
