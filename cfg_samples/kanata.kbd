@@ -1435,6 +1435,12 @@ Yet another chording implementation - zippychord:
     | S-\
     _ S--
     ® AG-r
+    ;; In case you use dead keys or compose keys
+    ;; where multiple keys are pressed
+    ;; to produce a single backspaceable symbol,
+    ;; use no-erase or single-output
+    ’ (no-erase `)
+    é (single-output ' e)
   )
 )
 

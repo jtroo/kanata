@@ -5049,6 +5049,20 @@ when seen in the zippy file output column.
 Must be a single key or output chord.
 The output chord may contain `AG-` to tell kanata to press with AltGr
 and may contain `S-` to tell kanata to press with Shift.
+
+The list items `no-erase` and `single-output` are also usable in this position.
+
+| `no-erase`
+| Accepts a single key or output chord as a parameter.
+The zippy system will not backspace this character
+in case of auto-erasure by a superset chord or followup chord.
+Use for dead keys or compose keys.
+
+| `single-output`
+| Accepts one or more keys or output chords as a parameter.
+The zippy system send only one backspace
+in case of auto-erasure by a superset chord or followup chord.
+Use for a dead key or compose key sequence with one output symbol.
 |===
 
 Regarding output mappings,
@@ -5114,7 +5128,7 @@ by a single Tab character.
 The characters are typed in sequence
 and must all be singular-name key names
 as one would configure in `defsrc`.
-As an exception, capitalized single-character key names
+A capitalized single-character key name
 will be parsed successfully
 and these will be outputted alongside Shift to output the capitalized key.
 Additionally, `output-character-mappings` configuration can be used
@@ -5145,6 +5159,8 @@ to inform kanata of additional mappings that may use Shift or AltGr.
     | S-\
     _ S--
     ® AG-r
+    ’ (no-erase `)
+    é (single-output ' e)
   )
 )
 ----
