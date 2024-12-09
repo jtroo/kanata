@@ -20,7 +20,7 @@ The attached `kanata.kbd` file is tested to work with the current version. The o
 <details>
 <summary>Instructions</summary>
 
-**NOTE:** All Linux binaries are compiled for x86-64 architectures only.
+**NOTE:** All Windows binaries are compiled for x86-64 architectures only.
 
 Download `kanata.exe`. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the `exe` to start kanata. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/193) for tips to run kanata in the background.
 
@@ -50,7 +50,7 @@ This variant contains the same output change as in the `scancode` variant below,
 <details>
 <summary>Instructions</summary>
 
-**NOTE:** All Windows binaries are compiled for x86 architectures only.
+**NOTE:** All Linux binaries are compiled for x86 architectures only.
 
 Download `kanata`.
 
