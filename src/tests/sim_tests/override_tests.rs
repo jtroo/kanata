@@ -28,17 +28,27 @@ fn override_with_unmod() {
 
 #[test]
 fn override_release_mod_change_key() {
-    let result = simulate(
-        "
+    let cfg = "
 (defsrc)
 (deflayer base)
-(defoverrides (lsft a) (lsft 9))
-        ",
-        "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10",
-    )
-    .to_ascii()
-    .no_time();
-    assert_eq!("dn:LShift dn:Kb9 up:LShift up:Kb9 dn:A up:A", result);
+(defoverrides
+  (lsft a) (lsft 9)
+  (lsft 1) (lctl 2))
+        ";
+    let result = simulate(cfg, "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10").to_ascii();
+    assert_eq!("dn:LShift t:10ms dn:Kb9 t:10ms up:LShift up:Kb9", result);
+    let result = simulate(cfg, "d:lsft t:10 d:a t:10 u:a t:10 u:lsft t:10").to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms dn:Kb9 t:10ms up:Kb9 t:10ms up:LShift",
+        result
+    );
+    let result = simulate(cfg, "d:lsft t:10 d:a t:10 d:c t:10").to_ascii();
+    assert_eq!("dn:LShift t:10ms dn:Kb9 t:10ms up:Kb9 dn:C", result);
+    let result = simulate(cfg, "d:lsft t:10 d:1 t:10 d:c t:10").to_ascii();
+    assert_eq!(
+        "dn:LShift t:10ms up:LShift dn:LCtrl dn:Kb2 t:10ms up:LCtrl up:Kb2 dn:LShift dn:C",
+        result
+    );
 }
 
 #[test]

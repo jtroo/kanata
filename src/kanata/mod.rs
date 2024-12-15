@@ -1061,6 +1061,7 @@ impl Kanata {
 
         self.overrides
             .override_keys(cur_keys, &mut self.override_states);
+        mark_overridden_nonmodkeys_for_eager_erasure(&self.override_states, &mut layout.states);
         if self.override_release_on_activation {
             for removed in self.override_states.removed_oscs() {
                 if !removed.is_modifier() {

@@ -3,8 +3,12 @@
 use anyhow::{anyhow, bail, Result};
 use rustc_hash::FxHashMap as HashMap;
 
-use super::KeyCode;
 use crate::keys::*;
+
+use kanata_keyberon::key_code::KeyCode;
+use kanata_keyberon::layout::State;
+use kanata_keyberon::layout::NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION;
+use kanata_keyberon::layout::NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE;
 
 /// Scratch space containing allocations used to process override information. Exists as an
 /// optimization to reuse allocations between iterations.
@@ -240,5 +244,39 @@ fn mask_for_key(osc: OsCode) -> Option<u8> {
         OsCode::KEY_RIGHTALT => Some(1 << 6),
         OsCode::KEY_RIGHTMETA => Some(1 << 7),
         _ => None,
+    }
+}
+
+/// For every `OsCode` marked for removal by overrides that is not a modifier,
+/// mark its state in the keyberon layout
+/// with `NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION` and `NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE`
+/// so that it gets eagerly cleared, avoiding weird character outputs.
+pub fn mark_overridden_nonmodkeys_for_eager_erasure<T>(
+    override_states: &OverrideStates,
+    kb_states: &mut [State<T>],
+) {
+    for osc_to_mark in override_states
+        .removed_oscs()
+        .filter(|osc| !osc.is_modifier())
+    {
+        let kc: KeyCode = osc_to_mark.into();
+        for kbstate in kb_states.iter_mut() {
+            if let State::NormalKey {
+                mut flags,
+                keycode,
+                coord,
+            } = kbstate
+            {
+                if kc == *keycode {
+                    flags.0 |= NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION
+                        | NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE;
+                    *kbstate = State::NormalKey {
+                        flags,
+                        keycode: *keycode,
+                        coord: *coord,
+                    };
+                }
+            }
+        }
     }
 }

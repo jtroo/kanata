@@ -250,13 +250,17 @@ impl<T> CustomEvent<'_, T> {
 
 /// Metadata about normal key flags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct NormalKeyFlags(u16);
+pub struct NormalKeyFlags(pub u16);
 
-const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u16 = 0x0001;
+pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u16 = 0x0001;
+pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE: u16 = 0x0002;
 
 impl NormalKeyFlags {
-    pub fn clear_on_next_action(self) -> bool {
+    pub fn nkf_clear_on_next_action(self) -> bool {
         (self.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION) == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION
+    }
+    pub fn nkf_clear_on_next_release(self) -> bool {
+        (self.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE) == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE
     }
 }
 
@@ -370,6 +374,15 @@ impl<'a, T: 'a> State<'a, T> {
         match self {
             LayerModifier { value, .. } => Some(*value),
             _ => None,
+        }
+    }
+    pub fn clear_on_next_release(&self) -> bool {
+        match self {
+            NormalKey { flags, .. } => {
+                (flags.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE)
+                    == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE
+            }
+            _ => false,
         }
     }
 }
@@ -1484,8 +1497,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let mut custom = CustomEvent::NoEvent;
                 let (do_release, overflow_key) = self.oneshot.handle_release((i, j));
                 if do_release {
-                    self.states
-                        .retain(|s| s.release((i, j), &mut custom).is_some());
+                    self.states.retain(|s| {
+                        !s.clear_on_next_release() && s.release((i, j), &mut custom).is_some()
+                    });
                 }
                 if let Some((i2, j2)) = overflow_key {
                     self.states
@@ -1584,7 +1598,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
         use Action::*;
         self.states.retain(|s| match s {
-            NormalKey { flags, .. } => !flags.clear_on_next_action(),
+            NormalKey { flags, .. } => !flags.nkf_clear_on_next_action(),
             _ => true,
         });
         match action {
