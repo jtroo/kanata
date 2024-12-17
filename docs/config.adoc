@@ -2536,8 +2536,10 @@ rather than all modifiers.
 
 **Reference**
 
-The fork action allows choosing between a default and an alternate action
-based on whether specific keys are active.
+The `fork` action allows choosing between a default and an alternate action
+based on whether specific keys are active. `fork` is the equivalent of the 
+basic key checks in `switch`, using none of the list logic items, i.e. virtual 
+keys are not supported.
 
 .Syntax:
 [source]
