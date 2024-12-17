@@ -273,13 +273,6 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     };
     let device_name = device.name().unwrap_or("unknown device name");
     match (detect_mode, device_type) {
-        (_, DeviceType::Other) => {
-            log::debug!(
-                "Use for input autodetect: false. Non-input device: {}",
-                device_name,
-            );
-            false
-        }
         (DeviceDetectMode::Any, _)
         | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
@@ -291,6 +284,13 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
                 device_name,
             );
             use_input
+        }
+        (_, DeviceType::Other) => {
+            log::debug!(
+                "Use for input autodetect: false. Non-input device: {}",
+                device_name,
+            );
+            false
         }
         _ => {
             let use_input = false;
