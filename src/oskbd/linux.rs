@@ -3,7 +3,7 @@
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
 pub use evdev::BusType;
-use evdev::{uinput, Device, EventType, InputEvent, PropType, RelativeAxisType};
+use evdev::{uinput, Device, EventType, InputEvent, Key, PropType, RelativeAxisType};
 use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use nix::ioctl_read_buf;
@@ -255,13 +255,10 @@ enum DeviceType {
 }
 
 pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
-    use evdev::Key;
     if device.name() == Some("kanata") {
         return false;
     }
-    let is_keyboard = device
-        .supported_keys()
-        .map_or(false, |keys| keys.contains(Key::KEY_ENTER));
+    let is_keyboard = device.supported_keys().map_or(false, has_keyboard_keys);
     let is_mouse = device
         .supported_relative_axes()
         .map_or(false, |axes| axes.contains(RelativeAxisType::REL_X));
@@ -273,13 +270,6 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     };
     let device_name = device.name().unwrap_or("unknown device name");
     match (detect_mode, device_type) {
-        (_, DeviceType::Other) => {
-            log::debug!(
-                "Use for input autodetect: false. Non-input device: {}",
-                device_name,
-            );
-            false
-        }
         (DeviceDetectMode::Any, _)
         | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
@@ -292,6 +282,13 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
             );
             use_input
         }
+        (_, DeviceType::Other) => {
+            log::debug!(
+                "Use for input autodetect: false. Non-input device: {}",
+                device_name,
+            );
+            false
+        }
         _ => {
             let use_input = false;
             log::debug!(
@@ -303,6 +300,17 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
             use_input
         }
     }
+}
+
+fn has_keyboard_keys(keys: &evdev::AttributeSetRef<Key>) -> bool {
+    const SENSIBLE_KEYBOARD_SCANCODE_LOWER_BOUND: u16 = 1;
+    // The next one is power button. Some keyboards have it,
+    // but so does the power button...
+    const SENSIBLE_KEYBOARD_SCANCODE_UPPER_BOUND: u16 = 115;
+    let mut sensible_keyboard_keys = (SENSIBLE_KEYBOARD_SCANCODE_LOWER_BOUND
+        ..=SENSIBLE_KEYBOARD_SCANCODE_UPPER_BOUND)
+        .map(Key::new);
+    sensible_keyboard_keys.any(|k| keys.contains(k))
 }
 
 impl TryFrom<InputEvent> for KeyEvent {
