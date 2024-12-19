@@ -2464,7 +2464,7 @@ otherwise `caps-word` will be activate as normal.
 
 **Reference**
 
-The `unmod` action will dactivate modifier keys while outputting
+The `unmod` action will deactivate modifier keys while outputting
 one or more defined keys.
 
 .Syntax:
