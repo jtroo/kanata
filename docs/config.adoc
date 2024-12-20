@@ -2515,7 +2515,7 @@ states to be tracked correctly.
 )
 ----
 
-An list may optionally be used as the first parameter of `unmod`.
+A list may optionally be used as the first parameter of `unmod`.
 The list must be non-empty and must contain only modifier keys,
 which are the keys in the affected modifiers list from earlier in this document section.
 
