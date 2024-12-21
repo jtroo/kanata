@@ -76,6 +76,11 @@ publish:
   cd tcp_protocol && cargo publish
   cd parser && cargo publish
 
+# Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
 cfg_to_html output_dir:
   cd docs ; asciidoctor config.adoc
-  cd docs ; mv config.html "{{output_dir}}config.html"
+  cd docs ; cp config.html "{{output_dir}}config.html"; rm config.html
+
+# Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
+wasm_pack output_dir:
+  cd wasm; wasm-pack build --target web; cd pkg; cp kanata_wasm_bg.wasm "{{output_dir}}"
