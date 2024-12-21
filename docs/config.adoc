@@ -1907,26 +1907,26 @@ results in `$tap-action` activating.
 
 [cols="1,2"]
 |===
-| `$tap-hold-press`
+| `tap-hold-press`
 | Activate `$hold-action` early if held and another input key is pressed.
 
-| `$tap-hold-release`
+| `tap-hold-release`
 | Activate `$hold-action` early if held and another input key is pressed and released.
 
-| `$tap-hold-press-timeout`
+| `tap-hold-press-timeout`
 | Activate `$hold-action` if held and another input key is pressed.
 If the defined timeout elapses, `$timeout-action` will activate.
 
-| `$tap-hold-release-timeout`
+| `tap-hold-release-timeout`
 | Activate `$hold-action` early if held and another input key is pressed and released.
 If the defined timeout elapses, `$timeout-action` will activate.
 
-| `$tap-hold-release-keys`
+| `tap-hold-release-keys`
 | Activate `$hold-action` early if held and another input key is pressed and released.
 The `$tap-keys` parameter is a list of key names.
 Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold activates.
 
-| `$tap-hold-except-keys`
+| `tap-hold-except-keys`
 | The `$tap-keys` parameter is a list of key names.
 Activates $tap-action if a key within $tap-keys is pressed
 or if the action key is released before hold timeout.
