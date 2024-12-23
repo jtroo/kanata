@@ -227,6 +227,7 @@ Some directories are exceptions:
    - [qanata (Linux)](https://github.com/veyxov/qanata)
    - [kanawin (Windows)](https://github.com/Aqaao/kanawin)
    - [window_tools (Windows)](https://github.com/reidprichard/window_tools)
+   - [nata (Linux)](https://github.com/mdSlash/nata)
 
 ## What does the name mean?
 
