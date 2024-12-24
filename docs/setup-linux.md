@@ -64,10 +64,15 @@ Documentation=https://github.com/jtroo/kanata
 
 [Service]
 Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
-CPUSchedulingPolicy=rr
-CPUSchedulingPriority=99
-IOSchedulingClass=realtime
-Nice=-20
+#   Uncomment the 4 lines beneath this to increase process priority
+#   of Kanata in case you encounter lagginess when resource constrained.
+#   WARNING: doing so will require the service to run as an elevated user such as root.
+#   Implementing least privilege access is an exercise left to the reader.
+#
+# CPUSchedulingPolicy=rr
+# CPUSchedulingPriority=99
+# IOSchedulingClass=realtime
+# Nice=-20
 Type=simple
 ExecStart=/usr/bin/sh -c 'exec $$(which kanata) --cfg $${HOME}/.config/kanata/config.kbd'
 Restart=no
