@@ -1864,7 +1864,14 @@ with respect to repeat of antecedent key presses.
 The full context is in https://github.com/jtroo/kanata/discussions/422[discussion #422].
 In brief, the workaround is to use `tap-hold` inside of <<multi,multi>>,
 combined with another key action that behaves as a no-op like `f24`. +
-Example: `(multi f24 (tap-hold ...))`
+Example: `(multi f24 (tap-hold ...))`.
+If multiple `tap-hold` actions may be pressed subsequently,
+all using the `f24` workaround,
+you may need to release the `f24` within the same `multi`
+to avoid repeats from one double-tapped `tap-hold` action
+followed by another, different `tap-hold` action.
+Example:
+`(defvirtualkeys relf24 (release-key f24)) ... (multi f24 (tap-hold ...) (macro 5 (on-press tap-vkey relf24)))`
 
 **Reference**
 
