@@ -139,6 +139,10 @@ impl Kanata {
             // Check 1 : each pvk is expected to be pressed.
             let osc: OsCode = pvk.into();
             let vk = i32::from(osc);
+            if vk > 254 {
+                // 254 should be highest valid VK number in Windows OS.
+                continue;
+            }
             let vk_state = unsafe { GetAsyncKeyState(vk) } as u32;
             let is_pressed_in_windows = vk_state >= 0b1000000;
             if is_pressed_in_windows {
@@ -167,7 +171,7 @@ impl Kanata {
             // cleaned up.
             layout.states.retain(|s| match s.coord() {
                 Some(c) => !coords_to_clear.contains(&c),
-                None => false,
+                None => true,
             });
 
             // Clear PRESSED_KEYS for coordinates associated with real and not virtual keys
