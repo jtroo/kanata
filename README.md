@@ -228,7 +228,7 @@ Some directories are exceptions:
    - [kanawin (Windows)](https://github.com/Aqaao/kanawin)
    - [window_tools (Windows)](https://github.com/reidprichard/window_tools)
    - [nata (Linux)](https://github.com/mdSlash/nata)
-   - [kanata-appvk (macOS)](https://github.com/devsunb/kanata-appvk)
+   - [kanata-vk-agent (macOS)](https://github.com/devsunb/kanata-vk-agent)
 
 ## What does the name mean?
 
