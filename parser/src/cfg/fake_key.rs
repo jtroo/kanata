@@ -179,7 +179,7 @@ fn parse_delay(
         })))))
 }
 
-fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
+pub(crate) fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
     let name = param
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?;

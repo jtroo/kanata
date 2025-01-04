@@ -425,7 +425,7 @@ pub struct IntermediateCfg {
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
-// why env vars are not not supported.
+// why env vars are not supported.
 pub type EnvVars = std::result::Result<Vec<(String, String)>, String>;
 
 #[allow(clippy::type_complexity)] // return type is not pub
