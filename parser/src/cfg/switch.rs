@@ -160,21 +160,17 @@ pub fn parse_switch_case_bool(
                     "fake" | "virtual" => InputType::Virtual,
                     _ => bail_expr!(op_expr, "key-type must be virtual|real"),
                 };
-                let input = l[2]
-                    .atom(s.vars())
-                    .ok_or_else(|| anyhow_expr!(&l[2], "input key name must not be a list"))?;
                 let input = match input_type {
-                    InputType::Real => u16::from(
-                        str_to_oscode(input)
-                            .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
-                    ),
-                    InputType::Virtual => {
-                        let vk = s.virtual_keys.get(input).ok_or_else(|| {
-                            anyhow_expr!(&l[2], "virtual key name is not defined")
+                    InputType::Real => {
+                        let key = l[2].atom(s.vars()).ok_or_else(|| {
+                            anyhow_expr!(&l[2], "input key name must not be a list")
                         })?;
-                        assert!(vk.0 < usize::from(KEY_MAX));
-                        vk.0 as u16
+                        u16::from(
+                            str_to_oscode(key)
+                                .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
+                        )
                     }
+                    InputType::Virtual => parse_vkey_coord(&l[2], s)?.y,
                 };
                 let (op1, op2) = OpCode::new_active_input((input_type.to_row(), input));
                 ops.extend(&[op1, op2]);
@@ -193,21 +189,17 @@ pub fn parse_switch_case_bool(
                     "fake" | "virtual" => InputType::Virtual,
                     _ => bail_expr!(&l[1], "key-type must be virtual|real"),
                 };
-                let input = l[2]
-                    .atom(s.vars())
-                    .ok_or_else(|| anyhow_expr!(&l[2], "input key name must not be a list"))?;
                 let input = match input_type {
-                    InputType::Real => u16::from(
-                        str_to_oscode(input)
-                            .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
-                    ),
-                    InputType::Virtual => {
-                        let vk = s.virtual_keys.get(input).ok_or_else(|| {
-                            anyhow_expr!(&l[2], "virtual key name is not defined")
+                    InputType::Real => {
+                        let key = l[2].atom(s.vars()).ok_or_else(|| {
+                            anyhow_expr!(&l[2], "input key name must not be a list")
                         })?;
-                        assert!(vk.0 < usize::from(KEY_MAX));
-                        vk.0 as u16
+                        u16::from(
+                            str_to_oscode(key)
+                                .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
+                        )
                     }
+                    InputType::Virtual => parse_vkey_coord(&l[2], s)?.y,
                 };
                 let key_recency = parse_u8_with_range(&l[3], s, "key-recency", 1, 8)? - 1;
                 let (op1, op2) =
