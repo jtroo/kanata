@@ -78,4 +78,4 @@ and explicitly map keys in `defsrc` instead
 == MacOS
 
 * Only left, right, and middle mouse buttons are implemented for clicking
-* Mouse input processing is not implemented
+* Mouse input processing is not implemented, e.g. putting `mlft` into `defsrc` does nothing
