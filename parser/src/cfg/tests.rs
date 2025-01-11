@@ -309,6 +309,19 @@ fn parse_multiline_comment() {
 }
 
 #[test]
+fn parse_all_keys() {
+    init_log();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/all_keys_in_defsrc.kbd",
+    ))
+    .unwrap();
+}
+
+#[test]
 fn parse_file_with_utf8_bom() {
     let _lk = lock(&CFG_PARSE_LOCK);
     new_from_file(&std::path::PathBuf::from("./test_cfgs/utf8bom.kbd")).unwrap();

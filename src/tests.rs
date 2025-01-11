@@ -95,19 +95,6 @@ fn parse_f13_f24() {
 }
 
 #[test]
-fn parse_all_keys() {
-    init_log();
-    let _lk = match CFG_PARSE_LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    new_from_file(&std::path::PathBuf::from(
-        "./cfg_samples/all_keys_in_defsrc.kbd",
-    ))
-    .unwrap();
-}
-
-#[test]
 fn parse_home_row_mods() {
     init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
