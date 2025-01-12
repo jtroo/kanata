@@ -4400,8 +4400,8 @@ alongside templates to define sequences below.
 (deflayer base
         sldr nop0 nop1 nop2)
 (deftemplate seq (vk-name input-keys output-action)
-        sldr(defvirtualkeys $vk-name $output-action)
-        sldr(defseq $vk-name $input-keys)
+    (defvirtualkeys $vk-name $output-action)
+    (defseq $vk-name $input-keys)
 )
 ;; template-expand has a shortened form: t!
 (t! seq dotcom (nop0 nop1) (macro . c o m))
