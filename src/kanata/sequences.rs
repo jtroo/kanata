@@ -28,6 +28,8 @@ pub struct SequenceState {
     pub sequence_timeout: u16,
     /// Whether the sequence is active or not.
     pub activity: SequenceActivity,
+    /// Counter to reduce number of backspaces typed.
+    noerase_count: u16,
 }
 
 impl SequenceState {
@@ -40,6 +42,7 @@ impl SequenceState {
             ticks_until_timeout: 0,
             sequence_timeout: 0,
             activity: Inactive,
+            noerase_count: 0,
         }
     }
 
@@ -52,6 +55,7 @@ impl SequenceState {
         self.sequence.clear();
         self.overlapped_sequence.clear();
         self.activity = Active;
+        self.noerase_count = 0;
     }
 
     pub fn is_active(&self) -> bool {
@@ -320,8 +324,12 @@ pub(super) fn do_successful_sequence_termination(
                     osc if osc.is_modifier() => continue,
                     osc if matches!(u16::from(osc), KEY_IGNORE_MIN..=KEY_IGNORE_MAX) => continue,
                     _ => {
-                        kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
-                        kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                        if state.noerase_count > 0 {
+                            state.noerase_count -= 1;
+                        } else {
+                            kbd_out.press_key(OsCode::KEY_BACKSPACE)?;
+                            kbd_out.release_key(OsCode::KEY_BACKSPACE)?;
+                        }
                     }
                 }
             }
@@ -356,4 +364,8 @@ pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -
         SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
+}
+
+pub(super) fn add_noerase(state: &mut SequenceState, noerase_count: u16) {
+    state.noerase_count += noerase_count;
 }

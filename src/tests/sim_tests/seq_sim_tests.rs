@@ -207,3 +207,32 @@ fn chorded_keys_hidden_delaytype() {
     );
 }
 */
+
+#[test]
+fn noerase() {
+    let result = simulate(
+        "(defcfg sequence-input-mode visible-backspaced)
+         (defsrc)
+         (deflayermap (base)
+           0 sldr
+           u (t! maybe-noerase u)
+         )
+         (deftemplate maybe-noerase (char)
+            (multi
+             (switch
+              ((key-history ' 1)) (sequence-noerase 1) fallthrough
+              () $char break
+            ))
+         )
+         (defvirtualkeys s1 z)
+         (defseq s1 (' u))
+        ",
+        "d:0 u:0 d:' t:50 d:u t:500",
+    )
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:Quote dn:U dn:BSpace up:BSpace up:Quote up:U dn:Z up:Z",
+        result,
+    );
+}

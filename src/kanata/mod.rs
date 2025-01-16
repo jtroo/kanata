@@ -1510,6 +1510,12 @@ impl Kanata {
                                 self.sequence_state.activate(*input_mode, *timeout);
                             }
                         }
+                        CustomAction::SequenceNoerase(noerase_count) => {
+                            if let Some(state) = self.sequence_state.get_active() {
+                                log::debug!("pressed cancel sequence key");
+                                add_noerase(state, *noerase_count);
+                            }
+                        }
                         CustomAction::Repeat => {
                             let keycode = self.last_pressed_key;
                             let osc: OsCode = keycode.into();

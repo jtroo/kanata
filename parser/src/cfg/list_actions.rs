@@ -107,6 +107,7 @@ pub const CAPS_WORD_CUSTOM_TOGGLE_A: &str = "word⇪custom-toggle";
 pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str = "dynamic-macro-record-stop-truncate";
 pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
+pub const SEQUENCE_NOERASE: &str = "sequence-noerase";
 pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 pub const UNSHIFT_A: &str = "un⇧";
@@ -219,6 +220,7 @@ pub fn is_list_action(ac: &str) -> bool {
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE,
         SWITCH,
         SEQUENCE,
+        SEQUENCE_NOERASE,
         UNMOD,
         UNSHIFT,
         UNSHIFT_A,
