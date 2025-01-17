@@ -572,7 +572,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "macos-dev-names-exclude" => {
                         #[cfg(any(target_os = "macos", target_os = "unknown"))]
                         {
-                            cfg.macos_opts.macos_dev_names_exclude = Some(parse_dev(val)?);
+                            let dev_names = parse_dev(val)?;
+                            if dev_names.is_empty() {
+                                log::warn!("macos-dev-names-exclude is empty");
+                            }
+                            cfg.macos_opts.macos_dev_names_exclude = Some(dev_names);
                         }
                     }
                     "tray-icon" => {
