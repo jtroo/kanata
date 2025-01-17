@@ -61,6 +61,22 @@ pub enum LinuxCfgOutputBusType {
     BusI8042,
 }
 
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+#[derive(Debug, Clone)]
+pub struct CfgMacosOptions {
+    pub macos_dev_names_include: Option<Vec<String>>,
+    pub macos_dev_names_exclude: Option<Vec<String>>,
+}
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+impl Default for CfgMacosOptions {
+    fn default() -> Self {
+        Self {
+            macos_dev_names_include: None,
+            macos_dev_names_exclude: None,
+        }
+    }
+}
+
 #[cfg(any(
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"
@@ -140,6 +156,8 @@ pub struct CfgOptions {
     pub chords_v2_min_idle: u16,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_opts: CfgLinuxOptions,
+    #[cfg(any(target_os = "macos", target_os = "unknown"))]
+    pub macos_opts: CfgMacosOptions,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
     pub windows_altgr: AltGrBehaviour,
     #[cfg(any(
@@ -147,8 +165,6 @@ pub struct CfgOptions {
         target_os = "unknown"
     ))]
     pub wintercept_opts: CfgWinterceptOptions,
-    #[cfg(any(target_os = "macos", target_os = "unknown"))]
-    pub macos_dev_names_include: Option<Vec<String>>,
     #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
     pub gui_opts: CfgOptionsGui,
 }
@@ -187,7 +203,7 @@ impl Default for CfgOptions {
             ))]
             wintercept_opts: Default::default(),
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
-            macos_dev_names_include: None,
+            macos_opts: Default::default(),
             #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
             gui_opts: Default::default(),
         }
@@ -550,7 +566,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("macos-dev-names-include is empty");
                             }
-                            cfg.macos_dev_names_include = Some(dev_names);
+                            cfg.macos_opts.macos_dev_names_include = Some(dev_names);
+                        }
+                    }
+                    "macos-dev-names-exclude" => {
+                        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+                        {
+                            cfg.macos_opts.macos_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "tray-icon" => {
