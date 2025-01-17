@@ -596,6 +596,7 @@ dependencies = [
  "kanata-parser",
  "kanata-tcp-protocol",
  "karabiner-driverkit",
+ "libc",
  "log",
  "miette",
  "mio",
@@ -605,6 +606,7 @@ dependencies = [
  "objc",
  "once_cell",
  "open",
+ "os_pipe",
  "parking_lot",
  "radix_trie",
  "regex",
@@ -984,6 +986,16 @@ dependencies = [
  "log",
  "serde",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "os_pipe"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ffd2b0a5634335b135d5728d84c5e0fd726954b87111f7506a61c502280d982"
+dependencies = [
+ "libc",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

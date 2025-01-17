@@ -22,6 +22,12 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::{Error, ErrorKind};
+use os_pipe::pipe;
+use libc;
+use std::io::{Read, Write};
+use std::os::unix::io::{AsRawFd, RawFd};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -58,8 +64,58 @@ impl Drop for KbdIn {
     }
 }
 
+fn capture_stdout<F>(func: F) -> String
+where
+    F: FnOnce(),
+{
+    // Create a pipe to capture stdout
+    let (reader, writer) = pipe().unwrap();
+
+    // Save the original stdout file descriptor
+    let stdout_fd = std::io::stdout().as_raw_fd();
+    let saved_stdout = unsafe { libc::dup(stdout_fd) };
+
+    // Redirect stdout to the pipe's writer
+    unsafe {
+        libc::dup2(writer.as_raw_fd(), stdout_fd);
+    }
+
+    // Close the writer in the parent thread after redirecting
+    drop(writer);
+
+    // Prepare to capture output in a separate thread
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let output_clone = Arc::clone(&output);
+
+    let handle = thread::spawn(move || {
+        let mut buffer = Vec::new();
+        let mut reader = reader;
+        reader.read_to_end(&mut buffer).unwrap();
+        *output_clone.lock().unwrap() = buffer;
+    });
+
+    // Run the provided function
+    func();
+
+    // Restore the original stdout
+    unsafe {
+        libc::dup2(saved_stdout, stdout_fd);
+        libc::close(saved_stdout);
+    }
+
+    // Wait for the thread to finish reading
+    handle.join().unwrap();
+
+    // Convert captured output to a String
+    let captured_output = String::from_utf8_lossy(&output.lock().unwrap()).to_string();
+    captured_output
+}
+
 impl KbdIn {
-    pub fn new(include_names: Option<Vec<String>>) -> Result<Self, anyhow::Error> {
+    pub fn new(
+        include_names: Option<Vec<String>>,
+        exclude_names: Option<Vec<String>>,
+    ) -> Result<Self, anyhow::Error> {
         if !driver_activated() {
             return Err(anyhow!(
                 "Karabiner-VirtualHIDDevice driver is not activated."
@@ -68,7 +124,16 @@ impl KbdIn {
 
         let device_names = if let Some(names) = include_names {
             validate_and_register_devices(names)
-        } else {
+        } else if let Some(names) = exclude_names {
+            // TODO: filter include_names when both exclude_names and include_names are present
+            let kb_list = capture_stdout(|| list_keyboards());
+            let names_: Vec<String> = kb_list.split("\n")
+                                   .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
+                                   .map(|kb| kb.to_string())
+                                   .collect();
+            validate_and_register_devices(names_)
+        }
+        else {
             vec![]
         };
 
