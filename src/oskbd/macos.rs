@@ -69,7 +69,7 @@ where
     F: FnOnce(),
 {
     // Create a pipe to capture stdout
-    let (reader, writer) = pipe().unwrap();
+    let (mut reader, writer) = pipe().unwrap();
 
     // Save the original stdout file descriptor
     let stdout_fd = std::io::stdout().as_raw_fd();
@@ -83,17 +83,6 @@ where
     // Close the writer in the parent thread after redirecting
     drop(writer);
 
-    // Prepare to capture output in a separate thread
-    let output = Arc::new(Mutex::new(Vec::new()));
-    let output_clone = Arc::clone(&output);
-
-    let handle = thread::spawn(move || {
-        let mut buffer = Vec::new();
-        let mut reader = reader;
-        reader.read_to_end(&mut buffer).unwrap();
-        *output_clone.lock().unwrap() = buffer;
-    });
-
     // Run the provided function
     func();
 
@@ -103,11 +92,9 @@ where
         libc::close(saved_stdout);
     }
 
-    // Wait for the thread to finish reading
-    handle.join().unwrap();
-
-    // Convert captured output to a String
-    let captured_output = String::from_utf8_lossy(&output.lock().unwrap()).to_string();
+    // Read all data from the pipe
+    let mut captured_output = String::new();
+    reader.read_to_string(&mut captured_output).unwrap();
     captured_output
 }
 
