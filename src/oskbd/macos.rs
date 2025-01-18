@@ -16,14 +16,14 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
+use libc;
 use objc::runtime::Class;
 use objc::{msg_send, sel, sel_impl};
+use os_pipe::pipe;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::{Error, ErrorKind};
-use os_pipe::pipe;
-use libc;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::sync::{Arc, Mutex};
@@ -127,13 +127,13 @@ impl KbdIn {
         } else if let Some(names) = exclude_names {
             // TODO: filter include_names when both exclude_names and include_names are present
             let kb_list = capture_stdout(|| list_keyboards());
-            let names_: Vec<String> = kb_list.split("\n")
-                                   .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
-                                   .map(|kb| kb.to_string())
-                                   .collect();
+            let names_: Vec<String> = kb_list
+                .split("\n")
+                .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
+                .map(|kb| kb.to_string())
+                .collect();
             validate_and_register_devices(names_)
-        }
-        else {
+        } else {
             vec![]
         };
 
