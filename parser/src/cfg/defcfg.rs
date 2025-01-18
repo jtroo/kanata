@@ -62,19 +62,10 @@ pub enum LinuxCfgOutputBusType {
 }
 
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct CfgMacosOptions {
     pub macos_dev_names_include: Option<Vec<String>>,
     pub macos_dev_names_exclude: Option<Vec<String>>,
-}
-#[cfg(any(target_os = "macos", target_os = "unknown"))]
-impl Default for CfgMacosOptions {
-    fn default() -> Self {
-        Self {
-            macos_dev_names_include: None,
-            macos_dev_names_exclude: None,
-        }
-    }
 }
 
 #[cfg(any(
