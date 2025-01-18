@@ -111,7 +111,7 @@ impl KbdIn {
             validate_and_register_devices(names)
         } else if let Some(names) = exclude_names {
             // TODO: filter include_names when both exclude_names and include_names are present
-            let kb_list = capture_stdout(|| list_keyboards());
+            let kb_list = capture_stdout(list_keyboards);
             let names_: Vec<String> = kb_list
                 .split("\n")
                 .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
