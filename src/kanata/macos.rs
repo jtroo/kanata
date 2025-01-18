@@ -16,7 +16,7 @@ impl Kanata {
 
         let k = kanata.lock();
         let allow_hardware_repeat = k.allow_hardware_repeat;
-        let mut kb = match KbdIn::new(k.include_names.clone()) {
+        let mut kb = match KbdIn::new(k.include_names.clone(), k.exclude_names.clone()) {
             Ok(kbd_in) => kbd_in,
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };

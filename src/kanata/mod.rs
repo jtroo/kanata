@@ -156,8 +156,8 @@ pub struct Kanata {
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// included for interception and processing by kanata.
     pub include_names: Option<Vec<String>>,
-    #[cfg(target_os = "linux")]
-    /// Tracks the Linux user configuration for device names (instead of paths) that should be
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -367,7 +367,9 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
-            include_names: cfg.options.macos_dev_names_include,
+            include_names: cfg.options.macos_opts.macos_dev_names_include,
+            #[cfg(target_os = "macos")]
+            exclude_names: cfg.options.macos_opts.macos_dev_names_exclude,
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
@@ -498,7 +500,9 @@ impl Kanata {
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
-            include_names: cfg.options.macos_dev_names_include,
+            include_names: cfg.options.macos_opts.macos_dev_names_include,
+            #[cfg(target_os = "macos")]
+            exclude_names: cfg.options.macos_opts.macos_dev_names_exclude,
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]

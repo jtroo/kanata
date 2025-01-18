@@ -3956,6 +3956,28 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
 )
 ----
 
+[[macos-only-macos-dev-names-exclude]]
+=== macOS only: macos-dev-names-exclude
+
+This option defines a list of device names that should be excluded.
+By default, kanata will try to detect which input devices are keyboards and try
+to intercept them all. However, you may specify certain keyboard devices to be ignored
+using the `macos-dev-names-exclude` configuration.
+Device names that do not exist in the list will be included.
+This option is parsed identically to `linux-dev`.
+
+Use `kanata -l` or `kanata --list` to list the available keyboards.
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev-names-exclude (
+    "Device name 1"
+    "Device name 2"
+  )
+)
+----
 [[windows-only-windows-altgr]]
 === Windows only: windows-altgr
 

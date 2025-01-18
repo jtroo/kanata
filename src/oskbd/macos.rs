@@ -16,12 +16,16 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
+use libc;
 use objc::runtime::Class;
 use objc::{msg_send, sel, sel_impl};
+use os_pipe::pipe;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
+use std::io::Read;
 use std::io::{Error, ErrorKind};
+use std::os::unix::io::AsRawFd;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -58,8 +62,45 @@ impl Drop for KbdIn {
     }
 }
 
+fn capture_stdout<F>(func: F) -> String
+where
+    F: FnOnce(),
+{
+    // Create a pipe to capture stdout
+    let (mut reader, writer) = pipe().unwrap();
+
+    // Save the original stdout file descriptor
+    let stdout_fd = std::io::stdout().as_raw_fd();
+    let saved_stdout = unsafe { libc::dup(stdout_fd) };
+
+    // Redirect stdout to the pipe's writer
+    unsafe {
+        libc::dup2(writer.as_raw_fd(), stdout_fd);
+    }
+
+    // Close `writer` to prevent `read_to_string` deadlock: https://docs.rs/os_pipe/latest/os_pipe/#common-deadlocks-related-to-pipes
+    drop(writer);
+
+    // Run the provided function
+    func();
+
+    // Restore the original stdout
+    unsafe {
+        libc::dup2(saved_stdout, stdout_fd);
+        libc::close(saved_stdout);
+    }
+
+    // Read all data from the pipe
+    let mut captured_output = String::new();
+    reader.read_to_string(&mut captured_output).unwrap();
+    captured_output
+}
+
 impl KbdIn {
-    pub fn new(include_names: Option<Vec<String>>) -> Result<Self, anyhow::Error> {
+    pub fn new(
+        include_names: Option<Vec<String>>,
+        exclude_names: Option<Vec<String>>,
+    ) -> Result<Self, anyhow::Error> {
         if !driver_activated() {
             return Err(anyhow!(
                 "Karabiner-VirtualHIDDevice driver is not activated."
@@ -68,6 +109,15 @@ impl KbdIn {
 
         let device_names = if let Some(names) = include_names {
             validate_and_register_devices(names)
+        } else if let Some(names) = exclude_names {
+            // TODO: filter include_names when both exclude_names and include_names are present
+            let kb_list = capture_stdout(list_keyboards);
+            let names_: Vec<String> = kb_list
+                .split("\n")
+                .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
+                .map(|kb| kb.to_string())
+                .collect();
+            validate_and_register_devices(names_)
         } else {
             vec![]
         };
