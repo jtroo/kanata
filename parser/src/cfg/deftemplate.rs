@@ -18,6 +18,7 @@ use crate::anyhow_expr;
 use crate::anyhow_span;
 use crate::bail_expr;
 use crate::bail_span;
+use crate::err_expr;
 use crate::err_span;
 
 use super::error::*;
@@ -119,10 +120,33 @@ pub fn expand_templates(
             .iter()
             .map(|v| (v.clone(), 0))
             .collect();
-        visit_validate_all_atoms(&content, &mut |s| match s.t.as_str() {
+        visit_validate_all_atoms_peek_next(&content, &mut |s, s_next| match s.t.as_str() {
             "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
             "template-expand" | "t!" => {
-                err_span!(s, "template-expand is not allowed within deftemplate")
+                match s_next {
+                    Some(next) => {
+                        match next.atom(None) {
+                            Some(name_in_expand) => {
+                                match templates.iter().any(|existing_template| existing_template.name == name_in_expand) {
+                                    true => Ok(()),
+                                    false => err_expr!(next, "Unknown template name in template-expand. Note that order of declaration matters."),
+                                }
+                            }
+                            None => {
+                                // Next expr is list.
+                                // This is invalid syntax, but this will be caught later.
+                                // For simplicity in this function, leave it be.
+                                Ok(())
+                            }
+                        }
+                    }
+                    None => {
+                        // No next expr after expand.
+                        // This is invalid syntax, but this will be caught later.
+                        // For simplicity in this function, leave it be.
+                        Ok(())
+                    }
+                }
             }
             s => {
                 if let Some(count) = var_usage_counts.get_mut(s) {
@@ -179,111 +203,118 @@ struct Replacement {
 
 fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHints) -> Result<()> {
     let mut replacements: Vec<Replacement> = vec![];
-    for (expr_index, expr) in exprs.iter_mut().enumerate() {
-        match expr {
-            SExpr::Atom(_) => continue,
-            SExpr::List(l) => {
-                if !matches!(
-                    l.t.first().and_then(|expr| expr.atom(None)),
-                    Some("template-expand") | Some("t!")
-                ) {
-                    expand(&mut l.t, templates, _lsp_hints)?;
-                    continue;
-                }
+    loop {
+        for (expr_index, expr) in exprs.iter_mut().enumerate() {
+            match expr {
+                SExpr::Atom(_) => continue,
+                SExpr::List(l) => {
+                    if !matches!(
+                        l.t.first().and_then(|expr| expr.atom(None)),
+                        Some("template-expand") | Some("t!")
+                    ) {
+                        expand(&mut l.t, templates, _lsp_hints)?;
+                        continue;
+                    }
 
-                // found expand, now parse
-                let template =
-                    l.t.get(1)
-                        .ok_or_else(|| {
-                            anyhow_span!(
+                    // found expand, now parse
+                    let template =
+                        l.t.get(1)
+                            .ok_or_else(|| {
+                                anyhow_span!(
                                 l,
                                 "template-expand must have a template name as the first parameter"
                             )
-                        })
-                        .and_then(|name_expr| {
-                            let name = name_expr.atom(None).ok_or_else(|| {
-                                anyhow_expr!(name_expr, "template name must be a string")
-                            })?;
-                            #[cfg(feature = "lsp")]
-                            _lsp_hints
-                                .reference_locations
-                                .template
-                                .push(name, name_expr.span());
-                            templates.iter().find(|t| t.name == name).ok_or_else(|| {
-                                anyhow_expr!(
-                                    name_expr,
-                                    "template name was not defined in any deftemplate"
-                                )
                             })
-                        })?;
-                if l.t.len() - 2 != template.vars.len() {
-                    bail_span!(l, "template-expand of {} needs {} parameters but instead found {}.\nParameters: {}",
+                            .and_then(|name_expr| {
+                                let name = name_expr.atom(None).ok_or_else(|| {
+                                    anyhow_expr!(name_expr, "template name must be a string")
+                                })?;
+                                #[cfg(feature = "lsp")]
+                                _lsp_hints
+                                    .reference_locations
+                                    .template
+                                    .push(name, name_expr.span());
+                                templates.iter().find(|t| t.name == name).ok_or_else(|| {
+                                    anyhow_expr!(
+                                        name_expr,
+                                        "template name was not defined in any deftemplate"
+                                    )
+                                })
+                            })?;
+                    if l.t.len() - 2 != template.vars.len() {
+                        bail_span!(l, "template-expand of {} needs {} parameters but instead found {}.\nParameters: {}",
                     &template.name, template.vars.len(), l.t.len() - 2, template.vars.join(" "));
-                }
+                    }
 
-                let var_substitutions = l.t.iter().skip(2);
-                let mut expanded_template = template.content.clone();
-                // Substitute variables.
-                // perf_1 : could store substitution knowledge instead of iterating and searching
-                // every time
-                visit_mut_all_atoms(&mut expanded_template, &mut |expr: &mut SExpr| {
-                    *expr = match expr {
-                        // Below should not be reached because only atoms should be visited
-                        SExpr::List(_) => unreachable!(),
-                        SExpr::Atom(a) => {
-                            match template
-                                .vars_substitute_names
-                                .iter()
-                                .enumerate()
-                                .find(|(_, var)| *var == &a.t)
-                            {
-                                None => expr.clone(),
-                                Some((var_index, _)) => var_substitutions
-                                    .clone()
-                                    .nth(var_index)
-                                    .expect("validated matching var lens")
-                                    .clone(),
+                    let var_substitutions = l.t.iter().skip(2);
+                    let mut expanded_template = template.content.clone();
+                    // Substitute variables.
+                    // perf_1 : could store substitution knowledge instead of iterating and searching
+                    // every time
+                    visit_mut_all_atoms(&mut expanded_template, &mut |expr: &mut SExpr| {
+                        *expr = match expr {
+                            // Below should not be reached because only atoms should be visited
+                            SExpr::List(_) => unreachable!(),
+                            SExpr::Atom(a) => {
+                                match template
+                                    .vars_substitute_names
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, var)| *var == &a.t)
+                                {
+                                    None => expr.clone(),
+                                    Some((var_index, _)) => var_substitutions
+                                        .clone()
+                                        .nth(var_index)
+                                        .expect("validated matching var lens")
+                                        .clone(),
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                visit_mut_all_lists(&mut expanded_template, &mut |expr: &mut SExpr| {
-                    *expr = match expr {
-                        // Below should not be reached because only lists should be visited
-                        SExpr::Atom(_) => unreachable!(),
-                        SExpr::List(l) => parse_list_var(l, &HashMap::default()),
-                    };
-                    match expr {
-                        SExpr::Atom(_) => true,
-                        SExpr::List(_) => false,
-                    }
-                });
+                    visit_mut_all_lists(&mut expanded_template, &mut |expr: &mut SExpr| {
+                        *expr = match expr {
+                            // Below should not be reached because only lists should be visited
+                            SExpr::Atom(_) => unreachable!(),
+                            SExpr::List(l) => parse_list_var(l, &HashMap::default()),
+                        };
+                        match expr {
+                            SExpr::Atom(_) => true,
+                            SExpr::List(_) => false,
+                        }
+                    });
 
-                while evaluate_conditionals(&mut expanded_template)? {}
+                    while evaluate_conditionals(&mut expanded_template)? {}
 
-                replacements.push(Replacement {
-                    insert_index: expr_index,
-                    exprs: expanded_template,
-                });
+                    replacements.push(Replacement {
+                        insert_index: expr_index,
+                        exprs: expanded_template,
+                    });
+                }
             }
         }
-    }
 
-    // Ensure replacements are sorted. They probably are, but may as well make sure.
-    replacements.sort_by_key(|r| r.insert_index);
-    // Must replace last-first to keep unreplaced insertion points stable.
-    // perf_2 : could construct vec in one pass.
-    for replacement in replacements.iter().rev() {
-        let (before, after) = exprs.split_at(replacement.insert_index);
-        let after = after.iter().skip(1); // first element is `(template-expand ...)`
-        let new_vec = before
-            .iter()
-            .cloned()
-            .chain(replacement.exprs.iter().cloned())
-            .chain(after.cloned())
-            .collect();
-        *exprs = new_vec;
+        // Ensure replacements are sorted. They probably are, but may as well make sure.
+        replacements.sort_by_key(|r| r.insert_index);
+        // Must replace last-first to keep unreplaced insertion points stable.
+        // perf_2 : could construct vec in one pass.
+        for replacement in replacements.iter().rev() {
+            let (before, after) = exprs.split_at(replacement.insert_index);
+            let after = after.iter().skip(1); // first element is `(template-expand ...)`
+            let new_vec = before
+                .iter()
+                .cloned()
+                .chain(replacement.exprs.iter().cloned())
+                .chain(after.cloned())
+                .collect();
+            *exprs = new_vec;
+        }
+
+        if replacements.is_empty() {
+            break;
+        }
+        replacements.clear();
     }
 
     Ok(())
@@ -297,6 +328,20 @@ fn visit_validate_all_atoms(
         match expr {
             SExpr::Atom(a) => visit(a)?,
             SExpr::List(l) => visit_validate_all_atoms(&l.t, visit)?,
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::type_complexity)]
+fn visit_validate_all_atoms_peek_next(
+    exprs: &[SExpr],
+    visit: &mut dyn FnMut(&Spanned<String>, Option<&SExpr>) -> Result<()>,
+) -> Result<()> {
+    for (i, expr) in exprs.iter().enumerate() {
+        match expr {
+            SExpr::Atom(a) => visit(a, exprs.get(i + 1))?,
+            SExpr::List(l) => visit_validate_all_atoms_peek_next(&l.t, visit)?,
         }
     }
     Ok(())
