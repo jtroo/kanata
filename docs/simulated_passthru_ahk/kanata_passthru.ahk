@@ -9,6 +9,7 @@ Dependencies and config:
   kanata_cfg	:= "./kanata_dll.kbd"	; kanata config @ this file location
   ihDuration	:= 10                	; seconds of activity after pressing F8
   dbg       	:= 1                 	; script's debug level (0 to silence some of its output)
+  dbg_dll   	:= 1                  ; kanata's debug level (Err=1 Warn=2 Inf=3 Dbg=4 Trace=5)
 /*
 Brief overview of the architecture:
 Setup:
@@ -36,7 +37,7 @@ kanata_dll(vkC) {
   ; static K	:= keyConstant , vk := K._map, sc := K._mapsc  ; various key name constants, gets vk code to avoid issues with another layout
    ; , s    	:= helperString ; K.▼ = vk['▼']
   static is_init := false
-   ,lErr:=1, lWarn:=2, lInf:=3, lDbg:=4, lTrace:=5, log_lvl := lDbg ; Kanata's
+   ,lErr:=1, lWarn:=2, lInf:=3, lDbg:=4, lTrace:=5, log_lvl := dbg_dll ; Kanata's
    ,last↓ := [0,0]
    ,id_thread := get_thread_id()
    ,Cvk_d := GetKeyVK(vkC), Csc_d := GetKeySC(vkC), token1 := 1, ih0 := 0 ; decimal value
@@ -79,7 +80,7 @@ kanata_dll(vkC) {
       dbgtxt := ''
       vk_hex := Format("vk{:x}",vk)
       key_name := GetKeyName(Format("vk{:x}",vk)) ; bugs with layouts, not english even if english is active
-      dbgtxt .= "ih" dir (isSet(key_name)?key_name:'') "  ¦" id_thread "¦ ahk→→→kan: vk=" vk "¦" vk_hex " sc=" sc ' l' A_SendLevel
+      dbgtxt .= "ih" dir (isSet(key_name)?key_name:'') "      🢥🄺: vk=" vk "¦" vk_hex " sc=" sc ' l' A_SendLevel " ¦" id_thread "¦"
       OutputDebug(dbgtxt)
     }
     isH := fnKanata_in_ev(vk,sc,isUp)
@@ -90,8 +91,8 @@ kanata_dll(vkC) {
       if (isOut < 0) { ; get as many keys as are available untill reception errors out
         break
       }
-    }
-    (dbg<_d)?'':(dbgtxt:='¦' id_thread '¦ih' dir ' pos isH=' isH ' isOut=' dbgOut ' ' format(" 🕐Δ{:.3f}",A_TickCount - 🕐k_now) ' ' A_ThisFunc, OutputDebug(dbgtxt))
+    } ;🔚∎🏁
+    (dbg<_d+1)?'':(dbgtxt:='🏁ih' dir ' pos isH=' isH ' isOut=' dbgOut ' ' format(" 🕐Δ{:.3f}",A_TickCount - 🕐k_now) ' ' A_ThisFunc ' ¦' id_thread '¦', OutputDebug(dbgtxt))
   }
   cbK↑(token,  ih,vk,sc) {
     static _d := 1, isUp := true, dir := (isUp?'↑':'↓')
@@ -101,7 +102,7 @@ kanata_dll(vkC) {
       dbgtxt := ''
       vk_hex := Format("vk{:x}",vk)
       key_name := GetKeyName(Format("vk{:x}",vk)) ; bugs with layouts, not english even if english is active
-      dbgtxt .= "ih" dir (isSet(key_name)?key_name:'') "  ¦" id_thread "¦ ahk→→→kan: vk=" vk "¦" vk_hex " sc=" sc ' l' A_SendLevel
+      dbgtxt .= "ih" dir (isSet(key_name)?key_name:'') "      🢥🄺: vk=" vk "¦" vk_hex " sc=" sc ' l' A_SendLevel " ¦" id_thread "¦"
       OutputDebug(dbgtxt)
     }
     isH := fnKanata_in_ev(vk,sc,isUp)
@@ -109,11 +110,11 @@ kanata_dll(vkC) {
     for i in [4,4,4,5,5,5] { ; poll a key out channel@kanata) a few times to see if there are key events
       sleep(i)
       isOut := K_output_ev_check(), dbgOut.=isOut
-      if (isOut < 0) { ; get as many keys as are available untill reception errors out
+      if (isOut < 0) { ; get as many keys as are available until reception errors out
         break
       }
     }
-    (dbg<_d)?'':(dbgtxt:='¦' id_thread '¦ih' dir ' pos isH=' isH ' isOut=' dbgOut ' ' format(" 🕐Δ{:.3f}",A_TickCount - 🕐k_now) ' ' A_ThisFunc, OutputDebug(dbgtxt))
+    (dbg<_d+1)?'':(dbgtxt:='🏁ih' dir ' pos isH=' isH ' isOut=' dbgOut ' ' format(" 🕐Δ{:.3f}",A_TickCount - 🕐k_now) ' ' A_ThisFunc ' ¦' id_thread '¦', OutputDebug(dbgtxt))
   }
   ; set up machinery for AHK to receive data from kanata
   cbKanataOut(kvk,ksc,up) {
@@ -139,7 +140,7 @@ kanata_dll(vkC) {
       dbgtxt .= dir
     }
     if isSet(vk_hex) {
-      (dbg<_d)?'':(dbgtxt .= key_name "       ahk←←←: vk=" kvk '¦' vk_hex ' @l' A_SendLevel ' → ' lvl_to ' ' hooks ' ¦' id_thread '¦ ' A_ThisFunc, OutputDebug(dbgtxt))
+      (dbg<_d)?'':(dbgtxt .= key_name "       🄷🢦 : vk=" kvk '¦' vk_hex ' @l' A_SendLevel ' → ' lvl_to ' ' hooks ' ¦' id_thread '¦ ' A_ThisFunc, OutputDebug(dbgtxt))
       if up {
         ; SendEvent('{' vk_hex ' up}')
         SendInput('{' vk_hex ' up}')
@@ -148,13 +149,13 @@ kanata_dll(vkC) {
         SendInput('{' vk_hex ' down}')
       }
     } else {
-      (dbg<_d)?'':(dbgtxt .= '✗name' "       ahk←←←: vk=" kvk '¦' vk_hex ' @l' A_SendLevel ' → ' lvl_to ' ' hooks ' ¦' id_thread '¦ ' A_ThisFunc, OutputDebug(dbgtxt))
+      (dbg<_d)?'':(dbgtxt .= '✗name' "       🄷🢦 : vk=" kvk '¦' vk_hex ' @l' A_SendLevel ' → ' lvl_to ' ' hooks ' ¦' id_thread '¦ ' A_ThisFunc, OutputDebug(dbgtxt))
     }
     🕐2 := preciseTΔ(), 🕐Δ := 🕐2-🕐1
     if 🕐Δ > 0.5 {
-      (dbg<_d)?'':(OutputDebug('pos ' format(" 🕐Δ{:.3f}",🕐Δ) ' ¦' id_thread '¦ ' A_ThisFunc))
+      (dbg<_d+1)?'':(OutputDebug('🐢🏁 ' format(" 🕐Δ{:.3f}",🕐Δ) ' ¦' id_thread '¦ ' A_ThisFunc))
     } else {
-      (dbg<_d)?'':(OutputDebug('pos ' format(" 🕐Δ{:.3f}",🕐Δ) ' ¦' id_thread '¦ ' A_ThisFunc))
+      (dbg<_d+1)?'':(OutputDebug('🐇🏁 ' format(" 🕐Δ{:.3f}",🕐Δ) ' ¦' id_thread '¦ ' A_ThisFunc))
     }
     return 1
   }
@@ -170,7 +171,7 @@ kanata_dll(vkC) {
     OutputDebug('—`n`n——————————————— Timeout')
     🕐k_now := A_TickCount, 🕐Δ := 🕐k_now - 🕐k_pre
     cleanup := true
-    res := fnKanata_reset(🕐Δ) ; reset kanata's state, progressing time to catch up, release held keys (even those physically held sinc reset is reset, so from kanata's perspective they should be released)
+    res := fnKanata_reset(🕐Δ) ; reset kanata's state, progressing time to catch up, release held keys (even those physically held since reset is reset, so from kanata's perspective they should be released)
     cleanup := false
     dbgtxt := ''
     dbgtxt .= 'ih¦' 🕐Δ '🕐Δ timeout A_TimeSinceThisHotkey ' A_TimeSinceThisHotkey
