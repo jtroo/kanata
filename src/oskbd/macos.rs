@@ -78,7 +78,7 @@ where
         libc::dup2(writer.as_raw_fd(), stdout_fd);
     }
 
-    // Close the writer in the parent thread after redirecting
+    // Close `writer` to prevent `read_to_string` deadlock: https://docs.rs/os_pipe/latest/os_pipe/#common-deadlocks-related-to-pipes
     drop(writer);
 
     // Run the provided function
