@@ -157,7 +157,7 @@ pub struct Kanata {
     /// included for interception and processing by kanata.
     pub include_names: Option<Vec<String>>,
     #[cfg(any(target_os = "linux", target_os = "macos"))]
-    /// Tracks the Linux user configuration for device names (instead of paths) that should be
+    /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
