@@ -23,11 +23,9 @@ use os_pipe::pipe;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
+use std::io::Read;
 use std::io::{Error, ErrorKind};
-use std::io::{Read, Write};
-use std::os::unix::io::{AsRawFd, RawFd};
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::os::unix::io::AsRawFd;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
