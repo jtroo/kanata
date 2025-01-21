@@ -3206,8 +3206,8 @@ for determining if the configuration is used or not.
 If the value of the environment variable (set only on kanata startup)
 matches `env-var-value`, the configuration is used; otherwise it is ignored.
 An empty string for `env-var-value` — `""` — will use the configuration
-if the environment variable an empty string
-and also if the variable is unset/missing entirely.
+if the environment variable is an empty string
+and also if the environment variable is not defined.
 
 .Example:
 [source]
