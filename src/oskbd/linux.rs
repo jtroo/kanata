@@ -258,10 +258,10 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     if device.name() == Some("kanata") {
         return false;
     }
-    let is_keyboard = device.supported_keys().map_or(false, has_keyboard_keys);
+    let is_keyboard = device.supported_keys().is_some_and(has_keyboard_keys);
     let is_mouse = device
         .supported_relative_axes()
-        .map_or(false, |axes| axes.contains(RelativeAxisType::REL_X));
+        .is_some_and(|axes| axes.contains(RelativeAxisType::REL_X));
     let device_type = match (is_keyboard, is_mouse) {
         (true, true) => DeviceType::KeyboardMouse,
         (true, false) => DeviceType::Keyboard,
