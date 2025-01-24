@@ -78,6 +78,19 @@ impl Kanata {
         Ok(())
     }
 
+    /// # Note
+    ///
+    /// This is disabled by default due to known issues.
+    /// Under some use cases this works just fine and can be enabled.
+    ///
+    /// ## Known issues
+    ///
+    /// - Ralt/lctl may have some issues with AltGr layouts
+    /// - Some software may have a later-stage remapping that changes which VK is active for a
+    ///   given VK that Kanata outputs. E.g. changing to roya/loya modifiers.
+    ///
+    /// # Description
+    ///
     /// On Windows with LLHOOK/SendInput APIs,
     /// Kanata does not have as much control
     /// over the full system's keystates as one would want;
@@ -133,6 +146,10 @@ impl Kanata {
     pub(crate) fn win_synchronize_keystates(&mut self) {
         use kanata_keyberon::layout::*;
         use winapi::um::winuser::*;
+
+        if !self.windows_sync_keystates {
+            return;
+        }
 
         log::debug!("synchronizing win keystates");
         for pvk in self.prev_keys.iter() {

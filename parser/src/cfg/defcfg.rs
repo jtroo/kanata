@@ -80,6 +80,13 @@ pub struct CfgWinterceptOptions {
     pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
 }
 
+#[cfg(any(target_os = "windows", target_os = "unknown"))]
+#[derive(Debug, Clone, Default)]
+pub struct CfgWindowsOptions {
+    pub windows_altgr: AltGrBehaviour,
+    pub sync_keystates: bool,
+}
+
 #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
 #[derive(Debug, Clone)]
 pub struct CfgOptionsGui {
@@ -150,7 +157,7 @@ pub struct CfgOptions {
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_opts: CfgMacosOptions,
     #[cfg(any(target_os = "windows", target_os = "unknown"))]
-    pub windows_altgr: AltGrBehaviour,
+    pub windows_opts: CfgWindowsOptions,
     #[cfg(any(
         all(feature = "interception_driver", target_os = "windows"),
         target_os = "unknown"
@@ -187,7 +194,7 @@ impl Default for CfgOptions {
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_opts: Default::default(),
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
-            windows_altgr: AltGrBehaviour::default(),
+            windows_opts: Default::default(),
             #[cfg(any(
                 all(feature = "interception_driver", target_os = "windows"),
                 target_os = "unknown"
@@ -380,7 +387,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             const CANCEL: &str = "cancel-lctl-press";
                             const ADD: &str = "add-lctl-release";
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.windows_altgr = match v {
+                            cfg.windows_opts.windows_altgr = match v {
                                 CANCEL => AltGrBehaviour::CancelLctlPress,
                                 ADD => AltGrBehaviour::AddLctlRelease,
                                 _ => bail_expr!(
@@ -391,6 +398,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     ADD
                                 ),
                             }
+                        }
+                    }
+                    "windows-sync-keystates" => {
+                        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+                        {
+                            cfg.windows_opts.sync_keystates = parse_defcfg_val_bool(val, label)?;
                         }
                     }
                     "windows-interception-mouse-hwid" => {
