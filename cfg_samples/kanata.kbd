@@ -1406,9 +1406,9 @@ Syntax (5-tuples):
 |#
 
 (defchordsv2
-  (a b)      c                200 all-released  (arrows)
-  (a b z)   (macro h e l l o) 250 first-release (arrows)
-  (a b z y) (macro b y e)     400 first-release (arrows)
+  (a b c)   (macro a l p h a b e t)  200 all-released  (qwerty arrows)
+  (h l o)   (macro h e l l o)        250 first-release (qwerty arrows)
+  (g b y e) (macro g o o d b y e)    400 first-release (qwerty arrows)
 )
 
 #|
