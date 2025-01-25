@@ -403,3 +403,30 @@ fn sim_chord_oneshot() {
         result
     );
 }
+
+#[test]
+fn sim_chord_timeout_events() {
+    let result = simulate(
+        "
+(defcfg
+ concurrent-tap-hold yes
+ process-unmapped-keys yes
+)
+(defvirtualkeys
+ v-macro-word-end (macro spc)
+)
+(defsrc a b c)
+(defchordsv2-experimental
+ (a b c) (macro x y z (on-press tap-vkey v-macro-word-end)) 200 all-released ()
+ (a b) (macro x y (on-press tap-vkey v-macro-word-end)) 200 all-released ()
+)
+(deflayer base a b c)
+        ",
+        "d:a t:10 d:b t:3000 u:a u:b t:100",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:201ms dn:X t:1ms up:X t:1ms dn:Y t:1ms up:Y t:4ms dn:Space t:1ms up:Space",
+        result
+    );
+}

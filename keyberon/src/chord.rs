@@ -368,20 +368,6 @@ impl<'a, T> ChordsV2<'a, T> {
                 chord_candidates.retain(|chc| chc.participating_keys.contains(&press));
                 for chc in chord_candidates.iter() {
                     min_timeout = std::cmp::min(min_timeout, chc.pending_duration);
-                    if chc.pending_duration <= since
-                        && chc
-                            .participating_keys
-                            .iter()
-                            .all(|pk| accumulated_presses.contains(pk))
-                    {
-                        // Invariant:
-                        // This should only happen at most once per iteration
-                        // due to needing an exact match with accumulated presses.
-                        // Later iterations are "better" choices
-                        // if more than one timed_out_chord is found,
-                        // because they consume more presses.
-                        timed_out_chord = Some((chc, accumulated_presses.len() as u8));
-                    }
                 }
                 chord_candidates.len()
             } else {
@@ -521,13 +507,6 @@ impl<'a, T> ChordsV2<'a, T> {
                     no_chord_activations!(self)
                 }
             }
-        }
-
-        if let Some((chord, consumed_presses)) = timed_out_chord {
-            self.queue.drain(0..usize::from(consumed_presses));
-            let ach = get_active_chord(chord, since, self.next_coord(), relevant_release_found);
-            let overflow = self.active_chords.push(ach);
-            assert!(overflow.is_ok(), "active chords has room");
         }
 
         // Clear presses from the queue if they were consumed by a chord.
