@@ -572,9 +572,10 @@ for an action.
 [cols="1,5"]
 |===
 | `$alias-name`
-| The chosen name for the shortcut label for the action.
-It can be used in the rest of the configuration
-by prefixing the name with the `@` character.
+| The chosen shortcut label for the action.
+This shortcut label can be used in the rest of
+the configuration by prefixing it with the `@`
+character.
 
 | `$action`
 | The ouput action used wherever the alias name is referenced.
@@ -662,14 +663,14 @@ you can introduce a shortcut label for an arbitrary string or list.
 [cols="1,5"]
 |===
 | `$var-name`
-| The chosen name for the shortcut label for the action.
-It can be used in the rest of the configuration
-by prefixing the name with the `@` character.
+| The chosen shortcut label for the string or list.
+This shortcut label can be used in the rest of the
+configuration by prefixing it with `$`.
 
 | `$var-value`
 | An arbitrary string or list that will be substituted
 wherever the variable is used.
-A variable can be used by prefixing the variable name with `$`.
+
 |===
 
 **Description**
