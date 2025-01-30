@@ -4087,6 +4087,42 @@ they are an arbitrary length and can be very long.
 )
 ----
 
+=== Windows only: windows-interception-keyboard-hwids-exclude[[windows-only-windows-interception-keyboard-hwids-exclude]]
+
+This defcfg item allows you to exclude certain keyboards from being intercepted.
+You cannot define this alongside the inclusive keyboard configuration.
+
+It is parsed identically to the inclusive configuration.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-keyboard-hwids-exclude (
+    "70, 0, 60, 0"
+    "71, 72, 73, 74"
+  )
+)
+----
+
+=== Windows only: windows-interception-mouse-hwids-exclude[[windows-only-windows-interception-mouse-hwids-exclude]]
+
+This defcfg item allows you to exclude certain mice from being intercepted.
+You cannot define this alongside the inclusive mouse configuration.
+
+It is parsed identically to the inclusive configuration.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-mouse-hwids-exclude (
+    "70, 0, 60, 0"
+    "71, 0, 62, 0"
+  )
+)
+----
+
 [[windows-only-tray-icon]]
 === Windows only: tray-icon
 

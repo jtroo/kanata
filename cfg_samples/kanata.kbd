@@ -224,6 +224,19 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;   "99, 88, 77, 66"
   ;; )
 
+  ;; There are also exclude variants of the wintercept device configurations.
+  ;; These cannot be defined at the same time as the non-exclude variants.
+  ;;
+  ;; windows-interception-keyboard-hwids-exclude (
+  ;;   "90, 80, 11, 34"
+  ;;   "99, 88, 77, 66"
+  ;; )
+  ;;
+  ;; windows-interception-mouse-hwids-exclude (
+  ;;   "70, 0, 60, 0"
+  ;;   "71, 0, 62, 0"
+  ;; )
+
   ;; Transparent keys on layers will delegate to the corresponding defsrc key
   ;; when found on a layer activated by `layer-switch`. This config entry
   ;; changes the behaviour to delegate to the action of the first layer,
