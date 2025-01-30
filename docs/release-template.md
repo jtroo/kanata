@@ -102,6 +102,10 @@ chmod +x kanata_macos_arm64   # may be downloaded without executable permissions
 sudo ./kanata_macos_arm64 --cfg <cfg_file>`
 ```
 
+### Add permissions
+
+If Kanata is not behaving correctly, you may need to add permissions. Please see this issue: [link to macOS permissions issue](https://github.com/jtroo/kanata/issues/1211).
+
 </details>
 
 ## cmd\_allowed variants
