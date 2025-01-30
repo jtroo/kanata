@@ -144,13 +144,16 @@ impl KbdIn {
                 return Ok(vec![]);
             }
 
+            const EVENT_LIMIT: usize = 48;
+
             let mut do_rediscover = false;
             for event in &self.events {
                 if let Some((device, _)) = self.devices.get_mut(&event.token()) {
-                    if let Err(e) = device
-                        .fetch_events()
-                        .map(|evs| evs.into_iter().for_each(|ev| input_events.push(ev)))
-                    {
+                    if let Err(e) = device.fetch_events().map(|evs| {
+                        evs.into_iter()
+                            .take(EVENT_LIMIT)
+                            .for_each(|ev| input_events.push(ev))
+                    }) {
                         // Currently the kind() is uncategorized... not helpful, need to match
                         // on os error. code 19 is ENODEV, "no such device".
                         match e.raw_os_error() {

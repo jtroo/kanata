@@ -41,7 +41,7 @@ impl Kanata {
 
         loop {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
-            log::trace!("{events:?}");
+            log::trace!("event count: {}\nevents:\n{events:?}", events.len());
 
             for in_event in events.iter().copied() {
                 let key_event = match KeyEvent::try_from(in_event) {
