@@ -2975,7 +2975,7 @@ and be typed as kanata outputs.
 | `$stdout-log-level`
 | Log level for stdout of the command. Must be `+debug+`, `+info+`, `+warn+`, `+error+`, or `+none+`.
 
-| `$stdout-log-level`
+| `$stderr-log-level`
 | Log level for stderr of the command. Must be `+debug+`, `+info+`, `+warn+`, `+error+`, or `+none+`.
 |===
 
