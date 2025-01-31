@@ -182,6 +182,10 @@ impl KbdOut {
         Ok(())
     }
 
+    pub fn write_code_raw(&mut self, code: u16, value: KeyValue) -> Result<(), io::Error> {
+        super::write_code_raw(code, value)
+    }
+
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
         super::write_code(code as u16, value)
     }
