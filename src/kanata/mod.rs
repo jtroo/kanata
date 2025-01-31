@@ -1719,9 +1719,23 @@ impl Kanata {
                             pbtn
                         }
                         CustomAction::SendArbitraryCode(code) => {
-                            if let Err(e) = self.kbd_out.write_code(*code as u32, KeyValue::Release)
-                            {
-                                log::error!("failed to send arbitrary code {e:?}");
+                            if let Err(e) = {
+                                #[cfg(all(
+                                    not(feature = "simulated_output"),
+                                    target_os = "windows"
+                                ))]
+                                {
+                                    self.kbd_out.write_code_raw(*code, KeyValue::Release)
+                                }
+                                #[cfg(any(
+                                    feature = "simulated_output",
+                                    not(target_os = "windows")
+                                ))]
+                                {
+                                    self.kbd_out.write_code(*code as u32, KeyValue::Release)
+                                }
+                            } {
+                                log::error!("failed to release arbitrary code {e:?}");
                             }
                             pbtn
                         }
