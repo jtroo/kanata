@@ -67,6 +67,28 @@ fn send_uc(c: char, up: bool) {
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
+fn write_code_raw(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
+    let is_key_up = match value {
+        KeyValue::Press | KeyValue::Repeat => false,
+        KeyValue::Release => true,
+        KeyValue::Tap => panic!("invalid value attempted to be sent"),
+        KeyValue::WakeUp => panic!("invalid value attempted to be sent"),
+    };
+    unsafe {
+        let mut kb_input: KEYBDINPUT = mem::zeroed();
+        if is_key_up {
+            kb_input.dwFlags |= KEYEVENTF_KEYUP;
+        }
+        kb_input.wVk = code;
+        let mut inputs: [INPUT; 1] = mem::zeroed();
+        inputs[0].type_ = INPUT_KEYBOARD;
+        *inputs[0].u.ki_mut() = kb_input;
+        SendInput(1, inputs.as_mut_ptr(), mem::size_of::<INPUT>() as _);
+    }
+    Ok(())
+}
+
 #[cfg(not(feature = "simulated_input"))]
 fn write_code(code: u16, value: KeyValue) -> Result<(), std::io::Error> {
     send_key_sendinput(
