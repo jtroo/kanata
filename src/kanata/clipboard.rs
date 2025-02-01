@@ -1,4 +1,8 @@
+use super::*;
+
 use std::sync::LazyLock;
+
+pub(crate) type SavedClipboardData = HashMap<u16, String>;
 
 pub(crate) static CLIPBOARD: LazyLock<arboard::Clipboard> = LazyLock::new(|| {
     for _ in 0..10 {
@@ -10,5 +14,3 @@ pub(crate) static CLIPBOARD: LazyLock<arboard::Clipboard> = LazyLock::new(|| {
     }
     panic!("could not initialize clipboard");
 });
-
-

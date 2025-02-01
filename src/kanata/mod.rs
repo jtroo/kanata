@@ -241,7 +241,7 @@ pub struct Kanata {
     /// Upon cancelling this should be set to 0.
     pub macro_on_press_cancel_duration: u32,
     /// Stores user's saved clipboard contents.
-    pub saved_clipboard_content: HashMap<u16, String>,
+    pub saved_clipboard_content: SavedClipboardData,
 }
 
 #[derive(PartialEq, Clone, Copy)]
