@@ -1872,6 +1872,9 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
+        CLIPBOARD_TMP_SWAP_PASTE => parse_clipboard_tmpswap_paste(&ac[1..], s),
+        CLIPBOARD_SET => parse_clipboard_set(&ac[1..], s),
+        CLIPBOARD_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSet),
         _ => unreachable!(),
     }
 }
@@ -2459,8 +2462,9 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
 }
 
 enum CmdType {
-    Standard,   // Execute command in own thread
-    OutputKeys, // Execute command and output stdout
+    Standard,     // Execute command in own thread
+    OutputKeys,   // Execute command and output stdout
+    ClipboardSet, // Execute command and set clipboard to output
 }
 
 // Parse cmd, but there are 2 arguments before specifying normal log and error log
@@ -2522,6 +2526,7 @@ fn parse_cmd(
             .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
                 CmdType::Standard => CustomAction::Cmd(cmd),
                 CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
+                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmd),
             })))))
     }
 }
@@ -3253,6 +3258,48 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::LiveReloadFile(lrld_file_path.to_string()),
     )))))
+}
+
+fn parse_clipboard_tmpswap_paste(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <paste string>";
+    if ac_params.len() != 1 {
+        bail!(
+            "{CLIPBOARD_TMP_SWAP_PASTE} {ERR_MSG}, found {}",
+            ac_params.len()
+        );
+    }
+    let expr = &ac_params[0];
+    let paste_string = match expr {
+        SExpr::Atom(filepath) => filepath,
+        SExpr::List(_) => {
+            bail_expr!(&expr, "Paste string cannot be a list")
+        }
+    };
+    let paste_string = paste_string.t.trim_atom_quotes();
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::ClipboardTmpSwapPaste(paste_string.to_string()),
+    )))))
+}
+
+fn parse_clipboard_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard string>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_SET} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let expr = &ac_params[0];
+    let clip_string = match expr {
+        SExpr::Atom(filepath) => filepath,
+        SExpr::List(_) => {
+            bail_expr!(&expr, "Clipboard string cannot be a list")
+        }
+    };
+    let clip_string = clip_string.t.trim_atom_quotes();
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::ClipboardSet(clip_string.to_string())),
+    ))))
 }
 
 fn parse_layers(

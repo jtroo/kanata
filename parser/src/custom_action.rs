@@ -83,6 +83,10 @@ pub enum CustomAction {
         keys: Box<[KeyCode]>,
     },
     ReverseReleaseOrder,
+    ClipboardCmdSet(Vec<String>),
+    ClipboardTmpSwapPaste(String),
+    ClipboardSet(String),
+    ClipboardPaste,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
