@@ -32,6 +32,9 @@ use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
 use kanata_tcp_protocol::ServerMessage;
 
+mod clipboard;
+use clipboard::*;
+
 mod dynamic_macro;
 use dynamic_macro::*;
 
