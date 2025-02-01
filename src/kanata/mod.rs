@@ -237,6 +237,8 @@ pub struct Kanata {
     /// When > 0, it means macros should be cancelled on the next press.
     /// Upon cancelling this should be set to 0.
     pub macro_on_press_cancel_duration: u32,
+    /// Stores user's saved clipboard contents.
+    pub saved_clipboard_content: HashMap<u16, String>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -440,6 +442,7 @@ impl Kanata {
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
+            saved_clipboard_content: Default::default(),
         })
     }
 
@@ -575,6 +578,7 @@ impl Kanata {
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
+            saved_clipboard_content: Default::default(),
         })
     }
 
@@ -1608,6 +1612,24 @@ impl Kanata {
                                     layout.event(Event::Press(x, y));
                                     duration
                                 });
+                        }
+                        CustomAction::ClipboardPaste => {
+                            todo!();
+                        }
+                        CustomAction::ClipboardTmpSwapPaste(paste_string) => {
+                            todo!();
+                        }
+                        CustomAction::ClipboardSet(clipboard_string) => {
+                            todo!();
+                        }
+                        CustomAction::ClipboardCmdSet(cmd_params) => {
+                            todo!();
+                        }
+                        CustomAction::ClipboardSave(id) => {
+                            todo!();
+                        }
+                        CustomAction::ClipboardRestore(id) => {
+                            todo!();
                         }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)

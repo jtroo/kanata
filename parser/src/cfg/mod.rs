@@ -1677,6 +1677,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         "use-defsrc" => {
             return Ok(s.a.sref(Action::Src));
         }
+        "clipboard-paste" => return custom(CustomAction::ClipboardPaste, &s.a),
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
@@ -1875,6 +1876,8 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CLIPBOARD_TMP_SWAP_PASTE => parse_clipboard_tmpswap_paste(&ac[1..], s),
         CLIPBOARD_SET => parse_clipboard_set(&ac[1..], s),
         CLIPBOARD_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSet),
+        CLIPBOARD_SAVE => parse_clipboard_save(&ac[1..], s),
+        CLIPBOARD_RESTORE => todo!(),
         _ => unreachable!(),
     }
 }
@@ -3300,6 +3303,28 @@ fn parse_clipboard_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'static 
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::ClipboardSet(clip_string.to_string())),
     ))))
+}
+
+fn parse_clipboard_save(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard save id (0-65535)>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_SAVE} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::ClipboardSave(id))),
+    )))
+}
+
+fn parse_clipboard_restore(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard save id (0-65535)>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_RESTORE} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::ClipboardRestore(id))),
+    )))
 }
 
 fn parse_layers(

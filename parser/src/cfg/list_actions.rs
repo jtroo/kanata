@@ -121,6 +121,8 @@ pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
 pub const CLIPBOARD_TMP_SWAP_PASTE: &str = "clipboard-tmp-swap-paste";
 pub const CLIPBOARD_SET: &str = "clipboard-set";
 pub const CLIPBOARD_CMD_SET: &str = "clipboard-cmd-set";
+pub const CLIPBOARD_SAVE: &str = "clipboard-save";
+pub const CLIPBOARD_RESTORE: &str = "clipboard-restore";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -241,6 +243,8 @@ pub fn is_list_action(ac: &str) -> bool {
         CLIPBOARD_TMP_SWAP_PASTE,
         CLIPBOARD_SET,
         CLIPBOARD_CMD_SET,
+        CLIPBOARD_SAVE,
+        CLIPBOARD_RESTORE,
     ];
     LIST_ACTIONS.contains(&ac)
 }
