@@ -3754,7 +3754,7 @@ Device names that do not exist in the list will be ignored.
 Device paths are not supported by this option; instead use the device names 
 as output by Kanata during startup.  Launch Kanata with a 
 <<minimal-configuration,minimal configuration>> (any use of a `linux-dev*`
-option may hide devices) and look for lines beginning with `registering`:
+option may hide devices) and look for lines beginning with "registering":
 
 ----
 registering /dev/input/eventX: "Device name 1"
