@@ -118,7 +118,6 @@ pub const ON_RELEASE: &str = "on-release";
 pub const ON_RELEASE_A: &str = "on↑";
 pub const ON_IDLE: &str = "on-idle";
 pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
-pub const CLIPBOARD_TMP_SWAP_PASTE: &str = "clipboard-tmp-swap-paste";
 pub const CLIPBOARD_SET: &str = "clipboard-set";
 pub const CLIPBOARD_CMD_SET: &str = "clipboard-cmd-set";
 pub const CLIPBOARD_SAVE: &str = "clipboard-save";
@@ -240,7 +239,6 @@ pub fn is_list_action(ac: &str) -> bool {
         MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         ONE_SHOT_PAUSE_PROCESSING,
-        CLIPBOARD_TMP_SWAP_PASTE,
         CLIPBOARD_SET,
         CLIPBOARD_CMD_SET,
         CLIPBOARD_SAVE,

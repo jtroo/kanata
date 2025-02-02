@@ -1616,23 +1616,17 @@ impl Kanata {
                                     duration
                                 });
                         }
-                        CustomAction::ClipboardPaste => {
-                            todo!();
-                        }
-                        CustomAction::ClipboardTmpSwapPaste(paste_string) => {
-                            todo!();
-                        }
                         CustomAction::ClipboardSet(clipboard_string) => {
-                            todo!();
+                            clpb_set(clipboard_string);
                         }
                         CustomAction::ClipboardCmdSet(cmd_params) => {
-                            todo!();
+                            clpb_cmd_set(cmd_params);
                         }
                         CustomAction::ClipboardSave(id) => {
-                            todo!();
+                            clpb_save(*id, &mut self.saved_clipboard_content);
                         }
                         CustomAction::ClipboardRestore(id) => {
-                            todo!();
+                            clpb_restore(*id, &self.saved_clipboard_content);
                         }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
