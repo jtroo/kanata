@@ -1875,7 +1875,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CLIPBOARD_SET => parse_clipboard_set(&ac[1..], s),
         CLIPBOARD_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSet),
         CLIPBOARD_SAVE => parse_clipboard_save(&ac[1..], s),
-        CLIPBOARD_RESTORE => todo!(),
+        CLIPBOARD_RESTORE => parse_clipboard_restore(&ac[1..], s),
         _ => unreachable!(),
     }
 }
