@@ -149,6 +149,19 @@ pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboa
     save_data.insert(id, Text(content.into()));
 }
 
+#[test]
+fn test_set() {
+    let mut sd = SavedClipboardData::default();
+    clpb_save_set(1, "hi", &mut sd);
+    if let Text(s) = sd.get(&1).unwrap() {
+        assert_eq!(s.as_str(), "hi");
+    } else {
+        panic!("did not expect image data");
+    }
+    assert!(sd.get(&2).is_none());
+
+}
+
 pub(crate) fn clpb_save_cmd_set(
     id: u16,
     cmd_and_args: &[String],
@@ -163,6 +176,10 @@ pub(crate) fn clpb_save_cmd_set(
     };
     let content = run_cmd_get_stdout(cmd_and_args, stdin_content);
     save_data.insert(id, Text(content.into()));
+}
+
+#[test]
+fn test_save_cmd_set() {
 }
 
 pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {
