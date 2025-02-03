@@ -40,7 +40,7 @@ pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
     for _ in 0..10 {
         match CLIPBOARD.lock().get_text() {
             Ok(cliptext) => {
-                let newclip = run_cmd_clipboard(cmd_and_args, cliptext.as_str());
+                let newclip = run_cmd_get_stdout(cmd_and_args, cliptext.as_str());
                 clpb_set(&newclip);
             }
             Err(e) => {
@@ -55,7 +55,7 @@ pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
     }
 }
 
-fn run_cmd_clipboard(cmd_and_args: &[String], stdin: &str) -> String {
+fn run_cmd_get_stdout(cmd_and_args: &[String], stdin: &str) -> String {
     use std::io::Write;
     use std::process::{Command, Stdio};
     let mut args = cmd_and_args.iter();
@@ -142,4 +142,28 @@ pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {
         log::error!("error setting clipboard: {e:?}");
         std::thread::sleep(std::time::Duration::from_millis(25));
     }
+}
+
+pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboardData) {
+    save_data.insert(id, Text(content.into()));
+}
+
+pub(crate) fn clpb_save_cmd_set(
+    id: u16,
+    cmd_and_args: &[String],
+    save_data: &mut SavedClipboardData,
+) {
+    let stdin_content = match save_data.get(&id) {
+        Some(slot_data) => match slot_data {
+            Text(s) => s.as_str(),
+            Image(_) => &"",
+        },
+        None => &"",
+    };
+    let content = run_cmd_get_stdout(cmd_and_args, stdin_content);
+    save_data.insert(id, Text(content.into()));
+}
+
+pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {
+    todo!()
 }

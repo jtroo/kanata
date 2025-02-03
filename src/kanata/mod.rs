@@ -1628,6 +1628,15 @@ impl Kanata {
                         CustomAction::ClipboardRestore(id) => {
                             clpb_restore(*id, &self.saved_clipboard_content);
                         }
+                        CustomAction::ClipboardSaveSet(id, clipboard_string) => {
+                            clpb_save_set(*id, clipboard_string, &mut self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardSaveCmdSet(id, cmd_params) => {
+                            clpb_save_cmd_set(*id, cmd_params, &mut self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardSaveSwap(id1, id2) => {
+                            clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
+                        }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)
                         | CustomAction::Unmodded { .. }

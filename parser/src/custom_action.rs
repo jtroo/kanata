@@ -87,6 +87,9 @@ pub enum CustomAction {
     ClipboardCmdSet(Vec<String>),
     ClipboardSave(u16),
     ClipboardRestore(u16),
+    ClipboardSaveSet(u16, String),
+    ClipboardSaveCmdSet(u16, Vec<String>),
+    ClipboardSaveSwap(u16, u16),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
