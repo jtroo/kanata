@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use parking_lot::Mutex;
 
 pub type SavedClipboardData = HashMap<u16, ClipboardData>;
+#[derive(Debug, Clone)]
 pub enum ClipboardData {
     Text(String),
     Image(arboard::ImageData<'static>),
@@ -165,5 +166,52 @@ pub(crate) fn clpb_save_cmd_set(
 }
 
 pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {
-    todo!()
+    let data1 = save_data.remove(&id1);
+    let data2 = save_data.remove(&id2);
+    if let Some(d) = data1 {
+        save_data.insert(id2, d);
+    }
+    if let Some(d) = data2 {
+        save_data.insert(id1, d);
+    }
+}
+
+#[test]
+fn test_swap() {
+    let mut sd = SavedClipboardData::default();
+    sd.insert(1, Text("one".into()));
+    sd.insert(2, Text("two".into()));
+    clpb_save_swap(1, 2, &mut sd);
+    if let Text(s) = sd.get(&1).unwrap() {
+        assert_eq!(s.as_str(), "two");
+    } else {
+        panic!("did not expect image data");
+    }
+    if let Text(s) = sd.get(&2).unwrap() {
+        assert_eq!(s.as_str(), "one");
+    } else {
+        panic!("did not expect image data");
+    }
+
+    sd.insert(3, Text("three".into()));
+    clpb_save_swap(3, 4, &mut sd);
+    assert!(sd.get(&3).is_none());
+    if let Text(s) = sd.get(&4).unwrap() {
+        assert_eq!(s.as_str(), "three");
+    } else {
+        panic!("did not expect image data");
+    }
+
+    sd.insert(6, Text("six".into()));
+    clpb_save_swap(5, 6, &mut sd);
+    if let Text(s) = sd.get(&5).unwrap() {
+        assert_eq!(s.as_str(), "six");
+    } else {
+        panic!("did not expect image data");
+    }
+    assert!(sd.get(&6).is_none());
+
+    clpb_save_swap(7, 8, &mut sd);
+    assert!(sd.get(&7).is_none());
+    assert!(sd.get(&8).is_none());
 }
