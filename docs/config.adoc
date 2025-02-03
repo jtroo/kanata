@@ -329,6 +329,7 @@ If you're reading in order, you have now seen all of the required entries:
 * `+defsrc+`
 * `+deflayer+`
 
+[[minimal-config]]
 An example minimal configuration is:
 
 [source]
@@ -3740,19 +3741,27 @@ item contains spaces.
 )
 ----
 
+For devices that do not have an easily identifiable device path like Bluetooth 
+keyboards using the `linux-dev-names-include` option below is recommended.
+
 [[linux-only-linux-dev-names-include]]
 === Linux only: linux-dev-names-include
 
 In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be included.
-Device names that do not exist in the list will be ignored.
-This option is parsed identically to `linux-dev`.
+Device names that do not exist in the list will be ignored.  
 
-Kanata will print device names on startup with log lines that look like below:
+Device paths are not supported by this option; instead use the device names 
+as output by Kanata during startup.  Launch Kanata with a 
+<<minimal-configuration,minimal configuration>> (any use of a `linux-dev*`
+option may hide devices) and look for lines beginning with "registering":
 
 ----
-registering /dev/input/eventX: "Name goes here"
+registering /dev/input/eventX: "Device name 1"
+registering /dev/input/eventY: "Device name 2"
 ----
+
+The entire name within quotes must be used, partial matches and regex's are not supported.
 
 .Example:
 [source]
@@ -3770,7 +3779,7 @@ registering /dev/input/eventX: "Name goes here"
 
 In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be excluded.
-This option is parsed identically to `linux-dev`.
+This option is parsed identically to `linux-dev-names-include`.
 
 The `linux-dev-names-include` and `linux-dev-names-exclude` options
 are not mutually exclusive
