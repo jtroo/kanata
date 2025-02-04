@@ -179,7 +179,25 @@ pub(crate) fn clpb_save_cmd_set(
 }
 
 #[test]
+#[cfg(target_os = "windows")]
 fn test_save_cmd_set() {
+    let mut sd = SavedClipboardData::default();
+    sd.insert(1, Text("one".into()));
+    clpb_save_cmd_set(1, &["powershell.exe".into(), "-c".into(), "$v = ($Input | Select-Object -First 1); Write-Host -NoNewLine \"$v $v\"".into()], &mut sd);
+
+    if let Text(s) = sd.get(&1).unwrap() {
+        assert_eq!("one one", s.as_str());
+    } else {
+        panic!("did not expect image data");
+    }
+    assert!(sd.get(&2).is_none());
+
+    clpb_save_cmd_set(3, &["powershell.exe".into(), "-c".into(), "Write-Host -NoNewLine 'wat'".into()], &mut sd);
+    if let Text(s) = sd.get(&3).unwrap() {
+        assert_eq!("wat", s.as_str());
+    } else {
+        panic!("did not expect image data");
+    }
 }
 
 pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {
