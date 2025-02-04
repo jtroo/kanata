@@ -16,6 +16,7 @@ static CLIPBOARD: LazyLock<Mutex<arboard::Clipboard>> = LazyLock::new(|| {
     for _ in 0..10 {
         let c = arboard::Clipboard::new();
         if let Ok(goodclip) = c {
+            log::trace!("clipboard init");
             return Mutex::new(goodclip);
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
@@ -27,6 +28,7 @@ pub(crate) fn clpb_set(clipboard_string: &str) {
     for _ in 0..10 {
         match CLIPBOARD.lock().set_text(clipboard_string) {
             Ok(()) => {
+                log::trace!("clipboard set to {clipboard_string}");
                 return;
             }
             Err(e) => {
@@ -38,11 +40,12 @@ pub(crate) fn clpb_set(clipboard_string: &str) {
 }
 
 pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
+    let mut newclip = None;
     for _ in 0..10 {
         match CLIPBOARD.lock().get_text() {
             Ok(cliptext) => {
-                let newclip = run_cmd_get_stdout(cmd_and_args, cliptext.as_str());
-                clpb_set(&newclip);
+                newclip = Some(run_cmd_get_stdout(cmd_and_args, cliptext.as_str()));
+                break;
             }
             Err(e) => {
                 if matches!(e, arboard::Error::ContentNotAvailable) {
@@ -53,6 +56,10 @@ pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
+    };
+    if let Some(nc) = newclip {
+        log::trace!("clipboard set to {nc}");
+        clpb_set(&nc);
     }
 }
 
@@ -63,9 +70,11 @@ fn run_cmd_get_stdout(cmd_and_args: &[String], stdin: &str) -> String {
     let executable = args
         .next()
         .expect("parsing should have forbidden empty cmd");
+    log::trace!("executing {executable}");
     let mut cmd = Command::new(executable);
     cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
     for arg in args {
+        log::trace!("arg is {arg}");
         cmd.arg(arg);
     }
     let mut child = match cmd.spawn() {
@@ -159,7 +168,6 @@ fn test_set() {
         panic!("did not expect image data");
     }
     assert!(sd.get(&2).is_none());
-
 }
 
 pub(crate) fn clpb_save_cmd_set(
@@ -183,7 +191,15 @@ pub(crate) fn clpb_save_cmd_set(
 fn test_save_cmd_set() {
     let mut sd = SavedClipboardData::default();
     sd.insert(1, Text("one".into()));
-    clpb_save_cmd_set(1, &["powershell.exe".into(), "-c".into(), "$v = ($Input | Select-Object -First 1); Write-Host -NoNewLine \"$v $v\"".into()], &mut sd);
+    clpb_save_cmd_set(
+        1,
+        &[
+            "powershell.exe".into(),
+            "-c".into(),
+            "$v = ($Input | Select-Object -First 1); Write-Host -NoNewLine \"$v $v\"".into(),
+        ],
+        &mut sd,
+    );
 
     if let Text(s) = sd.get(&1).unwrap() {
         assert_eq!("one one", s.as_str());
@@ -192,7 +208,15 @@ fn test_save_cmd_set() {
     }
     assert!(sd.get(&2).is_none());
 
-    clpb_save_cmd_set(3, &["powershell.exe".into(), "-c".into(), "Write-Host -NoNewLine 'wat'".into()], &mut sd);
+    clpb_save_cmd_set(
+        3,
+        &[
+            "powershell.exe".into(),
+            "-c".into(),
+            "Write-Host -NoNewLine 'wat'".into(),
+        ],
+        &mut sd,
+    );
     if let Text(s) = sd.get(&3).unwrap() {
         assert_eq!("wat", s.as_str());
     } else {

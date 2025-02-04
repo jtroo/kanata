@@ -2533,12 +2533,13 @@ fn parse_cmd(
                 bail!("{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
             }
             let mut cmd = vec![];
-            collect_strings(ac_params, &mut cmd, s);
+            let save_id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+            collect_strings(&ac_params[1..], &mut cmd, s);
             if cmd.is_empty() {
                 bail_expr!(&ac_params[1], "{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
             }
             return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveCmdSet(slot, cmd))),
+                s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveCmdSet(save_id, cmd))),
             )));
         }
 
@@ -2555,7 +2556,7 @@ fn parse_cmd(
             .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
                 CmdType::Standard => CustomAction::Cmd(cmd),
                 CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
-                CmdType::ClipboardSet => CustomAction::ClipboardSaveSet(cmd),
+                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmd),
                 CmdType::ClipboardSaveSet => unreachable!(),
             })))))
     }
