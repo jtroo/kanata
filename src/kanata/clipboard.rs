@@ -56,9 +56,8 @@ pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
-    };
+    }
     if let Some(nc) = newclip {
-        log::trace!("clipboard set to {nc}");
         clpb_set(&nc);
     }
 }
@@ -102,10 +101,13 @@ pub(crate) fn clpb_save(id: u16, save_data: &mut SavedClipboardData) {
     for _ in 0..10 {
         match CLIPBOARD.lock().get_text() {
             Ok(cliptext) => {
+                log::trace!("saving to id {id}: {cliptext}");
                 save_data.insert(id, Text(cliptext));
+                return;
             }
             Err(e) => {
                 if matches!(e, arboard::Error::ContentNotAvailable) {
+                    // ContentNotAvailable could be an image or missing data
                     break;
                 }
                 log::error!("error setting clipboard: {e:?}");
@@ -116,6 +118,7 @@ pub(crate) fn clpb_save(id: u16, save_data: &mut SavedClipboardData) {
     for _ in 0..10 {
         match CLIPBOARD.lock().get_image() {
             Ok(clipimg) => {
+                log::trace!("saving to id {id}: <imgdata>");
                 save_data.insert(id, Image(clipimg));
             }
             Err(e) => {
@@ -138,12 +141,14 @@ pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {
         let e = match restore_data {
             Text(s) => match CLIPBOARD.lock().set_text(s) {
                 Ok(()) => {
+                    log::trace!("restored clipboard with id {id}: {s}");
                     return;
                 }
                 Err(e) => e,
             },
             Image(img) => match CLIPBOARD.lock().set_image(img.clone()) {
                 Ok(()) => {
+                    log::trace!("restored clipboard with id {id}: <imgdata>");
                     return;
                 }
                 Err(e) => e,
@@ -155,6 +160,7 @@ pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {
 }
 
 pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboardData) {
+    log::trace!("setting save slot {id} with {content}");
     save_data.insert(id, Text(content.into()));
 }
 
@@ -178,12 +184,13 @@ pub(crate) fn clpb_save_cmd_set(
     let stdin_content = match save_data.get(&id) {
         Some(slot_data) => match slot_data {
             Text(s) => s.as_str(),
-            Image(_) => &"",
+            Image(_) => "",
         },
-        None => &"",
+        None => "",
     };
     let content = run_cmd_get_stdout(cmd_and_args, stdin_content);
-    save_data.insert(id, Text(content.into()));
+    log::trace!("setting save slot {id} with {content}");
+    save_data.insert(id, Text(content));
 }
 
 #[test]
