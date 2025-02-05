@@ -1142,6 +1142,10 @@ The output chord prefix strings are:
 
 | `rpt-any`
 | String action that outputs the most-recently outputted action.
+
+| `arpt`
+| String action that outputs the single most-recently typed key unless a
+aubstitution is specified.
 |===
 
 **Description**
@@ -1173,6 +1177,23 @@ and would output `ctrl+c` in the example case.
   rpt-any a s d f
 )
 ----
+
+the `arpt` (or `alt-repeat`) action functions the same way as `rpt` but takes a
+list of keycode pairs as argument. If the last keycode correspond with the
+first keycode in a pair, then the associated keycode will be sent instead.
+
+In the example below, `s` and `f` are repeated as usual, but pressing `arpt`
+after `a` or `d` will send `q` and `e` respectively
+
+----
+(deflayer has-alt-repeat
+  (arpt (a q d e)) a s d f
+)
+----
+
+NOTE: Currently, `arpt` only allows for simple keycode to keycode
+substitutions. If you need a more complex substitution, you could use a
+`switch` using the `key-history` syntax: <<key-history-and-key-timing>>
 
 [[release-a-key-or-layer]]
 === Release a key or layer
@@ -2798,6 +2819,10 @@ and 8 is 8th most recent key pressed.
   )
 )
 ----
+
+NOTE: If the default action for this type of `switch` is a `repeat` key, then
+you should consider using an `alt-repeat` key, as the syntax is a lot more
+compact and simpler. For more information, check the <<repeat-key>> section.
 
 The `key-timing` compares how long ago recent key typing events occurred.
 It accepts, in order,

@@ -1551,6 +1551,35 @@ impl Kanata {
                                 self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
                             }
                         }
+                        CustomAction::AltRepeat { substitutions } => {
+                            let base_keycode = self.last_pressed_key;
+                            let next_keycode = match substitutions.iter().find(|(x, _)| base_keycode == *x) {
+                                Some(&(_, new_keycode)) => new_keycode,
+                                None => base_keycode,
+                            };
+                            let base_osc: OsCode = base_keycode.into();
+                            let next_osc: OsCode = next_keycode.into();
+                            log::debug!("alt-repeating a keypress {base_osc:?} -> {next_osc:?}");
+                            let mut do_caps_word = false;
+                            if !cur_keys.contains(&KeyCode::LShift) {
+                                if let Some(ref mut cw) = self.caps_word {
+                                    cur_keys.push(next_keycode);
+                                    let prev_len = cur_keys.len();
+                                    cw.maybe_add_lsft(cur_keys);
+                                    if cur_keys.len() > prev_len {
+                                        do_caps_word = true;
+                                        press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
+                                    }
+                                }
+                            }
+                            // Release key in case the most recently pressed key is still pressed.
+                            release_key(&mut self.kbd_out, base_osc)?;
+                            press_key(&mut self.kbd_out, next_osc)?;
+                            release_key(&mut self.kbd_out, next_osc)?;
+                            if do_caps_word {
+                                self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                            }
+                        },
                         CustomAction::DynamicMacroRecord(macro_id) => {
                             if let Some((macro_id, prev_recorded_macro)) =
                                 begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)

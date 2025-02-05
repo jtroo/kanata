@@ -944,12 +944,17 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 ;; output a chord like `ctrl+c` if the previous key pressed was `C-c` - it
 ;; will only output `c`. There is a variant `rpt-any` which will repeat the
 ;; previous action and would work for that use case.
+;;
+;; The `arpt` action functions the same as `rpt` but takes a list of
+;; substitutions as argument. Here, the keys most keys are repeated upon
+;; pressing this key, ;; except `d` and `u`, who will send `e` and `n`
+;; respectively.
 (deflayer misc
   _    _    _    _    _    _    _    _    _    @é   @è   _    ì #|random custom key for testing|#   _
   _    _    @ab1 _    _    _    ins  @{   @}   [    ]    _    _    +
   @cw  _    _    _    C-u  _    del  bspc esc  ret  _    _    _
   @cwc C-z  C-x  C-c  C-v  _    _    _    @td  @os1 @os2 @os3
-  rpt rpt-any _            _              _    _    _
+  rpt rpt-any _            _              _    _    (arpt (d e u n))
 )
 
 

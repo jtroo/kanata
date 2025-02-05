@@ -1823,6 +1823,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         ON_RELEASE | ON_RELEASE_A => parse_on_release(&ac[1..], s),
         ON_IDLE => parse_on_idle(&ac[1..], s),
         HOLD_FOR_DURATION => parse_hold_for_duration(&ac[1..], s),
+        ALT_REPEAT | ALT_REPEAT_A => parse_alt_repeat(&ac[1..], s),
         MWHEEL_UP | MWHEEL_UP_A => parse_mwheel(&ac[1..], MWheelDirection::Up, s),
         MWHEEL_DOWN | MWHEEL_DOWN_A => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_LEFT | MWHEEL_LEFT_A => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
@@ -3922,3 +3923,30 @@ fn parse_unmod(
         _ => panic!("Unknown unmod type {unmod_type}"),
     }
 }
+
+fn parse_alt_repeat(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    let Some(list) = ac_params.first().and_then(|s| s.list(None)) else {
+        bail!("alt-repeat needs a list of previous-next keycodes")
+    };
+    if list.len() % 2 != 0 {
+        bail!(
+            "alt-repeat needs a list of previous-next keycodes, found {} items",
+            ac_params.len()
+        )
+    }
+    let mut base_key_set = HashSet::default();
+    let key_list = parse_key_list(&ac_params[0], s, "alt-repeat parse key list")?;
+    for key in key_list.iter().step_by(2) {
+        if !base_key_set.insert(key) {
+            bail!("duplicated base keycode in alt-repeat: {}", key)
+        }
+    }
+    use itertools::Itertools;
+    let substitutions = key_list
+        .iter()
+        .tuples()
+        .map(|(a, b)| (a.into(), b.into()))
+        .collect();
+    custom(CustomAction::AltRepeat { substitutions }, &s.a)
+}
+
