@@ -125,6 +125,7 @@ fn parse_press_release_toggle_vkeys() {
 }
 
 #[test]
+#[cfg(target_pointer_width = "64")]
 fn sizeof_state() {
     init_log();
     assert_eq!(
