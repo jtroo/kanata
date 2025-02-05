@@ -250,10 +250,10 @@ impl<T> CustomEvent<'_, T> {
 
 /// Metadata about normal key flags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct NormalKeyFlags(pub u16);
+pub struct NormalKeyFlags(pub u8);
 
-pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u16 = 0x0001;
-pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE: u16 = 0x0002;
+pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u8 = 0x01;
+pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE: u8 = 0x02;
 
 impl NormalKeyFlags {
     pub fn nkf_clear_on_next_action(self) -> bool {
