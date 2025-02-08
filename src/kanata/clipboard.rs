@@ -134,7 +134,7 @@ pub(crate) fn clpb_save(id: u16, save_data: &mut SavedClipboardData) {
 
 pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {
     let Some(restore_data) = save_data.get(&id) else {
-        log::warn!("tried to set clipboard with missing data {id}, doing nothing");
+        log::warn!("tried to set clipboard with missing data in id {id}, doing nothing");
         return;
     };
     for _ in 0..10 {
@@ -160,7 +160,7 @@ pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {
 }
 
 pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboardData) {
-    log::trace!("setting save slot {id} with {content}");
+    log::trace!("setting save id {id} with {content}");
     save_data.insert(id, Text(content.into()));
 }
 
@@ -189,7 +189,7 @@ pub(crate) fn clpb_save_cmd_set(
         None => "",
     };
     let content = run_cmd_get_stdout(cmd_and_args, stdin_content);
-    log::trace!("setting save slot {id} with {content}");
+    log::trace!("setting save id {id} with {content}");
     save_data.insert(id, Text(content));
 }
 

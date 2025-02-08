@@ -2473,8 +2473,8 @@ enum CmdType {
     /// Execute command and set clipboard to output. Clipboard content is passed as stdin to the
     /// command.
     ClipboardSet,
-    /// Execute command and set clipboard save slot to output.
-    /// Clipboard save slot content is passed as stdin to the command.
+    /// Execute command and set clipboard save id to output.
+    /// Clipboard save id content is passed as stdin to the command.
     ClipboardSaveSet,
 }
 
