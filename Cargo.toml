@@ -40,6 +40,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+arboard = "3.4"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default-features = false }
 dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }

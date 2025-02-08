@@ -986,6 +986,8 @@ are composed of multiple codepoints.
 
 **Description**
 
+NOTE: The <<clipboard-actions>> may output unicode characters more consistently.
+
 The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
 a composed character, so 🤲, but not 🤲🏿).
 If you want to output a glyph that is composed of multiple codepoints,
@@ -3063,6 +3065,101 @@ chorded lists are supported. Other actions are not supported.
 
   ;; powershell: type date-time as YYYY-MM-DD HH:MM
   pdp (cmd-output-keys powershell.exe "echo '(' (((Get-Date -Format 'yyyy-MM-dd HH:mm').toCharArray() -join ' ').insert(20, ' spc ') -replace ':','S-;') ')'")
+)
+----
+
+[[clipboard-actions]]
+=== clipboard actions
+
+**Reference**
+
+Clipboard actions can manipulate the operating system clipboard
+alongside "save ids".
+To paste, you would use an action such as `C-v`;
+Kanata has no builtin paste action.
+
+.Syntax:
+[source]
+----
+(clipboard-set   $clipboard-string)
+(clipboard-save  $save-id)
+(clipboard-restore    $save-id)
+(clipboard-save-swap  $save-id $save-id)
+(clipboard-cmd-set  $binary $arg1 $arg2 ... $argN)
+(clipboard-save-cmd-set  $save-id $binary $arg1 $arg2 ... $argN)
+----
+
+[cols="1,3"]
+|===
+| `clipboard-set`
+| Sets the clipboard to the specified string.
+
+| `clipboard-save`
+| Saves the current clipboard content with the specified ID.
+
+| `clipboard-restore`
+| Sets the clipboard to content saved with the specified ID.
+If the save ID content is blank, this will do nothing.
+
+| `clipboard-save-swap`
+| Swaps the content of two save IDs.
+
+| `clipboard-cmd-set`
+| Sets the clipboard to the output of the command.
+The current content of the clipboard is passed to stdin of the command
+if the current content is text.
+If the content is an image, nothing is passed to stdin.
+
+| `clipboard-save-cmd-set`
+| Sets the save ID content to the output of the command.
+The current content of the save ID is passed to stdin of the command
+if the current content is text.
+If the content is an image, nothing is passed to stdin.
+
+| `$clipboard-string`
+| Fixed string to set the operating system clipboard to.
+
+| `$save-id`
+| A number `0-65535` representing an ID of saved clipboard content.
+
+| `$binary`
+| Executable binary to run.
+
+| `$arg`
+| Argument passed into the binary.
+|===
+
+**Description**
+
+You can use clipboard actions to save clipboard content,
+paste arbitrary content,
+and then restore the original clipboard content.
+This functionality is similar to what some text expanders do.
+You can additionally use shell commands to manipulate
+clipboard content in arbitrary ways.
+This can all be done in a single command via <<macro>>.
+
+Note that you will likely want to add delays in between components,
+because clipboard systems take some time to propagate updates.
+
+The example below is a macro that pastes the content of the clipboard
+twice with a space in between,
+while restoring the original clipboard content at the end.
+Notable is that the example uses `C-v` but this may not work for you.
+If you have OS-level remapping, the `v` may be different
+to effectively paste.
+Something that may also work is `S-ins`
+
+.Example:
+[source]
+----
+(macro
+ (clipboard-save 0)
+ 20
+ (clipboard-cmd-set powershell.exe -c r#"$v = ($Input | Select-Object -First 1); Write-Host -NoNewLine "$v $v""#)
+ 300
+ C-v
+ (clipboard-restore 0)
 )
 ----
 

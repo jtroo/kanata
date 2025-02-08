@@ -118,6 +118,13 @@ pub const ON_RELEASE: &str = "on-release";
 pub const ON_RELEASE_A: &str = "on↑";
 pub const ON_IDLE: &str = "on-idle";
 pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
+pub const CLIPBOARD_SET: &str = "clipboard-set";
+pub const CLIPBOARD_CMD_SET: &str = "clipboard-cmd-set";
+pub const CLIPBOARD_SAVE: &str = "clipboard-save";
+pub const CLIPBOARD_RESTORE: &str = "clipboard-restore";
+pub const CLIPBOARD_SAVE_SET: &str = "clipboard-save-set";
+pub const CLIPBOARD_SAVE_CMD_SET: &str = "clipboard-save-cmd-set";
+pub const CLIPBOARD_SAVE_SWAP: &str = "clipboard-save-swap";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -235,6 +242,13 @@ pub fn is_list_action(ac: &str) -> bool {
         MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE,
         ONE_SHOT_PAUSE_PROCESSING,
+        CLIPBOARD_SET,
+        CLIPBOARD_CMD_SET,
+        CLIPBOARD_SAVE,
+        CLIPBOARD_RESTORE,
+        CLIPBOARD_SAVE_SET,
+        CLIPBOARD_SAVE_CMD_SET,
+        CLIPBOARD_SAVE_SWAP,
     ];
     LIST_ACTIONS.contains(&ac)
 }

@@ -1872,6 +1872,13 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
+        CLIPBOARD_SET => parse_clipboard_set(&ac[1..], s),
+        CLIPBOARD_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSet),
+        CLIPBOARD_SAVE => parse_clipboard_save(&ac[1..], s),
+        CLIPBOARD_RESTORE => parse_clipboard_restore(&ac[1..], s),
+        CLIPBOARD_SAVE_SET => parse_clipboard_save_set(&ac[1..], s),
+        CLIPBOARD_SAVE_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSaveSet),
+        CLIPBOARD_SAVE_SWAP => parse_clipboard_save_swap(&ac[1..], s),
         _ => unreachable!(),
     }
 }
@@ -2459,8 +2466,16 @@ fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
 }
 
 enum CmdType {
-    Standard,   // Execute command in own thread
-    OutputKeys, // Execute command and output stdout
+    /// Execute command in own thread.
+    Standard,
+    /// Execute command synchronously and output stdout as macro-like SExpr.
+    OutputKeys,
+    /// Execute command and set clipboard to output. Clipboard content is passed as stdin to the
+    /// command.
+    ClipboardSet,
+    /// Execute command and set clipboard save id to output.
+    /// Clipboard save id content is passed as stdin to the command.
+    ClipboardSaveSet,
 }
 
 // Parse cmd, but there are 2 arguments before specifying normal log and error log
@@ -2509,6 +2524,25 @@ fn parse_cmd(
     }
     #[cfg(feature = "cmd")]
     {
+        if matches!(cmd_type, CmdType::ClipboardSaveSet) {
+            const ERR_STR: &str = "expects a save ID and at least one string";
+            if !s.is_cmd_enabled {
+                bail!("To use cmd you must put in defcfg: danger-enable-cmd yes.");
+            }
+            if ac_params.len() < 2 {
+                bail!("{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
+            }
+            let mut cmd = vec![];
+            let save_id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+            collect_strings(&ac_params[1..], &mut cmd, s);
+            if cmd.is_empty() {
+                bail_expr!(&ac_params[1], "{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
+            }
+            return Ok(s.a.sref(Action::Custom(
+                s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveCmdSet(save_id, cmd))),
+            )));
+        }
+
         const ERR_STR: &str = "cmd expects at least one string";
         if !s.is_cmd_enabled {
             bail!("To use cmd you must put in defcfg: danger-enable-cmd yes.");
@@ -2522,6 +2556,8 @@ fn parse_cmd(
             .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
                 CmdType::Standard => CustomAction::Cmd(cmd),
                 CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
+                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmd),
+                CmdType::ClipboardSaveSet => unreachable!(),
             })))))
     }
 }
@@ -3252,6 +3288,76 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
     let lrld_file_path = spanned_filepath.t.trim_atom_quotes();
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
         CustomAction::LiveReloadFile(lrld_file_path.to_string()),
+    )))))
+}
+
+fn parse_clipboard_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard string>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_SET} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let expr = &ac_params[0];
+    let clip_string = match expr {
+        SExpr::Atom(filepath) => filepath,
+        SExpr::List(_) => {
+            bail_expr!(&expr, "Clipboard string cannot be a list")
+        }
+    };
+    let clip_string = clip_string.t.trim_atom_quotes();
+    Ok(s.a.sref(Action::Custom(s.a.sref(
+        s.a.sref_slice(CustomAction::ClipboardSet(clip_string.to_string())),
+    ))))
+}
+
+fn parse_clipboard_save(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard save id (0-65535)>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_SAVE} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::ClipboardSave(id))),
+    )))
+}
+
+fn parse_clipboard_restore(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 1 parameter: <clipboard save id (0-65535)>";
+    if ac_params.len() != 1 {
+        bail!("{CLIPBOARD_RESTORE} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::ClipboardRestore(id))),
+    )))
+}
+
+fn parse_clipboard_save_swap(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "expects 2 parameters: <clipboard save id (0-65535)> <clipboard save id #2>";
+    if ac_params.len() != 2 {
+        bail!("{CLIPBOARD_SAVE_SWAP} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id1 = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    let id2 = parse_u16(&ac_params[1], s, "clipboard save ID")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveSwap(id1, id2))),
+    )))
+}
+
+fn parse_clipboard_save_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "expects 2 parameters: <clipboard save id (0-65535)> <save content>";
+    if ac_params.len() != 2 {
+        bail!("{CLIPBOARD_SAVE_SET} {ERR_MSG}, found {}", ac_params.len());
+    }
+    let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
+    let save_content = ac_params[1]
+        .atom(s.vars())
+        .ok_or_else(|| anyhow_expr!(&ac_params[1], "save content must be a string"))?;
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::ClipboardSaveSet(id, save_content.into()),
     )))))
 }
 

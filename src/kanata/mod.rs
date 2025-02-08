@@ -32,6 +32,9 @@ use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
 use kanata_tcp_protocol::ServerMessage;
 
+mod clipboard;
+use clipboard::*;
+
 mod dynamic_macro;
 use dynamic_macro::*;
 
@@ -237,6 +240,8 @@ pub struct Kanata {
     /// When > 0, it means macros should be cancelled on the next press.
     /// Upon cancelling this should be set to 0.
     pub macro_on_press_cancel_duration: u32,
+    /// Stores user's saved clipboard contents.
+    pub saved_clipboard_content: SavedClipboardData,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -440,6 +445,7 @@ impl Kanata {
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
+            saved_clipboard_content: Default::default(),
         })
     }
 
@@ -575,6 +581,7 @@ impl Kanata {
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
+            saved_clipboard_content: Default::default(),
         })
     }
 
@@ -1615,6 +1622,27 @@ impl Kanata {
                                     layout.event(Event::Press(x, y));
                                     duration
                                 });
+                        }
+                        CustomAction::ClipboardSet(clipboard_string) => {
+                            clpb_set(clipboard_string);
+                        }
+                        CustomAction::ClipboardCmdSet(cmd_params) => {
+                            clpb_cmd_set(cmd_params);
+                        }
+                        CustomAction::ClipboardSave(id) => {
+                            clpb_save(*id, &mut self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardRestore(id) => {
+                            clpb_restore(*id, &self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardSaveSet(id, clipboard_string) => {
+                            clpb_save_set(*id, clipboard_string, &mut self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardSaveCmdSet(id, cmd_params) => {
+                            clpb_save_cmd_set(*id, cmd_params, &mut self.saved_clipboard_content);
+                        }
+                        CustomAction::ClipboardSaveSwap(id1, id2) => {
+                            clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
                         }
                         CustomAction::FakeKeyOnRelease { .. }
                         | CustomAction::DelayOnRelease(_)

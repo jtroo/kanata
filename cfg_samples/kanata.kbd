@@ -1471,3 +1471,23 @@ rqa	request assistance
 You can read about zippychord in more detail in the configuration guide.
 
 |#
+
+#|
+
+Clipboard actions allow you to manipulate the clipboard.
+To paste, you should manually output C-v,
+or whatever key output is necessary to paste.
+E.g. S-ins might also work.
+
+|#
+
+(deflayermap (clip)
+ a (clipboard-set       clip)
+ b (clipboard-save      0)
+ c (clipboard-restore   0)
+ d (clipboard-save-swap 0 65535)
+ #| actions with cmd only works with the compilation flags and defcfg enablement.
+ e (clipboard-cmd-set powershell.exe -c "echo 'hello world'")
+ f (clipboard-save-cmd-set 0 bash -c "echo 'goodbye'")
+ |#
+)
