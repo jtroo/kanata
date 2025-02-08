@@ -1534,6 +1534,8 @@ fn parse_cmd() {
     1 (cmd hello world)
     2 (cmd (hello world))
     3 (cmd $x $y ($z))
+    4 (clipboard-cmd-set powershell.exe -c "echo 'hello world'")
+    5 (clipboard-save-cmd-set 0 bash -c "echo 'goodbye'")
 )
 "#;
     parse_cfg(source)
@@ -2089,4 +2091,18 @@ fn reverse_release_order_must_be_within_multi() {
         e.msg,
         "reverse-release-order is only allowed inside of a (multi ...) action list"
     );
+}
+
+#[test]
+fn parse_clipboard_actions() {
+    let source = "
+(defsrc)
+(deflayermap (base)
+ a (clipboard-set       clip)
+ b (clipboard-save      0)
+ c (clipboard-restore   0)
+ d (clipboard-save-swap 0 65535)
+)
+";
+    parse_cfg(source).map(|_| ()).expect("success");
 }
