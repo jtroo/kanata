@@ -289,7 +289,8 @@ pub struct MoveMouseAccelState {
     pub max_distance: u16,
 }
 
-type Lazy<T> = std::sync::LazyLock<T>;
+use once_cell::sync::Lazy;
+
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 

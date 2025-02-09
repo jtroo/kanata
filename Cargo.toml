@@ -40,28 +40,31 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
-arboard = "3.4"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default-features = false }
 dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }
 instant = { version = "0.1.12", default-features = false }
 log = { version = "0.4.8", default-features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
+once_cell = "1"
 parking_lot = "0.12"
 radix_trie = "0.2"
 rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default-features = false, optional = true }
 time = "0.3.36"
-kanata-keyberon = "0.180.1"
-kanata-parser = "0.180.1"
-kanata-tcp-protocol = "0.180.1"
+# kanata-keyberon = "0.180.1"
+# kanata-parser = "0.180.1"
+# kanata-tcp-protocol = "0.180.1"
 # Uncomment below and comment out above for testing local changes.
 # Otherwise any changes to the local files will not reflect in the compiled
 # binary.
-# kanata-keyberon = { path = "keyberon" }
-# kanata-parser =   { path = "parser" }
-# kanata-tcp-protocol = { path = "tcp_protocol" }
+kanata-keyberon = { path = "keyberon" }
+kanata-parser =   { path = "parser" }
+kanata-tcp-protocol = { path = "tcp_protocol" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = "3.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.1.4"
