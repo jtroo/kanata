@@ -1,7 +1,6 @@
 //! Platform specific code for OS key code mappings.
 
 use kanata_keyberon::key_code::*;
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
 
@@ -100,6 +99,7 @@ impl OsCode {
     }
 }
 
+type Lazy<T> = std::sync::LazyLock<T>;
 static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {
     let mut mappings = HashMap::default();
     add_default_str_osc_mappings(&mut mappings);
