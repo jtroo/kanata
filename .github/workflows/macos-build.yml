@@ -28,7 +28,7 @@ jobs:
           mv target/aarch64-apple-darwin/release/kanata artifacts-arm64/kanata_macos_arm64
           cargo build --release --features cmd --target aarch64-apple-darwin
           mv target/aarch64-apple-darwin/release/kanata artifacts-arm64/kanata_macos_cmd_allowed_arm64
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: macos-binaries-arm64
           path: |
@@ -51,7 +51,7 @@ jobs:
         mv target/release/kanata artifacts/kanata_macos_x86_64
         cargo build --release --features cmd
         mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x86_64
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: macos-binaries-x86-64
         path: |
