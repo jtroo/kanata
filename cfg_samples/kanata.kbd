@@ -1430,7 +1430,7 @@ Yet another chording implementation - zippychord:
 
 
 ;; This is a sample for US international layout.
-(defzippy-experimental
+(defzippy
   zippy.txt
   on-first-press-chord-deadline 500
   idle-reactivate-time          500

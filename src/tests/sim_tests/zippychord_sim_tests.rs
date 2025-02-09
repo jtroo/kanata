@@ -1,7 +1,6 @@
 use super::*;
 
-static ZIPPY_CFG: &str =
-    "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy-experimental file)";
+static ZIPPY_CFG: &str = "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy file)";
 static ZIPPY_FILE_CONTENT: &str = "
 dy	day
 dy 1	Monday
@@ -372,7 +371,7 @@ fn sim_zippychord_prefix() {
 #[test]
 fn sim_zippychord_smartspace_full() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space full)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -386,7 +385,7 @@ fn sim_zippychord_smartspace_full() {
 
     // Test that prefix works as intended.
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -403,7 +402,7 @@ fn sim_zippychord_smartspace_full() {
 #[test]
 fn sim_zippychord_smartspace_spaceonly() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space add-space-only)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -417,7 +416,7 @@ fn sim_zippychord_smartspace_spaceonly() {
 
     // Test that prefix works as intended.
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -434,7 +433,7 @@ fn sim_zippychord_smartspace_spaceonly() {
 #[test]
 fn sim_zippychord_smartspace_none() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space none)",
         "d:d d:y t:10 u:d u:y t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -448,7 +447,7 @@ fn sim_zippychord_smartspace_none() {
 
     // Test that prefix works as intended.
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space add-space-only)",
         "d:p d:r t:10 u:p u:r t:100 d:. t:10 u:. t:10",
         ZIPPY_FILE_CONTENT,
@@ -465,7 +464,7 @@ fn sim_zippychord_smartspace_none() {
 #[test]
 fn sim_zippychord_smartspace_overlap() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space full)",
         "d:r t:10 d:q t:10 d:a t:10",
         ZIPPY_FILE_CONTENT,
@@ -480,7 +479,7 @@ fn sim_zippychord_smartspace_overlap() {
         result
     );
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space full)",
         "d:1 d:2 d:3 d:4 t:20",
         ZIPPY_FILE_CONTENT,
@@ -498,7 +497,7 @@ fn sim_zippychord_smartspace_overlap() {
 #[test]
 fn sim_zippychord_smartspace_followup() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space full)",
         "d:d t:10 d:y t:10 u:d u:y t:10 d:1 t:300",
         ZIPPY_FILE_CONTENT,
@@ -517,7 +516,7 @@ fn sim_zippychord_smartspace_followup() {
 const CUSTOM_PUNC_CFG: &str = "\
 (defsrc)
 (deflayer base)
-(defzippy-experimental file
+(defzippy file
  smart-space full
  smart-space-punctuation (z ! ® *)
  output-character-mappings (
@@ -622,7 +621,7 @@ fn sim_zippychord_smartspace_custom_punc() {
 #[test]
 fn sim_zippychord_non_followup_subsequent_with_potential_followups_available() {
     let result = simulate_with_zippy_file_content(
-        "(defsrc)(deflayer base)(defzippy-experimental file
+        "(defsrc)(deflayer base)(defzippy file
          smart-space full)",
         "d:g d:. t:10 u:g u:. t:1000 d:g d:. t:10 u:g u:. t:1000",
         ZIPPY_FILE_CONTENT,
@@ -640,7 +639,7 @@ fn sim_zippychord_non_followup_subsequent_with_potential_followups_available() {
 const DEAD_KEYS_CFG: &str = "\
 (defsrc)
 (deflayer base)
-(defzippy-experimental file
+(defzippy file
  smart-space full
  output-character-mappings (
    ’ (no-erase ')

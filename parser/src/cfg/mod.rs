@@ -891,9 +891,22 @@ pub fn parse_cfg_raw_string(
         .into());
     }
 
+    let defzippy_filter = |exprs: &&Vec<SExpr>| -> bool {
+        if exprs.is_empty() {
+            return false;
+        }
+        if let SExpr::Atom(atom) = &exprs[0] {
+            matches!(atom.t.as_str(), "defzippy" | "defzippy-experimental")
+        } else {
+            false
+        }
+    };
+    let defzippy_spanned_filter =
+        |exprs: &&Spanned<Vec<SExpr>>| -> bool { defzippy_filter(&&exprs.t) };
+
     let zippy_exprs = root_exprs
         .iter()
-        .filter(gen_first_atom_filter("defzippy-experimental"))
+        .filter(defzippy_filter)
         .collect::<Vec<_>>();
     let zippy = match zippy_exprs.len() {
         0 => None,
@@ -904,7 +917,7 @@ pub fn parse_cfg_raw_string(
         _ => {
             let spanned = spanned_root_exprs
                 .iter()
-                .filter(gen_first_atom_filter_spanned("defzippy-experimental"))
+                .filter(defzippy_spanned_filter)
                 .nth(1)
                 .expect("> 2 overrides");
             bail_span!(
@@ -969,6 +982,7 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "deftemplate"
                 | "defchordsv2"
                 | "defchordsv2-experimental"
+                | "defzippy"
                 | "defzippy-experimental"
                 | "defseq" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),

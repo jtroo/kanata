@@ -1,3 +1,3 @@
 (defsrc)
 (deflayer base)
-(defzippy-experimental test.zch)
+(defzippy test.zch)

@@ -297,6 +297,13 @@ mod inner {
     ) -> Result<(ZchPossibleChords, ZchConfig)> {
         use crate::subset::GetOrIsSubsetOfKnownKey::*;
 
+        if exprs[0].atom(None).expect("should be atom") == "defzippy-experimental" {
+            log::warn!(
+                "You should replace defzippy-experimental with defzippy.\n\
+             Using -experimental will be invalid in the future."
+            );
+        }
+
         if exprs.len() < 2 {
             bail_expr!(
                 &exprs[0],

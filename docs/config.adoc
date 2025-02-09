@@ -3838,7 +3838,7 @@ item contains spaces.
 )
 ----
 
-For devices that do not have an easily identifiable device path like Bluetooth 
+For devices that do not have an easily identifiable device path like Bluetooth
 keyboards using the `linux-dev-names-include` option below is recommended.
 
 [[linux-only-linux-dev-names-include]]
@@ -3846,10 +3846,10 @@ keyboards using the `linux-dev-names-include` option below is recommended.
 
 In the case that `linux-dev` is omitted,
 this option defines a list of device names that should be included.
-Device names that do not exist in the list will be ignored.  
+Device names that do not exist in the list will be ignored.
 
-Device paths are not supported by this option; instead use the device names 
-as output by Kanata during startup.  Launch Kanata with a 
+Device paths are not supported by this option; instead use the device names
+as output by Kanata during startup.  Launch Kanata with a
 <<minimal-configuration,minimal configuration>> (any use of a `linux-dev*`
 option may hide devices) and look for lines beginning with "registering":
 
@@ -5153,14 +5153,13 @@ Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator
 
 **Reference**
 
-You may define a single `+defzippy-experimental+` configuration item.
-As suggested by the -experimental label, this feature is relatively recent.
-When using this you are at higher likelihood of bugs and breaking changes.
+You may define a single `+defzippy+` configuration item.
+This configuration enables chorded text expansion.
 
 .Configuration syntax within the kanata configuration
 [source]
 ----
-(defzippy-experimental
+(defzippy
   $zippy-filename ;; required
   on-first-press-chord-deadline $deadline-millis  ;; optional
   idle-reactivate-time          $idle-time-millis ;; optional
@@ -5182,7 +5181,7 @@ When using this you are at higher likelihood of bugs and breaking changes.
 | Relative or absolute file path.
 If relative, its path is relative to
 the directory containing the kanata configuration file.
-This must be the first item following `defzippy-experimental`.
+This must be the first item following `defzippy`.
 
 | `$deadline-millis`
 | Number of milliseconds.
@@ -5287,11 +5286,11 @@ will activate when zippy is enabled
 and all the defined chord keys are pressed simultaneously.
 The order of presses is not important.
 
-| `$chord-follow`
+| `$follow-chord`
 | 0 or more chords, used the same way as `$chord`.
 Having follow chords means the `$output` on the same line
 will activate upon first activating the earlier chord(s) in the same line,
-releasing all keys, and pressing the keys in `$chord-followN.M`.
+releasing all keys, and pressing the keys in `$follow-chordN.M`.
 Follow chords are separated from the previous chord by a space.
 If using a space in the follow chord, use two spaces;
 for an example see `Washington` in the sample below.
@@ -5316,7 +5315,7 @@ to inform kanata of additional mappings that may use Shift or AltGr.
 .Sample kanata configuration
 [source]
 ----
-(defzippy-experimental
+(defzippy
   zippy.txt
   on-first-press-chord-deadline 500
   idle-reactivate-time          500
@@ -5375,7 +5374,7 @@ inputs, layers, switch logic and other configurations.
 This is similar to how sequences operate
 and is unlike chords(v1) and chordsv2.
 Furthermore, outputs are all eager like `visible-backspaced` on sequences.
-If a zippchord activation occurs, typed keys are backspaced.
+If a zippychord activation occurs, typed keys are backspaced.
 
 To give an example, if one configures zippychord with a line like:
 
