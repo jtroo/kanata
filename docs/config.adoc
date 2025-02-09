@@ -28,11 +28,13 @@ may have content not applicable to the version you are using.
 See below for links to specific guide versions.
 
 ifdef::env-github[]
+* https://github.com/jtroo/kanata/blob/v1.8.0/docs/config.adoc[v1.8.0]
 * https://github.com/jtroo/kanata/blob/v1.7.0/docs/config.adoc[v1.7.0]
 * https://github.com/jtroo/kanata/blob/v1.6.1/docs/config.adoc[v1.6.1]
 * https://github.com/jtroo/kanata/blob/v1.6.0/docs/config.adoc[v1.6.0]
 endif::[]
 ifndef::env-github[]
+* link:/config-1.8.0.html[v1.8.0]
 * link:/config-1.7.0.html[v1.7.0]
 * link:/config-1.6.1.html[v1.6.1]
 * link:/config-1.6.0.html[v1.6.0]
