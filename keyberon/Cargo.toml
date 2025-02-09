@@ -1,6 +1,6 @@
 [package]
 name = "kanata-keyberon"
-version = "0.180.0"
+version = "0.180.1"
 authors = ["Guillaume Pinot <texitoi@texitoi.eu>", "Robin Krahl <robin.krahl@ireas.org>", "jtroo <j.andreitabs@gmail.com>"]
 edition = "2021"
 description = "Pure Rust keyboard firmware. Fork intended for use with kanata."

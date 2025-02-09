@@ -1,6 +1,6 @@
 [package]
 name = "kanata-tcp-protocol"
-version = "0.180.0"
+version = "0.180.1"
 edition = "2021"
 description = "TCP protocol for kanata. This does not follow semver."
 license = "LGPL-3.0-only"
