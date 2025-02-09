@@ -1681,7 +1681,7 @@ pub use std::io::{stdout, IsTerminal};
 pub use winapi::shared::minwindef::BOOL;
 pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
 
-use once_cell::sync::Lazy;
+type Lazy<T> = std::sync::LazyLock<T>;
 pub static IS_TERM: Lazy<bool> = Lazy::new(|| stdout().is_terminal());
 pub static IS_CONSOLE: Lazy<bool> =
     Lazy::new(|| unsafe { AttachConsole(ATTACH_PARENT_PROCESS) != 0i32 });
