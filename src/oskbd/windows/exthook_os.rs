@@ -1,7 +1,6 @@
 //! A function listener for keyboard input events replacing Windows keyboard hook API
 
 use core::fmt;
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use winapi::ctypes::*;
@@ -16,6 +15,7 @@ pub const LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS: u64 = 60;
 
 type HookFn = dyn FnMut(InputEvent) -> bool + Send + Sync + 'static;
 
+type Lazy<T> = std::sync::LazyLock<T>;
 pub static HOOK_CB: Lazy<Mutex<Option<Box<HookFn>>>> = Lazy::new(|| Mutex::new(None)); // store thread-safe hook callback with a mutex (can be called from an external process)
 
 pub struct KeyboardHook {} // reusing hook type for our listener
