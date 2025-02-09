@@ -1,5 +1,7 @@
 //! Contains the input/output code for keyboards on Macos.
 
+// Caused by unmaintained objc crate triggering warnings.
+#![allow(unexpected_cfgs)]
 #![cfg_attr(
     feature = "simulated_output",
     allow(dead_code, unused_imports, unused_variables, unused_mut)
