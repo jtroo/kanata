@@ -1828,8 +1828,10 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         RELEASE_LAYER | RELEASE_LAYER_A => parse_release_layer(&ac[1..], s),
         ON_PRESS_FAKEKEY | ON_PRESS_FAKEKEY_A => parse_on_press_fake_key_op(&ac[1..], s),
         ON_RELEASE_FAKEKEY | ON_RELEASE_FAKEKEY_A => parse_on_release_fake_key_op(&ac[1..], s),
-        ON_PRESS_FAKEKEY_DELAY | ON_PRESS_FAKEKEY_DELAY_A => parse_fake_key_delay(&ac[1..], s),
-        ON_RELEASE_FAKEKEY_DELAY | ON_RELEASE_FAKEKEY_DELAY_A => {
+        ON_PRESS_DELAY | ON_PRESS_FAKEKEY_DELAY | ON_PRESS_FAKEKEY_DELAY_A => {
+            parse_fake_key_delay(&ac[1..], s)
+        }
+        ON_RELEASE_DELAY | ON_RELEASE_FAKEKEY_DELAY | ON_RELEASE_FAKEKEY_DELAY_A => {
             parse_on_release_fake_key_delay(&ac[1..], s)
         }
         ON_IDLE_FAKEKEY => parse_on_idle_fakekey(&ac[1..], s),

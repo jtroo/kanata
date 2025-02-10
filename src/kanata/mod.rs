@@ -1723,8 +1723,8 @@ impl Kanata {
                             );
                             pbtn
                         }
-                        CustomAction::Delay(delay) => {
-                            log::debug!("on-press: sleeping for {delay} ms");
+                        CustomAction::DelayOnRelease(delay) => {
+                            log::debug!("on-release: sleeping for {delay} ms");
                             std::thread::sleep(time::Duration::from_millis((*delay).into()));
                             pbtn
                         }

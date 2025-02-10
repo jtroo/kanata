@@ -15,6 +15,7 @@ use rustc_hash::FxHashMap;
 mod block_keys_tests;
 mod capsword_sim_tests;
 mod chord_sim_tests;
+mod delay_tests;
 mod layer_sim_tests;
 mod macro_sim_tests;
 mod oneshot_tests;
