@@ -11,23 +11,19 @@ license = "LGPL-3.0-only"
 edition = "2021"
 
 [dependencies]
+anyhow = "1"
+bitflags = "2.5.0"
+bytemuck = "1.15.0"
 itertools = "0.12"
 log = { version = "0.4.8", default-features = false }
-anyhow = "1"
-parking_lot = "0.12"
+miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
+parking_lot = "0.12"
 patricia_tree = "0.8"
 rustc-hash = "1.1.0"
-miette = { version = "5.7.0", features = ["fancy"] }
 thiserror = "1.0.38"
 
-# kanata-keyberon = "0.180.1"
-# Uncomment below and comment out above for testing local changes.
-# Otherwise any changes to the local files will not reflect in the compiled
-# binary.
-kanata-keyberon = { path = "../keyberon" }
-bytemuck = "1.15.0"
-bitflags = "2.5.0"
+kanata-keyberon = { path = "../keyberon", version = "0.180.1" }
 
 [dev-dependencies]
 simplelog = "0.12.0"
