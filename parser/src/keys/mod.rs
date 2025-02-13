@@ -355,6 +355,12 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
 
+        "sls" | "SpotLightSearch" => OsCode::KEY_249,
+        "dtn" | "Dictation" => OsCode::KEY_250,
+        "dnd" | "DoNotDisturb" => OsCode::KEY_251,
+        "mctl" | "MissionControl" => OsCode::KEY_252,
+        "lpad" | "LaunchPad" => OsCode::KEY_253,
+        
         // Keys that behave as no-ops but can be used in sequences.
         // Also see: POTENTIAL PROBLEM - G-keys
         "nop0" => OsCode::KEY_676,
