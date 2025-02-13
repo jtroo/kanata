@@ -3165,6 +3165,30 @@ Something that may also work is `S-ins`
 )
 ----
 
+As another example you can use templates
+with clipboard actions to have a convenient clipboard-based
+text output while preserving the old clipboard content.
+This can fit the use case of "text expansion".
+
+.Example:
+[source]
+----
+(deftemplate text-paste (text)
+ (macro
+  (clipboard-save 0)
+  20
+  (clipboard-set $text)
+  300
+  C-v
+  (clipboard-restore 0)
+ ))
+
+(defalias
+ (myalias1 (t! text-paste "Hello world"))
+ (myalias2 (t! text-paste "Goodbye my old friend"))
+)
+----
+
 [[arbitrary-code]]
 === arbitrary-code
 
