@@ -1284,7 +1284,6 @@ impl TryFrom<PageCode> for OsCode {
                 code: 0xCF,
             } => Ok(OsCode::KEY_250),
             PageCode {
-                // not working
                 page: 0x01,
                 code: 0x9B,
             } => Ok(OsCode::KEY_251),
