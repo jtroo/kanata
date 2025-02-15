@@ -3184,8 +3184,8 @@ This can fit the use case of "text expansion".
  ))
 
 (defalias
- (myalias1 (t! text-paste "Hello world"))
- (myalias2 (t! text-paste "Goodbye my old friend"))
+ myalias1 (t! text-paste "Hello world")
+ myalias2 (t! text-paste "Goodbye my old friend")
 )
 ----
 
