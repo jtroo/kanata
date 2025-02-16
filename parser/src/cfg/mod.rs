@@ -1884,6 +1884,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         DYNAMIC_MACRO_RECORD_STOP_TRUNCATE => parse_macro_record_stop_truncate(&ac[1..], s),
         SWITCH => parse_switch(&ac[1..], s),
         SEQUENCE => parse_sequence_start(&ac[1..], s),
+        SEQUENCE_NOERASE => parse_sequence_noerase(&ac[1..], s),
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
         UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
@@ -3956,6 +3957,17 @@ fn parse_sequence_start(ac_params: &[SExpr], s: &ParserState) -> Result<&'static
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
     ))))
+}
+
+fn parse_sequence_noerase(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "sequence-noerase expects one: <noerase-count>";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}\nfound {} items", ac_params.len());
+    }
+    let count = parse_non_zero_u16(&ac_params[0], s, "noerase-count")?;
+    Ok(s.a.sref(Action::Custom(
+        s.a.sref(s.a.sref_slice(CustomAction::SequenceNoerase(count))),
+    )))
 }
 
 fn parse_unmod(

@@ -55,6 +55,12 @@ pub enum CustomAction {
     },
     SequenceCancel,
     SequenceLeader(u16, SequenceInputMode),
+    /// Purpose:
+    /// In case the user has dead keys in their OS layout, they may wish to send fewer backspaces upon
+    /// a successful completion of visible-backspaced sequences, because the number of key events
+    /// is larger than the number of backspace-able symbols typed within the application.
+    /// This custom action is a marker to accomplish the use case.
+    SequenceNoerase(u16),
     LiveReload,
     LiveReloadNext,
     LiveReloadPrev,
