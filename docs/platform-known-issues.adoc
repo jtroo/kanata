@@ -1,3 +1,14 @@
+= Hardware known issues
+
+At the electric circuit layer of many keyboards,
+cost-saving measures can lead to key presses not registering
+when pressing multiple keys simultaneously.
+Usually this happens with at least 3 key presses.
+Kanata cannot fix this issue.
+You can work around it by avoiding
+the problem key combination,
+or using a different keyboard.
+
 = Platform-dependent known issues
 
 == Preface
