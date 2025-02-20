@@ -11,7 +11,7 @@ body:
       options:
         - label: I've searched [platform-specific issues](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc), [issues](https://github.com/jtroo/kanata/issues) and [discussions](https://github.com/jtroo/kanata/discussions) to see if this has been reported before.
           required: true
-        - label: My issue is unrelated to multiple key presses, OR it is and I've confirmed it is not [key ghosting](https://github.com/jtroo/kanata/discussions/822).
+        - label: My issue does not involve multiple simultaneous key presses, OR it does but I've confirmed it is not [key rollover or ghosting](https://github.com/jtroo/kanata/discussions/822).
           required: true
   - type: textarea
     id: summary
