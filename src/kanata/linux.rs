@@ -3,13 +3,13 @@
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use evdev::{InputEvent, InputEventKind, RelativeAxisType};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::sync::mpsc::SyncSender as Sender;
 
 use super::*;
 

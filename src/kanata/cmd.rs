@@ -70,8 +70,8 @@ pub(super) enum KeyAction {
     Release(OsCode),
     Delay(u16),
 }
-use kanata_keyberon::key_code::KeyCode;
 use KeyAction::*;
+use kanata_keyberon::key_code::KeyCode;
 
 fn empty() -> std::vec::IntoIter<Item> {
     vec![].into_iter()

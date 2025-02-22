@@ -3,9 +3,9 @@
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
 pub use evdev::BusType;
-use evdev::{uinput, Device, EventType, InputEvent, Key, PropType, RelativeAxisType};
+use evdev::{Device, EventType, InputEvent, Key, PropType, RelativeAxisType, uinput};
 use inotify::{Inotify, WatchMask};
-use mio::{unix::SourceFd, Events, Interest, Poll, Token};
+use mio::{Events, Interest, Poll, Token, unix::SourceFd};
 use nix::ioctl_read_buf;
 use rustc_hash::FxHashMap as HashMap;
 use signal_hook::{
@@ -647,7 +647,9 @@ impl KbdOut {
     }
 
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
-        log::warn!("setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd");
+        log::warn!(
+            "setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd"
+        );
         Ok(())
     }
 }

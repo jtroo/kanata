@@ -1,12 +1,12 @@
-use crate::oskbd::*;
 use crate::Kanata;
+use crate::oskbd::*;
 
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
 use parking_lot::Mutex;
 use std::net::SocketAddr;
-use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::sync::mpsc::SyncSender as Sender;
 
 #[cfg(feature = "tcp_server")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -160,7 +160,9 @@ impl TcpServer {
                                                     }
                                                 };
                                                 if let Some(index) = index {
-                                                    log::info!("tcp server fake-key action: {name},{action:?}");
+                                                    log::info!(
+                                                        "tcp server fake-key action: {name},{action:?}"
+                                                    );
                                                     handle_fakekey_action(
                                                         to_action(action),
                                                         k.layout.bm(),
@@ -176,7 +178,9 @@ impl TcpServer {
                                                 );
                                                 match kanata.lock().kbd_out.set_mouse(x, y) {
                                                     Ok(_) => {
-                                                        log::info!("sucessfully did set mouse position to: x {x} y {y}");
+                                                        log::info!(
+                                                            "sucessfully did set mouse position to: x {x} y {y}"
+                                                        );
                                                         // Optionally send a success message to the
                                                         // client
                                                     }
@@ -202,11 +206,11 @@ impl TcpServer {
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
-                                                Ok(_) => {}
-                                                Err(err) => log::error!(
-                                                    "Error writing response to RequestCurrentLayerInfo: {err}"
-                                                ),
-                                            }
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to RequestCurrentLayerInfo: {err}"
+                                                    ),
+                                                }
                                             }
                                             ClientMessage::RequestCurrentLayerName {} => {
                                                 let mut k = kanata.lock();
@@ -216,11 +220,11 @@ impl TcpServer {
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
-                                                Ok(_) => {}
-                                                Err(err) => log::error!(
-                                                    "Error writing response to RequestCurrentLayerName: {err}"
-                                                ),
-                                            }
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to RequestCurrentLayerName: {err}"
+                                                    ),
+                                                }
                                             }
                                         }
                                         use kanata_parser::keys::*;
@@ -233,8 +237,8 @@ impl TcpServer {
                                     }
                                     Err(e) => {
                                         log::warn!(
-                                        "client sent an invalid message, disconnecting them. Err: {e:?}"
-                                    );
+                                            "client sent an invalid message, disconnecting them. Err: {e:?}"
+                                        );
                                         // Ignore write result because we're about to disconnect
                                         // the client anyway.
                                         let _ = stream.write_all(

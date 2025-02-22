@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError, sync_channel};
 use std::time;
 
 use super::PRESSED_KEYS;
@@ -73,7 +73,7 @@ impl Kanata {
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
-                      // The event loop is also required for the low-level keyboard hook to work.
+        // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
         Ok(())
     }
@@ -166,7 +166,9 @@ impl Kanata {
                 continue;
             }
 
-            log::error!("Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}");
+            log::error!(
+                "Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}"
+            );
             // Need to clear internal state about this key.
             // find coordinate(s) in keyberon associated with pvk
             let mut coords_to_clear = Vec::<KCoord>::new();
@@ -232,7 +234,9 @@ impl Kanata {
             if self.prev_keys.contains(&osc.into()) {
                 continue;
             }
-            log::error!("Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}");
+            log::error!(
+                "Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}"
+            );
             let _ = release_key(&mut self.kbd_out, osc);
         }
         drop(mapped_keys);

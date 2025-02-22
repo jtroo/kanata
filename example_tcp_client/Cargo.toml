@@ -2,7 +2,7 @@
 name = "kanata_example_tcp_client"
 description = "Example kanata TCP client"
 version = "1.1.0"
-edition = "2021"
+edition = "2024"
 license = "LGPL-3.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 
