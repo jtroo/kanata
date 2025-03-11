@@ -127,8 +127,6 @@ impl TcpServer {
                                                         .lock()
                                                         .layer_info
                                                         .iter()
-                                                        .step_by(2) // skip every other name,
-                                                        // which is a duplicate
                                                         .map(|info| info.name.clone())
                                                         .collect::<Vec<_>>(),
                                                 };
