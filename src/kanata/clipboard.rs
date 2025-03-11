@@ -178,7 +178,7 @@ mod real {
         } else {
             panic!("did not expect image data");
         }
-        assert!(sd.get(&2).is_none());
+        assert!(!sd.contains_key(&2));
     }
 
     pub(crate) fn clpb_save_cmd_set(
@@ -218,7 +218,7 @@ mod real {
         } else {
             panic!("did not expect image data");
         }
-        assert!(sd.get(&2).is_none());
+        assert!(!sd.contains_key(&2));
 
         clpb_save_cmd_set(
             3,
@@ -266,7 +266,7 @@ mod real {
 
         sd.insert(3, Text("three".into()));
         clpb_save_swap(3, 4, &mut sd);
-        assert!(sd.get(&3).is_none());
+        assert!(!sd.contains_key(&3));
         if let Text(s) = sd.get(&4).unwrap() {
             assert_eq!(s.as_str(), "three");
         } else {
@@ -280,11 +280,11 @@ mod real {
         } else {
             panic!("did not expect image data");
         }
-        assert!(sd.get(&6).is_none());
+        assert!(!sd.contains_key(&6));
 
         clpb_save_swap(7, 8, &mut sd);
-        assert!(sd.get(&7).is_none());
-        assert!(sd.get(&8).is_none());
+        assert!(!sd.contains_key(&7));
+        assert!(!sd.contains_key(&8));
     }
 }
 

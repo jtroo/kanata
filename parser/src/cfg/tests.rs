@@ -1948,7 +1948,7 @@ fn test_defaliasenvcond() {
         ""
     })
     .expect("parses");
-    assert!(s.aliases.get("a").is_none());
+    assert!(!s.aliases.contains_key("a"));
 }
 
 #[test]
