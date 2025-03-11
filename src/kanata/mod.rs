@@ -2,7 +2,7 @@
 
 #[cfg(all(target_os = "windows", feature = "gui"))]
 use crate::gui::win::*;
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use kanata_parser::sequences::*;
 use log::{error, info};
 use parking_lot::Mutex;
@@ -19,12 +19,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time;
 
-use crate::oskbd::{KeyEvent, *};
-#[cfg(feature = "tcp_server")]
-use crate::tcp_server::simple_sexpr_to_json_array;
 #[cfg(feature = "tcp_server")]
 use crate::SocketAddrWrapper;
 use crate::ValidatedArgs;
+use crate::oskbd::{KeyEvent, *};
+#[cfg(feature = "tcp_server")]
+use crate::tcp_server::simple_sexpr_to_json_array;
 use kanata_parser::cfg;
 use kanata_parser::cfg::list_actions::*;
 use kanata_parser::cfg::*;
@@ -317,7 +317,9 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
+                error!(
+                    "Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group"
+                );
                 bail!(err)
             }
         };
@@ -475,7 +477,9 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!("Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group");
+                error!(
+                    "Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group"
+                );
                 bail!(err)
             }
         };
@@ -2305,9 +2309,9 @@ fn check_for_exit(_event: &KeyEvent) {
                 native_windows_gui::stop_thread_dispatch();
                 #[cfg(feature = "interception_driver")]
                 send_gui_exit_notice(); // interception driver is running in another thread to allow
-                                        // GUI take the main one, so it's calling check_for_exit
-                                        // from a thread that has no access to the main one, so
-                                        // can't stop main thread's dispatch
+                // GUI take the main one, so it's calling check_for_exit
+                // from a thread that has no access to the main one, so
+                // can't stop main thread's dispatch
             }
             #[cfg(all(
                 not(target_os = "linux"),
