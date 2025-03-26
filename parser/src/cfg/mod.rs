@@ -3390,7 +3390,7 @@ fn parse_layers(
     let mut defsrc_layer = s.defsrc_layer;
     for (layer_level, layer) in s.layer_exprs.iter().enumerate() {
         match layer {
-            // The skip is done to skip the the `deflayer` and layer name tokens.
+            // The skip is done to skip the `deflayer` and layer name tokens.
             LayerExprs::DefsrcMapping(layer) => {
                 // Parse actions in the layer and place them appropriately according
                 // to defsrc mapping order.
