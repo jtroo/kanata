@@ -2142,7 +2142,7 @@ or an output-chord-prefixed list of more macro-actions.
 
 | `macro-repeat-$cancel-variant`
 | Repeat the macro while held.
-Cancels the final repeat according the the behaviour of one of the variants:
+Cancels the final repeat according the behaviour of one of the variants:
 `release-cancel`, `cancel-on-press`, `release-cancel-and-cancel-on-press`.
 |===
 
@@ -2696,7 +2696,7 @@ One case is a triple of:
 
 The default use of the logic check behaves similarly to fork.
 
-For example, the the logic check `(a b c)` will activate the corresponding action
+For example, the logic check `(a b c)` will activate the corresponding action
 if any of a, b, or c are currently pressed.
 
 TIP: the keys `nop0-nop9` can be used as no-op outputs that

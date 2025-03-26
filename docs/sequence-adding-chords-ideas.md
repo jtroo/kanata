@@ -61,7 +61,7 @@ of this type of sequence, but that seems complicated.
 Or maybe have a `u16` with a special bit pattern that could be used
 to differentiate between `(S-(a b))` and `(lsft a b)`.
 For now, let's say that the bit pattern is `0xFFFF`.
-If a modifier is pressed and the the sequence `[..., <mod>, 0xFFFF]`
+If a modifier is pressed and the sequence `[..., <mod>, 0xFFFF]`
 exists in the trie: continue processing the sequence in mod-aware mode.
 
 OR for simplicity, just say "screw backwards compatibility" and force users

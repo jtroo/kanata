@@ -133,7 +133,7 @@ pub struct Kanata {
     /// Tracks the progress of an active dynamic macro. Is Some(...) when a dynamic macro is being
     /// replayed and None otherwise.
     pub dynamic_macro_replay_state: Option<DynamicMacroReplayState>,
-    /// Tracks the the inputs for a dynamic macro recording. Is Some(...) when a dynamic macro is
+    /// Tracks the inputs for a dynamic macro recording. Is Some(...) when a dynamic macro is
     /// being recorded and None otherwise.
     pub dynamic_macro_record_state: Option<DynamicMacroRecordState>,
     /// Global overrides defined in the user configuration.
