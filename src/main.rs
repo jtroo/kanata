@@ -2,7 +2,7 @@
 // disable default console for a Windows GUI app
 mod main_lib;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
@@ -148,9 +148,9 @@ mod cli {
         if let Some(config_file) = cfg_paths.first() {
             if !config_file.exists() {
                 bail!(
-                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                cfg_paths[0].to_str().unwrap_or("?")
-            )
+                    "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                    cfg_paths[0].to_str().unwrap_or("?")
+                )
             }
         } else {
             bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
@@ -194,7 +194,9 @@ mod cli {
         let kanata_arc = Kanata::new_arc(&args)?;
 
         if !args.nodelay {
-            log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
+            log::info!(
+                "Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep."
+            );
             std::thread::sleep(std::time::Duration::from_secs(2));
         }
 
