@@ -60,7 +60,7 @@ use_local_deps:
 
 change_subcrate_versions version:
   sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
-  sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\)\) = ".*$/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
+  sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\).*version\) = "[0-9.]*"/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
 
 cov:
   cargo llvm-cov clean --workspace
