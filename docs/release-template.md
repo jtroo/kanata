@@ -85,6 +85,7 @@ https://github.com/jtroo/kanata/discussions/1537
 
 <details>
   <summary>Click to expand</summary>
+
 First install Karabiner driver for macOS 11 and newer:
 
 - Install the [V5 Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-5.0.0.pkg).
