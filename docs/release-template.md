@@ -71,7 +71,22 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtr
 
 **WARNING**: feature support on macOS [is limited](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc#macos).
 
-### Install Karabiner driver for macOS 11 and newer:
+### Instructions for macOS 11 and newer
+
+Please read through this issue comment:
+
+https://github.com/jtroo/kanata/issues/1264#issuecomment-2763085239
+
+Also have a read through this discussion:
+
+https://github.com/jtroo/kanata/discussions/1537
+
+### Old instructions for macOS 11 and newer
+
+<details>
+  <summary>Click to expand</summary>
+First install Karabiner driver for macOS 11 and newer:
+
 - Install the [V5 Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-5.0.0.pkg).
 
 To activate it:
@@ -86,11 +101,13 @@ Then you need to run the daemon. You should run this in the background somehow o
 sudo '/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice/Applications/Karabiner-VirtualHIDDevice-Daemon.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Daemon'
 ```
 
+</details>
+
 ### Install Karabiner driver for macOS 10 and older:
 
 - Install the [Karabiner kernel extension](https://github.com/pqrs-org/Karabiner-VirtualHIDDevice).
 
-### After installing the appropriate driver for your OS
+### After installing the appropriate driver for your OS (both macOS <=10 and >=11)
 
 Download a `kanata_macos` variant.
 
