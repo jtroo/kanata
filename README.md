@@ -219,6 +219,7 @@ Some directories are exceptions:
 - [vscode-kanata](https://github.com/rszyma/vscode-kanata): Language support for kanata configuration files in VS Code
 - [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi) (Windows)
 - [kanata-tray](https://github.com/rszyma/kanata-tray): Control kanata from a tray icon
+- [OverKeys](https://github.com/conventoangelo/overkeys): Visual layer display for kanata - see your active layers and keymaps in real-time (Windows)
 - Application-aware layer switching:
    - [qanata (Linux)](https://github.com/veyxov/qanata)
    - [kanawin (Windows)](https://github.com/Aqaao/kanawin)
