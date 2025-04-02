@@ -226,6 +226,7 @@ Some directories are exceptions:
    - [window_tools (Windows)](https://github.com/reidprichard/window_tools)
    - [nata (Linux)](https://github.com/mdSlash/nata)
    - [kanata-vk-agent (macOS)](https://github.com/devsunb/kanata-vk-agent)
+   - [hyprkan (Linux)](https://github.com/mdSlash/hyprkan)
 
 ## What does the name mean?
 
