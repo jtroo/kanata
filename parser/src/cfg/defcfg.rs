@@ -152,6 +152,12 @@ pub struct CfgOptions {
     pub rapid_event_delay: u16,
     pub trans_resolution_behavior_v2: bool,
     pub chords_v2_min_idle: u16,
+    #[cfg(any(
+        all(target_os = "windows", feature = "interception_driver"),
+        target_os = "linux",
+        target_os = "unknown"
+    ))]
+    pub mouse_movement_key: Option<OsCode>,
     #[cfg(any(target_os = "linux", target_os = "unknown"))]
     pub linux_opts: CfgLinuxOptions,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
@@ -191,6 +197,12 @@ impl Default for CfgOptions {
             rapid_event_delay: 5,
             trans_resolution_behavior_v2: true,
             chords_v2_min_idle: 5,
+            #[cfg(any(
+                all(target_os = "windows", feature = "interception_driver"),
+                target_os = "linux",
+                target_os = "unknown"
+            ))]
+            mouse_movement_key: None,
             #[cfg(any(target_os = "linux", target_os = "unknown"))]
             linux_opts: Default::default(),
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
@@ -793,6 +805,24 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             bail_expr!(val, "{label} must be 5-65535");
                         }
                         cfg.chords_v2_min_idle = min_idle;
+                    }
+                    "mouse-movement-key" => {
+                        #[cfg(any(
+                            all(target_os = "windows", feature = "interception_driver"),
+                            target_os = "linux",
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if let Some(keystr) = parse_defcfg_val_string(val, label)? {
+                                if let Some(key) = str_to_oscode(&keystr) {
+                                    cfg.mouse_movement_key = Some(key);
+                                } else {
+                                    bail_expr!(val, "{label} not a recognised key code");
+                                }
+                            } else {
+                                bail_expr!(val, "{label} not a string for a key code");
+                            }
+                        }
                     }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };

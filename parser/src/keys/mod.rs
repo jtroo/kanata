@@ -374,6 +374,10 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "nop8" => OsCode::KEY_684,
         "nop9" => OsCode::KEY_685,
 
+        // has no output mapping. only intended to be used in the input
+        // position, in conjunction with `mouse-movement-key mvmt`
+        "mvmt" | "mousemovement" | "🖰mv" => OsCode::KEY_766,
+
         _ => return None,
     })
 }
@@ -1157,7 +1161,7 @@ pub enum OsCode {
     KEY_763 = 763,
     KEY_764 = 764,
     KEY_765 = 765,
-    KEY_766 = 766,
+    KEY_766 = 766, // aliased to mvmt as a dummy input for use with mouse-movement-key
 
     KEY_MAX = 767,
 }

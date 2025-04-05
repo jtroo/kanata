@@ -1,0 +1,66 @@
+(defcfg
+  ;; we are only mapping the keys we want to use for mouse keys
+  process-unmapped-keys yes
+
+  ;; you may wish to only capture a trackpoint and keyboard
+  ;; but not e.g. a trackpad or external mouse
+  ;;linux-dev-names-include (
+  ;;                         "Lenovo TrackPoint Keyboard II"
+  ;;)
+  ;; optional, but useful with the trackpoint
+  ;;linux-use-trackpoint-property yes
+
+  mouse-movement-key mvmt
+)
+
+(defsrc)
+
+(defvirtualkeys
+  mouse (layer-while-held mouse-layer)
+)
+
+(defalias
+  mhld (hold-for-duration 750 mouse)
+
+  moff (on-press release-vkey mouse)
+
+  _ (multi
+     @moff
+     _
+  )
+
+  ;; mouse click extended time out for double tap
+  mdbt (hold-for-duration 500 mouse)
+  mbl (multi
+       mlft
+       @mdbt
+  )
+  mbm (multi
+       mmid
+       @mdbt
+  )
+  mbr (multi
+       mrgt
+       @mdbt
+  )
+)
+
+;; no key mappings
+(deflayermap (base)
+             mvmt @mhld
+)
+
+;; places mouse keys on the row above the home row.
+;; pressing any other keys exits the mouse layer until mouse movement stops and restarts again.
+(deflayermap (mouse-layer)
+             w mrgt
+             e mmid
+             r @mbl
+
+             u @mbl
+             i mmid
+             o mrgt
+
+             mvmt @mhld
+             ___ @_
+)
