@@ -8,11 +8,11 @@ use winapi::shared::windef::HWND;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::Graphics::Gdi::DeleteObject;
 use windows_sys::Win32::UI::Shell::{
-    SHGetStockIconInfo, SHGSI_ICON, SHGSI_SMALLICON, SHSTOCKICONID, SHSTOCKICONINFO,
+    SHGSI_ICON, SHGSI_SMALLICON, SHGetStockIconInfo, SHSTOCKICONID, SHSTOCKICONINFO,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CopyImage, DestroyIcon, GetIconInfoExW, SetMenuItemInfoW, HMENU, ICONINFOEXW, IMAGE_BITMAP,
-    LR_CREATEDIBSECTION, MENUITEMINFOW, MF_BYCOMMAND, MIIM_BITMAP,
+    CopyImage, DestroyIcon, GetIconInfoExW, HMENU, ICONINFOEXW, IMAGE_BITMAP, LR_CREATEDIBSECTION,
+    MENUITEMINFOW, MF_BYCOMMAND, MIIM_BITMAP, SetMenuItemInfoW,
 };
 
 /// Extends [`nwg::Bitmap`] with additional functionality.
@@ -225,7 +225,9 @@ pub fn check_hwnd(handle: &ControlHandle, not_bound: &str, bad_handle: &str) -> 
     match handle.hwnd() {
         Some(hwnd) => match unsafe { IsWindow(hwnd) } {
             0 => {
-                panic!("The window handle is no longer valid. This usually means the control was freed by the OS");
+                panic!(
+                    "The window handle is no longer valid. This usually means the control was freed by the OS"
+                );
             }
             _ => hwnd,
         },

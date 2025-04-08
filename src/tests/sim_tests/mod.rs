@@ -6,8 +6,9 @@
 
 use crate::tests::*;
 use crate::{
+    Kanata,
     oskbd::{KeyEvent, KeyValue},
-    str_to_oscode, Kanata,
+    str_to_oscode,
 };
 
 use rustc_hash::FxHashMap;
