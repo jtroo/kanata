@@ -10,6 +10,8 @@ use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use super::*;
 
@@ -18,7 +20,10 @@ impl Kanata {
     /// thread.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
-
+    
+        let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
+        start_event_preprocessor(preprocess_rx, tx);
+    
         let k = kanata.lock();
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
@@ -94,8 +99,8 @@ impl Kanata {
                     };
                 }
 
-                // Send key events to the processing loop
-                if let Err(e) = tx.try_send(key_event) {
+                // Send key events to the preprocessing loop instead of directly to the processing loop
+                if let Err(e) = preprocess_tx.try_send(key_event) {
                     bail!("failed to send on channel: {}", e)
                 }
             }
@@ -200,5 +205,59 @@ fn handle_scroll(
             }
         }
         _ => unreachable!("expect to be handling a wheel event"),
+    }
+}
+
+fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
+    let debounce_duration = Duration::from_millis(50); // Set debounce duration here
+    let mut last_key_event_time: HashMap<OsCode, Instant> = HashMap::new();
+
+    std::thread::spawn(move || {
+        loop {
+            match preprocess_rx.try_recv() {
+                Ok(kev) => {
+                    let now = Instant::now();
+                    let oscode = kev.code;
+
+                    match kev.value {
+                        KeyValue::Release => {
+                            // Always allow key releases to pass through
+                            try_send_panic(&process_tx, kev);
+                        }
+                        KeyValue::Press => {
+                            // Check if the key press is within the debounce duration
+                            if let Some(&last_time) = last_key_event_time.get(&oscode) {
+                                if now.duration_since(last_time) < debounce_duration {
+                                    log::debug!("Debounced key press: {:?}", kev);
+                                    continue; // Skip processing this event
+                                }
+                            }
+
+                            // Update the last processed time for the key press
+                            last_key_event_time.insert(oscode, now);
+
+                            // Forward the key press event
+                            try_send_panic(&process_tx, kev);
+                        }
+                        _ => {
+                            // Forward other key events (e.g., Repeat, Tap) without debouncing
+                            try_send_panic(&process_tx, kev);
+                        }
+                    }
+                }
+                Err(TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                Err(TryRecvError::Disconnected) => {
+                    panic!("channel disconnected");
+                }
+            }
+        }
+    });
+}
+
+fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
+    if let Err(e) = tx.try_send(kev) {
+        panic!("failed to send on channel: {e:?}");
     }
 }
