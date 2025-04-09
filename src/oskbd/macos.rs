@@ -226,9 +226,11 @@ impl KbdOut {
 
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
         let event = Self::make_event()?;
-        let mut arr: [u16; 2] = [0; 2];
-        c.encode_utf16(&mut arr);
-        event.set_string_from_utf16_unchecked(&arr);
+        let mut arr = [0u16; 2];
+        // Capture the slice containing the encoded UTF-16 code units.
+        let encoded = c.encode_utf16(&mut arr);
+        // Pass only the part of the array that was populated.
+        event.set_string_from_utf16_unchecked(encoded);
         event.set_type(CGEventType::KeyDown);
         event.post(CGEventTapLocation::AnnotatedSession);
         event.set_type(CGEventType::KeyUp);

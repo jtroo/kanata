@@ -19,3 +19,20 @@ fn special_nop_keys() {
     .no_time();
     assert_eq!(r#"outU:( outU:) outU:" outU:( outU:)"#, result);
 }
+
+#[test]
+#[cfg(target_os = "macos")]
+fn macos_unicode_handling() {
+    let result = simulate(
+        r##"
+         (defcfg)
+         (defsrc a)
+         (deflayer base
+             (unicode "🎉")  ;; Test with an emoji that uses multi-unit UTF-16
+         )
+        "##,
+        "d:a t:100",
+    )
+    .no_time();
+    assert_eq!("outU:🎉", result);
+}
