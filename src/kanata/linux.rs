@@ -20,12 +20,12 @@ impl Kanata {
     /// thread.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
-    
+
         let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
         let k = kanata.lock();
         let debounce_duration = Duration::from_millis(k.linux_debounce_duration);
         start_event_preprocessor(preprocess_rx, tx, debounce_duration);
-        
+
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
         let mut kbd_in = match KbdIn::new(
