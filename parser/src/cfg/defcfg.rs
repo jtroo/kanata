@@ -34,6 +34,7 @@ pub struct CfgLinuxOptions {
     pub linux_use_trackpoint_property: bool,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
+    pub linux_debounce_duration_ms: u16,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -51,6 +52,7 @@ impl Default for CfgLinuxOptions {
             linux_use_trackpoint_property: false,
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
             linux_device_detect_mode: None,
+            linux_debounce_duration_ms: 0,
         }
     }
 }
@@ -379,6 +381,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 _ => unreachable!("validated earlier"),
                             });
                             cfg.linux_opts.linux_device_detect_mode = detect_mode;
+                        }
+                    }
+                    "linux-debounce-duration" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            cfg.linux_opts.linux_debounce_duration_ms =
+                                parse_cfg_val_u16(val, label, false)?;
                         }
                     }
                     "windows-altgr" => {
