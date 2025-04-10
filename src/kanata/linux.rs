@@ -23,8 +23,8 @@ impl Kanata {
 
         let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
         let k = kanata.lock();
-        let debounce_duration = Duration::from_millis(k.linux_debounce_duration);
-        start_event_preprocessor(preprocess_rx, tx.clone(), debounce_duration);
+        let linux_debounce_duration = k.linux_debounce_duration.clone();
+        start_event_preprocessor(preprocess_rx, tx.clone(), linux_debounce_duration.clone());
 
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
@@ -100,6 +100,10 @@ impl Kanata {
                     };
                 }
 
+                let debounce_duration = {
+                    let duration_ms = *linux_debounce_duration.lock();
+                    Duration::from_millis(duration_ms.into())
+                };
                 // Send key events to the appropriate processing loop based on debounce duration
                 let target_tx = if debounce_duration.is_zero() { &tx } else { &preprocess_tx };
                 if let Err(e) = target_tx.try_send(key_event) {
@@ -213,12 +217,17 @@ fn handle_scroll(
 fn start_event_preprocessor(
     preprocess_rx: Receiver<KeyEvent>,
     process_tx: Sender<KeyEvent>,
-    debounce_duration: Duration,
+    debounce_duration_ms: Arc<Mutex<u16>>,
 ) {
     let mut last_key_event_time: HashMap<OsCode, Instant> = HashMap::new();
 
     std::thread::spawn(move || {
         loop {
+            let debounce_duration = {
+                let duration_ms = *debounce_duration_ms.lock();
+                Duration::from_millis(duration_ms.into())
+            };
+
             match preprocess_rx.try_recv() {
                 Ok(kev) => {
                     let now = Instant::now();

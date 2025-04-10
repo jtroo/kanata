@@ -34,7 +34,7 @@ pub struct CfgLinuxOptions {
     pub linux_use_trackpoint_property: bool,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
-    pub linux_debounce_duration_ms: u64,
+    pub linux_debounce_duration_ms: u16,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -399,7 +399,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_opts.linux_debounce_duration_ms =
-                                parse_cfg_val_u64(val, label)?;
+                                parse_cfg_val_u16(val, label, false)?;
                         }
                     }
                     "windows-altgr" => {
@@ -954,19 +954,6 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
             r?
         }
     })
-}
-
-fn parse_cfg_val_u64(expr: &SExpr, label: &str) -> Result<u64> {
-    match &expr {
-        SExpr::Atom(v) => Ok(str::parse::<u64>(v.t.trim_atom_quotes())
-            .map_err(|_| anyhow_expr!(expr, "{label} must be 0-18446744073709551615"))?),
-        SExpr::List(_) => {
-            bail_expr!(
-                expr,
-                "The value for {label} cannot be a list, it must be a number 0-18446744073709551615",
-            )
-        }
-    }
 }
 
 fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
