@@ -22,9 +22,10 @@ impl Kanata {
         info!("entering the event loop");
     
         let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
-        start_event_preprocessor(preprocess_rx, tx);
-    
         let k = kanata.lock();
+        let debounce_duration = Duration::from_millis(k.linux_debounce_duration);
+        start_event_preprocessor(preprocess_rx, tx, debounce_duration);
+        
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
         let mut kbd_in = match KbdIn::new(
@@ -208,8 +209,11 @@ fn handle_scroll(
     }
 }
 
-fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
-    let debounce_duration = Duration::from_millis(50); // Set debounce duration here
+fn start_event_preprocessor(
+    preprocess_rx: Receiver<KeyEvent>,
+    process_tx: Sender<KeyEvent>,
+    debounce_duration: Duration,
+) {
     let mut last_key_event_time: HashMap<OsCode, Instant> = HashMap::new();
 
     std::thread::spawn(move || {

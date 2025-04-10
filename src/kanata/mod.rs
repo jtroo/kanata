@@ -252,6 +252,8 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    #[cfg(target_os = "linux")]
+    pub linux_debounce_duration: u64,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -462,6 +464,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(target_os = "linux")]
+            linux_debounce_duration: cfg.options.linux_opts.linux_debounce_duration_ms,
         })
     }
 
@@ -604,6 +608,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(target_os = "linux")]
+            linux_debounce_duration: cfg.options.linux_opts.linux_debounce_duration_ms,
         })
     }
 
