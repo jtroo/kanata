@@ -1691,6 +1691,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         "use-defsrc" => {
             return Ok(s.a.sref(Action::Src));
         }
+        "mvmt" | "mousemovement" | "🖰mv" => {
+            bail_span!(ac_span, "{ac} can only be used as an input")
+        }
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
