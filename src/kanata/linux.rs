@@ -24,7 +24,7 @@ impl Kanata {
         let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
         let k = kanata.lock();
         let debounce_duration = Duration::from_millis(k.linux_debounce_duration);
-        start_event_preprocessor(preprocess_rx, tx, debounce_duration);
+        start_event_preprocessor(preprocess_rx, tx.clone(), debounce_duration);
 
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
@@ -100,9 +100,10 @@ impl Kanata {
                     };
                 }
 
-                // Send key events to the preprocessing loop instead of directly to the processing loop
-                if let Err(e) = preprocess_tx.try_send(key_event) {
-                    bail!("failed to send on channel: {}", e)
+                // Send key events to the appropriate processing loop based on debounce duration
+                let target_tx = if debounce_duration.is_zero() { &tx } else { &preprocess_tx };
+                if let Err(e) = target_tx.try_send(key_event) {
+                    bail!("failed to send on channel: {}", e);
                 }
             }
         }
