@@ -78,6 +78,9 @@ use unknown::*;
 mod caps_word;
 pub use caps_word::*;
 
+pub mod debounce;
+pub use debounce::*;
+
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 

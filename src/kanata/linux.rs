@@ -10,8 +10,10 @@ use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use crate::kanata::debounce::debounce::Debounce;
+use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
+use crate::kanata::debounce::sym_eager_pk::SymEagerPk;
 
 use super::*;
 
@@ -219,47 +221,32 @@ fn start_event_preprocessor(
     process_tx: Sender<KeyEvent>,
     debounce_duration_ms: Arc<Mutex<u16>>,
 ) {
-    let mut last_key_event_time: HashMap<OsCode, Instant> = HashMap::new();
-
     std::thread::spawn(move || {
-        loop {
-            let debounce_duration = {
-                let duration_ms = *debounce_duration_ms.lock();
-                Duration::from_millis(duration_ms.into())
-            };
+        let mut debounce_algorithm = {
+            let duration_ms = *debounce_duration_ms.lock();
+            AsymEagerDeferPk::new(duration_ms)
+        };
 
+        let mut last_tick = Instant::now();
+
+        loop {
+            let now = Instant::now();
+            let elapsed = now.duration_since(last_tick);
+
+            // Process pending deadlines every 1ms
+            if elapsed >= Duration::from_millis(1) {
+                debounce_algorithm.tick(&process_tx, now);
+                last_tick = now;
+            }
+
+            // Non-blocking check for new events
             match preprocess_rx.try_recv() {
                 Ok(kev) => {
-                    let now = Instant::now();
-                    let oscode = kev.code;
-
-                    match kev.value {
-                        KeyValue::Release => {
-                            // Always allow key releases to pass through
-                            try_send_panic(&process_tx, kev);
-                        }
-                        KeyValue::Press => {
-                            // Check if the key press is within the debounce duration
-                            if let Some(&last_time) = last_key_event_time.get(&oscode) {
-                                if now.duration_since(last_time) < debounce_duration {
-                                    log::debug!("Debounced key press: {:?}", kev);
-                                    continue; // Skip processing this event
-                                }
-                            }
-
-                            // Update the last processed time for the key press
-                            last_key_event_time.insert(oscode, now);
-
-                            // Forward the key press event
-                            try_send_panic(&process_tx, kev);
-                        }
-                        _ => {
-                            // Forward other key events (e.g., Repeat, Tap) without debouncing
-                            try_send_panic(&process_tx, kev);
-                        }
-                    }
+                    log::info!("Received event: {:?}", kev);
+                    debounce_algorithm.process_event(kev, &process_tx);
                 }
                 Err(TryRecvError::Empty) => {
+                    // Sleep briefly to avoid busy-waiting
                     std::thread::sleep(Duration::from_millis(1));
                 }
                 Err(TryRecvError::Disconnected) => {
@@ -268,10 +255,4 @@ fn start_event_preprocessor(
             }
         }
     });
-}
-
-fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
-    if let Err(e) = tx.try_send(kev) {
-        panic!("failed to send on channel: {e:?}");
-    }
 }
