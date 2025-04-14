@@ -26,7 +26,11 @@ impl Kanata {
         let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
         let k = kanata.lock();
         let linux_debounce_duration = k.linux_debounce_duration.clone();
-        start_event_preprocessor(preprocess_rx, tx.clone(), linux_debounce_duration.clone());
+        // Start the preprocessor loop only if debounce_duration > 0
+        let debounce_duration = *linux_debounce_duration.lock();
+        if debounce_duration > 0 {
+            start_event_preprocessor(preprocess_rx, tx.clone(), linux_debounce_duration.clone());
+        }
 
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mouse_movement_key = k.mouse_movement_key.clone();
