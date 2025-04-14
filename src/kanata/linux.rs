@@ -11,6 +11,7 @@ use std::convert::TryFrom;
 use std::sync::mpsc::{RecvTimeoutError, SyncSender as Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use crate::debounce::debounce::create_debounce_algorithm;
 use crate::kanata::debounce::debounce::Debounce;
 use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
 use crate::kanata::debounce::sym_eager_pk::SymEagerPk;
@@ -29,7 +30,12 @@ impl Kanata {
         // Start the preprocessor loop only if debounce_duration > 0
         let debounce_duration = *linux_debounce_duration.lock();
         if debounce_duration > 0 {
-            start_event_preprocessor(preprocess_rx, tx.clone(), linux_debounce_duration.clone());
+            start_event_preprocessor(
+                preprocess_rx,
+                tx.clone(),
+                linux_debounce_duration.clone(),
+                "asym_eager_defer_pk".to_string()
+            );
         }
 
         let allow_hardware_repeat = k.allow_hardware_repeat;
@@ -224,12 +230,19 @@ fn start_event_preprocessor(
     preprocess_rx: Receiver<KeyEvent>,
     process_tx: Sender<KeyEvent>,
     debounce_duration_ms: Arc<Mutex<u16>>,
+    debounce_algorithm_name: String,
 ) {
     std::thread::spawn(move || {
-        let mut debounce_algorithm = {
-            let duration_ms = *debounce_duration_ms.lock();
-            AsymEagerDeferPk::new(duration_ms)
-        };
+        let duration_ms = *debounce_duration_ms.lock();
+        log::info!(
+            "Starting event preprocessor with debounce algorithm: {}, duration: {} ms",
+            debounce_algorithm_name,
+            duration_ms
+        );
+
+        // Create the debounce algorithm instance
+        let mut debounce_algorithm =
+            create_debounce_algorithm(&debounce_algorithm_name, duration_ms);
 
         let mut last_tick = Instant::now();
         let mut has_pending_deadlines = false; // Tracks if there are pending deadlines
