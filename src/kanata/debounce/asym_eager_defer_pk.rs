@@ -23,7 +23,7 @@ impl AsymEagerDeferPk {
 }
 
 impl Debounce for AsymEagerDeferPk {
-    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) {
+    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool {
         let now = Instant::now();
         let oscode = event.code;
 
@@ -36,7 +36,7 @@ impl Debounce for AsymEagerDeferPk {
                 if let Some(&last_time) = self.last_key_event_time.get(&oscode) {
                     if now.duration_since(last_time) < self.debounce_duration {
                         log::info!("Debouncing key press for {:?}", oscode);
-                        return; // Skip processing this event
+                        return !self.release_deadlines.is_empty(); // Skip processing this event
                     }
                 }
 
@@ -59,6 +59,9 @@ impl Debounce for AsymEagerDeferPk {
                 try_send_panic(process_tx, event);
             }
         }
+
+        // Return true if there are still pending deadlines
+        !self.release_deadlines.is_empty()
     }
 
     fn tick(&mut self, process_tx: &Sender<KeyEvent>, now: Instant) -> bool {

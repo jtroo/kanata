@@ -277,8 +277,7 @@ fn start_event_preprocessor(
                 match preprocess_rx.recv() {
                     Ok(kev) => {
                         log::info!("Received event: {:?}", kev);
-                        debounce_algorithm.process_event(kev, &process_tx);
-                        has_pending_deadlines = true; // New event may create deadlines
+                        has_pending_deadlines = debounce_algorithm.process_event(kev, &process_tx);
                         last_tick = Instant::now(); // Reset the tick timer
                     }
                     Err(_) => {

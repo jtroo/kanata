@@ -4,7 +4,7 @@ use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
 
 /// Trait for debounce algorithms
 pub trait Debounce {
-    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>);
+    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool;
 
     /// Optional tick function to process delayed events (deadlines),
     /// returns whether there are pending events
