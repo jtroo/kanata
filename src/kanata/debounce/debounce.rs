@@ -1,10 +1,16 @@
 use crate::kanata::KeyEvent;
-use std::sync::mpsc::SyncSender as Sender;
+use std::{sync::mpsc::SyncSender as Sender, time::Instant};
 use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
 
 /// Trait for debounce algorithms
 pub trait Debounce {
     fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>);
+
+    /// Optional tick function to process delayed events (deadlines),
+    /// returns whether there are pending events
+    fn tick(&mut self, _process_tx: &Sender<KeyEvent>, _now: Instant) -> bool {
+        return false; // Default implementation: no pending events
+    }
 }
 
 pub fn create_debounce_algorithm(algorithm: &str, debounce_duration_ms: u16) -> Box<dyn Debounce> {

@@ -20,25 +20,6 @@ impl AsymEagerDeferPk {
             release_deadlines: HashMap::new(),
         }
     }
-
-    pub fn tick(&mut self, process_tx: &Sender<KeyEvent>, now: Instant) {
-        // Process any release events whose deadlines have passed
-        let mut to_remove = vec![];
-        for (&oscode, &deadline) in &self.release_deadlines {
-            if now >= deadline {
-                log::info!("Emitting key release for {:?}", oscode);
-                let release_event = KeyEvent {
-                    code: oscode,
-                    value: KeyValue::Release,
-                };
-                try_send_panic(process_tx, release_event);
-                to_remove.push(oscode);
-            }
-        }
-        for oscode in to_remove {
-            self.release_deadlines.remove(&oscode);
-        }
-    }
 }
 
 impl Debounce for AsymEagerDeferPk {
@@ -78,5 +59,27 @@ impl Debounce for AsymEagerDeferPk {
                 try_send_panic(process_tx, event);
             }
         }
+    }
+
+    fn tick(&mut self, process_tx: &Sender<KeyEvent>, now: Instant) -> bool {
+        // Process any release events whose deadlines have passed
+        let mut to_remove = vec![];
+        for (&oscode, &deadline) in &self.release_deadlines {
+            if now >= deadline {
+                log::info!("Emitting key release for {:?}", oscode);
+                let release_event = KeyEvent {
+                    code: oscode,
+                    value: KeyValue::Release,
+                };
+                try_send_panic(process_tx, release_event);
+                to_remove.push(oscode);
+            }
+        }
+        for oscode in to_remove {
+            self.release_deadlines.remove(&oscode);
+        }
+
+        // Return true if there are still pending deadlines
+        !self.release_deadlines.is_empty()
     }
 }

@@ -8,7 +8,7 @@ use evdev::{InputEvent, InputEventKind, RelativeAxisType};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::SyncSender as Sender;
+use std::sync::mpsc::{RecvTimeoutError, SyncSender as Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use crate::kanata::debounce::debounce::Debounce;
@@ -228,29 +228,45 @@ fn start_event_preprocessor(
         };
 
         let mut last_tick = Instant::now();
+        let mut has_pending_deadlines = false; // Tracks if there are pending deadlines
 
         loop {
-            let now = Instant::now();
-            let elapsed = now.duration_since(last_tick);
+            if has_pending_deadlines {
+                // Process pending deadlines every 1ms
+                let now = Instant::now();
+                let elapsed = now.duration_since(last_tick);
 
-            // Process pending deadlines every 1ms
-            if elapsed >= Duration::from_millis(1) {
-                debounce_algorithm.tick(&process_tx, now);
-                last_tick = now;
-            }
+                if elapsed >= Duration::from_millis(1) {
+                    has_pending_deadlines = debounce_algorithm.tick(&process_tx, now);
+                    last_tick = now;
+                }
 
-            // Non-blocking check for new events
-            match preprocess_rx.try_recv() {
-                Ok(kev) => {
-                    log::info!("Received event: {:?}", kev);
-                    debounce_algorithm.process_event(kev, &process_tx);
+                // Non-blocking check for new events
+                match preprocess_rx.try_recv() {
+                    Ok(kev) => {
+                        log::info!("Received event: {:?}", kev);
+                        debounce_algorithm.process_event(kev, &process_tx);
+                        has_pending_deadlines = true; // New event may create deadlines
+                    }
+                    Err(TryRecvError::Empty) => {
+                        // No events available, continue processing deadlines
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        panic!("channel disconnected");
+                    }
                 }
-                Err(TryRecvError::Empty) => {
-                    // Sleep briefly to avoid busy-waiting
-                    std::thread::sleep(Duration::from_millis(1));
-                }
-                Err(TryRecvError::Disconnected) => {
-                    panic!("channel disconnected");
+            } else {
+                // No pending deadlines, block until a new event arrives
+                match preprocess_rx.recv() {
+                    Ok(kev) => {
+                        log::info!("Received event: {:?}", kev);
+                        debounce_algorithm.process_event(kev, &process_tx);
+                        has_pending_deadlines = true; // New event may create deadlines
+                        last_tick = Instant::now(); // Reset the tick timer
+                    }
+                    Err(_) => {
+                        panic!("channel disconnected");
+                    }
                 }
             }
         }
