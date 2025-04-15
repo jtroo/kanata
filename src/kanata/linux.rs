@@ -8,13 +8,10 @@ use evdev::{InputEvent, InputEventKind, RelativeAxisType};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::{RecvTimeoutError, SyncSender as Sender};
+use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use crate::debounce::debounce::create_debounce_algorithm;
 use crate::kanata::debounce::debounce::Debounce;
-use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
-use crate::kanata::debounce::sym_eager_pk::SymEagerPk;
 
 use super::*;
 
@@ -232,7 +229,7 @@ fn start_event_preprocessor(
 ) {
     std::thread::spawn(move || {
         {
-            let mut algorithm = debounce_algorithm.lock();
+            let algorithm = debounce_algorithm.lock();
             log::info!(
                 "Starting event preprocessor with debounce algorithm: {}, duration: {} ms",
                 algorithm.name(),
