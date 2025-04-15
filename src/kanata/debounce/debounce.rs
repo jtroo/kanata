@@ -1,4 +1,4 @@
-use crate::{kanata::KeyEvent, sym_eager_pk::SymEagerPk};
+use crate::{kanata::KeyEvent, sym_defer_pk::SymDeferPk, sym_eager_pk::SymEagerPk};
 use std::{sync::mpsc::SyncSender as Sender, time::Instant};
 use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
 
@@ -25,6 +25,7 @@ pub fn create_debounce_algorithm(algorithm: &str, debounce_duration_ms: u16) -> 
     match algorithm {
         "asym_eager_defer_pk" => Box::new(AsymEagerDeferPk::new(debounce_duration_ms)),
         "sym_eager_pk" => Box::new(SymEagerPk::new(debounce_duration_ms)),
+        "sym_defer_pk" => Box::new(SymDeferPk::new(debounce_duration_ms)),
         _ => panic!("Unknown debounce algorithm: {}", algorithm),
     }
 }
