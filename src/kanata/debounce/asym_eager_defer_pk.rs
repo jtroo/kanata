@@ -23,6 +23,14 @@ impl AsymEagerDeferPk {
 }
 
 impl Debounce for AsymEagerDeferPk {
+    fn name(&self) -> &str {
+        "asym_eager_defer_pk"
+    }
+
+    fn debounce_time(&self) -> u16 {
+        self.debounce_duration.as_millis() as u16
+    }
+    
     fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool {
         let now = Instant::now();
         let oscode = event.code;

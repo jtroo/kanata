@@ -3,7 +3,13 @@ use std::{sync::mpsc::SyncSender as Sender, time::Instant};
 use crate::kanata::debounce::asym_eager_defer_pk::AsymEagerDeferPk;
 
 /// Trait for debounce algorithms
-pub trait Debounce {
+pub trait Debounce: Send + Sync {
+    /// Returns the name of the debounce algorithm
+    fn name(&self) -> &str;
+
+    /// Returns the debounce time in milliseconds
+    fn debounce_time(&self) -> u16;
+    
     fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool;
 
     /// Optional tick function to process delayed events (deadlines),

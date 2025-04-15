@@ -33,8 +33,7 @@ impl Kanata {
             start_event_preprocessor(
                 preprocess_rx,
                 tx.clone(),
-                linux_debounce_duration.clone(),
-                "asym_eager_defer_pk".to_string()
+                k.debounce_algorithm.clone(),
             );
         }
 
@@ -229,32 +228,30 @@ fn handle_scroll(
 fn start_event_preprocessor(
     preprocess_rx: Receiver<KeyEvent>,
     process_tx: Sender<KeyEvent>,
-    debounce_duration_ms: Arc<Mutex<u16>>,
-    debounce_algorithm_name: String,
+    debounce_algorithm: Arc<Mutex<Box<dyn Debounce>>>,
 ) {
     std::thread::spawn(move || {
-        let duration_ms = *debounce_duration_ms.lock();
-        log::info!(
-            "Starting event preprocessor with debounce algorithm: {}, duration: {} ms",
-            debounce_algorithm_name,
-            duration_ms
-        );
-
-        // Create the debounce algorithm instance
-        let mut debounce_algorithm =
-            create_debounce_algorithm(&debounce_algorithm_name, duration_ms);
-
+        {
+            let mut algorithm = debounce_algorithm.lock();
+            log::info!(
+                "Starting event preprocessor with debounce algorithm: {}, duration: {} ms",
+                algorithm.name(),
+                algorithm.debounce_time()
+            );
+        }
         let mut last_tick = Instant::now();
-        let mut has_pending_deadlines = false; // Tracks if there are pending deadlines
+        let mut has_pending_deadlines = false;
 
         loop {
+            let mut algorithm = debounce_algorithm.lock();
+            
             if has_pending_deadlines {
                 // Process pending deadlines every 1ms
                 let now = Instant::now();
                 let elapsed = now.duration_since(last_tick);
 
                 if elapsed >= Duration::from_millis(1) {
-                    has_pending_deadlines = debounce_algorithm.tick(&process_tx, now);
+                    has_pending_deadlines = algorithm.tick(&process_tx, now);
                     last_tick = now;
                 }
 
@@ -262,8 +259,7 @@ fn start_event_preprocessor(
                 match preprocess_rx.try_recv() {
                     Ok(kev) => {
                         log::info!("Received event: {:?}", kev);
-                        debounce_algorithm.process_event(kev, &process_tx);
-                        has_pending_deadlines = true; // New event may create deadlines
+                        has_pending_deadlines = algorithm.process_event(kev, &process_tx);
                     }
                     Err(TryRecvError::Empty) => {
                         // No events available, continue processing deadlines
@@ -277,8 +273,8 @@ fn start_event_preprocessor(
                 match preprocess_rx.recv() {
                     Ok(kev) => {
                         log::info!("Received event: {:?}", kev);
-                        has_pending_deadlines = debounce_algorithm.process_event(kev, &process_tx);
-                        last_tick = Instant::now(); // Reset the tick timer
+                        has_pending_deadlines = algorithm.process_event(kev, &process_tx);
+                        last_tick = Instant::now();
                     }
                     Err(_) => {
                         panic!("channel disconnected");
