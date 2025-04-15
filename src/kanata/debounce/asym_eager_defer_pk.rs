@@ -53,6 +53,11 @@ impl Debounce for AsymEagerDeferPk {
                 try_send_panic(process_tx, event);
             }
             KeyValue::Release => {
+                // Check if pending release event is already scheduled
+                if self.release_deadlines.contains_key(&oscode) {
+                    log::info!("Release event already scheduled for {:?}", oscode);
+                    return !self.release_deadlines.is_empty(); // Skip processing this event
+                }
                 // Schedule the release event for later
                 self.release_deadlines.insert(oscode, now + self.debounce_duration);
             }
