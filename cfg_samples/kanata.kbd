@@ -149,9 +149,22 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;   linux-output-device-bus-type USB
   ;;   linux-output-device-bus-type I8042
 
-  ;; On Linux, it is possible to configure the debounce duration for key press events in milliseconds.
+  ;; On Linux, it is possible to configure a debounce algorithm.
   ;; This is useful in the case of keyboard 'chatter' or 'double taps' due to faulty hardware.
+  ;; The default algorithm is "asym_eager_defer_pk".
+  ;;
   ;; Example: Set debounce duration to 50ms.
+  ;;   linux-debounce-duration 50
+  ;;
+  ;; Example: Set the debounce algorithm to "asym_eager_defer_pk".
+  ;;   linux-debounce-algorithm asym_eager_defer_pk
+  ;;
+  ;; Supported debounce algorithms:
+  ;; - asym_eager_defer_pk
+  ;; - sym_eager_pk
+
+  ;; Example configuration combining both:
+  ;;   linux-debounce-algorithm sym_eager_pk
   ;;   linux-debounce-duration 50
 
   ;; There is an optional configuration entry for Windows to help mitigate strange
