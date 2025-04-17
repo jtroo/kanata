@@ -10,6 +10,8 @@ use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use crate::kanata::debounce::debounce::Debounce;
 
 use super::*;
 
@@ -19,7 +21,19 @@ impl Kanata {
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
+        let (preprocess_tx, preprocess_rx) = std::sync::mpsc::sync_channel(100);
         let k = kanata.lock();
+        let linux_debounce_duration = k.linux_debounce_duration.clone();
+        // Start the preprocessor loop only if debounce_duration > 0
+        let debounce_duration = *linux_debounce_duration.lock();
+        if debounce_duration > 0 {
+            start_event_preprocessor(
+                preprocess_rx,
+                tx.clone(),
+                k.debounce_algorithm.clone(),
+            );
+        }
+
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let mut kbd_in = match KbdIn::new(
             &k.kbd_in_paths,
@@ -84,9 +98,14 @@ impl Kanata {
                     };
                 }
 
-                // Send key events to the processing loop
-                if let Err(e) = tx.try_send(key_event) {
-                    bail!("failed to send on channel: {}", e)
+                let debounce_duration = {
+                    let duration_ms = *linux_debounce_duration.lock();
+                    Duration::from_millis(duration_ms.into())
+                };
+                // Send key events to the appropriate processing loop based on debounce duration
+                let target_tx = if debounce_duration.is_zero() { &tx } else { &preprocess_tx };
+                if let Err(e) = target_tx.try_send(key_event) {
+                    bail!("failed to send on channel: {}", e);
                 }
             }
         }
@@ -191,4 +210,64 @@ fn handle_scroll(
         }
         _ => unreachable!("expect to be handling a wheel event"),
     }
+}
+
+fn start_event_preprocessor(
+    preprocess_rx: Receiver<KeyEvent>,
+    process_tx: Sender<KeyEvent>,
+    debounce_algorithm: Arc<Mutex<Box<dyn Debounce>>>,
+) {
+    std::thread::spawn(move || {
+        {
+            let algorithm = debounce_algorithm.lock();
+            log::info!(
+                "Starting event preprocessor with debounce algorithm: {}, duration: {} ms",
+                algorithm.name(),
+                algorithm.debounce_time()
+            );
+        }
+        let mut last_tick = Instant::now();
+        let mut has_pending_deadlines = false;
+
+        loop {
+            let mut algorithm = debounce_algorithm.lock();
+            
+            if has_pending_deadlines {
+                // Process pending deadlines every 1ms
+                let now = Instant::now();
+                let elapsed = now.duration_since(last_tick);
+
+                if elapsed >= Duration::from_millis(1) {
+                    has_pending_deadlines = algorithm.tick(&process_tx, now);
+                    last_tick = now;
+                }
+
+                // Non-blocking check for new events
+                match preprocess_rx.try_recv() {
+                    Ok(kev) => {
+                        log::debug!("Received event: {:?}", kev);
+                        has_pending_deadlines = algorithm.process_event(kev, &process_tx);
+                    }
+                    Err(TryRecvError::Empty) => {
+                        // No events available, continue processing deadlines
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        panic!("channel disconnected");
+                    }
+                }
+            } else {
+                // No pending deadlines, block until a new event arrives
+                match preprocess_rx.recv() {
+                    Ok(kev) => {
+                        log::debug!("Received event: {:?}", kev);
+                        has_pending_deadlines = algorithm.process_event(kev, &process_tx);
+                        last_tick = Instant::now();
+                    }
+                    Err(_) => {
+                        panic!("channel disconnected");
+                    }
+                }
+            }
+        }
+    });
 }

@@ -75,6 +75,11 @@ use unknown::*;
 mod caps_word;
 pub use caps_word::*;
 
+pub mod debounce;
+pub use debounce::*;
+
+use crate::kanata::debounce::debounce::{create_debounce_algorithm, Debounce};
+
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -242,6 +247,10 @@ pub struct Kanata {
     pub macro_on_press_cancel_duration: u32,
     /// Stores user's saved clipboard contents.
     pub saved_clipboard_content: SavedClipboardData,
+    #[cfg(target_os = "linux")]
+    pub linux_debounce_duration: Arc<Mutex<u16>>,
+    #[cfg(target_os = "linux")]
+    pub debounce_algorithm: Arc<Mutex<Box<dyn Debounce>>>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -350,6 +359,19 @@ impl Kanata {
             zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
+        let debounce_algorithm: Arc<Mutex<Box<dyn Debounce>>> = {
+            #[cfg(target_os = "linux")]
+            {
+                let linux_opts = &cfg.options.linux_opts;
+                Arc::new(Mutex::new(create_debounce_algorithm(
+                    &linux_opts.linux_debounce_algorithm,
+                    linux_opts.linux_debounce_duration_ms,
+                )))
+            }
+            #[cfg(not(target_os = "linux"))]
+            Arc::new(Mutex::new(create_debounce_algorithm("asym_eager_defer_pk", 0))) // Fallback for non-Linux platforms
+        };
+
         Ok(Self {
             kbd_out,
             cfg_paths: args.paths.clone(),
@@ -446,6 +468,10 @@ impl Kanata {
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
+            #[cfg(target_os = "linux")]
+            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.linux_debounce_duration_ms)),
+            #[cfg(target_os = "linux")]
+            debounce_algorithm,
         })
     }
 
@@ -485,6 +511,19 @@ impl Kanata {
         {
             zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
+
+        let debounce_algorithm: Arc<Mutex<Box<dyn Debounce>>> = {
+            #[cfg(target_os = "linux")]
+            {
+                let linux_opts = &cfg.options.linux_opts;
+                Arc::new(Mutex::new(create_debounce_algorithm(
+                    &linux_opts.linux_debounce_algorithm,
+                    linux_opts.linux_debounce_duration_ms,
+                )))
+            }
+            #[cfg(not(target_os = "linux"))]
+            Arc::new(Mutex::new(create_debounce_algorithm("asym_eager_defer_pk", 0))) // Fallback for non-Linux platforms
+        };
 
         Ok(Self {
             kbd_out,
@@ -582,6 +621,10 @@ impl Kanata {
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
+            #[cfg(target_os = "linux")]
+            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.linux_debounce_duration_ms)),
+            #[cfg(target_os = "linux")]
+            debounce_algorithm,
         })
     }
 
