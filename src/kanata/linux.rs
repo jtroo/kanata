@@ -255,7 +255,7 @@ fn start_event_preprocessor(
                 // Non-blocking check for new events
                 match preprocess_rx.try_recv() {
                     Ok(kev) => {
-                        log::info!("Received event: {:?}", kev);
+                        log::debug!("Received event: {:?}", kev);
                         has_pending_deadlines = algorithm.process_event(kev, &process_tx);
                     }
                     Err(TryRecvError::Empty) => {
@@ -269,7 +269,7 @@ fn start_event_preprocessor(
                 // No pending deadlines, block until a new event arrives
                 match preprocess_rx.recv() {
                     Ok(kev) => {
-                        log::info!("Received event: {:?}", kev);
+                        log::debug!("Received event: {:?}", kev);
                         has_pending_deadlines = algorithm.process_event(kev, &process_tx);
                         last_tick = Instant::now();
                     }

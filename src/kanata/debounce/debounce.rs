@@ -21,7 +21,6 @@ pub trait Debounce: Send + Sync {
 
 /// Factory function to create debounce algorithm instances
 pub fn create_debounce_algorithm(algorithm: &str, debounce_duration_ms: u16) -> Box<dyn Debounce> {
-    log::info!("Creating debounce algorithm: {}, duration: {} ms", algorithm, debounce_duration_ms);
     match algorithm {
         "asym_eager_defer_pk" => Box::new(AsymEagerDeferPk::new(debounce_duration_ms)),
         "sym_eager_pk" => Box::new(SymEagerPk::new(debounce_duration_ms)),

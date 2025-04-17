@@ -43,7 +43,7 @@ impl Debounce for AsymEagerDeferPk {
                 // Check if the key press is within the debounce duration
                 if let Some(&last_time) = self.last_key_event_time.get(&oscode) {
                     if now.duration_since(last_time) < self.debounce_duration {
-                        log::info!("Debouncing key press for {:?}", oscode);
+                        log::debug!("Debouncing key press for {:?}", oscode);
                         return !self.release_deadlines.is_empty(); // Skip processing this event
                     }
                 }
@@ -55,7 +55,7 @@ impl Debounce for AsymEagerDeferPk {
             KeyValue::Release => {
                 // Check if pending release event is already scheduled
                 if self.release_deadlines.contains_key(&oscode) {
-                    log::info!("Release event already scheduled for {:?}", oscode);
+                    log::debug!("Release event already scheduled for {:?}", oscode);
                     return !self.release_deadlines.is_empty(); // Skip processing this event
                 }
                 // Schedule the release event for later
@@ -63,7 +63,7 @@ impl Debounce for AsymEagerDeferPk {
             }
             KeyValue::Repeat => {
                 // Forward repeat events immediately
-                log::info!("Forwarding repeat event for {:?}", oscode);
+                log::debug!("Forwarding repeat event for {:?}", oscode);
                 try_send_panic(process_tx, event);
             }
             _ => {
@@ -82,7 +82,7 @@ impl Debounce for AsymEagerDeferPk {
         let mut to_remove = vec![];
         for (&oscode, &deadline) in &self.release_deadlines {
             if now >= deadline {
-                log::info!("Emitting key release for {:?}", oscode);
+                log::debug!("Emitting key release for {:?}", oscode);
                 let release_event = KeyEvent {
                     code: oscode,
                     value: KeyValue::Release,

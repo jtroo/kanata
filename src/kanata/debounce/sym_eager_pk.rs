@@ -38,7 +38,7 @@ impl Debounce for SymEagerPk {
 
         // If event is a repeat, process it immediately
         if event.value == KeyValue::Repeat {
-            log::info!("Processing repeat event for {:?}: {:?}", oscode, event.value);
+            log::debug!("Processing repeat event for {:?}: {:?}", oscode, event.value);
             try_send_panic(process_tx, event);
             return false; // No pending events
         }
@@ -46,7 +46,7 @@ impl Debounce for SymEagerPk {
         // Check if the key is within the debounce duration
         if let Some(&last_time) = self.last_event_time.get(&oscode) {
             if now.duration_since(last_time) < self.debounce_duration {
-                log::info!(
+                log::debug!(
                     "Debouncing event for {:?} (elapsed: {:?}, required: {:?})",
                     oscode,
                     now.duration_since(last_time),
@@ -57,7 +57,7 @@ impl Debounce for SymEagerPk {
         }
 
         // Process the event immediately
-        log::info!("Processing event for {:?}: {:?}", oscode, event.value);
+        log::debug!("Processing event for {:?}: {:?}", oscode, event.value);
         try_send_panic(process_tx, event);
 
         // Update the last event time for the key

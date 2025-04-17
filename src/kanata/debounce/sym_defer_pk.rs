@@ -38,7 +38,7 @@ impl Debounce for SymDeferPk {
         match event.value {
             KeyValue::Repeat => {
                 // Forward repeat events immediately
-                log::info!("Forwarding repeat event for {:?}", oscode);
+                log::debug!("Forwarding repeat event for {:?}", oscode);
                 try_send_panic(process_tx, event);
             }
             _ => {
@@ -48,7 +48,7 @@ impl Debounce for SymDeferPk {
                 if let Some(&(ref _pending_event, _deadline)) = self.pending_events.get(&oscode) {
                     // Skip this events since it is within the debounce duration, pending release
                 } else {
-                    log::info!(
+                    log::debug!(
                     "Deferring event for {:?} (value: {:?}) until debounce duration passes",
                     oscode,
                         event.value
@@ -67,7 +67,7 @@ impl Debounce for SymDeferPk {
         let mut to_remove = vec![];
         for (&oscode, &(ref event, deadline)) in &self.pending_events {
             if now >= deadline {
-                log::info!("Emitting deferred event for {:?}", oscode);
+                log::debug!("Emitting deferred event for {:?}", oscode);
                 try_send_panic(process_tx, event.clone());
                 to_remove.push(oscode);
             }
