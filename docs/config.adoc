@@ -3831,7 +3831,8 @@ The intended use of these events is to provide a way to automatically enable a m
 keys layer while mousing, which can be disabled by a timeout or typing on other keys,
 rather than explicit toggling. see cfg_examples/automousekeys-*.kbd for more.
 
-mvmt is a special key provided for this purpose which does not map to an output,
+The `mvmt` key name is specially intended for this purpose.
+It has no output key mapping
 and cannot be supplied as an action; however, any key may be used.
 
 .Example:
