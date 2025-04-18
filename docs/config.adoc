@@ -3829,7 +3829,7 @@ keys layer while mousing, which can be disabled by a timeout or typing on other 
 rather than explicit toggling. see cfg_examples/automousekeys-*.kbd for more.
 
 mvmt is a special key provided for this purpose which does not map to an output,
-and cannot be supplied as an action, however any key may be used.
+and cannot be supplied as an action; however, any key may be used.
 
 .Example:
 [source]
