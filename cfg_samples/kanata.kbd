@@ -296,7 +296,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; does not remain held which is important to consider for your use cases.
   override-release-on-activation yes
 
-  ;; tap a specified key when a mouse cursor movement is received
+  ;; Tap the specified key when a mouse cursor movement is received.
   ;;
   ;; On Linux or Windows-interception this enables repoorting of every relative mouse
   ;; movement, which corresponds to standard mice, trackballs, trackpads and trackpoints.
