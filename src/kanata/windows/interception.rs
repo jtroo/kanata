@@ -25,6 +25,7 @@ impl Kanata {
             kanata.lock().intercept_mouse_hwids.clone();
         let mouse_to_intercept_excluded_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids_exclude.clone();
+        let mouse_movement_key = kanata.lock().mouse_movement_key.clone();
         if mouse_to_intercept_hwids.is_some() || mouse_to_intercept_excluded_hwids.is_some() {
             intrcptn.set_filter(
                 ic::is_mouse,
@@ -65,10 +66,28 @@ impl Kanata {
                             };
                             KeyEvent { code, value }
                         }
-                        ic::Stroke::Mouse { state, rolling, .. } => {
+                        ic::Stroke::Mouse {
+                            state,
+                            rolling,
+                            flags,
+                            ..
+                        } => {
                             if mouse_to_intercept_hwids.is_some()
                                 || mouse_to_intercept_excluded_hwids.is_some()
                             {
+                                if is_device_interceptable(
+                                    dev,
+                                    &intrcptn,
+                                    &mouse_to_intercept_hwids,
+                                    &mouse_to_intercept_excluded_hwids,
+                                    &mut is_dev_interceptable,
+                                ) {
+                                    if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
+                                        if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
+                                            tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
+                                        }
+                                    }
+                                }
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
                                 if let Some(event) = mouse_state_to_event(
                                     dev,
@@ -85,6 +104,11 @@ impl Kanata {
                                     continue;
                                 }
                             } else {
+                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
+                                    if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
+                                        tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
+                                    }
+                                }
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
