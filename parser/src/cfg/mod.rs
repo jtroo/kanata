@@ -2062,10 +2062,16 @@ fn parse_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 0-65535"))
 }
 
+// Note on allow:
+// Clippy bug in new lint of Rust v1.86
+#[allow(clippy::manual_ok_err)]
 fn parse_non_zero_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
         .map(str::parse::<u16>)
-        .and_then(|u| u.ok())
+        .and_then(|u| match u {
+            Ok(u @ 1..) => Some(u),
+            _ => None,
+        })
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-65535"))
 }
 
