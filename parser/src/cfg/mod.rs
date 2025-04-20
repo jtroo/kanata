@@ -2065,10 +2065,7 @@ fn parse_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
 fn parse_non_zero_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
         .map(str::parse::<u16>)
-        .and_then(|u| match u {
-            Ok(u @ 1..) => Some(u),
-            _ => None,
-        })
+        .and_then(|u| u.ok())
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-65535"))
 }
 
@@ -3152,10 +3149,7 @@ fn parse_virtual_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> 
 fn parse_distance(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
         .map(str::parse::<u16>)
-        .and_then(|d| match d {
-            Ok(dist @ 1..=30000) => Some(dist),
-            _ => None,
-        })
+        .and_then(|d| d.ok())
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-30000"))
 }
 
@@ -3733,10 +3727,7 @@ fn parse_arbitrary_code(ac_params: &[SExpr], s: &ParserState) -> Result<&'static
     let code = ac_params[0]
         .atom(s.vars())
         .map(str::parse::<u16>)
-        .and_then(|c| match c {
-            Ok(code @ 0..=767) => Some(code),
-            _ => None,
-        })
+        .and_then(|c| c.ok())
         .ok_or_else(|| anyhow!("{ERR_MSG}: got {:?}", ac_params[0]))?;
     Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::SendArbitraryCode(code))),

@@ -142,7 +142,7 @@ impl Overrides {
                     false
                 }
             })
-            .last()
+            .next_back()
         {
             log::debug!("using override {ovd:?}");
             ovd.add_override_keys(oscs_to_add);
