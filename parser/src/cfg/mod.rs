@@ -2062,8 +2062,10 @@ fn parse_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 0-65535"))
 }
 
-// Note on allow:
-// Clippy bug in new lint of Rust v1.86
+// Note on allows:
+// - macOS CI is behind on Rust version.
+// - Clippy bug in new lint of Rust v1.86.
+#[allow(unknown_lints)]
 #[allow(clippy::manual_ok_err)]
 fn parse_non_zero_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
     expr.atom(s.vars())
