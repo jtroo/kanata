@@ -97,12 +97,12 @@ impl Kanata {
 
                             if allow_this_dev {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
-                                if let Some(event) = mouse_state_to_event(state, rolling) {
-                                    event
-                                } else {
-                                    intrcptn.send(dev, &strokes[i..i + 1]);
-                                    continue;
-                                }
+                            }
+
+                            if let (true, Some(event)) =
+                                (allow_this_dev, mouse_state_to_event(state, rolling))
+                            {
+                                event
                             } else {
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
