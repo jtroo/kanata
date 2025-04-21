@@ -27,10 +27,14 @@ impl Kanata {
             kanata.lock().intercept_mouse_hwids_exclude.clone();
         let mouse_movement_key = kanata.lock().mouse_movement_key.clone();
         if mouse_to_intercept_hwids.is_some() || mouse_to_intercept_excluded_hwids.is_some() {
-            intrcptn.set_filter(
-                ic::is_mouse,
-                ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
-            );
+            if mouse_movement_key.lock().is_some() {
+                intrcptn.set_filter(ic::is_mouse, ic::Filter::MouseFilter(ic::MouseState::all()));
+            } else {
+                intrcptn.set_filter(
+                    ic::is_mouse,
+                    ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
+                );
+            }
         }
         let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
         loop {

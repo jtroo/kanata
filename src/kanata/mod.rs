@@ -703,6 +703,17 @@ impl Kanata {
             target_os = "unknown"
         ))]
         {
+            #[cfg(all(target_os = "windows", feature = "interception_driver"))]
+            {
+                if self.mouse_movement_key.lock().is_none()
+                    && cfg.options.mouse_movement_key.is_some()
+                {
+                    log::warn!(
+                        "defcfg option mouse-movement-key will not take effect until kanata is restarted!"
+                    );
+                }
+            }
+
             *self.mouse_movement_key.lock() = cfg.options.mouse_movement_key;
         }
 
