@@ -76,43 +76,34 @@ impl Kanata {
                             flags,
                             ..
                         } => {
-                            if mouse_to_intercept_hwids.is_some()
-                                || mouse_to_intercept_excluded_hwids.is_some()
-                            {
-                                if is_device_interceptable(
+                            let allow_some_devs = mouse_to_intercept_hwids.is_some()
+                                || mouse_to_intercept_excluded_hwids.is_some();
+                            let allow_this_dev = allow_some_devs
+                                && is_device_interceptable(
                                     dev,
                                     &intrcptn,
                                     &mouse_to_intercept_hwids,
                                     &mouse_to_intercept_excluded_hwids,
                                     &mut is_dev_interceptable,
-                                ) {
-                                    if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                                        if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
-                                            tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
-                                        }
+                                );
+
+                            if !allow_some_devs || allow_this_dev {
+                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
+                                    if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
+                                        tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
                                     }
-                                }
+                                };
+                            }
+
+                            if allow_this_dev {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
-                                if let Some(event) = mouse_state_to_event(
-                                    dev,
-                                    &mouse_to_intercept_hwids,
-                                    &mouse_to_intercept_excluded_hwids,
-                                    state,
-                                    rolling,
-                                    &intrcptn,
-                                    &mut is_dev_interceptable,
-                                ) {
+                                if let Some(event) = mouse_state_to_event(state, rolling) {
                                     event
                                 } else {
                                     intrcptn.send(dev, &strokes[i..i + 1]);
                                     continue;
                                 }
                             } else {
-                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                                    if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
-                                        tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
-                                    }
-                                }
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
@@ -199,25 +190,7 @@ fn is_device_interceptable(
         _ => unreachable!("excluded and allowed should be mutually exclusive"),
     }
 }
-fn mouse_state_to_event(
-    input_dev: ic::Device,
-    allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
-    excluded_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
-    state: ic::MouseState,
-    rolling: i16,
-    intrcptn: &ic::Interception,
-    device_interceptability_cache: &mut HashMap<ic::Device, bool>,
-) -> Option<KeyEvent> {
-    if !is_device_interceptable(
-        input_dev,
-        intrcptn,
-        allowed_hwids,
-        excluded_hwids,
-        device_interceptability_cache,
-    ) {
-        return None;
-    }
-
+fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent> {
     if state.contains(ic::MouseState::RIGHT_BUTTON_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_RIGHT,
