@@ -4135,7 +4135,10 @@ Debouncing prevents rapid repeated key presses from being processed too quickly.
 This can be handy in the case of 'chatter' or 'double taps',
 where a single press of the keyboard results in multiple key press events because of faulty hardware.
 
-This option only limits the key press events. All other events are not debounced and passed through immediately.
+The following different debouncing algorithms are available:
+- "asym_eager_defer_pk" (Default)
+- "sym_eager_pk"
+- "sym_defer_pk"
 
 .Example:
 [source]

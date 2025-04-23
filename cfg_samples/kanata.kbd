@@ -152,6 +152,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; On Linux, it is possible to configure a debounce algorithm.
   ;; This is useful in the case of keyboard 'chatter' or 'double taps' due to faulty hardware.
   ;; The default algorithm is "asym_eager_defer_pk".
+  ;; This feature is not live-reloadable.
   ;;
   ;; Example: Set debounce duration to 50ms.
   ;;   linux-debounce-duration 50
@@ -162,6 +163,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; Supported debounce algorithms:
   ;; - asym_eager_defer_pk
   ;; - sym_eager_pk
+  ;; - sym_defer_pk
 
   ;; Example configuration combining both:
   ;;   linux-debounce-algorithm sym_eager_pk
