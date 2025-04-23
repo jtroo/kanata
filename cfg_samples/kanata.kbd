@@ -155,10 +155,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This feature is not live-reloadable.
   ;;
   ;; Example: Set debounce duration to 50ms.
-  ;;   linux-debounce-duration 50
+  ;;   debounce-duration 50
   ;;
   ;; Example: Set the debounce algorithm to "asym_eager_defer_pk".
-  ;;   linux-debounce-algorithm asym_eager_defer_pk
+  ;;   debounce-algorithm asym_eager_defer_pk
   ;;
   ;; Supported debounce algorithms:
   ;; - asym_eager_defer_pk
@@ -166,8 +166,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; - sym_defer_pk
 
   ;; Example configuration combining both:
-  ;;   linux-debounce-algorithm sym_eager_pk
-  ;;   linux-debounce-duration 50
+  ;;   debounce-algorithm sym_eager_pk
+  ;;   debounce-duration 50
 
   ;; There is an optional configuration entry for Windows to help mitigate strange
   ;; behaviour of AltGr if your layout uses that. Uncomment one of the items below

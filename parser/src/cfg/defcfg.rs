@@ -35,8 +35,8 @@ pub struct CfgLinuxOptions {
     pub linux_use_trackpoint_property: bool,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
-    pub linux_debounce_duration_ms: u16,
-    pub linux_debounce_algorithm: DebounceAlgorithm,
+    pub debounce_duration_ms: u16,
+    pub debounce_algorithm: DebounceAlgorithm,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -54,8 +54,8 @@ impl Default for CfgLinuxOptions {
             linux_use_trackpoint_property: false,
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
             linux_device_detect_mode: None,
-            linux_debounce_duration_ms: 0,
-            linux_debounce_algorithm: DebounceAlgorithm::AsymEagerDeferPk,
+            debounce_duration_ms: 0,
+            debounce_algorithm: DebounceAlgorithm::AsymEagerDeferPk,
         }
     }
 }
@@ -398,18 +398,18 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.linux_opts.linux_device_detect_mode = detect_mode;
                         }
                     }
-                    "linux-debounce-duration" => {
+                    "debounce-duration" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_opts.linux_debounce_duration_ms =
+                            cfg.linux_opts.debounce_duration_ms =
                                 parse_cfg_val_u16(val, label, false)?;
                         }
                     }
-                    "linux-debounce-algorithm" => {
+                    "debounce-algorithm" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let algorithm = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_opts.linux_debounce_algorithm = algorithm
+                            cfg.linux_opts.debounce_algorithm = algorithm
                                 .parse::<DebounceAlgorithm>()
                                 .map_err(|e| anyhow_expr!(val, "{}", e))?;
                         }

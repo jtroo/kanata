@@ -4127,8 +4127,8 @@ Thus the output bus type is configurable.
 )
 ----
 
-[[linux-only-linux-debounce-duration]]
-=== Linux only: linux-debounce-duration
+[[linux-only-debounce-duration]]
+=== Linux only: debounce-duration
 
 This option allows you to configure the debounce duration for key press events in milliseconds.
 Debouncing prevents rapid repeated key presses from being processed too quickly.
@@ -4144,7 +4144,7 @@ The following different debouncing algorithms are available:
 [source]
 ----
 (defcfg
-  linux-debounce-duration 50 ;; Set debounce duration to 50ms
+  debounce-duration 50 ;; Set debounce duration to 50ms
 )
 ----
 

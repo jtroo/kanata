@@ -374,8 +374,8 @@ impl Kanata {
             {
                 let linux_opts = &cfg.options.linux_opts;
                 Arc::new(Mutex::new(create_debounce_algorithm(
-                    linux_opts.linux_debounce_algorithm,
-                    linux_opts.linux_debounce_duration_ms,
+                    linux_opts.debounce_algorithm,
+                    linux_opts.debounce_duration_ms,
                 )))
             }
             #[cfg(not(target_os = "linux"))]
@@ -485,7 +485,7 @@ impl Kanata {
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
             #[cfg(target_os = "linux")]
-            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.linux_debounce_duration_ms)),
+            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.debounce_duration_ms)),
             #[cfg(target_os = "linux")]
             debounce_algorithm,
         })
@@ -533,8 +533,8 @@ impl Kanata {
             {
                 let linux_opts = &cfg.options.linux_opts;
                 Arc::new(Mutex::new(create_debounce_algorithm(
-                    linux_opts.linux_debounce_algorithm,
-                    linux_opts.linux_debounce_duration_ms,
+                    linux_opts.debounce_algorithm,
+                    linux_opts.debounce_duration_ms,
                 )))
             }
             #[cfg(not(target_os = "linux"))]
@@ -644,7 +644,7 @@ impl Kanata {
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
             #[cfg(target_os = "linux")]
-            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.linux_debounce_duration_ms)),
+            linux_debounce_duration: Arc::new(Mutex::new(cfg.options.linux_opts.debounce_duration_ms)),
             #[cfg(target_os = "linux")]
             debounce_algorithm,
         })
