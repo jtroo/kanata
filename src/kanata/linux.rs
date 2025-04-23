@@ -259,7 +259,8 @@ fn start_event_preprocessor(
                         has_pending_deadlines = algorithm.process_event(kev, &process_tx);
                     }
                     Err(TryRecvError::Empty) => {
-                        // No events available, continue processing deadlines
+                        // No events available, wait a while before doing another tick
+                        std::thread::sleep(Duration::from_millis(1));
                     }
                     Err(TryRecvError::Disconnected) => {
                         panic!("channel disconnected");
