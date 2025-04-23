@@ -118,6 +118,8 @@ use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::*;
 use sexpr::*;
 
+pub mod debounce_algorithm;
+
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

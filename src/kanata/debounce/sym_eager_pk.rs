@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use kanata_parser::cfg::debounce_algorithm::DebounceAlgorithm;
+
 use crate::kanata::{KeyEvent, OsCode};
 use crate::oskbd::KeyValue;
 use std::sync::mpsc::SyncSender as Sender;
@@ -24,8 +26,8 @@ impl SymEagerPk {
 }
 
 impl Debounce for SymEagerPk {
-    fn name(&self) -> &str {
-        "sym_eager_pk"
+    fn name(&self) -> DebounceAlgorithm {
+        DebounceAlgorithm::SymEagerPk
     }
 
     fn debounce_time(&self) -> u16 {

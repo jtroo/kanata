@@ -374,7 +374,7 @@ impl Kanata {
             {
                 let linux_opts = &cfg.options.linux_opts;
                 Arc::new(Mutex::new(create_debounce_algorithm(
-                    &linux_opts.linux_debounce_algorithm,
+                    linux_opts.linux_debounce_algorithm,
                     linux_opts.linux_debounce_duration_ms,
                 )))
             }
@@ -533,7 +533,7 @@ impl Kanata {
             {
                 let linux_opts = &cfg.options.linux_opts;
                 Arc::new(Mutex::new(create_debounce_algorithm(
-                    &linux_opts.linux_debounce_algorithm,
+                    linux_opts.linux_debounce_algorithm,
                     linux_opts.linux_debounce_duration_ms,
                 )))
             }

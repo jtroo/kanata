@@ -1,3 +1,4 @@
+use super::debounce_algorithm::DebounceAlgorithm;
 use super::sexpr::SExpr;
 use super::HashSet;
 use super::{error::*, TrimAtomQuotes};
@@ -35,7 +36,7 @@ pub struct CfgLinuxOptions {
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
     pub linux_debounce_duration_ms: u16,
-    pub linux_debounce_algorithm: String,
+    pub linux_debounce_algorithm: DebounceAlgorithm,
 }
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
@@ -54,7 +55,7 @@ impl Default for CfgLinuxOptions {
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
             linux_device_detect_mode: None,
             linux_debounce_duration_ms: 0,
-            linux_debounce_algorithm: "asym_eager_defer_pk".to_string(),
+            linux_debounce_algorithm: DebounceAlgorithm::AsymEagerDeferPk,
         }
     }
 }
@@ -408,7 +409,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let algorithm = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_opts.linux_debounce_algorithm = algorithm.to_string();
+                            cfg.linux_opts.linux_debounce_algorithm = algorithm
+                                .parse::<DebounceAlgorithm>()
+                                .map_err(|e| anyhow_expr!(val, "{}", e))?;
                         }
                     }
                     "windows-altgr" => {
