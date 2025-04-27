@@ -40,8 +40,14 @@ use dynamic_macro::*;
 
 mod key_repeat;
 
+mod millisecond_counting;
+pub use millisecond_counting::*;
+
 mod sequences;
 use sequences::*;
+
+#[cfg(test)]
+mod tests;
 
 pub mod cfg_forced;
 use cfg_forced::*;
@@ -783,21 +789,15 @@ impl Kanata {
         Ok(())
     }
 
-    /// Advance keyberon layout state and send events based on changes to its state.
-    /// Returns the number of ticks that elapsed.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
-        const NS_IN_MS: u128 = 1_000_000;
+    /// Returns the number of ms elapsed for the procesing loop according to current monotonic time
+    /// and stored internal state. Mutates the internal time-tracking state.
+    fn get_ms_elapsed(&mut self) -> u128 {
         let now = instant::Instant::now();
-        let ns_elapsed = now.duration_since(self.last_tick).as_nanos();
-        let ns_elapsed_with_rem = ns_elapsed + self.time_remainder;
-        let ms_elapsed = ns_elapsed_with_rem / NS_IN_MS;
-        self.time_remainder = ns_elapsed_with_rem % NS_IN_MS;
-
-        self.tick_ms(ms_elapsed, tx)?;
-
+        let ms_count_result = count_ms_elapsed(self.last_tick, now, self.time_remainder);
+        let ms_elapsed = ms_count_result.ms_elapsed;
+        self.time_remainder = ms_count_result.ms_remainder_in_ns;
         self.last_tick = match ms_elapsed {
-            0 => self.last_tick,
-            1..=10 => now,
+            0..=10 => ms_count_result.last_tick,
             // If too many ms elapsed, probably doing a tight loop of something that's quite
             // expensive, e.g. click spamming. To avoid a growing ms_elapsed due to trying and
             // failing to catch up, reset last_tick to the "actual now" instead the "past now"
@@ -807,6 +807,15 @@ impl Kanata {
             // thousands of ticks all happening as soon as the expensive operations end.
             _ => instant::Instant::now(),
         };
+
+        ms_elapsed
+    }
+
+    /// Advance keyberon layout state and send events based on changes to its state.
+    /// Returns the number of ticks that elapsed.
+    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
+        let ms_elapsed = self.get_ms_elapsed();
+        self.tick_ms(ms_elapsed, tx)?;
 
         self.check_handle_layer_change(tx);
 
