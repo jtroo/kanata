@@ -21,6 +21,7 @@ impl Kanata {
 
         let k = kanata.lock();
         let allow_hardware_repeat = k.allow_hardware_repeat;
+        let mouse_movement_key = k.mouse_movement_key.clone();
         let mut kbd_in = match KbdIn::new(
             &k.kbd_in_paths,
             k.continue_if_no_devices,
@@ -44,6 +45,15 @@ impl Kanata {
             log::trace!("event count: {}\nevents:\n{events:?}", events.len());
 
             for in_event in events.iter().copied() {
+                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
+                    if let InputEventKind::RelAxis(_) = in_event.kind() {
+                        let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
+                        if let Err(e) = tx.try_send(fake_event) {
+                            bail!("failed to send on channel: {}", e)
+                        }
+                    }
+                }
+
                 let key_event = match KeyEvent::try_from(in_event) {
                     Ok(ev) => ev,
                     _ => {
