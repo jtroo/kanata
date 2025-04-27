@@ -76,27 +76,22 @@ impl Kanata {
                             flags,
                             ..
                         } => {
-                            let allow_some_devs = mouse_to_intercept_hwids.is_some()
-                                || mouse_to_intercept_excluded_hwids.is_some();
-                            let allow_this_dev = allow_some_devs
-                                && is_device_interceptable(
-                                    dev,
-                                    &intrcptn,
-                                    &mouse_to_intercept_hwids,
-                                    &mouse_to_intercept_excluded_hwids,
-                                    &mut is_dev_interceptable,
-                                );
+                            let allow_this_dev = is_device_interceptable(
+                                dev,
+                                &intrcptn,
+                                &mouse_to_intercept_hwids,
+                                &mouse_to_intercept_excluded_hwids,
+                                &mut is_dev_interceptable,
+                            );
 
-                            if !allow_some_devs || allow_this_dev {
+                            if allow_this_dev {
+                                log::trace!("checking mouse stroke {:?}", strokes[i]);
+
                                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
                                     if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
                                         tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
                                     }
                                 };
-                            }
-
-                            if allow_this_dev {
-                                log::trace!("checking mouse stroke {:?}", strokes[i]);
                             }
 
                             if let (true, Some(event)) =
