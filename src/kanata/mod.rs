@@ -46,9 +46,6 @@ pub use millisecond_counting::*;
 mod sequences;
 use sequences::*;
 
-#[cfg(test)]
-mod tests;
-
 pub mod cfg_forced;
 use cfg_forced::*;
 
@@ -791,7 +788,7 @@ impl Kanata {
 
     /// Returns the number of ms elapsed for the procesing loop according to current monotonic time
     /// and stored internal state. Mutates the internal time-tracking state.
-    fn get_ms_elapsed(&mut self) -> u128 {
+    pub fn get_ms_elapsed(&mut self) -> u128 {
         let now = instant::Instant::now();
         let ms_count_result = count_ms_elapsed(self.last_tick, now, self.time_remainder);
         let ms_elapsed = ms_count_result.ms_elapsed;
