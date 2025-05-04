@@ -43,16 +43,25 @@ impl Debounce for SymDeferPk {
                 try_send_panic(process_tx, event);
             }
             _ => {
+                let new_deadline = now + self.debounce_duration;
+
                 // Check if there is a pending event for this key
-                if let Some(_pos) = self.pending_events.iter().position(|(pending_event, _)| pending_event.code == oscode) {
-                    // Skip this events since it is within the debounce duration, pending release
+                if let Some(pos) = self.pending_events.iter().position(|(pending_event, _)| pending_event.code == oscode) {
+                    // If the event is already pending, update the deadline
+                    log::debug!(
+                        "Updating pending event for {:?} (value: {:?}) to new deadline: {:?}",
+                        oscode,
+                        event.value,
+                        new_deadline
+                    );
+                    self.pending_events[pos].1 = new_deadline;
                 } else {
                     // No pending event for this key. Add the new event.
                     log::debug!(
                         "Deferring event for {:?} (value: {:?}) until debounce duration passes",
                         oscode, event.value
                     );
-                    self.pending_events.push((event, now + self.debounce_duration));
+                    self.pending_events.push((event, new_deadline));
                 }
             }
         }

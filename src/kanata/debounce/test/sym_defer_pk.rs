@@ -109,4 +109,46 @@ mod tests {
         assert_eq!(press_event_b.code, key_b_press.code);
         assert_eq!(press_event_b.value, key_b_press.value);
     }
+
+    #[test]
+    fn test_reset_deadline_preserves_event() {
+        const DEBOUNCE_MS: u64 = 50;
+        let (tx, rx) = mpsc::sync_channel(10);
+        let mut algorithm = create_debounce_algorithm(DebounceAlgorithm::SymDeferPk, DEBOUNCE_MS as u16);
+
+        let key_a_press = KeyEvent::new(OsCode::KEY_A, KeyValue::Press);
+        let key_a_release = KeyEvent::new(OsCode::KEY_A, KeyValue::Release);
+
+        // 1. Process initial Press event
+        let mut has_pending = algorithm.process_event(key_a_press.clone(), &tx);
+        assert!(has_pending, "Press event should create a pending deadline");
+        assert!(rx.try_recv().is_err(), "Press event should not be sent immediately");
+
+        // 2. Wait for less than the debounce duration
+        std::thread::sleep(std::time::Duration::from_millis(DEBOUNCE_MS / 2)); // e.g., 25ms
+
+        // 3. Process Release event - this should reset the deadline for the pending Press event
+        has_pending = algorithm.process_event(key_a_release, &tx);
+        assert!(has_pending, "Release event should reset the pending deadline");
+        assert!(rx.try_recv().is_err(), "Release event should not be sent immediately, nor should the original press");
+
+        // 4. Wait until after the *new* deadline has passed
+        // Original deadline was start + 50ms.
+        // New deadline is (start + 25ms) + 50ms = start + 75ms.
+        // We need to sleep until slightly after start + 75ms.
+        // We already slept 25ms, so sleep for another 51ms+.
+        std::thread::sleep(std::time::Duration::from_millis(DEBOUNCE_MS + 1)); // e.g., 51ms (total sleep ~76ms)
+
+        // 5. Tick the algorithm
+        let has_pending_after_tick = algorithm.tick(&tx, Instant::now());
+        assert!(!has_pending_after_tick, "Expected no pending events after the reset deadline passed");
+
+        // 6. Verify the original Press event was sent
+        let received_event = rx.try_recv().expect("Expected the original Press event to be sent");
+        assert_eq!(received_event.code, key_a_press.code);
+        assert_eq!(received_event.value, key_a_press.value, "Expected the deferred event to be the original Press");
+
+        // 7. Verify no other event (like the Release) was sent
+        assert!(rx.try_recv().is_err(), "Expected no other events after the tick");
+    }
 }
