@@ -12,6 +12,7 @@ use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use crate::kanata::debounce::debounce::Debounce;
+use crate::kanata::millisecond_counting::count_ms_elapsed;
 
 use super::*;
 
@@ -237,19 +238,23 @@ fn start_event_preprocessor(
             );
         }
         let mut last_tick = Instant::now();
+        let mut ms_remainder_in_ns = 0;
         let mut has_pending_deadlines = false;
 
         loop {
             let mut algorithm = debounce_algorithm.lock();
-            
-            if has_pending_deadlines {
-                // Process pending deadlines every 1ms
-                let now = Instant::now();
-                let elapsed = now.duration_since(last_tick);
 
-                if elapsed >= Duration::from_millis(1) {
+            if has_pending_deadlines {
+                // Tick every 1ms until no pending deadlines
+                let now = Instant::now();
+                let tick_result = count_ms_elapsed(last_tick, now, ms_remainder_in_ns);
+
+                if tick_result.ms_elapsed >= 1 {
+                    // Call tick if at least 1ms has passed
                     has_pending_deadlines = algorithm.tick(&process_tx, now);
-                    last_tick = now;
+                    // Update last_tick and remainder based on the helper function's result
+                    last_tick = Instant::now();
+                    ms_remainder_in_ns = 0;
                 }
 
                 // Non-blocking check for new events
@@ -259,8 +264,8 @@ fn start_event_preprocessor(
                         has_pending_deadlines = algorithm.process_event(kev, &process_tx);
                     }
                     Err(TryRecvError::Empty) => {
-                        // No events available, wait a while before doing another tick
-                        std::thread::sleep(Duration::from_millis(1));
+                        // No events available, wait a small duration to prevent busy looping
+                        std::thread::sleep(Duration::from_nanos(ms_remainder_in_ns.try_into().unwrap()));
                     }
                     Err(TryRecvError::Disconnected) => {
                         panic!("channel disconnected");
@@ -272,7 +277,6 @@ fn start_event_preprocessor(
                     Ok(kev) => {
                         log::debug!("Received event: {:?}", kev);
                         has_pending_deadlines = algorithm.process_event(kev, &process_tx);
-                        last_tick = Instant::now();
                     }
                     Err(_) => {
                         panic!("channel disconnected");
