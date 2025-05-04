@@ -91,8 +91,6 @@ mod tests {
         algorithm.process_event(key_a_press, &tx);
         assert!(rx.try_recv().is_err(), "Expected no key A press event immediately");
 
-        std::thread::sleep(std::time::Duration::from_millis(1)); // Simulate a short delay
-
         // Process key B press
         algorithm.process_event(key_b_press, &tx);
         assert!(rx.try_recv().is_err(), "Expected no key B press event immediately");

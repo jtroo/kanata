@@ -11,7 +11,7 @@ use crate::kanata::debounce::debounce::{try_send_panic, Debounce};
 pub struct AsymEagerDeferPk {
     debounce_duration: Duration,
     last_key_event_time: HashMap<OsCode, Instant>,
-    release_deadlines: HashMap<OsCode, Instant>,
+    release_deadlines: Vec<(OsCode, Instant)>,
 }
 
 impl AsymEagerDeferPk {
@@ -19,7 +19,7 @@ impl AsymEagerDeferPk {
         Self {
             debounce_duration: Duration::from_millis(debounce_duration_ms.into()),
             last_key_event_time: HashMap::new(),
-            release_deadlines: HashMap::new(),
+            release_deadlines: Vec::new(), // Initialize as an empty Vec
         }
     }
 }
@@ -32,7 +32,7 @@ impl Debounce for AsymEagerDeferPk {
     fn debounce_time(&self) -> u16 {
         self.debounce_duration.as_millis() as u16
     }
-    
+
     fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool {
         let now = Instant::now();
         let oscode = event.code;
@@ -40,7 +40,7 @@ impl Debounce for AsymEagerDeferPk {
         match event.value {
             KeyValue::Press => {
                 // Cancel any pending release for this key
-                self.release_deadlines.remove(&oscode);
+                self.release_deadlines.retain(|(code, _)| *code != oscode);
 
                 // Check if the key press is within the debounce duration
                 if let Some(&last_time) = self.last_key_event_time.get(&oscode) {
@@ -56,12 +56,12 @@ impl Debounce for AsymEagerDeferPk {
             }
             KeyValue::Release => {
                 // Check if pending release event is already scheduled
-                if self.release_deadlines.contains_key(&oscode) {
+                if self.release_deadlines.iter().any(|(code, _)| *code == oscode) {
                     log::debug!("Release event already scheduled for {:?}", oscode);
                     return !self.release_deadlines.is_empty(); // Skip processing this event
                 }
                 // Schedule the release event for later
-                self.release_deadlines.insert(oscode, now + self.debounce_duration);
+                self.release_deadlines.push((oscode, now + self.debounce_duration));
             }
             KeyValue::Repeat => {
                 // Forward repeat events immediately
@@ -81,21 +81,19 @@ impl Debounce for AsymEagerDeferPk {
 
     fn tick(&mut self, process_tx: &Sender<KeyEvent>, now: Instant) -> bool {
         // Process any release events whose deadlines have passed
-        let mut to_remove = vec![];
-        for (&oscode, &deadline) in &self.release_deadlines {
-            if now >= deadline {
+        self.release_deadlines.retain(|(oscode, deadline)| {
+            if now >= *deadline {
                 log::debug!("Emitting key release for {:?}", oscode);
                 let release_event = KeyEvent {
-                    code: oscode,
+                    code: *oscode,
                     value: KeyValue::Release,
                 };
                 try_send_panic(process_tx, release_event);
-                to_remove.push(oscode);
+                false // Remove this item from the Vec
+            } else {
+                true // Keep this item in the Vec
             }
-        }
-        for oscode in to_remove {
-            self.release_deadlines.remove(&oscode);
-        }
+        });
 
         // Return true if there are still pending deadlines
         !self.release_deadlines.is_empty()
