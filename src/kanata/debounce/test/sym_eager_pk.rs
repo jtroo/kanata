@@ -5,6 +5,8 @@ mod tests {
     use crate::kanata::debounce::debounce::create_debounce_algorithm;
     use kanata_parser::cfg::debounce_algorithm::DebounceAlgorithm;
     use std::sync::mpsc;
+    use std::time::Duration;
+    use std::thread;
 
     #[test]
     fn basic_functionality() {
@@ -33,7 +35,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Expected no event to be sent");
 
         // Wait for 51ms to allow more events to be processed
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
 
         // Simulate a press event again
         let key_event = KeyEvent::new(OsCode::KEY_A, KeyValue::Press);
@@ -44,7 +46,7 @@ mod tests {
         assert_eq!(received_event.value, key_event.value);
 
         // Wait for 51ms to allow the next event to be processed
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         // Send release event
         let key_release = KeyEvent::new(OsCode::KEY_A, KeyValue::Release);
         let has_pending = algorithm.process_event(key_release, &tx);
@@ -70,7 +72,7 @@ mod tests {
         assert_eq!(received_event.value, key_event.value);
 
         // Second key press within debounce duration should be ignored
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         let has_pending = algorithm.process_event(key_event, &tx);
         assert!(!has_pending);
         assert!(rx.try_recv().is_err(), "Expected no event to be sent");
@@ -114,7 +116,7 @@ mod tests {
         assert_eq!(received_event.value, key_b_press.value);
 
         // Simulate debounce duration for key A
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         let key_a_release = KeyEvent::new(OsCode::KEY_A, KeyValue::Release);
         algorithm.process_event(key_a_release, &tx);
         let release_event = rx.try_recv().expect("Expected a key A release event");

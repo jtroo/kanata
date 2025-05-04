@@ -2,7 +2,7 @@
 mod tests {
     use kanata_parser::{cfg::debounce_algorithm::DebounceAlgorithm, keys::OsCode};
     use crate::{debounce::debounce::create_debounce_algorithm, kanata::KeyEvent, oskbd::KeyValue};
-    use std::{sync::mpsc, time::Instant};
+    use std::{sync::mpsc, time::{Instant, Duration}, thread};
 
     #[test]
     fn basic_functionality() {
@@ -32,7 +32,7 @@ mod tests {
         assert!(has_pending_after_tick, "Expected release event to be pending");
 
         // Wait for 51ms to ensure the release event is processed
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         let has_pending_after_tick = algorithm.tick(&tx, Instant::now());
         assert!(!has_pending_after_tick, "Expected release event to be processed");
 
@@ -58,7 +58,7 @@ mod tests {
         assert_eq!(received_event.value, key_event.value);
 
         // Second key press within debounce duration should be ignored
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         let has_pending = algorithm.process_event(key_event, &tx);
         assert!(!has_pending);
         assert!(rx.try_recv().is_err(), "Expected no event to be sent");
@@ -87,7 +87,7 @@ mod tests {
 
         // Another press event within debounce duration should remove the pending release
         // and not send a new event
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         let has_pending = algorithm.process_event(key_press, &tx);
         assert!(!has_pending, "No pending event expected");
         assert!(rx.try_recv().is_err(), "Expected no event to be sent, because of debounce");
@@ -95,7 +95,7 @@ mod tests {
         // Because of the new key release, the timer should be reset
         let has_pending = algorithm.process_event(key_release, &tx);
         assert!(has_pending, "Expected a pending release event");
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         // note that 30ms + 30ms = 60ms > 50ms
         // Simulate a tick before the debounce duration
         let now = Instant::now();
@@ -103,7 +103,7 @@ mod tests {
         assert!(has_pending_after_tick, "Expected release event to be pending");
 
         // Simulate a tick after debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(21));
+        thread::sleep(Duration::from_millis(21));
         let has_pending_after_tick = algorithm.tick(&tx, Instant::now());
         assert!(!has_pending_after_tick, "Expected no pending events after tick");
 
@@ -161,7 +161,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Expected no key B release event yet");
 
         // Simulate a tick after debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         algorithm.tick(&tx, Instant::now());
 
         // Verify key A release event

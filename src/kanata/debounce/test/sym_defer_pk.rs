@@ -4,7 +4,9 @@ mod tests {
     use crate::oskbd::KeyValue;
     use crate::kanata::debounce::debounce::create_debounce_algorithm;
     use kanata_parser::cfg::debounce_algorithm::DebounceAlgorithm;
-    use std::{sync::mpsc, time::Instant};
+    use std::sync::mpsc;
+    use std::time::{Duration, Instant};
+    use std::thread;
 
     #[test]
     fn basic_functionality() {
@@ -23,7 +25,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Expected no event to be sent immediately");
 
         // Simulate a tick after debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         let has_pending_after_tick = algorithm.tick(&tx, Instant::now());
         assert!(!has_pending_after_tick, "Expected no pending events after tick");
 
@@ -50,7 +52,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Expected no key release event immediately, this one should be debounced");
 
         // Simulate a tick after debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         algorithm.tick(&tx, Instant::now());
 
         // Verify key press event
@@ -96,7 +98,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Expected no key B press event immediately");
 
         // Simulate a tick after debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(51));
+        thread::sleep(Duration::from_millis(51));
         algorithm.tick(&tx, Instant::now());
 
         // Verify key A press event
@@ -125,7 +127,7 @@ mod tests {
         assert!(rx.try_recv().is_err(), "Press event should not be sent immediately");
 
         // 2. Wait for less than the debounce duration
-        std::thread::sleep(std::time::Duration::from_millis(DEBOUNCE_MS / 2)); // e.g., 25ms
+        thread::sleep(Duration::from_millis(DEBOUNCE_MS / 2)); // e.g., 25ms
 
         // 3. Process Release event - this should reset the deadline for the pending Press event
         has_pending = algorithm.process_event(key_a_release, &tx);
@@ -137,7 +139,7 @@ mod tests {
         // New deadline is (start + 25ms) + 50ms = start + 75ms.
         // We need to sleep until slightly after start + 75ms.
         // We already slept 25ms, so sleep for another 51ms+.
-        std::thread::sleep(std::time::Duration::from_millis(DEBOUNCE_MS + 1)); // e.g., 51ms (total sleep ~76ms)
+        thread::sleep(Duration::from_millis(DEBOUNCE_MS + 1)); // e.g., 51ms (total sleep ~76ms)
 
         // 5. Tick the algorithm
         let has_pending_after_tick = algorithm.tick(&tx, Instant::now());
