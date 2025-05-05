@@ -248,13 +248,12 @@ fn start_event_preprocessor(
                 // Tick every 1ms until no pending deadlines
                 let now = Instant::now();
                 let tick_result = count_ms_elapsed(last_tick, now, ms_remainder_in_ns);
+                ms_remainder_in_ns = tick_result.ms_remainder_in_ns;
+                last_tick = tick_result.last_tick;
 
                 if tick_result.ms_elapsed >= 1 {
                     // Call tick if at least 1ms has passed
                     has_pending_deadlines = algorithm.tick(&process_tx, now);
-                    // Update last_tick and remainder based on the helper function's result
-                    last_tick = Instant::now();
-                    ms_remainder_in_ns = 0;
                 }
 
                 // Non-blocking check for new events
