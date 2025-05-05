@@ -265,7 +265,7 @@ fn start_event_preprocessor(
                     }
                     Err(TryRecvError::Empty) => {
                         // No events available, wait a small duration to prevent busy looping
-                        std::thread::sleep(Duration::from_nanos(ms_remainder_in_ns.try_into().unwrap()));
+                        std::thread::sleep(Duration::from_millis(1));
                     }
                     Err(TryRecvError::Disconnected) => {
                         panic!("channel disconnected");
