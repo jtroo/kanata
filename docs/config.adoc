@@ -703,9 +703,9 @@ Variables are referred to by prefixing their name with `$`.
 [source]
 ----
 (defvar
-  tap-timeout   100
+  tap-repress-timeout   100
   hold-timeout  200
-  tt $tap-timeout
+  tt $tap-repress-timeout
   ht $hold-timeout
 )
 
@@ -1887,12 +1887,12 @@ depending it a key is tapped or held.
 .Syntax:
 [source]
 ----
-(tap-hold $tap-timeout $hold-timeout $tap-action $hold-action)
+(tap-hold $tap-repress-timeout $hold-timeout $tap-action $hold-action)
 ----
 
 [cols="1,4"]
 |===
-| `$tap-timeout`
+| `$tap-repress-timeout`
 | Number of milliseconds for the window that a tap into re-press with hold
 results in the `$tap-action` being held.
 
@@ -1910,12 +1910,12 @@ results in `$tap-action` activating.
 
 .Variants:
 ----
-(tap-hold-press $tap-timeout $hold-timeout $tap-action $hold-action)
-(tap-hold-release $tap-timeout $hold-timeout $tap-action $hold-action)
-(tap-hold-press-timeout $tap-timeout $hold-timeout $tap-action $hold-action $timeout-action)
-(tap-hold-release-timeout $tap-timeout $hold-timeout $tap-action $hold-action $timeout-action)
-(tap-hold-release-keys $tap-timeout $hold-timeout $tap-action $hold-action $tap-keys)
-(tap-hold-except-keys $tap-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-press $tap-repress-timeout $hold-timeout $tap-action $hold-action)
+(tap-hold-release $tap-repress-timeout $hold-timeout $tap-action $hold-action)
+(tap-hold-press-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
+(tap-hold-release-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
+(tap-hold-release-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 ----
 
 [cols="1,2"]
@@ -1955,23 +1955,23 @@ key whereas a hold is a long press.
 
 The action takes 4 parameters in the listed order:
 
-. tap timeout (unit: ms)
+. tap repress timeout (unit: ms)
 . hold timeout (unit: ms)
 . tap action
 . hold action
 
-The tap timeout is the number of milliseconds within which a rapid
+The tap repress timeout is the number of milliseconds within which a rapid
 press+release+press of a key will result in the tap action being held instead
 of the hold action activating.
 
-.Tap timeout in more detail
+.Tap repress timeout in more detail
 [%collapsible,indent=4]
 ====
-The way a `tap-hold` action works with respect to the tap timeout
+The way a `tap-hold` action works with respect to the tap repress timeout
 is often unclear to newcomers.
 To make it concrete, the output event sequence of the `tap-hold` action
-`(tap-hold $tap-timeout 200 a lctl)`
-for varying values of `$tap-timeout`
+`(tap-hold $tap-repress-timeout 200 a lctl)`
+for varying values of `$tap-repress-timeout`
 with a fixed input event sequence will be described.
 
 The input event sequence is:
@@ -1984,7 +1984,7 @@ The input event sequence is:
 - 300 ms elapses
 - release
 
-With `(defvar $tap-timeout 0)`, the output event sequence is:
+With `(defvar $tap-repress-timeout 0)`, the output event sequence is:
 
 - 50 ms elapses
 - press `a`
@@ -1994,10 +1994,10 @@ With `(defvar $tap-timeout 0)`, the output event sequence is:
 - 100 ms elapses
 - release `lctl`
 
-The above output sequence is the same for all `$tap-timeout` values
+The above output sequence is the same for all `$tap-repress-timeout` values
 between and including `0` and `99`.
 
-For a value of `100` or greater for `$tap-timeout`,
+For a value of `100` or greater for `$tap-repress-timeout`,
 the output event sequence is instead:
 
 - 50 ms elapses
