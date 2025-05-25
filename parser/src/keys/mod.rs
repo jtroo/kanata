@@ -324,6 +324,10 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
         "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,
         "IntlRo" | "ro" => OsCode::KEY_RO,
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "Lang1" | "kana" => OsCode::KEY_HANGEUL,
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "Lang2" | "eisu" => OsCode::KEY_HANJA,
 
         #[cfg(any(target_os = "linux", target_os = "unknown"))]
         "PrintScreen" | "prtsc" | "prnt" | "⎙" => OsCode::KEY_SYSRQ,
