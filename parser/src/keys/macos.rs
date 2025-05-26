@@ -517,6 +517,14 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x07,
                 code: 0x85,
             }),
+            OsCode::KEY_HANGEUL => Ok(PageCode {
+                page: 0x07,
+                code: 0x90,
+            }),
+            OsCode::KEY_HANJA => Ok(PageCode {
+                page: 0x07,
+                code: 0x91,
+            }),
             OsCode::KEY_ALTERASE => Ok(PageCode {
                 page: 0x07,
                 code: 0x99,
@@ -1175,6 +1183,14 @@ impl TryFrom<PageCode> for OsCode {
                 page: 0x07,
                 code: 0x85,
             } => Ok(OsCode::KEY_KPCOMMA),
+            PageCode {
+                page: 0x07,
+                code: 0x90,
+            } => Ok(OsCode::KEY_HANGEUL),
+            PageCode {
+                page: 0x07,
+                code: 0x91,
+            } => Ok(OsCode::KEY_HANJA),
             PageCode {
                 page: 0x07,
                 code: 0x99,
