@@ -2121,7 +2121,7 @@ mod test {
     }
 
     #[test]
-    fn basic_hold_tap_timeout() {
+    fn basic_hold_tap_repress_timeout() {
         static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
