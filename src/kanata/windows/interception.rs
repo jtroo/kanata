@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use kanata_interception as ic;
 use parking_lot::Mutex;
-use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::sync::mpsc::SyncSender as Sender;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
@@ -165,7 +165,9 @@ fn is_device_interceptable(
                 log::trace!("getting hardware id for input dev: {input_dev}");
                 let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
                 let dev_is_interceptable = allowed.contains(&hwid);
-                log::info!("include check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
+                log::info!(
+                    "include check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} "
+                );
                 cache.insert(input_dev, dev_is_interceptable);
                 dev_is_interceptable
             }
@@ -177,7 +179,9 @@ fn is_device_interceptable(
                 log::trace!("getting hardware id for input dev: {input_dev}");
                 let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
                 let dev_is_interceptable = !excluded.contains(&hwid);
-                log::info!("exclude check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
+                log::info!(
+                    "exclude check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} "
+                );
                 cache.insert(input_dev, dev_is_interceptable);
                 dev_is_interceptable
             }
