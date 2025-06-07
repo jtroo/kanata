@@ -377,6 +377,7 @@ impl KbdOut {
     pub fn new(
         symlink_path: &Option<String>,
         trackpoint: bool,
+        name: &str,
         bus_type: BusType,
     ) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
@@ -400,7 +401,7 @@ impl KbdOut {
         ]);
 
         let device = uinput::VirtualDeviceBuilder::new()?
-            .name("kanata")
+            .name(&name)
             // libinput's "disable while typing" feature don't work when bus_type
             // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
             .input_id(evdev::InputId::new(bus_type, 1, 1, 1))

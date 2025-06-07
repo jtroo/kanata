@@ -356,6 +356,7 @@ impl KbdOut {
     pub fn new(
         _s: &Option<String>,
         _tp: bool,
+        _name: &str,
         _bustype: evdev::BusType,
     ) -> Result<Self, io::Error> {
         Self::new_actual()

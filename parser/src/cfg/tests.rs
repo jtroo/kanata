@@ -1400,6 +1400,7 @@ fn parse_all_defcfg() {
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
   linux-use-trackpoint-property yes
+  linux-output-device-name "Kanata Test"
   linux-output-device-bus-type USB
   tray-icon symbols.ico
   icon-match-layer-name no

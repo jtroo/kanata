@@ -4110,6 +4110,20 @@ changing their behavior as well.
 )
 ----
 
+[[linux-only-linux-output-device-name]]
+=== Linux only: linux-output-device-name
+
+This option defines the name of the evdev output device.
+The default value is kanata.
+
+.Example:
+[source]
+----
+(defcfg
+   linux-output-device-name "kanata output"
+)
+----
+
 [[linux-only-linux-output-device-bus-type]]
 === Linux only: linux-output-device-bus-type
 

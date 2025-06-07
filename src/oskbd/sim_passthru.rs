@@ -37,6 +37,7 @@ impl KbdOut {
     pub fn new(
         _s: &Option<String>,
         _tp: bool,
+        _name: &str,
         _bustype: evdev::BusType,
     ) -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
