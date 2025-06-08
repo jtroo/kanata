@@ -139,6 +139,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;;   linux-unicode-termination space
 
+  ;; Kanata on Linux creates an evdev output device named "kanata".
+  ;; This name can be changed with this linux-output-device-name.
+  ;;
+  ;; Examples:
+  ;;
+  ;;   linux-output-device-name kanata_laptop
+  ;;   linux-output-device-name "kanata output device"
+
   ;; Kanata on Linux needs to declare a "bus type" for its evdev output device.
   ;; The options are USB and I8042. The default is I8042.
   ;; Using USB can break disable-touchpad-while-typing on Wayland.
