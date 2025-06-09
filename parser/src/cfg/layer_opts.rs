@@ -15,7 +15,7 @@ pub fn parse_layer_opts(list: &[SExpr]) -> Result<HashMap<String, String>> {
         let opt_key = key_expr.atom(None)
             .ok_or_else(|| anyhow_expr!(key_expr, "No lists are allowed in {DEFLAYER} options"))
             .and_then(|opt_key| {
-                if DEFLAYER_ICON.iter().any(|&i| i == opt_key) {
+                if DEFLAYER_ICON.contains(&opt_key) {
                     if layer_opts.contains_key(DEFLAYER_ICON[0]) {
                         // separate dupe check since multi-keys are stored
                         // with one "canonical" repr, so '🖻' → 'icon'
