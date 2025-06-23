@@ -50,14 +50,6 @@ ahkf:
   cargo fmt    --all
   cargo clippy --all --fix --features=passthru_ahk -- -D warnings
 
-use_cratesio_deps:
-  sed -i 's/^# \(kanata-\(keyberon\|parser\|tcp-protocol\) = ".*\)$/\1/' Cargo.toml parser/Cargo.toml
-  sed -i 's/^\(kanata-\(keyberon\|parser\|tcp-protocol\) = .*path.*\)$/# \1/' Cargo.toml parser/Cargo.toml
-
-use_local_deps:
-  sed -i 's/^\(kanata-\(keyberon\|parser\|tcp-protocol\) = ".*\)$/# \1/' Cargo.toml parser/Cargo.toml
-  sed -i 's/^# \(kanata-\(keyberon\|parser\|tcp-protocol\) = .*path.*\)$/\1/' Cargo.toml parser/Cargo.toml
-
 change_subcrate_versions version:
   sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
   sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\).*version\) = "[0-9.]*"/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
@@ -75,6 +67,7 @@ publish:
   cd keyberon && cargo publish
   cd tcp_protocol && cargo publish
   cd parser && cargo publish
+  cargo publish
 
 # Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
 cfg_to_html output_dir:
