@@ -433,6 +433,7 @@ enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
 pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     coord: KCoord,
     timeout: u16,
+    original_timeout: u16,
     delay: u16,
     ticks: u16,
     hold: &'a Action<'a, T>,
@@ -535,11 +536,17 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 skip_timeout = local_skip;
             }
         }
-        if let Some(&Queued { since, .. }) = queued
+        if let Some(&Queued {
+            since: since_release,
+            ..
+        }) = queued
             .iter()
             .find(|s| self.is_corresponding_release(&s.event))
         {
-            if self.timeout > self.delay.saturating_sub(since) {
+            let gap_between_press_and_release = self.delay.saturating_sub(since_release);
+            if self.original_timeout > 0 && self.original_timeout >= gap_between_press_and_release
+                || self.timeout > gap_between_press_and_release
+            {
                 Some(WaitingAction::Tap)
             } else {
                 Some(WaitingAction::Timeout)
@@ -1673,6 +1680,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             delay
                         },
                         ticks: 0,
+                        original_timeout: match self.quick_tap_hold_timeout {
+                            true => *timeout,
+                            false => 0,
+                        },
                         hold,
                         tap,
                         timeout_action,
@@ -1727,6 +1738,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             timeout_action: &Action::NoOp,
+                            original_timeout: 0,
                             config: WaitingConfig::TapDance(TapDanceState {
                                 actions: td.actions,
                                 timeout: td.timeout,
@@ -1773,6 +1785,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
+                    original_timeout: 0,
                     config: WaitingConfig::Chord(chords),
                     layer_stack: layer_stack.collect(),
                     prev_queue_len: QueueLen::MAX,
