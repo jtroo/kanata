@@ -52,7 +52,7 @@ impl FromStr for SocketAddrWrapper {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut address = s.to_string();
         if let Ok(port) = s.parse::<u16>() {
-            address = format!("127.0.0.1:{}", port);
+            address = format!("127.0.0.1:{port}");
         }
         address
             .parse::<SocketAddr>()

@@ -102,31 +102,31 @@ impl LogFmt {
             self.ticks = 0;
         }
         let blank = format!("  {: <pad$}", ""); //+␠ to allow combo log indicator
-        let val = format!("  {: <pad$}", value);
+        let val = format!("  {value: <pad$}");
         self.in_time += if key == LogFmtT::InTick {
             self.combo += &blank;
-            self.in_combo += &format!(" 🕐{: <pad$}", value);
+            self.in_combo += &format!(" 🕐{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.in_key_up += if key == LogFmtT::InKeyUp {
             self.combo += &blank;
-            self.in_combo += &format!(" ↑{: <pad$}", value);
+            self.in_combo += &format!(" ↑{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.in_key_down += if key == LogFmtT::InKeyDown {
             self.combo += &blank;
-            self.in_combo += &format!(" ↓{: <pad$}", value);
+            self.in_combo += &format!(" ↓{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.in_key_rep += if key == LogFmtT::InKeyRep {
             self.combo += &blank;
-            self.in_combo += &format!(" ⟳{: <pad$}", value);
+            self.in_combo += &format!(" ⟳{value: <pad$}");
             &val
         } else {
             &blank
@@ -134,28 +134,28 @@ impl LogFmt {
         self.time += if !time.is_empty() { &time } else { &blank };
         self.key_up += if key == LogFmtT::KeyUp {
             self.in_combo += &blank;
-            self.combo += &format!(" ↑{: <pad$}", value);
+            self.combo += &format!(" ↑{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.key_down += if key == LogFmtT::KeyDown {
             self.in_combo += &blank;
-            self.combo += &format!(" ↓{: <pad$}", value);
+            self.combo += &format!(" ↓{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.mouse_up += if key == LogFmtT::MouseUp {
             self.in_combo += &blank;
-            self.combo += &format!(" ↑{: <pad$}", value);
+            self.combo += &format!(" ↑{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.mouse_down += if key == LogFmtT::MouseDown {
             self.in_combo += &blank;
-            self.combo += &format!(" ↓{: <pad$}", value);
+            self.combo += &format!(" ↓{value: <pad$}");
             &val
         } else {
             &blank
@@ -169,14 +169,14 @@ impl LogFmt {
         };
         self.raw_up += if key == LogFmtT::RawUp {
             self.in_combo += &blank;
-            self.combo += &format!(" ↑{: <pad$}", value);
+            self.combo += &format!(" ↑{value: <pad$}");
             &val
         } else {
             &blank
         };
         self.raw_down += if key == LogFmtT::RawDown {
             self.in_combo += &blank;
-            self.combo += &format!(" ↓{: <pad$}", value);
+            self.combo += &format!(" ↓{value: <pad$}");
             &val
         } else {
             &blank
@@ -234,13 +234,13 @@ impl LogFmt {
         self.fmt(LogFmtT::MouseUp, btn.to_string())
     }
     pub fn set_mouse(&mut self, x: u16, y: u16) {
-        self.fmt(LogFmtT::MouseMove, format!("@{},{}", x, y))
+        self.fmt(LogFmtT::MouseMove, format!("@{x},{y}"))
     }
     pub fn scroll(&mut self, dir: MWheelDirection, dist: u16) {
-        self.fmt(LogFmtT::MouseMove, format!("{}{}", dir, dist))
+        self.fmt(LogFmtT::MouseMove, format!("{dir}{dist}"))
     }
     pub fn move_mouse(&mut self, dir: MoveDirection, dist: u16) {
-        self.fmt(LogFmtT::MouseMove, format!("{}{}", dir, dist))
+        self.fmt(LogFmtT::MouseMove, format!("{dir}{dist}"))
     }
     pub fn write_code(&mut self, code: u32, value: KeyValue) {
         self.fmt(LogFmtT::Code, format!("{code};{value:?}"))
@@ -285,17 +285,17 @@ impl LogFmt {
             self.raw_down,
             self.combo
         );
-        eprintln!("{}", table_out);
+        eprintln!("{table_out}");
         if let Some(appendix_s) = appendix {
             let out_path = append_file_name(in_path, appendix_s);
             let out_path_s = out_path.display();
             let mut out_file = match File::create(&out_path) {
-                Err(e) => panic!("✗ Couldn't create {}: {}", out_path_s, e),
+                Err(e) => panic!("✗ Couldn't create {out_path_s}: {e}"),
                 Ok(out_file) => out_file,
             };
             match out_file.write_all(table_out.as_bytes()) {
-                Err(e) => panic!("✗ Couldn't write to {}: {}", out_path_s, e),
-                Ok(_) => eprintln!("Saved output → {}", out_path_s),
+                Err(e) => panic!("✗ Couldn't write to {out_path_s}: {e}"),
+                Ok(_) => eprintln!("Saved output → {out_path_s}"),
             }
         }
     }

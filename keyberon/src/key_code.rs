@@ -857,7 +857,7 @@ impl fmt::Display for KeyCode {
             KeyCode::Mute => write!(f, "🔇"),
             KeyCode::VolUp => write!(f, "🔊"),
             KeyCode::VolDown => write!(f, "🔉"),
-            _ => write!(f, "{:?}", self),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
