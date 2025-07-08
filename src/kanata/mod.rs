@@ -146,7 +146,7 @@ pub struct Kanata {
     pub override_states: OverrideStates,
     /// Time of the last tick to know how many tick iterations to run, to achieve a 1ms tick
     /// interval more closely.
-    last_tick: instant::Instant,
+    last_tick: web_time::Instant,
     /// Tracks the non-whole-millisecond gaps between ticks to know when to do another tick
     /// iteration without sleeping, to achive a 1ms tick interval more closely.
     time_remainder: u128,
@@ -381,7 +381,7 @@ impl Kanata {
             sequence_timeout: cfg.options.sequence_timeout,
             sequence_state: SequenceState::new(),
             sequences: cfg.sequences,
-            last_tick: instant::Instant::now(),
+            last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
@@ -523,7 +523,7 @@ impl Kanata {
             sequence_timeout: cfg.options.sequence_timeout,
             sequence_state: SequenceState::new(),
             sequences: cfg.sequences,
-            last_tick: instant::Instant::now(),
+            last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
             overrides: cfg.overrides,
@@ -789,7 +789,7 @@ impl Kanata {
     /// Returns the number of ms elapsed for the procesing loop according to current monotonic time
     /// and stored internal state. Mutates the internal time-tracking state.
     pub fn get_ms_elapsed(&mut self) -> u128 {
-        let now = instant::Instant::now();
+        let now = web_time::Instant::now();
         let ms_count_result = count_ms_elapsed(self.last_tick, now, self.time_remainder);
         let ms_elapsed = ms_count_result.ms_elapsed;
         self.time_remainder = ms_count_result.ms_remainder_in_ns;
@@ -802,7 +802,7 @@ impl Kanata {
             // 1000 ticks in 1ms on average. In practice, there will already be fewer than 1000
             // ticks in 1ms when running expensive operations, this just avoids having tens to
             // thousands of ticks all happening as soon as the expensive operations end.
-            _ => instant::Instant::now(),
+            _ => web_time::Instant::now(),
         };
 
         ms_elapsed
@@ -1959,7 +1959,7 @@ impl Kanata {
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut idle_clear_happened = false;
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-            let mut last_input_time = instant::Instant::now();
+            let mut last_input_time = web_time::Instant::now();
 
             let err = loop {
                 let can_block = {
@@ -1978,7 +1978,7 @@ impl Kanata {
                     match rx.recv() {
                         Ok(kev) => {
                             let mut k = kanata.lock();
-                            let now = instant::Instant::now()
+                            let now = web_time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
                                 .expect("subtract 1ms from current time");
 
@@ -2015,7 +2015,7 @@ impl Kanata {
                             k.last_tick = now;
 
                             #[cfg(feature = "perf_logging")]
-                            let start = instant::Instant::now();
+                            let start = web_time::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -2041,7 +2041,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = instant::Instant::now();
+                            let start = web_time::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -2064,7 +2064,7 @@ impl Kanata {
                     match rx.try_recv() {
                         Ok(kev) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = instant::Instant::now();
+                            let start = web_time::Instant::now();
 
                             if let Err(e) = k.handle_input_event(&kev) {
                                 break e;
@@ -2074,7 +2074,7 @@ impl Kanata {
                                 target_os = "windows"
                             ))]
                             {
-                                last_input_time = instant::Instant::now();
+                                last_input_time = web_time::Instant::now();
                             }
                             #[cfg(all(
                                 not(feature = "interception_driver"),
@@ -2090,7 +2090,7 @@ impl Kanata {
                                 (start.elapsed()).as_nanos()
                             );
                             #[cfg(feature = "perf_logging")]
-                            let start = instant::Instant::now();
+                            let start = web_time::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -2105,7 +2105,7 @@ impl Kanata {
                         }
                         Err(TryRecvError::Empty) => {
                             #[cfg(feature = "perf_logging")]
-                            let start = instant::Instant::now();
+                            let start = web_time::Instant::now();
 
                             match k.handle_time_ticks(&tx) {
                                 Ok(ms) => ms_elapsed = ms,
@@ -2137,7 +2137,7 @@ impl Kanata {
                                 // the states that might be stuck. A real use case might be to have
                                 // a fake key pressed for a long period of time, so make sure those
                                 // are not cleared.
-                                if (instant::Instant::now() - (last_input_time))
+                                if (web_time::Instant::now() - (last_input_time))
                                     > time::Duration::from_secs(LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS)
                                     && !idle_clear_happened
                                 {
