@@ -321,11 +321,11 @@ impl TryFrom<InputEvent> for KeyEvent {
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
         use OsCode::*;
         match item.kind() {
-            evdev::InputEventKind::Key(k) => Ok(Self {
+            evdev::EventSummary::Key(k) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
             }),
-            evdev::InputEventKind::RelAxis(axis_type) => {
+            evdev::EventSummary::RelAxis(axis_type) => {
                 let dist = item.value();
                 let code: OsCode = match axis_type {
                     RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_WHEEL_HI_RES => {

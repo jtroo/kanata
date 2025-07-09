@@ -4,7 +4,7 @@
 )]
 
 use anyhow::{anyhow, bail, Result};
-use evdev::{InputEvent, InputEventKind, RelativeAxisType};
+use evdev::{InputEvent, EventSummary, RelativeAxisType};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -46,7 +46,7 @@ impl Kanata {
 
             for in_event in events.iter().copied() {
                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                    if let InputEventKind::RelAxis(_) = in_event.kind() {
+                    if let EventSummary::RelAxis(_) = in_event.kind() {
                         let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
                         if let Err(e) = tx.try_send(fake_event) {
                             bail!("failed to send on channel: {}", e)
@@ -149,7 +149,7 @@ fn handle_scroll(
     let direction: MWheelDirection = code.try_into().unwrap();
     let scroll_distance = in_event.value().unsigned_abs() as u16;
     match in_event.kind() {
-        InputEventKind::RelAxis(axis_type) => {
+        EventSummary::RelAxis(axis_type) => {
             match axis_type {
                 RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_HWHEEL => {
                     if MAPPED_KEYS.lock().contains(&code) {
@@ -169,7 +169,7 @@ fn handle_scroll(
                     if !all_events.iter().any(|ev| {
                         matches!(
                             ev.kind(),
-                            InputEventKind::RelAxis(
+                            EventSummary::RelAxis(
                                 RelativeAxisType::REL_WHEEL_HI_RES
                                     | RelativeAxisType::REL_HWHEEL_HI_RES
                             )
