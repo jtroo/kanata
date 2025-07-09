@@ -4,7 +4,7 @@
 )]
 
 use anyhow::{anyhow, bail, Result};
-use evdev::{InputEvent, InputEventKind, RelativeAxisType};
+use evdev::{InputEvent, EventSummary, RelativeAxisCode};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -46,7 +46,7 @@ impl Kanata {
 
             for in_event in events.iter().copied() {
                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                    if let InputEventKind::RelAxis(_) = in_event.kind() {
+                    if let EventSummary::RelativeAxis(_, _, _) = in_event.destructure() {
                         let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
                         if let Err(e) = tx.try_send(fake_event) {
                             bail!("failed to send on channel: {}", e)
@@ -148,10 +148,10 @@ fn handle_scroll(
 ) -> Result<bool> {
     let direction: MWheelDirection = code.try_into().unwrap();
     let scroll_distance = in_event.value().unsigned_abs() as u16;
-    match in_event.kind() {
-        InputEventKind::RelAxis(axis_type) => {
+    match in_event.destructure() {
+        EventSummary::RelativeAxis(_, axis_type, _) => {
             match axis_type {
-                RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_HWHEEL => {
+                RelativeAxisCode::REL_WHEEL | RelativeAxisCode::REL_HWHEEL => {
                     if MAPPED_KEYS.lock().contains(&code) {
                         return Ok(true);
                     }
@@ -168,10 +168,10 @@ fn handle_scroll(
                     let mut kanata = kanata.lock();
                     if !all_events.iter().any(|ev| {
                         matches!(
-                            ev.kind(),
-                            InputEventKind::RelAxis(
-                                RelativeAxisType::REL_WHEEL_HI_RES
-                                    | RelativeAxisType::REL_HWHEEL_HI_RES
+                            ev.destructure(),
+                            EventSummary::RelativeAxis(_,
+                                RelativeAxisCode::REL_WHEEL_HI_RES
+                                    | RelativeAxisCode::REL_HWHEEL_HI_RES, _
                             )
                         )
                     }) {
@@ -182,7 +182,7 @@ fn handle_scroll(
                     }
                     Ok(false)
                 }
-                RelativeAxisType::REL_WHEEL_HI_RES | RelativeAxisType::REL_HWHEEL_HI_RES => {
+                RelativeAxisCode::REL_WHEEL_HI_RES | RelativeAxisCode::REL_HWHEEL_HI_RES => {
                     if !MAPPED_KEYS.lock().contains(&code) {
                         // Passthrough if the scroll wheel event is not mapped
                         // in the configuration.
