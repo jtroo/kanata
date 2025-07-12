@@ -43,7 +43,6 @@ anyhow = "1"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default-features = false }
 dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }
-instant = { version = "0.1.12", default-features = false }
 log = { version = "0.4.8", default-features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
@@ -53,6 +52,7 @@ rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default-features = false, optional = true }
 time = "0.3.36"
+web-time = "1.1.0"
 
 kanata-keyberon = { path = "keyberon", version = "0.190.0" }
 kanata-parser =   { path = "parser", version = "0.190.0" }
@@ -128,7 +128,6 @@ interception_driver = ["kanata-interception", "kanata-parser/interception_driver
 simulated_output = ["indoc"]
 simulated_input = ["indoc"]
 passthru_ahk = ["simulated_input","simulated_output"]
-wasm = [ "instant/wasm-bindgen" ]
 gui = ["win_manifest","kanata-parser/gui",
   "win_sendinput_send_scancodes","win_llhook_read_scancodes",
   "muldiv","strip-ansi-escapes","open",

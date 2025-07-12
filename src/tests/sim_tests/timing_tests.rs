@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::Kanata;
 
-use instant::Instant;
+use web_time::Instant;
 
 #[test]
 fn one_second_is_roughly_1000_counted_ticks() {
