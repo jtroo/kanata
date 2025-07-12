@@ -126,7 +126,7 @@ impl fmt::Display for KeyEvent {
             KeyValue::WakeUp => "!",
         };
         let key_name = KeyCode::from(self.code);
-        write!(f, "{}{:?}", direction, key_name)
+        write!(f, "{direction}{key_name:?}")
     }
 }
 

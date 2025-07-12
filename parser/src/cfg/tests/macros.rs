@@ -22,7 +22,7 @@ fn incorrectly_configured_supported_action_in_macro_triggers_useful_error() {
         .map(|_| ())
         .map_err(|e| {
             let e = miette::Error::from(e);
-            let msg = format!("{:?}", e);
+            let msg = format!("{e:?}");
             log::info!("{msg}");
             assert!(msg.contains("unknown virtual key name: does-not-exist"));
         })

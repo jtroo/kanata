@@ -24,12 +24,14 @@ mod release_sim_tests;
 mod repeat_sim_tests;
 mod seq_sim_tests;
 mod switch_sim_tests;
+mod tap_hold_tests;
 mod template_sim_tests;
 mod timing_tests;
 mod unicode_sim_tests;
 mod unmod_sim_tests;
 mod use_defsrc_sim_tests;
 mod vkey_sim_tests;
+#[cfg(feature = "zippychord")]
 mod zippychord_sim_tests;
 
 fn simulate<S: AsRef<str>>(cfg: S, sim: S) -> String {

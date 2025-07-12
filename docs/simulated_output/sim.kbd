@@ -3,10 +3,10 @@
   log-layer-changes    	yes	;;|no| overhead
 )
 (defvar ;; declare commonly-used values. prefix with $ to call them. They are refered with `$<var name>`
-  tap-timeout 	1000 ;;|500|
-  hold-timeout	1500 ;;|500|
-  🕐↕          	$tap-timeout
-  🕐🠿          	$hold-timeout
+  tap-repress-timeout 	1000 ;;|500|
+  hold-timeout	        1500 ;;|500|
+  🕐↕          	        $tap-repress-timeout
+  🕐🠿          	        $hold-timeout
 )
 (defalias
   ;; home row mods ↕tap 🠿hold

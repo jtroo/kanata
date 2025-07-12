@@ -17,7 +17,7 @@ pub enum DeviceDetectMode {
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 impl std::fmt::Display for DeviceDetectMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -32,6 +32,7 @@ pub struct CfgLinuxOptions {
     pub linux_unicode_termination: UnicodeTermination,
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
     pub linux_use_trackpoint_property: bool,
+    pub linux_output_name: String,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
 }
@@ -49,6 +50,7 @@ impl Default for CfgLinuxOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
+            linux_output_name: "kanata".to_owned(),
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
             linux_device_detect_mode: None,
         }
@@ -358,6 +360,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             cfg.linux_opts.linux_use_trackpoint_property =
                                 parse_defcfg_val_bool(val, label)?
+                        }
+                    }
+                    "linux-output-device-name" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            let device_name = sexpr_to_str_or_err(val, label)?;
+                            if device_name.is_empty() {
+                                log::warn!("linux-output-device-name is empty, using kanata as default value");
+                            } else {
+                                cfg.linux_opts.linux_output_name = device_name.to_owned();
+                            }
                         }
                     }
                     "linux-output-device-bus-type" => {

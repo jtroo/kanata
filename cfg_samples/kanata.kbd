@@ -139,6 +139,14 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;;
   ;;   linux-unicode-termination space
 
+  ;; Kanata on Linux creates an evdev output device named "kanata".
+  ;; This name can be changed with this linux-output-device-name.
+  ;;
+  ;; Examples:
+  ;;
+  ;;   linux-output-device-name kanata_laptop
+  ;;   linux-output-device-name "kanata output device"
+
   ;; Kanata on Linux needs to declare a "bus type" for its evdev output device.
   ;; The options are USB and I8042. The default is I8042.
   ;; Using USB can break disable-touchpad-while-typing on Wayland.
@@ -444,9 +452,9 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 
 ;; defvar can be used to declare commonly-used values
 (defvar
-  tap-timeout   100
-  hold-timeout  200
-  tt $tap-timeout
+  tap-repress-timeout   100
+  hold-timeout          200
+  tt $tap-repress-timeout
   ht $hold-timeout
 
   ;; A list value in defvar that begins with concat behaves in a special manner
@@ -492,7 +500,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; For full context, see https://github.com/jtroo/kanata/discussions/422
   ;;
   ;; tap-hold parameter order:
-  ;; 1. tap timeout
+  ;; 1. tap repress timeout
   ;; 2. hold timeout
   ;; 3. tap action
   ;; 4. hold action
@@ -500,11 +508,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; The hold timeout is the number of milliseconds after which the hold action
   ;; will activate.
   ;;
-  ;; The tap timeout is best explained in a roundabout way. When you press and
+  ;; The tap repress timeout is best explained in a roundabout way. When you press and
   ;; hold a standard key on your keyboard (e.g. 'a'), your operating system will
   ;; read that and keep sending 'a' to the active application. To be able to
   ;; replicate this behaviour with a tap-hold key, you must press-release-press
-  ;; the key within the tap timeout window (number is milliseconds). Simply
+  ;; the key within the tap repress timeout window (number is milliseconds). Simply
   ;; holding the key results in the hold action activating, which is why you
   ;; need to double-press for the tap action to stay pressed.
   ;;

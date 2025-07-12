@@ -1175,9 +1175,9 @@ impl fmt::Display for OsCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let self_dbg = format!("{self:?}");
         if let Some(key) = self_dbg.strip_prefix("KEY_") {
-            write!(f, "{}", key)
+            write!(f, "{key}")
         } else {
-            write!(f, "{:?}", self)
+            write!(f, "{self:?}")
         }
     }
 }
