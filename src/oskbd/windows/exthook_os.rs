@@ -51,7 +51,7 @@ impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let direction = if self.up { "↑" } else { "↓" };
         let key_name = KeyCode::from(OsCode::from(self.code));
-        write!(f, "{}{:?}", direction, key_name)
+        write!(f, "{direction}{key_name:?}")
     }
 }
 impl InputEvent {
