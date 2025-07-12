@@ -1,12 +1,14 @@
+use web_time::Instant;
+
 pub struct MillisecondCountResult {
-    pub last_tick: instant::Instant,
+    pub last_tick: Instant,
     pub ms_elapsed: u128,
     pub ms_remainder_in_ns: u128,
 }
 
 pub fn count_ms_elapsed(
-    last_tick: instant::Instant,
-    now: instant::Instant,
+    last_tick: Instant,
+    now: Instant,
     prev_ms_remainder_in_ns: u128,
 ) -> MillisecondCountResult {
     const NS_IN_MS: u128 = 1_000_000;
@@ -29,7 +31,7 @@ pub fn count_ms_elapsed(
 #[test]
 fn ms_counts_0_elapsed_correctly() {
     use std::time::Duration;
-    let last_tick = instant::Instant::now();
+    let last_tick = Instant::now();
     let now = last_tick + Duration::from_nanos(999999);
     let result = count_ms_elapsed(last_tick, now, 0);
     assert_eq!(0, result.ms_elapsed);
@@ -40,7 +42,7 @@ fn ms_counts_0_elapsed_correctly() {
 #[test]
 fn ms_counts_1_elapsed_correctly() {
     use std::time::Duration;
-    let last_tick = instant::Instant::now();
+    let last_tick = Instant::now();
     let now = last_tick + Duration::from_nanos(1234567);
     let result = count_ms_elapsed(last_tick, now, 0);
     assert_eq!(1, result.ms_elapsed);
@@ -51,7 +53,7 @@ fn ms_counts_1_elapsed_correctly() {
 #[test]
 fn ms_counts_1_then_2_elapsed_correctly() {
     use std::time::Duration;
-    let last_tick = instant::Instant::now();
+    let last_tick = Instant::now();
     let now = last_tick + Duration::from_micros(1750);
     let result = count_ms_elapsed(last_tick, now, 0);
     assert_eq!(1, result.ms_elapsed);
