@@ -1007,6 +1007,10 @@ application.
 
 NOTE: If using Linux, make sure to look at the
 <<linux-only-linux-unicode-u-code,unicode behaviour customization>> in defcfg.
+Furthermore, on Wayland the unicode mechanism may be broken entirely.
+On Wayland you can install then use the `wtype` program,
+using <<cmd, cmd>> to execute it.
+For example: `(cmd wtype á)`
 
 .Example:
 [source]
