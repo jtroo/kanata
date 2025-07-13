@@ -4457,6 +4457,109 @@ a non-applicable operating system.
 )
 ----
 
+== Command line arguments[[cli-args]]
+
+When executing Kanata, you can pass a variety of arguments to the program
+to change Kanata's behaviour.
+This section describes the purpose and usage of these arguments.
+
+[[args-help]]
+=== Show help text: `-h`, `--help`
+
+Only show help text that describes these arguments,
+then exit the program.
+
+[[args-config-file]]
+=== Configuration file(s): `-c`, `--cfg`
+
+Configuration file(s) to use with Kanata.
+When not specified, default file locations are checked.
+The default files checked depend on your operating system
+and are described by `--help`.
+
+This argument can be used more than once;
+see <<live-reload>> to understand the behaviour of this.
+The startup configuration will be the first file listed.
+
+[[args-tcp]]
+=== TCP server address: `-p`, `--port`
+
+Enable the TCP server capability and listen on either:
+- a specified port, on all IP addresses
+- a specifiec `IP:PORT`
+
+This enables use cases such as
+https://github.com/jtroo/kanata?tab=readme-ov-file#community-projects-related-to-kanata[application aware switching].
+
+The protocol is plaintext JSON, not formally documented anywhere at this time.
+The source of truth is the
+https://github.com/jtroo/kanata/blob/main/tcp_protocol/src/lib.rs[TCP protocol code].
+
+You may also be interested in the
+https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example client].
+
+[[args-quiet]]
+=== Disable logs other than errors: `-q`, `--quiet`
+
+Silence info and warning logs so that only errors are logged.
+This might be desirable when running in the background as a system service.
+
+[[args-debug]]
+=== Enable debug logs: `-d`, `--debug`
+
+Add extra debug logging.
+This is helpful when diagnosing an issue
+or discovering key names.
+
+[[args-trace]]
+=== Enable trace logs: `-t`, `--trace`
+
+Add extra trace logging.
+Also includes debug logging.
+This is sometimes helpful when diagnosing an issue,
+but is very verbose.
+
+[[args-nodelay]]
+=== Remove startup delay: `-n`, `--nodelay`
+
+By default, Kanata adds a delay before reading keyboard inputs.
+This helps protect against stale states
+when started from a terminal.
+
+However, this may be undesirable
+when running as a background service.
+
+[[args-check]]
+=== Only check configuration: `--check`
+
+Check the configuration file validity and then exit.
+
+[[args-log-layer-changes]]
+=== Force log changes: `--log-layer-changes`
+
+Your final desired `defcfg` could be to have logging of layer changes as false.
+However, for testing purposes you may want to temporarily log the layers.
+This configuration forces logging to happen for this use case.
+
+[[args-linux-dev-symlink]]
+=== Linux only - Device symlink path: `-s`, `--symlink-path`
+
+If you want another program to consume the Kanata device output,
+you can use this flag to have a consistent device filesystem path.
+
+[[args-wait-device]]
+=== Linux only - Wait before device grab attempt: `-w`, `--wait-device-ms`
+
+Some devices take a while to become ready and can fail to be grabbed.
+This configuration adds a delay before trying to grab devices
+in case this is an issue impacting you.
+
+[[args-macos-list-devices]]
+=== macOS only - Only list keyboards: `-l`, `--list`
+
+List keyboard names that can be used
+within defcfg and then exit.
+
 == Advanced features[[advanced-features]]
 [[virtual-keys]]
 === Virtual keys
