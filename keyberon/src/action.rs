@@ -167,6 +167,11 @@ where
     ///
     /// To deactivate the functionality, set this to 0.
     pub tap_hold_interval: u16,
+    /// Specifically the `tap-hold-release-timeout` action variant
+    /// can benefit from resetting the timeout after a new press,
+    /// because a human might have a slow release but they did
+    /// indeed want a hold to activate.
+    pub on_press_reset_timeout_to: Option<std::num::NonZeroU16>,
 }
 
 /// Define one shot key behaviour.

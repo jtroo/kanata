@@ -1976,6 +1976,7 @@ Params in order:
         tap: *tap_action,
         hold: *hold_action,
         timeout_action: *hold_action,
+        on_press_reset_timeout_to: None,
     }))))
 }
 
@@ -1984,14 +1985,30 @@ fn parse_tap_hold_timeout(
     s: &ParserState,
     config: HoldTapConfig<'static>,
 ) -> Result<&'static KanataAction> {
-    if ac_params.len() != 5 {
-        bail!(
-            r"tap-hold-(press|release)-timeout expects 5 items after it, got {}.
-Params in order:
-<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action>",
-            ac_params.len(),
-        )
-    }
+    const PARAMS_FOR_RELEASE: &str = "Params in order:\n\
+       <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action> [?reset-timeout-on-press=yes]";
+    match config {
+        HoldTapConfig::PermissiveHold => {
+            if ac_params.len() != 5 && ac_params.len() != 6 {
+                bail!(
+                    "tap-hold-release-timeout expects at least 5 items after it, got {}.\n\
+                    {PARAMS_FOR_RELEASE}",
+                    ac_params.len(),
+                )
+            }
+        }
+        HoldTapConfig::HoldOnOtherKeyPress => {
+            if ac_params.len() != 5 {
+                bail!(
+                    "tap-hold-press-timeout expects 5 items after it, got {}.\n\
+                    Params in order:\n\
+                    <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action>",
+                    ac_params.len(),
+                )
+            }
+        }
+        _ => unreachable!("other configs not expected"),
+    };
     let tap_repress_timeout = parse_u16(&ac_params[0], s, "tap repress timeout")?;
     let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
@@ -2000,6 +2017,20 @@ Params in order:
     if matches!(tap_action, Action::HoldTap { .. }) {
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
+    match config {
+        HoldTapConfig::PermissiveHold => {
+            match ac_params.len() {
+                6 => match ac_params[5].atom(s.vars()) {
+                    Some("reset-timeout-on-press=yes") => std::num::NonZeroU16::new(hold_timeout),
+                    _ => bail_expr!(&ac_params[5], "Unexpected parameter.\n{PARAMS_FOR_RELEASE}"),
+                }
+                5 => None,
+                _ => unreachable!("other lengths not expected"),
+            }
+        }
+        HoldTapConfig::HoldOnOtherKeyPress => None,
+        _ => unreachable!("other configs not expected"),
+    };
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
         config,
         tap_hold_interval: tap_repress_timeout,
@@ -2007,6 +2038,7 @@ Params in order:
         tap: *tap_action,
         hold: *hold_action,
         timeout_action: *timeout_action,
+        on_press_reset_timeout_to: None,
     }))))
 }
 
@@ -2040,6 +2072,7 @@ Params in order:
         tap: *tap_action,
         hold: *hold_action,
         timeout_action: *hold_action,
+        on_press_reset_timeout_to: None,
     }))))
 }
 
