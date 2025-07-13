@@ -22,6 +22,8 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
+use std::num::NonZeroU16;
+
 use crate::chord::*;
 use crate::key_code::KeyCode;
 use crate::{action::*, multikey_buffer::MultiKeyBuffer};
@@ -434,7 +436,8 @@ enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
 pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     coord: KCoord,
     timeout: u16,
-    original_timeout: u16,
+    original_timeout: Option<NonZeroU16>,
+    on_press_reset_timeout_to: Option<NonZeroU16>,
     delay: u16,
     ticks: u16,
     hold: &'a Action<'a, T>,
@@ -508,6 +511,13 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             // Fast path: nothing has changed since last tick and we haven't timed out yet.
             return None;
         }
+        if let Some(timeout_reset_val) = self.on_press_reset_timeout_to {
+            if let Some(last) = queued.iter().next_back() {
+                if last.event.is_press() {
+                    self.timeout = timeout_reset_val.into();
+                }
+            }
+        }
         self.prev_queue_len = queued.len() as u8;
         let mut skip_timeout = false;
         match cfg {
@@ -545,8 +555,13 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             .find(|s| self.is_corresponding_release(&s.event))
         {
             let gap_between_press_and_release = self.delay.saturating_sub(since_release);
-            if self.original_timeout > 0 && self.original_timeout >= gap_between_press_and_release
-                || self.timeout > gap_between_press_and_release
+            if self.timeout > gap_between_press_and_release
+                || match self.original_timeout {
+                    None => false,
+                    Some(original_timeout) => {
+                        u16::from(original_timeout) >= gap_between_press_and_release
+                    }
+                }
             {
                 Some(WaitingAction::Tap)
             } else {
@@ -1676,6 +1691,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 timeout_action,
                 config,
                 tap_hold_interval,
+                on_press_reset_timeout_to,
             }) => {
                 let mut custom = CustomEvent::NoEvent;
                 if *tap_hold_interval == 0
@@ -1697,9 +1713,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         },
                         ticks: 0,
                         original_timeout: match self.quick_tap_hold_timeout {
-                            true => *timeout,
-                            false => 0,
+                            true => NonZeroU16::new(*timeout),
+                            false => None,
                         },
+                        on_press_reset_timeout_to: *on_press_reset_timeout_to,
                         hold,
                         tap,
                         timeout_action,
@@ -1754,7 +1771,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             timeout_action: &Action::NoOp,
-                            original_timeout: 0,
+                            original_timeout: None,
+                            on_press_reset_timeout_to: None,
                             config: WaitingConfig::TapDance(TapDanceState {
                                 actions: td.actions,
                                 timeout: td.timeout,
@@ -1801,7 +1819,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
-                    original_timeout: 0,
+                    original_timeout: None,
+                    on_press_reset_timeout_to: None,
                     config: WaitingConfig::Chord(chords),
                     layer_stack: layer_stack.collect(),
                     prev_queue_len: QueueLen::MAX,
@@ -2102,6 +2121,7 @@ mod test {
         static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: l(1),
                     tap: k(Space),
@@ -2110,6 +2130,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: k(LCtrl),
                     timeout_action: k(LShift),
@@ -2154,6 +2175,7 @@ mod test {
         static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: l(1),
                     tap: k(Space),
@@ -2162,6 +2184,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: k(LCtrl),
                     timeout_action: k(LCtrl),
@@ -2205,6 +2228,7 @@ mod test {
     fn hold_tap_interleaved_timeout() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2213,6 +2237,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 20,
                 hold: k(LCtrl),
                 timeout_action: k(LCtrl),
@@ -2254,6 +2279,7 @@ mod test {
     fn hold_on_press() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2312,6 +2338,7 @@ mod test {
     fn permissive_hold() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2352,6 +2379,7 @@ mod test {
     fn simultaneous_hold() {
         static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2360,6 +2388,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(RAlt),
                 timeout_action: k(RAlt),
@@ -2368,6 +2397,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LCtrl),
                 timeout_action: k(LCtrl),
@@ -2532,6 +2562,7 @@ mod test {
         }
         static LAYERS: Layers<4, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb1),
                 timeout_action: k(Kb1),
@@ -2540,6 +2571,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb3),
                 timeout_action: k(Kb3),
@@ -2548,6 +2580,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb5),
                 timeout_action: k(Kb5),
@@ -2556,6 +2589,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb7),
                 timeout_action: k(Kb7),
@@ -2629,6 +2663,7 @@ mod test {
     fn tap_hold_interval() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2684,6 +2719,7 @@ mod test {
     fn tap_hold_interval_interleave() {
         static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2693,6 +2729,7 @@ mod test {
             }),
             k(Enter),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2806,6 +2843,7 @@ mod test {
     #[test]
     fn tap_hold_interval_short_hold() {
         static LAYERS: Layers<1, 1> = &[[[HoldTap(&HoldTapAction {
+            on_press_reset_timeout_to: None,
             timeout: 50,
             hold: k(LAlt),
             timeout_action: k(LAlt),
@@ -2849,6 +2887,7 @@ mod test {
     fn tap_hold_interval_different_hold() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 50,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2857,6 +2896,7 @@ mod test {
                 tap_hold_interval: 200,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(RAlt),
                 timeout_action: k(RAlt),
@@ -3374,6 +3414,7 @@ mod test {
                     end_config: OneShotEndConfig::EndOnFirstPress,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 100,
                     hold: k(LAlt),
                     timeout_action: k(LAlt),
@@ -3439,6 +3480,7 @@ mod test {
                             end_config: OneShotEndConfig::EndOnFirstPress,
                         }),
                         &HoldTap(&HoldTapAction {
+                            on_press_reset_timeout_to: None,
                             timeout: 100,
                             hold: k(LAlt),
                             timeout_action: k(LAlt),
@@ -3879,6 +3921,7 @@ mod test {
                 (
                     1,
                     &HoldTap(&HoldTapAction {
+                        on_press_reset_timeout_to: None,
                         timeout: 100,
                         hold: k(A),
                         timeout_action: k(A),
@@ -3890,6 +3933,7 @@ mod test {
                 (
                     2,
                     &HoldTap(&HoldTapAction {
+                        on_press_reset_timeout_to: None,
                         timeout: 100,
                         hold: k(B),
                         timeout_action: k(B),
@@ -4141,6 +4185,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(Space),
                     timeout_action: k(Space),
@@ -4188,6 +4233,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: Trans,
                     timeout_action: Trans,
@@ -4422,6 +4468,7 @@ mod test {
                 Layer(2),
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(B),
                     timeout_action: k(B),
@@ -4435,6 +4482,7 @@ mod test {
                 NoOp,
                 Layer(3),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(C),
                     timeout_action: k(C),
@@ -4448,6 +4496,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(D),
                     timeout_action: k(D),
