@@ -1986,7 +1986,7 @@ fn parse_tap_hold_timeout(
     config: HoldTapConfig<'static>,
 ) -> Result<&'static KanataAction> {
     const PARAMS_FOR_RELEASE: &str = "Params in order:\n\
-       <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action> [?reset-timeout-on-press=yes]";
+       <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <timeout-action> [?reset-timeout-on-press]";
     match config {
         HoldTapConfig::PermissiveHold => {
             if ac_params.len() != 5 && ac_params.len() != 6 {
@@ -2017,11 +2017,11 @@ fn parse_tap_hold_timeout(
     if matches!(tap_action, Action::HoldTap { .. }) {
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
-    match config {
+    let on_press_reset_timeout_to = match config {
         HoldTapConfig::PermissiveHold => {
             match ac_params.len() {
                 6 => match ac_params[5].atom(s.vars()) {
-                    Some("reset-timeout-on-press=yes") => std::num::NonZeroU16::new(hold_timeout),
+                    Some("reset-timeout-on-press") => std::num::NonZeroU16::new(hold_timeout),
                     _ => bail_expr!(&ac_params[5], "Unexpected parameter.\n{PARAMS_FOR_RELEASE}"),
                 }
                 5 => None,
@@ -2038,7 +2038,7 @@ fn parse_tap_hold_timeout(
         tap: *tap_action,
         hold: *hold_action,
         timeout_action: *timeout_action,
-        on_press_reset_timeout_to: None,
+        on_press_reset_timeout_to,
     }))))
 }
 
