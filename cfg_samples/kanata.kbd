@@ -1295,6 +1295,32 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     dotorg (O-(. r g))
 )
 
+;; sequence-noerase
+;;
+;; When you have a keyboard locale that uses dead keys,
+;; you may be pressing two keys that only actually output one symbol.
+;; By default, when visible-backspaced does the backtracking backspace,
+;; it backspaces according to input count.
+;; With dead keys, this may result in too many backspaces.
+;;
+;; The sequence-noerase action is a no-output action
+;; that tells the sequences action to have one fewer backspace
+;; when backtracking with visible-backspaced.
+
+(deflayermap (base)
+  0 sldr
+  u (t! maybe-noerase u)
+)
+(deftemplate maybe-noerase (char)
+  (multi
+    (switch
+      ((key-history ' 1)) (sequence-noerase 1) fallthrough
+      () $char break
+   ))
+)
+(defvirtualkeys seq-output-1 (macro a b c d e f g))
+(defseq seq-output-1 (' u))
+
 ;; Input chording.
 ;;
 ;; Not to be confused with output chords (like C-S-a or the chords layer
