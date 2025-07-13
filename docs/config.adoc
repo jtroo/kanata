@@ -1921,7 +1921,7 @@ results in `$tap-action` activating.
 (tap-hold-press $tap-repress-timeout $hold-timeout $tap-action $hold-action)
 (tap-hold-release $tap-repress-timeout $hold-timeout $tap-action $hold-action)
 (tap-hold-press-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
-(tap-hold-release-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
+(tap-hold-release-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action [?reset-timeout-on-press])
 (tap-hold-release-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 ----
@@ -1941,6 +1941,8 @@ If the defined timeout elapses, `$timeout-action` will activate.
 | `tap-hold-release-timeout`
 | Activate `$hold-action` early if held and another input key is pressed and released.
 If the defined timeout elapses, `$timeout-action` will activate.
+Optionally include `reset-timeout-on-press` to reset timeout duration on a new press,
+giving more time for a subsequent release to activate hold instead of timeout.
 
 | `tap-hold-release-keys`
 | Activate `$hold-action` early if held and another input key is pressed and released.
@@ -2051,6 +2053,14 @@ These variants take a 5th parameter, in addition to the same 4 as the other
 variants. The 5th parameter is another action, which will activate if the hold
 timeout expires as opposed to being triggered by other key actions, whereas the
 non `-timeout` variants will activate the hold action in both cases.
+
+The `release` variant also accepts an optional 6th argument,
+`reset-timeout-on-press` which if included changes the timeout behaviour.
+This flag will make the timeout duration reset if a new key is pressed.
+This may result in longer timeouts,
+but can help with more consistent hold activations;
+because it may be challenging to release a key in time
+to activate the hold action instead of the timeout action.
 
 - `tap-hold-release-keys` or `tap⬓↑keys`
 
@@ -4934,6 +4944,7 @@ when backtracking with visible-backspaced.
 )
 (defvirtualkeys seq-output-1 (macro a b c d e f g))
 (defseq seq-output-1 (' u))
+
 ----
 
 ==== More about sequences
