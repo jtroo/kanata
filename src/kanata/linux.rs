@@ -4,7 +4,7 @@
 )]
 
 use anyhow::{anyhow, bail, Result};
-use evdev::{InputEvent, EventSummary, RelativeAxisCode};
+use evdev::{EventSummary, InputEvent, RelativeAxisCode};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
@@ -169,9 +169,11 @@ fn handle_scroll(
                     if !all_events.iter().any(|ev| {
                         matches!(
                             ev.destructure(),
-                            EventSummary::RelativeAxis(_,
+                            EventSummary::RelativeAxis(
+                                _,
                                 RelativeAxisCode::REL_WHEEL_HI_RES
-                                    | RelativeAxisCode::REL_HWHEEL_HI_RES, _
+                                    | RelativeAxisCode::REL_HWHEEL_HI_RES,
+                                _
                             )
                         )
                     }) {

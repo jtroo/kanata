@@ -144,7 +144,7 @@ impl KbdIn {
 
         wait_key(&mut event);
 
-        Ok(InputEvent::new(event.0))
+        Ok(InputEvent::new(event))
     }
 }
 
