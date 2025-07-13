@@ -30,10 +30,7 @@ fn tap_hold_release_timeout_no_reset() {
         "d:a t:50 d:b t:75 u:b u:a t:25",
     )
     .to_ascii();
-    assert_eq!(
-        "t:100ms dn:Z t:1ms dn:B t:24ms up:B t:1ms up:Z",
-        result
-    );
+    assert_eq!("t:100ms dn:Z t:1ms dn:B t:24ms up:B t:1ms up:Z", result);
 }
 
 #[test]
@@ -46,8 +43,5 @@ fn tap_hold_release_timeout_with_reset() {
         "d:a t:50 d:b t:75 u:b u:a t:25",
     )
     .to_ascii();
-    assert_eq!(
-        "t:125ms dn:Y t:6ms dn:B t:1ms up:B t:1ms up:Y",
-        result
-    );
+    assert_eq!("t:125ms dn:Y t:6ms dn:B t:1ms up:B t:1ms up:Y", result);
 }

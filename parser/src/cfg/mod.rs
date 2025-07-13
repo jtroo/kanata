@@ -2018,16 +2018,14 @@ fn parse_tap_hold_timeout(
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
     let on_press_reset_timeout_to = match config {
-        HoldTapConfig::PermissiveHold => {
-            match ac_params.len() {
-                6 => match ac_params[5].atom(s.vars()) {
-                    Some("reset-timeout-on-press") => std::num::NonZeroU16::new(hold_timeout),
-                    _ => bail_expr!(&ac_params[5], "Unexpected parameter.\n{PARAMS_FOR_RELEASE}"),
-                }
-                5 => None,
-                _ => unreachable!("other lengths not expected"),
-            }
-        }
+        HoldTapConfig::PermissiveHold => match ac_params.len() {
+            6 => match ac_params[5].atom(s.vars()) {
+                Some("reset-timeout-on-press") => std::num::NonZeroU16::new(hold_timeout),
+                _ => bail_expr!(&ac_params[5], "Unexpected parameter.\n{PARAMS_FOR_RELEASE}"),
+            },
+            5 => None,
+            _ => unreachable!("other lengths not expected"),
+        },
         HoldTapConfig::HoldOnOtherKeyPress => None,
         _ => unreachable!("other configs not expected"),
     };

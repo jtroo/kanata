@@ -555,10 +555,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             .find(|s| self.is_corresponding_release(&s.event))
         {
             let gap_between_press_and_release = self.delay.saturating_sub(since_release);
-            if self.timeout > gap_between_press_and_release ||
-                match self.original_timeout {
+            if self.timeout > gap_between_press_and_release
+                || match self.original_timeout {
                     None => false,
-                    Some(original_timeout) => u16::from(original_timeout) >= gap_between_press_and_release,
+                    Some(original_timeout) => {
+                        u16::from(original_timeout) >= gap_between_press_and_release
+                    }
                 }
             {
                 Some(WaitingAction::Tap)
@@ -1818,7 +1820,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
                     original_timeout: None,
-                            on_press_reset_timeout_to: None,
+                    on_press_reset_timeout_to: None,
                     config: WaitingConfig::Chord(chords),
                     layer_stack: layer_stack.collect(),
                     prev_queue_len: QueueLen::MAX,
