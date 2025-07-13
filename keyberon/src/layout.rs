@@ -103,6 +103,7 @@ where
     pub tap_dance_eager: Option<TapDanceEagerState<'a, T>>,
     pub queue: Queue,
     pub oneshot: OneShotState,
+    pub keys_to_suppress_for_one_cycle: Vec<KeyCode, 8>,
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<SequenceState<'a, T>, 4, arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
@@ -1094,6 +1095,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 pause_input_processing_ticks: 0,
                 ticks_to_ignore_events: 0,
             },
+            keys_to_suppress_for_one_cycle: Vec::new(),
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
@@ -1121,8 +1123,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     }
 
     /// Iterates on the key codes of the current state.
-    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
-        self.states.iter().filter_map(State::keycode)
+    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ + use<'_, 'a, C, R, T> {
+        self.states
+            .iter()
+            .filter_map(State::keycode)
+            .filter(|kc| !self.keys_to_suppress_for_one_cycle.contains(kc))
     }
     fn waiting_into_hold(&mut self, idx: i8) -> CustomEvent<'a, T> {
         let waiting = if idx < 0 {
@@ -1289,6 +1294,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.oneshot.pause_input_processing_delay;
             }
         }
+        self.keys_to_suppress_for_one_cycle.clear();
         if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
@@ -1605,7 +1611,17 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
         use Action::*;
         self.states.retain(|s| match s {
-            NormalKey { flags, .. } => !flags.nkf_clear_on_next_action(),
+            // Need to solve a problem here - if the output chord `S-=` is active, and then a
+            // different keypress `=` happens, the `lsft =` states are cleared; but the `=`
+            // is immediately re-added again. This means the release is never observed..
+            NormalKey { flags, keycode, .. } => match flags.nkf_clear_on_next_action() {
+                true => {
+                    self.oneshot.pause_input_processing_delay += 2;
+                    let _ = self.keys_to_suppress_for_one_cycle.push(*keycode);
+                    false
+                }
+                false => true,
+            },
             _ => true,
         });
         match action {
