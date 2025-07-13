@@ -52,6 +52,7 @@ kanata.kbd in the current working directory and
         verbatim_doc_comment
     )]
     tcp_server_address: Option<SocketAddrWrapper>,
+
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.
     #[cfg(target_os = "linux")]

@@ -4457,6 +4457,68 @@ a non-applicable operating system.
 )
 ----
 
+== Command line arguments[[cli-args]]
+
+When executing Kanata, you can pass a variety of arguments to the program
+to change Kanata's behaviour.
+This section describes the purpose and usage of these arguments.
+
+[[args-help]]
+=== Show help text: `-h`, `--help`
+
+Only show help text that describes these arguments,
+then exit the program.
+
+[[args-config-file]]
+=== Configuration file(s): `-c`, `--cfg`
+
+Configuration file(s) to use with Kanata.
+When not specified, default file locations are checked.
+The default files checked depend on your operating system
+and are described by `--help`.
+
+This argument can be used more than once;
+see <<live-reload>> to understand the behaviour of this.
+The startup configuration will be the first file listed.
+
+[[args-tcp]]
+=== TCP server address: `-p`, `--port`
+
+Enable the TCP server capability and listen on either:
+- a specified port, on all IP addresses
+- a specifiec `IP:PORT`
+
+This enables use cases such as
+https://github.com/jtroo/kanata?tab=readme-ov-file#community-projects-related-to-kanata[application aware switching].
+
+The protocol is plaintext JSON, not formally documented anywhere at this time.
+The source of truth is the
+https://github.com/jtroo/kanata/blob/main/tcp_protocol/src/lib.rs[TCP protocol file].
+
+[[args-quiet]]
+=== Disable logs other than errors: `-q`, `--quiet`
+
+[[args-debug]]
+=== Enable debug logs: `-d`, `--debug`
+
+[[args-trace]]
+=== Enable trace logs: `-t`, `--trace`
+
+[[args-nodelay]]
+=== Remove startup delay: `-n`, `--nodelay`
+
+[[args-check]]
+=== Only check configuration: `--check`
+
+[[args-linux-dev-symlink]]
+=== Linux only - Device symlink path: `-s`, `--symlink-path`
+
+[[args-wait-device]]
+=== Linux only - Wait before device grab attempt: `-w`, `--wait-device-ms`
+
+[[args-macos-list-devices]]
+=== macOS only - Only list keyboards: `-l`, `--list`
+
 == Advanced features[[advanced-features]]
 [[virtual-keys]]
 === Virtual keys
