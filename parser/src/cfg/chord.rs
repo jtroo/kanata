@@ -83,7 +83,7 @@ pub(crate) fn parse_defchordv2(
         bail_expr!(
             rem.last().unwrap(),
             "Incomplete chord entry. Each chord entry must have 5 items:\n\
-        particpating-keys, action, timeout, release-type, disabled-layers"
+        participating-keys, action, timeout, release-type, disabled-layers"
         );
     }
     Ok(chords_container)
