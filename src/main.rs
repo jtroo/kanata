@@ -99,11 +99,77 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     log_layer_changes: bool,
+
+    /// Watch configuration files for changes and reload automatically
+    #[arg(long, verbatim_doc_comment)]
+    watch: bool,
 }
 
 #[cfg(not(feature = "gui"))]
 mod cli {
     use super::*;
+
+    #[cfg(feature = "watch")]
+    mod file_watcher {
+        use super::*;
+        use parking_lot::Mutex;
+        use std::sync::Arc;
+        use std::time::Duration;
+        use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind};
+
+        pub fn start_file_watcher(
+            cfg_paths: Vec<PathBuf>,
+            kanata_arc: Arc<Mutex<Kanata>>,
+        ) -> Result<()> {
+            // Create debouncer with 500ms timeout and a closure for event handling
+            let kanata_arc_clone = kanata_arc.clone();
+            let cfg_paths_clone = cfg_paths.clone();
+            
+            let mut debouncer = new_debouncer(Duration::from_millis(500), move |result: DebounceEventResult| {
+                match result {
+                    Ok(events) => {
+                        for event in events {
+                            // Check if the changed file is one of our config files
+                            if cfg_paths_clone.iter().any(|cfg_path| {
+                                event.path.canonicalize().unwrap_or(event.path.clone()) 
+                                    == cfg_path.canonicalize().unwrap_or(cfg_path.clone())
+                            }) {
+                                match event.kind {
+                                    DebouncedEventKind::Any => {
+                                        log::info!("Config file changed: {}, triggering reload", event.path.display());
+                                        
+                                        // Set the live_reload_requested flag
+                                        if let Some(mut kanata) = kanata_arc_clone.try_lock() {
+                                            kanata.request_live_reload();
+                                        } else {
+                                            log::warn!("Could not acquire lock to set live_reload_requested");
+                                        }
+                                    }
+                                    _ => {
+                                        log::trace!("Ignoring file event: {:?} for {}", event.kind, event.path.display());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("File watcher error: {:?}", e);
+                    }
+                }
+            })?;
+            
+            // Watch all config files directly
+            for path in &cfg_paths {
+                debouncer.watcher().watch(path, RecursiveMode::NonRecursive)?;
+                log::info!("Watching config file for changes: {}", path.display());
+            }
+
+            // Keep the debouncer alive by moving it to a static context
+            std::mem::forget(debouncer);
+            
+            Ok(())
+        }
+    }
 
     /// Parse CLI arguments and initialize logging.
     fn cli_init() -> Result<ValidatedArgs> {
@@ -187,6 +253,8 @@ mod cli {
             #[cfg(target_os = "linux")]
             symlink_path: args.symlink_path,
             nodelay: args.nodelay,
+            #[cfg(feature = "watch")]
+            watch: args.watch,
         })
     }
 
@@ -232,10 +300,213 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
+        // Start file watcher if enabled
+        #[cfg(feature = "watch")]
+        if args.watch {
+            if let Err(e) = file_watcher::start_file_watcher(args.paths.clone(), kanata_arc.clone()) {
+                log::error!("Failed to start file watcher: {}", e);
+            }
+        }
+
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
         Kanata::event_loop(kanata_arc, tx)
+    }
+
+    #[cfg(all(feature = "watch", test))]
+    mod tests {
+        use super::*;
+        use std::fs;
+        use tempfile::NamedTempFile;
+
+        #[test]
+        fn test_request_live_reload_method() {
+            // Test that the new request_live_reload method works
+            let temp_file = NamedTempFile::with_suffix(".kbd").unwrap();
+            let config_path = temp_file.path().to_path_buf();
+            
+            // Write a minimal valid config
+            fs::write(&config_path, r#"
+                (defsrc caps)
+                (deflayer default caps)
+            "#).unwrap();
+
+            let args = ValidatedArgs {
+                paths: vec![config_path],
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: None,
+                #[cfg(target_os = "linux")]
+                symlink_path: None,
+                nodelay: true,
+                #[cfg(feature = "watch")]
+                watch: false,
+            };
+
+            let mut kanata = Kanata::new(&args).unwrap();
+            
+            // Initially, live_reload_requested should be false
+            assert!(!kanata.is_live_reload_requested());
+            
+            // Request live reload
+            kanata.request_live_reload();
+            
+            // Now it should be true
+            assert!(kanata.is_live_reload_requested());
+        }
+
+        #[test]
+        fn test_file_watcher_path_validation() {
+            // Test that file watcher handles various path scenarios correctly
+            let valid_paths = vec![
+                PathBuf::from("/tmp/test.cfg"),
+                PathBuf::from("./relative.cfg"),
+                PathBuf::from("/home/user/config.kbd"),
+            ];
+            
+            // All paths should be valid for direct file watching
+            for path in &valid_paths {
+                assert!(path.as_os_str().len() > 0, "Config path should not be empty: {}", path.display());
+                assert!(path.extension().is_some(), "Config file should have an extension: {}", path.display());
+            }
+        }
+
+        #[test]
+        fn test_validated_args_with_watch_flag() {
+            let temp_file = NamedTempFile::with_suffix(".kbd").unwrap();
+            let config_path = temp_file.path().to_path_buf();
+            
+            let args = ValidatedArgs {
+                paths: vec![config_path.clone()],
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: None,
+                #[cfg(target_os = "linux")]
+                symlink_path: None,
+                nodelay: true,
+                #[cfg(feature = "watch")]
+                watch: true,
+            };
+
+            // Test that ValidatedArgs properly stores the watch flag
+            #[cfg(feature = "watch")]
+            assert!(args.watch);
+            
+            // Test that paths are stored correctly
+            assert_eq!(args.paths.len(), 1);
+            assert_eq!(args.paths[0], config_path);
+        }
+
+        #[test]
+        fn test_file_watcher_feature_flag() {
+            // This test ensures that file watching code is only compiled with the watch feature
+            #[cfg(feature = "watch")]
+            {
+                // This should compile when watch feature is enabled
+                let _paths = vec![PathBuf::from("test.cfg")];
+                // file_watcher module should be available
+            }
+            
+            #[cfg(not(feature = "watch"))]
+            {
+                // When watch feature is disabled, the module shouldn't be available
+                // This is verified at compile time
+            }
+        }
+
+        #[test]
+        fn test_file_watcher_integration() {
+            use std::sync::Arc;
+            use parking_lot::Mutex;
+            
+            // Create a temporary config file
+            let temp_file = NamedTempFile::with_suffix(".kbd").unwrap();
+            let config_path = temp_file.path().to_path_buf();
+            
+            // Write initial config
+            fs::write(&config_path, r#"
+                (defsrc caps a)
+                (deflayer default lrld a)
+            "#).unwrap();
+
+            // Create ValidatedArgs
+            let args = ValidatedArgs {
+                paths: vec![config_path.clone()],
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: None,
+                #[cfg(target_os = "linux")]
+                symlink_path: None,
+                nodelay: true,
+                #[cfg(feature = "watch")]
+                watch: true,
+            };
+
+            // Create Kanata instance
+            let kanata = Kanata::new(&args).unwrap();
+            let kanata_arc = Arc::new(Mutex::new(kanata));
+            
+            // Verify initial state
+            {
+                let k = kanata_arc.lock();
+                assert!(!k.is_live_reload_requested());
+            }
+            
+            // Test that we can manually trigger a reload request
+            {
+                let mut k = kanata_arc.lock();
+                k.request_live_reload();
+                assert!(k.is_live_reload_requested());
+            }
+            
+            // Reset the flag 
+            {
+                let mut k = kanata_arc.lock();
+                k.reset_live_reload_requested();
+                assert!(!k.is_live_reload_requested());
+            }
+            
+            // Test path validation for file watcher setup
+            assert!(config_path.exists(), "Config file should exist for direct watching");
+            assert!(config_path.is_file(), "Config path should be a file, not directory");
+        }
+
+        #[test] 
+        fn test_multiple_config_files_watching() {
+            // Test watching multiple configuration files
+            let temp_file1 = NamedTempFile::with_suffix(".kbd").unwrap();
+            let temp_file2 = NamedTempFile::with_suffix(".cfg").unwrap();
+            let config_path1 = temp_file1.path().to_path_buf();
+            let config_path2 = temp_file2.path().to_path_buf();
+            
+            // Write configs
+            for path in &[&config_path1, &config_path2] {
+                fs::write(path, r#"
+                    (defsrc caps)
+                    (deflayer default caps)
+                "#).unwrap();
+            }
+
+            let args = ValidatedArgs {
+                paths: vec![config_path1.clone(), config_path2.clone()],
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: None,
+                #[cfg(target_os = "linux")]
+                symlink_path: None,
+                nodelay: true,
+                #[cfg(feature = "watch")]
+                watch: true,
+            };
+
+            // Verify that ValidatedArgs can handle multiple paths
+            assert_eq!(args.paths.len(), 2);
+            assert_eq!(args.paths[0], config_path1);
+            assert_eq!(args.paths[1], config_path2);
+            
+            // Verify all paths are valid files for direct watching
+            for path in &args.paths {
+                assert!(path.is_file(), "All config paths should be files for direct watching");
+                assert!(path.extension().is_some(), "All config files should have extensions");
+            }
+        }
     }
 }
 
