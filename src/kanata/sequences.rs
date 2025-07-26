@@ -345,8 +345,8 @@ pub(super) fn do_successful_sequence_termination(
             _ => true,
         });
     }
-    layout.event(Event::Press(i, j));
-    layout.event(Event::Release(i, j));
+    layout.event_to_front(Event::Release(i, j));
+    layout.event_to_front(Event::Press(i, j));
     Ok(())
 }
 

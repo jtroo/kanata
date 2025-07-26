@@ -248,17 +248,14 @@ fn tap_hold_pending() {
 (defseq _u     (s))
         ",
         "
-d:KeyJ t:50 u:KeyJ t:50
-d:KeyS t:50 u:KeyS t:50 d:KeyD t:50 u:KeyD t:5000
+d:KeyJ t:10 u:KeyJ t:10
+d:KeyS t:10 u:KeyS t:10 d:KeyD t:10 u:KeyD t:10
 
-d:KeyJ t:50 u:KeyJ t:50
-d:KeyS t:50 d:KeyD t:50 u:KeyS t:50 u:KeyD t:5000",
+d:KeyJ t:10 u:KeyJ t:10
+d:KeyS t:10 d:KeyD t:10 u:KeyS t:10 u:KeyD t:10",
     )
     .no_time()
     .no_releases()
     .to_ascii();
-    assert_eq!(
-        "outU:μ dn:D outU:μ dn:D",
-        result,
-    );
+    assert_eq!("outU:μ dn:D outU:μ dn:D", result,);
 }
