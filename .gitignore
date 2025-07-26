@@ -1,3 +1,5 @@
 **/target
 .vscode/
 CLAUDE.md
+.DS_Store
+PLAN.md

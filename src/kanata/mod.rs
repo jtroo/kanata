@@ -2017,7 +2017,7 @@ impl Kanata {
                                 }
                             }
                             k.last_tick = now;
-                            
+
                             // Check for live reload BEFORE processing the key event
                             if k.live_reload_requested
                                 && ((k.prev_keys.is_empty() && k.cur_keys.is_empty())
@@ -2088,7 +2088,7 @@ impl Kanata {
                                     log::error!("live reload failed {e}");
                                 }
                             }
-                            
+
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
@@ -2263,23 +2263,11 @@ impl Kanata {
                 .map(|cv2| cv2.is_idle_chv2())
                 .unwrap_or(true)
     }
-    
+
     /// Request a live reload of the configuration files.
     /// This is used by external watchers (like file watchers) to trigger a reload.
     pub fn request_live_reload(&mut self) {
         self.live_reload_requested = true;
-    }
-    
-    /// Check if a live reload was requested.
-    /// This is used for testing purposes.
-    pub fn is_live_reload_requested(&self) -> bool {
-        self.live_reload_requested
-    }
-    
-    /// Reset the live reload requested flag.
-    /// This is used for testing purposes.
-    pub fn reset_live_reload_requested(&mut self) {
-        self.live_reload_requested = false;
     }
 }
 

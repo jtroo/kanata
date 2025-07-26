@@ -826,8 +826,7 @@ activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 ==== Automatic file watching
 
 You can enable automatic reloading of configuration files when they change on disk
-by using the `--watch` command line flag. This requires building kanata with the
-`watch` feature enabled.
+by using the `--watch` command line flag.
 
 [source]
 ----
@@ -843,7 +842,6 @@ When `--watch` is enabled:
 
 **Limitations:**
 
-* The `--watch` flag is only available when kanata is compiled with the `watch` feature
 * File watching respects the same limitations as manual live reload: device-related configurations are not reloaded
 * Include files referenced by `(include ...)` statements are not automatically watched
 * Rapid consecutive changes to files may be batched together due to debouncing
