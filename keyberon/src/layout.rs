@@ -1581,6 +1581,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             self.dequeue(overflow);
         }
     }
+
+    /// Put a key event at the front instead of back.
+    /// These events will not participate in chordsv2.
+    pub fn event_to_front(&mut self, event: Event) {
+        if let Event::Press(x, y) = event {
+            self.historical_inputs.push_front((x, y));
+        }
+        if let Some(overflow) = self.queue.push_front(event.into()) {
+            for i in -1..(EXTRA_WAITING_LEN as i8) {
+                self.waiting_into_hold(i);
+            }
+            self.dequeue(overflow);
+        }
+    }
+
     /// Resolve coordinate to first non-Trans actions.
     /// Trans on base layer, resolves to key from defsrc.
     fn resolve_coord(
