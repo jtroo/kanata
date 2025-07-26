@@ -995,7 +995,12 @@ are composed of multiple codepoints.
 NOTE: The <<clipboard-actions>> may output unicode characters more consistently.
 
 The `+unicode+` (or `+🔣+`) action accepts a single unicode character (but not
-a composed character, so 🤲, but not 🤲🏿).
+a composed character, so 🤲, but not 🤲🏿),
+or a single unicode number prefixed with `U+`.
+For example, both of these actions are the same:
+- `(unicode 🚆)`
+- `(unicode U+1F686)`
+
 If you want to output a glyph that is composed of multiple codepoints,
 you can use <<macro>> with multiple `unicode` actions.
 

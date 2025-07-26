@@ -37,3 +37,19 @@ fn macos_unicode_handling() {
     .no_time();
     assert_eq!("outU:🎉", result);
 }
+
+#[test]
+fn unicode_pulus() {
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer _
+ (unicode 🚆)
+ (unicode U+1F686)
+)
+        ",
+        "d:a t:10 d:b t:10",
+    )
+    .no_time();
+    assert_eq!("outU:🚆 outU:🚆", result);
+}
