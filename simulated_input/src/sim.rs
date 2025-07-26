@@ -134,6 +134,8 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
             #[cfg(target_os = "linux")]
             symlink_path: None,
             nodelay: true,
+            #[cfg(feature = "watch")]
+            watch: false,
         },
         sim_paths,
         sim_appendix,

@@ -23,6 +23,8 @@ pub struct ValidatedArgs {
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
+    #[cfg(feature = "watch")]
+    pub watch: bool,
 }
 
 pub fn default_cfg() -> Vec<PathBuf> {
