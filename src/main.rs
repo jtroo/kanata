@@ -241,7 +241,7 @@ mod cli {
         // Start comprehensive file watcher if enabled (supports include files)
         #[cfg(feature = "watch")]
         if args.watch {
-            if let Err(e) = crate::file_watcher::watcher::start_file_watcher(kanata_arc.clone()) {
+            if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
                 log::error!("Failed to start file watcher: {}", e);
             }
         }
