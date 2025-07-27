@@ -53,6 +53,8 @@ fn cli_init(cfg_path: &str) -> Result<ValidatedArgs> {
         #[cfg(feature = "tcp_server")]
         tcp_server_address: None, //todo: any need in a dll?
         nodelay: true,
+        #[cfg(feature = "watch")]
+        watch: false,
     })
 }
 

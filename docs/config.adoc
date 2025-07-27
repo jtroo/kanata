@@ -823,6 +823,43 @@ kanata -c startup.cfg -c 2nd.cfg -c 3rd.cfg
 Given the above startup command,
 activating `(lrld-num 2)` would reload the `2nd.cfg` file.
 
+==== Automatic file watching
+
+You can enable automatic reloading of configuration files when they change on disk
+by using the `--watch` command line flag.
+
+[source]
+----
+kanata --cfg config.kbd --watch
+----
+
+When `--watch` is enabled:
+
+* Kanata monitors all configuration files specified with `--cfg` directly for changes
+* When a file is modified, kanata automatically triggers a live reload
+* Changes are debounced with a 500ms delay to avoid excessive reloading
+* Only the configuration files themselves are watched (not included files)
+
+**Limitations:**
+
+* File watching respects the same limitations as manual live reload: device-related configurations are not reloaded
+* Include files referenced by `(include ...)` statements are not automatically watched
+* Rapid consecutive changes to files may be batched together due to debouncing
+
+**Example usage:**
+
+[source]
+----
+;; Start kanata with automatic file watching
+kanata --cfg my-config.kbd --watch
+
+;; Watch multiple configuration files
+kanata --cfg base.kbd --cfg gaming.kbd --watch
+----
+
+This feature is particularly useful during configuration development,
+as it eliminates the need to manually trigger reloads via keyboard shortcuts.
+
 [[layer-switch]]
 === layer-switch
 

@@ -25,8 +25,9 @@ time = "0.3.36"
 kanata = { path = ".." , default-features = false }
 
 [features]
-default = ["simulated_output", "tcp_server"]
+default = ["simulated_output", "tcp_server", "watch"]
 simulated_output = ["kanata/simulated_output"]
 simulated_input = ["kanata/simulated_input"]
 passthru_ahk = ["simulated_input","simulated_output"]
 tcp_server = ["kanata/tcp_server"]
+watch = ["kanata/watch"]
