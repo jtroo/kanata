@@ -4201,6 +4201,27 @@ Thus the output bus type is configurable.
 )
 ----
 
+[[linux-only-debounce-duration]]
+=== Linux only: debounce-duration
+
+This option allows you to configure the debounce duration for key press events in milliseconds.
+Debouncing prevents rapid repeated key presses from being processed too quickly.
+This can be handy in the case of 'chatter' or 'double taps',
+where a single press of the keyboard results in multiple key press events because of faulty hardware.
+
+The following different debouncing algorithms are available:
+- "asym_eager_defer_pk" (Default)
+- "sym_eager_pk"
+- "sym_defer_pk"
+
+.Example:
+[source]
+----
+(defcfg
+  debounce-duration 50 ;; Set debounce duration to 50ms
+)
+----
+
 [[macos-only-macos-dev-names-include]]
 === macOS only: macos-dev-names-include
 
