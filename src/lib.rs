@@ -8,6 +8,8 @@ pub mod gui;
 pub mod kanata;
 pub mod oskbd;
 pub mod tcp_server;
+#[cfg(feature = "watch")]
+pub mod file_watcher;
 #[cfg(test)]
 pub mod tests;
 
