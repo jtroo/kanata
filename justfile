@@ -77,3 +77,13 @@ cfg_to_html output_dir:
 # Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
 wasm_pack output_dir:
   cd wasm; wasm-pack build --target web; cd pkg; cp kanata_wasm_bg.wasm "{{output_dir}}"; cp kanata_wasm.js "{{output_dir}}"
+
+wasm-build output_dir:
+  cd wasm; echo "*" > pkg/.gitignore
+  cd wasm; cargo build --lib --release --target wasm32-unknown-unknown
+  cd wasm; wasm-bindgen target/wasm32-unknown-unknown/release/kanata_wasm.wasm --out-dir pkg --typescript --target web
+  wasm-opt wasm/pkg/kanata_wasm_bg.wasm -o wasm/pkg/kanata_wasm.wasm-opt.wasm -Oz
+  rm wasm/pkg/kanata_wasm_bg.wasm
+  mv wasm/pkg/kanata_wasm.wasm-opt.wasm wasm/pkg/kanata_wasm_bg.wasm
+  cp wasm/pkg/kanata_wasm_bg.wasm "{{output_dir}}"
+  cp wasm/pkg/kanata_wasm.js "{{output_dir}}"

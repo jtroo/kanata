@@ -1138,11 +1138,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     }
 
     /// Iterates on the key codes of the current state.
-    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ + use<'_, 'a, C, R, T> {
+    pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
+        let keys_to_suppress_for_one_cycle = self.keys_to_suppress_for_one_cycle.clone();
         self.states
             .iter()
             .filter_map(State::keycode)
-            .filter(|kc| !self.keys_to_suppress_for_one_cycle.contains(kc))
+            .filter(move |kc| !keys_to_suppress_for_one_cycle.contains(kc))
     }
     fn waiting_into_hold(&mut self, idx: i8) -> CustomEvent<'a, T> {
         let waiting = if idx < 0 {

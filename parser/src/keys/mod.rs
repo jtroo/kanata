@@ -324,7 +324,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
         "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,
         "IntlRo" | "ro" => OsCode::KEY_RO,
-        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        #[cfg(target_os = "macos")]
         "Lang1" | "kana" => OsCode::KEY_HANGEUL,
         #[cfg(any(target_os = "macos", target_os = "unknown"))]
         "Lang2" | "eisu" => OsCode::KEY_HANJA,
@@ -364,7 +364,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "dnd" | "DoNotDisturb" => OsCode::KEY_251,
         "mctl" | "MissionControl" => OsCode::KEY_252,
         "lpad" | "LaunchPad" => OsCode::KEY_253,
-        
+
         // Keys that behave as no-ops but can be used in sequences.
         // Also see: POTENTIAL PROBLEM - G-keys
         "nop0" => OsCode::KEY_676,
