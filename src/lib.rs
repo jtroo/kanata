@@ -3,6 +3,8 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+#[cfg(feature = "watch")]
+pub mod file_watcher;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub mod gui;
 pub mod kanata;

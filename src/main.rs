@@ -109,82 +109,6 @@ kanata.kbd in the current working directory and
 mod cli {
     use super::*;
 
-    #[cfg(feature = "watch")]
-    mod file_watcher {
-        use super::*;
-        use notify_debouncer_mini::{
-            new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind,
-        };
-        use parking_lot::Mutex;
-        use std::sync::Arc;
-        use std::time::Duration;
-
-        pub fn start_file_watcher(
-            cfg_paths: Vec<PathBuf>,
-            kanata_arc: Arc<Mutex<Kanata>>,
-        ) -> Result<()> {
-            // Create debouncer with 500ms timeout and a closure for event handling
-            let kanata_arc_clone = kanata_arc.clone();
-            let cfg_paths_clone = cfg_paths.clone();
-
-            let mut debouncer = new_debouncer(
-                Duration::from_millis(500),
-                move |result: DebounceEventResult| {
-                    match result {
-                        Ok(events) => {
-                            for event in events {
-                                // Check if the changed file is one of our config files
-                                if cfg_paths_clone.iter().any(|cfg_path| {
-                                    event.path.canonicalize().unwrap_or(event.path.clone())
-                                        == cfg_path.canonicalize().unwrap_or(cfg_path.clone())
-                                }) {
-                                    match event.kind {
-                                        DebouncedEventKind::Any => {
-                                            log::info!(
-                                                "Config file changed: {}, triggering reload",
-                                                event.path.display()
-                                            );
-
-                                            // Set the live_reload_requested flag
-                                            if let Some(mut kanata) = kanata_arc_clone.try_lock() {
-                                                kanata.request_live_reload();
-                                            } else {
-                                                log::warn!("Could not acquire lock to set live_reload_requested");
-                                            }
-                                        }
-                                        _ => {
-                                            log::trace!(
-                                                "Ignoring file event: {:?} for {}",
-                                                event.kind,
-                                                event.path.display()
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::error!("File watcher error: {:?}", e);
-                        }
-                    }
-                },
-            )?;
-
-            // Watch all config files directly
-            for path in &cfg_paths {
-                debouncer
-                    .watcher()
-                    .watch(path, RecursiveMode::NonRecursive)?;
-                log::info!("Watching config file for changes: {}", path.display());
-            }
-
-            // Keep the debouncer alive by moving it to a static context
-            std::mem::forget(debouncer);
-
-            Ok(())
-        }
-    }
-
     /// Parse CLI arguments and initialize logging.
     fn cli_init() -> Result<ValidatedArgs> {
         let args = Args::parse();
@@ -314,11 +238,10 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        // Start file watcher if enabled
+        // Start comprehensive file watcher if enabled (supports include files)
         #[cfg(feature = "watch")]
         if args.watch {
-            if let Err(e) = file_watcher::start_file_watcher(args.paths.clone(), kanata_arc.clone())
-            {
+            if let Err(e) = crate::file_watcher::watcher::start_file_watcher(kanata_arc.clone()) {
                 log::error!("Failed to start file watcher: {}", e);
             }
         }
