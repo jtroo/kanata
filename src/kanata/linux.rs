@@ -79,20 +79,30 @@ impl Kanata {
                     if !handle_scroll(&kanata, in_event, key_event.code, &events)? {
                         continue;
                     }
-                } else {
-                    // Handle normal keypresses.
-                    // Check if this keycode is mapped in the configuration.
-                    // If it hasn't been mapped, send it immediately.
-                    if !MAPPED_KEYS.lock().contains(&key_event.code) {
-                        let mut kanata = kanata.lock();
-                        #[cfg(not(feature = "simulated_output"))]
-                        kanata
-                            .kbd_out
-                            .write_raw(in_event)
-                            .map_err(|e| anyhow!("failed write: {}", e))?;
-                        continue;
-                    };
                 }
+
+                match key_event.value {
+                    KeyValue::Release => {
+                        PRESSED_KEYS.lock().remove(&key_event.code);
+                    }
+                    KeyValue::Press => {
+                        PRESSED_KEYS.lock().insert(key_event.code);
+                    }
+                    _ => {}
+                }
+
+                // Handle normal keypresses.
+                // Check if this keycode is mapped in the configuration.
+                // If it hasn't been mapped, send it immediately.
+                if !MAPPED_KEYS.lock().contains(&key_event.code) {
+                    let mut kanata = kanata.lock();
+                    #[cfg(not(feature = "simulated_output"))]
+                    kanata
+                        .kbd_out
+                        .write_raw(in_event)
+                        .map_err(|e| anyhow!("failed write: {}", e))?;
+                    continue;
+                };
 
                 // Send key events to the processing loop
                 if let Err(e) = tx.try_send(key_event) {
