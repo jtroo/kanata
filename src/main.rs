@@ -109,7 +109,6 @@ kanata.kbd in the current working directory and
 mod cli {
     use super::*;
 
-
     /// Parse CLI arguments and initialize logging.
     fn cli_init() -> Result<ValidatedArgs> {
         let args = Args::parse();

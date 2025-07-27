@@ -2066,27 +2066,30 @@ impl Kanata {
                             // Handle file watcher restart if needed
                             #[cfg(feature = "watch")]
                             if k.file_watcher_restart_requested {
-                                log::info!("Restarting file watcher due to changes in included files");
+                                log::info!(
+                                    "Restarting file watcher due to changes in included files"
+                                );
 
                                 // Drop the old watcher. This is critical to stop its background thread
                                 // and release the file handles on the previously watched files.
                                 k.file_watcher = None;
 
                                 // Create a new watcher with the updated file list
-                                let new_debouncer = match crate::file_watcher::watcher::create_debouncer(
-                                    kanata.clone(),
-                                    &k.cfg_paths,
-                                    &k.included_files,
-                                ) {
-                                    Ok(debouncer) => {
-                                        log::info!("File watcher successfully restarted");
-                                        Some(debouncer)
-                                    }
-                                    Err(e) => {
-                                        log::error!("Failed to restart file watcher: {}", e);
-                                        None
-                                    }
-                                };
+                                let new_debouncer =
+                                    match crate::file_watcher::watcher::create_debouncer(
+                                        kanata.clone(),
+                                        &k.cfg_paths,
+                                        &k.included_files,
+                                    ) {
+                                        Ok(debouncer) => {
+                                            log::info!("File watcher successfully restarted");
+                                            Some(debouncer)
+                                        }
+                                        Err(e) => {
+                                            log::error!("Failed to restart file watcher: {}", e);
+                                            None
+                                        }
+                                    };
 
                                 k.file_watcher = new_debouncer;
                                 k.file_watcher_restart_requested = false;
@@ -2155,27 +2158,30 @@ impl Kanata {
                             // Handle file watcher restart if needed
                             #[cfg(feature = "watch")]
                             if k.file_watcher_restart_requested {
-                                log::info!("Restarting file watcher due to changes in included files");
+                                log::info!(
+                                    "Restarting file watcher due to changes in included files"
+                                );
 
                                 // Drop the old watcher. This is critical to stop its background thread
                                 // and release the file handles on the previously watched files.
                                 k.file_watcher = None;
 
                                 // Create a new watcher with the updated file list
-                                let new_debouncer = match crate::file_watcher::watcher::create_debouncer(
-                                    kanata.clone(),
-                                    &k.cfg_paths,
-                                    &k.included_files,
-                                ) {
-                                    Ok(debouncer) => {
-                                        log::info!("File watcher successfully restarted");
-                                        Some(debouncer)
-                                    }
-                                    Err(e) => {
-                                        log::error!("Failed to restart file watcher: {}", e);
-                                        None
-                                    }
-                                };
+                                let new_debouncer =
+                                    match crate::file_watcher::watcher::create_debouncer(
+                                        kanata.clone(),
+                                        &k.cfg_paths,
+                                        &k.included_files,
+                                    ) {
+                                        Ok(debouncer) => {
+                                            log::info!("File watcher successfully restarted");
+                                            Some(debouncer)
+                                        }
+                                        Err(e) => {
+                                            log::error!("Failed to restart file watcher: {}", e);
+                                            None
+                                        }
+                                    };
 
                                 k.file_watcher = new_debouncer;
                                 k.file_watcher_restart_requested = false;

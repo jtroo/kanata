@@ -20,7 +20,7 @@ pub mod watcher {
     /// This is a simple parser that looks for include statements without full parsing.
     pub fn discover_include_files(cfg_paths: &[PathBuf]) -> Vec<PathBuf> {
         let mut include_files = Vec::new();
-        
+
         for cfg_path in cfg_paths {
             if let Ok(content) = fs::read_to_string(cfg_path) {
                 // Simple regex-like parsing for include statements
@@ -32,17 +32,20 @@ pub mod watcher {
                             if let Some(end) = trimmed[start + 1..].find('"') {
                                 let include_path = &trimmed[start + 1..start + 1 + end];
                                 let mut path = PathBuf::from(include_path);
-                                
+
                                 // If path is relative, make it relative to the config file directory
                                 if !path.is_absolute() {
                                     if let Some(parent) = cfg_path.parent() {
                                         path = parent.join(path);
                                     }
                                 }
-                                
+
                                 if path.exists() {
                                     include_files.push(path);
-                                    log::debug!("Discovered include file: {}", include_files.last().unwrap().display());
+                                    log::debug!(
+                                        "Discovered include file: {}",
+                                        include_files.last().unwrap().display()
+                                    );
                                 }
                             }
                         }
@@ -50,7 +53,7 @@ pub mod watcher {
                 }
             }
         }
-        
+
         include_files
     }
 
