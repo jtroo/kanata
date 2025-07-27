@@ -1883,6 +1883,113 @@ impl Kanata {
         }
     }
 
+    /// Request a live reload of the current configuration file.
+    pub fn request_live_reload(&mut self) {
+        self.live_reload_requested = true;
+        log::info!(
+            "Requested live reload of file: {}",
+            self.cfg_paths[self.cur_cfg_idx].display()
+        );
+    }
+
+    /// Handle a client command from TCP server and return a result.
+    /// This centralizes validation logic and provides proper error messages.
+    #[cfg(feature = "tcp_server")]
+    pub fn handle_client_command(
+        &mut self,
+        command: kanata_tcp_protocol::ClientMessage,
+    ) -> Result<()> {
+        use kanata_tcp_protocol::ClientMessage;
+
+        match command {
+            ClientMessage::Reload {} => {
+                self.request_live_reload();
+                Ok(())
+            }
+            ClientMessage::ReloadNext {} => {
+                self.request_live_reload_next();
+                Ok(())
+            }
+            ClientMessage::ReloadPrev {} => {
+                self.request_live_reload_prev();
+                Ok(())
+            }
+            ClientMessage::ReloadNum { index } => self.request_live_reload_num(index),
+            ClientMessage::ReloadFile { path } => self.request_live_reload_file(path),
+            _ => {
+                // For non-reload commands, we don't validate here - they're handled directly in tcp_server
+                Ok(())
+            }
+        }
+    }
+
+    /// Request a live reload of the next configuration file.
+    #[cfg(feature = "tcp_server")]
+    pub fn request_live_reload_next(&mut self) {
+        self.live_reload_requested = true;
+        self.cur_cfg_idx = if self.cur_cfg_idx == self.cfg_paths.len() - 1 {
+            0
+        } else {
+            self.cur_cfg_idx + 1
+        };
+        log::info!(
+            "Requested live reload of next file: {}",
+            self.cfg_paths[self.cur_cfg_idx].display()
+        );
+    }
+
+    /// Request a live reload of the previous configuration file.
+    #[cfg(feature = "tcp_server")]
+    pub fn request_live_reload_prev(&mut self) {
+        self.live_reload_requested = true;
+        if self.cur_cfg_idx == 0 {
+            self.cur_cfg_idx = self.cfg_paths.len() - 1;
+        } else {
+            self.cur_cfg_idx -= 1;
+        }
+        log::info!(
+            "Requested live reload of previous file: {}",
+            self.cfg_paths[self.cur_cfg_idx].display()
+        );
+    }
+
+    /// Request a live reload of the configuration file at the specified index.
+    #[cfg(feature = "tcp_server")]
+    pub fn request_live_reload_num(&mut self, index: usize) -> Result<()> {
+        if index >= self.cfg_paths.len() {
+            bail!(
+                "config index {} out of bounds: only {} configs available",
+                index,
+                self.cfg_paths.len()
+            );
+        }
+        self.live_reload_requested = true;
+        self.cur_cfg_idx = index;
+        log::info!(
+            "Requested live reload of config file {}: {}",
+            index,
+            self.cfg_paths[self.cur_cfg_idx].display()
+        );
+        Ok(())
+    }
+
+    /// Request a live reload of the specified configuration file.
+    #[cfg(feature = "tcp_server")]
+    pub fn request_live_reload_file(&mut self, path: String) -> Result<()> {
+        let new_path = std::path::PathBuf::from(&path);
+        if !new_path.exists() {
+            bail!("config file does not exist: {}", path);
+        }
+        self.live_reload_requested = true;
+        self.cfg_paths.push(new_path);
+        self.cur_cfg_idx = self.cfg_paths.len() - 1;
+        log::info!(
+            "Requested live reload of file: {}",
+            self.cfg_paths[self.cur_cfg_idx].display()
+        );
+        Ok(())
+    }
+
     #[allow(unused_variables)]
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
@@ -2378,12 +2485,6 @@ impl Kanata {
                 .as_ref()
                 .map(|cv2| cv2.is_idle_chv2())
                 .unwrap_or(true)
-    }
-
-    /// Request a live reload of the configuration files.
-    /// This is used by external watchers (like file watchers) to trigger a reload.
-    pub fn request_live_reload(&mut self) {
-        self.live_reload_requested = true;
     }
 }
 
