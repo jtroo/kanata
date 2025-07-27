@@ -1730,6 +1730,10 @@ impl Kanata {
                             self.ticks_since_idle = 0;
                             self.waiting_for_idle.insert(*fkd);
                         }
+                        CustomAction::FakeKeyOnPhysicalIdle(fkd) => {
+                            self.ticks_since_physical_idle = 0;
+                            self.waiting_for_physical_idle.insert(*fkd);
+                        }
                         CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
                             let duration = fk_hfd.hold_duration;
                             self.vkeys_pending_release.entry(fk_hfd.coord)

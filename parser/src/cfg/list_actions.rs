@@ -120,6 +120,7 @@ pub const ON_PRESS_A: &str = "on↓";
 pub const ON_RELEASE: &str = "on-release";
 pub const ON_RELEASE_A: &str = "on↑";
 pub const ON_IDLE: &str = "on-idle";
+pub const ON_PHYSICAL_IDLE: &str = "on-physical-idle";
 pub const HOLD_FOR_DURATION: &str = "hold-for-duration";
 pub const CLIPBOARD_SET: &str = "clipboard-set";
 pub const CLIPBOARD_CMD_SET: &str = "clipboard-cmd-set";
@@ -242,6 +243,7 @@ pub fn is_list_action(ac: &str) -> bool {
         ON_RELEASE,
         ON_RELEASE_A,
         ON_IDLE,
+        ON_PHYSICAL_IDLE,
         HOLD_FOR_DURATION,
         MACRO_CANCEL_ON_NEXT_PRESS,
         MACRO_REPEAT_CANCEL_ON_NEXT_PRESS,

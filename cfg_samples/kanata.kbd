@@ -1144,6 +1144,7 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   macvk (on-press tap-vkey vkmacro)
 
   isfvk (on-idle 1000 tap-vkey vksft)
+  pisfvk (on-physical-idle 1000 tap-vkey vksft)
 )
 
 ;; Press and release fake keys.
