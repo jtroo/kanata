@@ -2024,32 +2024,12 @@ impl Kanata {
                                 not(feature = "interception_driver"),
                                 target_os = "windows"
                             ))]
-                            {
-                                // If kanata has been inactive for long enough, clear all states.
-                                // This won't trigger if there are macros running, or if a key is
-                                // held down for a long time and is sending OS repeats. The reason
-                                // for this code is in cases like Win+L which locks the Windows
-                                // desktop. When this happens, the Win key and L key will be stuck
-                                // as pressed in the kanata state because LLHOOK kanata cannot read
-                                // keys in the lock screen or administrator applications. So this
-                                // is heuristic to detect such an issue and clear states assuming
-                                // that's what happened.
-                                //
-                                // Only states in the normal key row are cleared, since those are
-                                // the states that might be stuck. A real use case might be to have
-                                // a fake key pressed for a long period of time, so make sure those
-                                // are not cleared.
-                                if (now - last_input_time)
-                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS)
-                                {
-                                    log::debug!(
-                                        "clearing keyberon normal key states due to inactivity"
-                                    );
-                                    let layout = k.layout.bm();
-                                    release_normalkey_states(layout);
-                                    PRESSED_KEYS.lock().clear();
-                                }
-                            }
+                            clear_states_from_inactivity(
+                                &mut k,
+                                now,
+                                last_input_time,
+                                &mut idle_clear_happened,
+                            );
                             k.last_tick = now;
 
                             // Check for live reload BEFORE processing the key event
@@ -2246,34 +2226,12 @@ impl Kanata {
                                 not(feature = "interception_driver"),
                                 target_os = "windows"
                             ))]
-                            {
-                                // If kanata has been inactive for long enough, clear all states.
-                                // This won't trigger if there are macros running, or if a key is
-                                // held down for a long time and is sending OS repeats. The reason
-                                // for this code is in case like Win+L which locks the Windows
-                                // desktop. When this happens, the Win key and L key will be stuck
-                                // as pressed in the kanata state because LLHOOK kanata cannot read
-                                // keys in the lock screen or administrator applications. So this
-                                // is heuristic to detect such an issue and clear states assuming
-                                // that's what happened.
-                                //
-                                // Only states in the normal key row are cleared, since those are
-                                // the states that might be stuck. A real use case might be to have
-                                // a fake key pressed for a long period of time, so make sure those
-                                // are not cleared.
-                                if (web_time::Instant::now() - (last_input_time))
-                                    > time::Duration::from_secs(LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS)
-                                    && !idle_clear_happened
-                                {
-                                    idle_clear_happened = true;
-                                    log::debug!(
-                                        "clearing keyberon normal key states due to inactivity"
-                                    );
-                                    let layout = k.layout.bm();
-                                    release_normalkey_states(layout);
-                                    PRESSED_KEYS.lock().clear();
-                                }
-                            }
+                            clear_states_from_inactivity(
+                                &mut k,
+                                web_time::Instant::now(),
+                                last_input_time,
+                                &mut idle_clear_happened,
+                            );
 
                             drop(k);
                             std::thread::sleep(time::Duration::from_millis(1));
