@@ -1706,33 +1706,39 @@ impl Kanata {
 
                 // Process reload actions after releasing the layout borrow
                 if let Some(action) = reload_action {
-                    match action {
+                    let reload_succeeded = match action {
                         ReloadAction::Reload => {
                             self.request_live_reload();
-                            live_reload_requested = true;
+                            true
                         }
                         ReloadAction::ReloadNext => {
                             self.request_live_reload_next();
-                            live_reload_requested = true;
+                            true
                         }
                         ReloadAction::ReloadPrev => {
                             self.request_live_reload_prev();
-                            live_reload_requested = true;
+                            true
                         }
                         ReloadAction::ReloadNum(n) => {
                             if let Err(e) = self.request_live_reload_num(n) {
                                 log::error!("{}", e);
+                                false
                             } else {
-                                live_reload_requested = true;
+                                true
                             }
                         }
                         ReloadAction::ReloadFile(path) => {
                             if let Err(e) = self.request_live_reload_file(path) {
                                 log::error!("{}", e);
+                                false
                             } else {
-                                live_reload_requested = true;
+                                true
                             }
                         }
+                    };
+
+                    if reload_succeeded {
+                        live_reload_requested = true;
                     }
                 }
             }
