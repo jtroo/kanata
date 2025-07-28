@@ -1703,7 +1703,7 @@ impl Kanata {
                 }
                 #[cfg(feature = "cmd")]
                 run_multi_cmd(cmds);
-                
+
                 // Process reload actions after releasing the layout borrow
                 if let Some(action) = reload_action {
                     match action {
