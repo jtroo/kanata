@@ -278,6 +278,15 @@ impl From<MoveDirection> for Axis {
     }
 }
 
+/// Represents reload actions that need to be processed after releasing borrows
+enum ReloadAction {
+    Reload,
+    ReloadNext,
+    ReloadPrev,
+    ReloadNum(usize),
+    ReloadFile(String),
+}
+
 #[derive(Clone, Copy)]
 pub struct CalculatedMouseMove {
     pub direction: MoveDirection,
@@ -1316,76 +1325,26 @@ impl Kanata {
                 #[cfg(feature = "cmd")]
                 let mut cmds = vec![];
                 let mut prev_mouse_btn = None;
+                let mut reload_action: Option<ReloadAction> = None;
                 for custact in custacts.iter() {
                     match custact {
                         // For unicode, only send on the press. No repeat action is supported for this for
                         // now.
                         CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
                         CustomAction::LiveReload => {
-                            live_reload_requested = true;
-                            log::info!(
-                                "Requested live reload of file: {}",
-                                self.cfg_paths[self.cur_cfg_idx].display()
-                            );
+                            reload_action = Some(ReloadAction::Reload);
                         }
                         CustomAction::LiveReloadNext => {
-                            live_reload_requested = true;
-                            self.cur_cfg_idx = if self.cur_cfg_idx == self.cfg_paths.len() - 1 {
-                                0
-                            } else {
-                                self.cur_cfg_idx + 1
-                            };
-                            log::info!(
-                                "Requested live reload of next file: {}",
-                                self.cfg_paths[self.cur_cfg_idx].display()
-                            );
+                            reload_action = Some(ReloadAction::ReloadNext);
                         }
                         CustomAction::LiveReloadPrev => {
-                            live_reload_requested = true;
-                            self.cur_cfg_idx = match self.cur_cfg_idx {
-                                0 => self.cfg_paths.len() - 1,
-                                i => i - 1,
-                            };
-                            log::info!(
-                                "Requested live reload of prev file: {}",
-                                self.cfg_paths[self.cur_cfg_idx].display()
-                            );
+                            reload_action = Some(ReloadAction::ReloadPrev);
                         }
                         CustomAction::LiveReloadNum(n) => {
-                            let n = usize::from(*n);
-                            live_reload_requested = true;
-                            match self.cfg_paths.get(n) {
-                                Some(path) => {
-                                    self.cur_cfg_idx = n;
-                                    log::info!("Requested live reload of file: {}", path.display(),);
-                                }
-                                None => {
-                                    log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
-                                }
-                            }
+                            reload_action = Some(ReloadAction::ReloadNum(usize::from(*n)));
                         }
                         CustomAction::LiveReloadFile(path) => {
-                            let path = PathBuf::from(path);
-
-                            let result = self
-                                .cfg_paths
-                                .iter()
-                                .enumerate()
-                                .find(|(_idx, fpath)| **fpath == path);
-
-                            match result {
-                                Some((index, _path)) => {
-                                    log::info!(
-                                        "Requested live reload of file with path: {}",
-                                        path.display(),
-                                    );
-                                    live_reload_requested = true;
-                                    self.cur_cfg_idx = index;
-                                }
-                                None => {
-                                    log::error!("Requested live reload of file with path {}, but no such path was passed as an argument to Kanata", path.display());
-                                }
-                            }
+                            reload_action = Some(ReloadAction::ReloadFile(path.clone()));
                         }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
@@ -1744,6 +1703,38 @@ impl Kanata {
                 }
                 #[cfg(feature = "cmd")]
                 run_multi_cmd(cmds);
+                
+                // Process reload actions after releasing the layout borrow
+                if let Some(action) = reload_action {
+                    match action {
+                        ReloadAction::Reload => {
+                            self.request_live_reload();
+                            live_reload_requested = true;
+                        }
+                        ReloadAction::ReloadNext => {
+                            self.request_live_reload_next();
+                            live_reload_requested = true;
+                        }
+                        ReloadAction::ReloadPrev => {
+                            self.request_live_reload_prev();
+                            live_reload_requested = true;
+                        }
+                        ReloadAction::ReloadNum(n) => {
+                            if let Err(e) = self.request_live_reload_num(n) {
+                                log::error!("{}", e);
+                            } else {
+                                live_reload_requested = true;
+                            }
+                        }
+                        ReloadAction::ReloadFile(path) => {
+                            if let Err(e) = self.request_live_reload_file(path) {
+                                log::error!("{}", e);
+                            } else {
+                                live_reload_requested = true;
+                            }
+                        }
+                    }
+                }
             }
 
             CustomEvent::Release(custacts) => {
@@ -1924,7 +1915,6 @@ impl Kanata {
     }
 
     /// Request a live reload of the next configuration file.
-    #[cfg(feature = "tcp_server")]
     pub fn request_live_reload_next(&mut self) {
         self.live_reload_requested = true;
         self.cur_cfg_idx = if self.cur_cfg_idx == self.cfg_paths.len() - 1 {
@@ -1939,7 +1929,6 @@ impl Kanata {
     }
 
     /// Request a live reload of the previous configuration file.
-    #[cfg(feature = "tcp_server")]
     pub fn request_live_reload_prev(&mut self) {
         self.live_reload_requested = true;
         if self.cur_cfg_idx == 0 {
@@ -1954,7 +1943,6 @@ impl Kanata {
     }
 
     /// Request a live reload of the configuration file at the specified index.
-    #[cfg(feature = "tcp_server")]
     pub fn request_live_reload_num(&mut self, index: usize) -> Result<()> {
         if index >= self.cfg_paths.len() {
             bail!(
@@ -1974,7 +1962,6 @@ impl Kanata {
     }
 
     /// Request a live reload of the specified configuration file.
-    #[cfg(feature = "tcp_server")]
     pub fn request_live_reload_file(&mut self, path: String) -> Result<()> {
         let new_path = std::path::PathBuf::from(&path);
         if !new_path.exists() {
