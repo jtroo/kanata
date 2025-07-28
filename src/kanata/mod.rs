@@ -64,8 +64,6 @@ mod linux;
 
 #[cfg(target_os = "macos")]
 mod macos;
-#[cfg(target_os = "macos")]
-use macos::*;
 
 mod output_logic;
 use output_logic::*;
@@ -80,6 +78,12 @@ pub use caps_word::*;
 
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
+
+/// State of pressed keys on the physical keyboard.
+///
+/// Notably this is not what keys kanata is outputting as pressed.
+pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
+    Lazy::new(|| Mutex::new(HashSet::default()));
 
 pub struct Kanata {
     /// Handle to some OS keyboard output mechanism.
@@ -206,14 +210,20 @@ pub struct Kanata {
     /// Determines what types of devices to grab based on autodetection mode.
     #[cfg(target_os = "linux")]
     pub device_detect_mode: DeviceDetectMode,
-    /// Fake key actions that are waiting for a certain duration of keyboard idling.
+    /// Fake key actions that are waiting for a certain duration of kanata idling.
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
+    /// Fake key actions that are waiting for a certain duration of physical keyboard idling,
+    /// as opposed to `waiting_for_idle`, for which non-idling is extended by ongoing kanata state
+    /// processing, such as `caps_word` or `one_shot` terminations.
+    pub waiting_for_physical_idle: HashSet<FakeKeyOnIdle>,
     /// Fake key actions that are being held and are pending release.
     /// The key is the coordinate and the value is the number of ticks until release should be
     /// done.
     pub vkeys_pending_release: HashMap<Coord, u16>,
     /// Number of ticks since kanata was idle.
     pub ticks_since_idle: u16,
+    /// Number of ticks since physical keyboards were all idle.
+    pub ticks_since_physical_idle: u16,
     /// If a mousemove action is active and another mousemove action is activated,
     /// reuse the acceleration state.
     movemouse_inherit_accel_state: bool,
@@ -455,8 +465,10 @@ impl Kanata {
                 .linux_device_detect_mode
                 .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
+            waiting_for_physical_idle: HashSet::default(),
             vkeys_pending_release: HashMap::default(),
             ticks_since_idle: 0,
+            ticks_since_physical_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
             unmodded_mods: UnmodMods::empty(),
@@ -604,8 +616,10 @@ impl Kanata {
                 .linux_device_detect_mode
                 .expect("parser should default to some"),
             waiting_for_idle: HashSet::default(),
+            waiting_for_physical_idle: HashSet::default(),
             vkeys_pending_release: HashMap::default(),
             ticks_since_idle: 0,
+            ticks_since_physical_idle: 0,
             movemouse_buffer: None,
             unmodded_keys: vec![],
             unmodded_mods: UnmodMods::empty(),
@@ -743,10 +757,7 @@ impl Kanata {
             *self.mouse_movement_key.lock() = cfg.options.mouse_movement_key;
         }
 
-        #[cfg(not(target_os = "linux"))]
-        {
-            PRESSED_KEYS.lock().clear();
-        }
+        PRESSED_KEYS.lock().clear();
 
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
@@ -932,6 +943,7 @@ impl Kanata {
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
+        self.tick_physical_idle_timeout();
         self.macro_on_press_cancel_duration = self.macro_on_press_cancel_duration.saturating_sub(1);
         tick_record_state(&mut self.dynamic_macro_record_state);
         zippy_tick(self.caps_word.is_some());
@@ -1093,6 +1105,23 @@ impl Kanata {
         })
     }
 
+    fn tick_physical_idle_timeout(&mut self) {
+        if self.waiting_for_physical_idle.is_empty() {
+            return;
+        }
+        self.waiting_for_physical_idle.retain(|wfd| {
+            if self.ticks_since_physical_idle >= wfd.idle_duration {
+                // Process this and return false so that it is not retained.
+                let layout = self.layout.bm();
+                let Coord { x, y } = wfd.coord;
+                handle_fakekey_action(wfd.action, layout, x, y);
+                false
+            } else {
+                true
+            }
+        })
+    }
+
     /// Sends OS key events according to the change in key state between the current and the
     /// previous keyberon keystate. Also processes any custom actions.
     ///
@@ -1181,7 +1210,7 @@ impl Kanata {
         }
 
         if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
                 self.caps_word = None;
             }
         }
@@ -1632,7 +1661,7 @@ impl Kanata {
                                 if let Some(ref mut cw) = self.caps_word {
                                     cur_keys.push(keycode);
                                     let prev_len = cur_keys.len();
-                                    cw.maybe_add_lsft(cur_keys);
+                                    cw.tick_maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
                                         do_caps_word = true;
                                         press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
@@ -1686,9 +1715,11 @@ impl Kanata {
                         }
                         CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
                             CapsWordRepressBehaviour::Overwrite => {
+                                log::trace!("caps-word overwrite");
                                 self.caps_word = Some(CapsWordState::new(cfg));
                             }
                             CapsWordRepressBehaviour::Toggle => {
+                                log::trace!("caps-word toggle");
                                 self.caps_word = match self.caps_word {
                                     Some(_) => None,
                                     None => Some(CapsWordState::new(cfg)),
@@ -1701,6 +1732,10 @@ impl Kanata {
                         CustomAction::FakeKeyOnIdle(fkd) => {
                             self.ticks_since_idle = 0;
                             self.waiting_for_idle.insert(*fkd);
+                        }
+                        CustomAction::FakeKeyOnPhysicalIdle(fkd) => {
+                            self.ticks_since_physical_idle = 0;
+                            self.waiting_for_physical_idle.insert(*fkd);
                         }
                         CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
                             let duration = fk_hfd.hold_duration;
@@ -2223,6 +2258,20 @@ impl Kanata {
             #[cfg(feature = "perf_logging")]
             log::info!("ticks since idle: {}", k.ticks_since_idle);
         }
+
+        let counting_physical_idle_ticks = if k.waiting_for_physical_idle.is_empty() {
+            false
+        } else {
+            let is_physical_idle = PRESSED_KEYS.lock().is_empty();
+            if is_physical_idle {
+                k.ticks_since_physical_idle =
+                    k.ticks_since_physical_idle.saturating_add(ms_elapsed);
+            } else {
+                k.ticks_since_physical_idle = 0;
+            }
+            true
+        };
+
         // NOTE: this check must not be part of `is_idle` because its falsiness
         // does not mean that kanata is in a non-idle state, just that we
         // haven't done enough ticks yet to properly compute key-timing.
@@ -2241,7 +2290,11 @@ impl Kanata {
             .as_ref()
             .map(|cv2| cv2.accepts_chords_chv2())
             .unwrap_or(true);
-        is_idle && !counting_idle_ticks && passed_max_switch_timing_check && chordsv2_accepts_chords
+        is_idle
+            && !counting_idle_ticks
+            && !counting_physical_idle_ticks
+            && passed_max_switch_timing_check
+            && chordsv2_accepts_chords
     }
 
     pub fn is_idle(&self) -> bool {

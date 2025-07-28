@@ -263,6 +263,28 @@ pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
     )))))
 }
 
+pub(crate) fn parse_on_physical_idle(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "on-physical-idle expects three parameters: <timeout> <action> <key-name>";
+    if ac_params.len() != 3 {
+        bail!("{ERR_MSG}");
+    }
+    let idle_duration = parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
+    let action = parse_vkey_action(&ac_params[1], s)?;
+    let coord = parse_vkey_coord(&ac_params[2], s)?;
+
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::FakeKeyOnPhysicalIdle(FakeKeyOnIdle {
+            coord,
+            action,
+            idle_duration,
+        }),
+    )))))
+}
+
 pub(crate) fn parse_hold_for_duration(
     ac_params: &[SExpr],
     s: &ParserState,

@@ -4627,6 +4627,10 @@ Activate a virtual key action when releasing the associated input key.
 * `(on-idle <idle time> <action> <virtual key name>)`:
 Activate a virtual key action when kanata has been idle
 for at least `idle time` milliseconds.
+* `(on-physical-idle <idle time> <action> <virtual key name>)`:
+Activate a virtual key action when the physical keyboard has
+had all keys released
+for at least `idle time` milliseconds.
 * `(hold-for-duration <hold time> <virtual key name>`):
 Press a virtual key for `hold time` milliseconds.
 If `hold-for-duration` retriggered on a virtual key before release,
@@ -4656,6 +4660,8 @@ For example, if a long-running macro is playing,
 or kanata is waiting for the timeout of actions such as `caps-word` or `tap-dance`,
 kanata is not yet idle, and the tick count for the `<idle time>` parameter
 will not yet be counting even if you no longer have any keyboard keys pressed.
+The variant `on-physical-idle` may be more desirable if you want the timer
+to only start based on having all keyboard keys be released.
 
 .Example:
 [source]

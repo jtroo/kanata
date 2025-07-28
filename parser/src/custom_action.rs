@@ -27,6 +27,7 @@ pub enum CustomAction {
         action: FakeKeyAction,
     },
     FakeKeyOnIdle(FakeKeyOnIdle),
+    FakeKeyOnPhysicalIdle(FakeKeyOnIdle),
     FakeKeyHoldForDuration(FakeKeyHoldForDuration),
     Delay(u16),
     DelayOnRelease(u16),

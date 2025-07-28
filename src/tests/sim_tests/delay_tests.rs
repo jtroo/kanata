@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 #[ignore] // timing-based: fails intermittently
-fn on_press_delay() {
+fn on_press_delay_must_be_single_threaded() {
     let start = std::time::Instant::now();
     let result = simulate(
         "(defsrc) (deflayermap (base) a (on-press-delay 10))",
@@ -17,7 +17,7 @@ fn on_press_delay() {
 
 #[test]
 #[ignore] // timing-based: fails intermittently
-fn on_release_delay() {
+fn on_release_delay_must_be_single_threaded() {
     let start = std::time::Instant::now();
     let result = simulate(
         "(defsrc) (deflayermap (base) a (on-release-delay 10))",
@@ -32,7 +32,7 @@ fn on_release_delay() {
 
 #[test]
 #[ignore] // timing-based: fails intermittently
-fn no_delay() {
+fn no_delay_must_be_single_threaded() {
     let start = std::time::Instant::now();
     let result = simulate("(defsrc) (deflayermap (base) a XX)", "d:a t:50 u:a t:50");
     assert_eq!("", result);

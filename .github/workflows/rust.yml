@@ -67,6 +67,8 @@ jobs:
 
     - name: Run tests simulated output
       run: cargo test --features=simulated_output -- sim_tests
+    - name: Run tests simulated output on_idle
+      run: cargo test --features=simulated_output -- must_be_single_threaded --ignored --test-threads=1
     - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
 
@@ -112,6 +114,8 @@ jobs:
 
     - name: Run tests simulated output
       run: cargo test --features=simulated_output -- sim_tests
+    - name: Run tests simulated output on_idle
+      run: cargo test --features=simulated_output -- sim_tests::vkey_sim_tests::on_idle --ignored
     - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
 
