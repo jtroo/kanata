@@ -70,8 +70,6 @@ use output_logic::*;
 
 #[cfg(target_os = "unknown")]
 mod unknown;
-#[cfg(target_os = "unknown")]
-use unknown::*;
 
 mod caps_word;
 pub use caps_word::*;

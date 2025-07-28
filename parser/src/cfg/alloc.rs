@@ -12,7 +12,13 @@ use std::sync::Arc;
 /// In practice, this is not difficult to do in the `cfg` module which only exposes a single public
 /// method.
 pub(crate) struct Allocations {
-    allocations: Mutex<Vec<usize>>,
+    allocations: Mutex<Vec<Allocation>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Allocation {
+    ptr: usize,
+    len: usize,
 }
 
 impl std::fmt::Debug for Allocations {
@@ -27,8 +33,14 @@ impl Drop for Allocations {
             "freeing allocations of length {}",
             self.allocations.lock().len()
         );
-        for p in self.allocations.lock().iter().rev().copied() {
-            unsafe { drop(Box::from_raw(p as *mut usize)) };
+        for a in self.allocations.lock().iter().rev().copied() {
+            log::debug!("freeing ptr 0x{:x} len{}", a.ptr, a.len);
+            unsafe {
+                drop(Box::<[u8]>::from_raw(std::slice::from_raw_parts_mut(
+                    a.ptr as *mut u8,
+                    a.len,
+                )))
+            };
         }
     }
 }
@@ -52,7 +64,15 @@ impl Allocations {
         if (p as usize) < 16 {
             panic!("sref bad ptr");
         }
-        self.allocations.lock().push(p as usize);
+        log::debug!(
+            "sref type: {}, ptr:{p:?} sz:{}",
+            std::any::type_name::<T>(),
+            std::mem::size_of::<T>()
+        );
+        self.allocations.lock().push(Allocation {
+            ptr: p as usize,
+            len: std::mem::size_of::<T>(),
+        });
         Box::leak(unsafe { Box::from_raw(p) })
     }
 
@@ -60,18 +80,29 @@ impl Allocations {
         // An empty slice has no backing allocation. `Box<[T]>` is a fat pointer so the leaked return
         // will contain a length of 0 and an invalid pointer.
         if !v.is_empty() {
-            self.allocations.lock().push(v.as_ptr() as usize);
+            let p = v.as_ptr();
+            log::debug!(
+                "bref_slice type: {}, ptr:{p:?} sz:{}",
+                std::any::type_name::<T>(),
+                std::mem::size_of::<T>()
+            );
+            self.allocations.lock().push(Allocation {
+                ptr: p as usize,
+                len: std::mem::size_of::<T>() * v.len(),
+            });
         }
         Box::leak(v)
     }
 
     /// Returns a &'static [&'static T] from a `Vec<T>` by converting to a boxed slice and leaking it.
     pub(crate) fn sref_vec<T>(&self, v: Vec<T>) -> &'static [T] {
+        log::debug!("sref_vec {}", std::any::type_name::<T>());
         self.bref_slice(v.into_boxed_slice())
     }
 
     /// Returns a `&'static [&'static T]` by leaking a newly created box and boxed slice of `v`.
     pub(crate) fn sref_slice<T>(&self, v: T) -> &'static [&'static T] {
+        log::debug!("sref_slice {}", std::any::type_name::<T>());
         self.bref_slice(vec![self.sref(v)].into_boxed_slice())
     }
 }
