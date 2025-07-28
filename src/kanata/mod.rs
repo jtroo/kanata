@@ -62,6 +62,9 @@ pub use windows::*;
 #[cfg(target_os = "linux")]
 mod linux;
 
+#[cfg(target_os = "macos")]
+mod macos;
+
 mod output_logic;
 use output_logic::*;
 
