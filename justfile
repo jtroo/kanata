@@ -33,7 +33,7 @@ sha256sums output_dir:
 test:
   cargo test -p kanata -p kanata-parser -p kanata-keyberon -- --nocapture
   cargo test --features=simulated_output sim_tests
-  cargo test --features=simulated_output -- sim_tests::vkey_sim_tests::on_idle --ignored
+  cargo test --features=simulated_output -- must_be_single_threaded --ignored --test-threads=1
   cargo clippy --all
 
 fmt:
