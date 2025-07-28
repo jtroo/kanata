@@ -277,7 +277,7 @@ pub(crate) fn parse_on_physical_idle(
     let coord = parse_vkey_coord(&ac_params[2], s)?;
 
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
-        CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
+        CustomAction::FakeKeyOnPhysicalIdle(FakeKeyOnIdle {
             coord,
             action,
             idle_duration,

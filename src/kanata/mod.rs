@@ -81,6 +81,9 @@ pub use caps_word::*;
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
+/// State of pressed keys on the physical keyboard.
+///
+/// Notably this is not what keys kanata is outputting as pressed.
 pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
 
@@ -1209,7 +1212,7 @@ impl Kanata {
         }
 
         if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
                 self.caps_word = None;
             }
         }
@@ -1660,7 +1663,7 @@ impl Kanata {
                                 if let Some(ref mut cw) = self.caps_word {
                                     cur_keys.push(keycode);
                                     let prev_len = cur_keys.len();
-                                    cw.maybe_add_lsft(cur_keys);
+                                    cw.tick_maybe_add_lsft(cur_keys);
                                     if cur_keys.len() > prev_len {
                                         do_caps_word = true;
                                         press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
@@ -1714,9 +1717,11 @@ impl Kanata {
                         }
                         CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
                             CapsWordRepressBehaviour::Overwrite => {
+                                log::trace!("caps-word overwrite");
                                 self.caps_word = Some(CapsWordState::new(cfg));
                             }
                             CapsWordRepressBehaviour::Toggle => {
+                                log::trace!("caps-word toggle");
                                 self.caps_word = match self.caps_word {
                                     Some(_) => None,
                                     None => Some(CapsWordState::new(cfg)),

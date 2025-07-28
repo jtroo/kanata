@@ -23,6 +23,11 @@ fn hold_for_duration() {
     );
 }
 
+/// Ignored because PRESSED_KEYS is a global static,
+/// so shares state with other tests and will fail at random.
+/// Should be run on its own until PRESSED_KEYS can be refactored
+/// to avoid being a global.
+#[ignore]
 #[test]
 fn on_idle() {
     const CFG: &str = r"
@@ -34,8 +39,16 @@ fn on_idle() {
         (caps-word 100) @i1 @i2
      )
     ";
-    let result = simulate(CFG, "d:c t:10 u:c t:5 d:a t:50 u:a t:120").to_ascii();
-    assert_eq!("t:2ms dn:LGui t:23ms up:LGui", result);
-    let result = simulate(CFG, "d:b t:10 u:b t:5 d:a t:50 u:a t:120").to_ascii();
-    assert_eq!("t:1ms dn:LGui t:258ms up:LGui", result);
+    let result = simulate(
+        CFG,
+        "d:c t:10 u:c t:5 d:a t:50 u:a t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10",
+    )
+    .to_ascii();
+    assert_eq!("t:86ms dn:LGui t:1ms up:LGui", result);
+    let result = simulate(
+        CFG,
+        "d:b t:10 u:b t:5 d:a t:50 u:a t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10",
+    )
+    .to_ascii();
+    assert_eq!("t:136ms dn:LGui t:1ms up:LGui", result);
 }

@@ -56,6 +56,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                 "t" => {
                     let tick = str::parse::<u128>(val).expect("valid num for tick");
                     k.tick_ms(tick, &None).unwrap();
+                    k.can_block_update_idle_waiting(tick as u16);
                 }
                 "d" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
@@ -64,6 +65,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Press,
                     })
                     .expect("input handles fine");
+                    crate::PRESSED_KEYS.lock().insert(key_code);
                 }
                 "u" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
@@ -72,6 +74,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Release,
                     })
                     .expect("input handles fine");
+                    crate::PRESSED_KEYS.lock().remove(&key_code);
                 }
                 "r" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");

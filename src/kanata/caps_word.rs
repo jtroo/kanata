@@ -14,7 +14,7 @@ pub struct CapsWordState {
     /// The configured timeout for caps_word.
     pub timeout: u16,
     /// The number of ticks remaining for caps_word, after which its state should be cleared. The
-    /// number of ticks gets reset back to `timeout` when `maybe_add_lsft` is called. The reason
+    /// number of ticks gets reset back to `timeout` when `tick_maybe_add_lsft` is called. The reason
     /// for having this timeout at all is in case somebody was in the middle of typing a word, had
     /// to go do something, and forgot that caps_word was active. Having this timeout means that
     /// shift won't be active for their next keypress.
@@ -39,8 +39,12 @@ impl CapsWordState {
         }
     }
 
-    pub(crate) fn maybe_add_lsft(&mut self, active_keys: &mut Vec<KeyCode>) -> CapsWordNextState {
+    pub(crate) fn tick_maybe_add_lsft(
+        &mut self,
+        active_keys: &mut Vec<KeyCode>,
+    ) -> CapsWordNextState {
         if self.timeout_ticks == 0 {
+            log::trace!("caps-word ended");
             return End;
         }
         for kc in active_keys.iter() {
