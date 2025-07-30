@@ -25,8 +25,8 @@ use os_pipe::pipe;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
+use std::io::Error;
 use std::io::Read;
-use std::io::{Error, ErrorKind};
 use std::os::unix::io::AsRawFd;
 
 #[derive(Debug, Clone, Copy)]
@@ -116,8 +116,11 @@ impl KbdIn {
             let kb_list = capture_stdout(list_keyboards);
             let names_: Vec<String> = kb_list
                 .split("\n")
-                .filter(|kb| !kb.is_empty() && !names.contains(&kb.to_string()))
-                .map(|kb| kb.to_string())
+                .filter(|kb| {
+                    let kb_trimmed = kb.trim();
+                    !kb_trimmed.is_empty() && !names.contains(&kb_trimmed.to_string())
+                })
+                .map(|kb| kb.trim().to_string())
                 .collect();
             validate_and_register_devices(names_)
         } else {
@@ -131,7 +134,10 @@ impl KbdIn {
                 Err(anyhow!("grab failed"))
             }
         } else {
-            Err(anyhow!("Couldn't register any device"))
+            Err(anyhow!(
+                "Couldn't register any device. Use 'kanata --list' to see available devices. \
+                 Note: devices with empty names are automatically skipped to prevent crashes."
+            ))
         }
     }
 
@@ -151,18 +157,26 @@ impl KbdIn {
 fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
     include_names
         .iter()
-        .filter_map(|dev| match device_matches(dev) {
-            true => Some(dev.to_string()),
-            false => {
-                log::warn!("Not a valid device name '{dev}'");
-                None
+        .filter_map(|dev| {
+            // Defensive check: skip empty device names that could cause crashes
+            if dev.trim().is_empty() {
+                log::warn!("Skipping empty device name (likely old keyboard without proper identification)");
+                return None;
+            }
+
+            match device_matches(dev) {
+                true => Some(dev.to_string()),
+                false => {
+                    log::warn!("Not a valid device name '{dev}'");
+                    None
+                }
             }
         })
         .filter_map(|dev| {
             if register_device(&dev) {
                 Some(dev.to_string())
             } else {
-                log::warn!("Couldn't register device '{dev}'");
+                log::warn!("Couldn't register device '{}' - device may be in use by another application or disconnected", dev);
                 None
             }
         })
@@ -248,10 +262,7 @@ impl KbdOut {
             self.write(event)
         } else {
             log::debug!("couldn't write unrecognized {key:?}");
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "OsCode not recognized!",
-            ))
+            Err(io::Error::other("OsCode not recognized!"))
         }
     }
 
@@ -263,10 +274,7 @@ impl KbdOut {
             self.write(event)
         } else {
             log::debug!("couldn't write unrecognized OsCode {code}");
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "OsCode not recognized!",
-            ))
+            Err(io::Error::other("OsCode not recognized!"))
         }
     }
 
@@ -297,19 +305,19 @@ impl KbdOut {
         match _direction {
             MWheelDirection::Down => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                (_distance as i64) * 1,
+                _distance as i64,
             ),
             MWheelDirection::Up => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                (_distance as i64) * -1,
+                -(_distance as i64),
             ),
             MWheelDirection::Left => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                (_distance as i64) * 1,
+                _distance as i64,
             ),
             MWheelDirection::Right => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                (_distance as i64) * -1,
+                -(_distance as i64),
             ),
         }
         // Mouse control only seems to work with CGEventTapLocation::HID.
@@ -356,9 +364,7 @@ impl KbdOut {
         let mouse_position = event.location();
         let event =
             CGEvent::new_mouse_event(event_source, event_type, mouse_position, button.unwrap())
-                .map_err(|_| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "Failed to create mouse event")
-                })?;
+                .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
 
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
@@ -415,7 +421,7 @@ impl KbdOut {
         }
         display
             .move_cursor_to_point(mouse_position)
-            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move mouse"))?;
+            .map_err(|_| io::Error::other("failed to move mouse"))?;
         Ok(())
     }
 
@@ -424,17 +430,13 @@ impl KbdOut {
         let point = CGPoint::new(_x as CGFloat, _y as CGFloat);
         display
             .move_cursor_to_point(point)
-            .map_err(|_| io::Error::new(ErrorKind::Other, "failed to move cursor to point"))?;
+            .map_err(|_| io::Error::other("failed to move cursor to point"))?;
         Ok(())
     }
 
     fn make_event_source() -> Result<CGEventSource, Error> {
-        CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(|_| {
-            Error::new(
-                ErrorKind::Other,
-                "failed to create core graphics event source",
-            )
-        })
+        CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
+            .map_err(|_| Error::other("failed to create core graphics event source"))
     }
     /// Creates a core graphics event.
     /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
@@ -444,7 +446,7 @@ impl KbdOut {
     fn make_event() -> Result<CGEvent, Error> {
         let event_source = Self::make_event_source()?;
         let event = CGEvent::new(event_source)
-            .map_err(|_| Error::new(ErrorKind::Other, "failed to create core graphics event"))?;
+            .map_err(|_| Error::other("failed to create core graphics event"))?;
         Ok(event)
     }
 
@@ -453,10 +455,10 @@ impl KbdOut {
     /// This does _not_ move the mouse, it just mutates the point.
     fn apply_calculated_move(_mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
         match _mv.direction {
-            MoveDirection::Up => mouse_position.y = mouse_position.y - _mv.distance as CGFloat,
-            MoveDirection::Down => mouse_position.y = mouse_position.y + _mv.distance as CGFloat,
-            MoveDirection::Left => mouse_position.x = mouse_position.x - _mv.distance as CGFloat,
-            MoveDirection::Right => mouse_position.x = mouse_position.x + _mv.distance as CGFloat,
+            MoveDirection::Up => mouse_position.y -= _mv.distance as CGFloat,
+            MoveDirection::Down => mouse_position.y += _mv.distance as CGFloat,
+            MoveDirection::Left => mouse_position.x -= _mv.distance as CGFloat,
+            MoveDirection::Right => mouse_position.x += _mv.distance as CGFloat,
         }
     }
 }
