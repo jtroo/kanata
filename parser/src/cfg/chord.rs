@@ -1,5 +1,7 @@
 use itertools::Itertools;
-use kanata_keyberon::chord::{ChordV2, ChordsForKey, ChordsForKeys, ReleaseBehaviour};
+use kanata_keyberon::chord::{
+    ChordV2, ChordsForKey, ChordsForKeys, ReleaseBehaviour,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use std::fs;
@@ -12,7 +14,9 @@ pub(crate) fn parse_defchordv2(
     exprs: &[SExpr],
     s: &ParserState,
 ) -> Result<ChordsForKeys<'static, KanataCustom>> {
-    if exprs[0].atom(None).expect("should be atom") == "defchordsv2-experimental" {
+    if exprs[0].atom(None).expect("should be atom")
+        == "defchordsv2-experimental"
+    {
         log::warn!(
             "You should replace defchordsv2-experimental with defchordsv2.\n\
              Using -experimental will be invalid in the future."
@@ -66,7 +70,8 @@ pub(crate) fn parse_defchordv2(
         return Err((*e).clone());
     }
 
-    let successful = all_chords.into_iter().filter_map(Result::ok).collect_vec();
+    let successful =
+        all_chords.into_iter().filter_map(Result::ok).collect_vec();
     for chord in successful {
         for pkey in chord.participating_keys.iter().copied() {
             //log::trace!("chord for key:{pkey:?} > {chord:?}");
@@ -167,19 +172,26 @@ fn parse_release_behaviour(
     Ok(release_behaviour)
 }
 
-fn parse_disabled_layers(disabled_layers: &SExpr, s: &ParserState) -> Result<Vec<u16>> {
+fn parse_disabled_layers(
+    disabled_layers: &SExpr,
+    s: &ParserState,
+) -> Result<Vec<u16>> {
     let disabled_layers = disabled_layers
         .list(s.vars())
         .map(|dl| {
-            dl.iter()
-                .try_fold(vec![], |mut layers, layer| -> Result<Vec<u16>> {
+            dl.iter().try_fold(
+                vec![],
+                |mut layers, layer| -> Result<Vec<u16>> {
                     let l_idx = layer
                         .atom(s.vars())
                         .and_then(|l| s.layer_idxs.get(l))
-                        .ok_or_else(|| anyhow_expr!(layer, "Not a known layer name."))?;
+                        .ok_or_else(|| {
+                            anyhow_expr!(layer, "Not a known layer name.")
+                        })?;
                     layers.push((*l_idx) as u16);
                     Ok(layers)
-                })
+                },
+            )
         })
         .ok_or_else(|| {
             anyhow_expr!(
@@ -191,8 +203,8 @@ fn parse_disabled_layers(disabled_layers: &SExpr, s: &ParserState) -> Result<Vec
 }
 
 fn parse_chord_file(file_name: &str) -> Result<Vec<ChordDefinition>> {
-    let input_data =
-        fs::read_to_string(file_name).unwrap_or_else(|_| panic!("Unable to read file {file_name}"));
+    let input_data = fs::read_to_string(file_name)
+        .unwrap_or_else(|_| panic!("Unable to read file {file_name}"));
     let parsed_chords = parse_input(&input_data).unwrap();
     Ok(parsed_chords)
 }
@@ -298,7 +310,9 @@ impl<'a> ChordTranslation<'a> {
             .map(|key| {
                 self.target_map
                     .get(key.to_string().to_lowercase().as_str())
-                    .map(|c| self.postprocess_map.get(c).unwrap_or(c).to_string())
+                    .map(|c| {
+                        self.postprocess_map.get(c).unwrap_or(c).to_string()
+                    })
                     .unwrap_or_else(|| key.to_string())
             })
             .collect::<Vec<String>>()
@@ -327,9 +341,10 @@ impl<'a> ChordTranslation<'a> {
             self.participant_keys(&chord_def.keys).join(" "),
             self.action(&chord_def.action).join(" ")
         );
-        let mut participant_action = sexpr::parse(&sexpr_string, self.file_name).unwrap()[0]
-            .t
-            .clone();
+        let mut participant_action =
+            sexpr::parse(&sexpr_string, self.file_name).unwrap()[0]
+                .t
+                .clone();
         participant_action.extend_from_slice(&[
             self.timeout.clone(),
             self.release_behaviour.clone(),

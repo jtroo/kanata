@@ -1,12 +1,18 @@
 fn main() -> std::io::Result<()> {
-    #[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
+    #[cfg(all(
+        target_os = "windows",
+        any(feature = "win_manifest", feature = "gui")
+    ))]
     {
         windows::build()?;
     }
     Ok(())
 }
 
-#[cfg(all(target_os = "windows", any(feature = "win_manifest", feature = "gui")))]
+#[cfg(all(
+    target_os = "windows",
+    any(feature = "win_manifest", feature = "gui")
+))]
 mod windows {
     use indoc::formatdoc;
     use regex::Regex;
@@ -25,8 +31,11 @@ mod windows {
         // MS says "Use the four-part version format: mmmmm.nnnnn.ooooo.ppppp"
         // https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests
 
-        let re_ver_build = Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+(?<vpos>\d+)$").unwrap();
-        let re_ver_build2 = Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+$").unwrap();
+        let re_ver_build =
+            Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+(?<vpos>\d+)$")
+                .unwrap();
+        let re_ver_build2 =
+            Regex::new(r"^(?<vpre>(\d+\.){2}\d+)[-a-zA-Z]+$").unwrap();
         let re_version3 = Regex::new(r"^(\d+\.){2}\d+$").unwrap();
         let mut version: String = env!("CARGO_PKG_VERSION").to_string();
 
@@ -37,7 +46,8 @@ mod windows {
                 .replace_all(&version, r"$vpre.$vpos")
                 .to_string();
         } else if re_ver_build2.find(&version).is_some() {
-            version = re_ver_build2.replace_all(&version, r"$vpre.0").to_string();
+            version =
+                re_ver_build2.replace_all(&version, r"$vpre.0").to_string();
         } else {
             pb!("unknown version format '{}', using '0.0.0.0'", version);
             version = "0.0.0.0".to_string();
@@ -66,7 +76,10 @@ mod windows {
         );
         let mut manifest_f = File::create(manifest_path)?;
         write!(manifest_f, "{manifest_str}")?;
-        embed_resource::compile("./src/kanata.exe.manifest.rc", embed_resource::NONE);
+        embed_resource::compile(
+            "./src/kanata.exe.manifest.rc",
+            embed_resource::NONE,
+        );
         Ok(())
     }
 }

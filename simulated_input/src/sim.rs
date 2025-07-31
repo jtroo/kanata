@@ -216,31 +216,51 @@ fn main_impl() -> Result<()> {
                     Some((kind, val)) => match kind {
                         "tick" | "🕐" | "t" => {
                             let tick = str::parse::<u128>(val)?;
-                            kbd_out_log(&mut k.kbd_out, LogFmtT::InTick, None, Some(tick));
+                            kbd_out_log(
+                                &mut k.kbd_out,
+                                LogFmtT::InTick,
+                                None,
+                                Some(tick),
+                            );
                             k.tick_ms(tick, &None)?;
                         }
                         "press" | "↓" | "d" | "down" => {
-                            let key_code =
-                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyDown, Some(key_code), None);
+                            let key_code = str_to_oscode(val)
+                                .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            kbd_out_log(
+                                &mut k.kbd_out,
+                                LogFmtT::InKeyDown,
+                                Some(key_code),
+                                None,
+                            );
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Press,
                             })?;
                         }
                         "release" | "↑" | "u" | "up" => {
-                            let key_code =
-                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
+                            let key_code = str_to_oscode(val)
+                                .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            kbd_out_log(
+                                &mut k.kbd_out,
+                                LogFmtT::InKeyUp,
+                                Some(key_code),
+                                None,
+                            );
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Release,
                             })?;
                         }
                         "repeat" | "⟳" | "r" => {
-                            let key_code =
-                                str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                            kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyRep, Some(key_code), None);
+                            let key_code = str_to_oscode(val)
+                                .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                            kbd_out_log(
+                                &mut k.kbd_out,
+                                LogFmtT::InKeyRep,
+                                Some(key_code),
+                                None,
+                            );
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Repeat,
@@ -254,12 +274,19 @@ fn main_impl() -> Result<()> {
                             //allow skipping : separator for unique non-key symbols
                             "🕐" => {
                                 let tick = str::parse::<u128>(val)?;
-                                kbd_out_log(&mut k.kbd_out, LogFmtT::InTick, None, Some(tick));
+                                kbd_out_log(
+                                    &mut k.kbd_out,
+                                    LogFmtT::InTick,
+                                    None,
+                                    Some(tick),
+                                );
                                 k.tick_ms(tick, &None)?;
                             }
                             "↓" => {
-                                let key_code = str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                                let key_code =
+                                    str_to_oscode(val).ok_or_else(|| {
+                                        anyhow!("unknown key: {val}")
+                                    })?;
                                 kbd_out_log(
                                     &mut k.kbd_out,
                                     LogFmtT::InKeyDown,
@@ -272,17 +299,26 @@ fn main_impl() -> Result<()> {
                                 })?;
                             }
                             "↑" => {
-                                let key_code = str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
-                                kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
+                                let key_code =
+                                    str_to_oscode(val).ok_or_else(|| {
+                                        anyhow!("unknown key: {val}")
+                                    })?;
+                                kbd_out_log(
+                                    &mut k.kbd_out,
+                                    LogFmtT::InKeyUp,
+                                    Some(key_code),
+                                    None,
+                                );
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Release,
                                 })?;
                             }
                             "⟳" => {
-                                let key_code = str_to_oscode(val)
-                                    .ok_or_else(|| anyhow!("unknown key: {val}"))?;
+                                let key_code =
+                                    str_to_oscode(val).ok_or_else(|| {
+                                        anyhow!("unknown key: {val}")
+                                    })?;
                                 kbd_out_log(
                                     &mut k.kbd_out,
                                     LogFmtT::InKeyRep,

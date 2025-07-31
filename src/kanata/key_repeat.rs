@@ -14,7 +14,10 @@ impl Kanata {
         ret
     }
 
-    pub(super) fn handle_repeat_actual(&mut self, event: &KeyEvent) -> Result<()> {
+    pub(super) fn handle_repeat_actual(
+        &mut self,
+        event: &KeyEvent,
+    ) -> Result<()> {
         if let Some(state) = self.sequence_state.get_active() {
             // While in non-visible sequence mode, don't send key repeats. I can't imagine it's a
             // helpful use case for someone trying to type in a sequence that they want to rely on
@@ -26,7 +29,8 @@ impl Kanata {
             // with the sequence; the key is output with repeat as normal. Which might be
             // surprising/unexpected. It's technically fixable but I don't want to add the code to
             // do that if nobody needs it.
-            if state.sequence_input_mode != SequenceInputMode::VisibleBackspaced {
+            if state.sequence_input_mode != SequenceInputMode::VisibleBackspaced
+            {
                 return Ok(());
             }
         }
@@ -35,11 +39,14 @@ impl Kanata {
             .override_keys(&mut self.cur_keys, &mut self.override_states);
 
         // Prioritize checking the active layer in case a layer-while-held is active.
-        let active_held_layers = self.layout.bm().trans_resolution_layer_order();
+        let active_held_layers =
+            self.layout.bm().trans_resolution_layer_order();
         let mut held_layer_active = false;
         for layer in active_held_layers {
             held_layer_active = true;
-            if let Some(outputs_for_key) = self.key_outputs[usize::from(layer)].get(&event.code) {
+            if let Some(outputs_for_key) =
+                self.key_outputs[usize::from(layer)].get(&event.code)
+            {
                 log::debug!("key outs for active layer-while-held: {outputs_for_key:?};");
                 for osc in outputs_for_key.iter().rev().copied() {
                     let kc = osc.into();
@@ -48,7 +55,9 @@ impl Kanata {
                         || self.unmodded_keys.contains(&kc)
                     {
                         log::debug!("repeat    {:?}", KeyCode::from(osc));
-                        if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
+                        if let Err(e) =
+                            write_key(&mut self.kbd_out, osc, KeyValue::Repeat)
+                        {
                             bail!("could not write key {e:?}")
                         }
                         return Ok(());
@@ -77,7 +86,9 @@ impl Kanata {
                     || self.unmodded_keys.contains(&kc)
                 {
                     log::debug!("repeat    {:?}", KeyCode::from(osc));
-                    if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
+                    if let Err(e) =
+                        write_key(&mut self.kbd_out, osc, KeyValue::Repeat)
+                    {
                         bail!("could not write key {e:?}")
                     }
                     return Ok(());
@@ -94,7 +105,9 @@ impl Kanata {
             || self.unshifted_keys.contains(&kc)
             || self.unmodded_keys.contains(&kc)
         {
-            if let Err(e) = write_key(&mut self.kbd_out, event.code, KeyValue::Repeat) {
+            if let Err(e) =
+                write_key(&mut self.kbd_out, event.code, KeyValue::Repeat)
+            {
                 bail!("could not write key {e:?}");
             }
         }

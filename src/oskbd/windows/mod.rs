@@ -15,14 +15,23 @@ use encode_unicode::CharExt;
 #[cfg(not(feature = "simulated_input"))]
 use crate::oskbd::KeyValue;
 
-#[cfg(all(not(feature = "interception_driver"), not(feature = "simulated_input")))]
+#[cfg(all(
+    not(feature = "interception_driver"),
+    not(feature = "simulated_input")
+))]
 mod llhook; // contains KbdOut any(not(feature = "simulated_output"), not(feature = "passthru_ahk"))
-#[cfg(all(not(feature = "interception_driver"), not(feature = "simulated_input")))]
+#[cfg(all(
+    not(feature = "interception_driver"),
+    not(feature = "simulated_input")
+))]
 pub use llhook::*;
 
 #[cfg(all(not(feature = "interception_driver"), feature = "simulated_input"))]
 mod exthook_os;
-#[cfg(all(not(feature = "interception_driver"), feature = "simulated_input"))]
+#[cfg(all(
+    not(feature = "interception_driver"),
+    feature = "simulated_input"
+))]
 pub use exthook_os::*;
 
 mod scancode_to_usvk;
@@ -129,49 +138,54 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
 
             IMPORTANT: these numbers are the VK numbers, e.g. VK_Q, VK_LSHIFT
             */
-            const EXTENDED_KEYS: [u8; 48] = if cfg!(not(feature = "win_llhook_read_scancodes")) {
-                // BUG NOTES:
-                // The difference between the two variants is the handling of VK_SNAPSHOT.
-                //
-                // It seems the winapi MapVirtualKeyA does an different mapping when passing in
-                // VK_SNAPSHOT than the rest of the code used to expect. It gets mapped to 88, or
-                // 0x54, and this should be non-extended, i.e. it remains 0x54 and not 0xE037. With
-                // winiov2/gui/interception variants, MapVirtualKeyA is not used by default and
-                // instead it's a custom mapping, which maps it to 0xE037, and this value seems to
-                // have the correct effect.
-                //
-                // According to readings, MapVirtualKeyA does not do extended flag properly, so
-                // since the VK_SNAPSHOT mapping was believed to be an extended key, the 0xE000 was
-                // added and 0x54 became 0xE054 which doesn't do anything. Avoiding adding of the
-                // 0xE000 fixes the issue.
-                [
-                    0xb1, 0xb0, 0xa3, 0xad, 0x8c, 0xb3, 0xb2, 0xae, 0xaf, 0xac, 0x6f, 0x13, 0xa5,
-                    0x24, 0x26, 0x21, 0x25, 0x27, 0x23, 0x28, 0x22, 0x2d, 0x2e, 0x5b, 0x5c, 0x5d,
-                    0x5f, 0xaa, 0xa8, 0xa9, 0xa7, 0xa6, 0xac, 0xb4, 0x13,
-                    /*
-                    The 0x13 here is repeated. Why? Maybe it will generate better comparison code 😅.
-                    Probably should test+measure when making changes like this (but I didn't).
-                    The theory is that comparing on a 16-byte boundary seems good.
-                    Below taken from Rust source:
+            const EXTENDED_KEYS: [u8; 48] =
+                if cfg!(not(feature = "win_llhook_read_scancodes")) {
+                    // BUG NOTES:
+                    // The difference between the two variants is the handling of VK_SNAPSHOT.
+                    //
+                    // It seems the winapi MapVirtualKeyA does an different mapping when passing in
+                    // VK_SNAPSHOT than the rest of the code used to expect. It gets mapped to 88, or
+                    // 0x54, and this should be non-extended, i.e. it remains 0x54 and not 0xE037. With
+                    // winiov2/gui/interception variants, MapVirtualKeyA is not used by default and
+                    // instead it's a custom mapping, which maps it to 0xE037, and this value seems to
+                    // have the correct effect.
+                    //
+                    // According to readings, MapVirtualKeyA does not do extended flag properly, so
+                    // since the VK_SNAPSHOT mapping was believed to be an extended key, the 0xE000 was
+                    // added and 0x54 became 0xE054 which doesn't do anything. Avoiding adding of the
+                    // 0xE000 fixes the issue.
+                    [
+                        0xb1, 0xb0, 0xa3, 0xad, 0x8c, 0xb3, 0xb2, 0xae, 0xaf,
+                        0xac, 0x6f, 0x13, 0xa5, 0x24, 0x26, 0x21, 0x25, 0x27,
+                        0x23, 0x28, 0x22, 0x2d, 0x2e, 0x5b, 0x5c, 0x5d, 0x5f,
+                        0xaa, 0xa8, 0xa9, 0xa7, 0xa6, 0xac, 0xb4, 0x13,
+                        /*
+                        The 0x13 here is repeated. Why? Maybe it will generate better comparison code 😅.
+                        Probably should test+measure when making changes like this (but I didn't).
+                        The theory is that comparing on a 16-byte boundary seems good.
+                        Below taken from Rust source:
 
-                    const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
-                        // Scan for a single byte value by reading two `usize` words at a time.
-                        //
-                        // Split `text` in three parts
-                        // - unaligned initial part, before the first word aligned address in text
-                        // - body, scan by 2 words at a time
-                        // - the last remaining part, < 2 word size
-                    */
-                    0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13,
-                ]
-            } else {
-                [
-                    0xb1, 0xb0, 0xa3, 0xad, 0x8c, 0xb3, 0xb2, 0xae, 0xaf, 0xac, 0x6f, 0x2c, 0xa5,
-                    0x24, 0x26, 0x21, 0x25, 0x27, 0x23, 0x28, 0x22, 0x2d, 0x2e, 0x5b, 0x5c, 0x5d,
-                    0x5f, 0xaa, 0xa8, 0xa9, 0xa7, 0xa6, 0xac, 0xb4, 0x13, 0x13, 0x13, 0x13, 0x13,
-                    0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13,
-                ]
-            };
+                        const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
+                            // Scan for a single byte value by reading two `usize` words at a time.
+                            //
+                            // Split `text` in three parts
+                            // - unaligned initial part, before the first word aligned address in text
+                            // - body, scan by 2 words at a time
+                            // - the last remaining part, < 2 word size
+                        */
+                        0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13,
+                        0x13, 0x13, 0x13, 0x13,
+                    ]
+                } else {
+                    [
+                        0xb1, 0xb0, 0xa3, 0xad, 0x8c, 0xb3, 0xb2, 0xae, 0xaf,
+                        0xac, 0x6f, 0x2c, 0xa5, 0x24, 0x26, 0x21, 0x25, 0x27,
+                        0x23, 0x28, 0x22, 0x2d, 0x2e, 0x5b, 0x5c, 0x5d, 0x5f,
+                        0xaa, 0xa8, 0xa9, 0xa7, 0xa6, 0xac, 0xb4, 0x13, 0x13,
+                        0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13,
+                        0x13, 0x13, 0x13,
+                    ]
+                };
 
             let code_u32 = code as u32;
             kb_input.dwFlags |= KEYEVENTF_SCANCODE;
@@ -205,8 +219,8 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
             }
             #[cfg(feature = "win_llhook_read_scancodes")]
             {
-                kb_input.wScan =
-                    osc_to_u16(code.into()).unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
+                kb_input.wScan = osc_to_u16(code.into())
+                    .unwrap_or_else(|| MapVirtualKeyA(code_u32, 0) as u16);
             }
 
             if kb_input.wScan == 0 {
@@ -214,7 +228,8 @@ fn send_key_sendinput(code: u16, is_key_up: bool) {
                 kb_input.wVk = code;
             }
 
-            let is_extended_key: bool = code < 0xff && EXTENDED_KEYS.contains(&(code as u8));
+            let is_extended_key: bool =
+                code < 0xff && EXTENDED_KEYS.contains(&(code as u8));
             if is_extended_key {
                 kb_input.wScan |= 0xE0 << 8;
                 kb_input.dwFlags |= KEYEVENTF_EXTENDEDKEY;

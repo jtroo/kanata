@@ -95,8 +95,11 @@ pub struct Kanata {
     pub included_files: Vec<PathBuf>,
     /// File watcher for configuration changes.
     #[cfg(feature = "watch")]
-    pub file_watcher:
-        Option<notify_debouncer_mini::Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>>,
+    pub file_watcher: Option<
+        notify_debouncer_mini::Debouncer<
+            notify_debouncer_mini::notify::RecommendedWatcher,
+        >,
+    >,
     /// The potential key outputs of every key input. Used for managing key repeat.
     pub key_outputs: cfg::KeyOutputs,
     /// Handle to the keyberon library layout.
@@ -363,7 +366,9 @@ impl Kanata {
         #[cfg(target_os = "windows")]
         unsafe {
             log::info!("Asking Windows to improve timer precision");
-            if winapi::um::timeapi::timeBeginPeriod(1) == winapi::um::mmsystem::TIMERR_NOCANDO {
+            if winapi::um::timeapi::timeBeginPeriod(1)
+                == winapi::um::mmsystem::TIMERR_NOCANDO
+            {
                 bail!("failed to improve timer precision");
             }
         }
@@ -406,7 +411,9 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
-            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_backtrack_modcancel: cfg
+                .options
+                .sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
@@ -426,26 +433,44 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg
+                .options
+                .linux_opts
+                .linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
+            intercept_mouse_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids,
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_mouse_hwids_exclude: cfg
                 .options
                 .wintercept_opts
                 .windows_interception_mouse_hwids_exclude,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_kb_hwids: cfg
                 .options
                 .wintercept_opts
                 .windows_interception_keyboard_hwids,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_kb_hwids_exclude: cfg
                 .options
                 .wintercept_opts
@@ -457,8 +482,12 @@ impl Kanata {
                 .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
-            override_release_on_activation: cfg.options.override_release_on_activation,
-            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            override_release_on_activation: cfg
+                .options
+                .override_release_on_activation,
+            movemouse_inherit_accel_state: cfg
+                .options
+                .movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
@@ -496,7 +525,9 @@ impl Kanata {
                 target_os = "linux",
                 target_os = "unknown"
             ))]
-            mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            mouse_movement_key: Arc::new(Mutex::new(
+                cfg.options.mouse_movement_key,
+            )),
         })
     }
 
@@ -505,7 +536,10 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(Self::new(args)?)))
     }
 
-    pub fn new_from_str(cfg: &str, file_content: HashMap<String, String>) -> Result<Self> {
+    pub fn new_from_str(
+        cfg: &str,
+        file_content: HashMap<String, String>,
+    ) -> Result<Self> {
         let cfg = match cfg::new_from_str(cfg, file_content) {
             Ok(c) => c,
             Err(e) => {
@@ -557,7 +591,9 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
-            sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
+            sequence_backtrack_modcancel: cfg
+                .options
+                .sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
@@ -577,26 +613,44 @@ impl Kanata {
             #[cfg(target_os = "linux")]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(target_os = "linux")]
-            continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
+            continue_if_no_devices: cfg
+                .options
+                .linux_opts
+                .linux_continue_if_no_devs_found,
             #[cfg(target_os = "linux")]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
-            intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
+            intercept_mouse_hwids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_hwids,
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_mouse_hwids_exclude: cfg
                 .options
                 .wintercept_opts
                 .windows_interception_mouse_hwids_exclude,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_kb_hwids: cfg
                 .options
                 .wintercept_opts
                 .windows_interception_keyboard_hwids,
-            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            #[cfg(all(
+                feature = "interception_driver",
+                target_os = "windows"
+            ))]
             intercept_kb_hwids_exclude: cfg
                 .options
                 .wintercept_opts
@@ -608,8 +662,12 @@ impl Kanata {
                 .unwrap_or(cfg.options.log_layer_changes),
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
-            override_release_on_activation: cfg.options.override_release_on_activation,
-            movemouse_inherit_accel_state: cfg.options.movemouse_inherit_accel_state,
+            override_release_on_activation: cfg
+                .options
+                .override_release_on_activation,
+            movemouse_inherit_accel_state: cfg
+                .options
+                .movemouse_inherit_accel_state,
             dynamic_macro_max_presses: cfg.options.dynamic_macro_max_presses,
             dynamic_macro_replay_behaviour: ReplayBehaviour {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
@@ -647,7 +705,9 @@ impl Kanata {
                 target_os = "linux",
                 target_os = "unknown"
             ))]
-            mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            mouse_movement_key: Arc::new(Mutex::new(
+                cfg.options.mouse_movement_key,
+            )),
         })
     }
 
@@ -661,7 +721,10 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(k)))
     }
 
-    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    fn do_live_reload(
+        &mut self,
+        _tx: &Option<Sender<ServerMessage>>,
+    ) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -672,7 +735,8 @@ impl Kanata {
         update_kbd_out(&cfg.options, &self.kbd_out)?;
         #[cfg(target_os = "windows")]
         set_win_altgr_behaviour(cfg.options.windows_opts.windows_altgr);
-        self.sequence_backtrack_modcancel = cfg.options.sequence_backtrack_modcancel;
+        self.sequence_backtrack_modcancel =
+            cfg.options.sequence_backtrack_modcancel;
         self.sequence_always_on = cfg.options.sequence_always_on;
         self.sequence_input_mode = cfg.options.sequence_input_mode;
         self.sequence_timeout = cfg.options.sequence_timeout;
@@ -681,11 +745,14 @@ impl Kanata {
         self.layer_info = cfg.layer_info;
         self.sequences = cfg.sequences;
         self.overrides = cfg.overrides;
-        self.log_layer_changes =
-            get_forced_log_layer_changes().unwrap_or(cfg.options.log_layer_changes);
-        self.movemouse_smooth_diagonals = cfg.options.movemouse_smooth_diagonals;
-        self.override_release_on_activation = cfg.options.override_release_on_activation;
-        self.movemouse_inherit_accel_state = cfg.options.movemouse_inherit_accel_state;
+        self.log_layer_changes = get_forced_log_layer_changes()
+            .unwrap_or(cfg.options.log_layer_changes);
+        self.movemouse_smooth_diagonals =
+            cfg.options.movemouse_smooth_diagonals;
+        self.override_release_on_activation =
+            cfg.options.override_release_on_activation;
+        self.movemouse_inherit_accel_state =
+            cfg.options.movemouse_inherit_accel_state;
         self.dynamic_macro_max_presses = cfg.options.dynamic_macro_max_presses;
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
@@ -697,18 +764,26 @@ impl Kanata {
         }
         #[cfg(target_os = "windows")]
         {
-            self.windows_sync_keystates = cfg.options.windows_opts.sync_keystates;
+            self.windows_sync_keystates =
+                cfg.options.windows_opts.sync_keystates;
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
         {
             self.gui_opts.tray_icon = cfg.options.gui_opts.tray_icon;
-            self.gui_opts.icon_match_layer_name = cfg.options.gui_opts.icon_match_layer_name;
-            self.gui_opts.tooltip_layer_changes = cfg.options.gui_opts.tooltip_layer_changes;
-            self.gui_opts.tooltip_no_base = cfg.options.gui_opts.tooltip_no_base;
-            self.gui_opts.tooltip_show_blank = cfg.options.gui_opts.tooltip_show_blank;
-            self.gui_opts.tooltip_duration = cfg.options.gui_opts.tooltip_duration;
-            self.gui_opts.notify_cfg_reload = cfg.options.gui_opts.notify_cfg_reload;
-            self.gui_opts.notify_cfg_reload_silent = cfg.options.gui_opts.notify_cfg_reload_silent;
+            self.gui_opts.icon_match_layer_name =
+                cfg.options.gui_opts.icon_match_layer_name;
+            self.gui_opts.tooltip_layer_changes =
+                cfg.options.gui_opts.tooltip_layer_changes;
+            self.gui_opts.tooltip_no_base =
+                cfg.options.gui_opts.tooltip_no_base;
+            self.gui_opts.tooltip_show_blank =
+                cfg.options.gui_opts.tooltip_show_blank;
+            self.gui_opts.tooltip_duration =
+                cfg.options.gui_opts.tooltip_duration;
+            self.gui_opts.notify_cfg_reload =
+                cfg.options.gui_opts.notify_cfg_reload;
+            self.gui_opts.notify_cfg_reload_silent =
+                cfg.options.gui_opts.notify_cfg_reload_silent;
             self.gui_opts.notify_error = cfg.options.gui_opts.notify_error;
             self.gui_opts.tooltip_size = cfg.options.gui_opts.tooltip_size;
         }
@@ -719,7 +794,9 @@ impl Kanata {
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(target_os = "linux")]
-        Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
+        Kanata::set_repeat_rate(
+            cfg.options.linux_opts.linux_x11_repeat_delay_rate,
+        )?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
@@ -772,7 +849,10 @@ impl Kanata {
             match tx.try_send(ServerMessage::LayerChange { new }) {
                 Ok(_) => {}
                 Err(error) => {
-                    log::error!("could not send LayerChange event notification: {}", error);
+                    log::error!(
+                        "could not send LayerChange event notification: {}",
+                        error
+                    );
                 }
             }
         }
@@ -816,13 +896,20 @@ impl Kanata {
                     let layout = self.layout.bm();
                     layout.active_sequences.clear();
                     layout.states.retain(|s| {
-                        !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. })
+                        !matches!(
+                            s,
+                            State::FakeKey { .. }
+                                | State::RepeatingSequence { .. }
+                        )
                     });
                 }
                 Event::Press(0, evc)
             }
             KeyValue::Release => {
-                record_release(&mut self.dynamic_macro_record_state, event.code);
+                record_release(
+                    &mut self.dynamic_macro_record_state,
+                    event.code,
+                );
                 Event::Release(0, evc)
             }
             KeyValue::Repeat => {
@@ -846,7 +933,8 @@ impl Kanata {
     /// and stored internal state. Mutates the internal time-tracking state.
     pub fn get_ms_elapsed(&mut self) -> u128 {
         let now = web_time::Instant::now();
-        let ms_count_result = count_ms_elapsed(self.last_tick, now, self.time_remainder);
+        let ms_count_result =
+            count_ms_elapsed(self.last_tick, now, self.time_remainder);
         let ms_elapsed = ms_count_result.ms_elapsed;
         self.time_remainder = ms_count_result.ms_remainder_in_ns;
         self.last_tick = match ms_elapsed {
@@ -866,7 +954,10 @@ impl Kanata {
 
     /// Advance keyberon layout state and send events based on changes to its state.
     /// Returns the number of ticks that elapsed.
-    fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
+    fn handle_time_ticks(
+        &mut self,
+        tx: &Option<Sender<ServerMessage>>,
+    ) -> Result<u16> {
         let ms_elapsed = self.get_ms_elapsed();
         self.tick_ms(ms_elapsed, tx)?;
 
@@ -899,7 +990,11 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    pub fn tick_ms(
+        &mut self,
+        ms_elapsed: u128,
+        _tx: &Option<Sender<ServerMessage>>,
+    ) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
             self.tick_states(_tx)?;
@@ -944,14 +1039,18 @@ impl Kanata {
         });
     }
 
-    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    fn tick_states(
+        &mut self,
+        _tx: &Option<Sender<ServerMessage>>,
+    ) -> Result<()> {
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
         self.tick_physical_idle_timeout();
-        self.macro_on_press_cancel_duration = self.macro_on_press_cancel_duration.saturating_sub(1);
+        self.macro_on_press_cancel_duration =
+            self.macro_on_press_cancel_duration.saturating_sub(1);
         tick_record_state(&mut self.dynamic_macro_record_state);
         zippy_tick(self.caps_word.is_some());
         self.prev_keys.clear();
@@ -990,8 +1089,9 @@ impl Kanata {
         if let Some(mmsv) = &mut self.move_mouse_state_vertical {
             if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
                 if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    let increment = (mmas.accel_increment
+                        * f64::from(mmas.accel_ticks_from_min))
+                        as u16;
                     mmsv.distance = mmas.min_distance + increment;
                     mmas.accel_ticks_from_min += 1;
                     mmas.accel_ticks_until_max -= 1;
@@ -1001,9 +1101,14 @@ impl Kanata {
             }
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
-                let scaled_distance =
-                    apply_mouse_distance_modifiers(mmsv.distance, &self.move_mouse_speed_modifiers);
-                log::debug!("handle_move_mouse: scaled vdistance: {}", scaled_distance);
+                let scaled_distance = apply_mouse_distance_modifiers(
+                    mmsv.distance,
+                    &self.move_mouse_speed_modifiers,
+                );
+                log::debug!(
+                    "handle_move_mouse: scaled vdistance: {}",
+                    scaled_distance
+                );
 
                 let current_move = CalculatedMouseMove {
                     direction: mmsv.direction,
@@ -1016,10 +1121,13 @@ impl Kanata {
                         Some((previous_axis, previous_move)) => {
                             if axis == *previous_axis {
                                 self.kbd_out.move_mouse(*previous_move)?;
-                                self.movemouse_buffer = Some((axis, current_move));
+                                self.movemouse_buffer =
+                                    Some((axis, current_move));
                             } else {
-                                self.kbd_out
-                                    .move_mouse_many(&[*previous_move, current_move])?;
+                                self.kbd_out.move_mouse_many(&[
+                                    *previous_move,
+                                    current_move,
+                                ])?;
                                 self.movemouse_buffer = None;
                             }
                         }
@@ -1037,8 +1145,9 @@ impl Kanata {
         if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
             if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
                 if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                    let increment = (mmas.accel_increment
+                        * f64::from(mmas.accel_ticks_from_min))
+                        as u16;
                     mmsh.distance = mmas.min_distance + increment;
                     mmas.accel_ticks_from_min += 1;
                     mmas.accel_ticks_until_max -= 1;
@@ -1048,9 +1157,14 @@ impl Kanata {
             }
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
-                let scaled_distance =
-                    apply_mouse_distance_modifiers(mmsh.distance, &self.move_mouse_speed_modifiers);
-                log::debug!("handle_move_mouse: scaled hdistance: {}", scaled_distance);
+                let scaled_distance = apply_mouse_distance_modifiers(
+                    mmsh.distance,
+                    &self.move_mouse_speed_modifiers,
+                );
+                log::debug!(
+                    "handle_move_mouse: scaled hdistance: {}",
+                    scaled_distance
+                );
 
                 let current_move = CalculatedMouseMove {
                     direction: mmsh.direction,
@@ -1063,10 +1177,13 @@ impl Kanata {
                         Some((previous_axis, previous_move)) => {
                             if axis == *previous_axis {
                                 self.kbd_out.move_mouse(*previous_move)?;
-                                self.movemouse_buffer = Some((axis, current_move));
+                                self.movemouse_buffer =
+                                    Some((axis, current_move));
                             } else {
-                                self.kbd_out
-                                    .move_mouse_many(&[*previous_move, current_move])?;
+                                self.kbd_out.move_mouse_many(&[
+                                    *previous_move,
+                                    current_move,
+                                ])?;
                                 self.movemouse_buffer = None;
                             }
                         }
@@ -1135,7 +1252,10 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
+    fn handle_keystate_changes(
+        &mut self,
+        _tx: &Option<Sender<ServerMessage>>,
+    ) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -1198,26 +1318,33 @@ impl Kanata {
             cur_keys.extend(self.unmodded_keys.iter());
         }
         if !self.unshifted_keys.is_empty() {
-            cur_keys.retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
+            cur_keys
+                .retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
             cur_keys.extend(self.unshifted_keys.iter());
         }
 
         self.overrides
             .override_keys(cur_keys, &mut self.override_states);
-        mark_overridden_nonmodkeys_for_eager_erasure(&self.override_states, &mut layout.states);
+        mark_overridden_nonmodkeys_for_eager_erasure(
+            &self.override_states,
+            &mut layout.states,
+        );
         if self.override_release_on_activation {
             for removed in self.override_states.removed_oscs() {
                 if !removed.is_modifier() {
                     layout.states.retain(|s| {
-                        s.release_state(ReleasableState::KeyCode(removed.into()))
-                            .is_some()
+                        s.release_state(ReleasableState::KeyCode(
+                            removed.into(),
+                        ))
+                        .is_some()
                     });
                 }
             }
         }
 
         if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End
+            {
                 self.caps_word = None;
             }
         }
@@ -1260,10 +1387,11 @@ impl Kanata {
         log::trace!("{:?}", &self.prev_keys);
         let mut fwd_release = self.prev_keys.iter();
         let mut rev_release = self.prev_keys.iter().rev();
-        let keys: &mut dyn Iterator<Item = &KeyCode> = match reverse_release_order {
-            false => &mut fwd_release,
-            true => &mut rev_release,
-        };
+        let keys: &mut dyn Iterator<Item = &KeyCode> =
+            match reverse_release_order {
+                false => &mut fwd_release,
+                true => &mut rev_release,
+            };
         for k in keys {
             if cur_keys.contains(k) {
                 continue;
@@ -1761,7 +1889,8 @@ impl Kanata {
                             }
                         }
                         ReloadAction::ReloadFile(path) => {
-                            if let Err(e) = self.request_live_reload_file(path) {
+                            if let Err(e) = self.request_live_reload_file(path)
+                            {
                                 log::error!("{}", e);
                                 false
                             } else {
@@ -1791,7 +1920,8 @@ impl Kanata {
                                         }
                                     }
                                 }
-                                MWheelDirection::Left | MWheelDirection::Right => {
+                                MWheelDirection::Left
+                                | MWheelDirection::Right => {
                                     if let Some(ss) = &self.hscroll_state {
                                         if ss.direction == *direction {
                                             self.hscroll_state = None;
@@ -1808,8 +1938,11 @@ impl Kanata {
                                     if let Some(move_mouse_state_vertical) =
                                         &self.move_mouse_state_vertical
                                     {
-                                        if move_mouse_state_vertical.direction == *direction {
-                                            self.move_mouse_state_vertical = None;
+                                        if move_mouse_state_vertical.direction
+                                            == *direction
+                                        {
+                                            self.move_mouse_state_vertical =
+                                                None;
                                         }
                                     }
                                 }
@@ -1817,8 +1950,11 @@ impl Kanata {
                                     if let Some(move_mouse_state_horizontal) =
                                         &self.move_mouse_state_horizontal
                                     {
-                                        if move_mouse_state_horizontal.direction == *direction {
-                                            self.move_mouse_state_horizontal = None;
+                                        if move_mouse_state_horizontal.direction
+                                            == *direction
+                                        {
+                                            self.move_mouse_state_horizontal =
+                                                None;
                                         }
                                     }
                                 }
@@ -1844,23 +1980,30 @@ impl Kanata {
                         }
                         CustomAction::DelayOnRelease(delay) => {
                             log::debug!("on-release: sleeping for {delay} ms");
-                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
+                            std::thread::sleep(time::Duration::from_millis(
+                                (*delay).into(),
+                            ));
                             pbtn
                         }
                         CustomAction::FakeKeyOnRelease { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
-                            log::debug!("fake key on release {action:?} {x:?},{y:?}");
+                            log::debug!(
+                                "fake key on release {action:?} {x:?},{y:?}"
+                            );
                             handle_fakekey_action(*action, layout, x, y);
                             pbtn
                         }
                         CustomAction::CancelMacroOnRelease => {
-                            log::debug!("cancelling all macros: releasable macro");
+                            log::debug!(
+                                "cancelling all macros: releasable macro"
+                            );
                             layout.active_sequences.clear();
                             self.macro_on_press_cancel_duration = 0;
                             layout.states.retain(|s| {
                                 !matches!(
                                     s,
-                                    State::FakeKey { .. } | State::RepeatingSequence { .. }
+                                    State::FakeKey { .. }
+                                        | State::RepeatingSequence { .. }
                                 )
                             });
                             pbtn
@@ -1872,17 +2015,25 @@ impl Kanata {
                                     target_os = "windows"
                                 ))]
                                 {
-                                    self.kbd_out.write_code_raw(*code, KeyValue::Release)
+                                    self.kbd_out.write_code_raw(
+                                        *code,
+                                        KeyValue::Release,
+                                    )
                                 }
                                 #[cfg(any(
                                     feature = "simulated_output",
                                     not(target_os = "windows")
                                 ))]
                                 {
-                                    self.kbd_out.write_code(*code as u32, KeyValue::Release)
+                                    self.kbd_out.write_code(
+                                        *code as u32,
+                                        KeyValue::Release,
+                                    )
                                 }
                             } {
-                                log::error!("failed to release arbitrary code {e:?}");
+                                log::error!(
+                                    "failed to release arbitrary code {e:?}"
+                                );
                             }
                             pbtn
                         }
@@ -1944,8 +2095,12 @@ impl Kanata {
                 self.request_live_reload_prev();
                 Ok(())
             }
-            ClientMessage::ReloadNum { index } => self.request_live_reload_num(index),
-            ClientMessage::ReloadFile { path } => self.request_live_reload_file(path),
+            ClientMessage::ReloadNum { index } => {
+                self.request_live_reload_num(index)
+            }
+            ClientMessage::ReloadFile { path } => {
+                self.request_live_reload_file(path)
+            }
             _ => {
                 // For non-reload commands, we don't validate here - they're handled directly in tcp_server
                 Ok(())
@@ -2019,7 +2174,10 @@ impl Kanata {
     #[allow(unused_variables)]
     /// Prints the layer. If the TCP server is enabled, then this will also send a notification to
     /// all connected clients.
-    fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
+    fn check_handle_layer_change(
+        &mut self,
+        tx: &Option<Sender<ServerMessage>>,
+    ) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
             let new = self.layer_info[cur_layer].name.clone();
@@ -2031,7 +2189,10 @@ impl Kanata {
                 match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
-                        log::error!("could not send event notification: {}", error);
+                        log::error!(
+                            "could not send event notification: {}",
+                            error
+                        );
                     }
                 }
             }
@@ -2052,7 +2213,9 @@ impl Kanata {
         clients: crate::tcp_server::Connections,
     ) {
         use std::io::Write;
-        info!("listening for event notifications to relay to connected clients");
+        info!(
+            "listening for event notifications to relay to connected clients"
+        );
         std::thread::spawn(move || {
             loop {
                 match rx.recv() {
@@ -2066,7 +2229,9 @@ impl Kanata {
                         for (id, client) in &mut *clients {
                             match client.write_all(&notification) {
                                 Ok(_) => {
-                                    log::debug!("layer change notification sent");
+                                    log::debug!(
+                                        "layer change notification sent"
+                                    );
                                 }
                                 Err(e) => {
                                     log::warn!(
@@ -2079,7 +2244,9 @@ impl Kanata {
                         }
 
                         for id in &stale_clients {
-                            log::warn!("removing disconnected tcp client: {id}");
+                            log::warn!(
+                                "removing disconnected tcp client: {id}"
+                            );
                             clients.remove(id);
                         }
                     }
@@ -2111,7 +2278,9 @@ impl Kanata {
                         if kev.value == KeyValue::Release {
                             let mut k = kanata.lock();
                             info!("Init: releasing {:?}", kev.code);
-                            k.kbd_out.release_key(kev.code).expect("key released");
+                            k.kbd_out
+                                .release_key(kev.code)
+                                .expect("key released");
                         }
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
@@ -2127,9 +2296,15 @@ impl Kanata {
                         These keys refer to defsrc input, meaning BEFORE kanata remaps keys."
             );
 
-            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            #[cfg(all(
+                not(feature = "interception_driver"),
+                target_os = "windows"
+            ))]
             let mut idle_clear_happened = false;
-            #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+            #[cfg(all(
+                not(feature = "interception_driver"),
+                target_os = "windows"
+            ))]
             let mut last_input_time = web_time::Instant::now();
 
             let err = loop {
@@ -2167,7 +2342,8 @@ impl Kanata {
 
                             // Check for live reload BEFORE processing the key event
                             if k.live_reload_requested
-                                && ((k.prev_keys.is_empty() && k.cur_keys.is_empty())
+                                && ((k.prev_keys.is_empty()
+                                    && k.cur_keys.is_empty())
                                     || k.ticks_since_idle > 1000)
                             {
                                 k.live_reload_requested = false;
@@ -2179,7 +2355,10 @@ impl Kanata {
                             // Handle file watcher restart if needed
                             #[cfg(feature = "watch")]
                             if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
+                                crate::file_watcher::restart_watcher(
+                                    &mut k,
+                                    kanata.clone(),
+                                );
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -2233,7 +2412,8 @@ impl Kanata {
                         Ok(kev) => {
                             // Check for live reload BEFORE processing the key event
                             if k.live_reload_requested
-                                && ((k.prev_keys.is_empty() && k.cur_keys.is_empty())
+                                && ((k.prev_keys.is_empty()
+                                    && k.cur_keys.is_empty())
                                     || k.ticks_since_idle > 1000)
                             {
                                 k.live_reload_requested = false;
@@ -2245,7 +2425,10 @@ impl Kanata {
                             // Handle file watcher restart if needed
                             #[cfg(feature = "watch")]
                             if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
+                                crate::file_watcher::restart_watcher(
+                                    &mut k,
+                                    kanata.clone(),
+                                );
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -2339,16 +2522,17 @@ impl Kanata {
         // Note: checking waiting_for_idle can not be part of the computation for
         // is_idle() since incrementing ticks_since_idle is dependent on the return
         // value of is_idle().
-        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested || {
-            #[cfg(feature = "watch")]
-            {
-                k.file_watcher_restart_requested
-            }
-            #[cfg(not(feature = "watch"))]
-            {
-                false
-            }
-        };
+        let counting_idle_ticks =
+            !k.waiting_for_idle.is_empty() || k.live_reload_requested || {
+                #[cfg(feature = "watch")]
+                {
+                    k.file_watcher_restart_requested
+                }
+                #[cfg(not(feature = "watch"))]
+                {
+                    false
+                }
+            };
         if !is_idle {
             k.ticks_since_idle = 0;
         } else if is_idle && counting_idle_ticks {
@@ -2357,18 +2541,19 @@ impl Kanata {
             log::info!("ticks since idle: {}", k.ticks_since_idle);
         }
 
-        let counting_physical_idle_ticks = if k.waiting_for_physical_idle.is_empty() {
-            false
-        } else {
-            let is_physical_idle = PRESSED_KEYS.lock().is_empty();
-            if is_physical_idle {
-                k.ticks_since_physical_idle =
-                    k.ticks_since_physical_idle.saturating_add(ms_elapsed);
+        let counting_physical_idle_ticks =
+            if k.waiting_for_physical_idle.is_empty() {
+                false
             } else {
-                k.ticks_since_physical_idle = 0;
-            }
-            true
-        };
+                let is_physical_idle = PRESSED_KEYS.lock().is_empty();
+                if is_physical_idle {
+                    k.ticks_since_physical_idle =
+                        k.ticks_since_physical_idle.saturating_add(ms_elapsed);
+                } else {
+                    k.ticks_since_physical_idle = 0;
+                }
+                true
+            };
 
         // NOTE: this check must not be part of `is_idle` because its falsiness
         // does not mean that kanata is in a non-idle state, just that we
@@ -2396,8 +2581,9 @@ impl Kanata {
     }
 
     pub fn is_idle(&self) -> bool {
-        let pressed_keys_means_not_idle =
-            !self.waiting_for_idle.is_empty() || self.live_reload_requested || {
+        let pressed_keys_means_not_idle = !self.waiting_for_idle.is_empty()
+            || self.live_reload_requested
+            || {
                 #[cfg(feature = "watch")]
                 {
                     self.file_watcher_restart_requested
@@ -2411,7 +2597,8 @@ impl Kanata {
             && zippy_is_idle()
             && self.layout.b().waiting.is_none()
             && self.layout.b().last_press_tracker.tap_hold_timeout == 0
-            && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
+            && (self.layout.b().oneshot.timeout == 0
+                || self.layout.b().oneshot.keys.is_empty())
             && self.layout.b().active_sequences.is_empty()
             && self.layout.b().tap_dance_eager.is_none()
             && self.layout.b().action_queue.is_empty()
@@ -2425,8 +2612,11 @@ impl Kanata {
             && self.caps_word.is_none()
             && self.vkeys_pending_release.is_empty()
             && !self.layout.b().states.iter().any(|s| {
-                matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
-                    || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
+                matches!(
+                    s,
+                    State::SeqCustomPending(_) | State::SeqCustomActive(_)
+                ) || (pressed_keys_means_not_idle
+                    && matches!(s, State::NormalKey { .. }))
             })
             && self
                 .layout
@@ -2445,17 +2635,25 @@ fn test_unmodmods_bits() {
 }
 
 #[cfg(feature = "cmd")]
-fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)>) {
+fn run_multi_cmd(
+    cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)>,
+) {
     std::thread::spawn(move || {
         for (cmd_log_level, cmd_error_log_level, cmd) in cmds {
-            if let Err(e) = run_cmd_in_thread(cmd, cmd_log_level, cmd_error_log_level).join() {
+            if let Err(e) =
+                run_cmd_in_thread(cmd, cmd_log_level, cmd_error_log_level)
+                    .join()
+            {
                 log::error!("problem joining thread {:?}", e);
             }
         }
     });
 }
 
-fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {
+fn apply_mouse_distance_modifiers(
+    initial_distance: u16,
+    mods: &Vec<u16>,
+) -> u16 {
     let mut scaled_distance = initial_distance;
     for &modifier in mods {
         scaled_distance = u16::max(
@@ -2540,7 +2738,9 @@ fn check_for_exit(_event: &KeyEvent) {
             _ => return,
         }
         const EXIT_MSG: &str = "pressed LControl+Space+Escape, exiting";
-        if IS_ESC_PRESSED.load(SeqCst) && IS_SPC_PRESSED.load(SeqCst) && IS_LCL_PRESSED.load(SeqCst)
+        if IS_ESC_PRESSED.load(SeqCst)
+            && IS_SPC_PRESSED.load(SeqCst)
+            && IS_LCL_PRESSED.load(SeqCst)
         {
             log::info!("{EXIT_MSG}");
             #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -2562,7 +2762,8 @@ fn check_for_exit(_event: &KeyEvent) {
             }
             #[cfg(target_os = "linux")]
             {
-                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+                signal_hook::low_level::raise(signal_hook::consts::SIGTERM)
+                    .expect("raise signal");
             }
         }
     }
@@ -2571,7 +2772,9 @@ fn check_for_exit(_event: &KeyEvent) {
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
     #[cfg(all(not(feature = "simulated_output"), target_os = "linux"))]
     {
-        _kbd_out.update_unicode_termination(_cfg.linux_opts.linux_unicode_termination);
+        _kbd_out.update_unicode_termination(
+            _cfg.linux_opts.linux_unicode_termination,
+        );
         _kbd_out.update_unicode_u_code(_cfg.linux_opts.linux_unicode_u_code);
     }
     Ok(())
@@ -2612,8 +2815,9 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
 }
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
-fn release_normalkey_states<'a, const C: usize, const R: usize, T>(layout: &mut Layout<'a, C, R, T>)
-where
+fn release_normalkey_states<'a, const C: usize, const R: usize, T>(
+    layout: &mut Layout<'a, C, R, T>,
+) where
     T: 'a + std::fmt::Debug + Copy,
 {
     let mut coords_to_release = vec![];

@@ -3,7 +3,9 @@
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
 pub use evdev::BusType;
-use evdev::{uinput, Device, EventType, InputEvent, KeyCode, PropType, RelativeAxisCode};
+use evdev::{
+    uinput, Device, EventType, InputEvent, KeyCode, PropType, RelativeAxisCode,
+};
 use inotify::{Inotify, WatchMask};
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use nix::ioctl_read_buf;
@@ -105,7 +107,9 @@ impl KbdIn {
 
         for (device, dev_path) in devices.into_iter() {
             if let Err(e) = kbdin.register_device(device, dev_path.clone()) {
-                log::warn!("found device {dev_path} but could not register it {e:?}");
+                log::warn!(
+                    "found device {dev_path} but could not register it {e:?}"
+                );
                 if let Some(ref mut missing) = kbdin.missing_device_paths {
                     missing.push(dev_path);
                 }
@@ -115,7 +119,11 @@ impl KbdIn {
         Ok(kbdin)
     }
 
-    fn register_device(&mut self, mut dev: Device, path: String) -> Result<(), io::Error> {
+    fn register_device(
+        &mut self,
+        mut dev: Device,
+        path: String,
+    ) -> Result<(), io::Error> {
         log::info!("registering {path}: {:?}", dev.name().unwrap_or(""));
         wait_for_all_keys_unpressed(&dev)?;
         // NOTE: This grab-ungrab-grab sequence magically fixes an issue with a Lenovo Yoga
@@ -127,9 +135,11 @@ impl KbdIn {
         let tok = Token(self.token_counter);
         self.token_counter += 1;
         let fd = dev.as_raw_fd();
-        self.poll
-            .registry()
-            .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
+        self.poll.registry().register(
+            &mut SourceFd(&fd),
+            tok,
+            Interest::READABLE,
+        )?;
         self.devices.insert(tok, (dev, path));
         Ok(())
     }
@@ -148,7 +158,8 @@ impl KbdIn {
 
             let mut do_rediscover = false;
             for event in &self.events {
-                if let Some((device, _)) = self.devices.get_mut(&event.token()) {
+                if let Some((device, _)) = self.devices.get_mut(&event.token())
+                {
                     if let Err(e) = device.fetch_events().map(|evs| {
                         evs.into_iter()
                             .take(EVENT_LIMIT)
@@ -158,18 +169,25 @@ impl KbdIn {
                         // on os error. code 19 is ENODEV, "no such device".
                         match e.raw_os_error() {
                             Some(19) => {
-                                self.poll
-                                    .registry()
-                                    .deregister(&mut SourceFd(&device.as_raw_fd()))?;
-                                if let Some((_, path)) = self.devices.remove(&event.token()) {
+                                self.poll.registry().deregister(
+                                    &mut SourceFd(&device.as_raw_fd()),
+                                )?;
+                                if let Some((_, path)) =
+                                    self.devices.remove(&event.token())
+                                {
                                     log::warn!("removing kbd device: {path}");
-                                    if let Some(ref mut missing) = self.missing_device_paths {
+                                    if let Some(ref mut missing) =
+                                        self.missing_device_paths
+                                    {
                                         missing.push(path);
                                     }
                                 }
                             }
                             _ => {
-                                log::error!("failed fetch events due to {e}, kind: {}", e.kind());
+                                log::error!(
+                                    "failed fetch events due to {e}, kind: {}",
+                                    e.kind()
+                                );
                                 return Err(e);
                             }
                         };
@@ -207,7 +225,9 @@ impl KbdIn {
                         if let Ok(device) = Device::open(dev_path) {
                             return Some((device, dev_path.clone()));
                         }
-                        std::thread::sleep(std::time::Duration::from_millis(10));
+                        std::thread::sleep(std::time::Duration::from_millis(
+                            10,
+                        ));
                     }
                     None
                 })
@@ -274,7 +294,10 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     let device_name = device.name().unwrap_or("unknown device name");
     match (detect_mode, device_type) {
         (DeviceDetectMode::Any, _)
-        | (DeviceDetectMode::KeyboardMice, DeviceType::Keyboard | DeviceType::KeyboardMouse)
+        | (
+            DeviceDetectMode::KeyboardMice,
+            DeviceType::Keyboard | DeviceType::KeyboardMouse,
+        )
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
             let use_input = true;
             log::debug!(
@@ -328,14 +351,16 @@ impl TryFrom<InputEvent> for KeyEvent {
             evdev::EventSummary::RelativeAxis(_, axis_type, _) => {
                 let dist = item.value();
                 let code: OsCode = match axis_type {
-                    RelativeAxisCode::REL_WHEEL | RelativeAxisCode::REL_WHEEL_HI_RES => {
+                    RelativeAxisCode::REL_WHEEL
+                    | RelativeAxisCode::REL_WHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelUp
                         } else {
                             MouseWheelDown
                         }
                     }
-                    RelativeAxisCode::REL_HWHEEL | RelativeAxisCode::REL_HWHEEL_HI_RES => {
+                    RelativeAxisCode::REL_HWHEEL
+                    | RelativeAxisCode::REL_HWHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelRight
                         } else {
@@ -408,7 +433,9 @@ impl KbdOut {
             .with_keys(&keys)?
             .with_relative_axes(&relative_axes)?;
         let device = if trackpoint {
-            device.with_properties(&evdev::AttributeSet::from_iter([PropType::POINTING_STICK]))?
+            device.with_properties(&evdev::AttributeSet::from_iter([
+                PropType::POINTING_STICK,
+            ]))?
         } else {
             device
         };
@@ -416,7 +443,9 @@ impl KbdOut {
         let devnode = device
             .enumerate_dev_nodes_blocking()?
             .next() // Expect only one. Using fold or calling next again blocks indefinitely
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))??;
+            .ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "devnode is not found")
+            })??;
         log::info!("Created device {:#?}", devnode);
         let symlink = if let Some(symlink_path) = symlink_path {
             let dest = PathBuf::from(symlink_path);
@@ -478,7 +507,10 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_many(&mut self, events: &[InputEvent]) -> Result<(), io::Error> {
+    pub fn write_many(
+        &mut self,
+        events: &[InputEvent],
+    ) -> Result<(), io::Error> {
         if !self.raw_buf.is_empty() {
             self.device.emit(&self.raw_buf)?;
             self.raw_buf.clear();
@@ -487,7 +519,11 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
         log::debug!("send to uinput: {:?}", input_ev);
@@ -495,8 +531,13 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let event = InputEvent::new(EventType::KEY.0, code as u16, value as i32);
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
+        let event =
+            InputEvent::new(EventType::KEY.0, code as u16, value as i32);
         self.device.emit(&[event])?;
         Ok(())
     }
@@ -567,18 +608,22 @@ impl KbdOut {
     ) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {hi_res_distance:?}");
 
-        let mut lo_res_distance = hi_res_distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
-        let leftover_hi_res_distance = hi_res_distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
+        let mut lo_res_distance =
+            hi_res_distance / HI_RES_SCROLL_UNITS_IN_LO_RES;
+        let leftover_hi_res_distance =
+            hi_res_distance % HI_RES_SCROLL_UNITS_IN_LO_RES;
 
         match direction {
             MWheelDirection::Up | MWheelDirection::Down => {
                 self.accumulated_scroll += leftover_hi_res_distance;
-                lo_res_distance += self.accumulated_scroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                lo_res_distance +=
+                    self.accumulated_scroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
                 self.accumulated_scroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
             MWheelDirection::Left | MWheelDirection::Right => {
                 self.accumulated_hscroll += leftover_hi_res_distance;
-                lo_res_distance += self.accumulated_hscroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
+                lo_res_distance +=
+                    self.accumulated_hscroll / HI_RES_SCROLL_UNITS_IN_LO_RES;
                 self.accumulated_hscroll %= HI_RES_SCROLL_UNITS_IN_LO_RES;
             }
         }
@@ -586,14 +631,20 @@ impl KbdOut {
         let hi_res_scroll_event = InputEvent::new(
             EventType::RELATIVE.0,
             match direction {
-                MWheelDirection::Up | MWheelDirection::Down => RelativeAxisCode::REL_WHEEL_HI_RES.0,
+                MWheelDirection::Up | MWheelDirection::Down => {
+                    RelativeAxisCode::REL_WHEEL_HI_RES.0
+                }
                 MWheelDirection::Left | MWheelDirection::Right => {
                     RelativeAxisCode::REL_HWHEEL_HI_RES.0
                 }
             },
             match direction {
-                MWheelDirection::Up | MWheelDirection::Right => i32::from(hi_res_distance),
-                MWheelDirection::Down | MWheelDirection::Left => -i32::from(hi_res_distance),
+                MWheelDirection::Up | MWheelDirection::Right => {
+                    i32::from(hi_res_distance)
+                }
+                MWheelDirection::Down | MWheelDirection::Left => {
+                    -i32::from(hi_res_distance)
+                }
             },
         );
 
@@ -611,7 +662,9 @@ impl KbdOut {
                         }
                     },
                     match direction {
-                        MWheelDirection::Up | MWheelDirection::Right => i32::from(lo_res_distance),
+                        MWheelDirection::Up | MWheelDirection::Right => {
+                            i32::from(lo_res_distance)
+                        }
                         MWheelDirection::Down | MWheelDirection::Left => {
                             -i32::from(lo_res_distance)
                         }
@@ -623,26 +676,52 @@ impl KbdOut {
         }
     }
 
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
         let (axis, distance) = match mv.direction {
-            MoveDirection::Up => (RelativeAxisCode::REL_Y, -i32::from(mv.distance)),
-            MoveDirection::Down => (RelativeAxisCode::REL_Y, i32::from(mv.distance)),
-            MoveDirection::Left => (RelativeAxisCode::REL_X, -i32::from(mv.distance)),
-            MoveDirection::Right => (RelativeAxisCode::REL_X, i32::from(mv.distance)),
+            MoveDirection::Up => {
+                (RelativeAxisCode::REL_Y, -i32::from(mv.distance))
+            }
+            MoveDirection::Down => {
+                (RelativeAxisCode::REL_Y, i32::from(mv.distance))
+            }
+            MoveDirection::Left => {
+                (RelativeAxisCode::REL_X, -i32::from(mv.distance))
+            }
+            MoveDirection::Right => {
+                (RelativeAxisCode::REL_X, i32::from(mv.distance))
+            }
         };
         self.write(InputEvent::new(EventType::RELATIVE.0, axis.0, distance))
     }
 
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         let mut events = vec![];
         for mv in moves {
             let (axis, distance) = match mv.direction {
-                MoveDirection::Up => (RelativeAxisCode::REL_Y, -i32::from(mv.distance)),
-                MoveDirection::Down => (RelativeAxisCode::REL_Y, i32::from(mv.distance)),
-                MoveDirection::Left => (RelativeAxisCode::REL_X, -i32::from(mv.distance)),
-                MoveDirection::Right => (RelativeAxisCode::REL_X, i32::from(mv.distance)),
+                MoveDirection::Up => {
+                    (RelativeAxisCode::REL_Y, -i32::from(mv.distance))
+                }
+                MoveDirection::Down => {
+                    (RelativeAxisCode::REL_Y, i32::from(mv.distance))
+                }
+                MoveDirection::Left => {
+                    (RelativeAxisCode::REL_X, -i32::from(mv.distance))
+                }
+                MoveDirection::Right => {
+                    (RelativeAxisCode::REL_X, i32::from(mv.distance))
+                }
             };
-            events.push(InputEvent::new(EventType::RELATIVE.0, axis.0, distance));
+            events.push(InputEvent::new(
+                EventType::RELATIVE.0,
+                axis.0,
+                distance,
+            ));
         }
         self.write_many(&events)
     }
@@ -751,7 +830,8 @@ impl Symlink {
 
 fn handle_signals(symlink: Option<Symlink>) {
     thread::spawn(|| {
-        let mut signals = Signals::new([SIGINT, SIGTERM, SIGTSTP]).expect("signals register");
+        let mut signals =
+            Signals::new([SIGINT, SIGTERM, SIGTSTP]).expect("signals register");
         if let Some(signal) = (&mut signals).into_iter().next() {
             match signal {
                 SIGINT | SIGTERM => {

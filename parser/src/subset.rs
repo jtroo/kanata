@@ -68,7 +68,11 @@ where
     }
 
     /// Inserts a potentially unsorted key. Sorts the key and then calls ssm_insert_ksorted.
-    pub fn ssm_insert(&mut self, mut key: impl AsMut<[K]>, val: V) -> SsmKeyExistedBeforeInsert {
+    pub fn ssm_insert(
+        &mut self,
+        mut key: impl AsMut<[K]>,
+        val: V,
+    ) -> SsmKeyExistedBeforeInsert {
         key.as_mut().sort();
         self.ssm_insert_ksorted(key.as_mut(), val)
     }
@@ -88,11 +92,14 @@ where
             {
                 Ok(pos) => {
                     key_existed = SsmKeyExistedBeforeInsert::Existed;
-                    keyvals_for_key_item[pos] = SsmKeyValue::ssmkv_new(key.as_ref(), val.clone());
+                    keyvals_for_key_item[pos] =
+                        SsmKeyValue::ssmkv_new(key.as_ref(), val.clone());
                 }
                 Err(pos) => {
-                    keyvals_for_key_item
-                        .insert(pos, SsmKeyValue::ssmkv_new(key.as_ref(), val.clone()));
+                    keyvals_for_key_item.insert(
+                        pos,
+                        SsmKeyValue::ssmkv_new(key.as_ref(), val.clone()),
+                    );
                 }
             }
         }
@@ -101,7 +108,10 @@ where
 
     /// Gets using a potentially unsorted key. Sorts the key then calls
     /// ssm_get_or_is_subset_ksorted.
-    pub fn ssm_get_or_is_subset(&self, mut key: impl AsMut<[K]>) -> GetOrIsSubsetOfKnownKey<V> {
+    pub fn ssm_get_or_is_subset(
+        &self,
+        mut key: impl AsMut<[K]>,
+    ) -> GetOrIsSubsetOfKnownKey<V> {
         key.as_mut().sort();
         self.ssm_get_or_is_subset_ksorted(key.as_mut())
     }
@@ -122,13 +132,18 @@ where
         match self.map.get(&get_key[0]) {
             None => Neither,
             Some(keyvals_for_key_item) => {
-                match keyvals_for_key_item
-                    .binary_search_by(|probe| probe.key.as_ref().cmp(get_key.as_ref()))
-                {
-                    Ok(pos) => HasValue(keyvals_for_key_item[pos].value.clone()),
+                match keyvals_for_key_item.binary_search_by(|probe| {
+                    probe.key.as_ref().cmp(get_key.as_ref())
+                }) {
+                    Ok(pos) => {
+                        HasValue(keyvals_for_key_item[pos].value.clone())
+                    }
                     Err(_) => {
                         for kv in keyvals_for_key_item.iter() {
-                            if get_key.iter().all(|kitem| kv.key.contains(kitem)) {
+                            if get_key
+                                .iter()
+                                .all(|kitem| kv.key.contains(kitem))
+                            {
                                 return IsSubset;
                             }
                         }

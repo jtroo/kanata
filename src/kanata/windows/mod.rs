@@ -8,7 +8,10 @@ use crate::kanata::*;
 mod exthook;
 #[cfg(all(not(feature = "simulated_input"), feature = "interception_driver"))]
 mod interception;
-#[cfg(all(not(feature = "simulated_input"), not(feature = "interception_driver")))]
+#[cfg(all(
+    not(feature = "simulated_input"),
+    not(feature = "interception_driver")
+))]
 mod llhook;
 
 pub static ALTGR_BEHAVIOUR: Lazy<Mutex<AltGrBehaviour>> =
@@ -25,7 +28,9 @@ impl Kanata {
         not(feature = "win_sendinput_send_scancodes"),
     ))]
     pub fn check_release_non_physical_shift(&mut self) -> Result<()> {
-        fn state_filter(v: &State<'_, &&[&CustomAction]>) -> Option<State<'static, ()>> {
+        fn state_filter(
+            v: &State<'_, &&[&CustomAction]>,
+        ) -> Option<State<'static, ()>> {
             match v {
                 State::NormalKey {
                     keycode,
@@ -36,12 +41,15 @@ impl Kanata {
                     coord: *coord,
                     flags: *flags,
                 }),
-                State::FakeKey { keycode } => Some(State::FakeKey::<()> { keycode: *keycode }),
+                State::FakeKey { keycode } => {
+                    Some(State::FakeKey::<()> { keycode: *keycode })
+                }
                 _ => None,
             }
         }
 
-        static PREV_STATES: Lazy<Mutex<Vec<State<'static, ()>>>> = Lazy::new(|| Mutex::new(vec![]));
+        static PREV_STATES: Lazy<Mutex<Vec<State<'static, ()>>>> =
+            Lazy::new(|| Mutex::new(vec![]));
         let mut prev_states = PREV_STATES.lock();
 
         if prev_states.is_empty() {
@@ -69,8 +77,16 @@ impl Kanata {
                     // - keycode is at the position of either shift
                     // - state has not yet been released
                     if !matches!(keycode, KeyCode::LShift | KeyCode::RShift)
-                        || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT))
-                        || *coord == (NORMAL_KEY_ROW, u16::from(OsCode::KEY_RIGHTSHIFT))
+                        || *coord
+                            == (
+                                NORMAL_KEY_ROW,
+                                u16::from(OsCode::KEY_LEFTSHIFT),
+                            )
+                        || *coord
+                            == (
+                                NORMAL_KEY_ROW,
+                                u16::from(OsCode::KEY_RIGHTSHIFT),
+                            )
                         || self
                             .layout
                             .bm()
@@ -121,7 +137,8 @@ impl Kanata {
         }
 
         prev_states.clear();
-        prev_states.extend(self.layout.bm().states.iter().filter_map(state_filter));
+        prev_states
+            .extend(self.layout.bm().states.iter().filter_map(state_filter));
         Ok(())
     }
 
@@ -184,7 +201,8 @@ pub fn clear_states_from_inactivity(
     last_input_time: web_time::Instant,
     idle_clear_happened: &mut bool,
 ) {
-    if (now - (last_input_time)) > time::Duration::from_secs(LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS)
+    if (now - (last_input_time))
+        > time::Duration::from_secs(LLHOOK_IDLE_TIME_SECS_CLEAR_INPUTS)
         && !*idle_clear_happened
     {
         *idle_clear_happened = true;

@@ -83,7 +83,8 @@ fn overlapping_activate_overlap() {
 
 #[test]
 fn overlapping_activate_nonoverlap() {
-    let result = simulate(OVERLAP_CFG, "d:0 d:a t:10 u:a t:10 d:b t:10 u:b t:10 u:0");
+    let result =
+        simulate(OVERLAP_CFG, "d:0 d:a t:10 u:a t:10 d:b t:10 u:b t:10 u:0");
     assert_eq!(
         "t:1ms\nout:↓A\nt:9ms\nout:↑A\nt:10ms\nout:↓B\n\
         out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
@@ -138,7 +139,8 @@ fn overlapping_then_overlap_activate_overlap2() {
 
 #[test]
 fn overlapping_then_overlap_activate_overlap3() {
-    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f d:g t:100");
+    let result =
+        simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f d:g t:100");
     assert_eq!(
         "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↑C\nt:1ms\nout:↑D\nt:6ms\nout:↓F\nt:1ms\nout:↓G\n\
          out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\
@@ -149,7 +151,8 @@ fn overlapping_then_overlap_activate_overlap3() {
 
 #[test]
 fn overlapping_then_overlap_activate_nonoverlap() {
-    let result = simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f u:f d:g t:100");
+    let result =
+        simulate(OVERLAP_CFG, "d:0 d:c d:d u:c u:d t:10 d:f u:f d:g t:100");
     assert_eq!(
         "t:1ms\nout:↓C\nt:1ms\nout:↓D\nt:1ms\nout:↑C\nt:1ms\nout:↑D\nt:6ms\nout:↓F\nt:1ms\nout:↑F\nt:1ms\nout:↓G\n\
          out:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\nout:↓BSpace\nout:↑BSpace\n\

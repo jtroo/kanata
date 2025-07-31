@@ -46,7 +46,9 @@ fn cli_init() -> Result<ValidatedArgs> {
                         // detached to open log still opened for writing
                         match open::that_detached(log_file_p) {
                             Ok(()) => {} // on the off-chance the user looks at WinDbg logs
-                            Err(ef) => error!("failed to open {log_file_p} due to {ef:?}"),
+                            Err(ef) => error!(
+                                "failed to open {log_file_p} due to {ef:?}"
+                            ),
                         }
                     }
                     return Err(anyhow!(""));
@@ -55,7 +57,9 @@ fn cli_init() -> Result<ValidatedArgs> {
                     if !*IS_TERM {
                         match open::that_detached(log_file_p) {
                             Ok(()) => {}
-                            Err(ef) => error!("failed to open {log_file_p} due to {ef:?}"),
+                            Err(ef) => error!(
+                                "failed to open {log_file_p} due to {ef:?}"
+                            ),
                         }
                     }
                     return Err(e.into());
@@ -92,8 +96,10 @@ fn cli_init() -> Result<ValidatedArgs> {
         ])
         .expect("logger can init");
     } else {
-        CombinedLogger::init(vec![log_win::windbg_simple_combo(log_lvl, noti_lvl)])
-            .expect("logger can init");
+        CombinedLogger::init(vec![log_win::windbg_simple_combo(
+            log_lvl, noti_lvl,
+        )])
+        .expect("logger can init");
     }
     log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]

@@ -74,7 +74,8 @@ pub struct Overrides {
 
 impl Overrides {
     pub fn new(overrides: &[Override]) -> Self {
-        let mut overrides_by_osc: HashMap<OsCode, Vec<Override>> = HashMap::default();
+        let mut overrides_by_osc: HashMap<OsCode, Vec<Override>> =
+            HashMap::default();
         for o in overrides.iter() {
             overrides_by_osc
                 .entry(o.in_non_mod_osc)
@@ -88,7 +89,11 @@ impl Overrides {
         Self { overrides_by_osc }
     }
 
-    pub fn override_keys(&self, kcs: &mut Vec<KeyCode>, states: &mut OverrideStates) {
+    pub fn override_keys(
+        &self,
+        kcs: &mut Vec<KeyCode>,
+        states: &mut OverrideStates,
+    ) {
         if self.is_empty() {
             return;
         }
@@ -100,7 +105,10 @@ impl Overrides {
         states.add_overrides(kcs);
     }
 
-    pub fn output_non_mods_for_input_non_mod(&self, in_osc: OsCode) -> Vec<OsCode> {
+    pub fn output_non_mods_for_input_non_mod(
+        &self,
+        in_osc: OsCode,
+    ) -> Vec<OsCode> {
         let mut ret = Vec::new();
         if let Some(ovds) = self.overrides_by_osc.get(&in_osc) {
             for out_osc in ovds.iter().map(|ovd| ovd.out_non_mod_osc) {

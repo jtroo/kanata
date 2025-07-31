@@ -43,7 +43,9 @@ fn caps_word_custom_behaves_correctly() {
 
 #[test]
 fn caps_word_times_out() {
-    let result = simulate(CFG, "d:7 u:7 d:a u:a t:500 d:a u:a t:1001 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:7 u:7 d:a u:a t:500 d:a u:a t:1001 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓LShift out:↓A out:↑LShift out:↑A \
@@ -54,7 +56,9 @@ fn caps_word_times_out() {
 
 #[test]
 fn caps_word_custom_times_out() {
-    let result = simulate(CFG, "d:8 u:8 d:a u:a t:100 d:a u:a t:201 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:8 u:8 d:a u:a t:100 d:a u:a t:201 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓LShift out:↓A out:↑LShift out:↑A \
@@ -65,7 +69,9 @@ fn caps_word_custom_times_out() {
 
 #[test]
 fn caps_word_does_not_toggle() {
-    let result = simulate(CFG, "d:7 u:7 d:a u:a t:100 d:7 u:7 t:100 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:7 u:7 d:a u:a t:100 d:7 u:7 t:100 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓LShift out:↓A out:↑LShift out:↑A",
@@ -75,7 +81,9 @@ fn caps_word_does_not_toggle() {
 
 #[test]
 fn caps_word_custom_does_not_toggle() {
-    let result = simulate(CFG, "d:8 u:8 d:a u:a t:100 d:8 u:8 t:100 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:8 u:8 d:a u:a t:100 d:8 u:8 t:100 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓LShift out:↓A out:↑LShift out:↑A",
@@ -85,7 +93,9 @@ fn caps_word_custom_does_not_toggle() {
 
 #[test]
 fn caps_word_toggle_does_toggle() {
-    let result = simulate(CFG, "d:9 u:9 d:a u:a t:100 d:9 u:9 t:100 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:9 u:9 d:a u:a t:100 d:9 u:9 t:100 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓A out:↑A",
@@ -95,7 +105,9 @@ fn caps_word_toggle_does_toggle() {
 
 #[test]
 fn caps_word_custom_toggle_does_toggle() {
-    let result = simulate(CFG, "d:0 u:0 d:a u:a t:100 d:0 u:0 t:100 d:a u:a t:10").no_time();
+    let result =
+        simulate(CFG, "d:0 u:0 d:a u:a t:100 d:0 u:0 t:100 d:a u:a t:10")
+            .no_time();
     assert_eq!(
         "out:↓LShift out:↓A out:↑LShift out:↑A \
          out:↓A out:↑A",

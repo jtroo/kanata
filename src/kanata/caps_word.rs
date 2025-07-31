@@ -32,7 +32,11 @@ use CapsWordNextState::*;
 impl CapsWordState {
     pub(crate) fn new(cfg: &CapsWordCfg) -> Self {
         Self {
-            keys_to_capitalize: cfg.keys_to_capitalize.iter().copied().collect(),
+            keys_to_capitalize: cfg
+                .keys_to_capitalize
+                .iter()
+                .copied()
+                .collect(),
             keys_nonterminal: cfg.keys_nonterminal.iter().copied().collect(),
             timeout: cfg.timeout,
             timeout_ticks: cfg.timeout,
@@ -48,7 +52,9 @@ impl CapsWordState {
             return End;
         }
         for kc in active_keys.iter() {
-            if !self.keys_to_capitalize.contains(kc) && !self.keys_nonterminal.contains(kc) {
+            if !self.keys_to_capitalize.contains(kc)
+                && !self.keys_nonterminal.contains(kc)
+            {
                 return End;
             }
         }

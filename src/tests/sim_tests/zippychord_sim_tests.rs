@@ -1,6 +1,7 @@
 use super::*;
 
-static ZIPPY_CFG: &str = "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy file)";
+static ZIPPY_CFG: &str =
+    "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy file)";
 static ZIPPY_FILE_CONTENT: &str = "
 dy	day
 dy 1	Monday
@@ -19,7 +20,11 @@ rqa	request␣assistance
 1234	bye
 ";
 
-fn simulate_with_zippy_file_content(cfg: &str, input: &str, content: &str) -> String {
+fn simulate_with_zippy_file_content(
+    cfg: &str,
+    input: &str,
+    content: &str,
+) -> String {
     let mut fcontent = FxHashMap::default();
     fcontent.insert("file".into(), content.into());
     simulate_with_file_content(cfg, input, fcontent)
@@ -118,9 +123,12 @@ fn sim_zippychord_overlap() {
         up:A dn:A dn:S up:S dn:S up:S dn:I up:I dn:S up:S dn:T up:T up:A dn:A dn:N up:N dn:C up:C dn:E up:E",
         result
     );
-    let result =
-        simulate_with_zippy_file_content(ZIPPY_CFG, "d:1 d:2 d:3 d:4 t:20", ZIPPY_FILE_CONTENT)
-            .to_ascii();
+    let result = simulate_with_zippy_file_content(
+        ZIPPY_CFG,
+        "d:1 d:2 d:3 d:4 t:20",
+        ZIPPY_FILE_CONTENT,
+    )
+    .to_ascii();
     assert_eq!(
         "dn:Kb1 t:1ms dn:BSpace up:BSpace dn:H up:H dn:I up:I t:1ms dn:Kb3 t:1ms \
          dn:BSpace up:BSpace dn:BSpace up:BSpace dn:BSpace up:BSpace \

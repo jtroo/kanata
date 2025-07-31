@@ -1,6 +1,9 @@
 use super::*;
 
-fn parse_cfg_env(cfg: &str, env_vars: Vec<(String, String)>) -> Result<IntermediateCfg> {
+fn parse_cfg_env(
+    cfg: &str,
+    env_vars: Vec<(String, String)>,
+) -> Result<IntermediateCfg> {
     let _lk = lock(&CFG_PARSE_LOCK);
     let mut s = ParserState::default();
     parse_cfg_raw_string(

@@ -40,7 +40,8 @@ fn parse_simple() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/simple.kbd"))
+        .unwrap();
 }
 
 #[test]
@@ -50,7 +51,8 @@ fn parse_minimal() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/minimal.kbd"))
+        .unwrap();
 }
 
 #[test]
@@ -60,7 +62,8 @@ fn parse_deflayermap() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/deflayermap.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/deflayermap.kbd"))
+        .unwrap();
 }
 
 #[test]
@@ -70,7 +73,8 @@ fn parse_default() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/kanata.kbd"))
+        .unwrap();
 }
 
 #[test]
@@ -80,7 +84,9 @@ fn parse_jtroo() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd")).unwrap();
+    let cfg =
+        new_from_file(&std::path::PathBuf::from("./cfg_samples/jtroo.kbd"))
+            .unwrap();
     assert_eq!(cfg.layer_info.len(), 8);
 }
 
@@ -91,7 +97,8 @@ fn parse_f13_f24() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/f13_f24.kbd"))
+        .unwrap();
 }
 
 #[test]

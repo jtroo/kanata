@@ -26,7 +26,9 @@ impl<T> Default for Trie<T> {
 }
 
 fn key_len(k: impl AsRef<[u16]>) -> usize {
-    debug_assert!(std::mem::size_of::<TrieKeyElement>() == 2 * std::mem::size_of::<u8>());
+    debug_assert!(
+        std::mem::size_of::<TrieKeyElement>() == 2 * std::mem::size_of::<u8>()
+    );
     k.as_ref().len() * 2
 }
 
@@ -54,7 +56,10 @@ impl<T> Trie<T> {
         self.inner.insert(cast_slice(key.as_ref()), val);
     }
 
-    pub fn get_or_descendant_exists(&self, key: impl AsRef<[u16]>) -> GetOrDescendentExistsResult<T>
+    pub fn get_or_descendant_exists(
+        &self,
+        key: impl AsRef<[u16]>,
+    ) -> GetOrDescendentExistsResult<T>
     where
         T: Clone,
     {

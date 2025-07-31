@@ -2,7 +2,10 @@ use super::sexpr::*;
 use super::*;
 use crate::{anyhow_expr, bail, bail_expr};
 
-pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
+pub fn parse_switch(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
@@ -17,7 +20,9 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
             bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triple");
         };
         let Some(break_or_fallthrough_expr) = params.next() else {
-            bail!("{ERR_STR}\nMissing <break|fallthrough> for the final triple");
+            bail!(
+                "{ERR_STR}\nMissing <break|fallthrough> for the final triple"
+            );
         };
 
         let Some(key_match) = key_match.list(s.vars()) else {
@@ -30,7 +35,9 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
 
         let action = parse_action(action, s)?;
 
-        let Some(break_or_fallthrough) = break_or_fallthrough_expr.atom(s.vars()) else {
+        let Some(break_or_fallthrough) =
+            break_or_fallthrough_expr.atom(s.vars())
+        else {
             bail_expr!(
                 break_or_fallthrough_expr,
                 "{ERR_STR}\nthis must be one of: break, fallthrough"
@@ -70,7 +77,8 @@ pub fn parse_switch_case_bool(
         );
     }
     if let Some(a) = op_expr.atom(s.vars()) {
-        let osc = str_to_oscode(a).ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
+        let osc = str_to_oscode(a)
+            .ok_or_else(|| anyhow_expr!(op_expr, "invalid key name"))?;
         ops.push(OpCode::new_key(osc.into()));
         Ok(())
     } else {
@@ -78,7 +86,10 @@ pub fn parse_switch_case_bool(
             .list(s.vars())
             .expect("must be a list, checked atom");
         if l.is_empty() {
-            bail_expr!(op_expr, "switch logic cannot contain empty lists inside");
+            bail_expr!(
+                op_expr,
+                "switch logic cannot contain empty lists inside"
+            );
         }
         #[derive(PartialEq)]
         enum AllowedListOps {
@@ -140,7 +151,8 @@ pub fn parse_switch_case_bool(
                     .atom(s.vars())
                     .and_then(str_to_oscode)
                     .ok_or_else(|| anyhow_expr!(&l[1], "invalid key name"))?;
-                let key_recency = parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
+                let key_recency =
+                    parse_u8_with_range(&l[2], s, "key-recency", 1, 8)? - 1;
                 ops.push(OpCode::new_key_history(osc.into(), key_recency));
                 Ok(())
             }
@@ -152,10 +164,9 @@ pub fn parse_switch_case_bool(
                     );
                 }
 
-                let input_type = match l[1]
-                    .atom(s.vars())
-                    .ok_or_else(|| anyhow_expr!(&l[1], "key-type must be virtual|real"))?
-                {
+                let input_type = match l[1].atom(s.vars()).ok_or_else(|| {
+                    anyhow_expr!(&l[1], "key-type must be virtual|real")
+                })? {
                     "real" => InputType::Real,
                     "fake" | "virtual" => InputType::Virtual,
                     _ => bail_expr!(op_expr, "key-type must be virtual|real"),
@@ -163,16 +174,19 @@ pub fn parse_switch_case_bool(
                 let input = match input_type {
                     InputType::Real => {
                         let key = l[2].atom(s.vars()).ok_or_else(|| {
-                            anyhow_expr!(&l[2], "input key name must not be a list")
+                            anyhow_expr!(
+                                &l[2],
+                                "input key name must not be a list"
+                            )
                         })?;
-                        u16::from(
-                            str_to_oscode(key)
-                                .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
-                        )
+                        u16::from(str_to_oscode(key).ok_or_else(|| {
+                            anyhow_expr!(&l[2], "invalid input key name")
+                        })?)
                     }
                     InputType::Virtual => parse_vkey_coord(&l[2], s)?.y,
                 };
-                let (op1, op2) = OpCode::new_active_input((input_type.to_row(), input));
+                let (op1, op2) =
+                    OpCode::new_active_input((input_type.to_row(), input));
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
@@ -181,10 +195,9 @@ pub fn parse_switch_case_bool(
                     bail_expr!(op_expr, "input-history must have 3 parameters: key-type(virtual|real), key, key-recency");
                 }
 
-                let input_type = match l[1]
-                    .atom(s.vars())
-                    .ok_or_else(|| anyhow_expr!(&l[1], "key-type must be virtual|real"))?
-                {
+                let input_type = match l[1].atom(s.vars()).ok_or_else(|| {
+                    anyhow_expr!(&l[1], "key-type must be virtual|real")
+                })? {
                     "real" => InputType::Real,
                     "fake" | "virtual" => InputType::Virtual,
                     _ => bail_expr!(&l[1], "key-type must be virtual|real"),
@@ -192,18 +205,23 @@ pub fn parse_switch_case_bool(
                 let input = match input_type {
                     InputType::Real => {
                         let key = l[2].atom(s.vars()).ok_or_else(|| {
-                            anyhow_expr!(&l[2], "input key name must not be a list")
+                            anyhow_expr!(
+                                &l[2],
+                                "input key name must not be a list"
+                            )
                         })?;
-                        u16::from(
-                            str_to_oscode(key)
-                                .ok_or_else(|| anyhow_expr!(&l[2], "invalid input key name"))?,
-                        )
+                        u16::from(str_to_oscode(key).ok_or_else(|| {
+                            anyhow_expr!(&l[2], "invalid input key name")
+                        })?)
                     }
                     InputType::Virtual => parse_vkey_coord(&l[2], s)?.y,
                 };
-                let key_recency = parse_u8_with_range(&l[3], s, "key-recency", 1, 8)? - 1;
-                let (op1, op2) =
-                    OpCode::new_historical_input((input_type.to_row(), input), key_recency);
+                let key_recency =
+                    parse_u8_with_range(&l[3], s, "key-recency", 1, 8)? - 1;
+                let (op1, op2) = OpCode::new_historical_input(
+                    (input_type.to_row(), input),
+                    key_recency,
+                );
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
@@ -214,7 +232,8 @@ pub fn parse_switch_case_bool(
                         "key-timing must have 3 parameters: key-recency, lt|gt|less-than|greater-than, milliseconds (0-65535)"
                     );
                 }
-                let nth_key = parse_u8_with_range(&l[1], s, "key-recency", 1, 8)? - 1;
+                let nth_key =
+                    parse_u8_with_range(&l[1], s, "key-recency", 1, 8)? - 1;
                 let ticks_since = parse_u16(&l[3], s, "milliseconds")?;
                 match l[2].atom(s.vars()).ok_or_else(|| {
                     anyhow_expr!(
@@ -235,8 +254,10 @@ pub fn parse_switch_case_bool(
                         );
                     }
                 };
-                s.switch_max_key_timing
-                    .set(std::cmp::max(s.switch_max_key_timing.get(), ticks_since));
+                s.switch_max_key_timing.set(std::cmp::max(
+                    s.switch_max_key_timing.get(),
+                    ticks_since,
+                ));
                 Ok(())
             }
             AllowedListOps::Layer | AllowedListOps::BaseLayer => {
@@ -258,7 +279,9 @@ pub fn parse_switch_case_bool(
                         assert!(*idx < MAX_LAYERS);
                         *idx as u16
                     })
-                    .ok_or_else(|| anyhow_expr!(&l[1], "not a known layer name"))?;
+                    .ok_or_else(|| {
+                        anyhow_expr!(&l[1], "not a known layer name")
+                    })?;
                 let (op1, op2) = match op {
                     AllowedListOps::Layer => OpCode::new_layer(layer),
                     AllowedListOps::BaseLayer => OpCode::new_base_layer(layer),
@@ -281,9 +304,13 @@ pub fn parse_switch_case_bool(
                     parse_switch_case_bool(depth + 1, op, ops, s)?;
                 }
                 if ops.len() > usize::from(MAX_OPCODE_LEN) {
-                    bail_expr!(op_expr, "switch logic length has been exceeded");
+                    bail_expr!(
+                        op_expr,
+                        "switch logic length has been exceeded"
+                    );
                 }
-                ops[placeholder_index as usize] = OpCode::new_bool(op, ops.len() as u16);
+                ops[placeholder_index as usize] =
+                    OpCode::new_bool(op, ops.len() as u16);
                 Ok(())
             }
         }

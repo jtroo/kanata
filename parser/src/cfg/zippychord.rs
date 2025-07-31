@@ -181,7 +181,8 @@ mod inner {
         pub fn osc_and_is_noerase(self) -> (OsCode, bool) {
             use ZchOutput::*;
             match self {
-                Lowercase(osc) | Uppercase(osc) | AltGr(osc) | ShiftAltGr(osc) => (osc, false),
+                Lowercase(osc) | Uppercase(osc) | AltGr(osc)
+                | ShiftAltGr(osc) => (osc, false),
                 NoEraseLowercase(osc)
                 | NoEraseUppercase(osc)
                 | NoEraseAltGr(osc)
@@ -272,7 +273,10 @@ mod inner {
         SingleOutput,
     }
     impl ZchIoMappingType {
-        fn try_parse(expr: &SExpr, vars: Option<&HashMap<String, SExpr>>) -> Result<Self> {
+        fn try_parse(
+            expr: &SExpr,
+            vars: Option<&HashMap<String, SExpr>>,
+        ) -> Result<Self> {
             use ZchIoMappingType::*;
             expr.atom(vars)
                 .and_then(|name| match name {
@@ -297,7 +301,9 @@ mod inner {
     ) -> Result<(ZchPossibleChords, ZchConfig)> {
         use crate::subset::GetOrIsSubsetOfKnownKey::*;
 
-        if exprs[0].atom(None).expect("should be atom") == "defzippy-experimental" {
+        if exprs[0].atom(None).expect("should be atom")
+            == "defzippy-experimental"
+        {
             log::warn!(
                 "You should replace defzippy-experimental with defzippy.\n\
              Using -experimental will be invalid in the future."
@@ -331,7 +337,8 @@ mod inner {
         let mut smart_space_punctuation_seen = false;
         let mut smart_space_punctuation_val_expr = None;
 
-        let mut user_cfg_char_to_output: HashMap<char, Vec<ZchOutput>> = HashMap::default();
+        let mut user_cfg_char_to_output: HashMap<char, Vec<ZchOutput>> =
+            HashMap::default();
         let mut pairs = exprs[2..].chunks_exact(2);
         for pair in pairs.by_ref() {
             let config_name = &pair[0];
@@ -380,11 +387,16 @@ mod inner {
                         .and_then(|val| match val {
                             "none" => Some(ZchSmartSpaceCfg::Disabled),
                             "full" => Some(ZchSmartSpaceCfg::Full),
-                            "add-space-only" => Some(ZchSmartSpaceCfg::AddSpaceOnly),
+                            "add-space-only" => {
+                                Some(ZchSmartSpaceCfg::AddSpaceOnly)
+                            }
                             _ => None,
                         })
                         .ok_or_else(|| {
-                            anyhow_expr!(&config_value, "Must be: none | full | add-space-only")
+                            anyhow_expr!(
+                                &config_value,
+                                "Must be: none | full | add-space-only"
+                            )
                         })?;
                 }
 
@@ -429,9 +441,13 @@ mod inner {
                             })?
                             .trim_atom_quotes();
                         if input.chars().count() != 1 {
-                            bail_expr!(&mapping_pair[0], "Inputs should be exactly one character");
+                            bail_expr!(
+                                &mapping_pair[0],
+                                "Inputs should be exactly one character"
+                            );
                         }
-                        let input_char = input.chars().next().expect("count is 1");
+                        let input_char =
+                            input.chars().next().expect("count is 1");
 
                         let output = match mapping_pair[1].atom(s.vars()) {
                             Some(o) => vec![parse_single_zippy_output_mapping(
@@ -441,24 +457,34 @@ mod inner {
                             )?],
                             None => {
                                 // note for unwrap below: must be list if not atom
-                                let output_list = mapping_pair[1].list(s.vars()).unwrap();
+                                let output_list =
+                                    mapping_pair[1].list(s.vars()).unwrap();
                                 if output_list.is_empty() {
                                     bail_expr!(
                                         &mapping_pair[1],
                                         "Empty list is invalid for zippy output mapping."
                                     );
                                 }
-                                let output_type =
-                                    ZchIoMappingType::try_parse(&output_list[0], s.vars())?;
+                                let output_type = ZchIoMappingType::try_parse(
+                                    &output_list[0],
+                                    s.vars(),
+                                )?;
                                 match output_type {
                                     ZchIoMappingType::NoErase => {
                                         const ERR: &str = "expects a single key or output chord.";
                                         if output_list.len() != 2 {
-                                            anyhow_expr!(&output_list[1], "{NO_ERASE} {ERR}");
+                                            anyhow_expr!(
+                                                &output_list[1],
+                                                "{NO_ERASE} {ERR}"
+                                            );
                                         }
-                                        let output =
-                                            output_list[1].atom(s.vars()).ok_or_else(|| {
-                                                anyhow_expr!(&output_list[1], "{NO_ERASE} {ERR}")
+                                        let output = output_list[1]
+                                            .atom(s.vars())
+                                            .ok_or_else(|| {
+                                                anyhow_expr!(
+                                                    &output_list[1],
+                                                    "{NO_ERASE} {ERR}"
+                                                )
                                             })?;
                                         vec![parse_single_zippy_output_mapping(
                                             output,
@@ -471,7 +497,8 @@ mod inner {
                                             anyhow_expr!(&output_list[1], "{SINGLE_OUTPUT_MULTI_KEY} expects one or more keys or output chords.");
                                         }
                                         let all_params_except_last =
-                                            &output_list[1..output_list.len() - 1];
+                                            &output_list
+                                                [1..output_list.len() - 1];
                                         let mut outs = vec![];
                                         for expr in all_params_except_last {
                                             let output = expr
@@ -486,32 +513,46 @@ mod inner {
                                             )?;
                                             outs.push(out);
                                         }
-                                        let last_expr = &output_list.last().unwrap(); // non-empty, checked length already
+                                        let last_expr =
+                                            &output_list.last().unwrap(); // non-empty, checked length already
                                         let last_out = last_expr
                                         .atom(s.vars())
                                         .ok_or_else(|| {
                                             anyhow_expr!(last_expr, "{SINGLE_OUTPUT_MULTI_KEY} does not allow list parameters.")
                                         })?;
-                                        outs.push(parse_single_zippy_output_mapping(
-                                            last_out, last_expr, false,
-                                        )?);
+                                        outs.push(
+                                            parse_single_zippy_output_mapping(
+                                                last_out, last_expr, false,
+                                            )?,
+                                        );
                                         outs
                                     }
                                 }
                             }
                         };
 
-                        if user_cfg_char_to_output.insert(input_char, output).is_some() {
-                            bail_expr!(&mapping_pair[0], "Duplicate character, not allowed");
+                        if user_cfg_char_to_output
+                            .insert(input_char, output)
+                            .is_some()
+                        {
+                            bail_expr!(
+                                &mapping_pair[0],
+                                "Duplicate character, not allowed"
+                            );
                         }
                     }
 
                     let rem = mappings.remainder();
                     if !rem.is_empty() {
-                        bail_expr!(&rem[0], "zippy input is missing its output mapping");
+                        bail_expr!(
+                            &rem[0],
+                            "zippy input is missing its output mapping"
+                        );
                     }
                 }
-                _ => bail_expr!(config_name, "Unknown zippy configuration name"),
+                _ => {
+                    bail_expr!(config_name, "Unknown zippy configuration name")
+                }
             }
         }
 
@@ -559,9 +600,10 @@ mod inner {
         }
 
         // process zippy file
-        let input_data = f
-            .get_file_content(file_name.as_ref())
-            .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
+        let input_data =
+            f.get_file_content(file_name.as_ref()).map_err(|e| {
+                anyhow_expr!(&exprs[1], "Failed to read file:\n{e}")
+            })?;
         let res = input_data
             .lines()
             .enumerate()
@@ -733,16 +775,17 @@ mod inner {
         is_noerase: bool,
     ) -> Result<ZchOutput> {
         let (output_mods, output_key) = parse_mod_prefix(output)?;
-        if output_mods.contains(&KeyCode::LShift) && output_mods.contains(&KeyCode::RShift) {
+        if output_mods.contains(&KeyCode::LShift)
+            && output_mods.contains(&KeyCode::RShift)
+        {
             bail_expr!(
                 output_expr,
                 "Both shifts are used which is redundant, use only one."
             );
         }
-        if output_mods
-            .iter()
-            .any(|m| !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt))
-        {
+        if output_mods.iter().any(|m| {
+            !matches!(m, KeyCode::LShift | KeyCode::RShift | KeyCode::RAlt)
+        }) {
             bail_expr!(output_expr, "Only S- and AG- are supported.");
         }
         let output_osc = str_to_oscode(output_key)

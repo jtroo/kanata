@@ -35,9 +35,11 @@ fn override_release_mod_change_key() {
   (lsft a) (lsft 9)
   (lsft 1) (lctl 2))
         ";
-    let result = simulate(cfg, "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10").to_ascii();
+    let result =
+        simulate(cfg, "d:lsft t:10 d:a t:10 u:lsft t:10 u:a t:10").to_ascii();
     assert_eq!("dn:LShift t:10ms dn:Kb9 t:10ms up:LShift up:Kb9", result);
-    let result = simulate(cfg, "d:lsft t:10 d:a t:10 u:a t:10 u:lsft t:10").to_ascii();
+    let result =
+        simulate(cfg, "d:lsft t:10 d:a t:10 u:a t:10 u:lsft t:10").to_ascii();
     assert_eq!(
         "dn:LShift t:10ms dn:Kb9 t:10ms up:Kb9 t:10ms up:LShift",
         result

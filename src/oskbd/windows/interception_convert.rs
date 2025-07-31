@@ -196,9 +196,17 @@ impl TryFrom<Stroke> for OsCodeWrapper {
     fn try_from(item: Stroke) -> Result<Self, Self::Error> {
         Ok(match item {
             Stroke::Keyboard { code, state, .. } => {
-                let code = match (state.contains(KeyState::E0), state.contains(KeyState::E1)) {
-                    (false, false) => crate::oskbd::u16_to_osc(code as u16).ok_or(())?,
-                    (true, _) => crate::oskbd::u16_to_osc((code as u16) | 0xE000).ok_or(())?,
+                let code = match (
+                    state.contains(KeyState::E0),
+                    state.contains(KeyState::E1),
+                ) {
+                    (false, false) => {
+                        crate::oskbd::u16_to_osc(code as u16).ok_or(())?
+                    }
+                    (true, _) => {
+                        crate::oskbd::u16_to_osc((code as u16) | 0xE000)
+                            .ok_or(())?
+                    }
                     _ => return Err(()),
                 };
                 OsCodeWrapper(code)
@@ -239,7 +247,9 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             OsCode::KEY_O => (ScanCode::O, KeyState::empty()),
             OsCode::KEY_P => (ScanCode::P, KeyState::empty()),
             OsCode::KEY_LEFTBRACE => (ScanCode::LeftBracket, KeyState::empty()),
-            OsCode::KEY_RIGHTBRACE => (ScanCode::RightBracket, KeyState::empty()),
+            OsCode::KEY_RIGHTBRACE => {
+                (ScanCode::RightBracket, KeyState::empty())
+            }
             OsCode::KEY_ENTER => (ScanCode::Enter, KeyState::empty()),
             OsCode::KEY_LEFTCTRL => (ScanCode::LeftControl, KeyState::empty()),
             OsCode::KEY_A => (ScanCode::A, KeyState::empty()),
@@ -267,7 +277,9 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             OsCode::KEY_DOT => (ScanCode::Period, KeyState::empty()),
             OsCode::KEY_SLASH => (ScanCode::Slash, KeyState::empty()),
             OsCode::KEY_RIGHTSHIFT => (ScanCode::RightShift, KeyState::empty()),
-            OsCode::KEY_KPASTERISK => (ScanCode::NumpadMultiply, KeyState::empty()),
+            OsCode::KEY_KPASTERISK => {
+                (ScanCode::NumpadMultiply, KeyState::empty())
+            }
             OsCode::KEY_LEFTALT => (ScanCode::LeftAlt, KeyState::empty()),
             OsCode::KEY_SPACE => (ScanCode::Space, KeyState::empty()),
             OsCode::KEY_CAPSLOCK => (ScanCode::CapsLock, KeyState::empty()),
@@ -332,14 +344,14 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             OsCode::KEY_NEXTSONG => (ScanCode::P, KeyState::E0), // 0x19
             OsCode::KEY_KPENTER => (ScanCode::Enter, KeyState::E0), // 0x1C
             OsCode::KEY_RIGHTCTRL => (ScanCode::LeftControl, KeyState::E0), // 0x1D
-            OsCode::KEY_MUTE => (ScanCode::D, KeyState::E0),     // 0x20
+            OsCode::KEY_MUTE => (ScanCode::D, KeyState::E0), // 0x20
             OsCode::KEY_PLAYPAUSE => (ScanCode::G, KeyState::E0), // 0x22 // sc_media_play
             OsCode::KEY_VOLUMEDOWN => (ScanCode::C, KeyState::E0), // 0x2E // sc_volume_down
             OsCode::KEY_VOLUMEUP => (ScanCode::B, KeyState::E0), // 0x30   // sc_volume_up
             OsCode::KEY_KPSLASH => (ScanCode::Slash, KeyState::E0), // 0x35 // sc_numpad_divide
             OsCode::KEY_PRINT => (ScanCode::NumpadMultiply, KeyState::E0), // 0x37   // sc_printScreen
-            OsCode::KEY_RIGHTALT => (ScanCode::LeftAlt, KeyState::E0),     // 0x38 // sc_altRight
-            OsCode::KEY_HOME => (ScanCode::Numpad7, KeyState::E0),         // 0x47     // sc_home
+            OsCode::KEY_RIGHTALT => (ScanCode::LeftAlt, KeyState::E0), // 0x38 // sc_altRight
+            OsCode::KEY_HOME => (ScanCode::Numpad7, KeyState::E0), // 0x47     // sc_home
             OsCode::KEY_UP => (ScanCode::Numpad8, KeyState::E0), // 0x48       // sc_arrowUp
             OsCode::KEY_PAGEUP => (ScanCode::Numpad9, KeyState::E0), // 0x49   // sc_pageUp
             OsCode::KEY_LEFT => (ScanCode::Numpad4, KeyState::E0), // 0x4B     // sc_arrowLeft
@@ -352,7 +364,7 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             OsCode::KEY_LEFTMETA => (ScanCode::Oem2, KeyState::E0), // 0x5B // sc_metaLeft
             OsCode::KEY_RIGHTMETA => (ScanCode::Oem3, KeyState::E0), // 0x5C // sc_metaRight
             OsCode::KEY_FORWARD => (ScanCode::F18, KeyState::E0), // 0x69 // sc_browser_forward
-            OsCode::KEY_BACK => (ScanCode::F19, KeyState::E0),   // 0x6A    // sc_browser_back
+            OsCode::KEY_BACK => (ScanCode::F19, KeyState::E0), // 0x6A    // sc_browser_back
             OsCode::KEY_COMPOSE => (ScanCode::EraseEOF, KeyState::E0),
             // OsCode::KEY_TODO => 0x24 as ScanCode, // sc_media_stop
             // OsCode::KEY_TODO => 0x32 as ScanCode, // sc_browser_home

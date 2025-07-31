@@ -70,7 +70,11 @@ impl KbdOut {
         }
         Ok(())
     }
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let event = {
             #[cfg(target_os = "macos")]
@@ -84,7 +88,11 @@ impl KbdOut {
         };
         self.write(event)
     }
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         trace!("out-code:{code};{value:?}");
         Ok(())
     }
@@ -106,16 +114,26 @@ impl KbdOut {
         trace!("out🖰:↑{btn:?}");
         Ok(())
     }
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(
+        &mut self,
+        direction: MWheelDirection,
+        distance: u16,
+    ) -> Result<(), io::Error> {
         trace!("scroll:{direction:?},{distance:?}");
         Ok(())
     }
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
         let (direction, distance) = (mv.direction, mv.distance);
         trace!("out🖰:move {direction:?},{distance:?}");
         Ok(())
     }
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         for mv in moves {
             let (direction, distance) = (&mv.direction, &mv.distance);
             trace!("out🖰:move {direction:?},{distance:?}");

@@ -1,6 +1,8 @@
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
+use std::sync::mpsc::{
+    sync_channel, Receiver, SyncSender as Sender, TryRecvError,
+};
 use std::sync::Arc;
 use std::time;
 
@@ -9,7 +11,10 @@ use crate::kanata::*;
 
 impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events and run the native_windows_gui event loop.
-    pub fn event_loop(_cfg: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop(
+        _cfg: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+    ) -> Result<()> {
         let (preprocess_tx, preprocess_rx) = sync_channel(100);
         start_event_preprocessor(preprocess_rx, tx);
 
@@ -57,7 +62,10 @@ fn try_send_panic(tx: &Sender<KeyEvent>, kev: KeyEvent) {
     }
 }
 
-fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
+fn start_event_preprocessor(
+    preprocess_rx: Receiver<KeyEvent>,
+    process_tx: Sender<KeyEvent>,
+) {
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum LctlState {
         Pressed,
@@ -72,7 +80,9 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
         loop {
             match preprocess_rx.try_recv() {
                 Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
-                    (AltGrBehaviour::DoNothing, _) => try_send_panic(&process_tx, kev),
+                    (AltGrBehaviour::DoNothing, _) => {
+                        try_send_panic(&process_tx, kev)
+                    }
                     (
                         AltGrBehaviour::AddLctlRelease,
                         KeyEvent {
@@ -85,7 +95,10 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
                         try_send_panic(&process_tx, kev);
                         try_send_panic(
                             &process_tx,
-                            KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
+                            KeyEvent::new(
+                                OsCode::KEY_LEFTCTRL,
+                                KeyValue::Release,
+                            ),
                         );
                         PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);
                     }
@@ -113,7 +126,9 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
                             lctl_state = LctlState::Released;
                         }
                         LctlState::Pending => {
-                            log::debug!("altgr cancel: lctl state->pending-released");
+                            log::debug!(
+                                "altgr cancel: lctl state->pending-released"
+                            );
                             lctl_state = LctlState::PendingReleased;
                         }
                         LctlState::None => try_send_panic(&process_tx, kev),
@@ -134,10 +149,14 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
                     (_, _) => try_send_panic(&process_tx, kev),
                 },
                 Err(TryRecvError::Empty) => {
-                    if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
+                    if *ALTGR_BEHAVIOUR.lock()
+                        == AltGrBehaviour::CancelLctlPress
+                    {
                         match lctl_state {
                             LctlState::Pressed => {
-                                log::debug!("altgr cancel: lctl state->pending");
+                                log::debug!(
+                                    "altgr cancel: lctl state->pending"
+                                );
                                 lctl_state = LctlState::Pending;
                             }
                             LctlState::Released => {
@@ -148,19 +167,30 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
                                 log::debug!("altgr cancel: lctl state->send");
                                 try_send_panic(
                                     &process_tx,
-                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),
+                                    KeyEvent::new(
+                                        OsCode::KEY_LEFTCTRL,
+                                        KeyValue::Press,
+                                    ),
                                 );
                                 lctl_state = LctlState::None;
                             }
                             LctlState::PendingReleased => {
-                                log::debug!("altgr cancel: lctl state->send+release");
-                                try_send_panic(
-                                    &process_tx,
-                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Press),
+                                log::debug!(
+                                    "altgr cancel: lctl state->send+release"
                                 );
                                 try_send_panic(
                                     &process_tx,
-                                    KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
+                                    KeyEvent::new(
+                                        OsCode::KEY_LEFTCTRL,
+                                        KeyValue::Press,
+                                    ),
+                                );
+                                try_send_panic(
+                                    &process_tx,
+                                    KeyEvent::new(
+                                        OsCode::KEY_LEFTCTRL,
+                                        KeyValue::Release,
+                                    ),
                                 );
                                 lctl_state = LctlState::None;
                             }

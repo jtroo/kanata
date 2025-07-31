@@ -23,8 +23,12 @@ use std::time::Duration;
 use winapi::shared::minwindef::{BYTE, DWORD};
 use winapi::shared::windef::COLORREF;
 use windows_sys::Wdk::System::SystemServices::RtlGetVersion;
-use windows_sys::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, POINT, RECT, SIZE};
-use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+use windows_sys::Win32::Foundation::{
+    ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, POINT, RECT, SIZE,
+};
+use windows_sys::Win32::System::Registry::{
+    RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD,
+};
 use windows_sys::Win32::System::SystemInformation::OSVERSIONINFOW;
 use windows_sys::Win32::UI::HiDpi::GetSystemMetricsForDpi;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -131,7 +135,9 @@ const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
 const TTTIMER_L: u16 = 9; // lifetime delta to duration for a tooltip timer
-use crate::gui::{CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_EXIT_TX, GUI_TX};
+use crate::gui::{
+    CFG, GUI_CFG_TX, GUI_ERR_MSG_TX, GUI_ERR_TX, GUI_EXIT_TX, GUI_TX,
+};
 
 pub fn send_gui_notice() {
     if let Some(gui_tx) = GUI_TX.get() {
@@ -322,13 +328,19 @@ fn get_icon_p_impl(
                         trace!("testing icon file {:?}", icon_file);
                         if !icon_file.is_file() {
                             icon_file.clear();
-                            if p_par == blank_p && p_kan.is_empty() && p_icn.is_empty() && is_full_p
+                            if p_par == blank_p
+                                && p_kan.is_empty()
+                                && p_icn.is_empty()
+                                && is_full_p
                             {
                                 trace!("skipping further sub-iters on an empty parent with user config {:?}",nm);
                                 continue 'p;
                             }
                         } else {
-                            debug!("✓ found icon file: {}", icon_file.display().to_string());
+                            debug!(
+                                "✓ found icon file: {}",
+                                icon_file.display().to_string()
+                            );
                             return Some(icon_file.display().to_string());
                         }
                     }
@@ -453,10 +465,14 @@ impl SystemTray {
             .from_filename(ico_p)
             .and_then(|img_src| img_src.frame(0))
         {
-            if let Ok(cfg_img_menu) = self.decoder.resize_image(&img_data, ICN_SZ_MENU) {
+            if let Ok(cfg_img_menu) =
+                self.decoder.resize_image(&img_data, ICN_SZ_MENU)
+            {
                 let cfg_icon_bmp_tray = cfg_img_menu.as_bitmap()?;
                 let cfg_icon_bmp_icon = cfg_icon_bmp_tray.copy_as_icon();
-                if let Ok(cfg_img_menu) = self.decoder.resize_image(&img_data, icn_sz_tt) {
+                if let Ok(cfg_img_menu) =
+                    self.decoder.resize_image(&img_data, icn_sz_tt)
+                {
                     let cfg_icon_bmp_tt = cfg_img_menu.as_bitmap()?;
                     return Ok(Icn {
                         tray: cfg_icon_bmp_tray,
@@ -529,7 +545,8 @@ impl SystemTray {
         let (mouse_ptr_w, mouse_ptr_h) = *self.m_ptr_wh.borrow();
         let tt_off_x = (mouse_ptr_w as f64 * 0.25).round() as i32;
         let tt_off_y = (mouse_ptr_h as f64 * 0.25).round() as i32; //
-        let (mouse_ptr_w, mouse_ptr_h) = (mouse_ptr_w as i32, mouse_ptr_h as i32);
+        let (mouse_ptr_w, mouse_ptr_h) =
+            (mouse_ptr_w as i32, mouse_ptr_h as i32);
         let anchorpoint = &POINT {
             x: x + tt_off_x,
             y: y + tt_off_y,
@@ -548,7 +565,13 @@ impl SystemTray {
             bottom: 0,
         };
         let ret = unsafe {
-            CalculatePopupWindowPosition(anchorpoint, tt_win_sz, flags, excluderect, out_rect)
+            CalculatePopupWindowPosition(
+                anchorpoint,
+                tt_win_sz,
+                flags,
+                excluderect,
+                out_rect,
+            )
         };
         if ret != 0 {
             x = out_rect.left;
@@ -567,7 +590,12 @@ impl SystemTray {
     }
     /// Spawn a thread with a new 🖰 pointer watcher
     /// (that sends a signal back to GUI which in turn moves the tooltip to the new position)
-    fn update_mouse_watcher(&self, tt2m_sndr: ASender<bool>, ticks: u16, poll_time: Duration) {
+    fn update_mouse_watcher(
+        &self,
+        tt2m_sndr: ASender<bool>,
+        ticks: u16,
+        poll_time: Duration,
+    ) {
         debug!("   ✓   update_mouse_watcher");
         let gui_tx = self.tt_notice.sender(); // allows notifying GUI on tooltip move updates
         let (m2tt_sndr0, m2tt_rcvr) = std::sync::mpsc::channel::<bool>();
@@ -583,7 +611,9 @@ impl SystemTray {
                 std::thread::sleep(poll_time);
                 match m2tt_rcvr.try_recv() {
                     Ok(_) => {
-                        debug!("extending tooltip watcher instead of launching +1");
+                        debug!(
+                            "extending tooltip watcher instead of launching +1"
+                        );
                         i = 0;
                     }
                     Err(TryRecvError::Empty) => {
@@ -645,7 +675,9 @@ impl SystemTray {
                     start = true;
                 }
                 Err(TryRecvError::Empty) => {
-                    if let Some(m2tt_sender) = self.m2tt_sender.borrow().as_ref() {
+                    if let Some(m2tt_sender) =
+                        self.m2tt_sender.borrow().as_ref()
+                    {
                         trace!("send signal to extend");
                         m2tt_sender.send(true).unwrap_or_else(|_| {
                             error!("internal: couldn't send a signal to the 🖰 pointer watcher!")
@@ -661,8 +693,9 @@ impl SystemTray {
             }
             let duration = 16;
             let poll_time = Duration::from_millis(duration);
-            let ticks =
-                (app_data.gui_opts.tooltip_duration as f64 / duration as f64).round() as u16;
+            let ticks = (app_data.gui_opts.tooltip_duration as f64
+                / duration as f64)
+                .round() as u16;
             debug!(
                 "will tick for {ticks} every {duration} ms to match user {}",
                 app_data.gui_opts.tooltip_duration
@@ -695,7 +728,9 @@ impl SystemTray {
         if img_dyn.contains_key(cfg_p) {
             // check if menu group icon needs to be updated to match active
             if is_active {
-                if let Some(icn) = img_dyn.get(cfg_p).and_then(|maybe_icn| maybe_icn.as_ref()) {
+                if let Some(icn) =
+                    img_dyn.get(cfg_p).and_then(|maybe_icn| maybe_icn.as_ref())
+                {
                     self.tray_1cfg_m.set_bitmap(Some(&icn.tray))
                 }
             }
@@ -704,8 +739,11 @@ impl SystemTray {
             if let Ok(cfg) = cfg::new_from_file(cfg_p) {
                 if let Some(cfg_icon_s) = cfg.options.gui_opts.tray_icon {
                     debug!("loaded config without a tray icon {cfg_p:?}");
-                    if let Ok(icn) = self.set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, cfg_p)
-                    {
+                    if let Ok(icn) = self.set_menu_item_cfg_icon(
+                        menu_item_cfg,
+                        &cfg_icon_s,
+                        cfg_p,
+                    ) {
                         if is_active {
                             self.tray_1cfg_m.set_bitmap(Some(&icn.tray));
                         }
@@ -739,7 +777,9 @@ impl SystemTray {
                         h_cfg_i.handle
                     );
                     h_cfg_i.set_checked(true);
-                    if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, cfg_p, true) {
+                    if let Err(e) =
+                        self.update_tray_icon_cfg(h_cfg_i, cfg_p, true)
+                    {
                         debug!("{e:?} {cfg_p:?}");
                         let mut img_dyn = self.img_dyn.borrow_mut();
                         img_dyn.insert(cfg_p.clone(), None);
@@ -762,9 +802,14 @@ impl SystemTray {
             for (i, h_cfg_i) in tray_item_dyn.iter_mut().enumerate() {
                 // 1 if missing an icon, read config to get one
                 let cfg_p = &k.cfg_paths[i];
-                trace!("     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}", h_cfg_i.handle);
+                trace!(
+                    "     →→→→ i={i:?} {:?} cfg_p={cfg_p:?}",
+                    h_cfg_i.handle
+                );
                 let is_active = i == idx_cfg;
-                if let Err(e) = self.update_tray_icon_cfg(h_cfg_i, cfg_p, is_active) {
+                if let Err(e) =
+                    self.update_tray_icon_cfg(h_cfg_i, cfg_p, is_active)
+                {
                     debug!("{e:?} {cfg_p:?}");
                     let mut img_dyn = self.img_dyn.borrow_mut();
                     img_dyn.insert(cfg_p.clone(), None);
@@ -810,9 +855,12 @@ impl SystemTray {
             app_data.gui_opts.tooltip_size = k.gui_opts.tooltip_size;
             trace!("tooltip_size duration changed, updating");
             let dpi = unsafe { nwg::dpi() };
-            let icn_sz_tt_i = (k.gui_opts.tooltip_size.0, k.gui_opts.tooltip_size.1);
-            let w = (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96_f64)).round() as u32;
-            let h = (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96_f64)).round() as u32;
+            let icn_sz_tt_i =
+                (k.gui_opts.tooltip_size.0, k.gui_opts.tooltip_size.1);
+            let w =
+                (icn_sz_tt_i.0 as f64 / (dpi as f64 / 96_f64)).round() as u32;
+            let h =
+                (icn_sz_tt_i.1 as f64 / (dpi as f64 / 96_f64)).round() as u32;
             self.win_tt.set_size(w, h);
 
             let icn_sz_tt_i = (
@@ -820,8 +868,10 @@ impl SystemTray {
                 k.gui_opts.tooltip_size.1 as u32,
             );
             // todo: replace with a no-margin NWG config when it's available
-            let padx = (k.gui_opts.tooltip_size.0 as f64 / 6_f64).round() as i32;
-            let pady = (k.gui_opts.tooltip_size.1 as f64 / 6_f64).round() as i32;
+            let padx =
+                (k.gui_opts.tooltip_size.0 as f64 / 6_f64).round() as i32;
+            let pady =
+                (k.gui_opts.tooltip_size.1 as f64 / 6_f64).round() as i32;
             trace!(
                 "kanata tooltip size = {icn_sz_tt_i:?}, ttsize = {w}⋅{h} offset = {padx}⋅{pady}"
             );
@@ -869,7 +919,8 @@ impl SystemTray {
                 let layer_id = k.layout.b().current_layer();
                 let layer_name = &k.layer_info[layer_id].name;
                 let layer_icon = &k.layer_info[layer_id].icon;
-                let layer_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
+                let layer_icon_s =
+                    layer_icon.clone().unwrap_or("✗".to_string());
                 debug!(
                     "pre reload tray_icon={} layer_name={} layer_icon={}",
                     cfg_icon_s, layer_name, layer_icon_s
@@ -878,10 +929,12 @@ impl SystemTray {
             match i {
                 Some(idx) => {
                     if let Ok(()) = k.live_reload_n(idx) {
-                        msg_title += &("🔄 \"".to_owned() + cfg_name + "\" loaded");
+                        msg_title +=
+                            &("🔄 \"".to_owned() + cfg_name + "\" loaded");
                         flags |= f_tray::USER_ICON;
                     } else {
-                        msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT loaded");
+                        msg_title +=
+                            &("🔄 \"".to_owned() + cfg_name + "\" NOT loaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
                         {
                             let app_data = self.app_data.borrow();
@@ -900,10 +953,13 @@ impl SystemTray {
                 }
                 None => {
                     if let Ok(()) = k.live_reload() {
-                        msg_title += &("🔄 \"".to_owned() + cfg_name + "\" reloaded");
+                        msg_title +=
+                            &("🔄 \"".to_owned() + cfg_name + "\" reloaded");
                         flags |= f_tray::USER_ICON;
                     } else {
-                        msg_title += &("🔄 \"".to_owned() + cfg_name + "\" NOT reloaded");
+                        msg_title += &("🔄 \"".to_owned()
+                            + cfg_name
+                            + "\" NOT reloaded");
                         flags |= f_tray::ERROR_ICON | f_tray::LARGE_ICON;
                         {
                             let app_data = self.app_data.borrow();
@@ -932,7 +988,8 @@ impl SystemTray {
                                                                     // a separator
             let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
             if log_enabled!(Debug) {
-                let layer_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
+                let layer_icon_s =
+                    layer_icon.clone().unwrap_or("✗".to_string());
                 debug!(
                     "pos reload tray_icon={:?} layer_name={:?} layer_icon={:?}",
                     cfg_icon, layer_name, layer_icon_s
@@ -1003,7 +1060,8 @@ impl SystemTray {
             }
         } else {
             msg_title += "internal";
-            msg_content += "SystemTray is supposed to have a valid 'err_recv' field value"
+            msg_content +=
+                "SystemTray is supposed to have a valid 'err_recv' field value"
         }
         flags |= f_tray::ERROR_ICON;
         if app_data.gui_opts.notify_cfg_reload_silent {
@@ -1047,8 +1105,10 @@ impl SystemTray {
                         .unwrap_or_else(|| OsStr::new(""))
                         .to_string_lossy()
                         .to_string();
-                    let cfg_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
-                    let layer_icon_s = cfg_icon.clone().unwrap_or("✗".to_string());
+                    let cfg_icon_s =
+                        layer_icon.clone().unwrap_or("✗".to_string());
+                    let layer_icon_s =
+                        cfg_icon.clone().unwrap_or("✗".to_string());
                     debug!(
                         "✓ layer changed to ‘{}’ with icon ‘{}’ @ ‘{}’ tray_icon ‘{}’",
                         layer_name, layer_icon_s, cfg_name, cfg_icon_s
@@ -1068,9 +1128,12 @@ impl SystemTray {
                             .unwrap_or_else(|| OsStr::new(""))
                             .to_string_lossy()
                             .to_string();
-                        let msg_title = "🔄 \"".to_owned() + cfg_name + "\" re-loaded";
+                        let msg_title =
+                            "🔄 \"".to_owned() + cfg_name + "\" re-loaded";
                         let msg_content = &path_cur.display().to_string();
-                        let mut flags = f_tray::empty() | f_tray::USER_ICON | f_tray::LARGE_ICON;
+                        let mut flags = f_tray::empty()
+                            | f_tray::USER_ICON
+                            | f_tray::LARGE_ICON;
                         if app_data.gui_opts.notify_cfg_reload_silent {
                             flags |= f_tray::SILENT;
                         }
@@ -1147,7 +1210,9 @@ impl SystemTray {
                 *icon_act_key = Some(cfg_layer_pkey);
                 self.show_tooltip(None);
             }
-        } else if layer_icon.is_some() || app_data.gui_opts.icon_match_layer_name {
+        } else if layer_icon.is_some()
+            || app_data.gui_opts.icon_match_layer_name
+        {
             let layer_icon = match layer_icon {
                 Some(layer_icon_inner) => {
                     trace!("configured layer icon = {}", layer_icon_inner);
@@ -1383,7 +1448,8 @@ pub mod system_tray_ui {
                 nwg::AnimationTimer::builder()
                     .parent(&d.window)
                     .interval(Duration::from_millis(
-                        (app_data.gui_opts.tooltip_duration.saturating_add(1)).into(),
+                        (app_data.gui_opts.tooltip_duration.saturating_add(1))
+                            .into(),
                     ))
                     .lifetime(Some(Duration::from_millis(
                         (app_data.gui_opts.tooltip_duration + TTTIMER_L).into(),
@@ -1397,8 +1463,10 @@ pub mod system_tray_ui {
                     app_data.gui_opts.tooltip_size.1 as i32,
                 );
                 // todo: replace with a no-margin NWG config when it's available
-                let padx = (app_data.gui_opts.tooltip_size.0 as f64 / 6_f64).round() as i32;
-                let pady = (app_data.gui_opts.tooltip_size.1 as f64 / 6_f64).round() as i32;
+                let padx = (app_data.gui_opts.tooltip_size.0 as f64 / 6_f64)
+                    .round() as i32;
+                let pady = (app_data.gui_opts.tooltip_size.1 as f64 / 6_f64)
+                    .round() as i32;
                 let pad = (-padx, -pady);
                 trace!("kanata tooltip size = {icn_sz_tt_i:?}, offset = {padx}⋅{pady}");
                 let mut cfg_icon_bmp_tray = Default::default();
@@ -1437,8 +1505,10 @@ pub mod system_tray_ui {
                 let mut icon_0_key = d.icon_0_key.borrow_mut();
                 const MENU_ACC: &str = "1234567890ASDFGQWERTZXCVBYUIOPHJKLNM";
                 const M_E: usize = MENU_ACC.len() - 1;
-                let layer0_icon_s = &app_data.layer0_icon.clone().unwrap_or("".to_string());
-                let cfg_icon_s = &app_data.cfg_icon.clone().unwrap_or("".to_string());
+                let layer0_icon_s =
+                    &app_data.layer0_icon.clone().unwrap_or("".to_string());
+                let cfg_icon_s =
+                    &app_data.cfg_icon.clone().unwrap_or("".to_string());
                 if !(app_data.cfg_p).is_empty() {
                     for (i, cfg_p) in app_data.cfg_p.iter().enumerate() {
                         let i_acc = match i {
@@ -1477,17 +1547,26 @@ pub mod system_tray_ui {
                             ) {
                                 let mut cfg_layer_pkey = PathBuf::new(); // path key
                                 cfg_layer_pkey.push(cfg_p.clone());
-                                cfg_layer_pkey.push(PRE_LAYER.to_owned() + &app_data.layer0_name);
-                                let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
+                                cfg_layer_pkey.push(
+                                    PRE_LAYER.to_owned()
+                                        + &app_data.layer0_name,
+                                );
+                                let cfg_layer_pkey_s =
+                                    cfg_layer_pkey.display().to_string();
                                 *icon_0_key = Some(cfg_layer_pkey.clone());
                                 if let Ok(icn) = d.get_icon_from_file(&ico_p) {
-                                    debug!("✓ main 0 config: using icon for {}", cfg_layer_pkey_s);
+                                    debug!(
+                                        "✓ main 0 config: using icon for {}",
+                                        cfg_layer_pkey_s
+                                    );
                                     main_tray_icon_l = icn.tray.copy_as_icon();
                                     main_tray_icon_is = true;
-                                    let _ = img_dyn.insert(cfg_layer_pkey, Some(icn));
+                                    let _ = img_dyn
+                                        .insert(cfg_layer_pkey, Some(icn));
                                 } else {
                                     info!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
-                                    let _ = img_dyn.insert(cfg_layer_pkey, None);
+                                    let _ =
+                                        img_dyn.insert(cfg_layer_pkey, None);
                                 }
                             } else {
                                 debug!("✗ main 0 config: using DEFAULT icon for {:?}", cfg_p);
@@ -1523,12 +1602,15 @@ pub mod system_tray_ui {
                             }
                             // Set tray menu config item icons, ignores layers since these
                             // are per config
-                            if let Ok(icn) =
-                                d.set_menu_item_cfg_icon(&mut menu_item, cfg_icon_s, cfg_p)
-                            {
+                            if let Ok(icn) = d.set_menu_item_cfg_icon(
+                                &mut menu_item,
+                                cfg_icon_s,
+                                cfg_p,
+                            ) {
                                 // show currently active config's icon in the combo menu
                                 d.tray_1cfg_m.set_bitmap(Some(&icn.tray));
-                                let _ = img_dyn.insert(cfg_p.clone(), Some(icn));
+                                let _ =
+                                    img_dyn.insert(cfg_p.clone(), Some(icn));
                             } else {
                                 let _ = img_dyn.insert(cfg_p.clone(), None);
                             }
@@ -1631,8 +1713,8 @@ pub mod system_tray_ui {
     }
 }
 use winapi::um::winuser::{
-    SetLayeredWindowAttributes, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-    WS_EX_TRANSPARENT,
+    SetLayeredWindowAttributes, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
 };
 pub const WS_CLICK_THRU: u32 = WS_EX_LAYERED | WS_EX_TRANSPARENT;
 
@@ -1666,7 +1748,9 @@ pub fn update_app_data(k: &MutexGuard<Kanata>) -> Result<SystemTrayData> {
         tt_size_pre: k.gui_opts.tooltip_size,
     })
 }
-pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTrayUi> {
+pub fn build_tray(
+    cfg: &Arc<Mutex<Kanata>>,
+) -> Result<system_tray_ui::SystemTrayUi> {
     let k = cfg.lock();
     let app_data = update_app_data(&k)?;
     let app = SystemTray {
@@ -1679,7 +1763,9 @@ pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTray
 pub use log::*;
 pub use std::io::{stdout, IsTerminal};
 pub use winapi::shared::minwindef::BOOL;
-pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
+pub use winapi::um::wincon::{
+    AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS,
+};
 
 use once_cell::sync::Lazy;
 pub static IS_TERM: Lazy<bool> = Lazy::new(|| stdout().is_terminal());

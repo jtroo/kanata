@@ -8,12 +8,18 @@ use std::sync::Arc;
 
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
-    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop(
+        kanata: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+    ) -> Result<()> {
         info!("entering the event loop");
 
         let k = kanata.lock();
         let allow_hardware_repeat = k.allow_hardware_repeat;
-        let mut kb = match KbdIn::new(k.include_names.clone(), k.exclude_names.clone()) {
+        let mut kb = match KbdIn::new(
+            k.include_names.clone(),
+            k.exclude_names.clone(),
+        ) {
             Ok(kbd_in) => kbd_in,
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };

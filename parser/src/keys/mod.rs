@@ -28,7 +28,8 @@ pub enum Platform {
 }
 
 #[cfg(target_os = "unknown")]
-pub static OSCODE_MAPPING_VARIANT: Mutex<Platform> = Mutex::new(Platform::Linux);
+pub static OSCODE_MAPPING_VARIANT: Mutex<Platform> =
+    Mutex::new(Platform::Linux);
 
 impl OsCode {
     pub fn as_u16(self) -> u16 {
@@ -100,12 +101,13 @@ impl OsCode {
     }
 }
 
-static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> = Lazy::new(|| {
-    let mut mappings = HashMap::default();
-    add_default_str_osc_mappings(&mut mappings);
-    mappings.shrink_to_fit();
-    Mutex::new(mappings)
-});
+static CUSTOM_STRS_TO_OSCODES: Lazy<Mutex<HashMap<String, OsCode>>> =
+    Lazy::new(|| {
+        let mut mappings = HashMap::default();
+        add_default_str_osc_mappings(&mut mappings);
+        mappings.shrink_to_fit();
+        Mutex::new(mappings)
+    });
 
 /// Replaces the stateful custom `String` to `OsCode` mapping in this module with the input
 /// mapping.
@@ -1199,13 +1201,15 @@ impl TryFrom<usize> for OsCode {
 
 impl From<u32> for OsCode {
     fn from(item: u32) -> Self {
-        Self::from_u16(item as u16).unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
+        Self::from_u16(item as u16)
+            .unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
     }
 }
 
 impl From<u16> for OsCode {
     fn from(item: u16) -> Self {
-        Self::from_u16(item).unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
+        Self::from_u16(item)
+            .unwrap_or_else(|| panic!("Invalid KeyCode: {item}"))
     }
 }
 

@@ -7,6 +7,7 @@ use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
 use simplelog::{format_description, *};
+use std::io::{self, Read};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -41,6 +42,10 @@ kanata.kbd in the current working directory and
     )]
     #[arg(short, long, verbatim_doc_comment)]
     cfg: Option<Vec<PathBuf>>,
+
+    /// Read configuration from stdin instead of a file.
+    #[arg(long, verbatim_doc_comment)]
+    cfg_stdin: bool,
 
     /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
     /// no TCP port will be listened on.
@@ -110,7 +115,7 @@ mod cli {
     use super::*;
 
     /// Parse CLI arguments and initialize logging.
-    fn cli_init() -> Result<ValidatedArgs> {
+    fn cli_init() -> Result<(ValidatedArgs, Option<String>)> {
         let args = Args::parse();
 
         #[cfg(target_os = "macos")]
@@ -119,7 +124,19 @@ mod cli {
             std::process::exit(0);
         }
 
-        let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
+        let config_string = if args.cfg_stdin {
+            let mut buf = String::new();
+            io::stdin().read_to_string(&mut buf)?;
+            Some(buf)
+        } else {
+            None
+        };
+
+        let cfg_paths = if config_string.is_none() {
+            args.cfg.unwrap_or_else(default_cfg)
+        } else {
+            vec![]
+        };
 
         let log_lvl = match (args.debug, args.trace, args.quiet) {
             (_, true, false) => LevelFilter::Trace,
@@ -145,29 +162,45 @@ mod cli {
         .expect("logger can init");
 
         log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
-        #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
+        #[cfg(all(
+            not(feature = "interception_driver"),
+            target_os = "windows"
+        ))]
         log::info!("using LLHOOK+SendInput for keyboard IO");
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         log::info!("using the Interception driver for keyboard IO");
 
-        if let Some(config_file) = cfg_paths.first() {
-            if !config_file.exists() {
-                bail!(
-                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                cfg_paths[0].to_str().unwrap_or("?")
-            )
+        if config_string.is_none() {
+            if let Some(config_file) = cfg_paths.first() {
+                if !config_file.exists() {
+                    bail!(
+                        "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                        cfg_paths[0].to_str().unwrap_or("?")
+                    )
+                }
+            } else {
+                bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
             }
-        } else {
-            bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
         }
 
         if args.check {
             log::info!("validating config only and exiting");
-            let status = match cfg::new_from_file(&cfg_paths[0]) {
-                Ok(_) => 0,
-                Err(e) => {
-                    log::error!("{e:?}");
-                    1
+            let status = if let Some(ref cfg_str) = config_string {
+                use rustc_hash::FxHashMap;
+                match cfg::new_from_str(cfg_str, FxHashMap::default()) {
+                    Ok(_) => 0,
+                    Err(e) => {
+                        log::error!("{e:?}");
+                        1
+                    }
+                }
+            } else {
+                match cfg::new_from_file(&cfg_paths[0]) {
+                    Ok(_) => 0,
+                    Err(e) => {
+                        log::error!("{e:?}");
+                        1
+                    }
                 }
             };
             std::process::exit(status);
@@ -184,21 +217,31 @@ mod cli {
             cfg_forced::force_log_layer_changes(true);
         }
 
-        Ok(ValidatedArgs {
-            paths: cfg_paths,
-            #[cfg(feature = "tcp_server")]
-            tcp_server_address: args.tcp_server_address,
-            #[cfg(target_os = "linux")]
-            symlink_path: args.symlink_path,
-            nodelay: args.nodelay,
-            #[cfg(feature = "watch")]
-            watch: args.watch,
-        })
+        Ok((
+            ValidatedArgs {
+                paths: cfg_paths,
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: args.tcp_server_address,
+                #[cfg(target_os = "linux")]
+                symlink_path: args.symlink_path,
+                nodelay: args.nodelay,
+                #[cfg(feature = "watch")]
+                watch: args.watch,
+            },
+            config_string,
+        ))
     }
 
     pub(crate) fn main_impl() -> Result<()> {
-        let args = cli_init()?;
-        let kanata_arc = Kanata::new_arc(&args)?;
+        let (args, config_string) = cli_init()?;
+
+        let kanata_arc = if let Some(cfg_str) = config_string {
+            use rustc_hash::FxHashMap;
+            let kanata = Kanata::new_from_str(&cfg_str, FxHashMap::default())?;
+            std::sync::Arc::new(parking_lot::Mutex::new(kanata))
+        } else {
+            Kanata::new_arc(&args)?
+        };
 
         if !args.nodelay {
             log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
@@ -231,7 +274,12 @@ mod cli {
             (None, None, None)
         };
 
-        Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
+        Kanata::start_processing_loop(
+            kanata_arc.clone(),
+            rx,
+            ntx,
+            args.nodelay,
+        );
 
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]
@@ -241,7 +289,9 @@ mod cli {
         // Start comprehensive file watcher if enabled (supports include files)
         #[cfg(feature = "watch")]
         if args.watch {
-            if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
+            if let Err(e) =
+                crate::file_watcher::start_file_watcher(kanata_arc.clone())
+            {
                 log::error!("Failed to start file watcher: {}", e);
             }
         }
@@ -262,6 +312,11 @@ pub fn main() -> Result<()> {
     eprintln!("\nPress enter to exit");
     let _ = std::io::stdin().read_line(&mut String::new());
     ret
+}
+
+#[cfg(all(feature = "gui", target_os = "windows"))]
+fn main() {
+    main_lib::win_gui::lib_main_gui();
 }
 
 #[cfg(all(feature = "gui", target_os = "windows"))]

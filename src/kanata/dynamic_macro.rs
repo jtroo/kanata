@@ -63,14 +63,18 @@ impl DynamicMacroRecordState {
     fn add_event(&mut self, osc: OsCode, evtype: WaitingEventType) {
         if let Some(pending_event) = self.waiting_event.take() {
             match pending_event.1 {
-                WaitingEventType::Press => self.macro_items.push(DynamicMacroItem::Press((
-                    pending_event.0,
-                    self.current_delay,
-                ))),
-                WaitingEventType::Release => self.macro_items.push(DynamicMacroItem::Release((
-                    pending_event.0,
-                    self.current_delay,
-                ))),
+                WaitingEventType::Press => {
+                    self.macro_items.push(DynamicMacroItem::Press((
+                        pending_event.0,
+                        self.current_delay,
+                    )))
+                }
+                WaitingEventType::Release => {
+                    self.macro_items.push(DynamicMacroItem::Release((
+                        pending_event.0,
+                        self.current_delay,
+                    )))
+                }
             };
         }
         self.current_delay = 0;
@@ -169,13 +173,18 @@ pub fn begin_record_macro(
         Some(mut state) => {
             if let Some(pending_event) = state.waiting_event.take() {
                 match pending_event.1 {
-                    WaitingEventType::Press => state.macro_items.push(DynamicMacroItem::Press((
-                        pending_event.0,
-                        state.current_delay,
-                    ))),
-                    WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release(
-                        (pending_event.0, state.current_delay),
-                    )),
+                    WaitingEventType::Press => {
+                        state.macro_items.push(DynamicMacroItem::Press((
+                            pending_event.0,
+                            state.current_delay,
+                        )))
+                    }
+                    WaitingEventType::Release => {
+                        state.macro_items.push(DynamicMacroItem::Release((
+                            pending_event.0,
+                            state.current_delay,
+                        )))
+                    }
                 };
             }
             // remove the last item, since it's almost certainly a "macro
@@ -232,7 +241,10 @@ pub fn record_press(
     }
 }
 
-pub fn record_release(record_state: &mut Option<DynamicMacroRecordState>, osc: OsCode) {
+pub fn record_release(
+    record_state: &mut Option<DynamicMacroRecordState>,
+    osc: OsCode,
+) {
     if let Some(state) = record_state {
         log::debug!("delay to release: {}", state.current_delay);
         state.add_event(osc, WaitingEventType::Release);
@@ -246,14 +258,18 @@ pub fn stop_macro(
     if let Some(mut state) = record_state.take() {
         if let Some(pending_event) = state.waiting_event.take() {
             match pending_event.1 {
-                WaitingEventType::Press => state.macro_items.push(DynamicMacroItem::Press((
-                    pending_event.0,
-                    state.current_delay,
-                ))),
-                WaitingEventType::Release => state.macro_items.push(DynamicMacroItem::Release((
-                    pending_event.0,
-                    state.current_delay,
-                ))),
+                WaitingEventType::Press => {
+                    state.macro_items.push(DynamicMacroItem::Press((
+                        pending_event.0,
+                        state.current_delay,
+                    )))
+                }
+                WaitingEventType::Release => {
+                    state.macro_items.push(DynamicMacroItem::Release((
+                        pending_event.0,
+                        state.current_delay,
+                    )))
+                }
             };
         }
         // remove the last item independently of `num_actions_to_remove`
@@ -300,7 +316,9 @@ pub fn play_macro(
             if state.active_macros.contains(&macro_id) {
                 log::warn!("refusing to recurse into macro {macro_id}");
             } else if let Some(items) = recorded_macros.get(&macro_id) {
-                log::debug!("prepending macro {macro_id} items to current replay");
+                log::debug!(
+                    "prepending macro {macro_id} items to current replay"
+                );
                 log::debug!("playing macro {items:?}");
                 state.active_macros.insert(macro_id);
                 state

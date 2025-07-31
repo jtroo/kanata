@@ -17,17 +17,18 @@ mod real {
     }
     use ClipboardData::*;
 
-    static CLIPBOARD: LazyLock<Mutex<arboard::Clipboard>> = LazyLock::new(|| {
-        for _ in 0..10 {
-            let c = arboard::Clipboard::new();
-            if let Ok(goodclip) = c {
-                log::trace!("clipboard init");
-                return Mutex::new(goodclip);
+    static CLIPBOARD: LazyLock<Mutex<arboard::Clipboard>> =
+        LazyLock::new(|| {
+            for _ in 0..10 {
+                let c = arboard::Clipboard::new();
+                if let Ok(goodclip) = c {
+                    log::trace!("clipboard init");
+                    return Mutex::new(goodclip);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(25));
             }
-            std::thread::sleep(std::time::Duration::from_millis(25));
-        }
-        panic!("could not initialize clipboard");
-    });
+            panic!("could not initialize clipboard");
+        });
 
     pub(crate) fn clpb_set(clipboard_string: &str) {
         for _ in 0..10 {
@@ -49,7 +50,10 @@ mod real {
         for _ in 0..10 {
             match CLIPBOARD.lock().get_text() {
                 Ok(cliptext) => {
-                    newclip = Some(run_cmd_get_stdout(cmd_and_args, cliptext.as_str()));
+                    newclip = Some(run_cmd_get_stdout(
+                        cmd_and_args,
+                        cliptext.as_str(),
+                    ));
                     break;
                 }
                 Err(e) => {
@@ -153,7 +157,9 @@ mod real {
                 },
                 Image(img) => match CLIPBOARD.lock().set_image(img.clone()) {
                     Ok(()) => {
-                        log::trace!("restored clipboard with id {id}: <imgdata>");
+                        log::trace!(
+                            "restored clipboard with id {id}: <imgdata>"
+                        );
                         return;
                     }
                     Err(e) => e,
@@ -164,7 +170,11 @@ mod real {
         }
     }
 
-    pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboardData) {
+    pub(crate) fn clpb_save_set(
+        id: u16,
+        content: &str,
+        save_data: &mut SavedClipboardData,
+    ) {
         log::trace!("setting save id {id} with {content}");
         save_data.insert(id, Text(content.into()));
     }
@@ -236,7 +246,11 @@ mod real {
         }
     }
 
-    pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {
+    pub(crate) fn clpb_save_swap(
+        id1: u16,
+        id2: u16,
+        save_data: &mut SavedClipboardData,
+    ) {
         let data1 = save_data.remove(&id1);
         let data2 = save_data.remove(&id2);
         if let Some(d) = data1 {
@@ -309,7 +323,12 @@ mod fake {
 
     pub(crate) fn clpb_restore(id: u16, save_data: &SavedClipboardData) {}
 
-    pub(crate) fn clpb_save_set(id: u16, content: &str, save_data: &mut SavedClipboardData) {}
+    pub(crate) fn clpb_save_set(
+        id: u16,
+        content: &str,
+        save_data: &mut SavedClipboardData,
+    ) {
+    }
 
     pub(crate) fn clpb_save_cmd_set(
         id: u16,
@@ -318,5 +337,10 @@ mod fake {
     ) {
     }
 
-    pub(crate) fn clpb_save_swap(id1: u16, id2: u16, save_data: &mut SavedClipboardData) {}
+    pub(crate) fn clpb_save_swap(
+        id1: u16,
+        id2: u16,
+        save_data: &mut SavedClipboardData,
+    ) {
+    }
 }

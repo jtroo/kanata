@@ -74,7 +74,10 @@ impl TcpServer {
     }
 
     #[cfg(not(feature = "tcp_server"))]
-    pub fn new(_address: SocketAddr, _wakeup_channel: Sender<KeyEvent>) -> Self {
+    pub fn new(
+        _address: SocketAddr,
+        _wakeup_channel: Sender<KeyEvent>,
+    ) -> Self {
         Self { connections: () }
     }
 
@@ -84,7 +87,8 @@ impl TcpServer {
 
         use crate::kanata::handle_fakekey_action;
 
-        let listener = TcpListener::bind(self.address).expect("TCP server starts");
+        let listener =
+            TcpListener::bind(self.address).expect("TCP server starts");
 
         let connections = self.connections.clone();
         let wakeup_channel = self.wakeup_channel.clone();
@@ -100,7 +104,10 @@ impl TcpServer {
                             );
                             if let Err(e) = stream.write(
                                 &ServerMessage::LayerChange {
-                                    new: k.layer_info[k.layout.b().current_layer()].name.clone(),
+                                    new: k.layer_info
+                                        [k.layout.b().current_layer()]
+                                    .name
+                                    .clone(),
                                 }
                                 .as_bytes(),
                             ) {
@@ -132,7 +139,10 @@ impl TcpServer {
                             for v in reader {
                                 match v {
                                     Ok(event) => {
-                                        log::debug!("tcp server received command: {:?}", event);
+                                        log::debug!(
+                                            "tcp server received command: {:?}",
+                                            event
+                                        );
                                         match event {
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
@@ -287,7 +297,8 @@ impl TcpServer {
                                         let response = ServerResponse::Error {
                                             msg: format!("Failed to deserialize command: {e}"),
                                         };
-                                        let _ = stream.write_all(&response.as_bytes());
+                                        let _ = stream
+                                            .write_all(&response.as_bytes());
                                         connections.lock().remove(&addr);
                                         break;
                                     }
@@ -295,7 +306,9 @@ impl TcpServer {
                             }
                         });
                     }
-                    Err(_) => log::error!("not able to accept client connection"),
+                    Err(_) => {
+                        log::error!("not able to accept client connection")
+                    }
                 }
             }
         });
@@ -311,8 +324,12 @@ pub fn simple_sexpr_to_json_array(exprs: &[SimpleSExpr]) -> serde_json::Value {
 
     for expr in exprs.iter() {
         match expr {
-            SimpleSExpr::Atom(s) => result.push(serde_json::Value::String(s.clone())),
-            SimpleSExpr::List(list) => result.push(simple_sexpr_to_json_array(list)),
+            SimpleSExpr::Atom(s) => {
+                result.push(serde_json::Value::String(s.clone()))
+            }
+            SimpleSExpr::List(list) => {
+                result.push(simple_sexpr_to_json_array(list))
+            }
         }
     }
 

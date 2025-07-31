@@ -16,7 +16,8 @@ fn hold_for_duration() {
     assert_eq!("t:1ms dn:LGui t:258ms up:LGui", result);
     let result = simulate(CFG, "d:a u:a t:25 d:c u:c t:25").to_ascii();
     assert_eq!("t:2ms dn:LGui t:23ms up:LGui", result);
-    let result = simulate(CFG, "d:a u:a t:25 d:b u:b t:25 d:b u:b t:60").to_ascii();
+    let result =
+        simulate(CFG, "d:a u:a t:25 d:b u:b t:25 d:b u:b t:60").to_ascii();
     assert_eq!(
         "t:2ms dn:LGui t:23ms dn:Kb1 t:1ms up:Kb1 t:24ms dn:Kb1 t:1ms up:Kb1 t:49ms up:LGui",
         result

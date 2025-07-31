@@ -6,7 +6,8 @@
 use crate::kanata::Kanata;
 use anyhow::Result;
 use notify_debouncer_mini::{
-    new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind,
+    new_debouncer, notify::RecursiveMode, DebounceEventResult,
+    DebouncedEventKind,
 };
 use parking_lot::Mutex;
 use std::fs;
@@ -28,7 +29,8 @@ pub fn discover_include_files(cfg_paths: &[PathBuf]) -> Vec<PathBuf> {
                     // Extract the path between quotes
                     if let Some(start) = trimmed.find('"') {
                         if let Some(end) = trimmed[start + 1..].find('"') {
-                            let include_path = &trimmed[start + 1..start + 1 + end];
+                            let include_path =
+                                &trimmed[start + 1..start + 1 + end];
                             let mut path = PathBuf::from(include_path);
 
                             // If path is relative, make it relative to the config file directory
@@ -72,7 +74,8 @@ pub fn start_file_watcher(kanata_arc: Arc<Mutex<Kanata>>) -> Result<()> {
     }
 
     // Create the watcher and store it in the Kanata struct
-    let debouncer = create_debouncer(kanata_arc.clone(), &cfg_paths, &included_files)?;
+    let debouncer =
+        create_debouncer(kanata_arc.clone(), &cfg_paths, &included_files)?;
 
     // Store the debouncer in the Kanata struct
     {
@@ -89,7 +92,11 @@ pub fn create_debouncer(
     kanata_arc: Arc<Mutex<Kanata>>,
     cfg_paths: &[PathBuf],
     included_files: &[PathBuf],
-) -> Result<notify_debouncer_mini::Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>> {
+) -> Result<
+    notify_debouncer_mini::Debouncer<
+        notify_debouncer_mini::notify::RecommendedWatcher,
+    >,
+> {
     // Create list of all files to watch
     let all_watched_files: Vec<PathBuf> = cfg_paths
         .iter()
@@ -107,8 +114,13 @@ pub fn create_debouncer(
                     for event in events {
                         // Check if the changed file is one of our watched files
                         if all_watched_files.iter().any(|watched_path| {
-                            event.path.canonicalize().unwrap_or(event.path.clone())
-                                == watched_path.canonicalize().unwrap_or(watched_path.clone())
+                            event
+                                .path
+                                .canonicalize()
+                                .unwrap_or(event.path.clone())
+                                == watched_path
+                                    .canonicalize()
+                                    .unwrap_or(watched_path.clone())
                         }) {
                             match event.kind {
                                 DebouncedEventKind::Any => {
@@ -118,7 +130,9 @@ pub fn create_debouncer(
                                     );
 
                                     // Set the live_reload_requested flag
-                                    if let Some(mut kanata) = kanata_arc_clone.try_lock() {
+                                    if let Some(mut kanata) =
+                                        kanata_arc_clone.try_lock()
+                                    {
                                         kanata.request_live_reload();
                                     } else {
                                         log::warn!(
@@ -163,7 +177,10 @@ pub fn create_debouncer(
     Ok(debouncer)
 }
 
-pub fn restart_watcher(k_locked: &mut parking_lot::MutexGuard<Kanata>, k_ref: Arc<Mutex<Kanata>>) {
+pub fn restart_watcher(
+    k_locked: &mut parking_lot::MutexGuard<Kanata>,
+    k_ref: Arc<Mutex<Kanata>>,
+) {
     log::info!("Restarting file watcher due to changes in included files");
 
     // Drop the old watcher. This is critical to stop its background thread
@@ -171,8 +188,11 @@ pub fn restart_watcher(k_locked: &mut parking_lot::MutexGuard<Kanata>, k_ref: Ar
     k_locked.file_watcher = None;
 
     // Create a new watcher with the updated file list
-    let new_debouncer = match create_debouncer(k_ref, &k_locked.cfg_paths, &k_locked.included_files)
-    {
+    let new_debouncer = match create_debouncer(
+        k_ref,
+        &k_locked.cfg_paths,
+        &k_locked.included_files,
+    ) {
         Ok(debouncer) => {
             log::info!("File watcher successfully restarted");
             Some(debouncer)

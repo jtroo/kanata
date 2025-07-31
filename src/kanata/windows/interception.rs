@@ -10,33 +10,49 @@ use crate::oskbd::KeyValue;
 use kanata_parser::keys::OsCode;
 
 impl Kanata {
-    pub fn event_loop_inner(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop_inner(
+        kanata: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+    ) -> Result<()> {
         let intrcptn = ic::Interception::new().ok_or_else(|| anyhow!("interception driver should init: have you completed the interception driver installation?"))?;
-        intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
+        intrcptn.set_filter(
+            ic::is_keyboard,
+            ic::Filter::KeyFilter(ic::KeyFilter::all()),
+        );
         let mut strokes = [ic::Stroke::Keyboard {
             code: ic::ScanCode::Esc,
             state: ic::KeyState::empty(),
             information: 0,
         }; 32];
 
-        let keyboards_to_intercept_hwids = kanata.lock().intercept_kb_hwids.clone();
-        let keyboards_to_intercept_hwids_exclude = kanata.lock().intercept_kb_hwids_exclude.clone();
+        let keyboards_to_intercept_hwids =
+            kanata.lock().intercept_kb_hwids.clone();
+        let keyboards_to_intercept_hwids_exclude =
+            kanata.lock().intercept_kb_hwids_exclude.clone();
         let mouse_to_intercept_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids.clone();
         let mouse_to_intercept_excluded_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids_exclude.clone();
         let mouse_movement_key = kanata.lock().mouse_movement_key.clone();
-        if mouse_to_intercept_hwids.is_some() || mouse_to_intercept_excluded_hwids.is_some() {
+        if mouse_to_intercept_hwids.is_some()
+            || mouse_to_intercept_excluded_hwids.is_some()
+        {
             if mouse_movement_key.lock().is_some() {
-                intrcptn.set_filter(ic::is_mouse, ic::Filter::MouseFilter(ic::MouseState::all()));
+                intrcptn.set_filter(
+                    ic::is_mouse,
+                    ic::Filter::MouseFilter(ic::MouseState::all()),
+                );
             } else {
                 intrcptn.set_filter(
                     ic::is_mouse,
-                    ic::Filter::MouseFilter(ic::MouseState::all() & (!ic::MouseState::MOVE)),
+                    ic::Filter::MouseFilter(
+                        ic::MouseState::all() & (!ic::MouseState::MOVE),
+                    ),
                 );
             }
         }
-        let mut is_dev_interceptable: HashMap<ic::Device, bool> = HashMap::default();
+        let mut is_dev_interceptable: HashMap<ic::Device, bool> =
+            HashMap::default();
         loop {
             let dev = intrcptn.wait();
             if dev > 0 {
@@ -51,12 +67,16 @@ impl Kanata {
                                 &keyboards_to_intercept_hwids_exclude,
                                 &mut is_dev_interceptable,
                             ) {
-                                log::debug!("stroke {:?} is from undesired device", strokes[i]);
+                                log::debug!(
+                                    "stroke {:?} is from undesired device",
+                                    strokes[i]
+                                );
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
                             log::debug!("got stroke {:?}", strokes[i]);
-                            let code = match OsCodeWrapper::try_from(strokes[i]) {
+                            let code = match OsCodeWrapper::try_from(strokes[i])
+                            {
                                 Ok(c) => c.0,
                                 _ => {
                                     log::debug!("could not map code to oscode");
@@ -85,18 +105,29 @@ impl Kanata {
                             );
 
                             if allow_this_dev {
-                                log::trace!("checking mouse stroke {:?}", strokes[i]);
+                                log::trace!(
+                                    "checking mouse stroke {:?}",
+                                    strokes[i]
+                                );
 
-                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                                    if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
-                                        tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
+                                if let Some(ms_mvmt_key) =
+                                    *mouse_movement_key.lock()
+                                {
+                                    if flags
+                                        .contains(ic::MouseFlags::MOVE_RELATIVE)
+                                    {
+                                        tx.try_send(KeyEvent::new(
+                                            ms_mvmt_key,
+                                            KeyValue::Tap,
+                                        ))?;
                                     }
                                 };
                             }
 
-                            if let (true, Some(event)) =
-                                (allow_this_dev, mouse_state_to_event(state, rolling))
-                            {
+                            if let (true, Some(event)) = (
+                                allow_this_dev,
+                                mouse_state_to_event(state, rolling),
+                            ) {
                                 event
                             } else {
                                 intrcptn.send(dev, &strokes[i..i + 1]);
@@ -141,7 +172,9 @@ impl Kanata {
         }
         #[cfg(feature = "gui")]
         {
-            std::thread::spawn(move || -> Result<()> { Self::event_loop_inner(kanata, tx) });
+            std::thread::spawn(move || -> Result<()> {
+                Self::event_loop_inner(kanata, tx)
+            });
             let _ui = ui; // prevents thread from panicking on exiting via a GUI
             native_windows_gui::dispatch_thread_events();
             Ok(())
@@ -185,7 +218,10 @@ fn is_device_interceptable(
         _ => unreachable!("excluded and allowed should be mutually exclusive"),
     }
 }
-fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent> {
+fn mouse_state_to_event(
+    state: ic::MouseState,
+    rolling: i16,
+) -> Option<KeyEvent> {
     if state.contains(ic::MouseState::RIGHT_BUTTON_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_RIGHT,

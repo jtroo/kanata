@@ -13,7 +13,9 @@ use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
 use core_graphics::base::CGFloat;
 use core_graphics::display::{CGDisplay, CGPoint};
-use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType, CGMouseButton, EventField};
+use core_graphics::event::{
+    CGEvent, CGEventTapLocation, CGEventType, CGMouseButton, EventField,
+};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
@@ -118,7 +120,8 @@ impl KbdIn {
                 .split("\n")
                 .filter(|kb| {
                     let kb_trimmed = kb.trim();
-                    !kb_trimmed.is_empty() && !names.contains(&kb_trimmed.to_string())
+                    !kb_trimmed.is_empty()
+                        && !names.contains(&kb_trimmed.to_string())
                 })
                 .map(|kb| kb.trim().to_string())
                 .collect();
@@ -257,7 +260,11 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
             self.write(event)
         } else {
@@ -266,7 +273,11 @@ impl KbdOut {
         }
     }
 
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         if let Ok(event) = InputEvent::try_from(KeyEvent {
             value,
             code: OsCode::from_u16(code as u16).unwrap(),
@@ -299,7 +310,11 @@ impl KbdOut {
         event.post(CGEventTapLocation::AnnotatedSession);
         Ok(())
     }
-    pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(
+        &mut self,
+        _direction: MWheelDirection,
+        _distance: u16,
+    ) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         event.set_type(CGEventType::ScrollWheel);
         match _direction {
@@ -324,7 +339,11 @@ impl KbdOut {
         event.post(CGEventTapLocation::HID);
         Ok(())
     }
-    fn button_action(&mut self, _btn: Btn, is_click: bool) -> Result<(), io::Error> {
+    fn button_action(
+        &mut self,
+        _btn: Btn,
+        is_click: bool,
+    ) -> Result<(), io::Error> {
         let (event_type, button) = match _btn {
             Btn::Left => (
                 if is_click {
@@ -362,9 +381,13 @@ impl KbdOut {
         let event_source = Self::make_event_source()?;
         let event = Self::make_event()?;
         let mouse_position = event.location();
-        let event =
-            CGEvent::new_mouse_event(event_source, event_type, mouse_position, button.unwrap())
-                .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
+        let event = CGEvent::new_mouse_event(
+            event_source,
+            event_type,
+            mouse_position,
+            button.unwrap(),
+        )
+        .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
 
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
@@ -379,7 +402,10 @@ impl KbdOut {
         Self::button_action(self, _btn, false)
     }
 
-    pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        _mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
         let pressed = Self::pressed_buttons();
 
         let event_type = if pressed & 1 > 0 {
@@ -412,7 +438,10 @@ impl KbdOut {
         }
     }
 
-    pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        _moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
         let display = CGDisplay::main();
@@ -435,8 +464,9 @@ impl KbdOut {
     }
 
     fn make_event_source() -> Result<CGEventSource, Error> {
-        CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
-            .map_err(|_| Error::other("failed to create core graphics event source"))
+        CGEventSource::new(CGEventSourceStateID::CombinedSessionState).map_err(
+            |_| Error::other("failed to create core graphics event source"),
+        )
     }
     /// Creates a core graphics event.
     /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
@@ -445,15 +475,19 @@ impl KbdOut {
     /// event is dropped, therefore we don't need to care about this ourselves.
     fn make_event() -> Result<CGEvent, Error> {
         let event_source = Self::make_event_source()?;
-        let event = CGEvent::new(event_source)
-            .map_err(|_| Error::other("failed to create core graphics event"))?;
+        let event = CGEvent::new(event_source).map_err(|_| {
+            Error::other("failed to create core graphics event")
+        })?;
         Ok(event)
     }
 
     /// Applies a calculated mouse move to a CGPoint.
     ///
     /// This does _not_ move the mouse, it just mutates the point.
-    fn apply_calculated_move(_mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
+    fn apply_calculated_move(
+        _mv: &CalculatedMouseMove,
+        mouse_position: &mut CGPoint,
+    ) {
         match _mv.direction {
             MoveDirection::Up => mouse_position.y -= _mv.distance as CGFloat,
             MoveDirection::Down => mouse_position.y += _mv.distance as CGFloat,

@@ -324,21 +324,25 @@ fn parse_all_keys() {
 #[test]
 fn parse_file_with_utf8_bom() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    new_from_file(&std::path::PathBuf::from("./test_cfgs/utf8bom.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/utf8bom.kbd"))
+        .unwrap();
 }
 
 #[test]
 #[cfg(feature = "zippychord")]
 fn parse_zippychord_file() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    new_from_file(&std::path::PathBuf::from("./test_cfgs/testzch.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/testzch.kbd"))
+        .unwrap();
 }
 
 #[test]
 fn disallow_nested_tap_hold() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))
-        .map_err(|e| format!("{}", e.help().unwrap()))
+    match new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/nested_tap_hold.kbd",
+    ))
+    .map_err(|e| format!("{}", e.help().unwrap()))
     {
         Ok(_) => panic!("invalid nested tap-hold in tap action was Ok'd"),
         Err(e) => assert!(e.contains("tap-hold"), "real e: {e}"),
@@ -348,8 +352,10 @@ fn disallow_nested_tap_hold() {
 #[test]
 fn disallow_ancestor_seq() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/ancestor_seq.kbd"))
-        .map_err(|e| format!("{e:?}"))
+    match new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/ancestor_seq.kbd",
+    ))
+    .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid ancestor seq was Ok'd"),
         Err(e) => assert!(e.contains("is contained")),
@@ -359,8 +365,10 @@ fn disallow_ancestor_seq() {
 #[test]
 fn disallow_descendent_seq() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    match new_from_file(&std::path::PathBuf::from("./test_cfgs/descendant_seq.kbd"))
-        .map_err(|e| format!("{e:?}"))
+    match new_from_file(&std::path::PathBuf::from(
+        "./test_cfgs/descendant_seq.kbd",
+    ))
+    .map_err(|e| format!("{e:?}"))
     {
         Ok(_) => panic!("invalid descendant seq was Ok'd"),
         Err(e) => assert!(e.contains("contains")),
@@ -422,7 +430,9 @@ fn recursive_multi_is_flattened() {
         ]),
     ];
     let s = ParserState::default();
-    if let KanataAction::MultipleActions(parsed_multi) = parse_multi(&params, &s).unwrap() {
+    if let KanataAction::MultipleActions(parsed_multi) =
+        parse_multi(&params, &s).unwrap()
+    {
         assert_eq!(parsed_multi.len(), 4);
         assert_eq!(parsed_multi[0], Action::KeyCode(KeyCode::A));
         assert_eq!(parsed_multi[1], Action::KeyCode(KeyCode::B));
@@ -560,7 +570,8 @@ fn test_parse_macro_numbers() {
     let mut i = 1;
     while !expr_rem.is_empty() {
         let (macro_events, expr_rem_tmp) =
-            parse_macro_item(expr_rem, &ParserState::default()).expect("parses");
+            parse_macro_item(expr_rem, &ParserState::default())
+                .expect("parses");
         expr_rem = expr_rem_tmp;
         assert_eq!(macro_events.len(), 1);
         match &macro_events[0] {
@@ -571,13 +582,15 @@ fn test_parse_macro_numbers() {
     }
 
     let exprs = parse("(0)", "test").expect("parses")[0].t.clone();
-    parse_macro_item(exprs.as_slice(), &ParserState::default()).expect_err("errors");
+    parse_macro_item(exprs.as_slice(), &ParserState::default())
+        .expect_err("errors");
 }
 
 #[test]
 fn test_include_good() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    new_from_file(&std::path::PathBuf::from("./test_cfgs/include-good.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/include-good.kbd"))
+        .unwrap();
 }
 
 #[test]
@@ -747,10 +760,15 @@ fn parse_switch() {
     )
     .unwrap();
     let (op1, op2) = OpCode::new_active_input((FAKE_KEY_ROW, 0));
-    let (op3, op4) = OpCode::new_active_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTCTRL)));
+    let (op3, op4) = OpCode::new_active_input((
+        NORMAL_KEY_ROW,
+        u16::from(OsCode::KEY_LEFTCTRL),
+    ));
     let (op5, op6) = OpCode::new_historical_input((FAKE_KEY_ROW, 1), 0);
-    let (op7, op8) =
-        OpCode::new_historical_input((NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)), 7);
+    let (op7, op8) = OpCode::new_historical_input(
+        (NORMAL_KEY_ROW, u16::from(OsCode::KEY_LEFTSHIFT)),
+        7,
+    );
     let (klayers, _) = res.klayers.get();
     assert_eq!(
         klayers[0][0][OsCode::KEY_A.as_u16() as usize],
@@ -1514,9 +1532,9 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
         Err("env vars not implemented".into()),
     )
     .expect_err("should err");
-    assert!(err
-        .msg
-        .contains("Escaping shifted characters with `\\` is currently not supported"));
+    assert!(err.msg.contains(
+        "Escaping shifted characters with `\\` is currently not supported"
+    ));
 }
 
 #[test]
@@ -2029,7 +2047,8 @@ fn parse_defseq_overlap_too_many() {
 #[test]
 fn parse_layer_opts_icon() {
     let _lk = lock(&CFG_PARSE_LOCK);
-    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_good.kbd")).unwrap();
+    new_from_file(&std::path::PathBuf::from("./test_cfgs/icon_good.kbd"))
+        .unwrap();
 }
 
 #[test]

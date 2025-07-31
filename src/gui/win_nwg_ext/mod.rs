@@ -8,11 +8,13 @@ use winapi::shared::windef::HWND;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::Graphics::Gdi::DeleteObject;
 use windows_sys::Win32::UI::Shell::{
-    SHGetStockIconInfo, SHGSI_ICON, SHGSI_SMALLICON, SHSTOCKICONID, SHSTOCKICONINFO,
+    SHGetStockIconInfo, SHGSI_ICON, SHGSI_SMALLICON, SHSTOCKICONID,
+    SHSTOCKICONINFO,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CopyImage, DestroyIcon, GetIconInfoExW, SetMenuItemInfoW, HMENU, ICONINFOEXW, IMAGE_BITMAP,
-    LR_CREATEDIBSECTION, MENUITEMINFOW, MF_BYCOMMAND, MIIM_BITMAP,
+    CopyImage, DestroyIcon, GetIconInfoExW, SetMenuItemInfoW, HMENU,
+    ICONINFOEXW, IMAGE_BITMAP, LR_CREATEDIBSECTION, MENUITEMINFOW,
+    MF_BYCOMMAND, MIIM_BITMAP,
 };
 
 /// Extends [`nwg::Bitmap`] with additional functionality.
@@ -201,7 +203,9 @@ pub fn logical_to_physical(x: i32, y: i32) -> (i32, i32) {
 /// which is expected to handle these cases safely, but seems worth noting anyway.
 pub unsafe fn set_window_position(handle: HWND, x: i32, y: i32) {
     use winapi::um::winuser::SetWindowPos;
-    use winapi::um::winuser::{SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER};
+    use winapi::um::winuser::{
+        SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER,
+    };
     let (x, y) = logical_to_physical(x, y);
     unsafe {
         SetWindowPos(
@@ -217,7 +221,11 @@ pub unsafe fn set_window_position(handle: HWND, x: i32, y: i32) {
 }
 const NOT_BOUND: &str = "Window is not yet bound to a winapi object";
 const BAD_HANDLE: &str = "INTERNAL ERROR: Window handle is not HWND!";
-pub fn check_hwnd(handle: &ControlHandle, not_bound: &str, bad_handle: &str) -> HWND {
+pub fn check_hwnd(
+    handle: &ControlHandle,
+    not_bound: &str,
+    bad_handle: &str,
+) -> HWND {
     use winapi::um::winuser::IsWindow;
     if handle.blank() {
         panic!("{}", not_bound);

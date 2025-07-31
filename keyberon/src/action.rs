@@ -36,7 +36,9 @@ impl<T> Debug for SequenceEvent<'_, T> {
         match self {
             Self::NoOp => write!(f, "NoOp"),
             Self::Press(arg0) => f.debug_tuple("Press").field(arg0).finish(),
-            Self::Release(arg0) => f.debug_tuple("Release").field(arg0).finish(),
+            Self::Release(arg0) => {
+                f.debug_tuple("Release").field(arg0).finish()
+            }
             Self::Tap(arg0) => f.debug_tuple("Tap").field(arg0).finish(),
             Self::Delay { duration } => {
                 f.debug_struct("Delay").field("duration", duration).finish()
@@ -87,14 +89,18 @@ pub enum HoldTapConfig<'a> {
     /// The bool value defines if the timeout check should be skipped at the
     /// next tick. This should generally be false. This is used by `tap-hold-
     /// except-keys` to handle presses even when the timeout has been reached.
-    Custom(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
+    Custom(
+        &'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync),
+    ),
 }
 
 impl Debug for HoldTapConfig<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
-            HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
+            HoldTapConfig::HoldOnOtherKeyPress => {
+                f.write_str("HoldOnOtherKeyPress")
+            }
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
@@ -106,8 +112,13 @@ impl PartialEq for HoldTapConfig<'_> {
         #[allow(clippy::match_like_matches_macro)]
         match (self, other) {
             (HoldTapConfig::Default, HoldTapConfig::Default)
-            | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
-            | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
+            | (
+                HoldTapConfig::HoldOnOtherKeyPress,
+                HoldTapConfig::HoldOnOtherKeyPress,
+            )
+            | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => {
+                true
+            }
             _ => false,
         }
     }
@@ -266,7 +277,10 @@ impl<'a, T> ChordsGroup<'a, T> {
     }
 
     /// Gets the chord action assigned to the given chord keys if they are already unambigous (i.e. there is no key that could still be pressed that would result in a different chord).
-    pub fn get_chord_if_unambiguous(&self, keys: ChordKeys) -> Option<&'a Action<'a, T>> {
+    pub fn get_chord_if_unambiguous(
+        &self,
+        keys: ChordKeys,
+    ) -> Option<&'a Action<'a, T>> {
         self.chords
             .iter()
             .try_fold(None, |res, &(chord_keys, action)| {

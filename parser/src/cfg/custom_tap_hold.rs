@@ -10,7 +10,8 @@ use super::alloc::Allocations;
 pub(crate) fn custom_tap_hold_release(
     keys: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)
+{
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
         move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
@@ -36,7 +37,8 @@ pub(crate) fn custom_tap_hold_release(
 pub(crate) fn custom_tap_hold_except(
     keys: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)
+{
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
         move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {

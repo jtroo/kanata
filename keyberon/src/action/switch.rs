@@ -180,7 +180,8 @@ where
     case_index: usize,
 }
 
-impl<'a, T, A1, A2, H1, H2, L> Iterator for SwitchActions<'a, T, A1, A2, H1, H2, L>
+impl<'a, T, A1, A2, H1, H2, L> Iterator
+    for SwitchActions<'a, T, A1, A2, H1, H2, L>
 where
     A1: Iterator<Item = KeyCode> + Clone,
     A2: Iterator<Item = KCoord> + Clone,
@@ -252,7 +253,11 @@ impl OpCode {
     pub fn new_key_history(kc: KeyCode, key_recency: u8) -> Self {
         assert!((kc as u16) <= MAX_OPCODE_LEN);
         assert!(key_recency <= MAX_KEY_RECENCY);
-        Self((kc as u16 & MAX_OPCODE_LEN) | HISTORICAL_KEYCODE_VAL | ((key_recency as u16) << 12))
+        Self(
+            (kc as u16 & MAX_OPCODE_LEN)
+                | HISTORICAL_KEYCODE_VAL
+                | ((key_recency as u16) << 12),
+        )
     }
 
     /// Returns a new opcode that returns true if the n'th most recent key was pressed greater
@@ -262,7 +267,11 @@ impl OpCode {
     /// above, this has a resolution of 128 ms (rounded down).
     pub fn new_ticks_since_gt(nth_key: u8, ticks_since: u16) -> Self {
         assert!(nth_key <= MAX_KEY_RECENCY);
-        Self(TICKS_SINCE_VAL_GT | lossy_compress_ticks(ticks_since) | (u16::from(nth_key) << 10))
+        Self(
+            TICKS_SINCE_VAL_GT
+                | lossy_compress_ticks(ticks_since)
+                | (u16::from(nth_key) << 10),
+        )
     }
 
     /// Returns a new opcode that returns true if the n'th most recent key was pressed greater
@@ -272,7 +281,11 @@ impl OpCode {
     /// above, this has a resolution of 128 ms (rounded down).
     pub fn new_ticks_since_lt(nth_key: u8, ticks_since: u16) -> Self {
         assert!(nth_key <= MAX_KEY_RECENCY);
-        Self(TICKS_SINCE_VAL_LT | lossy_compress_ticks(ticks_since) | (u16::from(nth_key) << 10))
+        Self(
+            TICKS_SINCE_VAL_LT
+                | lossy_compress_ticks(ticks_since)
+                | (u16::from(nth_key) << 10),
+        )
     }
 
     /// Return a new OpCode for a boolean operation that ends (non-inclusive) at the specified
@@ -293,13 +306,20 @@ impl OpCode {
     }
 
     /// Return OpCodes specifying an active input check.
-    pub fn new_historical_input(input: KCoord, key_recency: u8) -> (Self, Self) {
+    pub fn new_historical_input(
+        input: KCoord,
+        key_recency: u8,
+    ) -> (Self, Self) {
         assert!(input.0 < 4);
         assert!(input.1 < 0x0400);
         assert!(key_recency < 0x8);
         (
             Self(HISTORICAL_INPUT_VAL),
-            Self((u16::from(input.0 & 3) << 14) + (u16::from(key_recency) << 11) + input.1),
+            Self(
+                (u16::from(input.0 & 3) << 14)
+                    + (u16::from(key_recency) << 11)
+                    + input.1,
+            ),
         )
     }
 
@@ -322,29 +342,40 @@ impl OpCode {
         } else if self.0 <= MAX_OPCODE_LEN {
             let op2 = next.expect("next should be some for opcode {self:?}");
             match self.0 {
-                INPUT_VAL => OpCodeType::Input((((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF)),
-                HISTORICAL_INPUT_VAL => OpCodeType::HistoricalInput(HistoricalInput {
-                    input: (((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF),
-                    how_far_back: (op2.0 >> 11) as u8 & 0x7,
-                }),
+                INPUT_VAL => OpCodeType::Input((
+                    ((op2.0 >> 14) & 0x3) as u8,
+                    op2.0 & 0x3FF,
+                )),
+                HISTORICAL_INPUT_VAL => {
+                    OpCodeType::HistoricalInput(HistoricalInput {
+                        input: (((op2.0 >> 14) & 0x3) as u8, op2.0 & 0x3FF),
+                        how_far_back: (op2.0 >> 11) as u8 & 0x7,
+                    })
+                }
                 LAYER_VAL => OpCodeType::Layer(op2.0),
                 BASE_LAYER_VAL => OpCodeType::BaseLayer(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
             match self.0 & 0xE000 {
-                TICKS_SINCE_VAL_LT => OpCodeType::TicksSinceLessThan(TicksSinceNthKey {
-                    nth_key: ((self.0 & 0x1C00) >> 10) as u8,
-                    ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
-                }),
-                TICKS_SINCE_VAL_GT => OpCodeType::TicksSinceGreaterThan(TicksSinceNthKey {
-                    nth_key: ((self.0 & 0x1C00) >> 10) as u8,
-                    ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
-                }),
-                0x8000..=0xF000 => OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
-                    key_code: self.0 & 0x0FFF,
-                    how_far_back: ((self.0 & 0x7000) >> 12) as u8,
-                }),
+                TICKS_SINCE_VAL_LT => {
+                    OpCodeType::TicksSinceLessThan(TicksSinceNthKey {
+                        nth_key: ((self.0 & 0x1C00) >> 10) as u8,
+                        ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
+                    })
+                }
+                TICKS_SINCE_VAL_GT => {
+                    OpCodeType::TicksSinceGreaterThan(TicksSinceNthKey {
+                        nth_key: ((self.0 & 0x1C00) >> 10) as u8,
+                        ticks_since: lossy_decompress_ticks(self.0 & 0x03FF),
+                    })
+                }
+                0x8000..=0xF000 => {
+                    OpCodeType::HistoricalKeyCode(HistoricalKeyCode {
+                        key_code: self.0 & 0x0FFF,
+                        how_far_back: ((self.0 & 0x7000) >> 12) as u8,
+                    })
+                }
                 _ => OpCodeType::BooleanOp(OperatorAndEndIndex::from(self.0)),
             }
         }
@@ -388,7 +419,8 @@ fn evaluate_boolean(
         if current_index >= current_end_index {
             match stack.pop_back() {
                 Some(operator) => {
-                    (current_op, current_end_index) = (operator.op, operator.idx);
+                    (current_op, current_end_index) =
+                        (operator.op, operator.idx);
                 }
                 None => break,
             }
@@ -403,7 +435,9 @@ fn evaluate_boolean(
                 continue;
             }
         }
-        match bool_expr[current_index].opcode_type(bool_expr.get(current_index + 1).copied()) {
+        match bool_expr[current_index]
+            .opcode_type(bool_expr.get(current_index + 1).copied())
+        {
             OpCodeType::BooleanOp(operator) => {
                 let res = stack.push_back(OperatorAndEndIndex {
                     op: current_op,
@@ -484,7 +518,10 @@ fn evaluate_boolean(
 }
 
 #[cfg(test)]
-fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode> + Clone) -> bool {
+fn evaluate_bool_test(
+    opcodes: &[OpCode],
+    keycodes: impl Iterator<Item = KeyCode> + Clone,
+) -> bool {
     evaluate_boolean(
         opcodes,
         keycodes,

@@ -6,7 +6,10 @@ pub fn start() -> Result<()> {
     let intrcptn = ic::Interception::new().expect(
         "interception driver should init: have you completed the interception driver installation?",
     );
-    intrcptn.set_filter(ic::is_keyboard, ic::Filter::KeyFilter(ic::KeyFilter::all()));
+    intrcptn.set_filter(
+        ic::is_keyboard,
+        ic::Filter::KeyFilter(ic::KeyFilter::all()),
+    );
     let mut strokes = [ic::Stroke::Keyboard {
         code: ic::ScanCode::Esc,
         state: ic::KeyState::empty(),
@@ -15,7 +18,8 @@ pub fn start() -> Result<()> {
 
     log::info!("interception attached, you can type now");
     loop {
-        let dev = intrcptn.wait_with_timeout(std::time::Duration::from_millis(1));
+        let dev =
+            intrcptn.wait_with_timeout(std::time::Duration::from_millis(1));
         if dev > 0 {
             let num_strokes = intrcptn.receive(dev, &mut strokes);
             let num_strokes = num_strokes as usize;
@@ -42,7 +46,10 @@ impl TryFrom<Stroke> for OsCode {
     fn try_from(item: Stroke) -> Result<Self, Self::Error> {
         Ok(match item {
             Stroke::Keyboard { code, state, .. } => {
-                match (state.contains(KeyState::E0), state.contains(KeyState::E1)) {
+                match (
+                    state.contains(KeyState::E0),
+                    state.contains(KeyState::E1),
+                ) {
                     (false, false) => {
                         match code {
                             ScanCode::Esc => OsCode::KEY_ESC,
@@ -180,17 +187,17 @@ impl TryFrom<Stroke> for OsCode {
                             0x37 => OsCode::KEY_PRINT,   // sc_printScreen
                             0x38 => OsCode::KEY_RIGHTALT, // sc_altRight
                             // 0x46 => OsCode::KEY_TODO, // sc_cancel
-                            0x47 => OsCode::KEY_HOME,      // sc_home
-                            0x48 => OsCode::KEY_UP,        // sc_arrowUp
-                            0x49 => OsCode::KEY_PAGEUP,    // sc_pageUp
-                            0x4B => OsCode::KEY_LEFT,      // sc_arrowLeft
-                            0x4D => OsCode::KEY_RIGHT,     // sc_arrowRight
-                            0x4F => OsCode::KEY_END,       // sc_end
-                            0x50 => OsCode::KEY_DOWN,      // sc_arrowDown
-                            0x51 => OsCode::KEY_PAGEDOWN,  // sc_pageDown
-                            0x52 => OsCode::KEY_INSERT,    // sc_insert
-                            0x53 => OsCode::KEY_DELETE,    // sc_delete
-                            0x5B => OsCode::KEY_LEFTMETA,  // sc_metaLeft
+                            0x47 => OsCode::KEY_HOME, // sc_home
+                            0x48 => OsCode::KEY_UP,   // sc_arrowUp
+                            0x49 => OsCode::KEY_PAGEUP, // sc_pageUp
+                            0x4B => OsCode::KEY_LEFT, // sc_arrowLeft
+                            0x4D => OsCode::KEY_RIGHT, // sc_arrowRight
+                            0x4F => OsCode::KEY_END,  // sc_end
+                            0x50 => OsCode::KEY_DOWN, // sc_arrowDown
+                            0x51 => OsCode::KEY_PAGEDOWN, // sc_pageDown
+                            0x52 => OsCode::KEY_INSERT, // sc_insert
+                            0x53 => OsCode::KEY_DELETE, // sc_delete
+                            0x5B => OsCode::KEY_LEFTMETA, // sc_metaLeft
                             0x5C => OsCode::KEY_RIGHTMETA, // sc_metaRight
                             // 0x5D => OsCode::KEY_TODO, // sc_application
                             // 0x5E => OsCode::KEY_TODO, // sc_power

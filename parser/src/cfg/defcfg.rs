@@ -77,9 +77,11 @@ pub struct CfgMacosOptions {
 #[derive(Debug, Clone, Default)]
 pub struct CfgWinterceptOptions {
     pub windows_interception_mouse_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    pub windows_interception_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_mouse_hwids_exclude:
+        Option<Vec<[u8; HWID_ARR_SZ]>>,
     pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
-    pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_hwids_exclude:
+        Option<Vec<[u8; HWID_ARR_SZ]>>,
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
@@ -171,7 +173,10 @@ pub struct CfgOptions {
         target_os = "unknown"
     ))]
     pub wintercept_opts: CfgWinterceptOptions,
-    #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+    #[cfg(all(
+        any(target_os = "windows", target_os = "unknown"),
+        feature = "gui"
+    ))]
     pub gui_opts: CfgOptionsGui,
 }
 
@@ -194,7 +199,8 @@ impl Default for CfgOptions {
             movemouse_smooth_diagonals: false,
             override_release_on_activation: false,
             dynamic_macro_max_presses: 128,
-            dynamic_macro_replay_delay_behaviour: ReplayDelayBehaviour::Recorded,
+            dynamic_macro_replay_delay_behaviour:
+                ReplayDelayBehaviour::Recorded,
             concurrent_tap_hold: false,
             rapid_event_delay: 5,
             trans_resolution_behavior_v2: true,
@@ -216,7 +222,10 @@ impl Default for CfgOptions {
             wintercept_opts: Default::default(),
             #[cfg(any(target_os = "macos", target_os = "unknown"))]
             macos_opts: Default::default(),
-            #[cfg(all(any(target_os = "windows", target_os = "unknown"), feature = "gui"))]
+            #[cfg(all(
+                any(target_os = "windows", target_os = "unknown"),
+                feature = "gui"
+            ))]
             gui_opts: Default::default(),
         }
     }
@@ -251,18 +260,23 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                 }
                 match label {
                     "sequence-timeout" => {
-                        cfg.sequence_timeout = parse_cfg_val_u16(val, label, true)?;
+                        cfg.sequence_timeout =
+                            parse_cfg_val_u16(val, label, true)?;
                     }
                     "sequence-input-mode" => {
                         let v = sexpr_to_str_or_err(val, label)?;
-                        cfg.sequence_input_mode = SequenceInputMode::try_from_str(v)
-                            .map_err(|e| anyhow_expr!(val, "{}", e.to_string()))?;
+                        cfg.sequence_input_mode =
+                            SequenceInputMode::try_from_str(v).map_err(
+                                |e| anyhow_expr!(val, "{}", e.to_string()),
+                            )?;
                     }
                     "sequence-always-on" => {
-                        cfg.sequence_always_on = parse_defcfg_val_bool(val, label)?
+                        cfg.sequence_always_on =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "dynamic-macro-max-presses" => {
-                        cfg.dynamic_macro_max_presses = parse_cfg_val_u16(val, label, false)?;
+                        cfg.dynamic_macro_max_presses =
+                            parse_cfg_val_u16(val, label, false)?;
                     }
                     "dynamic-macro-replay-delay-behaviour" => {
                         cfg.dynamic_macro_replay_delay_behaviour = val
@@ -298,23 +312,31 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("linux-dev-names-include is empty");
                             }
-                            cfg.linux_opts.linux_dev_names_include = Some(dev_names);
+                            cfg.linux_opts.linux_dev_names_include =
+                                Some(dev_names);
                         }
                     }
                     "linux-dev-names-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
+                            cfg.linux_opts.linux_dev_names_exclude =
+                                Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
-                            cfg.linux_opts.linux_unicode_u_code = crate::keys::str_to_oscode(v)
-                                .ok_or_else(|| {
-                                    anyhow_expr!(val, "unknown code for {label}: {}", v)
-                                })?;
+                            cfg.linux_opts.linux_unicode_u_code =
+                                crate::keys::str_to_oscode(v).ok_or_else(
+                                    || {
+                                        anyhow_expr!(
+                                            val,
+                                            "unknown code for {label}: {}",
+                                            v
+                                        )
+                                    },
+                                )?;
                         }
                     }
                     "linux-unicode-termination" => {
@@ -343,16 +365,20 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if delay_rate.len() != 2 {
                                 bail_expr!(val, "{}", ERRMSG)
                             }
-                            cfg.linux_opts.linux_x11_repeat_delay_rate = Some(KeyRepeatSettings {
-                                delay: match str::parse::<u16>(delay_rate[0]) {
-                                    Ok(delay) => delay,
-                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
-                                },
-                                rate: match str::parse::<u16>(delay_rate[1]) {
-                                    Ok(rate) => rate,
-                                    Err(_) => bail_expr!(val, "{}", ERRMSG),
-                                },
-                            });
+                            cfg.linux_opts.linux_x11_repeat_delay_rate =
+                                Some(KeyRepeatSettings {
+                                    delay: match str::parse::<u16>(
+                                        delay_rate[0],
+                                    ) {
+                                        Ok(delay) => delay,
+                                        Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                    },
+                                    rate: match str::parse::<u16>(delay_rate[1])
+                                    {
+                                        Ok(rate) => rate,
+                                        Err(_) => bail_expr!(val, "{}", ERRMSG),
+                                    },
+                                });
                         }
                     }
                     "linux-use-trackpoint-property" => {
@@ -369,7 +395,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if device_name.is_empty() {
                                 log::warn!("linux-output-device-name is empty, using kanata as default value");
                             } else {
-                                cfg.linux_opts.linux_output_name = device_name.to_owned();
+                                cfg.linux_opts.linux_output_name =
+                                    device_name.to_owned();
                             }
                         }
                     }
@@ -399,15 +426,23 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             let detect_mode = Some(match detect_mode {
                                 "any" => DeviceDetectMode::Any,
-                                "keyboard-only" => DeviceDetectMode::KeyboardOnly,
-                                "keyboard-mice" => DeviceDetectMode::KeyboardMice,
+                                "keyboard-only" => {
+                                    DeviceDetectMode::KeyboardOnly
+                                }
+                                "keyboard-mice" => {
+                                    DeviceDetectMode::KeyboardMice
+                                }
                                 _ => unreachable!("validated earlier"),
                             });
-                            cfg.linux_opts.linux_device_detect_mode = detect_mode;
+                            cfg.linux_opts.linux_device_detect_mode =
+                                detect_mode;
                         }
                     }
                     "windows-altgr" => {
-                        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "windows",
+                            target_os = "unknown"
+                        ))]
                         {
                             const CANCEL: &str = "cancel-lctl-press";
                             const ADD: &str = "add-lctl-release";
@@ -426,14 +461,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "windows-sync-keystates" => {
-                        #[cfg(any(target_os = "windows", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "windows",
+                            target_os = "unknown"
+                        ))]
                         {
-                            cfg.windows_opts.sync_keystates = parse_defcfg_val_bool(val, label)?;
+                            cfg.windows_opts.sync_keystates =
+                                parse_defcfg_val_bool(val, label)?;
                         }
                     }
                     "windows-interception-mouse-hwid" => {
                         #[cfg(any(
-                            all(feature = "interception_driver", target_os = "windows"),
+                            all(
+                                feature = "interception_driver",
+                                target_os = "windows"
+                            ),
                             target_os = "unknown"
                         ))]
                         {
@@ -473,7 +515,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     v.push(hwid_slice);
                                 }
                                 None => {
-                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                    cfg.wintercept_opts
+                                        .windows_interception_mouse_hwids =
                                         Some(vec![hwid_slice]);
                                 }
                             }
@@ -486,7 +529,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "windows-interception-mouse-hwids" => {
                         #[cfg(any(
-                            all(feature = "interception_driver", target_os = "windows"),
+                            all(
+                                feature = "interception_driver",
+                                target_os = "windows"
+                            ),
                             target_os = "unknown"
                         ))]
                         {
@@ -511,7 +557,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                     v.extend(parsed_hwids);
                                 }
                                 None => {
-                                    cfg.wintercept_opts.windows_interception_mouse_hwids =
+                                    cfg.wintercept_opts
+                                        .windows_interception_mouse_hwids =
                                         Some(parsed_hwids);
                                 }
                             }
@@ -524,7 +571,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "windows-interception-mouse-hwids-exclude" => {
                         #[cfg(any(
-                            all(feature = "interception_driver", target_os = "windows"),
+                            all(
+                                feature = "interception_driver",
+                                target_os = "windows"
+                            ),
                             target_os = "unknown"
                         ))]
                         {
@@ -540,13 +590,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-mouse-hwids-exclude",
                             )?;
-                            cfg.wintercept_opts.windows_interception_mouse_hwids_exclude =
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_hwids_exclude =
                                 Some(parsed_hwids);
                         }
                     }
                     "windows-interception-keyboard-hwids" => {
                         #[cfg(any(
-                            all(feature = "interception_driver", target_os = "windows"),
+                            all(
+                                feature = "interception_driver",
+                                target_os = "windows"
+                            ),
                             target_os = "unknown"
                         ))]
                         {
@@ -562,13 +616,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 label,
                                 "entry in windows-interception-keyboard-hwids",
                             )?;
-                            cfg.wintercept_opts.windows_interception_keyboard_hwids =
+                            cfg.wintercept_opts
+                                .windows_interception_keyboard_hwids =
                                 Some(parsed_hwids);
                         }
                     }
                     "windows-interception-keyboard-hwids-exclude" => {
                         #[cfg(any(
-                            all(feature = "interception_driver", target_os = "windows"),
+                            all(
+                                feature = "interception_driver",
+                                target_os = "windows"
+                            ),
                             target_os = "unknown"
                         ))]
                         {
@@ -585,7 +643,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 "entry in windows-interception-keyboard-hwids-exclude",
                             )?;
                             cfg.wintercept_opts
-                                .windows_interception_keyboard_hwids_exclude = Some(parsed_hwids);
+                                .windows_interception_keyboard_hwids_exclude =
+                                Some(parsed_hwids);
                         }
                     }
                     "macos-dev-names-include" => {
@@ -595,7 +654,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("macos-dev-names-include is empty");
                             }
-                            cfg.macos_opts.macos_dev_names_include = Some(dev_names);
+                            cfg.macos_opts.macos_dev_names_include =
+                                Some(dev_names);
                         }
                     }
                     "macos-dev-names-exclude" => {
@@ -605,7 +665,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if dev_names.is_empty() {
                                 log::warn!("macos-dev-names-exclude is empty");
                             }
-                            cfg.macos_opts.macos_dev_names_exclude = Some(dev_names);
+                            cfg.macos_opts.macos_dev_names_exclude =
+                                Some(dev_names);
                         }
                     }
                     "tray-icon" => {
@@ -618,7 +679,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             if icon_path.is_empty() {
                                 log::warn!("tray-icon is empty");
                             }
-                            cfg.gui_opts.tray_icon = Some(icon_path.to_string());
+                            cfg.gui_opts.tray_icon =
+                                Some(icon_path.to_string());
                         }
                     }
                     "icon-match-layer-name" => {
@@ -627,7 +689,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.icon_match_layer_name = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.icon_match_layer_name =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-layer-changes" => {
@@ -636,7 +699,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.tooltip_layer_changes = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_layer_changes =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-show-blank" => {
@@ -645,7 +709,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.tooltip_show_blank = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_show_blank =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-no-base" => {
@@ -654,7 +719,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.tooltip_no_base = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.tooltip_no_base =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-duration" => {
@@ -663,7 +729,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.tooltip_duration = parse_cfg_val_u16(val, label, false)?
+                            cfg.gui_opts.tooltip_duration =
+                                parse_cfg_val_u16(val, label, false)?
                         }
                     }
                     "notify-cfg-reload" => {
@@ -672,7 +739,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.notify_cfg_reload = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.notify_cfg_reload =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "notify-cfg-reload-silent" => {
@@ -691,7 +759,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             feature = "gui"
                         ))]
                         {
-                            cfg.gui_opts.notify_error = parse_defcfg_val_bool(val, label)?
+                            cfg.gui_opts.notify_error =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tooltip-size" => {
@@ -735,41 +804,63 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             // Note: deflocalkeys should already be parsed when parsing defcfg,
                             // so can use safely use str_to_oscode here; it will include user
                             // configurations already.
-                            let mut key_exceptions: Vec<(OsCode, SExpr)> = vec![];
+                            let mut key_exceptions: Vec<(OsCode, SExpr)> =
+                                vec![];
                             for key_expr in list[1..].iter() {
-                                let key = key_expr.atom(None).and_then(str_to_oscode).ok_or_else(
-                                    || anyhow_expr!(key_expr, "Expected a known key name."),
-                                )?;
-                                if key_exceptions.iter().any(|k_exc| k_exc.0 == key) {
-                                    bail_expr!(key_expr, "Duplicate key name is not allowed.");
+                                let key = key_expr
+                                    .atom(None)
+                                    .and_then(str_to_oscode)
+                                    .ok_or_else(|| {
+                                        anyhow_expr!(
+                                            key_expr,
+                                            "Expected a known key name."
+                                        )
+                                    })?;
+                                if key_exceptions
+                                    .iter()
+                                    .any(|k_exc| k_exc.0 == key)
+                                {
+                                    bail_expr!(
+                                        key_expr,
+                                        "Duplicate key name is not allowed."
+                                    );
                                 }
                                 key_exceptions.push((key, key_expr.clone()));
                             }
                             cfg.process_unmapped_keys = true;
-                            cfg.process_unmapped_keys_exceptions = Some(key_exceptions);
+                            cfg.process_unmapped_keys_exceptions =
+                                Some(key_exceptions);
                         } else {
-                            cfg.process_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                            cfg.process_unmapped_keys =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
 
                     "block-unmapped-keys" => {
-                        cfg.block_unmapped_keys = parse_defcfg_val_bool(val, label)?
+                        cfg.block_unmapped_keys =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "allow-hardware-repeat" => {
-                        cfg.allow_hardware_repeat = parse_defcfg_val_bool(val, label)?
+                        cfg.allow_hardware_repeat =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "alias-to-trigger-on-load" => {
                         cfg.start_alias = parse_defcfg_val_string(val, label)?
                     }
-                    "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
+                    "danger-enable-cmd" => {
+                        cfg.enable_cmd = parse_defcfg_val_bool(val, label)?
+                    }
                     "sequence-backtrack-modcancel" => {
-                        cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, label)?
+                        cfg.sequence_backtrack_modcancel =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "log-layer-changes" => {
-                        cfg.log_layer_changes = parse_defcfg_val_bool(val, label)?
+                        cfg.log_layer_changes =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "delegate-to-first-layer" => {
-                        cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, label)?;
+                        cfg.delegate_to_first_layer =
+                            parse_defcfg_val_bool(val, label)?;
                         if cfg.delegate_to_first_layer {
                             log::info!("delegating transparent keys on other layers to first defined layer");
                         }
@@ -782,19 +873,24 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "movemouse-smooth-diagonals" => {
-                        cfg.movemouse_smooth_diagonals = parse_defcfg_val_bool(val, label)?
+                        cfg.movemouse_smooth_diagonals =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "movemouse-inherit-accel-state" => {
-                        cfg.movemouse_inherit_accel_state = parse_defcfg_val_bool(val, label)?
+                        cfg.movemouse_inherit_accel_state =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "override-release-on-activation" => {
-                        cfg.override_release_on_activation = parse_defcfg_val_bool(val, label)?
+                        cfg.override_release_on_activation =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "concurrent-tap-hold" => {
-                        cfg.concurrent_tap_hold = parse_defcfg_val_bool(val, label)?
+                        cfg.concurrent_tap_hold =
+                            parse_defcfg_val_bool(val, label)?
                     }
                     "rapid-event-delay" => {
-                        cfg.rapid_event_delay = parse_cfg_val_u16(val, label, false)?
+                        cfg.rapid_event_delay =
+                            parse_cfg_val_u16(val, label, false)?
                     }
                     "transparent-key-resolution" => {
                         let v = sexpr_to_str_or_err(val, label)?;
@@ -808,7 +904,8 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             ),
                         };
                     }
-                    "chords-v2-min-idle" | "chords-v2-min-idle-experimental" => {
+                    "chords-v2-min-idle"
+                    | "chords-v2-min-idle-experimental" => {
                         if label == "chords-v2-min-idle-experimental" {
                             log::warn!("You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
                                         Using -experimental will be invalid in the future.")
@@ -821,19 +918,30 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "mouse-movement-key" => {
                         #[cfg(any(
-                            all(target_os = "windows", feature = "interception_driver"),
+                            all(
+                                target_os = "windows",
+                                feature = "interception_driver"
+                            ),
                             target_os = "linux",
                             target_os = "unknown"
                         ))]
                         {
-                            if let Some(keystr) = parse_defcfg_val_string(val, label)? {
+                            if let Some(keystr) =
+                                parse_defcfg_val_string(val, label)?
+                            {
                                 if let Some(key) = str_to_oscode(&keystr) {
                                     cfg.mouse_movement_key = Some(key);
                                 } else {
-                                    bail_expr!(val, "{label} not a recognised key code");
+                                    bail_expr!(
+                                        val,
+                                        "{label} not a recognised key code"
+                                    );
                                 }
                             } else {
-                                bail_expr!(val, "{label} not a string for a key code");
+                                bail_expr!(
+                                    val,
+                                    "{label} not a string for a key code"
+                                );
                             }
                         }
                     }
@@ -847,7 +955,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
     }
 }
 
-fn parse_defcfg_val_string(expr: &SExpr, _label: &str) -> Result<Option<String>> {
+fn parse_defcfg_val_string(
+    expr: &SExpr,
+    _label: &str,
+) -> Result<Option<String>> {
     match expr {
         SExpr::Atom(v) => Ok(Some(v.t.clone())),
         _ => Ok(None),
@@ -884,7 +995,11 @@ fn parse_defcfg_val_bool(expr: &SExpr, label: &str) -> Result<bool> {
     }
 }
 
-fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u16> {
+fn parse_cfg_val_u16(
+    expr: &SExpr,
+    label: &str,
+    exclude_zero: bool,
+) -> Result<u16> {
     let start = if exclude_zero { 1 } else { 0 };
     match &expr {
         SExpr::Atom(v) => Ok(str::parse::<u16>(v.t.trim_atom_quotes())
@@ -896,7 +1011,9 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
                     Some(u)
                 }
             })
-            .ok_or_else(|| anyhow_expr!(expr, "{label} must be {start}-65535"))?),
+            .ok_or_else(|| {
+                anyhow_expr!(expr, "{label} must be {start}-65535")
+            })?),
         SExpr::List(_) => {
             bail_expr!(
                 expr,
@@ -931,7 +1048,10 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
         SExpr::Atom(a) => {
             let devs = parse_colon_separated_text(a.t.trim_atom_quotes());
             if devs.len() == 1 && devs[0].is_empty() {
-                bail_expr!(val, "an empty string is not a valid device name or path")
+                bail_expr!(
+                    val,
+                    "an empty string is not a valid device name or path"
+                )
             }
             devs
         }
@@ -963,7 +1083,9 @@ pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
 fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
     match expr {
         SExpr::Atom(a) => Ok(a.t.trim_atom_quotes()),
-        SExpr::List(_) => bail_expr!(expr, "The value for {label} can't be a list"),
+        SExpr::List(_) => {
+            bail_expr!(expr, "The value for {label} can't be a list")
+        }
     }
 }
 
@@ -971,9 +1093,14 @@ fn sexpr_to_str_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a str> {
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"
 ))]
-fn sexpr_to_list_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a [SExpr]> {
+fn sexpr_to_list_or_err<'a>(
+    expr: &'a SExpr,
+    label: &str,
+) -> Result<&'a [SExpr]> {
     match expr {
-        SExpr::Atom(_) => bail_expr!(expr, "The value for {label} must be a list"),
+        SExpr::Atom(_) => {
+            bail_expr!(expr, "The value for {label} must be a list")
+        }
         SExpr::List(l) => Ok(&l.t),
     }
 }

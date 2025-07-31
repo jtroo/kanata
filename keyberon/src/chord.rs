@@ -102,7 +102,8 @@ enum ActiveChordStatus {
 use ActiveChordStatus::*;
 
 /// Like the layout Queue but smaller.
-pub(crate) type SmolQueue = ArrayDeque<Queued, SMOL_Q_LEN, arraydeque::behavior::Wrapping>;
+pub(crate) type SmolQueue =
+    ArrayDeque<Queued, SMOL_Q_LEN, arraydeque::behavior::Wrapping>;
 
 /// Global input chords configuration.
 pub struct ChordsV2<'a, T> {
@@ -228,7 +229,8 @@ impl<'a, T> ChordsV2<'a, T> {
             ));
         }
         self.clear_released_chords(&mut q);
-        self.ticks_to_ignore_chord = self.ticks_to_ignore_chord.saturating_sub(1);
+        self.ticks_to_ignore_chord =
+            self.ticks_to_ignore_chord.saturating_sub(1);
         q
     }
 
@@ -320,7 +322,10 @@ impl<'a, T> ChordsV2<'a, T> {
             match qd.event {
                 Event::Press(_, j) => {
                     let overflowed = presses.push(j);
-                    debug_assert!(overflowed.is_ok(), "too many presses in queue");
+                    debug_assert!(
+                        overflowed.is_ok(),
+                        "too many presses in queue"
+                    );
                 }
                 Event::Release(_, j) => {
                     if presses.contains(&j) {
@@ -334,7 +339,8 @@ impl<'a, T> ChordsV2<'a, T> {
         let Some(starting_press) = presses.first() else {
             return;
         };
-        let Some(possible_chords) = self.chords.mapping.get(starting_press) else {
+        let Some(possible_chords) = self.chords.mapping.get(starting_press)
+        else {
             no_chord_activations!(self);
             return;
         };
@@ -365,9 +371,11 @@ impl<'a, T> ChordsV2<'a, T> {
             let count_possible = if prev_count == chord_candidates.len() {
                 // optimization: no longer need to check the whole list.
                 // chord_candidates will keep getting shrunk.
-                chord_candidates.retain(|chc| chc.participating_keys.contains(&press));
+                chord_candidates
+                    .retain(|chc| chc.participating_keys.contains(&press));
                 for chc in chord_candidates.iter() {
-                    min_timeout = std::cmp::min(min_timeout, chc.pending_duration);
+                    min_timeout =
+                        std::cmp::min(min_timeout, chc.pending_duration);
                 }
                 chord_candidates.len()
             } else {
@@ -388,12 +396,18 @@ impl<'a, T> ChordsV2<'a, T> {
                                     .all(|pk| accumulated_presses.contains(pk))
                             {
                                 // this should only happen at most once per iteration due to needing an exact match.
-                                timed_out_chord = Some((pch, accumulated_presses.len() as u8));
+                                timed_out_chord = Some((
+                                    pch,
+                                    accumulated_presses.len() as u8,
+                                ));
                             }
                             // If full, can't run the optimization above, but not fatal.
                             // Can ignore the overflow.
                             let _overflow = chord_candidates.push(pch);
-                            min_timeout = std::cmp::min(min_timeout, pch.pending_duration);
+                            min_timeout = std::cmp::min(
+                                min_timeout,
+                                pch.pending_duration,
+                            );
                             true
                         } else {
                             false
@@ -413,7 +427,12 @@ impl<'a, T> ChordsV2<'a, T> {
                         .iter()
                         .all(|pk| accumulated_presses.contains(pk))
                     {
-                        let ach = get_active_chord(cch, since, coord, relevant_release_found);
+                        let ach = get_active_chord(
+                            cch,
+                            since,
+                            coord,
+                            relevant_release_found,
+                        );
                         let overflow = self.active_chords.push(ach);
                         assert!(overflow.is_ok(), "active chords has room");
                         break;
@@ -430,23 +449,29 @@ impl<'a, T> ChordsV2<'a, T> {
                     let completed_chord = possible_chords
                         .chords
                         .iter()
-                        .filter(|pch| !pch.disabled_layers.contains(&active_layer))
+                        .filter(|pch| {
+                            !pch.disabled_layers.contains(&active_layer)
+                        })
                         .find(
                             // Ensure the two lists have the same set of keys
                             |pch| {
-                                accumulated_presses
+                                accumulated_presses.iter().all(|acp| {
+                                    pch.participating_keys.contains(acp)
+                                }) && pch
+                                    .participating_keys
                                     .iter()
-                                    .all(|acp| pch.participating_keys.contains(acp))
-                                    && pch
-                                        .participating_keys
-                                        .iter()
-                                        .all(|pk| accumulated_presses.contains(pk))
+                                    .all(|pk| accumulated_presses.contains(pk))
                             },
                         );
                     match completed_chord {
                         Some(cch) => {
                             let coord = self.next_coord();
-                            let ach = get_active_chord(cch, since, coord, relevant_release_found);
+                            let ach = get_active_chord(
+                                cch,
+                                since,
+                                coord,
+                                relevant_release_found,
+                            );
                             let overflow = self.active_chords.push(ach);
                             assert!(overflow.is_ok(), "active chords has room");
                         }
@@ -456,7 +481,8 @@ impl<'a, T> ChordsV2<'a, T> {
                 }
                 _ => {}
             }
-            self.ticks_until_next_state_change = min_timeout.saturating_sub(since);
+            self.ticks_until_next_state_change =
+                min_timeout.saturating_sub(since);
             prev_count = count_possible;
         }
         if self.ticks_until_next_state_change == 0 || relevant_release_found {
@@ -498,8 +524,12 @@ impl<'a, T> ChordsV2<'a, T> {
             };
             match completed_chord {
                 Some(cch) => {
-                    let ach =
-                        get_active_chord(cch, since, self.next_coord(), relevant_release_found);
+                    let ach = get_active_chord(
+                        cch,
+                        since,
+                        self.next_coord(),
+                        relevant_release_found,
+                    );
                     let overflow = self.active_chords.push(ach);
                     assert!(overflow.is_ok(), "active chords has room");
                 }
@@ -542,14 +572,17 @@ fn get_active_chord<'a, T>(
 ) -> ActiveChord<'a, T> {
     let mut remaining_keys_to_release = HVec::new();
     if cch.release_behaviour == ReleaseBehaviour::OnLastRelease {
-        remaining_keys_to_release.extend(cch.participating_keys.iter().copied());
+        remaining_keys_to_release
+            .extend(cch.participating_keys.iter().copied());
     };
     ActiveChord {
         coordinate: coord,
         remaining_keys_to_release,
         participating_keys: cch.participating_keys,
         action: cch.action,
-        status: if release_found && cch.release_behaviour == ReleaseBehaviour::OnFirstRelease {
+        status: if release_found
+            && cch.release_behaviour == ReleaseBehaviour::OnFirstRelease
+        {
             ActiveChordStatus::UnreadReleased
         } else {
             ActiveChordStatus::Unread

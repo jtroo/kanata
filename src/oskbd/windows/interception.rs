@@ -2,7 +2,9 @@
 
 use std::io;
 
-use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, ScanCode, Stroke};
+use kanata_interception::{
+    Interception, KeyState, MouseFlags, MouseState, ScanCode, Stroke,
+};
 
 use super::OsCodeWrapper;
 use crate::kanata::CalculatedMouseMove;
@@ -37,8 +39,12 @@ impl InputEvent {
                     match val {
                         KeyValue::Press | KeyValue::Repeat => KeyState::DOWN,
                         KeyValue::Release => KeyState::UP,
-                        KeyValue::Tap => panic!("invalid value attempted to be sent"),
-                        KeyValue::WakeUp => panic!("invalid value attempted to be sent"),
+                        KeyValue::Tap => {
+                            panic!("invalid value attempted to be sent")
+                        }
+                        KeyValue::WakeUp => {
+                            panic!("invalid value attempted to be sent")
+                        }
                     },
                     true,
                 );
@@ -73,8 +79,12 @@ impl InputEvent {
     fn from_mouse_scroll(direction: MWheelDirection, distance: u16) -> Self {
         Self(Stroke::Mouse {
             state: match direction {
-                MWheelDirection::Up | MWheelDirection::Down => MouseState::WHEEL,
-                MWheelDirection::Left | MWheelDirection::Right => MouseState::HWHEEL,
+                MWheelDirection::Up | MWheelDirection::Down => {
+                    MouseState::WHEEL
+                }
+                MWheelDirection::Left | MWheelDirection::Right => {
+                    MouseState::HWHEEL
+                }
             },
             flags: MouseFlags::empty(),
             rolling: match direction {
@@ -82,7 +92,8 @@ impl InputEvent {
                     distance.try_into().expect("checked bound of 30000 in cfg")
                 }
                 MWheelDirection::Down | MWheelDirection::Left => {
-                    -(i16::try_from(distance).expect("checked bound of 30000 in cfg"))
+                    -(i16::try_from(distance)
+                        .expect("checked bound of 30000 in cfg"))
                 }
             },
             x: 0,
@@ -182,15 +193,27 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_code_raw(&mut self, code: u16, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code_raw(
+        &mut self,
+        code: u16,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         super::write_code_raw(code, value)
     }
 
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         super::write_code(code as u16, value)
     }
 
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         self.write(InputEvent::from_oscode(key, value))
     }
 
@@ -215,7 +238,11 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(
+        &mut self,
+        direction: MWheelDirection,
+        distance: u16,
+    ) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
         write_interception(InputEvent::from_mouse_scroll(direction, distance));
         Ok(())
@@ -228,12 +255,21 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
-        write_interception(InputEvent::from_mouse_move(mv.direction, mv.distance));
+    pub fn move_mouse(
+        &mut self,
+        mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
+        write_interception(InputEvent::from_mouse_move(
+            mv.direction,
+            mv.distance,
+        ));
         Ok(())
     }
 
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         write_interception(InputEvent::from_mouse_move_many(moves));
         Ok(())
     }

@@ -19,7 +19,12 @@ pub(crate) fn create_key_outputs(
                 Ok(i) => i,
                 Err(_) => continue,
             };
-            add_key_output_from_action_to_key_pos(osc_slot, action, &mut layer_outputs, overrides);
+            add_key_output_from_action_to_key_pos(
+                osc_slot,
+                action,
+                &mut layer_outputs,
+                overrides,
+            );
             add_chordsv2_output_for_key_pos(
                 osc_slot,
                 layer_idx,
@@ -51,12 +56,19 @@ pub(crate) fn add_chordsv2_output_for_key_pos(
     let Some(chords_v2) = chords_v2.as_ref() else {
         return;
     };
-    let Some(chords_for_key) = chords_v2.chords().mapping.get(&u16::from(osc_slot)) else {
+    let Some(chords_for_key) =
+        chords_v2.chords().mapping.get(&u16::from(osc_slot))
+    else {
         return;
     };
     for chord in chords_for_key.chords.iter() {
         if !chord.disabled_layers.contains(&(layer_idx as u16)) {
-            add_key_output_from_action_to_key_pos(osc_slot, chord.action, outputs, overrides);
+            add_key_output_from_action_to_key_pos(
+                osc_slot,
+                chord.action,
+                outputs,
+                overrides,
+            );
         }
     }
 }
@@ -77,12 +89,23 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
             timeout_action,
             ..
         }) => {
-            add_key_output_from_action_to_key_pos(osc_slot, tap, outputs, overrides);
-            add_key_output_from_action_to_key_pos(osc_slot, hold, outputs, overrides);
-            add_key_output_from_action_to_key_pos(osc_slot, timeout_action, outputs, overrides);
+            add_key_output_from_action_to_key_pos(
+                osc_slot, tap, outputs, overrides,
+            );
+            add_key_output_from_action_to_key_pos(
+                osc_slot, hold, outputs, overrides,
+            );
+            add_key_output_from_action_to_key_pos(
+                osc_slot,
+                timeout_action,
+                outputs,
+                overrides,
+            );
         }
         Action::OneShot(OneShot { action: ac, .. }) => {
-            add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+            add_key_output_from_action_to_key_pos(
+                osc_slot, ac, outputs, overrides,
+            );
         }
         Action::MultipleKeyCodes(kcs) => {
             for kc in kcs.iter() {
@@ -91,34 +114,52 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
         }
         Action::MultipleActions(actions) => {
             for ac in actions.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+                add_key_output_from_action_to_key_pos(
+                    osc_slot, ac, outputs, overrides,
+                );
             }
         }
         Action::TapDance(TapDance { actions, .. }) => {
             for ac in actions.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+                add_key_output_from_action_to_key_pos(
+                    osc_slot, ac, outputs, overrides,
+                );
             }
         }
         Action::Fork(ForkConfig { left, right, .. }) => {
-            add_key_output_from_action_to_key_pos(osc_slot, left, outputs, overrides);
-            add_key_output_from_action_to_key_pos(osc_slot, right, outputs, overrides);
+            add_key_output_from_action_to_key_pos(
+                osc_slot, left, outputs, overrides,
+            );
+            add_key_output_from_action_to_key_pos(
+                osc_slot, right, outputs, overrides,
+            );
         }
         Action::Chords(ChordsGroup { chords, .. }) => {
             for (_, ac) in chords.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
+                add_key_output_from_action_to_key_pos(
+                    osc_slot, ac, outputs, overrides,
+                );
             }
         }
         Action::Switch(Switch { cases }) => {
             for case in cases.iter() {
-                add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
+                add_key_output_from_action_to_key_pos(
+                    osc_slot, case.1, outputs, overrides,
+                );
             }
         }
         Action::Custom(cacs) => {
             for ac in cacs.iter() {
                 match ac {
-                    CustomAction::Unmodded { keys, .. } | CustomAction::Unshifted { keys } => {
+                    CustomAction::Unmodded { keys, .. }
+                    | CustomAction::Unshifted { keys } => {
                         for k in keys.iter() {
-                            add_kc_output(osc_slot, k.into(), outputs, overrides);
+                            add_kc_output(
+                                osc_slot,
+                                k.into(),
+                                outputs,
+                                overrides,
+                            );
                         }
                     }
                     _ => {}

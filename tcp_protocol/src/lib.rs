@@ -21,7 +21,8 @@ pub enum ServerResponse {
 
 impl ServerResponse {
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut msg = serde_json::to_vec(self).expect("ServerResponse should serialize");
+        let mut msg =
+            serde_json::to_vec(self).expect("ServerResponse should serialize");
         msg.push(b'\n');
         msg
     }
@@ -29,7 +30,8 @@ impl ServerResponse {
 
 impl ServerMessage {
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut msg = serde_json::to_vec(self).expect("ServerMessage should serialize");
+        let mut msg =
+            serde_json::to_vec(self).expect("ServerMessage should serialize");
         msg.push(b'\n');
         msg
     }

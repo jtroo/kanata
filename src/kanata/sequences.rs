@@ -121,11 +121,13 @@ pub(super) fn do_sequence_press_logic(
         SequenceInputMode::VisibleBackspaced => {
             press_key(kbd_out, osc)?;
         }
-        SequenceInputMode::HiddenSuppressed | SequenceInputMode::HiddenDelayType => {}
+        SequenceInputMode::HiddenSuppressed
+        | SequenceInputMode::HiddenDelayType => {}
     }
     log::debug!("sequence got {k:?}");
     state.sequence.push(pushed_into_seq);
-    let pushed_into_overlap_seq = (pushed_into_seq & MASK_KEYCODES) | KEY_OVERLAP_MARKER;
+    let pushed_into_overlap_seq =
+        (pushed_into_seq & MASK_KEYCODES) | KEY_OVERLAP_MARKER;
     state.overlapped_sequence.push(pushed_into_overlap_seq);
     let mut res = sequences.get_or_descendant_exists(&state.sequence);
 
@@ -161,19 +163,22 @@ pub(super) fn do_sequence_press_logic(
     // Check for invalid termination of overlap variant of sequence state.
     // This variant does not backtrack today because I haven't figured out how to do that easily.
     // It does do some attempts to stay valid by modifying the tail of the sequence though.
-    let mut res_overlapped = sequences.get_or_descendant_exists(&state.overlapped_sequence);
+    let mut res_overlapped =
+        sequences.get_or_descendant_exists(&state.overlapped_sequence);
     let is_invalid_termination_overlapped = if res_overlapped == NotInTrie {
         // Try ending the overlapping and push overlapping seq again.
         let index_of_last = state.overlapped_sequence.len() - 1;
         state.overlapped_sequence[index_of_last] = KEY_OVERLAP_MARKER;
         state.overlapped_sequence.push(pushed_into_overlap_seq);
-        res_overlapped = sequences.get_or_descendant_exists(&state.overlapped_sequence);
+        res_overlapped =
+            sequences.get_or_descendant_exists(&state.overlapped_sequence);
         let index_of_last = index_of_last + 1;
         if res_overlapped == NotInTrie {
             // Try checking the trie after setting the latest key to not have the overlapping
             // marker.
             state.overlapped_sequence[index_of_last] = pushed_into_seq;
-            res_overlapped = sequences.get_or_descendant_exists(&state.overlapped_sequence);
+            res_overlapped =
+                sequences.get_or_descendant_exists(&state.overlapped_sequence);
             if res_overlapped == NotInTrie {
                 if pushed_into_seq & MASK_KEYCODES == pushed_into_seq {
                     // Avoid calling get_or_descendant_exists if there is no difference, to save on
@@ -181,8 +186,10 @@ pub(super) fn do_sequence_press_logic(
                     true
                 } else {
                     // Try unmodded `pushed_into_seq`.
-                    state.overlapped_sequence[index_of_last] = pushed_into_seq & MASK_KEYCODES;
-                    res_overlapped = sequences.get_or_descendant_exists(&state.overlapped_sequence);
+                    state.overlapped_sequence[index_of_last] =
+                        pushed_into_seq & MASK_KEYCODES;
+                    res_overlapped = sequences
+                        .get_or_descendant_exists(&state.overlapped_sequence);
                     res_overlapped == NotInTrie
                 }
             } else {
@@ -207,7 +214,8 @@ pub(super) fn do_sequence_press_logic(
             state
                 .overlapped_sequence
                 .extend(state.sequence.iter().copied());
-            res_overlapped = sequences.get_or_descendant_exists(&state.overlapped_sequence);
+            res_overlapped =
+                sequences.get_or_descendant_exists(&state.overlapped_sequence);
         }
         (true, false) => {
             log::debug!("standard seq is invalid; filling with overlap seq");
@@ -216,7 +224,8 @@ pub(super) fn do_sequence_press_logic(
                 .sequence
                 .extend(state.overlapped_sequence.iter().copied());
             if state.sequence.last().copied().unwrap_or(0) != KEY_OVERLAP_MARKER
-                && state.overlapped_sequence.last().copied().unwrap_or(0) >= KEY_OVERLAP_MARKER
+                && state.overlapped_sequence.last().copied().unwrap_or(0)
+                    >= KEY_OVERLAP_MARKER
             {
                 // Always treat non-overlapping sequence as if overlap state has
                 // ended; if overlapped_sequence itself has an overlap state.
@@ -241,12 +250,21 @@ pub(super) fn do_sequence_press_logic(
     if let HasValue((i, j)) = res_overlapped {
         // First, check for a valid simultaneous completion.
         // Simultaneous completion should take priority.
-        do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Overlap)?;
+        do_successful_sequence_termination(
+            kbd_out,
+            state,
+            layout,
+            i,
+            j,
+            EndSequenceType::Overlap,
+        )?;
     } else if let HasValue((i, j)) = res {
         // Try terminating the overlapping and check if simultaneous termination worked.
         // Simultaneous completion should take priority.
         state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
-        if let HasValue((oi, oj)) = sequences.get_or_descendant_exists(&state.overlapped_sequence) {
+        if let HasValue((oi, oj)) =
+            sequences.get_or_descendant_exists(&state.overlapped_sequence)
+        {
             do_successful_sequence_termination(
                 kbd_out,
                 state,
@@ -286,12 +304,16 @@ pub(super) fn do_successful_sequence_termination(
         EndSequenceType::Overlap => &state.overlapped_sequence,
     };
     match state.sequence_input_mode {
-        SequenceInputMode::HiddenSuppressed | SequenceInputMode::HiddenDelayType => {}
+        SequenceInputMode::HiddenSuppressed
+        | SequenceInputMode::HiddenDelayType => {}
         SequenceInputMode::VisibleBackspaced => {
             // Release mod keys and backspace because they can cause backspaces to mess up.
             layout.states.retain(|s| match s {
                 State::NormalKey { keycode, .. } => {
-                    if matches!(keycode, LCtrl | RCtrl | LAlt | RAlt | LGui | RGui) {
+                    if matches!(
+                        keycode,
+                        LCtrl | RCtrl | LAlt | RAlt | LGui | RGui
+                    ) {
                         // Ignore the error, ugly to return it from retain, and
                         // this is very unlikely to happen anyway.
                         let _ = release_key(kbd_out, keycode.into());
@@ -322,7 +344,13 @@ pub(super) fn do_successful_sequence_termination(
                     // probably be the list of keys that **do** output
                     // characters than those that don't.
                     osc if osc.is_modifier() => continue,
-                    osc if matches!(u16::from(osc), KEY_IGNORE_MIN..=KEY_IGNORE_MAX) => continue,
+                    osc if matches!(
+                        u16::from(osc),
+                        KEY_IGNORE_MIN..=KEY_IGNORE_MAX
+                    ) =>
+                    {
+                        continue
+                    }
                     _ => {
                         if state.noerase_count > 0 {
                             state.noerase_count -= 1;
@@ -350,7 +378,10 @@ pub(super) fn do_successful_sequence_termination(
     Ok(())
 }
 
-pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+pub(super) fn cancel_sequence(
+    state: &mut SequenceState,
+    kbd_out: &mut KbdOut,
+) -> Result<()> {
     state.activity = Inactive;
     log::debug!("sequence cancelled");
     match state.sequence_input_mode {
@@ -361,7 +392,8 @@ pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -
                 release_key(kbd_out, osc)?;
             }
         }
-        SequenceInputMode::HiddenSuppressed | SequenceInputMode::VisibleBackspaced => {}
+        SequenceInputMode::HiddenSuppressed
+        | SequenceInputMode::VisibleBackspaced => {}
     }
     Ok(())
 }

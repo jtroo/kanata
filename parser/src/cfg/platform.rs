@@ -14,7 +14,8 @@ pub(crate) fn filter_platform_specific_cfg(
         .iter()
         .map(|dfl| dfl.trim_start_matches("deflocalkeys-"))
         .collect::<Vec<_>>();
-    let current_platform = deflocalkeys_variant_to_apply.trim_start_matches("deflocalkeys-");
+    let current_platform =
+        deflocalkeys_variant_to_apply.trim_start_matches("deflocalkeys-");
     top_levels
         .into_iter()
         .try_fold(vec![], |mut tles, tle| -> Result<Vec<TopLevel>> {

@@ -31,7 +31,10 @@ impl ParseError {
         Self::new(expr.span(), err_msg)
     }
 
-    pub fn from_spanned<T>(spanned: &Spanned<T>, err_msg: impl AsRef<str>) -> Self {
+    pub fn from_spanned<T>(
+        spanned: &Spanned<T>,
+        err_msg: impl AsRef<str>,
+    ) -> Self {
         Self::new(spanned.span.clone(), err_msg)
     }
 }
@@ -45,10 +48,9 @@ impl From<anyhow::Error> for ParseError {
 impl From<ParseError> for miette::Error {
     fn from(val: ParseError) -> Self {
         let diagnostic = CfgError {
-            err_span: val
-                .span
-                .as_ref()
-                .map(|s| SourceSpan::new(s.start().into(), (s.end() - s.start()).into())),
+            err_span: val.span.as_ref().map(|s| {
+                SourceSpan::new(s.start().into(), (s.end() - s.start()).into())
+            }),
             help_msg: help(val.msg),
             file_name: val.span.as_ref().map(|s| s.file_name()),
             file_content: val.span.as_ref().map(|s| s.file_content()),
@@ -57,7 +59,10 @@ impl From<ParseError> for miette::Error {
         let report: miette::Error = diagnostic.into();
 
         if let Some(span) = val.span {
-            report.with_source_code(NamedSource::new(span.file_name(), span.file_content()))
+            report.with_source_code(NamedSource::new(
+                span.file_name(),
+                span.file_content(),
+            ))
         } else {
             report
         }

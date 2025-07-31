@@ -11,16 +11,25 @@ use std::sync::Arc;
 // OsCode::KEY_MAX is the biggest OsCode
 pub const KEYS_IN_ROW: usize = OsCode::KEY_MAX as usize;
 pub const LAYER_ROWS: usize = 2;
-pub const DEFAULT_ACTION: KanataAction = KanataAction::KeyCode(KeyCode::ErrorUndefined);
+pub const DEFAULT_ACTION: KanataAction =
+    KanataAction::KeyCode(KeyCode::ErrorUndefined);
 
 pub type IntermediateLayers = Box<[[Row; LAYER_ROWS]]>;
 
-pub type KLayers =
-    Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>;
+pub type KLayers = Layers<
+    'static,
+    KEYS_IN_ROW,
+    LAYER_ROWS,
+    &'static &'static [&'static CustomAction],
+>;
 
 pub struct KanataLayers {
-    pub(crate) layers:
-        Layers<'static, KEYS_IN_ROW, LAYER_ROWS, &'static &'static [&'static CustomAction]>,
+    pub(crate) layers: Layers<
+        'static,
+        KEYS_IN_ROW,
+        LAYER_ROWS,
+        &'static &'static [&'static CustomAction],
+    >,
     _allocations: Arc<Allocations>,
 }
 
@@ -30,8 +39,10 @@ impl std::fmt::Debug for KanataLayers {
     }
 }
 
-pub type Row = [kanata_keyberon::action::Action<'static, &'static &'static [&'static CustomAction]>;
-    KEYS_IN_ROW];
+pub type Row = [kanata_keyberon::action::Action<
+    'static,
+    &'static &'static [&'static CustomAction],
+>; KEYS_IN_ROW];
 
 pub fn new_layers(layers: usize) -> IntermediateLayers {
     let actual_num_layers = layers;
@@ -40,7 +51,10 @@ pub fn new_layers(layers: usize) -> IntermediateLayers {
     // The stack will overflow because of lack of placement new.
     let mut layers = Vec::with_capacity(actual_num_layers);
     for _ in 0..actual_num_layers {
-        layers.push([[DEFAULT_ACTION; KEYS_IN_ROW], [DEFAULT_ACTION; KEYS_IN_ROW]]);
+        layers.push([
+            [DEFAULT_ACTION; KEYS_IN_ROW],
+            [DEFAULT_ACTION; KEYS_IN_ROW],
+        ]);
     }
     layers.into_boxed_slice()
 }
@@ -49,7 +63,10 @@ impl KanataLayers {
     /// # Safety
     ///
     /// The allocations must hold all of the &'static pointers found in layers.
-    pub(crate) unsafe fn new(layers: KLayers, allocations: Arc<Allocations>) -> Self {
+    pub(crate) unsafe fn new(
+        layers: KLayers,
+        allocations: Arc<Allocations>,
+    ) -> Self {
         Self {
             layers,
             _allocations: allocations,

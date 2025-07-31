@@ -32,13 +32,20 @@ pub(crate) use zippychord::*;
 // that can be assumed to be used by devices still in production.
 pub(super) const KEY_IGNORE_MIN: u16 = 0x2a4; // KEY_MACRO21
 pub(super) const KEY_IGNORE_MAX: u16 = 0x2ad; // KEY_MACRO30
-pub(super) fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io::Error> {
+pub(super) fn write_key(
+    kb: &mut KbdOut,
+    osc: OsCode,
+    val: KeyValue,
+) -> Result<(), std::io::Error> {
     match u16::from(osc) {
         KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
         _ => kb.write_key(osc, val),
     }
 }
-pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+pub(super) fn press_key(
+    kb: &mut KbdOut,
+    osc: OsCode,
+) -> Result<(), std::io::Error> {
     use OsCode::*;
     match u16::from(osc) {
         KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
@@ -47,7 +54,8 @@ pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Err
                 let btn = osc_to_btn(osc);
                 kb.click_btn(btn)
             }
-            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
+            MouseWheelUp | MouseWheelDown | MouseWheelLeft
+            | MouseWheelRight => {
                 let direction = osc_to_wheel_direction(osc);
                 kb.scroll(direction, HI_RES_SCROLL_UNITS_IN_LO_RES)
             }
@@ -55,7 +63,10 @@ pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Err
         },
     }
 }
-pub(super) fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+pub(super) fn release_key(
+    kb: &mut KbdOut,
+    osc: OsCode,
+) -> Result<(), std::io::Error> {
     use OsCode::*;
     match u16::from(osc) {
         KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
@@ -64,7 +75,8 @@ pub(super) fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::E
                 let btn = osc_to_btn(osc);
                 kb.release_btn(btn)
             }
-            MouseWheelUp | MouseWheelDown | MouseWheelLeft | MouseWheelRight => {
+            MouseWheelUp | MouseWheelDown | MouseWheelLeft
+            | MouseWheelRight => {
                 // no-op: these are handled as scroll events in the press but scroll has no notion
                 // of release.
                 Ok(())
@@ -97,7 +109,10 @@ fn osc_to_wheel_direction(osc: OsCode) -> MWheelDirection {
     }
 }
 
-fn post_filter_press(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+fn post_filter_press(
+    kb: &mut KbdOut,
+    osc: OsCode,
+) -> Result<(), std::io::Error> {
     #[cfg(not(feature = "zippychord"))]
     {
         kb.press_key(osc)
@@ -108,7 +123,10 @@ fn post_filter_press(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error>
     }
 }
 
-fn post_filter_release(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
+fn post_filter_release(
+    kb: &mut KbdOut,
+    osc: OsCode,
+) -> Result<(), std::io::Error> {
     #[cfg(not(feature = "zippychord"))]
     {
         kb.release_key(osc)

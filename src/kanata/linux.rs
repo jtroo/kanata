@@ -16,7 +16,10 @@ use super::*;
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing
     /// thread.
-    pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
+    pub fn event_loop(
+        kanata: Arc<Mutex<Self>>,
+        tx: Sender<KeyEvent>,
+    ) -> Result<()> {
         info!("entering the event loop");
 
         let k = kanata.lock();
@@ -41,13 +44,17 @@ impl Kanata {
         drop(k);
 
         loop {
-            let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
+            let events =
+                kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("event count: {}\nevents:\n{events:?}", events.len());
 
             for in_event in events.iter().copied() {
                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                    if let EventSummary::RelativeAxis(_, _, _) = in_event.destructure() {
-                        let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
+                    if let EventSummary::RelativeAxis(_, _, _) =
+                        in_event.destructure()
+                    {
+                        let fake_event =
+                            KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
                         if let Err(e) = tx.try_send(fake_event) {
                             bail!("failed to send on channel: {}", e)
                         }
@@ -70,13 +77,19 @@ impl Kanata {
 
                 check_for_exit(&key_event);
 
-                if key_event.value == KeyValue::Repeat && !allow_hardware_repeat {
+                if key_event.value == KeyValue::Repeat && !allow_hardware_repeat
+                {
                     continue;
                 }
 
                 if key_event.value == KeyValue::Tap {
                     // Scroll event for sure. Only scroll events produce Tap.
-                    if !handle_scroll(&kanata, in_event, key_event.code, &events)? {
+                    if !handle_scroll(
+                        &kanata,
+                        in_event,
+                        key_event.code,
+                        &events,
+                    )? {
                         continue;
                     }
                 }
@@ -189,12 +202,16 @@ fn handle_scroll(
                     }) {
                         kanata
                             .kbd_out
-                            .scroll(direction, scroll_distance * HI_RES_SCROLL_UNITS_IN_LO_RES)
+                            .scroll(
+                                direction,
+                                scroll_distance * HI_RES_SCROLL_UNITS_IN_LO_RES,
+                            )
                             .map_err(|e| anyhow!("failed write: {}", e))?;
                     }
                     Ok(false)
                 }
-                RelativeAxisCode::REL_WHEEL_HI_RES | RelativeAxisCode::REL_HWHEEL_HI_RES => {
+                RelativeAxisCode::REL_WHEEL_HI_RES
+                | RelativeAxisCode::REL_HWHEEL_HI_RES => {
                     if !MAPPED_KEYS.lock().contains(&code) {
                         // Passthrough if the scroll wheel event is not mapped
                         // in the configuration.

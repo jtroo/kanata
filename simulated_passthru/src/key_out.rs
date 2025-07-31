@@ -27,8 +27,11 @@ thread_local! {static CBOUTEV_WRAP:Cell<Option<Box<CbOutEvFn>>> = Cell::default(
 pub fn set_cb_out_ev(cb_addr: c_longlong) -> Result<()> {
     trace!("got func address {}", cb_addr);
     let ptr_fn = cb_addr as *const ();
-    let cb_out_ev =
-        unsafe { std::mem::transmute::<*const (), fn(vk: i64, sc: i64, up: i64) -> i64>(ptr_fn) };
+    let cb_out_ev = unsafe {
+        std::mem::transmute::<*const (), fn(vk: i64, sc: i64, up: i64) -> i64>(
+            ptr_fn,
+        )
+    };
     CBOUTEV_WRAP.with(|state| {
         assert!(
             state.take().is_none(),

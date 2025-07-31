@@ -12,7 +12,10 @@ pub fn concat_os_str2(a: &OsStr, b: &OsStr) -> OsString {
     ret.push(b); // doesn't allocate
     ret
 }
-fn append_file_name(path: impl AsRef<Path>, appendix: impl AsRef<OsStr>) -> PathBuf {
+fn append_file_name(
+    path: impl AsRef<Path>,
+    appendix: impl AsRef<OsStr>,
+) -> PathBuf {
     let path = path.as_ref();
     let mut result = path.to_owned();
     let stem_in = path.file_stem().unwrap_or(OsStr::new(""));
@@ -371,7 +374,11 @@ impl KbdOut {
         self.outputs.push(format!("out:{event}"));
         Ok(())
     }
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let event = {
             #[cfg(target_os = "macos")]
@@ -385,7 +392,11 @@ impl KbdOut {
         };
         self.write(event)
     }
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         self.log.write_code(code, value);
         self.outputs.push(format!("out-code:{code};{value:?}"));
         Ok(())
@@ -413,20 +424,30 @@ impl KbdOut {
         self.outputs.push(format!("out🖰:↑{btn:?}"));
         Ok(())
     }
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(
+        &mut self,
+        direction: MWheelDirection,
+        distance: u16,
+    ) -> Result<(), io::Error> {
         self.log.scroll(direction, distance);
         self.outputs
             .push(format!("scroll:{direction:?},{distance:?}"));
         Ok(())
     }
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
         let (direction, distance) = (mv.direction, mv.distance);
         self.log.move_mouse(direction, distance);
         self.outputs
             .push(format!("out🖰:move {direction:?},{distance:?}"));
         Ok(())
     }
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         for mv in moves {
             let (direction, distance) = (&mv.direction, &mv.distance);
             self.log.move_mouse(*direction, *distance);

@@ -31,7 +31,10 @@ pub fn parse_layer_opts(list: &[SExpr]) -> Result<HashMap<String, String>> {
                 }
             })?;
         if layer_opts.contains_key(opt_key) {
-            bail_expr!(key_expr, "Duplicate option found in {DEFLAYER}: {opt_key}");
+            bail_expr!(
+                key_expr,
+                "Duplicate option found in {DEFLAYER}: {opt_key}"
+            );
         }
         let opt_val = val_expr.atom(None).ok_or_else(|| {
             anyhow_expr!(

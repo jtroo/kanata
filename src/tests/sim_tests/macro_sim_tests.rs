@@ -29,7 +29,8 @@ fn test_on_press(cfg: &str) {
                 t:17ms dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
-    let result = simulate(cfg, "d:a t:10 d:c u:c t:10 d:b t:20 d:c t:100").to_ascii();
+    let result =
+        simulate(cfg, "d:a t:10 d:c u:c t:10 d:b t:20 d:c t:100").to_ascii();
     assert_eq!(
         "t:1ms dn:Z t:1ms up:Z t:8ms dn:C t:1ms up:C t:10ms \
                 dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
@@ -69,13 +70,15 @@ fn test_release_and_on_press(cfg: &str) {
                 t:17ms dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
-    let result = simulate(cfg, "d:a t:10 d:c u:c t:10 d:b t:20 d:c t:100").to_ascii();
+    let result =
+        simulate(cfg, "d:a t:10 d:c u:c t:10 d:b t:20 d:c t:100").to_ascii();
     assert_eq!(
         "t:1ms dn:Z t:1ms up:Z t:8ms dn:C t:1ms up:C t:10ms \
                 dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
-    let result = simulate(cfg, "d:a u:a t:10 t:10 d:b u:b t:20 d:c t:100").to_ascii();
+    let result =
+        simulate(cfg, "d:a u:a t:10 t:10 d:b u:b t:20 d:c t:100").to_ascii();
     assert_eq!(
         "t:1ms dn:Z t:1ms up:Z t:19ms \
          dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",

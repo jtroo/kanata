@@ -25,9 +25,14 @@ impl KeyboardHook {
     pub fn attach_hook() -> KeyboardHook {
         KeyboardHook {
             handle: unsafe {
-                SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
-                    .as_mut()
-                    .expect("install low-level keyboard hook successfully")
+                SetWindowsHookExW(
+                    WH_KEYBOARD_LL,
+                    Some(hook_proc),
+                    ptr::null_mut(),
+                    0,
+                )
+                .as_mut()
+                .expect("install low-level keyboard hook successfully")
             },
         }
     }
@@ -60,9 +65,11 @@ impl InputEvent {
     #[cfg(feature = "winiov2")]
     fn from_hook_lparam(lparam: &KBDLLHOOKSTRUCT) -> Self {
         let extended = if lparam.flags & 0x1 == 0x1 { 0xE000 } else { 0 };
-        let code = kanata_state_machine::oskbd::u16_to_osc((lparam.scanCode as u16) | extended)
-            .map(Into::into)
-            .unwrap_or(lparam.vkCode);
+        let code = kanata_state_machine::oskbd::u16_to_osc(
+            (lparam.scanCode as u16) | extended,
+        )
+        .map(Into::into)
+        .unwrap_or(lparam.vkCode);
         Self {
             code,
             up: lparam.flags & LLKHF_UP != 0,
@@ -71,7 +78,11 @@ impl InputEvent {
 }
 
 /// The actual WinAPI compatible callback.
-unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+unsafe extern "system" fn hook_proc(
+    code: c_int,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
     let key_event = InputEvent::from_hook_lparam(hook_lparam);

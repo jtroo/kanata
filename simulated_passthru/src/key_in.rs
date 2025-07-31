@@ -10,7 +10,11 @@ use crate::oskbd::HOOK_CB;
 /// callback (which will in turn communicate via the internal kanata's channels to
 /// keyberon state machine etc.)
 #[no_mangle]
-pub extern "win64" fn input_ev_listener(vk: c_uint, sc: c_uint, up: c_int) -> LRESULT {
+pub extern "win64" fn input_ev_listener(
+    vk: c_uint,
+    sc: c_uint,
+    up: c_int,
+) -> LRESULT {
     #[cfg(feature = "perf_logging")]
     let start = std::time::Instant::now();
     let key_event = InputEvent::from_vk_sc(vk, sc, up); //{code:KEY_0,value:Press}

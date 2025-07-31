@@ -8,7 +8,9 @@ fn set_virtual_key_reference_lsp_hint(vk_name_expr: &SExpr, s: &ParserState) {
     {
         let atom = match vk_name_expr {
             SExpr::Atom(x) => x,
-            SExpr::List(_) => unreachable!("should be validated to be atom earlier"),
+            SExpr::List(_) => {
+                unreachable!("should be validated to be atom earlier")
+            }
         };
         s.lsp_hints
             .borrow_mut()
@@ -22,7 +24,8 @@ pub(crate) fn parse_on_press_fake_key_op(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
+    let (coord, action) =
+        parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Custom(
         s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
@@ -33,7 +36,8 @@ pub(crate) fn parse_on_release_fake_key_op(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
+    let (coord, action) =
+        parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
     Ok(s.a.sref(Action::Custom(s.a.sref(
         s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
@@ -78,10 +82,11 @@ pub(crate) fn parse_on_idle_fakekey(
                 "{ERR_MSG}\nInvalid second parameter, it must be one of: tap, press, release",
             )
         })?;
-    let idle_duration = parse_u16(&ac_params[2], s, "idle time").map_err(|mut e| {
-        e.msg = format!("{ERR_MSG}\nInvalid third parameter: {}", e.msg);
-        e
-    })?;
+    let idle_duration =
+        parse_u16(&ac_params[2], s, "idle time").map_err(|mut e| {
+            e.msg = format!("{ERR_MSG}\nInvalid third parameter: {}", e.msg);
+            e
+        })?;
     let (x, y) = get_fake_key_coords(y);
     let coord = Coord { x, y };
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
@@ -99,7 +104,8 @@ fn parse_fake_key_op_coord_action(
     s: &ParserState,
     ac_name: &str,
 ) -> Result<(Coord, FakeKeyAction)> {
-    const ERR_MSG: &str = "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
+    const ERR_MSG: &str =
+        "expects two parameters: <fake key name> <(tap|press|release|toggle)>";
     if ac_params.len() != 2 {
         bail!("{ac_name} {ERR_MSG}");
     }
@@ -178,7 +184,10 @@ fn parse_delay(
         })))))
 }
 
-pub(crate) fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
+pub(crate) fn parse_vkey_coord(
+    param: &SExpr,
+    s: &ParserState,
+) -> Result<Coord> {
     let name = param
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(param, "key-name must not be a list",))?;
@@ -217,7 +226,8 @@ pub(crate) fn parse_on_press(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "on-press expects two parameters: <action> <key-name>";
+    const ERR_MSG: &str =
+        "on-press expects two parameters: <action> <key-name>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
@@ -233,7 +243,8 @@ pub(crate) fn parse_on_release(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "on-release expects two parameters: <action> <key-name>";
+    const ERR_MSG: &str =
+        "on-release expects two parameters: <action> <key-name>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }
@@ -245,12 +256,17 @@ pub(crate) fn parse_on_release(
     ))))
 }
 
-pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "on-idle expects three parameters: <timeout> <action> <key-name>";
+pub(crate) fn parse_on_idle(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str =
+        "on-idle expects three parameters: <timeout> <action> <key-name>";
     if ac_params.len() != 3 {
         bail!("{ERR_MSG}");
     }
-    let idle_duration = parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
+    let idle_duration =
+        parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
     let action = parse_vkey_action(&ac_params[1], s)?;
     let coord = parse_vkey_coord(&ac_params[2], s)?;
 
@@ -272,7 +288,8 @@ pub(crate) fn parse_on_physical_idle(
     if ac_params.len() != 3 {
         bail!("{ERR_MSG}");
     }
-    let idle_duration = parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
+    let idle_duration =
+        parse_non_zero_u16(&ac_params[0], s, "on-idle-timeout")?;
     let action = parse_vkey_action(&ac_params[1], s)?;
     let coord = parse_vkey_coord(&ac_params[2], s)?;
 
@@ -289,7 +306,8 @@ pub(crate) fn parse_hold_for_duration(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "hold-for-duration expects two parameters: <hold-duration> <key-name>";
+    const ERR_MSG: &str =
+        "hold-for-duration expects two parameters: <hold-duration> <key-name>";
     if ac_params.len() != 2 {
         bail!("{ERR_MSG}");
     }

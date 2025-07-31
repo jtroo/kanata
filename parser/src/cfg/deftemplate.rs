@@ -112,7 +112,8 @@ pub fn expand_templates(
                     Ok(vars)
                 })
             })?;
-        let vars_substitute_names: Vec<_> = vars.iter().map(|v| format!("${v}")).collect();
+        let vars_substitute_names: Vec<_> =
+            vars.iter().map(|v| format!("${v}")).collect();
 
         // Validate content of template
         let content: Vec<SExpr> = list.t.iter().skip(3).cloned().collect();
@@ -120,8 +121,13 @@ pub fn expand_templates(
             .iter()
             .map(|v| (v.clone(), 0))
             .collect();
-        visit_validate_all_atoms_peek_next(&content, &mut |s, s_next| match s.t.as_str() {
-            "deftemplate" => err_span!(s, "deftemplate is not allowed within deftemplate"),
+        visit_validate_all_atoms_peek_next(&content, &mut |s, s_next| match s
+            .t
+            .as_str()
+        {
+            "deftemplate" => {
+                err_span!(s, "deftemplate is not allowed within deftemplate")
+            }
             "template-expand" | "t!" => {
                 match s_next {
                     Some(next) => {
@@ -201,7 +207,11 @@ struct Replacement {
     insert_index: usize,
 }
 
-fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHints) -> Result<()> {
+fn expand(
+    exprs: &mut Vec<SExpr>,
+    templates: &[Template],
+    _lsp_hints: &mut LspHints,
+) -> Result<()> {
     let mut replacements: Vec<Replacement> = vec![];
     loop {
         for (expr_index, expr) in exprs.iter_mut().enumerate() {
@@ -251,12 +261,14 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHi
                     // Substitute variables.
                     // perf_1 : could store substitution knowledge instead of iterating and searching
                     // every time
-                    visit_mut_all_atoms(&mut expanded_template, &mut |expr: &mut SExpr| {
-                        *expr = match expr {
-                            // Below should not be reached because only atoms should be visited
-                            SExpr::List(_) => unreachable!(),
-                            SExpr::Atom(a) => {
-                                match template
+                    visit_mut_all_atoms(
+                        &mut expanded_template,
+                        &mut |expr: &mut SExpr| {
+                            *expr = match expr {
+                                // Below should not be reached because only atoms should be visited
+                                SExpr::List(_) => unreachable!(),
+                                SExpr::Atom(a) => {
+                                    match template
                                     .vars_substitute_names
                                     .iter()
                                     .enumerate()
@@ -269,21 +281,27 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHi
                                         .expect("validated matching var lens")
                                         .clone(),
                                 }
+                                }
                             }
-                        }
-                    });
+                        },
+                    );
 
-                    visit_mut_all_lists(&mut expanded_template, &mut |expr: &mut SExpr| {
-                        *expr = match expr {
-                            // Below should not be reached because only lists should be visited
-                            SExpr::Atom(_) => unreachable!(),
-                            SExpr::List(l) => parse_list_var(l, &HashMap::default()),
-                        };
-                        match expr {
-                            SExpr::Atom(_) => true,
-                            SExpr::List(_) => false,
-                        }
-                    });
+                    visit_mut_all_lists(
+                        &mut expanded_template,
+                        &mut |expr: &mut SExpr| {
+                            *expr = match expr {
+                                // Below should not be reached because only lists should be visited
+                                SExpr::Atom(_) => unreachable!(),
+                                SExpr::List(l) => {
+                                    parse_list_var(l, &HashMap::default())
+                                }
+                            };
+                            match expr {
+                                SExpr::Atom(_) => true,
+                                SExpr::List(_) => false,
+                            }
+                        },
+                    );
 
                     while evaluate_conditionals(&mut expanded_template)? {}
 
@@ -356,7 +374,10 @@ fn visit_mut_all_atoms(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr)) {
     }
 }
 
-fn visit_mut_all_lists(exprs: &mut [SExpr], visit: &mut dyn FnMut(&mut SExpr) -> ChangeOccurred) {
+fn visit_mut_all_lists(
+    exprs: &mut [SExpr],
+    visit: &mut dyn FnMut(&mut SExpr) -> ChangeOccurred,
+) {
     for expr in exprs {
         loop {
             if let SExpr::Atom(_) = expr {
@@ -445,7 +466,10 @@ fn if_not_in_list_replacement(expr: &SExpr) -> Result<Option<Vec<SExpr>>> {
     string_list_compare_replacement(expr, "if-not-in-list")
 }
 
-fn strings_compare_replacement(expr: &SExpr, operation: &str) -> Result<Option<Vec<SExpr>>> {
+fn strings_compare_replacement(
+    expr: &SExpr,
+    operation: &str,
+) -> Result<Option<Vec<SExpr>>> {
     match expr {
         // Below should not be reached because only lists should be visited
         SExpr::Atom(_) => unreachable!(),
@@ -492,7 +516,10 @@ fn strings_compare_replacement(expr: &SExpr, operation: &str) -> Result<Option<V
     }
 }
 
-fn string_list_compare_replacement(expr: &SExpr, operation: &str) -> Result<Option<Vec<SExpr>>> {
+fn string_list_compare_replacement(
+    expr: &SExpr,
+    operation: &str,
+) -> Result<Option<Vec<SExpr>>> {
     match expr {
         // Below should not be reached because only lists should be visited
         SExpr::Atom(_) => unreachable!(),

@@ -60,7 +60,12 @@ impl Default for Span {
 }
 
 impl Span {
-    pub fn new(start: Position, end: Position, file_name: Rc<str>, file_content: Rc<str>) -> Span {
+    pub fn new(
+        start: Position,
+        end: Position,
+        file_name: Rc<str>,
+        file_content: Rc<str>,
+    ) -> Span {
         assert!(start.absolute <= end.absolute);
         assert!(start.line <= end.line);
         Span {
@@ -146,7 +151,10 @@ pub enum SExpr {
 }
 
 impl SExpr {
-    pub fn atom<'a>(&'a self, vars: Option<&'a HashMap<String, SExpr>>) -> Option<&'a str> {
+    pub fn atom<'a>(
+        &'a self,
+        vars: Option<&'a HashMap<String, SExpr>>,
+    ) -> Option<&'a str> {
         match self {
             SExpr::Atom(a) => {
                 let s = a.t.as_str();
@@ -154,9 +162,11 @@ impl SExpr {
                     (Some(varname), Some(vars)) => match vars.get(varname) {
                         Some(var) => {
                             #[cfg(feature = "lsp")]
-                            super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
-                                refs.push(varname, a.span.clone());
-                            });
+                            super::LSP_VARIABLE_REFERENCES.with_borrow_mut(
+                                |refs| {
+                                    refs.push(varname, a.span.clone());
+                                },
+                            );
                             var.atom(Some(vars))
                         }
                         None => Some(s),
@@ -168,16 +178,21 @@ impl SExpr {
         }
     }
 
-    pub fn list<'a>(&'a self, vars: Option<&'a HashMap<String, SExpr>>) -> Option<&'a [SExpr]> {
+    pub fn list<'a>(
+        &'a self,
+        vars: Option<&'a HashMap<String, SExpr>>,
+    ) -> Option<&'a [SExpr]> {
         match self {
             SExpr::List(l) => Some(&l.t),
             SExpr::Atom(a) => match (a.t.strip_prefix('$'), vars) {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
                     Some(var) => {
                         #[cfg(feature = "lsp")]
-                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
-                            refs.push(varname, a.span.clone());
-                        });
+                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(
+                            |refs| {
+                                refs.push(varname, a.span.clone());
+                            },
+                        );
                         var.list(Some(vars))
                     }
                     None => None,
@@ -197,9 +212,11 @@ impl SExpr {
                 (Some(varname), Some(vars)) => match vars.get(varname) {
                     Some(var) => {
                         #[cfg(feature = "lsp")]
-                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
-                            refs.push(varname, a.span.clone());
-                        });
+                        super::LSP_VARIABLE_REFERENCES.with_borrow_mut(
+                            |refs| {
+                                refs.push(varname, a.span.clone());
+                            },
+                        );
                         var.span_list(Some(vars))
                     }
                     None => None,
@@ -335,7 +352,12 @@ impl<'a> Lexer<'a> {
                 let end = lexer.bytes.pos();
                 Spanned::new(
                     t,
-                    Span::new(start, end, file_name.clone(), file_content.clone()),
+                    Span::new(
+                        start,
+                        end,
+                        file_name.clone(),
+                        file_content.clone(),
+                    ),
                 )
             })
         })
@@ -394,7 +416,12 @@ impl<'a> Lexer<'a> {
                             self.next_while(|b| b != b'"' && b != b'\n');
                             match self.bytes.next() {
                                 Some(b'"') => StringTok,
-                                _ => return Some((start, Err("Unterminated string".to_string()))),
+                                _ => {
+                                    return Some((
+                                        start,
+                                        Err("Unterminated string".to_string()),
+                                    ))
+                                }
                             }
                         }
                         b';' => match self.bytes.clone().next() {
@@ -410,12 +437,17 @@ impl<'a> Lexer<'a> {
                             _ => self.next_string(),
                         },
                         b'r' => {
-                            match (self.bytes.clone().next(), self.bytes.clone().nth(1)) {
+                            match (
+                                self.bytes.clone().next(),
+                                self.bytes.clone().nth(1),
+                            ) {
                                 (Some(b'#'), Some(b'"')) => {
                                     // consume the # and "
                                     self.bytes.next();
                                     self.bytes.next();
-                                    let tok: Token = match self.read_until_multiline_string_end() {
+                                    let tok: Token = match self
+                                        .read_until_multiline_string_end()
+                                    {
                                         Ok(t) => t,
                                         e @ Err(_) => return Some((start, e)),
                                     };
@@ -428,7 +460,9 @@ impl<'a> Lexer<'a> {
                             Some(b'|') => {
                                 // consume the '|'
                                 self.bytes.next();
-                                let tok: Token = match self.read_until_multiline_comment_end() {
+                                let tok: Token = match self
+                                    .read_until_multiline_comment_end()
+                                {
                                     Ok(t) => t,
                                     e @ Err(_) => return Some((start, e)),
                                 };
@@ -468,7 +502,10 @@ impl<'a> Lexer<'a> {
 
 pub type TopLevel = Spanned<Vec<SExpr>>;
 
-pub fn parse(cfg: &str, file_name: &str) -> std::result::Result<Vec<TopLevel>, ParseError> {
+pub fn parse(
+    cfg: &str,
+    file_name: &str,
+) -> std::result::Result<Vec<TopLevel>, ParseError> {
     let ignore_whitespace_and_comments = true;
     parse_(cfg, file_name, ignore_whitespace_and_comments).map(|(x, _)| x)
 }
@@ -515,7 +552,9 @@ fn parse_with(
     loop {
         match tokens.next() {
             None => break,
-            Some(Spanned { t, span }) => match t.map_err(|s| ParseError::new(span.clone(), s))? {
+            Some(Spanned { t, span }) => match t
+                .map_err(|s| ParseError::new(span.clone(), s))?
+            {
                 Open => stack.push(Spanned::new(vec![], span)),
                 Close => {
                     let Spanned {
@@ -525,34 +564,38 @@ fn parse_with(
                         // if the stack is ever empty, return an error.
                     } = stack.pop().expect("placeholder unpopped");
                     if stack.is_empty() {
-                        return Err(ParseError::new(span, "Unexpected closing parenthesis"));
+                        return Err(ParseError::new(
+                            span,
+                            "Unexpected closing parenthesis",
+                        ));
                     }
-                    let expr = SExpr::List(Spanned::new(exprs, stack_span.cover(&span)));
+                    let expr = SExpr::List(Spanned::new(
+                        exprs,
+                        stack_span.cover(&span),
+                    ));
                     stack.last_mut().expect("not empty").t.push(expr);
                 }
-                StringTok => stack
-                    .last_mut()
-                    .expect("not empty")
-                    .t
-                    .push(SExpr::Atom(Spanned::new(s[span.clone()].to_string(), span))),
-                BlockComment => metadata.push(SExprMetaData::BlockComment(Spanned::new(
-                    s[span.clone()].to_string(),
-                    span,
-                ))),
-                LineComment => metadata.push(SExprMetaData::LineComment(Spanned::new(
-                    s[span.clone()].to_string(),
-                    span,
-                ))),
-                Whitespace => metadata.push(SExprMetaData::Whitespace(Spanned::new(
-                    s[span.clone()].to_string(),
-                    span,
-                ))),
+                StringTok => {
+                    stack.last_mut().expect("not empty").t.push(SExpr::Atom(
+                        Spanned::new(s[span.clone()].to_string(), span),
+                    ))
+                }
+                BlockComment => metadata.push(SExprMetaData::BlockComment(
+                    Spanned::new(s[span.clone()].to_string(), span),
+                )),
+                LineComment => metadata.push(SExprMetaData::LineComment(
+                    Spanned::new(s[span.clone()].to_string(), span),
+                )),
+                Whitespace => metadata.push(SExprMetaData::Whitespace(
+                    Spanned::new(s[span.clone()].to_string(), span),
+                )),
             },
         }
     }
     // There is a placeholder at the bottom of the stack to allow this unwrap; if the stack is ever
     // empty, return an error.
-    let Spanned { t: exprs, span: sp } = stack.pop().expect("placeholder unpopped");
+    let Spanned { t: exprs, span: sp } =
+        stack.pop().expect("placeholder unpopped");
     if !stack.is_empty() {
         return Err(ParseError::new(sp, "Unclosed opening parenthesis"));
     }
@@ -560,7 +603,9 @@ fn parse_with(
         .into_iter()
         .map(|expr| match expr {
             SExpr::List(es) => Ok(es),
-            SExpr::Atom(s) => Err(ParseError::new(s.span, "Everything must be in a list")),
+            SExpr::Atom(s) => {
+                Err(ParseError::new(s.span, "Everything must be in a list"))
+            }
         })
         .collect::<Result<_>>()?;
     Ok((exprs, metadata))

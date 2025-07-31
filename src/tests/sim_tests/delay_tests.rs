@@ -34,7 +34,8 @@ fn on_release_delay_must_be_single_threaded() {
 #[ignore] // timing-based: fails intermittently
 fn no_delay_must_be_single_threaded() {
     let start = std::time::Instant::now();
-    let result = simulate("(defsrc) (deflayermap (base) a XX)", "d:a t:50 u:a t:50");
+    let result =
+        simulate("(defsrc) (deflayermap (base) a XX)", "d:a t:50 u:a t:50");
     assert_eq!("", result);
     let end = std::time::Instant::now();
     let duration = end - start;

@@ -45,7 +45,8 @@ out:↓D",
 
 #[test]
 fn sim_timeout_hold_key() {
-    let result = simulate(SIMPLE_NONOVERLAPPING_CHORD_CFG, "d:z t:201 d:b t:200");
+    let result =
+        simulate(SIMPLE_NONOVERLAPPING_CHORD_CFG, "d:z t:201 d:b t:200");
     assert_eq!(
         "t:201ms
 out:↓Z
@@ -81,7 +82,8 @@ static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
 
 #[test]
 fn sim_chord_overlapping_timeout() {
-    let result = simulate(SIMPLE_OVERLAPPING_CHORD_CFG, "d:a d:b t:201 d:z t:300");
+    let result =
+        simulate(SIMPLE_OVERLAPPING_CHORD_CFG, "d:a d:b t:201 d:z t:300");
     assert_eq!(
         "t:200ms
 out:↓C

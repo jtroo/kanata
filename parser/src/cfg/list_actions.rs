@@ -27,7 +27,8 @@ pub const MACRO_RELEASE_CANCEL_A: &str = "macro↑⤫";
 pub const MACRO_REPEAT_RELEASE_CANCEL: &str = "macro-repeat-release-cancel";
 pub const MACRO_REPEAT_RELEASE_CANCEL_A: &str = "macro⟳↑⤫";
 pub const MACRO_CANCEL_ON_NEXT_PRESS: &str = "macro-cancel-on-press";
-pub const MACRO_REPEAT_CANCEL_ON_NEXT_PRESS: &str = "macro-repeat-cancel-on-press";
+pub const MACRO_REPEAT_CANCEL_ON_NEXT_PRESS: &str =
+    "macro-repeat-cancel-on-press";
 pub const MACRO_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE: &str =
     "macro-release-cancel-and-cancel-on-press";
 pub const MACRO_REPEAT_CANCEL_ON_NEXT_PRESS_CANCEL_ON_RELEASE: &str =
@@ -106,7 +107,8 @@ pub const CAPS_WORD_TOGGLE: &str = "caps-word-toggle";
 pub const CAPS_WORD_TOGGLE_A: &str = "word⇪toggle";
 pub const CAPS_WORD_CUSTOM_TOGGLE: &str = "caps-word-custom-toggle";
 pub const CAPS_WORD_CUSTOM_TOGGLE_A: &str = "word⇪custom-toggle";
-pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str = "dynamic-macro-record-stop-truncate";
+pub const DYNAMIC_MACRO_RECORD_STOP_TRUNCATE: &str =
+    "dynamic-macro-record-stop-truncate";
 pub const SWITCH: &str = "switch";
 pub const SEQUENCE: &str = "sequence";
 pub const SEQUENCE_NOERASE: &str = "sequence-noerase";

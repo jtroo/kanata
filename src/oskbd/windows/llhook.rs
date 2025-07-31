@@ -44,7 +44,9 @@ impl KeyboardHook {
     ///
     /// Panics when a hook is already registered from the same thread.
     #[must_use = "The hook will immediatelly be unregistered and not work."]
-    pub fn set_input_cb(callback: impl FnMut(InputEvent) -> bool + 'static) -> KeyboardHook {
+    pub fn set_input_cb(
+        callback: impl FnMut(InputEvent) -> bool + 'static,
+    ) -> KeyboardHook {
         HOOK.with(|state| {
             assert!(
                 state.take().is_none(),
@@ -55,9 +57,14 @@ impl KeyboardHook {
 
             KeyboardHook {
                 handle: unsafe {
-                    SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
-                        .as_mut()
-                        .expect("install low-level keyboard hook successfully")
+                    SetWindowsHookExW(
+                        WH_KEYBOARD_LL,
+                        Some(hook_proc),
+                        ptr::null_mut(),
+                        0,
+                    )
+                    .as_mut()
+                    .expect("install low-level keyboard hook successfully")
                 },
             }
         })
@@ -177,7 +184,11 @@ impl From<KeyEvent> for InputEvent {
 ///     0 KF_EXTENDED >> 8 LLKHF_EXTENDED            extended key (Fn, numpad): 1=yes, 0=no
 ///   time       :DWORD time stamp = GetMessageTime
 ///   dwExtraInfo:ULONG_PTR Additional info
-unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+unsafe extern "system" fn hook_proc(
+    code: c_int,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
     let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
     log::trace!("{code} {}{wparam} {is_injected}", {
@@ -239,16 +250,28 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_key(
+        &mut self,
+        key: OsCode,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         let event = InputEvent::from_oscode(key, value);
         self.write(event)
     }
 
-    pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code(
+        &mut self,
+        code: u32,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         super::write_code(code as u16, value)
     }
 
-    pub fn write_code_raw(&mut self, code: u16, value: KeyValue) -> Result<(), io::Error> {
+    pub fn write_code_raw(
+        &mut self,
+        code: u16,
+        value: KeyValue,
+    ) -> Result<(), io::Error> {
         super::write_code_raw(code, value)
     }
 
@@ -291,21 +314,35 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(
+        &mut self,
+        direction: MWheelDirection,
+        distance: u16,
+    ) -> Result<(), io::Error> {
         log::debug!("scroll: {direction:?} {distance:?}");
         match direction {
-            MWheelDirection::Up | MWheelDirection::Down => scroll(direction, distance),
-            MWheelDirection::Left | MWheelDirection::Right => hscroll(direction, distance),
+            MWheelDirection::Up | MWheelDirection::Down => {
+                scroll(direction, distance)
+            }
+            MWheelDirection::Left | MWheelDirection::Right => {
+                hscroll(direction, distance)
+            }
         }
         Ok(())
     }
 
-    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(
+        &mut self,
+        mv: CalculatedMouseMove,
+    ) -> Result<(), io::Error> {
         move_mouse(mv.direction, mv.distance);
         Ok(())
     }
 
-    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(
+        &mut self,
+        moves: &[CalculatedMouseMove],
+    ) -> Result<(), io::Error> {
         move_mouse_many(moves);
         Ok(())
     }
@@ -426,17 +463,20 @@ fn mouse_event(flags: u32, data: u32, dx: i32, dy: i32) {
     let mut input = INPUT {
         type_: INPUT_MOUSE,
         u: unsafe {
-            mem::transmute::<winapi::um::winuser::MOUSEINPUT, winapi::um::winuser::INPUT_u>(
-                MOUSEINPUT {
-                    dx,
-                    dy,
-                    mouseData: data,
-                    dwFlags: flags,
-                    time: 0,
-                    dwExtraInfo: 0,
-                },
-            )
+            mem::transmute::<
+                winapi::um::winuser::MOUSEINPUT,
+                winapi::um::winuser::INPUT_u,
+            >(MOUSEINPUT {
+                dx,
+                dy,
+                mouseData: data,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            })
         },
     };
-    unsafe { SendInput(1, &mut input as LPINPUT, mem::size_of::<INPUT>() as c_int) };
+    unsafe {
+        SendInput(1, &mut input as LPINPUT, mem::size_of::<INPUT>() as c_int)
+    };
 }

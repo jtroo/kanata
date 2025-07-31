@@ -13,7 +13,8 @@ use std::sync::MutexGuard;
 //                 standard activations would output space one outputs space, but not prefixes.
 //                 I guess can be done in parser.
 
-static ZCH: Lazy<Mutex<ZchState>> = Lazy::new(|| Mutex::new(Default::default()));
+static ZCH: Lazy<Mutex<ZchState>> =
+    Lazy::new(|| Mutex::new(Default::default()));
 
 pub(crate) fn zch() -> MutexGuard<'static, ZchState> {
     match ZCH.lock() {
@@ -117,7 +118,8 @@ impl ZchDynamicState {
         self.zchd_is_caps_word_active = is_caps_word_active;
         match self.zchd_enabled_state {
             ZchEnabledState::WaitEnable => {
-                self.zchd_ticks_until_enabled = self.zchd_ticks_until_enabled.saturating_sub(1);
+                self.zchd_ticks_until_enabled =
+                    self.zchd_ticks_until_enabled.saturating_sub(1);
                 if self.zchd_ticks_until_enabled == 0 {
                     log::debug!("zippy wait enable->enable");
                     self.zchd_enabled_state = ZchEnabledState::Enabled;
@@ -128,7 +130,8 @@ impl ZchDynamicState {
                 // Only run disable-check logic if ticks is already greater than zero, because zero
                 // means deadline has never been triggered by any press.
                 if self.zchd_ticks_until_disable > 0 {
-                    self.zchd_ticks_until_disable = self.zchd_ticks_until_disable.saturating_sub(1);
+                    self.zchd_ticks_until_disable =
+                        self.zchd_ticks_until_disable.saturating_sub(1);
                     if self.zchd_ticks_until_disable == 0 {
                         log::debug!("zippy enable->disable");
                         self.zchd_soft_reset();
@@ -247,7 +250,10 @@ pub(crate) struct ZchState {
 
 impl ZchState {
     /// Configure zippychord behaviour.
-    pub(crate) fn zch_configure(&mut self, cfg: (ZchPossibleChords, ZchConfig)) {
+    pub(crate) fn zch_configure(
+        &mut self,
+        cfg: (ZchPossibleChords, ZchConfig),
+    ) {
         self.zch_chords = cfg.0;
         self.zch_cfg = cfg.1;
         self.zchd.zchd_reset();
@@ -285,7 +291,8 @@ impl ZchState {
                 .zch_cfg
                 .zch_cfg_smart_space_punctuation
                 .contains(&match (
-                    self.zchd.zchd_is_lsft_active | self.zchd.zchd_is_rsft_active,
+                    self.zchd.zchd_is_lsft_active
+                        | self.zchd.zchd_is_rsft_active,
                     self.zchd.zchd_is_altgr_active,
                 ) {
                     (false, false) => ZchOutput::Lowercase(osc),
@@ -305,8 +312,9 @@ impl ZchState {
 
         // Zippychording is enabled. Ensure the deadline to disable it if no chord activates is
         // active.
-        self.zchd
-            .zchd_activate_chord_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);
+        self.zchd.zchd_activate_chord_deadline(
+            self.zch_cfg.zch_cfg_ticks_chord_deadline,
+        );
         self.zchd.zchd_state_change(&self.zch_cfg);
         self.zchd.zchd_press_key(osc);
 
@@ -320,17 +328,15 @@ impl ZchState {
         // activating a chord with the same+extra keys.
         let mut activation = Neither;
         if let Some(pchords) = &self.zchd.zchd_prioritized_chords {
-            activation = pchords
-                .lock()
-                .0
-                .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
+            activation = pchords.lock().0.ssm_get_or_is_subset_ksorted(
+                self.zchd.zchd_input_keys.zchik_keys(),
+            );
         }
         let mut is_prioritized_activation = false;
         if !matches!(activation, HasValue(..)) {
-            activation = self
-                .zch_chords
-                .0
-                .ssm_get_or_is_subset_ksorted(self.zchd.zchd_input_keys.zchik_keys());
+            activation = self.zch_chords.0.ssm_get_or_is_subset_ksorted(
+                self.zchd.zchd_input_keys.zchik_keys(),
+            );
         } else {
             is_prioritized_activation = true;
         }
@@ -341,46 +347,55 @@ impl ZchState {
                 // activation. This value affects both:
                 // - the number of backspaces that need to be done
                 // - the number of characters that actually need to be typed by the activation
-                let common_prefix_len_from_past_activation = if !is_prioritized_activation
-                    && self.zchd.zchd_same_hold_activation_count == 0
-                {
-                    0
-                } else {
-                    self.zchd
-                        .zchd_prior_activation
-                        .as_ref()
-                        .map(|prior_activation| {
-                            let current_activation_output = &a.zch_output;
-                            let mut len: i16 = 0;
-                            for (past, current) in prior_activation
-                                .zch_output
-                                .iter()
-                                .copied()
-                                .zip(current_activation_output.iter().copied())
-                            {
-                                if past.osc() == OsCode::KEY_BACKSPACE
-                                    || current.osc() == OsCode::KEY_BACKSPACE
-                                    || past != current
+                let common_prefix_len_from_past_activation =
+                    if !is_prioritized_activation
+                        && self.zchd.zchd_same_hold_activation_count == 0
+                    {
+                        0
+                    } else {
+                        self.zchd
+                            .zchd_prior_activation
+                            .as_ref()
+                            .map(|prior_activation| {
+                                let current_activation_output = &a.zch_output;
+                                let mut len: i16 = 0;
+                                for (past, current) in prior_activation
+                                    .zch_output
+                                    .iter()
+                                    .copied()
+                                    .zip(
+                                        current_activation_output
+                                            .iter()
+                                            .copied(),
+                                    )
                                 {
-                                    break;
+                                    if past.osc() == OsCode::KEY_BACKSPACE
+                                        || current.osc()
+                                            == OsCode::KEY_BACKSPACE
+                                        || past != current
+                                    {
+                                        break;
+                                    }
+                                    len += 1;
                                 }
-                                len += 1;
-                            }
-                            len
-                        })
-                        .unwrap_or(0)
-                };
+                                len
+                            })
+                            .unwrap_or(0)
+                    };
                 self.zchd.zchd_prior_activation = Some(a.clone());
                 self.zchd.zchd_same_hold_activation_count += 1;
 
-                self.zchd
-                    .zchd_restart_deadline(self.zch_cfg.zch_cfg_ticks_chord_deadline);
+                self.zchd.zchd_restart_deadline(
+                    self.zch_cfg.zch_cfg_ticks_chord_deadline,
+                );
                 if !a.zch_output.is_empty() {
                     // Zippychording eagerly types characters that form a chord and also eagerly
                     // outputs chords that are of a maybe-to-be-activated-later chord with more
                     // participating keys. This procedure erases both classes of typed characters
                     // in order to have the correct typed output for this chord activation.
-                    for _ in 0..(self.zchd.zchd_characters_to_delete_on_next_activation
+                    for _ in 0..(self
+                        .zchd
+                        .zchd_characters_to_delete_on_next_activation
                         + if is_prioritized_activation {
                             self.zchd.zchd_prior_activation_output_count
                         } else {
@@ -426,20 +441,33 @@ impl ZchState {
                         // I guess there's some buffer in the Interception code that is filling up.
                         send_count += 1;
                         if send_count % 5 == 0 {
-                            std::thread::sleep(std::time::Duration::from_millis(1));
+                            std::thread::sleep(
+                                std::time::Duration::from_millis(1),
+                            );
                         }
                     }
 
                     match key_to_send {
-                        ZchOutput::Lowercase(osc) | ZchOutput::NoEraseLowercase(osc) => {
+                        ZchOutput::Lowercase(osc)
+                        | ZchOutput::NoEraseLowercase(osc) => {
                             type_osc(osc, kb, &self.zchd)?;
                         }
-                        ZchOutput::Uppercase(osc) | ZchOutput::NoEraseUppercase(osc) => {
-                            maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
+                        ZchOutput::Uppercase(osc)
+                        | ZchOutput::NoEraseUppercase(osc) => {
+                            maybe_press_sft_during_activation(
+                                released_sft,
+                                kb,
+                                &self.zchd,
+                            )?;
                             type_osc(osc, kb, &self.zchd)?;
-                            maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(
+                                released_sft,
+                                kb,
+                                &self.zchd,
+                            )?;
                         }
-                        ZchOutput::AltGr(osc) | ZchOutput::NoEraseAltGr(osc) => {
+                        ZchOutput::AltGr(osc)
+                        | ZchOutput::NoEraseAltGr(osc) => {
                             // A note regarding maybe_press|release_sft
                             // in contrast to always pressing|releasing altgr:
                             //
@@ -453,11 +481,20 @@ impl ZchState {
                             type_osc(osc, kb, &self.zchd)?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                         }
-                        ZchOutput::ShiftAltGr(osc) | ZchOutput::NoEraseShiftAltGr(osc) => {
+                        ZchOutput::ShiftAltGr(osc)
+                        | ZchOutput::NoEraseShiftAltGr(osc) => {
                             kb.press_key(OsCode::KEY_RIGHTALT)?;
-                            maybe_press_sft_during_activation(released_sft, kb, &self.zchd)?;
+                            maybe_press_sft_during_activation(
+                                released_sft,
+                                kb,
+                                &self.zchd,
+                            )?;
                             type_osc(osc, kb, &self.zchd)?;
-                            maybe_release_sft_during_activation(released_sft, kb, &self.zchd)?;
+                            maybe_release_sft_during_activation(
+                                released_sft,
+                                kb,
+                                &self.zchd,
+                            )?;
                             kb.release_key(OsCode::KEY_RIGHTALT)?;
                         }
                     };
@@ -537,7 +574,8 @@ impl ZchState {
             }
 
             IsSubset => {
-                self.zchd.zchd_last_press = ZchLastPressClassification::NotChord;
+                self.zchd.zchd_last_press =
+                    ZchLastPressClassification::NotChord;
                 self.zchd.zchd_characters_to_delete_on_next_activation += 1;
                 kb.press_key(osc)
             }
@@ -590,7 +628,11 @@ impl ZchState {
     }
 }
 
-fn type_osc(osc: OsCode, kb: &mut KbdOut, zchd: &ZchDynamicState) -> Result<(), std::io::Error> {
+fn type_osc(
+    osc: OsCode,
+    kb: &mut KbdOut,
+    zchd: &ZchDynamicState,
+) -> Result<(), std::io::Error> {
     if zchd.zchd_input_keys.zchik_contains(osc) {
         kb.release_key(osc)?;
         kb.press_key(osc)?;
@@ -607,7 +649,8 @@ fn maybe_press_sft_during_activation(
     zchd: &ZchDynamicState,
 ) -> Result<(), std::io::Error> {
     if !zchd.zchd_is_caps_word_active
-        && (sft_already_released || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
+        && (sft_already_released
+            || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
     {
         kb.press_key(OsCode::KEY_LEFTSHIFT)?;
     }
@@ -620,7 +663,8 @@ fn maybe_release_sft_during_activation(
     zchd: &ZchDynamicState,
 ) -> Result<(), std::io::Error> {
     if !zchd.zchd_is_caps_word_active
-        && (sft_already_released || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
+        && (sft_already_released
+            || !zchd.zchd_is_lsft_active && !zchd.zchd_is_rsft_active)
     {
         kb.release_key(OsCode::KEY_LEFTSHIFT)?;
     }
