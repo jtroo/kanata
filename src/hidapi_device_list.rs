@@ -30,6 +30,7 @@ impl KeyboardDevice {
     }
 
     /// Returns a VID:PID identifier string
+    #[allow(dead_code)]
     pub fn vid_pid_string(&self) -> String {
         format!("{:04X}:{:04X}", self.vendor_id, self.product_id)
     }

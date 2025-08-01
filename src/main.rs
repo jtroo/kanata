@@ -1,9 +1,12 @@
 #![cfg_attr(feature = "gui", windows_subsystem = "windows")]
 // disable default console for a Windows GUI app
-#[cfg(any(
-    target_os = "macos",
-    target_os = "linux",
-    all(target_os = "windows", feature = "interception_driver")
+#[cfg(all(
+    feature = "hidapi_list",
+    any(
+        target_os = "macos",
+        target_os = "linux",
+        all(target_os = "windows", feature = "interception_driver")
+    )
 ))]
 mod hidapi_device_list;
 mod main_lib;
@@ -68,19 +71,25 @@ kanata.kbd in the current working directory and
     /// List the keyboards available for grabbing and exit.
     /// Shows device information including VID, PID, manufacturer, and product names.
     /// Use --json for machine-readable output.
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "linux",
-        all(target_os = "windows", feature = "interception_driver")
+    #[cfg(all(
+        feature = "hidapi_list",
+        any(
+            target_os = "macos",
+            target_os = "linux",
+            all(target_os = "windows", feature = "interception_driver")
+        )
     ))]
     #[arg(short, long, verbatim_doc_comment)]
     list: bool,
 
     /// Output device list in JSON format (use with --list)
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "linux",
-        all(target_os = "windows", feature = "interception_driver")
+    #[cfg(all(
+        feature = "hidapi_list",
+        any(
+            target_os = "macos",
+            target_os = "linux",
+            all(target_os = "windows", feature = "interception_driver")
+        )
     ))]
     #[arg(long)]
     json: bool,
@@ -134,10 +143,13 @@ mod cli {
     fn cli_init() -> Result<ValidatedArgs> {
         let args = Args::parse();
 
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "linux",
-            all(target_os = "windows", feature = "interception_driver")
+        #[cfg(all(
+            feature = "hidapi_list",
+            any(
+                target_os = "macos",
+                target_os = "linux",
+                all(target_os = "windows", feature = "interception_driver")
+            )
         ))]
         if args.list {
             use crate::hidapi_device_list::{list_keyboards_hidapi, OutputFormat};
