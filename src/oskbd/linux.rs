@@ -140,7 +140,7 @@ impl KbdIn {
             log::trace!("polling");
 
             if let Err(e) = self.poll.poll(&mut self.events, None) {
-                log::error!("failed poll: {:?}", e);
+                log::error!("failed poll: {e:?}");
                 return Ok(vec![]);
             }
 
@@ -278,27 +278,20 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
         | (DeviceDetectMode::KeyboardOnly, DeviceType::Keyboard) => {
             let use_input = true;
             log::debug!(
-                "Use for input autodetect: {use_input}. detect type {:?}; device type {:?}, device name: {}",
-                detect_mode,
-                device_type,
-                device_name,
+                "Use for input autodetect: {use_input}. detect type {detect_mode:?}; device type {device_type:?}, device name: {device_name}",
             );
             use_input
         }
         (_, DeviceType::Other) => {
             log::debug!(
-                "Use for input autodetect: false. Non-input device: {}",
-                device_name,
+                "Use for input autodetect: false. Non-input device: {device_name}",
             );
             false
         }
         _ => {
             let use_input = false;
             log::debug!(
-                "Use for input autodetect: {use_input}. detect type {:?}; device type {:?}, device name: {}",
-                detect_mode,
-                device_type,
-                device_name,
+                "Use for input autodetect: {use_input}. detect type {detect_mode:?}; device type {device_type:?}, device name: {device_name}",
             );
             use_input
         }
@@ -417,7 +410,7 @@ impl KbdOut {
             .enumerate_dev_nodes_blocking()?
             .next() // Expect only one. Using fold or calling next again blocks indefinitely
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "devnode is not found"))??;
-        log::info!("Created device {:#?}", devnode);
+        log::info!("Created device {devnode:#?}");
         let symlink = if let Some(symlink_path) = symlink_path {
             let dest = PathBuf::from(symlink_path);
             let symlink = Symlink::new(devnode, dest)?;
@@ -490,7 +483,7 @@ impl KbdOut {
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let input_ev = key_ev.into();
-        log::debug!("send to uinput: {:?}", input_ev);
+        log::debug!("send to uinput: {input_ev:?}");
         self.device.emit(&[input_ev])?;
         Ok(())
     }
@@ -744,7 +737,7 @@ impl Symlink {
             }
         }
         std::os::unix::fs::symlink(&source, &dest)?;
-        log::info!("Created symlink {:#?} -> {:#?}", dest, source);
+        log::info!("Created symlink {dest:#?} -> {source:#?}");
         Ok(Self { dest })
     }
 }
