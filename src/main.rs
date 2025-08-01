@@ -1,5 +1,10 @@
 #![cfg_attr(feature = "gui", windows_subsystem = "windows")]
 // disable default console for a Windows GUI app
+#[cfg(any(
+    target_os = "macos",
+    target_os = "linux",
+    all(target_os = "windows", feature = "interception_driver")
+))]
 mod hidapi_device_list;
 mod main_lib;
 
