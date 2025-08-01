@@ -193,7 +193,7 @@ fn read_from_kanata(s: TcpStream) {
                     log::info!("✓ Command executed successfully");
                 }
                 ServerResponse::Error { msg } => {
-                    log::error!("✗ Command failed: {}", msg);
+                    log::error!("✗ Command failed: {msg}");
                 }
             }
             continue;

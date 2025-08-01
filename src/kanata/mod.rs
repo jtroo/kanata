@@ -731,9 +731,7 @@ impl Kanata {
             }) {
                 Ok(_) => {}
                 Err(error) => {
-                    log::error!(
-                        "could not send ConfigFileReload event notification: {error}"
-                    );
+                    log::error!("could not send ConfigFileReload event notification: {error}");
                 }
             }
         }
@@ -1567,10 +1565,7 @@ impl Kanata {
                                 log::warn!("{PUSH_MESSAGE} was used, but TCP server is not running. did you specify a port?");
                             }
                             #[cfg(not(feature = "tcp_server"))]
-                            log::warn!(
-                                "{} was used, but Kanata was compiled with TCP server disabled.",
-                                PUSH_MESSAGE
-                            );
+                            log::warn!("{PUSH_MESSAGE} was used, but Kanata was compiled with TCP server disabled.");
                         }
                         CustomAction::FakeKey { coord, action } => {
                             let (x, y) = (coord.x, coord.y);
@@ -2446,7 +2441,7 @@ fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)
     std::thread::spawn(move || {
         for (cmd_log_level, cmd_error_log_level, cmd) in cmds {
             if let Err(e) = run_cmd_in_thread(cmd, cmd_log_level, cmd_error_log_level).join() {
-                log::error!("problem joining thread {:?}", e);
+                log::error!("problem joining thread {e:?}");
             }
         }
     });
