@@ -283,9 +283,7 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
             use_input
         }
         (_, DeviceType::Other) => {
-            log::debug!(
-                "Use for input autodetect: false. Non-input device: {device_name}",
-            );
+            log::debug!("Use for input autodetect: false. Non-input device: {device_name}",);
             false
         }
         _ => {
