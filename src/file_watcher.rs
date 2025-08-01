@@ -138,7 +138,7 @@ pub fn create_debouncer(
                     }
                 }
                 Err(e) => {
-                    log::error!("File watcher error: {:?}", e);
+                    log::error!("File watcher error: {e:?}");
                 }
             }
         },
@@ -178,7 +178,7 @@ pub fn restart_watcher(k_locked: &mut parking_lot::MutexGuard<Kanata>, k_ref: Ar
             Some(debouncer)
         }
         Err(e) => {
-            log::error!("Failed to restart file watcher: {}", e);
+            log::error!("Failed to restart file watcher: {e}");
             None
         }
     };

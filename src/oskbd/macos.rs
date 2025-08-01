@@ -176,7 +176,7 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
             if register_device(&dev) {
                 Some(dev.to_string())
             } else {
-                log::warn!("Couldn't register device '{}' - device may be in use by another application or disconnected", dev);
+                log::warn!("Couldn't register device '{dev}' - device may be in use by another application or disconnected");
                 None
             }
         })

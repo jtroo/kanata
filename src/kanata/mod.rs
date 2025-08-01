@@ -732,8 +732,7 @@ impl Kanata {
                 Ok(_) => {}
                 Err(error) => {
                     log::error!(
-                        "could not send ConfigFileReload event notification: {}",
-                        error
+                        "could not send ConfigFileReload event notification: {error}"
                     );
                 }
             }
@@ -772,7 +771,7 @@ impl Kanata {
             match tx.try_send(ServerMessage::LayerChange { new }) {
                 Ok(_) => {}
                 Err(error) => {
-                    log::error!("could not send LayerChange event notification: {}", error);
+                    log::error!("could not send LayerChange event notification: {error}");
                 }
             }
         }
@@ -787,7 +786,7 @@ impl Kanata {
             if self.included_files != new_included_files {
                 log::info!("Included files have changed, flagging file watcher for restart");
                 log::debug!("Old included files: {:?}", self.included_files);
-                log::debug!("New included files: {:?}", new_included_files);
+                log::debug!("New included files: {new_included_files:?}");
                 self.file_watcher_restart_requested = true;
                 self.included_files = new_included_files;
             }
@@ -1003,7 +1002,7 @@ impl Kanata {
                 mmsv.ticks_until_move = mmsv.interval - 1;
                 let scaled_distance =
                     apply_mouse_distance_modifiers(mmsv.distance, &self.move_mouse_speed_modifiers);
-                log::debug!("handle_move_mouse: scaled vdistance: {}", scaled_distance);
+                log::debug!("handle_move_mouse: scaled vdistance: {scaled_distance}");
 
                 let current_move = CalculatedMouseMove {
                     direction: mmsv.direction,
@@ -1050,7 +1049,7 @@ impl Kanata {
                 mmsh.ticks_until_move = mmsh.interval - 1;
                 let scaled_distance =
                     apply_mouse_distance_modifiers(mmsh.distance, &self.move_mouse_speed_modifiers);
-                log::debug!("handle_move_mouse: scaled hdistance: {}", scaled_distance);
+                log::debug!("handle_move_mouse: scaled hdistance: {scaled_distance}");
 
                 let current_move = CalculatedMouseMove {
                     direction: mmsh.direction,
@@ -1268,7 +1267,7 @@ impl Kanata {
             if cur_keys.contains(k) {
                 continue;
             }
-            log::debug!("key release   {:?}", k);
+            log::debug!("key release   {k:?}");
             if let Err(e) = release_key(&mut self.kbd_out, k.into()) {
                 bail!("failed to release key: {:?}", e);
             }
@@ -1338,7 +1337,7 @@ impl Kanata {
                     layout,
                 )?;
             } else {
-                log::debug!("key press     {:?}", k);
+                log::debug!("key press     {k:?}");
                 if let Err(e) = press_key(&mut self.kbd_out, k.into()) {
                     bail!("failed to press key: {:?}", e);
                 }
@@ -1374,18 +1373,18 @@ impl Kanata {
                             reload_action = Some(ReloadAction::ReloadFile(path.clone()));
                         }
                         CustomAction::Mouse(btn) => {
-                            log::debug!("click     {:?}", btn);
+                            log::debug!("click     {btn:?}");
                             if let Some(pbtn) = prev_mouse_btn {
-                                log::debug!("unclick   {:?}", pbtn);
+                                log::debug!("unclick   {pbtn:?}");
                                 self.kbd_out.release_btn(pbtn)?;
                             }
                             self.kbd_out.click_btn(*btn)?;
                             prev_mouse_btn = Some(*btn);
                         }
                         CustomAction::MouseTap(btn) => {
-                            log::debug!("click     {:?}", btn);
+                            log::debug!("click     {btn:?}");
                             self.kbd_out.click_btn(*btn)?;
-                            log::debug!("unclick   {:?}", btn);
+                            log::debug!("unclick   {btn:?}");
                             self.kbd_out.release_btn(*btn)?;
                         }
                         CustomAction::MWheel {
@@ -1553,21 +1552,19 @@ impl Kanata {
                             #[cfg(feature = "tcp_server")]
                             if let Some(tx) = _tx {
                                 let message = simple_sexpr_to_json_array(_message);
-                                log::debug!("Action push-msg message: {}", message);
+                                log::debug!("Action push-msg message: {message}");
                                 match tx.try_send(ServerMessage::MessagePush { message }) {
                                     Ok(_) => {}
                                     Err(error) => {
                                         log::error!(
-                                            "could not send {} event notification: {}",
-                                            PUSH_MESSAGE,
-                                            error
+                                            "could not send {PUSH_MESSAGE} event notification: {error}"
                                         );
                                     }
                                 }
                             }
                             #[cfg(feature = "tcp_server")]
                             if self.tcp_server_address.is_none() {
-                                log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
+                                log::warn!("{PUSH_MESSAGE} was used, but TCP server is not running. did you specify a port?");
                             }
                             #[cfg(not(feature = "tcp_server"))]
                             log::warn!(
@@ -1754,7 +1751,7 @@ impl Kanata {
                         }
                         ReloadAction::ReloadNum(n) => {
                             if let Err(e) = self.request_live_reload_num(n) {
-                                log::error!("{}", e);
+                                log::error!("{e}");
                                 false
                             } else {
                                 true
@@ -1762,7 +1759,7 @@ impl Kanata {
                         }
                         ReloadAction::ReloadFile(path) => {
                             if let Err(e) = self.request_live_reload_file(path) {
-                                log::error!("{}", e);
+                                log::error!("{e}");
                                 false
                             } else {
                                 true
@@ -1889,7 +1886,7 @@ impl Kanata {
                         _ => pbtn,
                     })
                     .map(|btn| {
-                        log::debug!("unclick   {:?}", btn);
+                        log::debug!("unclick   {btn:?}");
                         self.kbd_out.release_btn(*btn)
                     })
                 {
@@ -2031,7 +2028,7 @@ impl Kanata {
                 match tx.try_send(ServerMessage::LayerChange { new }) {
                     Ok(_) => {}
                     Err(error) => {
-                        log::error!("could not send event notification: {}", error);
+                        log::error!("could not send event notification: {error}");
                     }
                 }
             }

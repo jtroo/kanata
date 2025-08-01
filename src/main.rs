@@ -288,7 +288,7 @@ mod cli {
         #[cfg(feature = "watch")]
         if args.watch {
             if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
-                log::error!("Failed to start file watcher: {}", e);
+                log::error!("Failed to start file watcher: {e}");
             }
         }
 

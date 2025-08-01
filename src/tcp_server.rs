@@ -132,7 +132,7 @@ impl TcpServer {
                             for v in reader {
                                 match v {
                                     Ok(event) => {
-                                        log::debug!("tcp server received command: {:?}", event);
+                                        log::debug!("tcp server received command: {event:?}");
                                         match event {
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
@@ -196,8 +196,7 @@ impl TcpServer {
                                                     }
                                                     Err(e) => {
                                                         log::error!(
-                                                            "Failed to set mouse position: {}",
-                                                            e
+                                                            "Failed to set mouse position: {e}"
                                                         );
                                                         // Implement any error handling logic here,
                                                         // such as sending an error response to
