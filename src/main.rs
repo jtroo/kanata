@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "gui", windows_subsystem = "windows")]
 // disable default console for a Windows GUI app
+mod hidapi_device_list;
 mod main_lib;
 
 use anyhow::{bail, Result};
@@ -60,9 +61,24 @@ kanata.kbd in the current working directory and
     symlink_path: Option<String>,
 
     /// List the keyboards available for grabbing and exit.
-    #[cfg(target_os = "macos")]
-    #[arg(short, long)]
+    /// Shows device information including VID, PID, manufacturer, and product names.
+    /// Use --json for machine-readable output.
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "linux",
+        all(target_os = "windows", feature = "interception_driver")
+    ))]
+    #[arg(short, long, verbatim_doc_comment)]
     list: bool,
+
+    /// Output device list in JSON format (use with --list)
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "linux",
+        all(target_os = "windows", feature = "interception_driver")
+    ))]
+    #[arg(long)]
+    json: bool,
 
     /// Disable logging, except for errors. Takes precedent over debug and trace.
     #[arg(short, long)]
@@ -113,9 +129,22 @@ mod cli {
     fn cli_init() -> Result<ValidatedArgs> {
         let args = Args::parse();
 
-        #[cfg(target_os = "macos")]
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "linux",
+            all(target_os = "windows", feature = "interception_driver")
+        ))]
         if args.list {
-            karabiner_driverkit::list_keyboards();
+            use crate::hidapi_device_list::{list_keyboards_hidapi, OutputFormat};
+            let format = if args.json {
+                OutputFormat::Json
+            } else {
+                OutputFormat::Human
+            };
+            if let Err(e) = list_keyboards_hidapi(format) {
+                eprintln!("Error listing keyboards: {e}");
+                std::process::exit(1);
+            }
             std::process::exit(0);
         }
 
