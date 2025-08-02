@@ -51,11 +51,11 @@ impl Kanata {
                                 &keyboards_to_intercept_hwids_exclude,
                                 &mut is_dev_interceptable,
                             ) {
-                                log::debug!("stroke {:?} is from undesired device", strokes[i]);
+                                log::debug!("stroke {strokes[i]:?} is from undesired device");
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
-                            log::debug!("got stroke {:?}", strokes[i]);
+                            log::debug!("got stroke {strokes[i]:?}");
                             let code = match OsCodeWrapper::try_from(strokes[i]) {
                                 Ok(c) => c.0,
                                 _ => {
@@ -85,7 +85,7 @@ impl Kanata {
                             );
 
                             if allow_this_dev {
-                                log::trace!("checking mouse stroke {:?}", strokes[i]);
+                                log::trace!("checking mouse stroke {strokes[i]:?}");
 
                                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
                                     if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {

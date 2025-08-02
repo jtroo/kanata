@@ -46,7 +46,7 @@ impl Kanata {
 
             // Unlike Linux, Windows does not use a separate value for repeat. However, our code
             // needs to differentiate between initial press and repeat press.
-            log::debug!("event loop: {:?}", key_event);
+            log::debug!("event loop: {key_event:?}");
             match key_event.value {
                 KeyValue::Release => {
                     PRESSED_KEYS.lock().remove(&key_event.code);

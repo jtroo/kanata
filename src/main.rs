@@ -15,7 +15,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
-use simplelog::{format_description, *};
+use simplelog::*;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -300,7 +300,7 @@ mod cli {
 }
 
 #[cfg(not(feature = "gui"))]
-pub fn main() -> Result<()> {
+fn main() -> Result<()> {
     let ret = cli::main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
