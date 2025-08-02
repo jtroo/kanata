@@ -64,7 +64,7 @@ impl Drop for KbdIn {
     }
 }
 
-fn capture_stdout<F>(func: F) -> String
+pub fn capture_stdout<F>(func: F) -> String
 where
     F: FnOnce(),
 {
