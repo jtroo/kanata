@@ -15,6 +15,34 @@ fn get_macos_device_vid_pid(_device_name: &str) -> (Option<u16>, Option<u16>) {
     (None, None)
 }
 
+#[cfg(target_os = "linux")]
+pub fn extract_vid_pid_from_linux_path(device_path: &str) -> (Option<u16>, Option<u16>) {
+    // Extract VID/PID from Linux device path by traversing sysfs
+    // Device path format: /dev/input/eventX
+    // We need to find the corresponding /sys/class/input/eventX/device/../../idVendor and idProduct
+    
+    // Extract event number from device path (e.g., "event0" from "/dev/input/event0")
+    let event_name = match device_path.strip_prefix("/dev/input/") {
+        Some(name) => name,
+        None => return (None, None),
+    };
+    
+    // Construct sysfs paths for VID/PID
+    let vendor_path = format!("/sys/class/input/{}/device/../../idVendor", event_name);
+    let product_path = format!("/sys/class/input/{}/device/../../idProduct", event_name);
+    
+    // Try to read VID and PID from sysfs
+    let vendor_id = std::fs::read_to_string(&vendor_path)
+        .ok()
+        .and_then(|s| u16::from_str_radix(s.trim(), 16).ok());
+        
+    let product_id = std::fs::read_to_string(&product_path)
+        .ok()
+        .and_then(|s| u16::from_str_radix(s.trim(), 16).ok());
+    
+    (vendor_id, product_id)
+}
+
 #[cfg(target_os = "macos")]
 pub(crate) fn list_devices_macos(verbose: bool) {
     use crate::oskbd::capture_stdout;

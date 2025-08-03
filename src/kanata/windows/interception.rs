@@ -220,7 +220,7 @@ fn is_device_interceptable(
     };
 
     // Check VID/PID filters using centralized filtering function
-    let vid_pid_allowed = kanata_parser::cfg::device_filter::should_include_device_by_vid_pid(
+    let vid_pid_allowed = kanata_parser::cfg::should_include_device_by_vid_pid(
         vid_pid,
         allowed_vid_pids.as_deref(),
         excluded_vid_pids.as_deref(),
