@@ -189,7 +189,7 @@ struct WindowsDeviceInfo {
 
 #[cfg(all(target_os = "windows", feature = "interception_driver"))]
 #[allow(dead_code)]
-fn parse_vid_pid_from_hardware_id(hardware_id: &str) -> Option<(Option<u16>, Option<u16>)> {
+pub fn parse_vid_pid_from_hardware_id(hardware_id: &str) -> Option<(Option<u16>, Option<u16>)> {
     // Parse VID and PID from hardware ID strings like:
     // "HID\VID_046D&PID_C52B&MI_01" -> VID: 0x046D (1133), PID: 0xC52B (49970)
     // "USB\VID_1234&PID_5678&REV_0100" -> VID: 0x1234 (4660), PID: 0x5678 (22136)
