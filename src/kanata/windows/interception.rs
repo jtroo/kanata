@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use kanata_interception as ic;
 use parking_lot::Mutex;
+use std::collections::HashMap;
 use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
 
@@ -21,6 +22,9 @@ impl Kanata {
 
         let keyboards_to_intercept_hwids = kanata.lock().intercept_kb_hwids.clone();
         let keyboards_to_intercept_hwids_exclude = kanata.lock().intercept_kb_hwids_exclude.clone();
+        let keyboards_to_intercept_vid_pids = kanata.lock().intercept_kb_vid_pids.clone();
+        let keyboards_to_intercept_vid_pids_exclude =
+            kanata.lock().intercept_kb_vid_pids_exclude.clone();
         let mouse_to_intercept_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
             kanata.lock().intercept_mouse_hwids.clone();
         let mouse_to_intercept_excluded_hwids: Option<Vec<[u8; HWID_ARR_SZ]>> =
@@ -49,6 +53,8 @@ impl Kanata {
                                 &intrcptn,
                                 &keyboards_to_intercept_hwids,
                                 &keyboards_to_intercept_hwids_exclude,
+                                &keyboards_to_intercept_vid_pids,
+                                &keyboards_to_intercept_vid_pids_exclude,
                                 &mut is_dev_interceptable,
                             ) {
                                 log::debug!("stroke {:?} is from undesired device", strokes[i]);
@@ -81,6 +87,8 @@ impl Kanata {
                                 &intrcptn,
                                 &mouse_to_intercept_hwids,
                                 &mouse_to_intercept_excluded_hwids,
+                                &None, // Mouse devices don't support VID/PID filtering yet
+                                &None, // Mouse devices don't support VID/PID filtering yet
                                 &mut is_dev_interceptable,
                             );
 
@@ -154,36 +162,92 @@ fn is_device_interceptable(
     intrcptn: &ic::Interception,
     allowed_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
     excluded_hwids: &Option<Vec<[u8; HWID_ARR_SZ]>>,
+    allowed_vid_pids: &Option<Vec<(u16, u16)>>,
+    excluded_vid_pids: &Option<Vec<(u16, u16)>>,
     cache: &mut HashMap<ic::Device, bool>,
 ) -> bool {
-    match (allowed_hwids, excluded_hwids) {
-        (None, None) => true,
-        (Some(allowed), None) => match cache.get(&input_dev) {
-            Some(v) => *v,
-            None => {
-                let mut hwid = [0u8; HWID_ARR_SZ];
-                log::trace!("getting hardware id for input dev: {input_dev}");
-                let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
-                let dev_is_interceptable = allowed.contains(&hwid);
-                log::info!("include check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
-                cache.insert(input_dev, dev_is_interceptable);
-                dev_is_interceptable
-            }
-        },
-        (None, Some(excluded)) => match cache.get(&input_dev) {
-            Some(v) => *v,
-            None => {
-                let mut hwid = [0u8; HWID_ARR_SZ];
-                log::trace!("getting hardware id for input dev: {input_dev}");
-                let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
-                let dev_is_interceptable = !excluded.contains(&hwid);
-                log::info!("exclude check - res {res}; device #{input_dev} is intercepted: {dev_is_interceptable}; hwid {hwid:?} ");
-                cache.insert(input_dev, dev_is_interceptable);
-                dev_is_interceptable
-            }
-        },
-        _ => unreachable!("excluded and allowed should be mutually exclusive"),
+    // If no filters are defined, allow all devices
+    if allowed_hwids.is_none()
+        && excluded_hwids.is_none()
+        && allowed_vid_pids.is_none()
+        && excluded_vid_pids.is_none()
+    {
+        return true;
     }
+
+    // Check cache first
+    if let Some(&cached_result) = cache.get(&input_dev) {
+        return cached_result;
+    }
+
+    // Get hardware ID for filtering
+    let mut hwid = [0u8; HWID_ARR_SZ];
+    log::trace!("getting hardware id for input dev: {input_dev}");
+    let res = intrcptn.get_hardware_id(input_dev, &mut hwid);
+
+    // Extract VID/PID from hardware ID for VID/PID filtering
+    let vid_pid = if allowed_vid_pids.is_some() || excluded_vid_pids.is_some() {
+        // Convert hardware ID bytes to string for parsing
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+
+        // Convert bytes back to wide string, then to String
+        let wide_chars: Vec<u16> = hwid
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .take_while(|&c| c != 0) // Stop at null terminator
+            .collect();
+
+        let hardware_id_string = OsString::from_wide(&wide_chars).to_string_lossy();
+
+        // Extract VID/PID from hardware ID string
+        crate::main_lib::parse_vid_pid_from_hardware_id(&hardware_id_string).and_then(
+            |(vid, pid)| match (vid, pid) {
+                (Some(v), Some(p)) => Some((v, p)),
+                _ => None,
+            },
+        )
+    } else {
+        None
+    };
+
+    // Check hardware ID filters
+    let hwid_allowed = match (allowed_hwids, excluded_hwids) {
+        (None, None) => true,
+        (Some(allowed), None) => allowed.contains(&hwid),
+        (None, Some(excluded)) => !excluded.contains(&hwid),
+        _ => unreachable!("excluded and allowed hwids should be mutually exclusive"),
+    };
+
+    // Check VID/PID filters
+    let vid_pid_allowed = match (allowed_vid_pids, excluded_vid_pids) {
+        (None, None) => true,
+        (Some(allowed), None) => {
+            if let Some(device_vid_pid) = vid_pid {
+                allowed.contains(&device_vid_pid)
+            } else {
+                false // If we can't extract VID/PID but filter is specified, reject
+            }
+        }
+        (None, Some(excluded)) => {
+            if let Some(device_vid_pid) = vid_pid {
+                !excluded.contains(&device_vid_pid)
+            } else {
+                true // If we can't extract VID/PID but exclude filter is specified, allow
+            }
+        }
+        _ => unreachable!("excluded and allowed vid/pids should be mutually exclusive"),
+    };
+
+    // Device is interceptable if both hardware ID and VID/PID filters allow it
+    let dev_is_interceptable = hwid_allowed && vid_pid_allowed;
+
+    log::info!(
+        "device #{input_dev} filter check - hwid allowed: {hwid_allowed}, vid/pid allowed: {vid_pid_allowed}, final result: {dev_is_interceptable}; hwid {hwid:?}, vid/pid: {vid_pid:?}"
+    );
+
+    cache.insert(input_dev, dev_is_interceptable);
+    dev_is_interceptable
 }
 fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent> {
     if state.contains(ic::MouseState::RIGHT_BUTTON_DOWN) {

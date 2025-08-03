@@ -61,6 +61,9 @@ use list_actions::*;
 mod defcfg;
 pub use defcfg::*;
 
+mod device_filter;
+pub use device_filter::*;
+
 mod deftemplate;
 pub use deftemplate::*;
 

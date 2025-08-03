@@ -27,6 +27,8 @@ pub struct CfgLinuxOptions {
     pub linux_dev: Vec<String>,
     pub linux_dev_names_include: Option<Vec<String>>,
     pub linux_dev_names_exclude: Option<Vec<String>>,
+    pub linux_dev_vid_pids_include: Option<Vec<(u16, u16)>>,
+    pub linux_dev_vid_pids_exclude: Option<Vec<(u16, u16)>>,
     pub linux_continue_if_no_devs_found: bool,
     pub linux_unicode_u_code: crate::keys::OsCode,
     pub linux_unicode_termination: UnicodeTermination,
@@ -43,6 +45,8 @@ impl Default for CfgLinuxOptions {
             linux_dev: vec![],
             linux_dev_names_include: None,
             linux_dev_names_exclude: None,
+            linux_dev_vid_pids_include: None,
+            linux_dev_vid_pids_exclude: None,
             linux_continue_if_no_devs_found: false,
             // historically was the only option, so make KEY_U the default
             linux_unicode_u_code: crate::keys::OsCode::KEY_U,
@@ -68,6 +72,8 @@ pub enum LinuxCfgOutputBusType {
 pub struct CfgMacosOptions {
     pub macos_dev_names_include: Option<Vec<String>>,
     pub macos_dev_names_exclude: Option<Vec<String>>,
+    pub macos_vid_pid_include: Option<Vec<(u16, u16)>>,
+    pub macos_vid_pid_exclude: Option<Vec<(u16, u16)>>,
 }
 
 #[cfg(any(
@@ -80,6 +86,10 @@ pub struct CfgWinterceptOptions {
     pub windows_interception_mouse_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
     pub windows_interception_keyboard_hwids: Option<Vec<[u8; HWID_ARR_SZ]>>,
     pub windows_interception_keyboard_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    pub windows_interception_keyboard_vid_pid_include: Option<Vec<(u16, u16)>>,
+    pub windows_interception_keyboard_vid_pid_exclude: Option<Vec<(u16, u16)>>,
+    pub windows_interception_mouse_vid_pid_include: Option<Vec<(u16, u16)>>,
+    pub windows_interception_mouse_vid_pid_exclude: Option<Vec<(u16, u16)>>,
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
@@ -305,6 +315,32 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
                             cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
+                        }
+                    }
+                    "linux-dev-vid-pids-include" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            if cfg.linux_opts.linux_dev_vid_pids_exclude.is_some() {
+                                bail_expr!(
+                                    val,
+                                    "{label} and linux-dev-vid-pids-exclude cannot both be used"
+                                );
+                            }
+                            cfg.linux_opts.linux_dev_vid_pids_include =
+                                Some(sexpr_to_vid_pids_vec(val, label)?);
+                        }
+                    }
+                    "linux-dev-vid-pids-exclude" => {
+                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        {
+                            if cfg.linux_opts.linux_dev_vid_pids_include.is_some() {
+                                bail_expr!(
+                                    val,
+                                    "{label} and linux-dev-vid-pids-include cannot both be used"
+                                );
+                            }
+                            cfg.linux_opts.linux_dev_vid_pids_exclude =
+                                Some(sexpr_to_vid_pids_vec(val, label)?);
                         }
                     }
                     "linux-unicode-u-code" => {
@@ -586,6 +622,80 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             )?;
                             cfg.wintercept_opts
                                 .windows_interception_keyboard_hwids_exclude = Some(parsed_hwids);
+                        }
+                    }
+                    "windows-interception-keyboard-vid-pid-include" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_vid_pid_exclude
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-keyboard-vid-pid-exclude cannot both be used");
+                            }
+                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
+                            cfg.wintercept_opts
+                                .windows_interception_keyboard_vid_pid_include =
+                                Some(parsed_vid_pids);
+                        }
+                    }
+                    "windows-interception-keyboard-vid-pid-exclude" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_keyboard_vid_pid_include
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-keyboard-vid-pid-include cannot both be used");
+                            }
+                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
+                            cfg.wintercept_opts
+                                .windows_interception_keyboard_vid_pid_exclude =
+                                Some(parsed_vid_pids);
+                        }
+                    }
+                    "windows-interception-mouse-vid-pid-include" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_vid_pid_exclude
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-mouse-vid-pid-exclude cannot both be used");
+                            }
+                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_vid_pid_include = Some(parsed_vid_pids);
+                        }
+                    }
+                    "windows-interception-mouse-vid-pid-exclude" => {
+                        #[cfg(any(
+                            all(feature = "interception_driver", target_os = "windows"),
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if cfg
+                                .wintercept_opts
+                                .windows_interception_mouse_vid_pid_include
+                                .is_some()
+                            {
+                                bail_expr!(val, "{label} and windows-interception-mouse-vid-pid-include cannot both be used");
+                            }
+                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
+                            cfg.wintercept_opts
+                                .windows_interception_mouse_vid_pid_exclude = Some(parsed_vid_pids);
                         }
                     }
                     "macos-dev-names-include" => {
@@ -1015,6 +1125,24 @@ fn sexpr_to_hwids_vec(
     Ok(parsed_hwids)
 }
 
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "linux",
+    target_os = "unknown"
+))]
+fn sexpr_to_vid_pids_vec(val: &SExpr, label: &str) -> Result<Vec<(u16, u16)>> {
+    let vid_pids = sexpr_to_list_or_err(val, label)?;
+    let mut parsed_vid_pids = vec![];
+    for vid_pid_expr in vid_pids.iter() {
+        let vid_pid_str = sexpr_to_str_or_err(vid_pid_expr, &format!("entry in {label}"))?;
+        let vid_pid = parse_vid_pid_string(vid_pid_str)
+            .map_err(|e| anyhow_expr!(vid_pid_expr, "Invalid VID:PID format in {label}: {}", e))?;
+        parsed_vid_pids.push(vid_pid);
+    }
+    parsed_vid_pids.shrink_to_fit();
+    Ok(parsed_vid_pids)
+}
+
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct KeyRepeatSettings {
@@ -1061,4 +1189,31 @@ pub enum ReplayDelayBehaviour {
     /// Use the recorded number of ticks between presses and releases.
     /// This is newer behaviour.
     Recorded,
+}
+
+/// Parse VID:PID string in decimal format (e.g., "1452:641") to (vendor_id, product_id)
+pub fn parse_vid_pid_string(s: &str) -> Result<(u16, u16)> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 {
+        bail!(
+            "VID:PID must be in format 'VENDOR_ID:PRODUCT_ID' (e.g., '1452:641'), got: {}",
+            s
+        );
+    }
+
+    let vendor_id = parts[0].parse::<u16>().map_err(|_| {
+        ParseError::new_without_span(format!(
+            "Invalid vendor ID '{}', must be a number 0-65535",
+            parts[0]
+        ))
+    })?;
+
+    let product_id = parts[1].parse::<u16>().map_err(|_| {
+        ParseError::new_without_span(format!(
+            "Invalid product ID '{}', must be a number 0-65535",
+            parts[1]
+        ))
+    })?;
+
+    Ok((vendor_id, product_id))
 }

@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 
 use super::*;
+use crate::main_lib::extract_vid_pid_from_linux_path;
 use crate::{kanata::CalculatedMouseMove, oskbd::KeyEvent};
 use kanata_parser::cfg::DeviceDetectMode;
 use kanata_parser::cfg::UnicodeTermination;
@@ -39,6 +40,8 @@ pub struct KbdIn {
     _inotify: Inotify,
     include_names: Option<Vec<String>>,
     exclude_names: Option<Vec<String>>,
+    include_vid_pids: Option<Vec<(u16, u16)>>,
+    exclude_vid_pids: Option<Vec<(u16, u16)>>,
     device_detect_mode: DeviceDetectMode,
 }
 
@@ -53,6 +56,8 @@ impl KbdIn {
         continue_if_no_devices: bool,
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
+        include_vid_pids: Option<Vec<(u16, u16)>>,
+        exclude_vid_pids: Option<Vec<(u16, u16)>>,
         device_detect_mode: DeviceDetectMode,
     ) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
@@ -68,6 +73,8 @@ impl KbdIn {
             discover_devices(
                 include_names.as_deref(),
                 exclude_names.as_deref(),
+                include_vid_pids.as_deref(),
+                exclude_vid_pids.as_deref(),
                 device_detect_mode,
             )
         };
@@ -104,6 +111,8 @@ impl KbdIn {
             token_counter: INOTIFY_TOKEN_VALUE + 1,
             include_names,
             exclude_names,
+            include_vid_pids,
+            exclude_vid_pids,
             device_detect_mode,
         };
 
@@ -234,6 +243,8 @@ impl KbdIn {
             discover_devices(
                 self.include_names.as_deref(),
                 self.exclude_names.as_deref(),
+                self.include_vid_pids.as_deref(),
+                self.exclude_vid_pids.as_deref(),
                 self.device_detect_mode,
             )
             .into_iter()
@@ -678,6 +689,8 @@ fn devices_from_input_paths(
 pub fn discover_devices(
     include_names: Option<&[String]>,
     exclude_names: Option<&[String]>,
+    include_vid_pids: Option<&[(u16, u16)]>,
+    exclude_vid_pids: Option<&[(u16, u16)]>,
     device_detect_mode: DeviceDetectMode,
 ) -> Vec<(Device, String)> {
     log::info!("looking for devices in /dev/input");
@@ -715,7 +728,49 @@ pub fn discover_devices(
                         true
                     }
                 }
-            })
+            }) && {
+                // VID/PID filtering logic
+                let (vid, pid) = extract_vid_pid_from_linux_path(&pd.1);
+                let device_name = pd.0.name().unwrap_or("");
+
+                // Include VID/PID filter
+                let include_match = match include_vid_pids {
+                    None => true, // No include filter means include all
+                    Some(include_vid_pids) => {
+                        if let (Some(device_vid), Some(device_pid)) = (vid, pid) {
+                            if include_vid_pids.iter().any(|(vid, pid)| device_vid == *vid && device_pid == *pid) {
+                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is included", &pd.1);
+                                true
+                            } else {
+                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is ignored", &pd.1);
+                                false
+                            }
+                        } else {
+                            log::info!("device [{}:{device_name}] VID/PID unknown, ignored due to include filter", &pd.1);
+                            false
+                        }
+                    }
+                };
+
+                // Exclude VID/PID filter
+                let exclude_match = match exclude_vid_pids {
+                    None => false, // No exclude filter means exclude nothing
+                    Some(exclude_vid_pids) => {
+                        if let (Some(device_vid), Some(device_pid)) = (vid, pid) {
+                            if exclude_vid_pids.iter().any(|(vid, pid)| device_vid == *vid && device_pid == *pid) {
+                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is excluded", &pd.1);
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                };
+
+                include_match && !exclude_match
+            }
         })
         .collect();
     devices

@@ -177,6 +177,14 @@ pub struct Kanata {
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
+    #[cfg(target_os = "linux")]
+    /// Tracks the Linux user configuration for VID/PID pairs that should be
+    /// included for interception and processing by kanata.
+    pub linux_dev_vid_pids_include: Option<Vec<(u16, u16)>>,
+    #[cfg(target_os = "linux")]
+    /// Tracks the Linux user configuration for VID/PID pairs that should be
+    /// excluded for interception and processing by kanata.
+    pub linux_dev_vid_pids_exclude: Option<Vec<(u16, u16)>>,
     #[cfg(target_os = "windows")]
     /// Tracks whether Kanata should try to synchronize keystates with the Windows OS.
     /// Has no effect on Interception. Fixes some use cases related to admin window permissions and
@@ -198,6 +206,18 @@ pub struct Kanata {
     /// Used to know which keyboard input devices to exclude from processing inputs by kanata. This
     /// is mutually exclusive from `intercept_kb_hwids` and kanata will panic if both are included.
     intercept_kb_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which VID/PID pairs should be included for keyboard interception.
+    intercept_kb_vid_pids: Option<Vec<(u16, u16)>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which VID/PID pairs should be excluded from keyboard interception.
+    intercept_kb_vid_pids_exclude: Option<Vec<(u16, u16)>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which VID/PID pairs should be included for mouse interception.
+    intercept_mouse_vid_pids: Option<Vec<(u16, u16)>>,
+    #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+    /// Used to know which VID/PID pairs should be excluded from mouse interception.
+    intercept_mouse_vid_pids_exclude: Option<Vec<(u16, u16)>>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
@@ -431,6 +451,10 @@ impl Kanata {
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
+            #[cfg(target_os = "linux")]
+            linux_dev_vid_pids_include: cfg.options.linux_opts.linux_dev_vid_pids_include,
+            #[cfg(target_os = "linux")]
+            linux_dev_vid_pids_exclude: cfg.options.linux_opts.linux_dev_vid_pids_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -450,6 +474,26 @@ impl Kanata {
                 .options
                 .wintercept_opts
                 .windows_interception_keyboard_hwids_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_vid_pids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_vid_pid_include,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_vid_pids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_vid_pid_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_vid_pids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_vid_pid_include,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_vid_pids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_vid_pid_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),
@@ -582,6 +626,10 @@ impl Kanata {
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(target_os = "linux")]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
+            #[cfg(target_os = "linux")]
+            linux_dev_vid_pids_include: cfg.options.linux_opts.linux_dev_vid_pids_include,
+            #[cfg(target_os = "linux")]
+            linux_dev_vid_pids_exclude: cfg.options.linux_opts.linux_dev_vid_pids_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -601,6 +649,26 @@ impl Kanata {
                 .options
                 .wintercept_opts
                 .windows_interception_keyboard_hwids_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_vid_pids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_vid_pid_include,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_kb_vid_pids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_keyboard_vid_pid_exclude,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_vid_pids: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_vid_pid_include,
+            #[cfg(all(feature = "interception_driver", target_os = "windows"))]
+            intercept_mouse_vid_pids_exclude: cfg
+                .options
+                .wintercept_opts
+                .windows_interception_mouse_vid_pid_exclude,
             dynamic_macro_replay_state: None,
             dynamic_macro_record_state: None,
             dynamic_macros: Default::default(),

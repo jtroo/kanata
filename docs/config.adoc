@@ -4040,6 +4040,43 @@ but in practice it probably only makes sense to use one and not both.
 )
 ----
 
+[[linux-only-linux-dev-vid-pids-include]]
+=== Linux only: linux-dev-vid-pids-include
+
+This defcfg item allows you to include only keyboards with specific Vendor ID and Product ID combinations.
+Its value must be a list of strings with each string representing one VID:PID pair in decimal format.
+Use the `--list-verbose` command-line option to see available devices and their VID/PID values.
+This option works alongside device name filtering but cannot be used with VID/PID exclude options.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-vid-pids-include (
+    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
+    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
+  )
+)
+----
+
+[[linux-only-linux-dev-vid-pids-exclude]]
+=== Linux only: linux-dev-vid-pids-exclude
+
+This option allows you to exclude keyboards based on their Vendor ID and Product ID.
+You cannot define this alongside the inclusive VID/PID configuration.
+Each VID:PID pair should be provided in decimal format.
+
+.Example:
+[source]
+----
+(defcfg
+  linux-dev-vid-pids-exclude (
+    "1452:641"    ;; Exclude Apple Magic Keyboard
+    "1133:49970"  ;; Exclude specific Logitech device
+  )
+)
+----
+
 [[linux-only-linux-continue-if-no-devs-found]]
 === Linux only: linux-continue-if-no-devs-found
 
@@ -4372,6 +4409,41 @@ It is parsed identically to the inclusive configuration.
 )
 ----
 
+=== Windows only: windows-interception-keyboard-vid-pids[[windows-only-windows-interception-keyboard-vid-pids]]
+
+This defcfg item allows you to intercept only keyboards with specific Vendor ID and Product ID combinations.
+Its value must be a list of strings with each string representing one VID:PID pair in decimal format.
+Use the `--list-verbose` command-line option to see available devices and their VID/PID values.
+You cannot define this alongside hardware ID configurations.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-keyboard-vid-pids (
+    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
+    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
+  )
+)
+----
+
+=== Windows only: windows-interception-keyboard-vid-pids-exclude[[windows-only-windows-interception-keyboard-vid-pids-exclude]]
+
+This defcfg item allows you to exclude certain keyboards based on their Vendor ID and Product ID.
+You cannot define this alongside the inclusive VID/PID configuration.
+Each VID:PID pair should be provided in decimal format.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-interception-keyboard-vid-pids-exclude (
+    "1452:641"    ;; Exclude Apple Magic Keyboard
+    "1133:49970"  ;; Exclude specific Logitech device
+  )
+)
+----
+
 === Windows only: windows-interception-mouse-hwids-exclude[[windows-only-windows-interception-mouse-hwids-exclude]]
 
 This defcfg item allows you to exclude certain mice from being intercepted.
@@ -4500,11 +4572,15 @@ a non-applicable operating system.
   linux-dev (/dev/input/dev1 /dev/input/dev2)
   linux-dev-names-include ("Name 1" "Name 2")
   linux-dev-names-exclude ("Name 3" "Name 4")
+  linux-dev-vid-pids-include ("1452:641" "1133:49970")
+  linux-dev-vid-pids-exclude ("1452:641" "1133:49970")
   linux-continue-if-no-devs-found yes
   linux-unicode-u-code v
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
+  windows-interception-keyboard-vid-pids ("1452:641" "1133:49970")
+  windows-interception-keyboard-vid-pids-exclude ("1452:641" "1133:49970")
   windows-interception-mouse-hwid "70, 0, 60, 0"
 )
 ----

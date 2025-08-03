@@ -1,0 +1,99 @@
+;; Example configurations demonstrating VID/PID device filtering
+;; Use these examples as a starting point for device-specific configurations
+
+;; Linux VID/PID inclusion example
+;; Only intercept keyboards with specific VID/PID combinations
+(defcfg
+  ;; Include only Apple Magic Keyboard and specific Logitech device
+  linux-dev-vid-pids-include (
+    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
+    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
+  )
+)
+
+;; Alternatively, Linux VID/PID exclusion example
+;; Exclude specific keyboards while allowing all others
+;; NOTE: You cannot use both include and exclude for VID/PID at the same time
+;;(defcfg
+;;  ;; Exclude these devices, allow all others
+;;  linux-dev-vid-pids-exclude (
+;;    "1452:641"    ;; Exclude Apple Magic Keyboard
+;;    "1118:2049"   ;; Exclude Microsoft device
+;;  )
+;;)
+
+;; Windows VID/PID inclusion example
+;; Only intercept keyboards with specific VID/PID combinations
+;;(defcfg
+;;  ;; Include only Apple Magic Keyboard and specific Logitech device
+;;  windows-interception-keyboard-vid-pids (
+;;    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
+;;    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
+;;  )
+;;)
+
+;; Alternatively, Windows VID/PID exclusion example
+;; Exclude specific keyboards while allowing all others
+;; NOTE: You cannot use both include and exclude for VID/PID at the same time
+;;(defcfg
+;;  ;; Exclude these devices, allow all others
+;;  windows-interception-keyboard-vid-pids-exclude (
+;;    "1452:641"    ;; Exclude Apple Magic Keyboard
+;;    "1118:2049"   ;; Exclude Microsoft device
+;;  )
+;;)
+
+;; Combined example with device names and VID/PID filtering
+;; On Linux, you can combine device name filtering with VID/PID filtering
+;; Both filters are applied - device must match BOTH criteria to be included
+;;(defcfg
+;;  ;; Include devices by name AND by VID/PID
+;;  linux-dev-names-include (
+;;    "My Gaming Keyboard"
+;;    "Magic Keyboard"
+;;  )
+;;  linux-dev-vid-pids-include (
+;;    "1452:641"    ;; Apple Magic Keyboard
+;;    "1133:49970"  ;; Logitech Gaming Keyboard
+;;  )
+;;)
+
+;; Key mappings (minimal example)
+(defsrc
+  caps a s d f
+)
+
+(deflayer default
+  esc  a s d f
+)
+
+;; HOW TO FIND YOUR DEVICE VID/PID:
+;; 1. Run: sudo kanata --list-verbose
+;;    This will show all available devices with their VID/PID values in decimal format
+;; 
+;; 2. Look for output like:
+;;    1. "Magic Keyboard"
+;;       Vendor ID: 1452
+;;       Product ID: 641
+;;
+;; 3. Use the decimal values in your configuration: "1452:641"
+;;
+;; COMMON VID/PID VALUES (in decimal):
+;; Apple devices:
+;;   - Apple Magic Keyboard: "1452:641"
+;;   - Apple Magic Keyboard with Numeric Keypad: "1452:642"
+;;
+;; Logitech devices:
+;;   - Various Logitech keyboards: VID 1133 (0x046D in hex)
+;;   - Check specific PID with --list-devices
+;;
+;; Microsoft devices:
+;;   - Various Microsoft keyboards: VID 1118 (0x045E in hex)
+;;   - Check specific PID with --list-devices
+;;
+;; IMPORTANT NOTES:
+;; - VID/PID values must be in DECIMAL format, not hexadecimal
+;; - On Linux: VID/PID filtering can be combined with device name filtering
+;; - On Windows: VID/PID filtering cannot be combined with hardware ID filtering
+;; - You cannot use both include and exclude VID/PID options simultaneously
+;; - Use --list-verbose to discover the exact VID/PID values for your devices

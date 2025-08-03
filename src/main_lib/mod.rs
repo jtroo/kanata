@@ -132,7 +132,7 @@ pub(crate) fn list_devices_linux(verbose: bool) {
     println!("Available keyboard devices:");
     println!("===========================");
 
-    let devices = discover_devices(None, None, DeviceDetectMode::KeyboardOnly);
+    let devices = discover_devices(None, None, None, None, DeviceDetectMode::KeyboardOnly);
 
     if devices.is_empty() {
         println!("No keyboard devices found.");
