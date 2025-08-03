@@ -320,27 +320,25 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-dev-vid-pids-include" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            if cfg.linux_opts.linux_dev_vid_pids_exclude.is_some() {
-                                bail_expr!(
-                                    val,
-                                    "{label} and linux-dev-vid-pids-exclude cannot both be used"
-                                );
-                            }
-                            cfg.linux_opts.linux_dev_vid_pids_include =
-                                Some(sexpr_to_vid_pids_vec(val, label)?);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg.linux_opts.linux_dev_vid_pids_include,
+                                &cfg.linux_opts.linux_dev_vid_pids_exclude,
+                                "linux-dev-vid-pids-exclude",
+                            )?;
                         }
                     }
                     "linux-dev-vid-pids-exclude" => {
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
-                            if cfg.linux_opts.linux_dev_vid_pids_include.is_some() {
-                                bail_expr!(
-                                    val,
-                                    "{label} and linux-dev-vid-pids-include cannot both be used"
-                                );
-                            }
-                            cfg.linux_opts.linux_dev_vid_pids_exclude =
-                                Some(sexpr_to_vid_pids_vec(val, label)?);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg.linux_opts.linux_dev_vid_pids_exclude,
+                                &cfg.linux_opts.linux_dev_vid_pids_include,
+                                "linux-dev-vid-pids-include",
+                            )?;
                         }
                     }
                     "linux-unicode-u-code" => {
@@ -630,17 +628,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg
-                                .wintercept_opts
-                                .windows_interception_keyboard_vid_pid_exclude
-                                .is_some()
-                            {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-vid-pid-exclude cannot both be used");
-                            }
-                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
-                            cfg.wintercept_opts
-                                .windows_interception_keyboard_vid_pid_include =
-                                Some(parsed_vid_pids);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg
+                                    .wintercept_opts
+                                    .windows_interception_keyboard_vid_pid_include,
+                                &cfg.wintercept_opts
+                                    .windows_interception_keyboard_vid_pid_exclude,
+                                "windows-interception-keyboard-vid-pid-exclude",
+                            )?;
                         }
                     }
                     "windows-interception-keyboard-vid-pid-exclude" => {
@@ -649,17 +646,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg
-                                .wintercept_opts
-                                .windows_interception_keyboard_vid_pid_include
-                                .is_some()
-                            {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-vid-pid-include cannot both be used");
-                            }
-                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
-                            cfg.wintercept_opts
-                                .windows_interception_keyboard_vid_pid_exclude =
-                                Some(parsed_vid_pids);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg
+                                    .wintercept_opts
+                                    .windows_interception_keyboard_vid_pid_exclude,
+                                &cfg.wintercept_opts
+                                    .windows_interception_keyboard_vid_pid_include,
+                                "windows-interception-keyboard-vid-pid-include",
+                            )?;
                         }
                     }
                     "windows-interception-mouse-vid-pid-include" => {
@@ -668,16 +664,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg
-                                .wintercept_opts
-                                .windows_interception_mouse_vid_pid_exclude
-                                .is_some()
-                            {
-                                bail_expr!(val, "{label} and windows-interception-mouse-vid-pid-exclude cannot both be used");
-                            }
-                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
-                            cfg.wintercept_opts
-                                .windows_interception_mouse_vid_pid_include = Some(parsed_vid_pids);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg
+                                    .wintercept_opts
+                                    .windows_interception_mouse_vid_pid_include,
+                                &cfg.wintercept_opts
+                                    .windows_interception_mouse_vid_pid_exclude,
+                                "windows-interception-mouse-vid-pid-exclude",
+                            )?;
                         }
                     }
                     "windows-interception-mouse-vid-pid-exclude" => {
@@ -686,16 +682,16 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             target_os = "unknown"
                         ))]
                         {
-                            if cfg
-                                .wintercept_opts
-                                .windows_interception_mouse_vid_pid_include
-                                .is_some()
-                            {
-                                bail_expr!(val, "{label} and windows-interception-mouse-vid-pid-include cannot both be used");
-                            }
-                            let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
-                            cfg.wintercept_opts
-                                .windows_interception_mouse_vid_pid_exclude = Some(parsed_vid_pids);
+                            parse_vid_pid_with_exclusivity_check(
+                                val,
+                                label,
+                                &mut cfg
+                                    .wintercept_opts
+                                    .windows_interception_mouse_vid_pid_exclude,
+                                &cfg.wintercept_opts
+                                    .windows_interception_mouse_vid_pid_include,
+                                "windows-interception-mouse-vid-pid-include",
+                            )?;
                         }
                     }
                     "macos-dev-names-include" => {
@@ -1131,16 +1127,29 @@ fn sexpr_to_hwids_vec(
     target_os = "unknown"
 ))]
 fn sexpr_to_vid_pids_vec(val: &SExpr, label: &str) -> Result<Vec<(u16, u16)>> {
-    let vid_pids = sexpr_to_list_or_err(val, label)?;
-    let mut parsed_vid_pids = vec![];
-    for vid_pid_expr in vid_pids.iter() {
-        let vid_pid_str = sexpr_to_str_or_err(vid_pid_expr, &format!("entry in {label}"))?;
-        let vid_pid = parse_vid_pid_string(vid_pid_str)
-            .map_err(|e| anyhow_expr!(vid_pid_expr, "Invalid VID:PID format in {label}: {}", e))?;
-        parsed_vid_pids.push(vid_pid);
+    use crate::cfg::device_filter::sexpr_to_vid_pids_vec as parse_vid_pids;
+    parse_vid_pids(val, label).map_err(|e| anyhow_expr!(val, "{}", e))
+}
+
+/// Helper function to handle VID/PID parsing with mutual exclusivity checks
+#[cfg(any(
+    all(feature = "interception_driver", target_os = "windows"),
+    target_os = "linux",
+    target_os = "unknown"
+))]
+fn parse_vid_pid_with_exclusivity_check(
+    val: &SExpr,
+    label: &str,
+    target_field: &mut Option<Vec<(u16, u16)>>,
+    conflicting_field: &Option<Vec<(u16, u16)>>,
+    conflicting_label: &str,
+) -> Result<()> {
+    if conflicting_field.is_some() {
+        bail_expr!(val, "{label} and {conflicting_label} cannot both be used");
     }
-    parsed_vid_pids.shrink_to_fit();
-    Ok(parsed_vid_pids)
+    let parsed_vid_pids = sexpr_to_vid_pids_vec(val, label)?;
+    *target_field = Some(parsed_vid_pids);
+    Ok(())
 }
 
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
@@ -1189,31 +1198,4 @@ pub enum ReplayDelayBehaviour {
     /// Use the recorded number of ticks between presses and releases.
     /// This is newer behaviour.
     Recorded,
-}
-
-/// Parse VID:PID string in decimal format (e.g., "1452:641") to (vendor_id, product_id)
-pub fn parse_vid_pid_string(s: &str) -> Result<(u16, u16)> {
-    let parts: Vec<&str> = s.split(':').collect();
-    if parts.len() != 2 {
-        bail!(
-            "VID:PID must be in format 'VENDOR_ID:PRODUCT_ID' (e.g., '1452:641'), got: {}",
-            s
-        );
-    }
-
-    let vendor_id = parts[0].parse::<u16>().map_err(|_| {
-        ParseError::new_without_span(format!(
-            "Invalid vendor ID '{}', must be a number 0-65535",
-            parts[0]
-        ))
-    })?;
-
-    let product_id = parts[1].parse::<u16>().map_err(|_| {
-        ParseError::new_without_span(format!(
-            "Invalid product ID '{}', must be a number 0-65535",
-            parts[1]
-        ))
-    })?;
-
-    Ok((vendor_id, product_id))
 }

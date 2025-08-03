@@ -729,47 +729,41 @@ pub fn discover_devices(
                     }
                 }
             }) && {
-                // VID/PID filtering logic
+                // VID/PID filtering logic using centralized filtering function
                 let (vid, pid) = extract_vid_pid_from_linux_path(&pd.1);
+                let device_vid_pid = match (vid, pid) {
+                    (Some(v), Some(p)) => Some((v, p)),
+                    _ => None,
+                };
                 let device_name = pd.0.name().unwrap_or("");
 
-                // Include VID/PID filter
-                let include_match = match include_vid_pids {
-                    None => true, // No include filter means include all
-                    Some(include_vid_pids) => {
-                        if let (Some(device_vid), Some(device_pid)) = (vid, pid) {
-                            if include_vid_pids.iter().any(|(vid, pid)| device_vid == *vid && device_pid == *pid) {
-                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is included", &pd.1);
-                                true
-                            } else {
-                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is ignored", &pd.1);
-                                false
-                            }
-                        } else {
-                            log::info!("device [{}:{device_name}] VID/PID unknown, ignored due to include filter", &pd.1);
-                            false
-                        }
-                    }
-                };
+                let should_include =
+                    kanata_parser::cfg::device_filter::should_include_device_by_vid_pid(
+                        device_vid_pid,
+                        include_vid_pids,
+                        exclude_vid_pids,
+                    );
 
-                // Exclude VID/PID filter
-                let exclude_match = match exclude_vid_pids {
-                    None => false, // No exclude filter means exclude nothing
-                    Some(exclude_vid_pids) => {
-                        if let (Some(device_vid), Some(device_pid)) = (vid, pid) {
-                            if exclude_vid_pids.iter().any(|(vid, pid)| device_vid == *vid && device_pid == *pid) {
-                                log::info!("device [{}:{device_name}] VID/PID {device_vid}:{device_pid} is excluded", &pd.1);
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
+                if let Some((v, p)) = device_vid_pid {
+                    if should_include {
+                        log::info!(
+                            "device [{}:{device_name}] VID/PID {v}:{p} is included",
+                            &pd.1
+                        );
+                    } else {
+                        log::info!(
+                            "device [{}:{device_name}] VID/PID {v}:{p} is excluded",
+                            &pd.1
+                        );
                     }
-                };
+                } else if include_vid_pids.is_some() && !should_include {
+                    log::info!(
+                        "device [{}:{device_name}] VID/PID unknown, ignored due to include filter",
+                        &pd.1
+                    );
+                }
 
-                include_match && !exclude_match
+                should_include
             }
         })
         .collect();

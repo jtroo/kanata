@@ -4040,42 +4040,28 @@ but in practice it probably only makes sense to use one and not both.
 )
 ----
 
-[[linux-only-linux-dev-vid-pids-include]]
-=== Linux only: linux-dev-vid-pids-include
+[[device-targeting-hardware-id]]
+=== Device Targeting by Hardware ID
 
-This defcfg item allows you to include only keyboards with specific Vendor ID and Product ID combinations.
-Its value must be a list of strings with each string representing one VID:PID pair in decimal format.
-Use the `--list-verbose` command-line option to see available devices and their VID/PID values.
-This option works alongside device name filtering but cannot be used with VID/PID exclude options.
+Target specific keyboards by their hardware identifiers to prevent kanata from intercepting unwanted devices.
 
-.Example:
+Use `--list-verbose` to see your devices and their IDs.
+
+.Linux - Target by VID:PID:
 [source]
 ----
-(defcfg
-  linux-dev-vid-pids-include (
-    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
-    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
-  )
-)
+(defcfg linux-dev-vid-pids-include ("1452:641"))     ;; Include only this device
+(defcfg linux-dev-vid-pids-exclude ("1133:49970"))   ;; Exclude this device
 ----
 
-[[linux-only-linux-dev-vid-pids-exclude]]
-=== Linux only: linux-dev-vid-pids-exclude
-
-This option allows you to exclude keyboards based on their Vendor ID and Product ID.
-You cannot define this alongside the inclusive VID/PID configuration.
-Each VID:PID pair should be provided in decimal format.
-
-.Example:
+.Windows - Target by VID:PID or Raw Hardware ID:
 [source]
 ----
-(defcfg
-  linux-dev-vid-pids-exclude (
-    "1452:641"    ;; Exclude Apple Magic Keyboard
-    "1133:49970"  ;; Exclude specific Logitech device
-  )
-)
+(defcfg windows-interception-keyboard-vid-pid-include ("1452:641"))
+(defcfg windows-interception-keyboard-hwids ([72, 73, 68, ...]))  ;; Raw bytes
 ----
+
+NOTE: Include and exclude options cannot be used together. On Windows, VID:PID and hardware ID options are mutually exclusive.
 
 [[linux-only-linux-continue-if-no-devs-found]]
 === Linux only: linux-continue-if-no-devs-found
@@ -4409,40 +4395,6 @@ It is parsed identically to the inclusive configuration.
 )
 ----
 
-=== Windows only: windows-interception-keyboard-vid-pids[[windows-only-windows-interception-keyboard-vid-pids]]
-
-This defcfg item allows you to intercept only keyboards with specific Vendor ID and Product ID combinations.
-Its value must be a list of strings with each string representing one VID:PID pair in decimal format.
-Use the `--list-verbose` command-line option to see available devices and their VID/PID values.
-You cannot define this alongside hardware ID configurations.
-
-.Example:
-[source]
-----
-(defcfg
-  windows-interception-keyboard-vid-pids (
-    "1452:641"    ;; Apple Magic Keyboard (VID: 1452, PID: 641)
-    "1133:49970"  ;; Logitech device (VID: 1133, PID: 49970)
-  )
-)
-----
-
-=== Windows only: windows-interception-keyboard-vid-pids-exclude[[windows-only-windows-interception-keyboard-vid-pids-exclude]]
-
-This defcfg item allows you to exclude certain keyboards based on their Vendor ID and Product ID.
-You cannot define this alongside the inclusive VID/PID configuration.
-Each VID:PID pair should be provided in decimal format.
-
-.Example:
-[source]
-----
-(defcfg
-  windows-interception-keyboard-vid-pids-exclude (
-    "1452:641"    ;; Exclude Apple Magic Keyboard
-    "1133:49970"  ;; Exclude specific Logitech device
-  )
-)
-----
 
 === Windows only: windows-interception-mouse-hwids-exclude[[windows-only-windows-interception-mouse-hwids-exclude]]
 
@@ -4579,8 +4531,8 @@ a non-applicable operating system.
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
   windows-altgr add-lctl-release
-  windows-interception-keyboard-vid-pids ("1452:641" "1133:49970")
-  windows-interception-keyboard-vid-pids-exclude ("1452:641" "1133:49970")
+  windows-interception-keyboard-vid-pid-include ("1452:641" "1133:49970")
+  windows-interception-keyboard-vid-pid-exclude ("1452:641" "1133:49970")
   windows-interception-mouse-hwid "70, 0, 60, 0"
 )
 ----

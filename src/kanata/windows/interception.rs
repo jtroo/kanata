@@ -219,25 +219,12 @@ fn is_device_interceptable(
         _ => unreachable!("excluded and allowed hwids should be mutually exclusive"),
     };
 
-    // Check VID/PID filters
-    let vid_pid_allowed = match (allowed_vid_pids, excluded_vid_pids) {
-        (None, None) => true,
-        (Some(allowed), None) => {
-            if let Some(device_vid_pid) = vid_pid {
-                allowed.contains(&device_vid_pid)
-            } else {
-                false // If we can't extract VID/PID but filter is specified, reject
-            }
-        }
-        (None, Some(excluded)) => {
-            if let Some(device_vid_pid) = vid_pid {
-                !excluded.contains(&device_vid_pid)
-            } else {
-                true // If we can't extract VID/PID but exclude filter is specified, allow
-            }
-        }
-        _ => unreachable!("excluded and allowed vid/pids should be mutually exclusive"),
-    };
+    // Check VID/PID filters using centralized filtering function
+    let vid_pid_allowed = kanata_parser::cfg::device_filter::should_include_device_by_vid_pid(
+        vid_pid,
+        allowed_vid_pids.as_deref(),
+        excluded_vid_pids.as_deref(),
+    );
 
     // Device is interceptable if both hardware ID and VID/PID filters allow it
     let dev_is_interceptable = hwid_allowed && vid_pid_allowed;
