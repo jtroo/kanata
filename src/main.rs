@@ -60,7 +60,11 @@ kanata.kbd in the current working directory and
     symlink_path: Option<String>,
 
     /// List the keyboards available for grabbing and exit.
-    #[cfg(target_os = "macos")]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "linux",
+        all(target_os = "windows", feature = "interception_driver")
+    ))]
     #[arg(short, long)]
     list: bool,
 
@@ -115,7 +119,19 @@ mod cli {
 
         #[cfg(target_os = "macos")]
         if args.list {
-            karabiner_driverkit::list_keyboards();
+            main_lib::list_devices_macos();
+            std::process::exit(0);
+        }
+
+        #[cfg(target_os = "linux")]
+        if args.list {
+            main_lib::list_devices_linux();
+            std::process::exit(0);
+        }
+
+        #[cfg(all(target_os = "windows", feature = "interception_driver"))]
+        if args.list {
+            main_lib::list_devices_windows();
             std::process::exit(0);
         }
 

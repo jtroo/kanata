@@ -77,7 +77,11 @@ impl KbdIn {
             } else {
                 return Err(io::Error::new(
                     io::ErrorKind::NotFound,
-                    "No keyboard devices were found",
+                    "No keyboard devices were found. Try:\n\
+                     1. Run 'kanata --list' to see available devices\n\
+                     2. Check permissions: sudo usermod -a -G input $USER\n\
+                     3. Log out and back in for group changes to take effect\n\
+                     4. Ensure devices are connected and working",
                 ));
             }
         }
@@ -671,7 +675,7 @@ fn devices_from_input_paths(
         .collect()
 }
 
-fn discover_devices(
+pub fn discover_devices(
     include_names: Option<&[String]>,
     exclude_names: Option<&[String]>,
     device_detect_mode: DeviceDetectMode,
