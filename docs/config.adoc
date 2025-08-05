@@ -1570,7 +1570,7 @@ at a constant rate until a maximum is reached.
 | `$interval`
 | Number of milliseconds between move activations.
 
-| `$acceletaion-time`
+| `$acceleration-time`
 | Number of milliseconds until max distance per activation is reached.
 
 | `$min`
