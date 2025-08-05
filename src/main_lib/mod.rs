@@ -57,7 +57,6 @@ pub(crate) fn list_devices_macos(verbose: bool) {
                     }
                 }
             }
-
             valid_count += 1;
         }
     }
@@ -161,9 +160,8 @@ pub(crate) fn list_devices_linux(verbose: bool) {
                     println!("     VID/PID: Unknown");
                 }
             }
-            println!("     Path: {path}");
         }
-
+        println!("     Path: {path}");
         println!();
     }
 
@@ -382,11 +380,15 @@ pub(crate) fn list_devices_windows(verbose: bool) {
                             println!("     VID/PID: Unknown");
                         }
                     }
+                }
 
-                    // Show technical details in verbose mode
-                    if let Some(hwid) = &device_info.hardware_id {
-                        println!("     Hardware ID: {hwid}");
-                    }
+                // Show hardware ID if available
+                if let Some(hwid) = &device_info.hardware_id {
+                    println!("     Hardware ID: {hwid}");
+                }
+
+                // Show raw wide string bytes for kanata configuration
+                if verbose {
                     println!(
                         "     Raw wide string bytes: {:?}",
                         device_info.raw_wide_bytes
