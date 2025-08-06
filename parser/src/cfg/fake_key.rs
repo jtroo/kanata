@@ -44,8 +44,7 @@ pub(crate) fn parse_on_idle_fakekey(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str =
-        "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
+    const ERR_MSG: &str = "on-idle-fakekey expects three parameters:\n<fake key name> <(tap|press|release)> <idle time>\n";
     if ac_params.len() != 3 {
         bail!("{ERR_MSG}");
     }

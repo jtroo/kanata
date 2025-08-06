@@ -238,7 +238,7 @@ pub fn output_debug_string(s: &str) {
 }
 
 #[cfg(windows)]
-extern "stdcall" {
+unsafe extern "stdcall" {
     fn OutputDebugStringW(chars: *const u16);
     fn IsDebuggerPresent() -> i32;
 }
@@ -299,7 +299,7 @@ macro_rules! define_init_at_level {
         ///
         /// For Windows executables that have statically linked an instance of `win_dbg_logger`
         /// into them, call `win_dbg_logger_init_<level>()` during app startup.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub extern "C" fn $func() {
             init();
             log::set_max_level(LevelFilter::$level);

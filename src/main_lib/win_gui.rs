@@ -1,6 +1,6 @@
 use crate::*;
-use anyhow::{anyhow, Context};
-use clap::{error::ErrorKind, CommandFactory};
+use anyhow::{Context, anyhow};
+use clap::{CommandFactory, error::ErrorKind};
 use kanata_state_machine::gui::*;
 use kanata_state_machine::*;
 use std::fs::File;
@@ -143,7 +143,9 @@ fn main_impl() -> Result<()> {
     }; // store a clone of cfg so that we can ask it to reset itself
 
     if !args.nodelay {
-        info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
+        info!(
+            "Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep."
+        );
         std::thread::sleep(std::time::Duration::from_secs(2));
     }
 

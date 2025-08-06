@@ -1,5 +1,5 @@
 use crate::Kanata;
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use core::cell::RefCell;
 use kanata_parser::cfg::CfgOptionsGui;
 use log::Level::*;
@@ -17,14 +17,14 @@ use std::ffi::OsStr;
 use std::iter::once;
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender as ASender, TryRecvError};
 use std::sync::OnceLock;
+use std::sync::mpsc::{Receiver, Sender as ASender, TryRecvError};
 use std::time::Duration;
 use winapi::shared::minwindef::{BYTE, DWORD};
 use winapi::shared::windef::COLORREF;
 use windows_sys::Wdk::System::SystemServices::RtlGetVersion;
 use windows_sys::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, POINT, RECT, SIZE};
-use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows_sys::Win32::System::SystemInformation::OSVERSIONINFOW;
 use windows_sys::Win32::UI::HiDpi::GetSystemMetricsForDpi;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -126,7 +126,7 @@ pub fn get_xdg_home() -> Option<PathBuf> {
 }
 
 const CFG_FD: [&str; 3] = ["", "kanata", "kanata-tray"]; // blank "" allow checking directly for
-                                                         // user passed values
+// user passed values
 const ASSET_FD: [&str; 4] = ["", "icon", "img", "icons"];
 const IMG_EXT: [&str; 7] = ["ico", "jpg", "jpeg", "png", "bmp", "dds", "tiff"];
 const PRE_LAYER: &str = "\n🗍: "; // : invalid path marker, so should be safe to use as a separator
@@ -255,7 +255,7 @@ fn get_icon_p_impl(
         &app_data,
         &user_cfg,
     ]; // empty path to allow no prefixes when icon path is explictily set in case it's a full
-       // path already
+    // path already
 
     for (i, nm) in f_name.enumerate() {
         trace!("{}nm={:?}", "", nm);
@@ -324,7 +324,10 @@ fn get_icon_p_impl(
                             icon_file.clear();
                             if p_par == blank_p && p_kan.is_empty() && p_icn.is_empty() && is_full_p
                             {
-                                trace!("skipping further sub-iters on an empty parent with user config {:?}",nm);
+                                trace!(
+                                    "skipping further sub-iters on an empty parent with user config {:?}",
+                                    nm
+                                );
                                 continue 'p;
                             }
                         } else {
@@ -561,8 +564,14 @@ impl SystemTray {
         // TODO: somehow still shown a bit too far off from the pointer
         if log_enabled!(Trace) {
             let (mx, my) = MXY.get();
-            trace!("🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}"
-            ,ret != 0,excluderect.left,excluderect.right,excluderect.top,excluderect.bottom);
+            trace!(
+                "🖰 @{mx}⋅{my} ↔{mouse_ptr_w}↕{mouse_ptr_h} (upd={}) {x}⋅{y} @ dpi={dpi} → {xx}⋅{yy} {win_ver:?} flags={flags} ex←{}→{}↑{}↓{}",
+                ret != 0,
+                excluderect.left,
+                excluderect.right,
+                excluderect.top,
+                excluderect.bottom
+            );
         }
     }
     /// Spawn a thread with a new 🖰 pointer watcher
@@ -630,7 +639,7 @@ impl SystemTray {
             let mut m_ptr_wh = self.m_ptr_wh.borrow_mut();
             *m_ptr_wh = get_mouse_ptr_size(false);
         } // 🖰 pointer size so tooltip doesn't overlap
-          // don't adjust for dpi in internal calculations
+        // don't adjust for dpi in internal calculations
         self.update_tooltip_pos();
         self.win_tt.set_visible(true);
         if app_data.gui_opts.tooltip_duration != 0 {
@@ -651,7 +660,9 @@ impl SystemTray {
                             error!("internal: couldn't send a signal to the 🖰 pointer watcher!")
                         });
                     } else {
-                        debug!("no message and no m2tt_sender_o, so no thread should be running, launch a new thread!");
+                        debug!(
+                            "no message and no m2tt_sender_o, so no thread should be running, launch a new thread!"
+                        );
                         start = true;
                     }
                 }
@@ -744,13 +755,15 @@ impl SystemTray {
                         let mut img_dyn = self.img_dyn.borrow_mut();
                         img_dyn.insert(cfg_p.clone(), None);
                         self.tray_1cfg_m.set_bitmap(None); // can't update menu, so remove combo
-                                                           // menu icon
+                        // menu icon
                     };
                 } else {
                     debug!("gui cfg selection matches active config");
                 };
             } else {
-                debug!("✗ kanata config is locked, can't get current config (likely the gui changed the layer and is still holding the lock, it will update the icon)");
+                debug!(
+                    "✗ kanata config is locked, can't get current config (likely the gui changed the layer and is still holding the lock, it will update the icon)"
+                );
             }
         };
     }
@@ -928,8 +941,8 @@ impl SystemTray {
             let mut cfg_layer_pkey = PathBuf::new(); // path key
             cfg_layer_pkey.push(path_cur_cc.clone());
             cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker,
-                                                                    // so should be safe to use as
-                                                                    // a separator
+            // so should be safe to use as
+            // a separator
             let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
             if log_enabled!(Debug) {
                 let layer_icon_s = layer_icon.clone().unwrap_or("✗".to_string());
@@ -1038,8 +1051,8 @@ impl SystemTray {
                 let mut cfg_layer_pkey = PathBuf::new(); // path key
                 cfg_layer_pkey.push(path_cur_cc.clone());
                 cfg_layer_pkey.push(PRE_LAYER.to_owned() + layer_name); //:invalid path marker,
-                                                                        // so should be safe
-                                                                        // to use as a separator
+                // so should be safe
+                // to use as a separator
                 let cfg_layer_pkey_s = cfg_layer_pkey.display().to_string();
                 if log_enabled!(Debug) {
                     let cfg_name = &path_cur
@@ -1092,7 +1105,9 @@ impl SystemTray {
                     clear,
                 )
             } else {
-                debug!("✗ kanata config is locked, can't get current layer (likely the gui changed the layer and is still holding the lock, it will update the icon)");
+                debug!(
+                    "✗ kanata config is locked, can't get current layer (likely the gui changed the layer and is still holding the lock, it will update the icon)"
+                );
             }
         } else {
             warn!("✗ Layer indicator NOT changed, no CFG");
@@ -1486,7 +1501,10 @@ pub mod system_tray_ui {
                                     main_tray_icon_is = true;
                                     let _ = img_dyn.insert(cfg_layer_pkey, Some(icn));
                                 } else {
-                                    info!("✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",cfg_p);
+                                    info!(
+                                        "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
+                                        cfg_p
+                                    );
                                     let _ = img_dyn.insert(cfg_layer_pkey, None);
                                 }
                             } else {
@@ -1677,9 +1695,9 @@ pub fn build_tray(cfg: &Arc<Mutex<Kanata>>) -> Result<system_tray_ui::SystemTray
 }
 
 pub use log::*;
-pub use std::io::{stdout, IsTerminal};
+pub use std::io::{IsTerminal, stdout};
 pub use winapi::shared::minwindef::BOOL;
-pub use winapi::um::wincon::{AttachConsole, FreeConsole, ATTACH_PARENT_PROCESS};
+pub use winapi::um::wincon::{ATTACH_PARENT_PROCESS, AttachConsole, FreeConsole};
 
 use once_cell::sync::Lazy;
 pub static IS_TERM: Lazy<bool> = Lazy::new(|| stdout().is_terminal());

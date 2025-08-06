@@ -178,7 +178,10 @@ pub fn parse_switch_case_bool(
             }
             AllowedListOps::InputHistory => {
                 if l.len() != 4 {
-                    bail_expr!(op_expr, "input-history must have 3 parameters: key-type(virtual|real), key, key-recency");
+                    bail_expr!(
+                        op_expr,
+                        "input-history must have 3 parameters: key-type(virtual|real), key, key-recency"
+                    );
                 }
 
                 let input_type = match l[1]

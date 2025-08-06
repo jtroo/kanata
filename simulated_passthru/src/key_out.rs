@@ -78,8 +78,8 @@ pub fn send_out_ev(in_ev: InputEvent) -> Result<()> {
 
 use crate::RX_KEY_EV_OUT;
 use std::sync::mpsc::TryRecvError; // thread_local Cell<Option<Receiver<InputEvent>>>
-                                   // Stores receiver for key data to be sent out for
-                                   // the current thread
+// Stores receiver for key data to be sent out for
+// the current thread
 /// Exported function: checks if processing thread has sent key output and sends it
 /// back to an external callback
 #[no_mangle]

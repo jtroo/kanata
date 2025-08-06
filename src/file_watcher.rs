@@ -6,7 +6,7 @@
 use crate::kanata::Kanata;
 use anyhow::Result;
 use notify_debouncer_mini::{
-    new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind,
+    DebounceEventResult, DebouncedEventKind, new_debouncer, notify::RecursiveMode,
 };
 use parking_lot::Mutex;
 use std::fs;

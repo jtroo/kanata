@@ -113,14 +113,20 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
 
     if let Some(config_file) = cfg_paths.first() {
         if !config_file.exists() {
-            bail!("Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",cfg_paths[0].to_str().unwrap_or("?"))
+            bail!(
+                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                cfg_paths[0].to_str().unwrap_or("?")
+            )
         }
     } else {
         bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
     }
     if let Some(config_sim_file) = sim_paths.first() {
         if !config_sim_file.exists() {
-            bail!("Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",sim_paths[0].to_str().unwrap_or("?"))
+            bail!(
+                "Could not find the simulation file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                sim_paths[0].to_str().unwrap_or("?")
+            )
         }
     } else {
         bail!("No simulation files provided\nFor more info, pass the `-h` or `--help` flags.");
@@ -202,7 +208,9 @@ fn main_impl() -> Result<()> {
     #[cfg(not(feature = "simulated_output"))]
     {
         if _sim_appendix.is_some() {
-            bail!("The program was compiled without simulated output. The -o|--out flag is unsupported");
+            bail!(
+                "The program was compiled without simulated output. The -o|--out flag is unsupported"
+            );
         }
     }
 

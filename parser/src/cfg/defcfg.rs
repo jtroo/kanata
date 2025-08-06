@@ -1,6 +1,6 @@
-use super::sexpr::SExpr;
 use super::HashSet;
-use super::{error::*, TrimAtomQuotes};
+use super::sexpr::SExpr;
+use super::{TrimAtomQuotes, error::*};
 use crate::cfg::check_first_expr;
 use crate::custom_action::*;
 use crate::keys::*;
@@ -234,7 +234,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
             Some(k) => k,
             None => {
                 if !is_process_unmapped_keys_defined {
-                    log::warn!("The item process-unmapped-keys is not defined in defcfg. Consider whether process-unmapped-keys should be yes vs. no.");
+                    log::warn!(
+                        "The item process-unmapped-keys is not defined in defcfg. Consider whether process-unmapped-keys should be yes vs. no."
+                    );
                 }
                 return Ok(cfg);
             }
@@ -367,7 +369,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         {
                             let device_name = sexpr_to_str_or_err(val, label)?;
                             if device_name.is_empty() {
-                                log::warn!("linux-output-device-name is empty, using kanata as default value");
+                                log::warn!(
+                                    "linux-output-device-name is empty, using kanata as default value"
+                                );
                             } else {
                                 cfg.linux_opts.linux_output_name = device_name.to_owned();
                             }
@@ -376,8 +380,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-output-device-bus-type" => {
                         let bus_type = sexpr_to_str_or_err(val, label)?;
                         match bus_type {
-                            "USB" | "I8042" => {},
-                            _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
+                            "USB" | "I8042" => {}
+                            _ => bail_expr!(
+                                val,
+                                "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"
+                            ),
                         };
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
@@ -392,8 +399,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-device-detect-mode" => {
                         let detect_mode = sexpr_to_str_or_err(val, label)?;
                         match detect_mode {
-                            "any" | "keyboard-only" | "keyboard-mice" => {},
-                            _ => bail_expr!(val, "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"),
+                            "any" | "keyboard-only" | "keyboard-mice" => {}
+                            _ => bail_expr!(
+                                val,
+                                "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"
+                            ),
                         };
                         #[cfg(any(target_os = "linux", target_os = "unknown"))]
                         {
@@ -442,7 +452,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid-exclude cannot both be included"
+                                );
                             }
                             let v = sexpr_to_str_or_err(val, label)?;
                             let hwid = v;
@@ -495,7 +508,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid-exclude cannot both be included"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -533,7 +549,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid(s) cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid(s) cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -555,7 +574,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_keyboard_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid-exclude cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-keyboard-hwid-exclude cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -577,7 +599,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_keyboard_hwids
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-keyboard-hwid cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -771,7 +796,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "delegate-to-first-layer" => {
                         cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, label)?;
                         if cfg.delegate_to_first_layer {
-                            log::info!("delegating transparent keys on other layers to first defined layer");
+                            log::info!(
+                                "delegating transparent keys on other layers to first defined layer"
+                            );
                         }
                     }
                     "linux-continue-if-no-devs-found" => {
@@ -810,8 +837,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "chords-v2-min-idle" | "chords-v2-min-idle-experimental" => {
                         if label == "chords-v2-min-idle-experimental" {
-                            log::warn!("You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
-                                        Using -experimental will be invalid in the future.")
+                            log::warn!(
+                                "You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
+                                        Using -experimental will be invalid in the future."
+                            )
                         }
                         let min_idle = parse_cfg_val_u16(val, label, true)?;
                         if min_idle < 5 {

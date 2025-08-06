@@ -1,8 +1,8 @@
 use kanata_keyberon::key_code::KeyCode;
 use kanata_keyberon::layout::*;
 
-use crate::cfg::alloc::*;
 use crate::cfg::KanataAction;
+use crate::cfg::alloc::*;
 use crate::custom_action::*;
 use crate::keys::OsCode;
 
