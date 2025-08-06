@@ -127,9 +127,14 @@ pub fn expand_templates(
                     Some(next) => {
                         match next.atom(None) {
                             Some(name_in_expand) => {
-                                match templates.iter().any(|existing_template| existing_template.name == name_in_expand) {
+                                match templates.iter().any(|existing_template| {
+                                    existing_template.name == name_in_expand
+                                }) {
                                     true => Ok(()),
-                                    false => err_expr!(next, "Unknown template name in template-expand. Note that order of declaration matters."),
+                                    false => err_expr!(
+                                        next,
+                                        "Unknown template name in template-expand. Note that order of declaration matters."
+                                    ),
                                 }
                             }
                             None => {
@@ -217,33 +222,40 @@ fn expand(exprs: &mut Vec<SExpr>, templates: &[Template], _lsp_hints: &mut LspHi
                     }
 
                     // found expand, now parse
-                    let template =
-                        l.t.get(1)
-                            .ok_or_else(|| {
-                                anyhow_span!(
+                    let template = l
+                        .t
+                        .get(1)
+                        .ok_or_else(|| {
+                            anyhow_span!(
                                 l,
                                 "template-expand must have a template name as the first parameter"
                             )
-                            })
-                            .and_then(|name_expr| {
-                                let name = name_expr.atom(None).ok_or_else(|| {
-                                    anyhow_expr!(name_expr, "template name must be a string")
-                                })?;
-                                #[cfg(feature = "lsp")]
-                                _lsp_hints
-                                    .reference_locations
-                                    .template
-                                    .push(name, name_expr.span());
-                                templates.iter().find(|t| t.name == name).ok_or_else(|| {
-                                    anyhow_expr!(
-                                        name_expr,
-                                        "template name was not defined in any deftemplate"
-                                    )
-                                })
+                        })
+                        .and_then(|name_expr| {
+                            let name = name_expr.atom(None).ok_or_else(|| {
+                                anyhow_expr!(name_expr, "template name must be a string")
                             })?;
+                            #[cfg(feature = "lsp")]
+                            _lsp_hints
+                                .reference_locations
+                                .template
+                                .push(name, name_expr.span());
+                            templates.iter().find(|t| t.name == name).ok_or_else(|| {
+                                anyhow_expr!(
+                                    name_expr,
+                                    "template name was not defined in any deftemplate"
+                                )
+                            })
+                        })?;
                     if l.t.len() - 2 != template.vars.len() {
-                        bail_span!(l, "template-expand of {} needs {} parameters but instead found {}.\nParameters: {}",
-                    &template.name, template.vars.len(), l.t.len() - 2, template.vars.join(" "));
+                        bail_span!(
+                            l,
+                            "template-expand of {} needs {} parameters but instead found {}.\nParameters: {}",
+                            &template.name,
+                            template.vars.len(),
+                            l.t.len() - 2,
+                            template.vars.join(" ")
+                        );
                     }
 
                     let var_substitutions = l.t.iter().skip(2);

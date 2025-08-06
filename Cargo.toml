@@ -27,7 +27,7 @@ homepage = "https://github.com/jtroo/kanata"
 repository = "https://github.com/jtroo/kanata"
 readme = "README.md"
 license = "LGPL-3.0-only"
-edition = "2021"
+edition = "2024"
 default-run = "kanata"
 
 [lib]

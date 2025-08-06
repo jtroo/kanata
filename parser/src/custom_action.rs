@@ -3,7 +3,7 @@
 //! When adding a new custom action, the macro section of the config.adoc documentation may need to
 //! be updated, to include the new action to the documented list of supported actions in macro.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use core::fmt;
 use kanata_keyberon::key_code::KeyCode;
 
@@ -246,7 +246,9 @@ impl SequenceInputMode {
     }
 
     pub fn err_msg() -> String {
-        format!("sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}")
+        format!(
+            "sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"
+        )
     }
 }
 
@@ -289,7 +291,9 @@ impl LogLevel {
     }
 
     pub fn err_msg() -> String {
-        format!("log level must be one of: {LOG_LEVEL_DEBUG}, {LOG_LEVEL_INFO}, {LOG_LEVEL_WARN}, {LOG_LEVEL_ERROR}, {LOG_LEVEL_NONE}")
+        format!(
+            "log level must be one of: {LOG_LEVEL_DEBUG}, {LOG_LEVEL_INFO}, {LOG_LEVEL_WARN}, {LOG_LEVEL_ERROR}, {LOG_LEVEL_NONE}"
+        )
     }
 }
 

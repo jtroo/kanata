@@ -1,7 +1,7 @@
 use clap::Parser;
 use kanata_tcp_protocol::*;
 use simplelog::*;
-use std::io::{stdin, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write, stdin};
 use std::net::{SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;

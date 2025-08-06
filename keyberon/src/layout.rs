@@ -1617,11 +1617,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 action => return action,
             }
         }
-        if x == 0 {
-            &self.src_keys[y]
-        } else {
-            &NoOp
-        }
+        if x == 0 { &self.src_keys[y] } else { &NoOp }
     }
     fn do_action(
         &mut self,

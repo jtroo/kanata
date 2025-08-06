@@ -151,7 +151,11 @@ impl Kanata {
                 log::info!("Requested live reload of file: {}", path.display(),);
             }
             None => {
-                log::error!("Requested live reload of config file number {}, but only {} config files were passed", n+1, self.cfg_paths.len());
+                log::error!(
+                    "Requested live reload of config file number {}, but only {} config files were passed",
+                    n + 1,
+                    self.cfg_paths.len()
+                );
             }
         }
         // if let Err(e) = self.do_live_reload(&None) {

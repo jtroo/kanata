@@ -15,7 +15,7 @@ pub extern "win64" fn input_ev_listener(vk: c_uint, sc: c_uint, up: c_int) -> LR
     let start = std::time::Instant::now();
     let key_event = InputEvent::from_vk_sc(vk, sc, up); //{code:KEY_0,value:Press}
     let mut h_cbl = HOOK_CB.lock(); // to access the closure we move its box out of the mutex
-                                    // and put it back after it returned
+    // and put it back after it returned
     if let Some(mut fnhook) = h_cbl.take() {
         // move our opt+boxed closure, replacing it with None, can't just .unwrap since Copy
         // trait not implemented for dyn fnMut
@@ -35,7 +35,9 @@ pub extern "win64" fn input_ev_listener(vk: c_uint, sc: c_uint, up: c_int) -> LR
             0
         }
     } else {
-        error!("fnHook processing key events isn't available yet {key_event} from {vk} sc={sc} up={up}");
+        error!(
+            "fnHook processing key events isn't available yet {key_event} from {vk} sc={sc} up={up}"
+        );
         0
     }
 }

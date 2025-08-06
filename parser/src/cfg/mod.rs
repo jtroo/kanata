@@ -1157,7 +1157,10 @@ fn parse_defsrc(
             for excluded_key in excluded_keys.iter() {
                 log::debug!("process unmapped keys exception: {:?}", excluded_key);
                 if mkeys.contains(&excluded_key.0) {
-                    bail_expr!(&excluded_key.1, "Keys cannot be included in defsrc and also excepted in process-unmapped-keys.");
+                    bail_expr!(
+                        &excluded_key.1,
+                        "Keys cannot be included in defsrc and also excepted in process-unmapped-keys."
+                    );
                 }
             }
 
@@ -1617,7 +1620,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         }
         "XX" | "✗" | "∅" | "•" => {
             if s.pctx.is_within_defvirtualkeys {
-                log::warn!("XX within defvirtualkeys is likely incorrect. You should use nop0-nop9 instead.");
+                log::warn!(
+                    "XX within defvirtualkeys is likely incorrect. You should use nop0-nop9 instead."
+                );
             }
             return Ok(s.a.sref(Action::NoOp));
         }
@@ -1631,7 +1636,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     s.default_sequence_input_mode,
                 ),
                 &s.a,
-            )
+            );
         }
         "scnl" => return custom(CustomAction::SequenceCancel, &s.a),
         "mlft" | "mouseleft" => return custom(CustomAction::Mouse(Btn::Left), &s.a),
@@ -1650,7 +1655,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     direction: MWheelDirection::Up,
                 },
                 &s.a,
-            )
+            );
         }
         "mwd" | "mousewheeldown" => {
             return custom(
@@ -1658,7 +1663,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     direction: MWheelDirection::Down,
                 },
                 &s.a,
-            )
+            );
         }
         "mwl" | "mousewheelleft" => {
             return custom(
@@ -1666,7 +1671,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     direction: MWheelDirection::Left,
                 },
                 &s.a,
-            )
+            );
         }
         "mwr" | "mousewheelright" => {
             return custom(
@@ -1674,12 +1679,12 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                     direction: MWheelDirection::Right,
                 },
                 &s.a,
-            )
+            );
         }
         "rpt" | "repeat" | "rpt-key" => return custom(CustomAction::Repeat, &s.a),
         "rpt-any" => return Ok(s.a.sref(Action::Repeat)),
         "dynamic-macro-record-stop" => {
-            return custom(CustomAction::DynamicMacroRecordStop(0), &s.a)
+            return custom(CustomAction::DynamicMacroRecordStop(0), &s.a);
         }
         "reverse-release-order" => match s.multi_action_nest_count.get() {
             0 => bail_span!(
@@ -1698,7 +1703,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     };
     if let Some(oscode) = str_to_oscode(ac) {
         if matches!(ac, "comp" | "cmp") {
-            log::warn!("comp/cmp/cmps is not actually a compose key even though its correpsonding code is KEY_COMPOSE. Its actual functionality is context menu which somewhat behaves like right-click.\nTo remove this warning, replace this usage with an equivalent key name such as: menu");
+            log::warn!(
+                "comp/cmp/cmps is not actually a compose key even though its correpsonding code is KEY_COMPOSE. Its actual functionality is context menu which somewhat behaves like right-click.\nTo remove this warning, replace this usage with an equivalent key name such as: menu"
+            );
         }
         return Ok(s.a.sref(k(oscode.into())));
     }
@@ -2081,11 +2088,7 @@ fn parse_u8_with_range(expr: &SExpr, s: &ParserState, label: &str, min: u8, max:
         .and_then(|u| u.ok())
         .and_then(|u| {
             assert!(min <= max);
-            if u >= min && u <= max {
-                Some(u)
-            } else {
-                None
-            }
+            if u >= min && u <= max { Some(u) } else { None }
         })
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be {min}-{max}"))
 }
@@ -2554,7 +2557,9 @@ fn parse_cmd_log(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     const ERR_STR: &str =
         "cmd-log expects at least 3 strings, <log-level> <error-log-level> <cmd...>";
     if !s.is_cmd_enabled {
-        bail!("cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration");
+        bail!(
+            "cmd is not enabled for this kanata executable (did you use 'cmd_allowed' variants?), but is set in the configuration"
+        );
     }
     if ac_params.len() < 3 {
         bail!(ERR_STR);
@@ -2656,14 +2661,16 @@ fn test_collect_strings() {
     collect_strings(&params[0].t, &mut strings, &ParserState::default());
     assert_eq!(
         &strings,
-        &["gah", "squish", "squash", "splish", "splosh", "bah mah", "dah"]
+        &[
+            "gah", "squish", "squash", "splish", "splosh", "bah mah", "dah"
+        ]
     );
 }
 
 fn parse_push_message(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     if ac_params.is_empty() {
         bail!(
-             "{PUSH_MESSAGE} expects at least one item, an item can be a list or an atom, found 0, none"
+            "{PUSH_MESSAGE} expects at least one item, an item can be a list or an atom, found 0, none"
         );
     }
     let message = to_simple_expr(ac_params, s);
@@ -3256,7 +3263,10 @@ fn parse_move_mouse_accel(
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 4 {
-        bail!("movemouse-accel expects four parameters, found {}\n<interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>", ac_params.len());
+        bail!(
+            "movemouse-accel expects four parameters, found {}\n<interval (ms)> <acceleration time (ms)> <min_distance> <max_distance>",
+            ac_params.len()
+        );
     }
     let interval = parse_non_zero_u16(&ac_params[0], s, "interval")?;
     let accel_time = parse_non_zero_u16(&ac_params[1], s, "acceleration time")?;
@@ -3660,10 +3670,13 @@ fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFK
                     bail_expr!(
                         key_seq_expr,
                         "Sequence has a conflict: its sequence contains an earlier defined sequence"
-                        );
+                    );
                 }
                 if sequences.descendant_exists(&p) {
-                    bail_expr!(key_seq_expr, "Sequence has a conflict: its sequence is contained within an earlier defined seqence");
+                    bail_expr!(
+                        key_seq_expr,
+                        "Sequence has a conflict: its sequence is contained within an earlier defined seqence"
+                    );
                 }
                 sequences.insert(
                     p,
