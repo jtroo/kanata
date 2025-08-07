@@ -2,7 +2,21 @@
 pub(crate) mod win_gui;
 
 #[cfg(target_os = "macos")]
-pub(crate) fn list_devices_macos() {
+#[allow(dead_code)]
+fn get_macos_device_vid_pid(_device_name: &str) -> (Option<u16>, Option<u16>) {
+    // For now, return None since we're using Karabiner driver which abstracts hardware details
+    // TODO: Implement direct IOKit HID Manager for device discovery (separate from input handling)
+    // Following Karabiner-Elements' two-layer architecture:
+    // 1. Use IOHIDManager to create IOHIDDevice objects for discovery
+    // 2. Extract kIOHIDVendorIDKey and kIOHIDProductIDKey properties
+    // 3. Match devices by name to associate VID/PID with Karabiner device list
+    // Reference: Karabiner-Elements' device_grabber.hpp and device_properties.hpp
+    // This approach allows VID/PID extraction while still using Karabiner for input handling
+    (None, None)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn list_devices_macos(verbose: bool) {
     use crate::oskbd::capture_stdout;
     use karabiner_driverkit::list_keyboards;
 
@@ -27,6 +41,22 @@ pub(crate) fn list_devices_macos() {
             empty_count += 1;
         } else {
             println!("  {}. \"{}\"", i + 1, trimmed);
+
+            if verbose {
+                // Extract and show VID/PID if available in verbose mode
+                let (vendor_id, product_id) = get_macos_device_vid_pid(trimmed);
+                match (vendor_id, product_id) {
+                    (Some(vid), Some(pid)) => {
+                        println!("     Vendor ID: {vid}");
+                        println!("     Product ID: {pid}");
+                    }
+                    _ => {
+                        println!(
+                            "     VID/PID: Not available (using Karabiner driver abstraction)"
+                        );
+                    }
+                }
+            }
             valid_count += 1;
         }
     }
@@ -50,7 +80,51 @@ pub(crate) fn list_devices_macos() {
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) fn list_devices_linux() {
+#[allow(dead_code)]
+fn extract_vid_pid_from_linux_path(device_path: &str) -> (Option<u16>, Option<u16>) {
+    // Extract VID/PID from Linux device path by reading sysfs
+    // Device path like "/dev/input/event0" -> read from "/sys/class/input/event0/device/id/"
+
+    use std::fs;
+
+    // Extract event device name from path (e.g., "event0" from "/dev/input/event0")
+    let event_name = device_path.split('/').next_back().unwrap_or("");
+
+    if !event_name.starts_with("event") {
+        return (None, None);
+    }
+
+    use std::path::Path;
+
+    let sys_path = Path::new("/sys/class/input")
+        .join(event_name)
+        .join("device/id");
+
+    let vendor_id = fs::read_to_string(sys_path.join("vendor"))
+        .ok()
+        .and_then(|s| {
+            s.trim()
+                .strip_prefix("0x")
+                .unwrap_or(s.trim())
+                .parse::<u16>()
+                .ok()
+        });
+
+    let product_id = fs::read_to_string(sys_path.join("product"))
+        .ok()
+        .and_then(|s| {
+            s.trim()
+                .strip_prefix("0x")
+                .unwrap_or(s.trim())
+                .parse::<u16>()
+                .ok()
+        });
+
+    (vendor_id, product_id)
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn list_devices_linux(verbose: bool) {
     use crate::oskbd::discover_devices;
     use kanata_parser::cfg::DeviceDetectMode;
 
@@ -71,7 +145,22 @@ pub(crate) fn list_devices_linux() {
     println!("Found {} keyboard device(s):\n", devices.len());
 
     for (i, (device, path)) in devices.iter().enumerate() {
-        println!("  {}. \"{}\"", i + 1, device.name().unwrap_or("Unknown"));
+        let device_name = device.name().unwrap_or("Unknown");
+        println!("  {}. \"{}\"", i + 1, device_name);
+
+        if verbose {
+            // Extract and show VID/PID if available in verbose mode
+            let (vendor_id, product_id) = extract_vid_pid_from_linux_path(path);
+            match (vendor_id, product_id) {
+                (Some(vid), Some(pid)) => {
+                    println!("     Vendor ID: {vid}");
+                    println!("     Product ID: {pid}");
+                }
+                _ => {
+                    println!("     VID/PID: Unknown");
+                }
+            }
+        }
         println!("     Path: {path}");
         println!();
     }
@@ -92,6 +181,59 @@ struct WindowsDeviceInfo {
     display_name: String,        // For user display
     raw_wide_bytes: Vec<u8>,     // For kanata configuration (original wide string bytes)
     hardware_id: Option<String>, // Parsed hardware ID (e.g., "HID#VID_046D&PID_C52B")
+    vendor_id: Option<u16>,      // Vendor ID (VID)
+    product_id: Option<u16>,     // Product ID (PID)
+}
+
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+#[allow(dead_code)]
+fn parse_vid_pid_from_hardware_id(hardware_id: &str) -> Option<(Option<u16>, Option<u16>)> {
+    // Parse VID and PID from hardware ID strings like:
+    // "HID\VID_046D&PID_C52B&MI_01" -> VID: 0x046D (1133), PID: 0xC52B (49970)
+    // "USB\VID_1234&PID_5678&REV_0100" -> VID: 0x1234 (4660), PID: 0x5678 (22136)
+
+    let mut vendor_id = None;
+    let mut product_id = None;
+
+    // Look for VID pattern
+    if let Some(vid_start) = hardware_id.find("VID_") {
+        let vid_str = &hardware_id[vid_start + 4..];
+        if let Some(vid_end) = vid_str.find(&['&', '\\', '#'][..]) {
+            let vid_hex = &vid_str[..vid_end];
+            if let Ok(vid) = u16::from_str_radix(vid_hex, 16) {
+                vendor_id = Some(vid);
+            }
+        } else if vid_str.len() >= 4 {
+            // VID at end of string
+            let vid_hex = &vid_str[..4.min(vid_str.len())];
+            if let Ok(vid) = u16::from_str_radix(vid_hex, 16) {
+                vendor_id = Some(vid);
+            }
+        }
+    }
+
+    // Look for PID pattern
+    if let Some(pid_start) = hardware_id.find("PID_") {
+        let pid_str = &hardware_id[pid_start + 4..];
+        if let Some(pid_end) = pid_str.find(&['&', '\\', '#'][..]) {
+            let pid_hex = &pid_str[..pid_end];
+            if let Ok(pid) = u16::from_str_radix(pid_hex, 16) {
+                product_id = Some(pid);
+            }
+        } else if pid_str.len() >= 4 {
+            // PID at end of string
+            let pid_hex = &pid_str[..4.min(pid_str.len())];
+            if let Ok(pid) = u16::from_str_radix(pid_hex, 16) {
+                product_id = Some(pid);
+            }
+        }
+    }
+
+    if vendor_id.is_some() || product_id.is_some() {
+        Some((vendor_id, product_id))
+    } else {
+        None
+    }
 }
 
 #[cfg(all(target_os = "windows", feature = "interception_driver"))]
@@ -145,10 +287,18 @@ fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDe
                 // Extract hardware ID from display name
                 let hardware_id = extract_hardware_id(&display_name);
 
+                // Extract VID/PID from hardware ID
+                let (vendor_id, product_id) = hardware_id
+                    .as_ref()
+                    .and_then(|id| parse_vid_pid_from_hardware_id(id))
+                    .unwrap_or((None, None));
+
                 return Some(WindowsDeviceInfo {
                     display_name,
                     raw_wide_bytes,
                     hardware_id,
+                    vendor_id,
+                    product_id,
                 });
             }
         }
@@ -158,7 +308,7 @@ fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDe
 
 #[cfg(all(target_os = "windows", feature = "interception_driver"))]
 #[allow(dead_code)]
-pub(crate) fn list_devices_windows() {
+pub(crate) fn list_devices_windows(verbose: bool) {
     use std::ptr::null_mut;
     use winapi::shared::minwindef::{PUINT, UINT};
     use winapi::um::winuser::{GetRawInputDeviceList, RAWINPUTDEVICELIST, RIM_TYPEKEYBOARD};
@@ -217,7 +367,20 @@ pub(crate) fn list_devices_windows() {
 
         for (i, device) in keyboards.iter().enumerate() {
             if let Some(device_info) = get_device_info(device.hDevice) {
-                println!("  {}. Device: {}", i + 1, device_info.display_name);
+                println!("  {}. \"{}\"", i + 1, device_info.display_name);
+
+                if verbose {
+                    // Show VID/PID in verbose mode using decimal format
+                    match (device_info.vendor_id, device_info.product_id) {
+                        (Some(vid), Some(pid)) => {
+                            println!("     Vendor ID: {vid}");
+                            println!("     Product ID: {pid}");
+                        }
+                        _ => {
+                            println!("     VID/PID: Unknown");
+                        }
+                    }
+                }
 
                 // Show hardware ID if available
                 if let Some(hwid) = &device_info.hardware_id {
@@ -225,10 +388,12 @@ pub(crate) fn list_devices_windows() {
                 }
 
                 // Show raw wide string bytes for kanata configuration
-                println!(
-                    "     Raw wide string bytes: {:?}",
-                    device_info.raw_wide_bytes
-                );
+                if verbose {
+                    println!(
+                        "     Raw wide string bytes: {:?}",
+                        device_info.raw_wide_bytes
+                    );
+                }
                 println!();
             }
         }
