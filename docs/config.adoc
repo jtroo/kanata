@@ -2676,8 +2676,8 @@ With `break`, further actions will not activate.
 The logic check is a list.
 The items within the list can either be key names or a special list check.
 A key name item evaluates to true if that key name
-is a currently active key output of Kanata upon activating `switch`
-The outer-most list evaluates to true as whole
+is a currently active key output of Kanata upon activating `switch`.
+The outer-most list evaluates to true
 if any of the items evaluates to true.
 
 .Syntax of logic check:
