@@ -2524,7 +2524,10 @@ fn live_reload_forced_after_1s_even_when_not_idle() {
     let mut k = match Kanata::new(&args) {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("Skipping test: cannot create Kanata instance (likely CI environment): {}", e);
+            eprintln!(
+                "Skipping test: cannot create Kanata instance (likely CI environment): {}",
+                e
+            );
             return;
         }
     };
