@@ -2537,7 +2537,7 @@ fn live_reload_forced_after_1s_even_when_not_idle() {
       a
     )
     "#;
-    
+
     // Skip if we can't write the updated config
     if fs::write(&cfg_path, updated_cfg).is_err() {
         eprintln!("Skipping test: cannot write updated config to temp directory");
@@ -2556,7 +2556,7 @@ fn live_reload_forced_after_1s_even_when_not_idle() {
 
     // Verify the new config took effect even though we were not idle
     assert_eq!(k.sequence_timeout, 222);
-    
+
     // Clean up temp file
     let _ = fs::remove_file(&cfg_path);
 }
