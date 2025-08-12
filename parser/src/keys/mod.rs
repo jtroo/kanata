@@ -280,6 +280,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "VolumeMute" | "mute"  | "🔇" | "🔈⓪" | "🔈⓿" | "🔈₀" => OsCode::KEY_MUTE,
         "VolumeUp" | "volu" | "🔊" | "🔈+" | "🔈➕" | "🔈₊" | "🔈⊕" => OsCode::KEY_VOLUMEUP,
         "VolumeDown" | "voldwn" | "vold" | "🔉" | "🔈−" | "🔈➖" | "🔈₋" | "🔈⊖" => OsCode::KEY_VOLUMEDOWN,
+        "EjectCD" | "eject" => OsCode::KEY_EJECTCD,
         "brup" | "bru" | "🔆" => OsCode::KEY_BRIGHTNESSUP,
         "brdown" | "brdwn" | "brdn" | "🔅" => OsCode::KEY_BRIGHTNESSDOWN,
         "blup" | "⌨💡+" | "⌨💡➕" | "⌨💡₊" | "⌨💡⊕" => OsCode::KEY_KBDILLUMUP,
