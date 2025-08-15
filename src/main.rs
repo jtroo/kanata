@@ -6,7 +6,7 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use kanata_parser::cfg;
 use kanata_state_machine::*;
-use simplelog::{format_description, *};
+use simplelog::*;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -72,6 +72,15 @@ kanata.kbd in the current working directory and
     #[arg(short, long)]
     list: bool,
 
+    /// List keyboards with detailed information (vendor/product IDs, paths, etc).
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "linux",
+        all(target_os = "windows", feature = "interception_driver")
+    ))]
+    #[arg(long)]
+    list_verbose: bool,
+
     /// Disable logging, except for errors. Takes precedent over debug and trace.
     #[arg(short, long)]
     quiet: bool,
@@ -122,20 +131,20 @@ mod cli {
         let args = Args::parse();
 
         #[cfg(target_os = "macos")]
-        if args.list {
-            main_lib::list_devices_macos();
+        if args.list || args.list_verbose {
+            main_lib::list_devices_macos(args.list_verbose);
             std::process::exit(0);
         }
 
         #[cfg(target_os = "linux")]
-        if args.list {
-            main_lib::list_devices_linux();
+        if args.list || args.list_verbose {
+            main_lib::list_devices_linux(args.list_verbose);
             std::process::exit(0);
         }
 
         #[cfg(all(target_os = "windows", feature = "interception_driver"))]
-        if args.list {
-            main_lib::list_devices_windows();
+        if args.list || args.list_verbose {
+            main_lib::list_devices_windows(args.list_verbose);
             std::process::exit(0);
         }
 
