@@ -510,6 +510,10 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x0C,
                 code: 0xEA,
             }), // 0x0781
+            OsCode::KEY_EJECTCD => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB8,
+            }), // 0x0781
             //KeyboardLockingCapsLock   => 82, todo
             //KeyboardLockingNumLock    => 83, todo
             //KeyboardLockingScrollLock => 84, todo
@@ -1179,6 +1183,10 @@ impl TryFrom<PageCode> for OsCode {
                 page: 0x0C,
                 code: 0xEA,
             } => Ok(OsCode::KEY_VOLUMEDOWN),
+            PageCode {
+                page: 0x0C,
+                code: 0xB8,
+            } => Ok(OsCode::KEY_EJECTCD),
             PageCode {
                 page: 0x07,
                 code: 0x85,

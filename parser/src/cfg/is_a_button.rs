@@ -134,6 +134,7 @@ fn standard_keys_are_not_considered_buttons() {
         KEY_MUTE,
         KEY_VOLUMEDOWN,
         KEY_VOLUMEUP,
+        KEY_EJECTCD,
         KEY_PAUSE,
         KEY_LEFTMETA,
         KEY_RIGHTMETA,
