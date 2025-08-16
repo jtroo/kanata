@@ -240,13 +240,13 @@ impl KanataLayout {
     }
 
     /// bm stands for borrow mut.
-    pub fn bm(&mut self) -> &mut BorrowedKLayout {
+    pub fn bm(&mut self) -> &mut BorrowedKLayout<'_> {
         // shrink the lifetime
         unsafe { std::mem::transmute(&mut self.layout) }
     }
 
     /// b stands for borrow.
-    pub fn b(&self) -> &BorrowedKLayout {
+    pub fn b(&self) -> &BorrowedKLayout<'_> {
         // shrink the lifetime
         unsafe { std::mem::transmute(&self.layout) }
     }
