@@ -1189,11 +1189,10 @@ impl Kanata {
             }
         }
 
-        if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
+        if let Some(caps_word) = &mut self.caps_word
+            && caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
                 self.caps_word = None;
             }
-        }
 
         // Release keys that do not exist in the current state but exist in the previous state.
         // This used to use a HashSet but it was changed to a Vec because the order of operations
@@ -1247,8 +1246,8 @@ impl Kanata {
             }
         }
 
-        if cur_keys.is_empty() && !self.prev_keys.is_empty() {
-            if let Some(state) = self.sequence_state.get_active() {
+        if cur_keys.is_empty() && !self.prev_keys.is_empty()
+            && let Some(state) = self.sequence_state.get_active() {
                 use kanata_parser::trie::GetOrDescendentExistsResult::*;
                 state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
                 match self
@@ -1275,7 +1274,6 @@ impl Kanata {
                     InTrie => {}
                 }
             }
-        }
 
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
@@ -1587,8 +1585,8 @@ impl Kanata {
                             let osc: OsCode = keycode.into();
                             log::debug!("repeating a keypress {osc:?}");
                             let mut do_caps_word = false;
-                            if !cur_keys.contains(&KeyCode::LShift) {
-                                if let Some(ref mut cw) = self.caps_word {
+                            if !cur_keys.contains(&KeyCode::LShift)
+                                && let Some(ref mut cw) = self.caps_word {
                                     cur_keys.push(keycode);
                                     let prev_len = cur_keys.len();
                                     cw.tick_maybe_add_lsft(cur_keys);
@@ -1597,7 +1595,6 @@ impl Kanata {
                                         press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
                                     }
                                 }
-                            }
                             // Release key in case the most recently pressed key is still pressed.
                             release_key(&mut self.kbd_out, osc)?;
                             press_key(&mut self.kbd_out, osc)?;
@@ -1758,18 +1755,16 @@ impl Kanata {
                         CustomAction::MWheel { direction, .. } => {
                             match direction {
                                 MWheelDirection::Up | MWheelDirection::Down => {
-                                    if let Some(ss) = &self.scroll_state {
-                                        if ss.direction == *direction {
+                                    if let Some(ss) = &self.scroll_state
+                                        && ss.direction == *direction {
                                             self.scroll_state = None;
                                         }
-                                    }
                                 }
                                 MWheelDirection::Left | MWheelDirection::Right => {
-                                    if let Some(ss) = &self.hscroll_state {
-                                        if ss.direction == *direction {
+                                    if let Some(ss) = &self.hscroll_state
+                                        && ss.direction == *direction {
                                             self.hscroll_state = None;
                                         }
-                                    }
                                 }
                             }
                             pbtn
@@ -1780,20 +1775,16 @@ impl Kanata {
                                 MoveDirection::Up | MoveDirection::Down => {
                                     if let Some(move_mouse_state_vertical) =
                                         &self.move_mouse_state_vertical
-                                    {
-                                        if move_mouse_state_vertical.direction == *direction {
+                                        && move_mouse_state_vertical.direction == *direction {
                                             self.move_mouse_state_vertical = None;
                                         }
-                                    }
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
                                     if let Some(move_mouse_state_horizontal) =
                                         &self.move_mouse_state_horizontal
-                                    {
-                                        if move_mouse_state_horizontal.direction == *direction {
+                                        && move_mouse_state_horizontal.direction == *direction {
                                             self.move_mouse_state_horizontal = None;
                                         }
-                                    }
                                 }
                             }
                             if self.movemouse_smooth_diagonals {
@@ -2080,13 +2071,12 @@ impl Kanata {
             if !nodelay {
                 info!("Init: catching only releases and sending immediately");
                 for _ in 0..500 {
-                    if let Ok(kev) = rx.try_recv() {
-                        if kev.value == KeyValue::Release {
+                    if let Ok(kev) = rx.try_recv()
+                        && kev.value == KeyValue::Release {
                             let mut k = kanata.lock();
                             info!("Init: releasing {:?}", kev.code);
                             k.kbd_out.release_key(kev.code).expect("key released");
                         }
-                    }
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
             }
