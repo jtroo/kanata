@@ -108,9 +108,6 @@ kanata.kbd in the current working directory and
     #[arg(long, verbatim_doc_comment)]
     log_layer_changes: bool,
 
-    /// Watch configuration files for changes and reload automatically
-    #[arg(long, verbatim_doc_comment)]
-    watch: bool,
 }
 
 #[cfg(not(feature = "gui"))]
@@ -238,8 +235,6 @@ mod cli {
                 #[cfg(target_os = "linux")]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,
-                #[cfg(feature = "watch")]
-                watch: args.watch,
             },
             config_string,
         ))
@@ -296,13 +291,6 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        // Start comprehensive file watcher if enabled (supports include files)
-        #[cfg(feature = "watch")]
-        if args.watch {
-            if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
-                log::error!("Failed to start file watcher: {}", e);
-            }
-        }
 
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;

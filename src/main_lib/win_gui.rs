@@ -129,8 +129,6 @@ fn cli_init() -> Result<ValidatedArgs> {
         #[cfg(feature = "tcp_server")]
         tcp_server_address: args.tcp_server_address,
         nodelay: args.nodelay,
-        #[cfg(feature = "watch")]
-        watch: false,
     })
 }
 

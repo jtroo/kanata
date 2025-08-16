@@ -45,7 +45,6 @@ dirs = "5.0.1"
 indoc = { version = "2.0.4", optional = true }
 log = { version = "0.4.8", default-features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
-notify-debouncer-mini = { version = "0.4", optional = true }
 once_cell = "1"
 parking_lot = "0.12"
 radix_trie = "0.2"
@@ -121,7 +120,7 @@ indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
 
 [features]
-default = ["tcp_server","win_sendinput_send_scancodes", "zippychord", "watch"]
+default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []
 tcp_server = ["serde_json"]
 win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
@@ -140,7 +139,6 @@ gui = ["win_manifest","kanata-parser/gui",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
 zippychord = ["kanata-parser/zippychord"]
-watch = ["notify-debouncer-mini"]
 
 [profile.release]
 opt-level = "z"

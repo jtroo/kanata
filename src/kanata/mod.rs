@@ -92,11 +92,6 @@ pub struct Kanata {
     /// through the configuration files.
     pub cur_cfg_idx: usize,
     /// Files included via (include "path") in the configuration.
-    pub included_files: Vec<PathBuf>,
-    /// File watcher for configuration changes.
-    #[cfg(feature = "watch")]
-    pub file_watcher:
-        Option<notify_debouncer_mini::Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>>,
     /// The potential key outputs of every key input. Used for managing key repeat.
     pub key_outputs: cfg::KeyOutputs,
     /// Handle to the keyberon library layout.
@@ -160,9 +155,6 @@ pub struct Kanata {
     time_remainder: u128,
     /// Is true if a live reload was requested by the user and false otherwise.
     live_reload_requested: bool,
-    /// Flag to indicate that the file watcher needs to be restarted due to include file changes.
-    #[cfg(feature = "watch")]
-    pub file_watcher_restart_requested: bool,
     #[cfg(target_os = "linux")]
     /// Linux input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
@@ -394,9 +386,6 @@ impl Kanata {
             kbd_out,
             cfg_paths: args.paths.clone(),
             cur_cfg_idx: 0,
-            included_files: Vec::new(), // Will be populated dynamically
-            #[cfg(feature = "watch")]
-            file_watcher: None,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
@@ -417,8 +406,6 @@ impl Kanata {
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
-            #[cfg(feature = "watch")]
-            file_watcher_restart_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
@@ -547,9 +534,6 @@ impl Kanata {
             kbd_out,
             cfg_paths: vec!["config string".into()],
             cur_cfg_idx: 0,
-            included_files: Vec::new(), // Will be populated dynamically
-            #[cfg(feature = "watch")]
-            file_watcher: None,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
@@ -570,8 +554,6 @@ impl Kanata {
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
-            #[cfg(feature = "watch")]
-            file_watcher_restart_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
@@ -783,19 +765,6 @@ impl Kanata {
         #[cfg(all(target_os = "windows", feature = "gui"))]
         send_gui_cfg_notice();
 
-        // Check if included files changed and flag for watcher restart
-        #[cfg(feature = "watch")]
-        {
-            use crate::file_watcher::discover_include_files;
-            let new_included_files = discover_include_files(&self.cfg_paths);
-            if self.included_files != new_included_files {
-                log::info!("Included files have changed, flagging file watcher for restart");
-                log::debug!("Old included files: {:?}", self.included_files);
-                log::debug!("New included files: {:?}", new_included_files);
-                self.file_watcher_restart_requested = true;
-                self.included_files = new_included_files;
-            }
-        }
 
         Ok(())
     }
@@ -2180,11 +2149,6 @@ impl Kanata {
                                 }
                             }
 
-                            // Handle file watcher restart if needed
-                            #[cfg(feature = "watch")]
-                            if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
-                            }
 
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
@@ -2246,11 +2210,6 @@ impl Kanata {
                                 }
                             }
 
-                            // Handle file watcher restart if needed
-                            #[cfg(feature = "watch")]
-                            if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
-                            }
 
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
@@ -2343,16 +2302,7 @@ impl Kanata {
         // Note: checking waiting_for_idle can not be part of the computation for
         // is_idle() since incrementing ticks_since_idle is dependent on the return
         // value of is_idle().
-        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested || {
-            #[cfg(feature = "watch")]
-            {
-                k.file_watcher_restart_requested
-            }
-            #[cfg(not(feature = "watch"))]
-            {
-                false
-            }
-        };
+        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested;
         if !is_idle {
             k.ticks_since_idle = 0;
         } else if is_idle && counting_idle_ticks {
@@ -2401,16 +2351,7 @@ impl Kanata {
 
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
-            !self.waiting_for_idle.is_empty() || self.live_reload_requested || {
-                #[cfg(feature = "watch")]
-                {
-                    self.file_watcher_restart_requested
-                }
-                #[cfg(not(feature = "watch"))]
-                {
-                    false
-                }
-            };
+            !self.waiting_for_idle.is_empty() || self.live_reload_requested;
         self.layout.b().queue.is_empty()
             && zippy_is_idle()
             && self.layout.b().waiting.is_none()
