@@ -491,11 +491,10 @@ impl SystemTray {
             menu_item.set_bitmap(Some(&icn.tray));
             return Ok(icn);
         } else if get_icon_p("", "", cfg_icon_s, cfg_p, &false).is_some() {
-                debug!(
-                    "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
-                    cfg_p
-                );
-            }
+            debug!(
+                "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
+                cfg_p
+            );
         }
         menu_item.set_bitmap(None);
         bail!("✗couldn't get a valid icon for {:?}", cfg_p)
