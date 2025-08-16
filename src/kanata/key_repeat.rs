@@ -93,9 +93,10 @@ impl Kanata {
         if (self.cur_keys.contains(&kc)
             || self.unshifted_keys.contains(&kc)
             || self.unmodded_keys.contains(&kc))
-            && let Err(e) = write_key(&mut self.kbd_out, event.code, KeyValue::Repeat) {
-                bail!("could not write key {e:?}");
-            }
+            && let Err(e) = write_key(&mut self.kbd_out, event.code, KeyValue::Repeat)
+        {
+            bail!("could not write key {e:?}");
+        }
         Ok(())
     }
 }

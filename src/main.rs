@@ -107,7 +107,6 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     log_layer_changes: bool,
-
 }
 
 #[cfg(not(feature = "gui"))]
@@ -290,7 +289,6 @@ mod cli {
             #[allow(clippy::unit_arg)]
             Kanata::start_notification_loop(nrx, server.connections);
         }
-
 
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;

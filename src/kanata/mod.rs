@@ -765,7 +765,6 @@ impl Kanata {
         #[cfg(all(target_os = "windows", feature = "gui"))]
         send_gui_cfg_notice();
 
-
         Ok(())
     }
 
@@ -1190,9 +1189,10 @@ impl Kanata {
         }
 
         if let Some(caps_word) = &mut self.caps_word
-            && caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
-                self.caps_word = None;
-            }
+            && caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End
+        {
+            self.caps_word = None;
+        }
 
         // Release keys that do not exist in the current state but exist in the previous state.
         // This used to use a HashSet but it was changed to a Vec because the order of operations
@@ -1246,34 +1246,36 @@ impl Kanata {
             }
         }
 
-        if cur_keys.is_empty() && !self.prev_keys.is_empty()
-            && let Some(state) = self.sequence_state.get_active() {
-                use kanata_parser::trie::GetOrDescendentExistsResult::*;
-                state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
-                match self
-                    .sequences
-                    .get_or_descendant_exists(&state.overlapped_sequence)
-                {
-                    HasValue((i, j)) => {
-                        do_successful_sequence_termination(
-                            &mut self.kbd_out,
-                            state,
-                            layout,
-                            i,
-                            j,
-                            EndSequenceType::Overlap,
-                        )?;
-                    }
-                    NotInTrie => {
-                        // Overwrite overlapped with non-overlapped tracking
-                        state.overlapped_sequence.clear();
-                        state
-                            .overlapped_sequence
-                            .extend(state.sequence.iter().copied());
-                    }
-                    InTrie => {}
+        if cur_keys.is_empty()
+            && !self.prev_keys.is_empty()
+            && let Some(state) = self.sequence_state.get_active()
+        {
+            use kanata_parser::trie::GetOrDescendentExistsResult::*;
+            state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
+            match self
+                .sequences
+                .get_or_descendant_exists(&state.overlapped_sequence)
+            {
+                HasValue((i, j)) => {
+                    do_successful_sequence_termination(
+                        &mut self.kbd_out,
+                        state,
+                        layout,
+                        i,
+                        j,
+                        EndSequenceType::Overlap,
+                    )?;
                 }
+                NotInTrie => {
+                    // Overwrite overlapped with non-overlapped tracking
+                    state.overlapped_sequence.clear();
+                    state
+                        .overlapped_sequence
+                        .extend(state.sequence.iter().copied());
+                }
+                InTrie => {}
             }
+        }
 
         // Press keys that exist in the current state but are missing from the previous state.
         // Comment above regarding Vec/HashSet also applies here.
@@ -1756,15 +1758,17 @@ impl Kanata {
                             match direction {
                                 MWheelDirection::Up | MWheelDirection::Down => {
                                     if let Some(ss) = &self.scroll_state
-                                        && ss.direction == *direction {
-                                            self.scroll_state = None;
-                                        }
+                                        && ss.direction == *direction
+                                    {
+                                        self.scroll_state = None;
+                                    }
                                 }
                                 MWheelDirection::Left | MWheelDirection::Right => {
                                     if let Some(ss) = &self.hscroll_state
-                                        && ss.direction == *direction {
-                                            self.hscroll_state = None;
-                                        }
+                                        && ss.direction == *direction
+                                    {
+                                        self.hscroll_state = None;
+                                    }
                                 }
                             }
                             pbtn
@@ -1775,16 +1779,18 @@ impl Kanata {
                                 MoveDirection::Up | MoveDirection::Down => {
                                     if let Some(move_mouse_state_vertical) =
                                         &self.move_mouse_state_vertical
-                                        && move_mouse_state_vertical.direction == *direction {
-                                            self.move_mouse_state_vertical = None;
-                                        }
+                                        && move_mouse_state_vertical.direction == *direction
+                                    {
+                                        self.move_mouse_state_vertical = None;
+                                    }
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
                                     if let Some(move_mouse_state_horizontal) =
                                         &self.move_mouse_state_horizontal
-                                        && move_mouse_state_horizontal.direction == *direction {
-                                            self.move_mouse_state_horizontal = None;
-                                        }
+                                        && move_mouse_state_horizontal.direction == *direction
+                                    {
+                                        self.move_mouse_state_horizontal = None;
+                                    }
                                 }
                             }
                             if self.movemouse_smooth_diagonals {
@@ -2072,11 +2078,12 @@ impl Kanata {
                 info!("Init: catching only releases and sending immediately");
                 for _ in 0..500 {
                     if let Ok(kev) = rx.try_recv()
-                        && kev.value == KeyValue::Release {
-                            let mut k = kanata.lock();
-                            info!("Init: releasing {:?}", kev.code);
-                            k.kbd_out.release_key(kev.code).expect("key released");
-                        }
+                        && kev.value == KeyValue::Release
+                    {
+                        let mut k = kanata.lock();
+                        info!("Init: releasing {:?}", kev.code);
+                        k.kbd_out.release_key(kev.code).expect("key released");
+                    }
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
             }
@@ -2139,7 +2146,6 @@ impl Kanata {
                                 }
                             }
 
-
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
@@ -2199,7 +2205,6 @@ impl Kanata {
                                     log::error!("live reload failed {e}");
                                 }
                             }
-
 
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
