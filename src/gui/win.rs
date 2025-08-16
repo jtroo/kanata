@@ -485,11 +485,12 @@ impl SystemTray {
         cfg_icon_s: &str,
         cfg_p: &PathBuf,
     ) -> Result<Icn> {
-        if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false) {
-            if let Ok(icn) = self.get_icon_from_file(ico_p) {
-                menu_item.set_bitmap(Some(&icn.tray));
-                return Ok(icn);
-            } else {
+        if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false)
+            && let Ok(icn) = self.get_icon_from_file(ico_p)
+        {
+            menu_item.set_bitmap(Some(&icn.tray));
+            return Ok(icn);
+        } else if get_icon_p("", "", cfg_icon_s, cfg_p, &false).is_some() {
                 debug!(
                     "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
                     cfg_p

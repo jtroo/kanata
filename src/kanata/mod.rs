@@ -959,18 +959,20 @@ impl Kanata {
     }
 
     fn handle_move_mouse(&mut self) -> Result<()> {
-        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
-            if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsv.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsv.distance = mmas.max_distance;
-                }
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical
+            && let Some(mmas) = &mut mmsv.move_mouse_accel_state
+        {
+            if mmas.accel_ticks_until_max != 0 {
+                let increment =
+                    (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                mmsv.distance = mmas.min_distance + increment;
+                mmas.accel_ticks_from_min += 1;
+                mmas.accel_ticks_until_max -= 1;
+            } else {
+                mmsv.distance = mmas.max_distance;
             }
+        }
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
                 let scaled_distance =
@@ -1006,18 +1008,20 @@ impl Kanata {
                 mmsv.ticks_until_move -= 1;
             }
         }
-        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
-            if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsh.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsh.distance = mmas.max_distance;
-                }
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal
+            && let Some(mmas) = &mut mmsh.move_mouse_accel_state
+        {
+            if mmas.accel_ticks_until_max != 0 {
+                let increment =
+                    (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                mmsh.distance = mmas.min_distance + increment;
+                mmas.accel_ticks_from_min += 1;
+                mmas.accel_ticks_until_max -= 1;
+            } else {
+                mmsh.distance = mmas.max_distance;
             }
+        }
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
                 let scaled_distance =
