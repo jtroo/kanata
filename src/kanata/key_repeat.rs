@@ -90,13 +90,12 @@ impl Kanata {
         // and have delegated to defsrc handling.
         log::debug!("checking defsrc output");
         let kc = event.code.into();
-        if self.cur_keys.contains(&kc)
+        if (self.cur_keys.contains(&kc)
             || self.unshifted_keys.contains(&kc)
-            || self.unmodded_keys.contains(&kc)
+            || self.unmodded_keys.contains(&kc))
+            && let Err(e) = write_key(&mut self.kbd_out, event.code, KeyValue::Repeat)
         {
-            if let Err(e) = write_key(&mut self.kbd_out, event.code, KeyValue::Repeat) {
-                bail!("could not write key {e:?}");
-            }
+            bail!("could not write key {e:?}");
         }
         Ok(())
     }

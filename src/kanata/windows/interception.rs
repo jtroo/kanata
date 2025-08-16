@@ -87,11 +87,11 @@ impl Kanata {
                             if allow_this_dev {
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
 
-                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                                    if flags.contains(ic::MouseFlags::MOVE_RELATIVE) {
-                                        tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
-                                    }
-                                };
+                                if let Some(ms_mvmt_key) = *mouse_movement_key.lock()
+                                    && flags.contains(ic::MouseFlags::MOVE_RELATIVE)
+                                {
+                                    tx.try_send(KeyEvent::new(ms_mvmt_key, KeyValue::Tap))?;
+                                }
                             }
 
                             if let (true, Some(event)) =

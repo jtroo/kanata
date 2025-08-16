@@ -92,11 +92,6 @@ pub struct Kanata {
     /// through the configuration files.
     pub cur_cfg_idx: usize,
     /// Files included via (include "path") in the configuration.
-    pub included_files: Vec<PathBuf>,
-    /// File watcher for configuration changes.
-    #[cfg(feature = "watch")]
-    pub file_watcher:
-        Option<notify_debouncer_mini::Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>>,
     /// The potential key outputs of every key input. Used for managing key repeat.
     pub key_outputs: cfg::KeyOutputs,
     /// Handle to the keyberon library layout.
@@ -160,9 +155,6 @@ pub struct Kanata {
     time_remainder: u128,
     /// Is true if a live reload was requested by the user and false otherwise.
     live_reload_requested: bool,
-    /// Flag to indicate that the file watcher needs to be restarted due to include file changes.
-    #[cfg(feature = "watch")]
-    pub file_watcher_restart_requested: bool,
     #[cfg(target_os = "linux")]
     /// Linux input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
@@ -394,9 +386,6 @@ impl Kanata {
             kbd_out,
             cfg_paths: args.paths.clone(),
             cur_cfg_idx: 0,
-            included_files: Vec::new(), // Will be populated dynamically
-            #[cfg(feature = "watch")]
-            file_watcher: None,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
@@ -417,8 +406,6 @@ impl Kanata {
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
-            #[cfg(feature = "watch")]
-            file_watcher_restart_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
@@ -547,9 +534,6 @@ impl Kanata {
             kbd_out,
             cfg_paths: vec!["config string".into()],
             cur_cfg_idx: 0,
-            included_files: Vec::new(), // Will be populated dynamically
-            #[cfg(feature = "watch")]
-            file_watcher: None,
             key_outputs: cfg.key_outputs,
             layout: cfg.layout,
             layer_info: cfg.layer_info,
@@ -570,8 +554,6 @@ impl Kanata {
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
             live_reload_requested: false,
-            #[cfg(feature = "watch")]
-            file_watcher_restart_requested: false,
             overrides: cfg.overrides,
             override_states: OverrideStates::new(),
             #[cfg(target_os = "macos")]
@@ -783,20 +765,6 @@ impl Kanata {
         #[cfg(all(target_os = "windows", feature = "gui"))]
         send_gui_cfg_notice();
 
-        // Check if included files changed and flag for watcher restart
-        #[cfg(feature = "watch")]
-        {
-            use crate::file_watcher::discover_include_files;
-            let new_included_files = discover_include_files(&self.cfg_paths);
-            if self.included_files != new_included_files {
-                log::info!("Included files have changed, flagging file watcher for restart");
-                log::debug!("Old included files: {:?}", self.included_files);
-                log::debug!("New included files: {:?}", new_included_files);
-                self.file_watcher_restart_requested = true;
-                self.included_files = new_included_files;
-            }
-        }
-
         Ok(())
     }
 
@@ -991,18 +959,20 @@ impl Kanata {
     }
 
     fn handle_move_mouse(&mut self) -> Result<()> {
-        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
-            if let Some(mmas) = &mut mmsv.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsv.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsv.distance = mmas.max_distance;
-                }
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical
+            && let Some(mmas) = &mut mmsv.move_mouse_accel_state
+        {
+            if mmas.accel_ticks_until_max != 0 {
+                let increment =
+                    (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                mmsv.distance = mmas.min_distance + increment;
+                mmas.accel_ticks_from_min += 1;
+                mmas.accel_ticks_until_max -= 1;
+            } else {
+                mmsv.distance = mmas.max_distance;
             }
+        }
+        if let Some(mmsv) = &mut self.move_mouse_state_vertical {
             if mmsv.ticks_until_move == 0 {
                 mmsv.ticks_until_move = mmsv.interval - 1;
                 let scaled_distance =
@@ -1038,18 +1008,20 @@ impl Kanata {
                 mmsv.ticks_until_move -= 1;
             }
         }
-        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
-            if let Some(mmas) = &mut mmsh.move_mouse_accel_state {
-                if mmas.accel_ticks_until_max != 0 {
-                    let increment =
-                        (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
-                    mmsh.distance = mmas.min_distance + increment;
-                    mmas.accel_ticks_from_min += 1;
-                    mmas.accel_ticks_until_max -= 1;
-                } else {
-                    mmsh.distance = mmas.max_distance;
-                }
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal
+            && let Some(mmas) = &mut mmsh.move_mouse_accel_state
+        {
+            if mmas.accel_ticks_until_max != 0 {
+                let increment =
+                    (mmas.accel_increment * f64::from(mmas.accel_ticks_from_min)) as u16;
+                mmsh.distance = mmas.min_distance + increment;
+                mmas.accel_ticks_from_min += 1;
+                mmas.accel_ticks_until_max -= 1;
+            } else {
+                mmsh.distance = mmas.max_distance;
             }
+        }
+        if let Some(mmsh) = &mut self.move_mouse_state_horizontal {
             if mmsh.ticks_until_move == 0 {
                 mmsh.ticks_until_move = mmsh.interval - 1;
                 let scaled_distance =
@@ -1220,10 +1192,10 @@ impl Kanata {
             }
         }
 
-        if let Some(caps_word) = &mut self.caps_word {
-            if caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End {
-                self.caps_word = None;
-            }
+        if let Some(caps_word) = &mut self.caps_word
+            && caps_word.tick_maybe_add_lsft(cur_keys) == CapsWordNextState::End
+        {
+            self.caps_word = None;
         }
 
         // Release keys that do not exist in the current state but exist in the previous state.
@@ -1278,33 +1250,34 @@ impl Kanata {
             }
         }
 
-        if cur_keys.is_empty() && !self.prev_keys.is_empty() {
-            if let Some(state) = self.sequence_state.get_active() {
-                use kanata_parser::trie::GetOrDescendentExistsResult::*;
-                state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
-                match self
-                    .sequences
-                    .get_or_descendant_exists(&state.overlapped_sequence)
-                {
-                    HasValue((i, j)) => {
-                        do_successful_sequence_termination(
-                            &mut self.kbd_out,
-                            state,
-                            layout,
-                            i,
-                            j,
-                            EndSequenceType::Overlap,
-                        )?;
-                    }
-                    NotInTrie => {
-                        // Overwrite overlapped with non-overlapped tracking
-                        state.overlapped_sequence.clear();
-                        state
-                            .overlapped_sequence
-                            .extend(state.sequence.iter().copied());
-                    }
-                    InTrie => {}
+        if cur_keys.is_empty()
+            && !self.prev_keys.is_empty()
+            && let Some(state) = self.sequence_state.get_active()
+        {
+            use kanata_parser::trie::GetOrDescendentExistsResult::*;
+            state.overlapped_sequence.push(KEY_OVERLAP_MARKER);
+            match self
+                .sequences
+                .get_or_descendant_exists(&state.overlapped_sequence)
+            {
+                HasValue((i, j)) => {
+                    do_successful_sequence_termination(
+                        &mut self.kbd_out,
+                        state,
+                        layout,
+                        i,
+                        j,
+                        EndSequenceType::Overlap,
+                    )?;
                 }
+                NotInTrie => {
+                    // Overwrite overlapped with non-overlapped tracking
+                    state.overlapped_sequence.clear();
+                    state
+                        .overlapped_sequence
+                        .extend(state.sequence.iter().copied());
+                }
+                InTrie => {}
             }
         }
 
@@ -1618,8 +1591,8 @@ impl Kanata {
                             let osc: OsCode = keycode.into();
                             log::debug!("repeating a keypress {osc:?}");
                             let mut do_caps_word = false;
-                            if !cur_keys.contains(&KeyCode::LShift) {
-                                if let Some(ref mut cw) = self.caps_word {
+                            if !cur_keys.contains(&KeyCode::LShift)
+                                && let Some(ref mut cw) = self.caps_word {
                                     cur_keys.push(keycode);
                                     let prev_len = cur_keys.len();
                                     cw.tick_maybe_add_lsft(cur_keys);
@@ -1628,7 +1601,6 @@ impl Kanata {
                                         press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
                                     }
                                 }
-                            }
                             // Release key in case the most recently pressed key is still pressed.
                             release_key(&mut self.kbd_out, osc)?;
                             press_key(&mut self.kbd_out, osc)?;
@@ -1789,17 +1761,17 @@ impl Kanata {
                         CustomAction::MWheel { direction, .. } => {
                             match direction {
                                 MWheelDirection::Up | MWheelDirection::Down => {
-                                    if let Some(ss) = &self.scroll_state {
-                                        if ss.direction == *direction {
-                                            self.scroll_state = None;
-                                        }
+                                    if let Some(ss) = &self.scroll_state
+                                        && ss.direction == *direction
+                                    {
+                                        self.scroll_state = None;
                                     }
                                 }
                                 MWheelDirection::Left | MWheelDirection::Right => {
-                                    if let Some(ss) = &self.hscroll_state {
-                                        if ss.direction == *direction {
-                                            self.hscroll_state = None;
-                                        }
+                                    if let Some(ss) = &self.hscroll_state
+                                        && ss.direction == *direction
+                                    {
+                                        self.hscroll_state = None;
                                     }
                                 }
                             }
@@ -1811,19 +1783,17 @@ impl Kanata {
                                 MoveDirection::Up | MoveDirection::Down => {
                                     if let Some(move_mouse_state_vertical) =
                                         &self.move_mouse_state_vertical
+                                        && move_mouse_state_vertical.direction == *direction
                                     {
-                                        if move_mouse_state_vertical.direction == *direction {
-                                            self.move_mouse_state_vertical = None;
-                                        }
+                                        self.move_mouse_state_vertical = None;
                                     }
                                 }
                                 MoveDirection::Left | MoveDirection::Right => {
                                     if let Some(move_mouse_state_horizontal) =
                                         &self.move_mouse_state_horizontal
+                                        && move_mouse_state_horizontal.direction == *direction
                                     {
-                                        if move_mouse_state_horizontal.direction == *direction {
-                                            self.move_mouse_state_horizontal = None;
-                                        }
+                                        self.move_mouse_state_horizontal = None;
                                     }
                                 }
                             }
@@ -2111,12 +2081,12 @@ impl Kanata {
             if !nodelay {
                 info!("Init: catching only releases and sending immediately");
                 for _ in 0..500 {
-                    if let Ok(kev) = rx.try_recv() {
-                        if kev.value == KeyValue::Release {
-                            let mut k = kanata.lock();
-                            info!("Init: releasing {:?}", kev.code);
-                            k.kbd_out.release_key(kev.code).expect("key released");
-                        }
+                    if let Ok(kev) = rx.try_recv()
+                        && kev.value == KeyValue::Release
+                    {
+                        let mut k = kanata.lock();
+                        info!("Init: releasing {:?}", kev.code);
+                        k.kbd_out.release_key(kev.code).expect("key released");
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
@@ -2180,12 +2150,6 @@ impl Kanata {
                                 }
                             }
 
-                            // Handle file watcher restart if needed
-                            #[cfg(feature = "watch")]
-                            if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
-                            }
-
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
@@ -2244,12 +2208,6 @@ impl Kanata {
                                 if let Err(e) = k.do_live_reload(&tx) {
                                     log::error!("live reload failed {e}");
                                 }
-                            }
-
-                            // Handle file watcher restart if needed
-                            #[cfg(feature = "watch")]
-                            if k.file_watcher_restart_requested {
-                                crate::file_watcher::restart_watcher(&mut k, kanata.clone());
                             }
 
                             #[cfg(feature = "perf_logging")]
@@ -2343,16 +2301,7 @@ impl Kanata {
         // Note: checking waiting_for_idle can not be part of the computation for
         // is_idle() since incrementing ticks_since_idle is dependent on the return
         // value of is_idle().
-        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested || {
-            #[cfg(feature = "watch")]
-            {
-                k.file_watcher_restart_requested
-            }
-            #[cfg(not(feature = "watch"))]
-            {
-                false
-            }
-        };
+        let counting_idle_ticks = !k.waiting_for_idle.is_empty() || k.live_reload_requested;
         if !is_idle {
             k.ticks_since_idle = 0;
         } else if is_idle && counting_idle_ticks {
@@ -2401,16 +2350,7 @@ impl Kanata {
 
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
-            !self.waiting_for_idle.is_empty() || self.live_reload_requested || {
-                #[cfg(feature = "watch")]
-                {
-                    self.file_watcher_restart_requested
-                }
-                #[cfg(not(feature = "watch"))]
-                {
-                    false
-                }
-            };
+            !self.waiting_for_idle.is_empty() || self.live_reload_requested;
         self.layout.b().queue.is_empty()
             && zippy_is_idle()
             && self.layout.b().waiting.is_none()

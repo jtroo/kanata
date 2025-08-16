@@ -2,13 +2,20 @@
 // disable default console for a Windows GUI app
 mod main_lib;
 
+#[cfg(not(feature = "gui"))]
 use anyhow::{Result, bail};
+#[cfg(not(feature = "gui"))]
 use clap::Parser;
+#[cfg(not(feature = "gui"))]
 use kanata_parser::cfg;
+#[cfg(not(feature = "gui"))]
 use kanata_state_machine::*;
+#[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
+#[cfg(not(feature = "gui"))]
 use std::path::PathBuf;
 
+#[cfg(not(feature = "gui"))]
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
 /// kanata: an advanced software key remapper
@@ -19,6 +26,7 @@ use std::path::PathBuf;
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
 /// the kanata repository: https://github.com/jtroo/kanata
+#[cfg(not(feature = "gui"))]
 struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -107,10 +115,6 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     log_layer_changes: bool,
-
-    /// Watch configuration files for changes and reload automatically
-    #[arg(long, verbatim_doc_comment)]
-    watch: bool,
 }
 
 #[cfg(not(feature = "gui"))]
@@ -121,19 +125,23 @@ mod cli {
     fn cli_init() -> Result<(ValidatedArgs, Option<String>)> {
         let args = Args::parse();
 
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_macos();
             std::process::exit(0);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_linux();
             std::process::exit(0);
         }
 
-        #[cfg(all(target_os = "windows", feature = "interception_driver"))]
+        #[cfg(all(
+            target_os = "windows",
+            feature = "interception_driver",
+            not(feature = "gui")
+        ))]
         if args.list {
             main_lib::list_devices_windows();
             std::process::exit(0);
@@ -238,8 +246,6 @@ mod cli {
                 #[cfg(target_os = "linux")]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,
-                #[cfg(feature = "watch")]
-                watch: args.watch,
             },
             config_string,
         ))
@@ -296,14 +302,6 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        // Start comprehensive file watcher if enabled (supports include files)
-        #[cfg(feature = "watch")]
-        if args.watch {
-            if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
-                log::error!("Failed to start file watcher: {}", e);
-            }
-        }
-
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
@@ -325,4 +323,9 @@ pub fn main() -> Result<()> {
 #[cfg(all(feature = "gui", target_os = "windows"))]
 fn main() {
     main_lib::win_gui::lib_main_gui();
+}
+
+#[cfg(all(feature = "gui", not(target_os = "windows")))]
+fn main() {
+    panic!("GUI feature is only supported on Windows");
 }

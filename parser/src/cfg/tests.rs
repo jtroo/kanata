@@ -35,7 +35,7 @@ fn init_log() {
     });
 }
 
-fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
+fn lock<T>(lk: &Mutex<T>) -> MutexGuard<'_, T> {
     match lk.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),

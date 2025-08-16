@@ -485,16 +485,16 @@ impl SystemTray {
         cfg_icon_s: &str,
         cfg_p: &PathBuf,
     ) -> Result<Icn> {
-        if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false) {
-            if let Ok(icn) = self.get_icon_from_file(ico_p) {
-                menu_item.set_bitmap(Some(&icn.tray));
-                return Ok(icn);
-            } else {
-                debug!(
-                    "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
-                    cfg_p
-                );
-            }
+        if let Some(ico_p) = get_icon_p("", "", cfg_icon_s, cfg_p, &false)
+            && let Ok(icn) = self.get_icon_from_file(ico_p)
+        {
+            menu_item.set_bitmap(Some(&icn.tray));
+            return Ok(icn);
+        } else if get_icon_p("", "", cfg_icon_s, cfg_p, &false).is_some() {
+            debug!(
+                "✗ main 0 icon ✓ icon path, will be using DEFAULT icon for {:?}",
+                cfg_p
+            );
         }
         menu_item.set_bitmap(None);
         bail!("✗couldn't get a valid icon for {:?}", cfg_p)
@@ -705,32 +705,29 @@ impl SystemTray {
         let mut img_dyn = self.img_dyn.borrow_mut();
         if img_dyn.contains_key(cfg_p) {
             // check if menu group icon needs to be updated to match active
-            if is_active {
-                if let Some(icn) = img_dyn.get(cfg_p).and_then(|maybe_icn| maybe_icn.as_ref()) {
-                    self.tray_1cfg_m.set_bitmap(Some(&icn.tray))
-                }
+            if is_active
+                && let Some(icn) = img_dyn.get(cfg_p).and_then(|maybe_icn| maybe_icn.as_ref())
+            {
+                self.tray_1cfg_m.set_bitmap(Some(&icn.tray))
             }
         } else {
             trace!("config menu item icon missing, read config and add it (or nothing) {cfg_p:?}");
-            if let Ok(cfg) = cfg::new_from_file(cfg_p) {
-                if let Some(cfg_icon_s) = cfg.options.gui_opts.tray_icon {
-                    debug!("loaded config without a tray icon {cfg_p:?}");
-                    if let Ok(icn) = self.set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, cfg_p)
-                    {
-                        if is_active {
-                            self.tray_1cfg_m.set_bitmap(Some(&icn.tray));
-                        }
-                        // update currently active config's icon in the combo menu
-                        debug!("✓set icon {cfg_p:?}");
-                        let _ = img_dyn.insert(cfg_p.clone(), Some(icn));
-                    } else {
-                        bail!("✗couldn't get a valid icon")
+            if let Ok(cfg) = cfg::new_from_file(cfg_p)
+                && let Some(cfg_icon_s) = cfg.options.gui_opts.tray_icon
+            {
+                debug!("loaded config without a tray icon {cfg_p:?}");
+                if let Ok(icn) = self.set_menu_item_cfg_icon(menu_item_cfg, &cfg_icon_s, cfg_p) {
+                    if is_active {
+                        self.tray_1cfg_m.set_bitmap(Some(&icn.tray));
                     }
+                    // update currently active config's icon in the combo menu
+                    debug!("✓set icon {cfg_p:?}");
+                    let _ = img_dyn.insert(cfg_p.clone(), Some(icn));
                 } else {
-                    bail!("✗icon not configured")
+                    bail!("✗couldn't get a valid icon")
                 }
             } else {
-                bail!("✗couldn't load config")
+                bail!("✗icon not configured")
             }
         }
         Ok(())
