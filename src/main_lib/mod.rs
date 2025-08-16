@@ -281,11 +281,11 @@ fn extract_hardware_id(device_name: &str) -> Option<String> {
     // \\?\HID#VID_046D&PID_C52B&MI_01#7&1234abcd&0&0000#{884b96c3-56ef-11d1-bc8c-00a0c91405dd}
     // We want to extract the HID#VID_046D&PID_C52B&MI_01 part
 
-    if let Some(start) = device_name.find("HID#") {
-        if let Some(end) = device_name[start..].find('#') {
-            let hwid_part = &device_name[start..start + end];
-            return Some(hwid_part.to_string());
-        }
+    if let Some(start) = device_name.find("HID#")
+        && let Some(end) = device_name[start..].find('#')
+    {
+        let hwid_part = &device_name[start..start + end];
+        return Some(hwid_part.to_string());
     }
 
     None
