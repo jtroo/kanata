@@ -1,7 +1,7 @@
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub(crate) mod win_gui;
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(feature = "gui")))]
 pub(crate) fn list_devices_macos() {
     use crate::oskbd::capture_stdout;
     use karabiner_driverkit::list_keyboards;
@@ -49,7 +49,7 @@ pub(crate) fn list_devices_macos() {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "gui")))]
 pub(crate) fn list_devices_linux() {
     use crate::oskbd::discover_devices;
     use kanata_parser::cfg::DeviceDetectMode;
@@ -86,7 +86,11 @@ pub(crate) fn list_devices_linux() {
     println!("  )");
 }
 
-#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+#[cfg(all(
+    target_os = "windows",
+    feature = "interception_driver",
+    not(feature = "gui")
+))]
 #[allow(dead_code)]
 struct WindowsDeviceInfo {
     display_name: String,        // For user display
@@ -94,7 +98,11 @@ struct WindowsDeviceInfo {
     hardware_id: Option<String>, // Parsed hardware ID (e.g., "HID#VID_046D&PID_C52B")
 }
 
-#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+#[cfg(all(
+    target_os = "windows",
+    feature = "interception_driver",
+    not(feature = "gui")
+))]
 #[allow(dead_code)]
 fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDeviceInfo> {
     use std::ffi::OsString;
@@ -156,7 +164,11 @@ fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDe
     None
 }
 
-#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+#[cfg(all(
+    target_os = "windows",
+    feature = "interception_driver",
+    not(feature = "gui")
+))]
 #[allow(dead_code)]
 pub(crate) fn list_devices_windows() {
     use std::ptr::null_mut;
@@ -258,7 +270,11 @@ pub(crate) fn list_devices_windows() {
     }
 }
 
-#[cfg(all(target_os = "windows", feature = "interception_driver"))]
+#[cfg(all(
+    target_os = "windows",
+    feature = "interception_driver",
+    not(feature = "gui")
+))]
 #[allow(dead_code)]
 fn extract_hardware_id(device_name: &str) -> Option<String> {
     // Windows device names typically look like:

@@ -2,13 +2,20 @@
 // disable default console for a Windows GUI app
 mod main_lib;
 
+#[cfg(not(feature = "gui"))]
 use anyhow::{Result, bail};
+#[cfg(not(feature = "gui"))]
 use clap::Parser;
+#[cfg(not(feature = "gui"))]
 use kanata_parser::cfg;
+#[cfg(not(feature = "gui"))]
 use kanata_state_machine::*;
+#[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
+#[cfg(not(feature = "gui"))]
 use std::path::PathBuf;
 
+#[cfg(not(feature = "gui"))]
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
 /// kanata: an advanced software key remapper
@@ -19,6 +26,7 @@ use std::path::PathBuf;
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
 /// the kanata repository: https://github.com/jtroo/kanata
+#[cfg(not(feature = "gui"))]
 struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -311,4 +319,9 @@ pub fn main() -> Result<()> {
 #[cfg(all(feature = "gui", target_os = "windows"))]
 fn main() {
     main_lib::win_gui::lib_main_gui();
+}
+
+#[cfg(all(feature = "gui", not(target_os = "windows")))]
+fn main() {
+    panic!("GUI feature is only supported on Windows");
 }
