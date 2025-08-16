@@ -238,7 +238,7 @@ pub fn output_debug_string(s: &str) {
 }
 
 #[cfg(windows)]
-unsafe extern "stdcall" {
+unsafe extern "system" {
     fn OutputDebugStringW(chars: *const u16);
     fn IsDebuggerPresent() -> i32;
 }
