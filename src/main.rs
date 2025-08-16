@@ -125,19 +125,23 @@ mod cli {
     fn cli_init() -> Result<(ValidatedArgs, Option<String>)> {
         let args = Args::parse();
 
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_macos();
             std::process::exit(0);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_linux();
             std::process::exit(0);
         }
 
-        #[cfg(all(target_os = "windows", feature = "interception_driver"))]
+        #[cfg(all(
+            target_os = "windows",
+            feature = "interception_driver",
+            not(feature = "gui")
+        ))]
         if args.list {
             main_lib::list_devices_windows();
             std::process::exit(0);
