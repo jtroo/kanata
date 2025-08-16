@@ -1,9 +1,74 @@
-use crate::*;
-use anyhow::{Context, anyhow};
-use clap::{CommandFactory, error::ErrorKind};
+use anyhow::{Context, Result, anyhow, bail};
+use clap::{CommandFactory, Parser, error::ErrorKind};
+use kanata_parser::cfg;
 use kanata_state_machine::gui::*;
 use kanata_state_machine::*;
+use simplelog::{
+    ColorChoice, CombinedLogger, Config, ConfigBuilder, LevelFilter, TermLogger, TerminalMode,
+    WriteLogger, format_description,
+};
 use std::fs::File;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(author, version, verbatim_doc_comment)]
+/// kanata: an advanced software key remapper
+///
+/// kanata remaps key presses to other keys or complex actions depending on the
+/// configuration for that key. You can find the guide for creating a config
+/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+///
+/// If you need help, please feel welcome to create an issue or discussion in
+/// the kanata repository: https://github.com/jtroo/kanata
+struct Args {
+    /// Configuration file(s) to use with kanata. If not specified, defaults to
+    /// kanata.kbd in the current working directory and
+    /// 'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'.
+    #[arg(short, long, verbatim_doc_comment)]
+    cfg: Option<Vec<PathBuf>>,
+
+    /// Read configuration from stdin instead of a file.
+    #[arg(long, verbatim_doc_comment)]
+    cfg_stdin: bool,
+
+    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
+    /// no TCP port will be listened on.
+    #[cfg(feature = "tcp_server")]
+    #[arg(
+        short = 'p',
+        long = "port",
+        value_name = "PORT or IP:PORT",
+        verbatim_doc_comment
+    )]
+    tcp_server_address: Option<SocketAddrWrapper>,
+
+    /// Disable logging, except for errors. Takes precedent over debug and trace.
+    #[arg(short, long)]
+    quiet: bool,
+
+    /// Enable debug logging.
+    #[arg(short, long)]
+    debug: bool,
+
+    /// Enable trace logging; implies --debug as well.
+    #[arg(short, long)]
+    trace: bool,
+
+    /// Remove the startup delay.
+    /// In some cases, removing the delay may cause keyboard issues on startup.
+    #[arg(short, long, verbatim_doc_comment)]
+    nodelay: bool,
+
+    /// Validate configuration file and exit
+    #[arg(long, verbatim_doc_comment)]
+    check: bool,
+
+    /// Log layer changes even if the configuration file has set the defcfg
+    /// option to false. Useful if you are experimenting with a new
+    /// configuration but want to default to no logging.
+    #[arg(long, verbatim_doc_comment)]
+    log_layer_changes: bool,
+}
 
 /// Parse CLI arguments and initialize logging.
 fn cli_init() -> Result<ValidatedArgs> {
