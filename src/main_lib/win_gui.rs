@@ -1,6 +1,6 @@
 use super::args::Args;
 use anyhow::{Context, Result, anyhow, bail};
-use clap::{CommandFactory, error::ErrorKind};
+use clap::{CommandFactory, Parser, error::ErrorKind};
 use kanata_parser::cfg;
 use kanata_state_machine::gui::*;
 use kanata_state_machine::*;
