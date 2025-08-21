@@ -311,7 +311,7 @@ impl TryFrom<OsCodeWrapper> for Stroke {
             OsCode::KEY_F22 => (ScanCode::F22, KeyState::empty()),
             OsCode::KEY_F23 => (ScanCode::F23, KeyState::empty()),
             OsCode::KEY_F24 => (ScanCode::F24, KeyState::empty()),
-            OsCode::KEY_KATAKANA => (ScanCode::Katakana, KeyState::empty()),
+            OsCode::KEY_HANGEUL => (ScanCode::Katakana, KeyState::empty()),
             // Note: the OEM keys below don't seem to correspond to the same VK OEM
             // mappings as the LLHOOK codes.
             // ScanCode::Oem1 = 0x5A, /* VK_OEM_WSCTRL */
