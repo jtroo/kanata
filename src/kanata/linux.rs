@@ -45,12 +45,12 @@ impl Kanata {
             log::trace!("event count: {}\nevents:\n{events:?}", events.len());
 
             for in_event in events.iter().copied() {
-                if let Some(ms_mvmt_key) = *mouse_movement_key.lock() {
-                    if let EventSummary::RelativeAxis(_, _, _) = in_event.destructure() {
-                        let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
-                        if let Err(e) = tx.try_send(fake_event) {
-                            bail!("failed to send on channel: {}", e)
-                        }
+                if let Some(ms_mvmt_key) = *mouse_movement_key.lock()
+                    && let EventSummary::RelativeAxis(_, _, _) = in_event.destructure()
+                {
+                    let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
+                    if let Err(e) = tx.try_send(fake_event) {
+                        bail!("failed to send on channel: {}", e)
                     }
                 }
 

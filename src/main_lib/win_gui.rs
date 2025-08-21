@@ -1,8 +1,13 @@
-use crate::*;
-use anyhow::{Context, anyhow};
-use clap::{CommandFactory, error::ErrorKind};
+use super::args::Args;
+use anyhow::{Context, Result, anyhow, bail};
+use clap::{CommandFactory, Parser, error::ErrorKind};
+use kanata_parser::cfg;
 use kanata_state_machine::gui::*;
 use kanata_state_machine::*;
+use simplelog::{
+    ColorChoice, CombinedLogger, Config, ConfigBuilder, LevelFilter, TermLogger, TerminalMode,
+    WriteLogger, format_description,
+};
 use std::fs::File;
 
 /// Parse CLI arguments and initialize logging.
@@ -129,8 +134,6 @@ fn cli_init() -> Result<ValidatedArgs> {
         #[cfg(feature = "tcp_server")]
         tcp_server_address: args.tcp_server_address,
         nodelay: args.nodelay,
-        #[cfg(feature = "watch")]
-        watch: false,
     })
 }
 

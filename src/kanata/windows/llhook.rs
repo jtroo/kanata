@@ -178,10 +178,8 @@ impl Kanata {
                     Some(k) => k != *pvk,
                     _ => true,
                 };
-                if !retain {
-                    if let Some(coord) = s.coord() {
-                        coords_to_clear.push(coord);
-                    }
+                if !retain && let Some(coord) = s.coord() {
+                    coords_to_clear.push(coord);
                 }
                 retain
             });

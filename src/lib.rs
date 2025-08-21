@@ -3,8 +3,6 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[cfg(feature = "watch")]
-pub mod file_watcher;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub mod gui;
 pub mod kanata;
@@ -25,8 +23,6 @@ pub struct ValidatedArgs {
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
-    #[cfg(feature = "watch")]
-    pub watch: bool,
 }
 
 pub fn default_cfg() -> Vec<PathBuf> {

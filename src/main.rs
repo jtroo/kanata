@@ -2,116 +2,18 @@
 // disable default console for a Windows GUI app
 mod main_lib;
 
+#[cfg(not(feature = "gui"))]
 use anyhow::{Result, bail};
+#[cfg(not(feature = "gui"))]
 use clap::Parser;
+#[cfg(not(feature = "gui"))]
 use kanata_parser::cfg;
+#[cfg(not(feature = "gui"))]
 use kanata_state_machine::*;
+#[cfg(not(feature = "gui"))]
+use main_lib::args::Args;
+#[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
-use std::path::PathBuf;
-
-#[derive(Parser, Debug)]
-#[command(author, version, verbatim_doc_comment)]
-/// kanata: an advanced software key remapper
-///
-/// kanata remaps key presses to other keys or complex actions depending on the
-/// configuration for that key. You can find the guide for creating a config
-/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-///
-/// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository: https://github.com/jtroo/kanata
-struct Args {
-    // Display different platform specific paths based on the target OS
-    #[cfg_attr(
-        target_os = "windows",
-        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'."
-    )]
-    #[cfg_attr(
-        target_os = "macos",
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$HOME/Library/Application Support/kanata/kanata.kbd'."
-    )]
-    #[cfg_attr(
-        not(any(target_os = "macos", target_os = "windows")),
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$XDG_CONFIG_HOME/kanata/kanata.kbd'."
-    )]
-    #[arg(short, long, verbatim_doc_comment)]
-    cfg: Option<Vec<PathBuf>>,
-
-    /// Read configuration from stdin instead of a file.
-    #[arg(long, verbatim_doc_comment)]
-    cfg_stdin: bool,
-
-    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
-    /// no TCP port will be listened on.
-    #[cfg(feature = "tcp_server")]
-    #[arg(
-        short = 'p',
-        long = "port",
-        value_name = "PORT or IP:PORT",
-        verbatim_doc_comment
-    )]
-    tcp_server_address: Option<SocketAddrWrapper>,
-
-    /// Path for the symlink pointing to the newly-created device. If blank, no
-    /// symlink will be created.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    symlink_path: Option<String>,
-
-    /// List the keyboards available for grabbing and exit.
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "linux",
-        all(target_os = "windows", feature = "interception_driver")
-    ))]
-    #[arg(short, long)]
-    list: bool,
-
-    /// Disable logging, except for errors. Takes precedent over debug and trace.
-    #[arg(short, long)]
-    quiet: bool,
-
-    /// Enable debug logging.
-    #[arg(short, long)]
-    debug: bool,
-
-    /// Enable trace logging; implies --debug as well.
-    #[arg(short, long)]
-    trace: bool,
-
-    /// Remove the startup delay.
-    /// In some cases, removing the delay may cause keyboard issues on startup.
-    #[arg(short, long, verbatim_doc_comment)]
-    nodelay: bool,
-
-    /// Milliseconds to wait before attempting to register a newly connected
-    /// device. The default is 200.
-    ///
-    /// You may wish to increase this if you have a device that is failing
-    /// to register - the device may be taking too long to become ready.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    wait_device_ms: Option<u64>,
-
-    /// Validate configuration file and exit
-    #[arg(long, verbatim_doc_comment)]
-    check: bool,
-
-    /// Log layer changes even if the configuration file has set the defcfg
-    /// option to false. Useful if you are experimenting with a new
-    /// configuration but want to default to no logging.
-    #[arg(long, verbatim_doc_comment)]
-    log_layer_changes: bool,
-
-    /// Watch configuration files for changes and reload automatically
-    #[arg(long, verbatim_doc_comment)]
-    watch: bool,
-}
 
 #[cfg(not(feature = "gui"))]
 mod cli {
@@ -121,19 +23,23 @@ mod cli {
     fn cli_init() -> Result<(ValidatedArgs, Option<String>)> {
         let args = Args::parse();
 
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_macos();
             std::process::exit(0);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_linux();
             std::process::exit(0);
         }
 
-        #[cfg(all(target_os = "windows", feature = "interception_driver"))]
+        #[cfg(all(
+            target_os = "windows",
+            feature = "interception_driver",
+            not(feature = "gui")
+        ))]
         if args.list {
             main_lib::list_devices_windows();
             std::process::exit(0);
@@ -238,8 +144,6 @@ mod cli {
                 #[cfg(target_os = "linux")]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,
-                #[cfg(feature = "watch")]
-                watch: args.watch,
             },
             config_string,
         ))
@@ -296,14 +200,6 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        // Start comprehensive file watcher if enabled (supports include files)
-        #[cfg(feature = "watch")]
-        if args.watch {
-            if let Err(e) = crate::file_watcher::start_file_watcher(kanata_arc.clone()) {
-                log::error!("Failed to start file watcher: {}", e);
-            }
-        }
-
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
@@ -325,4 +221,9 @@ pub fn main() -> Result<()> {
 #[cfg(all(feature = "gui", target_os = "windows"))]
 fn main() {
     main_lib::win_gui::lib_main_gui();
+}
+
+#[cfg(all(feature = "gui", not(target_os = "windows")))]
+fn main() {
+    panic!("GUI feature is only supported on Windows");
 }
