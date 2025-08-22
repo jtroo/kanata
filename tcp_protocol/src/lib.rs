@@ -1,15 +1,43 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PermissionState {
+    Granted,
+    Denied,
+    NotApplicable,
+    Error,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
-    LayerChange { new: String },
-    LayerNames { names: Vec<String> },
-    CurrentLayerInfo { name: String, cfg_text: String },
-    ConfigFileReload { new: String },
-    CurrentLayerName { name: String },
-    MessagePush { message: serde_json::Value },
-    Error { msg: String },
+    LayerChange {
+        new: String,
+    },
+    LayerNames {
+        names: Vec<String>,
+    },
+    CurrentLayerInfo {
+        name: String,
+        cfg_text: String,
+    },
+    ConfigFileReload {
+        new: String,
+    },
+    CurrentLayerName {
+        name: String,
+    },
+    MessagePush {
+        message: serde_json::Value,
+    },
+    MacosPermissions {
+        accessibility: PermissionState,
+        input_monitoring: PermissionState,
+    },
+    Error {
+        msg: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,6 +88,8 @@ pub enum ClientMessage {
     ReloadFile {
         path: String,
     },
+    CheckMacosPermissions {},
+    Restart {},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

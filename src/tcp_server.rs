@@ -1,4 +1,8 @@
 use crate::Kanata;
+#[cfg(feature = "tcp_server")]
+use crate::macos_permissions::check_macos_permissions;
+#[cfg(all(feature = "tcp_server", target_os = "macos"))]
+use crate::macos_permissions::restart_process;
 use crate::oskbd::*;
 
 #[cfg(feature = "tcp_server")]
@@ -286,6 +290,67 @@ impl TcpServer {
                                                     &addr,
                                                 ) {
                                                     break;
+                                                }
+                                            }
+                                            ClientMessage::CheckMacosPermissions {} => {
+                                                log::info!(
+                                                    "tcp server CheckMacosPermissions action"
+                                                );
+                                                let permissions = check_macos_permissions();
+                                                let msg = ServerMessage::MacosPermissions {
+                                                    accessibility: permissions.accessibility,
+                                                    input_monitoring: permissions.input_monitoring,
+                                                };
+                                                match stream.write_all(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to CheckMacosPermissions: {err}"
+                                                    ),
+                                                }
+                                            }
+                                            ClientMessage::Restart {} => {
+                                                log::info!("tcp server Restart action");
+                                                #[cfg(target_os = "macos")]
+                                                {
+                                                    // Send ACK first, then perform restart after a short delay
+                                                    if !send_response(
+                                                        &mut stream,
+                                                        ServerResponse::Ok,
+                                                        &connections,
+                                                        &addr,
+                                                    ) {
+                                                        break;
+                                                    }
+                                                    if let Err(e) = stream.flush() {
+                                                        log::warn!(
+                                                            "failed to flush restart ACK: {e}"
+                                                        );
+                                                    }
+                                                    std::thread::spawn(|| {
+                                                        std::thread::sleep(
+                                                            std::time::Duration::from_millis(200),
+                                                        );
+                                                        if let Err(e) = restart_process() {
+                                                            log::error!(
+                                                                "scheduled restart failed: {e}"
+                                                            );
+                                                        }
+                                                    });
+                                                }
+                                                #[cfg(not(target_os = "macos"))]
+                                                {
+                                                    let response = ServerResponse::Error {
+                                                        msg: "Restart is only supported on macOS"
+                                                            .to_string(),
+                                                    };
+                                                    if !send_response(
+                                                        &mut stream,
+                                                        response,
+                                                        &connections,
+                                                        &addr,
+                                                    ) {
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
