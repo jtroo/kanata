@@ -116,6 +116,33 @@ Then you can compile and run with the instructions below:
 
     sudo target/debug/kanata --cfg <your_configuration_file>
 
+**macOS Permissions Management:**
+
+When running kanata on macOS, you'll need to grant **Accessibility** and **Input Monitoring** permissions in System Settings > Privacy & Security. 
+
+If you're using kanata with the TCP server feature, you can check permission status remotely:
+
+    # Start kanata with TCP server
+    sudo target/debug/kanata --cfg <config_file> --tcp-server 13331
+
+    # From another terminal or external program, check permissions:
+    echo '{"CheckMacosPermissions":{}}' | nc localhost 13331
+
+This returns a JSON response with permission status:
+```json
+{
+  "accessibility": "granted|denied|error",
+  "input_monitoring": "granted|denied|error"
+}
+```
+
+After changing permissions in System Settings, restart kanata with:
+```
+echo '{"Restart":{}}' | nc localhost 13331
+```
+
+**Note:** The restart command replaces the current kanata process, so TCP clients must reconnect afterward.
+
 The full configuration guide is [found here](./docs/config.adoc).
 
 Sample configuration files are found in [cfg_samples](./cfg_samples). The
@@ -184,6 +211,7 @@ cargo install --features cmd,interception_driver
 - Vim-like leader sequences to execute other actions
 - Optionally run a TCP server to interact with other programs
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
+  - On macOS: Check system permissions and restart kanata remotely via TCP commands
 - [Interception driver](https://web.archive.org/web/20240209172129/http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
   - Note that this issue exists, which is outside the control of this project:
     https://github.com/oblitum/Interception/issues/25

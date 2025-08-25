@@ -4526,6 +4526,41 @@ The TCP server supports live configuration reloading through the following comma
 
 These commands mirror the existing keyboard live reload actions and allow external tools to trigger configuration reloads via TCP.
 
+==== macOS: Permissions and restart over TCP
+
+On macOS, you can query system permission state and request a controlled restart via the TCP server.
+
+Permission states are returned as snake_case strings from the `PermissionState` enum:
+`granted`, `denied`, `not_applicable`, `error`.
+
+Non-macOS platforms return `not_applicable` for both fields.
+
+.Check macOS permissions
+[source,bash]
+----
+echo '{"CheckMacosPermissions":{}}' | nc localhost 13331
+----
+
+Expected response shape:
+[source,json]
+----
+{"MacosPermissions":{"accessibility":"granted|denied|not_applicable|error","input_monitoring":"granted|denied|not_applicable|error"}}
+----
+
+.Restart kanata (ACK then re-exec)
+[source,bash]
+----
+echo '{"Restart":{}}' | nc localhost 13331
+----
+
+Immediate response:
+[source,json]
+----
+{"status":"Ok"}
+----
+
+Note: The server flushes an ACK and then replaces the process shortly after; TCP clients should reconnect.
+
 [[args-quiet]]
 === Disable logs other than errors: `-q`, `--quiet`
 
