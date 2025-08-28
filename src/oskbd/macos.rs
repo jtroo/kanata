@@ -28,6 +28,7 @@ use std::io;
 use std::io::Error;
 use std::io::Read;
 use std::os::unix::io::AsRawFd;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -56,7 +57,11 @@ impl From<InputEvent> for DKEvent {
     }
 }
 
-pub struct KbdIn {}
+pub struct KbdIn {
+    include_names: Option<Vec<String>>,
+    exclude_names: Option<Vec<String>>,
+    last_rediscover_time: Instant,
+}
 
 impl Drop for KbdIn {
     fn drop(&mut self) {
@@ -109,27 +114,17 @@ impl KbdIn {
             ));
         }
 
-        let device_names = if let Some(names) = include_names {
-            validate_and_register_devices(names)
-        } else if let Some(names) = exclude_names {
-            // TODO: filter include_names when both exclude_names and include_names are present
-            let kb_list = capture_stdout(list_keyboards);
-            let names_: Vec<String> = kb_list
-                .split("\n")
-                .filter(|kb| {
-                    let kb_trimmed = kb.trim();
-                    !kb_trimmed.is_empty() && !names.contains(&kb_trimmed.to_string())
-                })
-                .map(|kb| kb.trim().to_string())
-                .collect();
-            validate_and_register_devices(names_)
-        } else {
-            vec![]
+        let kbdin = KbdIn {
+            include_names: include_names,
+            exclude_names: exclude_names,
+            last_rediscover_time: Instant::now(),
         };
+
+        let device_names = validate_and_register_devices(&kbdin);
 
         if !device_names.is_empty() || register_device("") {
             if grab() {
-                Ok(Self {})
+                Ok(kbdin)
             } else {
                 Err(anyhow!("grab failed"))
             }
@@ -142,6 +137,14 @@ impl KbdIn {
     }
 
     pub fn read(&mut self) -> Result<InputEvent, io::Error> {
+        let now = Instant::now();
+        if now.duration_since(self.last_rediscover_time) >= Duration::from_secs(5)
+            && (self.include_names.is_some() || self.exclude_names.is_some())
+        {
+            validate_and_register_devices(&self);
+            self.last_rediscover_time = now;
+        }
+
         let mut event = DKEvent {
             value: 0,
             page: 0,
@@ -154,7 +157,25 @@ impl KbdIn {
     }
 }
 
-fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
+fn validate_and_register_devices(kbdin: &KbdIn) -> Vec<String> {
+    let include_names = if let Some(names) = &kbdin.include_names {
+        names.clone()
+    } else if let Some(names) = &kbdin.exclude_names {
+        // TODO: filter include_names when both exclude_names and include_names are present
+        let kb_list = capture_stdout(list_keyboards);
+        let names_: Vec<String> = kb_list
+            .split("\n")
+            .filter(|kb| {
+                let kb_trimmed = kb.trim();
+                !kb_trimmed.is_empty() && !names.contains(&kb_trimmed.to_string())
+            })
+            .map(|kb| kb.trim().to_string())
+            .collect();
+        names_
+    } else {
+        vec![]
+    };
+
     include_names
         .iter()
         .filter_map(|dev| {
