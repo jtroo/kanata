@@ -400,7 +400,10 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x07,
                 code: 0x64,
             }), //KeyboardNonUSBackslash
-            // KeyboardApplication               => 0x0765, todo
+            OsCode::KEY_COMPOSE => Ok(PageCode {
+                page: 0x07,
+                code: 0x65,
+            }),
             OsCode::KEY_POWER => Ok(PageCode {
                 page: 0x07,
                 code: 0x66,
