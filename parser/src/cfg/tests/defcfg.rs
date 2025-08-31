@@ -99,3 +99,15 @@ fn unmapped_except_keys_is_removed_from_mapping() {
         }
     }
 }
+
+#[test]
+fn non_applicable_os_deflocalkeys_always_succeeds_parsing() {
+    let source = "
+(deflocalkeys-linux å 26 ' 43)
+(defsrc)
+(deflayer base)
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
