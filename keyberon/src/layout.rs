@@ -1643,7 +1643,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             // is immediately re-added again. This means the release is never observed..
             NormalKey { flags, keycode, .. } => match flags.nkf_clear_on_next_action() {
                 true => {
-                    self.oneshot.pause_input_processing_delay += 2;
+                    self.oneshot.pause_input_processing_ticks += 2;
                     let _ = self.keys_to_suppress_for_one_cycle.push(*keycode);
                     false
                 }
