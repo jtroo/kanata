@@ -411,6 +411,10 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
 #[cfg(any(target_os = "linux", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
+fn deflocalkeys_variant_applies_to_current_os(variant: &str) -> bool {
+    variant == DEF_LOCAL_KEYS
+}
+
 #[derive(Debug)]
 pub struct IntermediateCfg {
     pub options: CfgOptions,
@@ -581,7 +585,7 @@ pub fn parse_cfg_raw_string(
     let mut local_keys: Option<HashMap<String, OsCode>> = None;
     clear_custom_str_oscode_mapping();
     for def_local_keys_variant in DEFLOCALKEYS_VARIANTS {
-        if let Some((result, _span)) = spanned_root_exprs
+        let Some((result, _span)) = spanned_root_exprs
             .iter()
             .find(gen_first_atom_filter_spanned(def_local_keys_variant))
             .map(|x| {
@@ -590,23 +594,25 @@ pub fn parse_cfg_raw_string(
                     x.span.clone(),
                 )
             })
-        {
-            let mapping = result?;
-            if def_local_keys_variant == &def_local_keys_variant_to_apply {
-                assert!(
-                    local_keys.is_none(),
-                    ">1 mutually exclusive deflocalkeys variants were parsed"
-                );
-                local_keys = Some(mapping);
-            } else {
-                #[cfg(feature = "lsp")]
-                lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
-                    span: _span,
-                    reason: format!(
-                        "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
+        else {
+            continue;
+        };
+
+        let mapping = result?;
+        if def_local_keys_variant == &def_local_keys_variant_to_apply {
+            assert!(
+                local_keys.is_none(),
+                ">1 mutually exclusive deflocalkeys variants were parsed"
+            );
+            local_keys = Some(mapping);
+        } else {
+            #[cfg(feature = "lsp")]
+            lsp_hints.inactive_code.push(lsp_hints::InactiveCode {
+                span: _span,
+                reason: format!(
+                    "Another localkeys variant is currently active: {def_local_keys_variant_to_apply}"
                     ),
-                })
-            }
+            })
         }
 
         if let Some(spanned) = spanned_root_exprs
@@ -1083,6 +1089,20 @@ fn parse_deflocalkeys(
                 "Duplicate {key} found in {def_local_keys_variant}"
             );
         }
+
+        // Bug:
+        // Trying to convert a number to OsCode is OS-dependent and is fallible.
+        // A valid number for Linux could throw an error on Windows.
+        //
+        // Fix:
+        // When the deflocalkeys variant does not apply to the current OS,
+        // use a dummy OsCode to keep the "same name" validation
+        // while avoiding the u16->OsCode conversion attempt.
+        if !deflocalkeys_variant_applies_to_current_os(def_local_keys_variant) {
+            localkeys.insert(key.to_owned(), OsCode::KEY_RESERVED);
+            continue;
+        }
+
         let osc = match exprs.next() {
             Some(v) => v
                 .atom(None)
