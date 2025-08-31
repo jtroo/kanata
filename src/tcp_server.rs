@@ -109,10 +109,13 @@ impl TcpServer {
                             }
                         }
 
-                        let addr = stream
-                            .peer_addr()
-                            .expect("incoming conn has known address")
-                            .to_string();
+                        let addr = match stream.peer_addr() {
+                            Ok(addr) => addr.to_string(),
+                            Err(e) => {
+                                log::warn!("failed to get peer address, using fallback: {e:?}");
+                                format!("unknown_{}", std::ptr::addr_of!(stream) as usize)
+                            }
+                        };
 
                         connections.lock().insert(
                             addr.clone(),
