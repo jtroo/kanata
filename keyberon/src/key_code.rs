@@ -787,10 +787,10 @@ pub enum KeyCode {
 impl KeyCode {
     pub fn is_mod(self) -> bool {
         use KeyCode::*;
-        match self {
-            LShift | RShift | LCtrl | RCtrl | LAlt | RAlt | LGui | RGui => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            LShift | RShift | LCtrl | RCtrl | LAlt | RAlt | LGui | RGui
+        )
     }
 }
 
