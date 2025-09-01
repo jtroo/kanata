@@ -784,6 +784,16 @@ pub enum KeyCode {
     KeyMax = 767,
 }
 
+impl KeyCode {
+    pub fn is_mod(self) -> bool {
+        use KeyCode::*;
+        match self {
+            LShift | RShift | LCtrl | RCtrl | LAlt | RAlt | LGui | RGui => true,
+            _ => false,
+        }
+    }
+}
+
 use core::fmt;
 impl fmt::Display for KeyCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

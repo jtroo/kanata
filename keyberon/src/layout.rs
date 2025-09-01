@@ -1641,10 +1641,28 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             // Need to solve a problem here - if the output chord `S-=` is active, and then a
             // different keypress `=` happens, the `lsft =` states are cleared; but the `=`
             // is immediately re-added again. This means the release is never observed..
+            //
+            // Bug introduced:
+            //
+            // If doing something like typing parentheses using output chords,
+            // e.g. S-9 followed by S-0,
+            // the trivial fix will suppress the shift key for a bit
+            // but the `0` still gets output,
+            // resulting in an unshifted `0` which is incorrect.
+            //
+            // Fix added:
+            //
+            // Do not apply the suppression to modifiers.
+            // Modifiers typically don't have a usage pattern similar to
+            // the real use case of `S-=` followed by `=` example,
+            // such as `S-=` followed by only `lsft`,
+            // with a desire for the lone `lsft` to actually activate something.
             NormalKey { flags, keycode, .. } => match flags.nkf_clear_on_next_action() {
                 true => {
                     self.oneshot.pause_input_processing_ticks += 2;
-                    let _ = self.keys_to_suppress_for_one_cycle.push(*keycode);
+                    if !keycode.is_mod() {
+                        let _ = self.keys_to_suppress_for_one_cycle.push(*keycode);
+                    }
                     false
                 }
                 false => true,
