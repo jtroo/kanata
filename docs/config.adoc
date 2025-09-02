@@ -1161,8 +1161,8 @@ The output chord prefix strings are:
 | `rpt-any`
 | String action that outputs the most-recently outputted action.
 
-| `rpt-exclude-bspace`
-| String action that outputs the single most-recently typed key, ignoring backspace.
+| `smart-rpt`
+| String action that outputs the most-recently typed key and goes one key back in history after backspace.
 |===
 
 **Description**
@@ -1197,13 +1197,13 @@ and would output `ctrl+c` in the example case.
 )
 ----
 
-The `rpt-exclude-bspace` action repeats the last key output that isn't backspace. Note that this does not output chords, so `ctrl+c bspace` will output `c`.
+The `smart-rpt` action repeats the most recently input key but goes back at most one additional key on backspace. For example, the sequence `<H> <e> <l> <o> <smart-rpt> <bspace> <bspace> <smart-rpt> <o>` outputs `Hello`, while replacing `smart-rpt` with `rpt` outputs `Heo`.
 
 .Example:
 [source]
 ---
 (deflayer has-repeat-skip-bspace
-  rpt-skip-bspace a s d f
+  smart-rpt a s d f
 )
 ---
 
