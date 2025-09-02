@@ -240,6 +240,7 @@ pub struct Kanata {
     last_pressed_key: KeyCode,
     /// Keep track of last pressed non-backspace key for [`CustomAction::SmartRepeat`]
     last_last_pressed_key: KeyCode,
+    /// Keep track of how many non-backspace repeats have been used in a row for [`CustomAction::SmartRepeat`]
     repeat_count: i8,
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
@@ -1607,8 +1608,6 @@ impl Kanata {
                             }
                         }
                         CustomAction::Repeat | CustomAction::SmartRepeat => {
-                          let n = self.repeat_count;
-                          log::error!("{n}");
                           let keycode = match (custact, self.repeat_count) {
                               (CustomAction::SmartRepeat, -1) => self.last_last_pressed_key,
                               (CustomAction::SmartRepeat, _) => {
