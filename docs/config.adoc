@@ -1160,6 +1160,9 @@ The output chord prefix strings are:
 
 | `rpt-any`
 | String action that outputs the most-recently outputted action.
+
+| `rpt-exclude-bspace`
+| String action that outputs the single most-recently typed key, ignoring backspace.
 |===
 
 **Description**
@@ -1186,11 +1189,23 @@ There is a variant `rpt-any`
 which will repeat any previous action
 and would output `ctrl+c` in the example case.
 
+.Example:
+[source]
 ----
 (deflayer has-repeat-any
   rpt-any a s d f
 )
 ----
+
+The `rpt-exclude-bspace` action repeats the last key output that isn't backspace. Note that this does not output chords, so `ctrl+c bspace` will output `c`.
+
+.Example:
+[source]
+---
+(deflayer has-repeat-skip-bspace
+  rpt-skip-bspace a s d f
+)
+---
 
 [[release-a-key-or-layer]]
 === Release a key or layer
@@ -4519,7 +4534,7 @@ https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example
 The TCP server supports live configuration reloading through the following commands:
 
 - `{"Reload":{}}` - Reload the current configuration file (equivalent to `lrld` keyboard action)
-- `{"ReloadNext":{}}` - Reload the next configuration file (equivalent to `lrnx` keyboard action)  
+- `{"ReloadNext":{}}` - Reload the next configuration file (equivalent to `lrnx` keyboard action)
 - `{"ReloadPrev":{}}` - Reload the previous configuration file (equivalent to `lrpv` keyboard action)
 - `{"ReloadNum":{"index":N}}` - Reload configuration file at index N (equivalent to `lrld-num N` keyboard action)
 - `{"ReloadFile":{"path":"/path/to/config.kbd"}}` - Reload a specific configuration file (equivalent to `lrld-file` keyboard action)

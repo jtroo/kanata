@@ -238,6 +238,8 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
+    /// Keep track of last pressed non-backspace key for [`CustomAction::RepeatSkipBspace`]
+    last_pressed_nonbspace_key: KeyCode,
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
@@ -470,6 +472,7 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            last_pressed_nonbspace_key: KeyCode::No,
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -618,6 +621,7 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            last_pressed_nonbspace_key: KeyCode::No,
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -1299,6 +1303,11 @@ impl Kanata {
             self.prev_keys.push(*k);
             self.last_pressed_key = *k;
 
+            self.last_pressed_nonbspace_key = match k {
+                &KeyCode::BSpace => self.last_pressed_nonbspace_key,
+                _ => *k,
+            };
+
             if self.sequence_always_on && self.sequence_state.is_inactive() {
                 self.sequence_state
                     .activate(self.sequence_input_mode, self.sequence_timeout);
@@ -1586,8 +1595,11 @@ impl Kanata {
                                 add_noerase(state, *noerase_count);
                             }
                         }
-                        CustomAction::Repeat => {
-                            let keycode = self.last_pressed_key;
+                        CustomAction::Repeat | CustomAction::RepeatExcludeBSpace => {
+                          let keycode = match custact {
+                            CustomAction::Repeat => self.last_pressed_key,
+                            _ => self.last_pressed_nonbspace_key,
+                          };
                             let osc: OsCode = keycode.into();
                             log::debug!("repeating a keypress {osc:?}");
                             let mut do_caps_word = false;
