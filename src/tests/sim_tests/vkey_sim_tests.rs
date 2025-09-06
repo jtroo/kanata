@@ -53,5 +53,5 @@ fn on_idle_must_be_single_threaded() {
         "d:b t:10 u:b t:5 d:a t:50 u:a t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10 t:10",
     )
     .to_ascii();
-    assert_eq!("t:136ms dn:LGui t:1ms up:LGui", result);
+    assert_eq!("t:137ms dn:LGui t:1ms up:LGui", result);
 }

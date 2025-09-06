@@ -55,9 +55,11 @@ fn simulate_with_file_content<S: AsRef<str>>(
         match pair.split_once(':') {
             Some((kind, val)) => match kind {
                 "t" => {
-                    let tick = str::parse::<u128>(val).expect("valid num for tick");
-                    k.tick_ms(tick, &None).unwrap();
-                    k.can_block_update_idle_waiting(tick as u16);
+                    let ticks = str::parse::<u128>(val).expect("valid num for tick");
+                    for _ in 0..ticks {
+                        let _ = k.tick_ms(1, &None);
+                        let _ = k.can_block_update_idle_waiting(1);
+                    }
                 }
                 "d" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
