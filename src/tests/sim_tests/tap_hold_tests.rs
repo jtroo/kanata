@@ -45,3 +45,26 @@ fn tap_hold_release_timeout_with_reset() {
     .to_ascii();
     assert_eq!("t:125ms dn:Y t:6ms dn:B t:1ms up:B t:1ms up:Y", result);
 }
+
+#[test]
+fn on_physical_idle_with_tap_repress() {
+    let result = simulate(
+        "
+(defsrc a)
+(deflayer base @a)
+(deflayer nomods a)
+(defvirtualkeys to-base (layer-switch base))
+(defalias
+  tap (multi
+    (layer-switch nomods)
+    (on-physical-idle 20 tap-vkey to-base)
+  )
+  a (tap-hold 100 100 (multi a @tap) b)
+)
+        ",
+        "d:a t:30 u:a t:30 d:a t:1000",
+    )
+    .to_ascii();
+    // t:30ms dn:A t:6ms up:A t:124ms dn:B
+    assert_eq!("t:30ms dn:A t:6ms up:A t:24ms dn:A", result);
+}

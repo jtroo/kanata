@@ -1633,7 +1633,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
         let action = action;
 
-        if self.last_press_tracker.coord != coord {
+        if self.last_press_tracker.coord != coord && coord.0 == REAL_KEY_ROW {
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
