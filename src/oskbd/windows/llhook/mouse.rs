@@ -11,7 +11,6 @@ use winapi::shared::windef::HHOOK;
 use winapi::um::{processthreadsapi::GetCurrentThreadId, winuser::UnhookWindowsHookEx};
 
 type MHookFn = dyn FnMut(MouseEventType) -> bool;
-
 thread_local! {
     /// Stores the hook callback for the current thread.
     static MHOOK: Cell<Option<Box<MHookFn>>> = Cell::default();
@@ -22,6 +21,28 @@ thread_local! {
 pub struct MouseHook {
     handle: HHOOK,
 }
+
+impl MouseHook {
+    pub fn set_input_cb(callback: impl FnMut(MouseEventType) -> bool + 'static) -> MouseHook {
+        MHOOK.with(|state| {
+            assert!(
+                state.take().is_none(),
+                "Only one mouse hook can be registered per thread."
+            );
+
+            state.set(Some(Box::new(callback)));
+
+            MouseHook {
+                handle: unsafe {
+                    SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
+                        .as_mut()
+                        .expect("install low-level keyboard hook successfully")
+                },
+            }
+        })
+    }
+}
+
 impl Drop for MouseHook {
     fn drop(&mut self) {
         unsafe { UnhookWindowsHookEx(self.handle) };
@@ -332,5 +353,12 @@ impl MouseButton {
             XBUTTON2 => X2(click),
             _ => UnkownX(click),
         }
+    }
+}
+
+impl TryFrom<MouseEventType> for KeyEvent {
+    type Error = ();
+    fn try_from(kev: MouseEventType) -> Result<Self, ()> {
+        todo!()
     }
 }

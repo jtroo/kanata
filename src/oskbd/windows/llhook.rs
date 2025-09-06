@@ -11,6 +11,7 @@
 // TODO: remove allows
 #[allow(dead_code, unused_imports, unused_variables, unused_mut)]
 mod mouse;
+pub use mouse::*;
 
 use core::fmt;
 use std::cell::Cell;
