@@ -3,16 +3,12 @@
 /// Code taken and adapted from:
 /// https://github.com/myood/willhook-rs/tree/f4ccbc897504834d0c01fa449a2660b9989290e5
 /// License: MIT
-
 use super::*;
 
-use winapi::um::{
-    processthreadsapi::GetCurrentThreadId,
-    winuser::UnhookWindowsHookEx,
-};
 use winapi::shared::minwindef::DWORD;
-use winapi::shared::windef::HHOOK;
 use winapi::shared::ntdef::NULL;
+use winapi::shared::windef::HHOOK;
+use winapi::um::{processthreadsapi::GetCurrentThreadId, winuser::UnhookWindowsHookEx};
 
 type MHookFn = dyn FnMut(MouseEventType) -> bool;
 
@@ -20,7 +16,6 @@ thread_local! {
     /// Stores the hook callback for the current thread.
     static MHOOK: Cell<Option<Box<MHookFn>>> = Cell::default();
 }
-
 
 /// Wrapper for the low-level keyboard hook API.
 /// Automatically unregisters the hook when dropped.
@@ -35,21 +30,19 @@ impl Drop for MouseHook {
 }
 
 unsafe extern "system" fn mhook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let mouse_lparam = &*(lparam as *const MSLLHOOKSTRUCT);
-    let is_injected = mouse_lparam.flags
-                      & (LLMHF_INJECTED | LLMHF_LOWER_IL_INJECTED)
-                          != 0;
+    let mouse_lparam = unsafe { &*(lparam as *const MSLLHOOKSTRUCT) };
+    let is_injected = mouse_lparam.flags & (LLMHF_INJECTED | LLMHF_LOWER_IL_INJECTED) != 0;
     log::trace!("{code} {wparam} {is_injected}");
 
     // Regarding is_injected check:
     // `SendInput()` internally calls the hook function.
     // Filter out injected events to prevent infinite recursion.
     if is_injected {
-        return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
+        return unsafe { CallNextHookEx(ptr::null_mut(), code, wparam, lparam) };
     }
 
     let mut handled = false;
-    let mouse_event = classify_mouse_event(wparam, mouse_lparam);
+    let mouse_event = unsafe { classify_mouse_event(wparam, mouse_lparam) };
     MHOOK.with(|state| {
         // The unwrap cannot fail, because we have initialized [`HOOK`] with a
         // valid closure before registering the hook (this function).
@@ -65,7 +58,7 @@ unsafe extern "system" fn mhook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM
     if handled {
         1
     } else {
-        CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
+        unsafe { CallNextHookEx(ptr::null_mut(), code, wparam, lparam) }
     }
 }
 
@@ -79,7 +72,7 @@ pub enum MouseEventType {
     /// Wheel on the mouse was, well, spinning.
     Wheel(MouseWheelEvent),
     /// Received unrecognized mouse event type, the code is stored for reference.
-    Other(usize)
+    Other(usize),
 }
 
 use MouseEventType::*;
@@ -111,7 +104,7 @@ pub enum MouseWheelDirection {
 #[derive(Copy, Clone, Ord, PartialOrd, Hash, Eq, PartialEq, Debug)]
 pub struct MouseWheelEvent {
     pub wheel: MouseWheel,
-    pub direction: Option<MouseWheelDirection>
+    pub direction: Option<MouseWheelDirection>,
 }
 
 /// Point in per-monitor aware coordinates, see
@@ -160,36 +153,55 @@ pub enum MouseButton {
     Other(usize),
 }
 
-pub unsafe fn classify_mouse_event(wm_mouse_param: WPARAM, ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> MouseEventType {
+pub unsafe fn classify_mouse_event(
+    wm_mouse_param: WPARAM,
+    ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
+) -> MouseEventType {
     match wm_mouse_param as u32 {
         // Mouse press
-        WM_LBUTTONDOWN | WM_LBUTTONUP | WM_LBUTTONDBLCLK => Press(MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct)),
-        WM_RBUTTONDOWN | WM_RBUTTONUP | WM_RBUTTONDBLCLK => Press(MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct)),
-        WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MBUTTONDBLCLK => Press(MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct)),
-        WM_XBUTTONDOWN | WM_XBUTTONUP | WM_XBUTTONDBLCLK => Press(MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct)),
+        WM_LBUTTONDOWN | WM_LBUTTONUP | WM_LBUTTONDBLCLK => {
+            Press(unsafe { MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct) })
+        }
+        WM_RBUTTONDOWN | WM_RBUTTONUP | WM_RBUTTONDBLCLK => {
+            Press(unsafe { MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct) })
+        }
+        WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MBUTTONDBLCLK => {
+            Press(unsafe { MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct) })
+        }
+        WM_XBUTTONDOWN | WM_XBUTTONUP | WM_XBUTTONDBLCLK => {
+            Press(unsafe { MousePressEvent::new(wm_mouse_param, ms_ll_hook_struct) })
+        }
 
         // Mouse move
-        WM_MOUSEMOVE => Move(MouseMoveEvent::new(ms_ll_hook_struct)),
+        WM_MOUSEMOVE => Move(unsafe { MouseMoveEvent::new(ms_ll_hook_struct) }),
 
         // Wheel move
-        WM_MOUSEWHEEL | WM_MOUSEHWHEEL => Wheel(MouseWheelEvent::new(wm_mouse_param, ms_ll_hook_struct)),
+        WM_MOUSEWHEEL | WM_MOUSEHWHEEL => {
+            Wheel(unsafe { MouseWheelEvent::new(wm_mouse_param, ms_ll_hook_struct) })
+        }
 
         _ => Other(wm_mouse_param),
     }
 }
 
 impl MousePressEvent {
-    pub unsafe fn new(wm_mouse_param: WPARAM, ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> MousePressEvent {
+    pub unsafe fn new(
+        wm_mouse_param: WPARAM,
+        ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
+    ) -> MousePressEvent {
         MousePressEvent {
             pressed: MouseButtonPress::from(wm_mouse_param),
-            button: MouseButton::from(wm_mouse_param, ms_ll_hook_struct),
+            button: unsafe { MouseButton::from(wm_mouse_param, ms_ll_hook_struct) },
         }
     }
 }
 
 impl From<POINT> for Point {
     fn from(value: POINT) -> Self {
-        Point { x: value.x, y: value.y }
+        Point {
+            x: value.x,
+            y: value.y,
+        }
     }
 }
 
@@ -197,12 +209,10 @@ impl MouseWheel {
     pub fn new(wm_mouse_param: WPARAM) -> MouseWheel {
         use MouseWheel::*;
         match wm_mouse_param.try_into() {
-            Ok(param_u32) => {
-                match param_u32 {
-                    WM_MOUSEWHEEL => Vertical,
-                    WM_MOUSEHWHEEL => Horizontal,
-                    _ => Unknown(wm_mouse_param),
-                }
+            Ok(param_u32) => match param_u32 {
+                WM_MOUSEWHEEL => Vertical,
+                WM_MOUSEHWHEEL => Horizontal,
+                _ => Unknown(wm_mouse_param),
             },
             _ => Unknown(wm_mouse_param),
         }
@@ -210,21 +220,25 @@ impl MouseWheel {
 }
 
 impl MouseWheelEvent {
-    pub unsafe fn new(wm_mouse_param: WPARAM, ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> MouseWheelEvent {
+    pub unsafe fn new(
+        wm_mouse_param: WPARAM,
+        ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
+    ) -> MouseWheelEvent {
         MouseWheelEvent {
             wheel: MouseWheel::new(wm_mouse_param),
-            direction: MouseWheelDirection::optionally_from(ms_ll_hook_struct)
+            direction: unsafe { MouseWheelDirection::optionally_from(ms_ll_hook_struct) },
         }
-
     }
 }
 
 impl MouseWheelDirection {
-    pub unsafe fn optionally_from(ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> Option<MouseWheelDirection>{
+    pub unsafe fn optionally_from(
+        ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
+    ) -> Option<MouseWheelDirection> {
         if ms_ll_hook_struct.is_null() {
             None
         } else {
-            Some(MouseWheelDirection::new(&*ms_ll_hook_struct))
+            Some(unsafe { MouseWheelDirection::new(&*ms_ll_hook_struct) })
         }
     }
 
@@ -242,11 +256,13 @@ impl MouseWheelDirection {
 impl MouseMoveEvent {
     pub unsafe fn new(ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> MouseMoveEvent {
         if ms_ll_hook_struct.is_null() {
-            MouseMoveEvent{ point: None }
+            MouseMoveEvent { point: None }
         } else {
-            let msll = &*ms_ll_hook_struct;
+            let msll = unsafe { &*ms_ll_hook_struct };
             let pt = msll.pt;
-            MouseMoveEvent{ point: Some(pt.into()) }
+            MouseMoveEvent {
+                point: Some(pt.into()),
+            }
         }
     }
 }
@@ -255,13 +271,11 @@ impl From<WPARAM> for MouseButtonPress {
     fn from(value: WPARAM) -> Self {
         use MouseButtonPress::*;
         match value.try_into() {
-            Ok(uv) => {
-                match uv {
-                    WM_LBUTTONDOWN| WM_RBUTTONDOWN| WM_MBUTTONDOWN | WM_XBUTTONDOWN => Down,
-                    WM_RBUTTONUP | WM_LBUTTONUP | WM_MBUTTONUP | WM_XBUTTONUP => Up,
-                    _ => Other(value),
-                }
-            }
+            Ok(uv) => match uv {
+                WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN => Down,
+                WM_RBUTTONUP | WM_LBUTTONUP | WM_MBUTTONUP | WM_XBUTTONUP => Up,
+                _ => Other(value),
+            },
             Err(_) => Other(value),
         }
     }
@@ -271,14 +285,13 @@ impl From<WPARAM> for MouseClick {
     fn from(value: WPARAM) -> Self {
         use MouseClick::*;
         match value.try_into() {
-            Ok (uv) => {
-                match uv {
-                    WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN => SingleClick,
-                    WM_LBUTTONUP | WM_RBUTTONUP | WM_MBUTTONUP | WM_XBUTTONUP => SingleClick,
-                    WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK => DoubleClick,
-                    _ => Other(value as u32),
-
+            Ok(uv) => match uv {
+                WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN => SingleClick,
+                WM_LBUTTONUP | WM_RBUTTONUP | WM_MBUTTONUP | WM_XBUTTONUP => SingleClick,
+                WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK => {
+                    DoubleClick
                 }
+                _ => Other(value as u32),
             },
             Err(_) => Other(value as u32),
         }
@@ -295,18 +308,18 @@ impl MouseButton {
                 match param {
                     WM_LBUTTONDOWN | WM_LBUTTONUP | WM_LBUTTONDBLCLK => Left(click),
                     WM_RBUTTONDOWN | WM_RBUTTONUP | WM_RBUTTONDBLCLK => Right(click),
-                    WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MBUTTONDBLCLK=> Middle(click),
+                    WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MBUTTONDBLCLK => Middle(click),
                     WM_XBUTTONDOWN | WM_XBUTTONUP | WM_XBUTTONDBLCLK => {
                         if ms_ll_hook_struct.is_null() {
                             UnkownX(click)
                         } else {
-                            Self::into_extra(click, &*ms_ll_hook_struct)
+                            Self::into_extra(click, unsafe { &*ms_ll_hook_struct })
                         }
-                    },
+                    }
                     // Value out of expected set
-                    _ => Other(wm_mouse_param)
+                    _ => Other(wm_mouse_param),
                 }
-            },
+            }
             // Conversion error
             Err(_) => Other(wm_mouse_param),
         }
