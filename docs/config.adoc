@@ -1945,6 +1945,7 @@ results in `$tap-action` activating.
 (tap-hold-press-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
 (tap-hold-release-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action [?reset-timeout-on-press])
 (tap-hold-release-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 ----
 
@@ -1970,6 +1971,11 @@ giving more time for a subsequent release to activate hold instead of timeout.
 | Activate `$hold-action` early if held and another input key is pressed and released.
 The `$tap-keys` parameter is a list of key names.
 Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold activates.
+
+| `tap-hold-release-tap-keys-release`
+| Activate `$hold-action` early if held and another input key is pressed and released.
+The `$tap-keys` parameter is a list of key names.
+Activates `$tap-action` early if a key within `$tap-keys` is pressed+released before hold activates.
 
 | `tap-hold-except-keys`
 | The `$tap-keys` parameter is a list of key names.
@@ -2101,12 +2107,23 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 [source]
 ----
 (defalias
-  ;; tap: o    hold: arrows layer    timeout: backspace
-  oat (tap-hold-press-timeout   200 200 o @arr bspc)
-  ;; tap: e    hold: chords layer    timeout: esc
-  ect (tap-hold-release-timeout 200 200 e @chr esc)
   ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed
   umk (tap-hold-release-keys 200 200 u @msc (a o e))
+)
+----
+
+- `tap-hold-release-tap-keys-release`
+
+This variant behaves nearly identically to `tap-hold-release-keys`
+except that the early tap activates on a press->release
+of a listed key, as opposed to only on a press.
+
+.Example:
+[source]
+----
+(defalias
+  ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed THEN released
+  umk (tap-hold-release-tap-keys-release 200 200 u @msc (a o e))
 )
 ----
 
@@ -2128,10 +2145,6 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 [source]
 ----
 (defalias
-  ;; tap: o    hold: arrows layer    timeout: backspace
-  oat (tap-hold-press-timeout   200 200 o @arr bspc)
-  ;; tap: e    hold: chords layer    timeout: esc
-  ect (tap-hold-release-timeout 200 200 e @chr esc)
   ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
   umk (tap-hold-except-keys 200 200 u @msc (a o e))
 )
