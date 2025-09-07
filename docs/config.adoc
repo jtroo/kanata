@@ -1378,9 +1378,16 @@ You can activate mouse actions with the string actions below.
 | Tap backward mouse button.
 |===
 
-In Linux and Windows-Interception,
+In Linux and Windows,
 the hold actions can be used within `defsrc` and `deflayermap`
 to remap mouse buttons like keyboard keys.
+
+NOTE:
+On Windows, the Kanata process must be restarted
+for it to begin or to stop handling mouse events;
+changing defsrc then live-reloading will not
+begin handling mouse events
+if defsrc previously did not have any mouse events in defsrc.
 
 **Description**
 
@@ -1393,7 +1400,7 @@ The mouse button actions are:
 * `mbck`: backward mouse button
 
 The mouse button will be held while the key mapped to it is held.
-Using Linux and Windows-Interception,
+Only on Linux and Windows,
 the above actions are also usable in `defsrc`
 to enable remapping specified mouse actions in your layers,
 like you would with keyboard keys.
@@ -1460,6 +1467,15 @@ to remap scroll events as if they were keys,
 corresponding to up, down, left, right respectively:
 `mwu`, `mwd`, `mwl`, `mwr`.
 
+The remapping of mouse events is only effective on Linux and Windows.
+
+NOTE:
+On Windows, the Kanata process must be restarted
+for it to begin or to stop handling mouse events;
+changing defsrc then live-reloading will not
+begin handling mouse events
+if defsrc previously did not have any mouse events in defsrc.
+
 **Description**
 
 The mouse wheel actions are:
@@ -1471,7 +1487,7 @@ The mouse wheel actions are:
 
 All of these actions accept two number strings. The first is the interval
 (unit: ms) between scroll actions. The second number is the distance
-(unit: arbitrary). In both Windows and Linux, 120 distance units is equivalent
+(unit: arbitrary). In both Linux and Windows, 120 distance units is equivalent
 to a notch movement on a physical wheel. You can play with the parameters to
 see what feels correct to you. Both numbers must be in the range [1,65535].
 
@@ -1479,7 +1495,7 @@ NOTE: In Linux, not all desktop environments support the `REL_WHEEL_HI_RES` even
 If this is the case for yours,
 it will likely be a better experience to use a distance value that is a multiple of 120.
 
-On Linux and Interception, you can also choose to read from a mouse device.
+On Linux and Windows, you can also choose to read from a mouse device.
 When doing so, using the `mwu`, `mwd`, `mwl`, `mwr` key names in `defsrc`
 allow you to remap the mouse scroll up/down/left/right actions like you would
 with keyboard keys.
@@ -4519,7 +4535,7 @@ https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example
 The TCP server supports live configuration reloading through the following commands:
 
 - `{"Reload":{}}` - Reload the current configuration file (equivalent to `lrld` keyboard action)
-- `{"ReloadNext":{}}` - Reload the next configuration file (equivalent to `lrnx` keyboard action)  
+- `{"ReloadNext":{}}` - Reload the next configuration file (equivalent to `lrnx` keyboard action)
 - `{"ReloadPrev":{}}` - Reload the previous configuration file (equivalent to `lrpv` keyboard action)
 - `{"ReloadNum":{"index":N}}` - Reload configuration file at index N (equivalent to `lrld-num N` keyboard action)
 - `{"ReloadFile":{"path":"/path/to/config.kbd"}}` - Reload a specific configuration file (equivalent to `lrld-file` keyboard action)
