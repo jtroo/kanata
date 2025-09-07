@@ -84,12 +84,17 @@ impl Kanata {
             MouseWheelLeft,
             MouseWheelRight,
         ];
-        if oscodes_for_mhook_active
+        let _handle = if oscodes_for_mhook_active
             .iter()
-            .any(|osc| MAPPED_KEYS.lock().contains(osc))
+            .any(|osc| {
+                let mk = MAPPED_KEYS.lock();
+                let ret =  mk.contains(&osc);
+                drop(mk);
+                ret
+            })
         {
             log::info!("Installing mouse hook callback.");
-            let _mousehook = MouseHook::set_input_cb(move |mouse_event| {
+            let mousehook = MouseHook::set_input_cb(move |mouse_event| {
                 log::debug!("llhook mouse event: {mouse_event:?}");
                 let key_event = match KeyEvent::try_from(mouse_event) {
                     Ok(ev) => ev,
@@ -104,9 +109,11 @@ impl Kanata {
                 true
             });
             log::info!("Installed mouse hook callback successfully.");
+            Some(mousehook)
         } else {
             log::info!("No mouse inputs were in defsrc on startup. Not activating mouse hook.");
-        }
+            None
+        };
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
