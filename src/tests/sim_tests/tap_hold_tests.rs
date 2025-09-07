@@ -68,3 +68,43 @@ fn on_physical_idle_with_tap_repress() {
     // t:30ms dn:A t:6ms up:A t:124ms dn:B
     assert_eq!("t:30ms dn:A t:6ms up:A t:24ms dn:A", result);
 }
+
+#[test]
+fn tap_hold_release_tap_keys_release() {
+    let cfg = "
+        (defsrc a)
+        (deflayer l1 (tap-hold-release-tap-keys-release 100 100 x y (z)))
+    ";
+    let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms up:X t:14ms dn:X", result);
+    let result = simulate(cfg, "d:a t:20 u:a t:200 d:a t:200").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms up:X t:294ms dn:Y", result);
+    let result = simulate(cfg, "d:a t:50 u:a t:50").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+    let result = simulate(cfg, "d:a t:150 u:a t:50").to_ascii();
+    assert_eq!("t:100ms dn:Y t:50ms up:Y", result);
+    let result = simulate(cfg, "d:a t:50 d:z t:75").to_ascii();
+    assert_eq!("t:100ms dn:Y t:1ms dn:Z", result);
+    let result = simulate(cfg, "d:a t:50 d:z u:z t:75").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms dn:Z t:1ms up:Z", result);
+}
+
+#[test]
+fn tap_hold_release_keys() {
+    let cfg = "
+        (defsrc a)
+        (deflayer l1 (tap-hold-release-keys 100 100 x y (z)))
+    ";
+    let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms up:X t:14ms dn:X", result);
+    let result = simulate(cfg, "d:a t:20 u:a t:200 d:a t:200").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms up:X t:294ms dn:Y", result);
+    let result = simulate(cfg, "d:a t:50 u:a t:50").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+    let result = simulate(cfg, "d:a t:150 u:a t:50").to_ascii();
+    assert_eq!("t:100ms dn:Y t:50ms up:Y", result);
+    let result = simulate(cfg, "d:a t:50 d:z t:75").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms dn:Z", result);
+    let result = simulate(cfg, "d:a t:50 d:z u:z t:75").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms dn:Z t:1ms up:Z", result);
+}

@@ -34,7 +34,7 @@ pub(crate) fn custom_tap_hold_release(
 }
 
 /// Returns a closure that can be used in `HoldTapConfig::Custom`, which will return early with a
-/// Tap action in the case that any of `keys` are pressed. Otherwise it behaves as
+/// Tap action in the case that any of `keys` are pressed and released. Otherwise it behaves as
 /// `HoldTapConfig::PermissiveHold` would.
 pub(crate) fn custom_tap_hold_release_trigger_tap_release(
     keys: &[OsCode],
