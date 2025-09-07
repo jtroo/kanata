@@ -86,12 +86,7 @@ impl Kanata {
         ];
         let _handle = if oscodes_for_mhook_active
             .iter()
-            .any(|osc| {
-                let mk = MAPPED_KEYS.lock();
-                let ret =  mk.contains(&osc);
-                drop(mk);
-                ret
-            })
+            .any(|osc| MAPPED_KEYS.lock().contains(osc))
         {
             log::info!("Installing mouse hook callback.");
             let mousehook = MouseHook::set_input_cb(move |mouse_event| {
