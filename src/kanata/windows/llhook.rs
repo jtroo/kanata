@@ -73,6 +73,7 @@ impl Kanata {
         });
 
         // TODO: conditionally call this
+        log::info!("Installing mouse hook callback.");
         let _mousehook = MouseHook::set_input_cb(move |mouse_event| {
             log::debug!("llhook mouse event: {mouse_event:?}");
             let key_event = match KeyEvent::try_from(mouse_event) {
@@ -87,6 +88,7 @@ impl Kanata {
             try_send_panic(&preprocess_tx, key_event);
             true
         });
+        log::info!("Installed mouse hook callback successfully.");
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI

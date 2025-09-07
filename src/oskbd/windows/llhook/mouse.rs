@@ -34,7 +34,7 @@ impl MouseHook {
 
             MouseHook {
                 handle: unsafe {
-                    SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), ptr::null_mut(), 0)
+                    SetWindowsHookExW(WH_MOUSE_LL, Some(mhook_proc), ptr::null_mut(), 0)
                         .as_mut()
                         .expect("install low-level keyboard hook successfully")
                 },
