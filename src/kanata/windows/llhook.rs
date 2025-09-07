@@ -72,23 +72,41 @@ impl Kanata {
             true
         });
 
-        // TODO: conditionally call this
-        log::info!("Installing mouse hook callback.");
-        let _mousehook = MouseHook::set_input_cb(move |mouse_event| {
-            log::debug!("llhook mouse event: {mouse_event:?}");
-            let key_event = match KeyEvent::try_from(mouse_event) {
-                Ok(ev) => ev,
-                _ => return false,
-            };
-            let oscode = key_event.code;
-            if !MAPPED_KEYS.lock().contains(&oscode) {
-                return false;
-            }
-            log::debug!("event loop - mouse: {:?}", key_event);
-            try_send_panic(&preprocess_tx, key_event);
-            true
-        });
-        log::info!("Installed mouse hook callback successfully.");
+        use OsCode::*;
+        let oscodes_for_mhook_active = &[
+            BTN_LEFT,
+            BTN_RIGHT,
+            BTN_MIDDLE,
+            BTN_SIDE,
+            BTN_EXTRA,
+            MouseWheelUp,
+            MouseWheelDown,
+            MouseWheelLeft,
+            MouseWheelRight,
+        ];
+        if oscodes_for_mhook_active
+            .iter()
+            .any(|osc| MAPPED_KEYS.lock().contains(&osc))
+        {
+            log::info!("Installing mouse hook callback.");
+            let _mousehook = MouseHook::set_input_cb(move |mouse_event| {
+                log::debug!("llhook mouse event: {mouse_event:?}");
+                let key_event = match KeyEvent::try_from(mouse_event) {
+                    Ok(ev) => ev,
+                    _ => return false,
+                };
+                let oscode = key_event.code;
+                if !MAPPED_KEYS.lock().contains(&oscode) {
+                    return false;
+                }
+                log::debug!("event loop - mouse: {:?}", key_event);
+                try_send_panic(&preprocess_tx, key_event);
+                true
+            });
+            log::info!("Installed mouse hook callback successfully.");
+        } else {
+            log::info!("No mouse inputs were in defsrc on startup. Not activating mouse hook.");
+        }
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
