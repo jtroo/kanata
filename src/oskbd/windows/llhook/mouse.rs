@@ -358,7 +358,53 @@ impl MouseButton {
 
 impl TryFrom<MouseEventType> for KeyEvent {
     type Error = ();
-    fn try_from(kev: MouseEventType) -> Result<Self, ()> {
-        todo!()
+    fn try_from(mevt: MouseEventType) -> Result<Self, ()> {
+        use OsCode::*;
+        match mevt {
+            Move(..) | Other(..) => Err(()),
+            Press(MousePressEvent { pressed, button }) => {
+                let value = match pressed {
+                    MouseButtonPress::Up => KeyValue::Release,
+                    MouseButtonPress::Down => KeyValue::Press,
+                    MouseButtonPress::Other(..) => return Err(()),
+                };
+                let code = match button {
+                    // TODO:
+                    // The inner type is MouseClick.
+                    // - DoubleClick might need to actually send two events.. but Kanata doesn't
+                    //   have a good way to signal multiple events into the event queue for a
+                    //   single oskbd source event.
+                    // - Other might be better off as Err(())
+                    // This applies to all variants.
+                    MouseButton::Left(..) => BTN_LEFT,
+                    MouseButton::Right(..) => BTN_RIGHT,
+                    MouseButton::Middle(..) => BTN_MIDDLE,
+                    MouseButton::X1(..) => BTN_SIDE,
+                    MouseButton::X2(..) => BTN_EXTRA,
+                    MouseButton::UnkownX(..) | MouseButton::Other(..) => return Err(()),
+                };
+                Ok(KeyEvent { code, value })
+            }
+            Wheel(MouseWheelEvent { wheel, direction }) => {
+                use MouseWheel::*;
+                use MouseWheelDirection::*;
+                let Some(direction) = direction else {
+                    return Err(());
+                };
+                let code = match (wheel, direction) {
+                    (Vertical, Forward) => MouseWheelUp,
+                    (Vertical, Backward) => MouseWheelDown,
+                    (Horizontal, Forward) => MouseWheelRight,
+                    (Horizontal, Backward) => MouseWheelLeft,
+                    (MouseWheel::Unknown(..), _) | (_, MouseWheelDirection::Unknown(..)) => {
+                        return Err(());
+                    }
+                };
+                Ok(KeyEvent {
+                    code,
+                    value: KeyValue::Tap,
+                })
+            }
+        }
     }
 }

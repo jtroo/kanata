@@ -72,7 +72,9 @@ impl Kanata {
             true
         });
 
+        // TODO: conditionally call this
         let _mousehook = MouseHook::set_input_cb(move |mouse_event| {
+            log::debug!("llhook mouse event: {mouse_event:?}");
             let key_event = match KeyEvent::try_from(mouse_event) {
                 Ok(ev) => ev,
                 _ => return false,
