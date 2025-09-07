@@ -5,10 +5,8 @@
 /// License: MIT
 use super::*;
 
-use winapi::shared::minwindef::DWORD;
-use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HHOOK;
-use winapi::um::{processthreadsapi::GetCurrentThreadId, winuser::UnhookWindowsHookEx};
+use winapi::um::winuser::UnhookWindowsHookEx;
 
 type MHookFn = dyn FnMut(MouseEventType) -> bool;
 thread_local! {
@@ -174,6 +172,8 @@ pub enum MouseButton {
     Other(usize),
 }
 
+/// # Safety
+/// Pointers must be valid from winapi.
 pub unsafe fn classify_mouse_event(
     wm_mouse_param: WPARAM,
     ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
@@ -206,6 +206,8 @@ pub unsafe fn classify_mouse_event(
 }
 
 impl MousePressEvent {
+    /// # Safety
+    /// Pointers must be valid from winapi.
     pub unsafe fn new(
         wm_mouse_param: WPARAM,
         ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
@@ -241,6 +243,8 @@ impl MouseWheel {
 }
 
 impl MouseWheelEvent {
+    /// # Safety
+    /// Pointers must be valid from winapi.
     pub unsafe fn new(
         wm_mouse_param: WPARAM,
         ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
@@ -253,6 +257,8 @@ impl MouseWheelEvent {
 }
 
 impl MouseWheelDirection {
+    /// # Safety
+    /// Pointers must be valid from winapi.
     pub unsafe fn optionally_from(
         ms_ll_hook_struct: *const MSLLHOOKSTRUCT,
     ) -> Option<MouseWheelDirection> {
@@ -275,6 +281,8 @@ impl MouseWheelDirection {
 }
 
 impl MouseMoveEvent {
+    /// # Safety
+    /// Pointers must be valid from winapi.
     pub unsafe fn new(ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> MouseMoveEvent {
         if ms_ll_hook_struct.is_null() {
             MouseMoveEvent { point: None }
@@ -320,6 +328,8 @@ impl From<WPARAM> for MouseClick {
 }
 
 impl MouseButton {
+    /// # Safety
+    /// Pointers must be valid from winapi.
     pub unsafe fn from(wm_mouse_param: WPARAM, ms_ll_hook_struct: *const MSLLHOOKSTRUCT) -> Self {
         let click = MouseClick::from(wm_mouse_param);
 
