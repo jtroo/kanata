@@ -78,7 +78,7 @@ type ActionQueue<'a, T> =
 type Delay = u16;
 pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
 
-const REAL_KEY_ROW: u8 = 0;
+pub const REAL_KEY_ROW: u8 = 0;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
 const EXTRA_WAITING_LEN: usize = 8;

@@ -1810,11 +1810,17 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
+        TAP_HOLD_RELEASE_KEYS_TAP_RELEASE => parse_tap_hold_keys(
+            &ac[1..],
+            s,
+            TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
+            custom_tap_hold_release_trigger_tap_release,
+        ),
         TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
-            parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
+            parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_RELEASE_KEYS, custom_tap_hold_release)
         }
         TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
-            parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)
+            parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_EXCEPT_KEYS, custom_tap_hold_except)
         }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
@@ -2076,7 +2082,7 @@ fn parse_tap_hold_keys(
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
-            r"tap-hold-{}-keys expects 5 items after it, got {}.
+            r"{} expects 5 items after it, got {}.
 Params in order:
 <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys>",
             custom_name,
