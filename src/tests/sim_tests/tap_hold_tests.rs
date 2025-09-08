@@ -72,8 +72,11 @@ fn on_physical_idle_with_tap_repress() {
 #[test]
 fn tap_hold_release_tap_keys_release() {
     let cfg = "
-        (defsrc a)
-        (deflayer l1 (tap-hold-release-tap-keys-release 100 100 x y (z)))
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-release-tap-keys-release 100 100 x y (z v))
+         (tap-hold-release-tap-keys-release 100 100 x y (z v) (num-keys-pressed-activate-tap 3))
+        )
     ";
     let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
     assert_eq!("t:20ms dn:X t:6ms up:X t:14ms dn:X", result);
@@ -87,6 +90,8 @@ fn tap_hold_release_tap_keys_release() {
     assert_eq!("t:100ms dn:Y t:1ms dn:Z", result);
     let result = simulate(cfg, "d:a t:50 d:z u:z t:75").to_ascii();
     assert_eq!("t:50ms dn:X t:6ms dn:Z t:1ms up:Z", result);
+    let result = simulate(cfg, "d:b t:33 d:z t:33 d:v t:100").to_ascii();
+    assert_eq!("t:100ms dn:Y t:1ms dn:Z t:1ms dn:V", result);
 }
 
 #[test]

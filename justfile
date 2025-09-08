@@ -39,6 +39,11 @@ test:
 fmt:
   cargo fmt --all
 
+check:
+  cargo fmt --all
+  cargo check
+  cargo clippy --all
+
 guic:
   cargo check              --features=gui
 guif:

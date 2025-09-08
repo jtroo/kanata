@@ -1810,12 +1810,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
-        TAP_HOLD_RELEASE_KEYS_TAP_RELEASE => parse_tap_hold_keys(
-            &ac[1..],
-            s,
-            TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
-            custom_tap_hold_release_trigger_tap_release,
-        ),
+        TAP_HOLD_RELEASE_KEYS_TAP_RELEASE => parse_tap_hold_keys_trigger_tap_release(&ac[1..], s),
         TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_RELEASE_KEYS, custom_tap_hold_release)
         }
@@ -2106,6 +2101,74 @@ Params in order:
         timeout_action: *hold_action,
         on_press_reset_timeout_to: None,
     }))))
+}
+
+fn parse_tap_hold_keys_trigger_tap_release(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    if !matches!(ac_params.len(), 5 | 6) {
+        bail!(
+            r"{} expects 5 or 6 items after it, got {}.
+Params in order:
+<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys> <?num-keys-pressed-activate-tap>",
+            TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
+            ac_params.len(),
+        )
+    }
+    let tap_repress_timeout = parse_u16(&ac_params[0], s, "tap repress timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    let tap_trigger_keys = parse_key_list(&ac_params[4], s, "tap-trigger-keys")?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    let num_keys_pressed_to_activate_tap = match ac_params.len() {
+        5 => 2,
+        6 => parse_named_u8_param("num-keys-pressed-activate-tap", &ac_params[5], s)?,
+        _ => unreachable!("validated at top of fn"),
+    };
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Custom(custom_tap_hold_release_trigger_tap_release(
+            &tap_trigger_keys,
+            &s.a,
+            num_keys_pressed_to_activate_tap,
+        )),
+        tap_hold_interval: tap_repress_timeout,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *hold_action,
+        on_press_reset_timeout_to: None,
+    }))))
+}
+
+/// Parse a list expression with length 2 having format:
+///     (name value)
+/// The items name and value must both be strings.
+/// The name string is validated to ensure it matches the input.
+/// The value is parsed into a u8.
+fn parse_named_u8_param(name: &str, name_and_param: &SExpr, s: &ParserState) -> Result<u8> {
+    let err = || {
+        format!(
+            "Expected a list with two items: {name} followed by a number. Example:\n\
+                          ({name} 2)"
+        )
+    };
+    let Some(list) = name_and_param.list(s.vars()) else {
+        bail_expr!(name_and_param, "{}", err());
+    };
+    if list.len() != 2 {
+        bail_expr!(name_and_param, "{}", err());
+    }
+    let Some(expr_name) = list[0].atom(s.vars()) else {
+        bail_expr!(&list[0], "Expected {name}");
+    };
+    if expr_name != name {
+        bail_expr!(&list[0], "Expected {name}");
+    }
+    parse_u8_with_range(&list[1], s, name, 0, 255)
 }
 
 fn parse_u8_with_range(expr: &SExpr, s: &ParserState, label: &str, min: u8, max: u8) -> Result<u8> {
