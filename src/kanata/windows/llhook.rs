@@ -54,10 +54,12 @@ impl Kanata {
                 }
                 KeyValue::Press => {
                     let mut pressed_keys = PRESSED_KEYS.lock();
-                    if pressed_keys.contains(&key_event.code) {
-                        key_event.value = KeyValue::Repeat;
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        pressed_keys.entry(key_event.code)
+                    {
+                        e.insert(web_time::Instant::now());
                     } else {
-                        pressed_keys.insert(key_event.code);
+                        key_event.value = KeyValue::Repeat;
                     }
                 }
                 _ => {}
