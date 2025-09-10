@@ -1892,6 +1892,17 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.update_coord(coord);
                 for &keycode in *v {
+                    // BUG:
+                    // In the original implementation, activating an action sequence such as b ->
+                    // S-b will not type a separate instance of "B" because b is already held and
+                    // wont be re-sent by the outer processing loop.
+                    //
+                    // FIX:
+                    // If `keycode` is not a mod, suppress it for a cycle if it exists in the
+                    // status. This is not expected to have any negative perceptible effects.
+                    if !keycode.is_mod() && self.keycodes().any(|kc| kc == keycode) {
+                        let _ = self.keys_to_suppress_for_one_cycle.push(keycode);
+                    }
                     self.historical_keys.push_front(keycode);
                     let _ = self.states.push(NormalKey {
                         coord,
