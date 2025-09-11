@@ -2107,11 +2107,11 @@ fn parse_tap_hold_keys_trigger_tap_release(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    if !matches!(ac_params.len(), 5 | 6) {
+    if !matches!(ac_params.len(), 6) {
         bail!(
-            r"{} expects 5 or 6 items after it, got {}.
+            r"{} expects 6 items after it, got {}.
 Params in order:
-<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys> <?num-keys-pressed-activate-tap>",
+<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys-on-press> <tap-trigger-keys-on-press-then-release>",
             TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
             ac_params.len(),
         )
@@ -2120,20 +2120,18 @@ Params in order:
     let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
     let tap_action = parse_action(&ac_params[2], s)?;
     let hold_action = parse_action(&ac_params[3], s)?;
-    let tap_trigger_keys = parse_key_list(&ac_params[4], s, "tap-trigger-keys")?;
+    let tap_trigger_keys_on_press =
+        parse_key_list(&ac_params[4], s, "tap-trigger-keys-on-multi-press")?;
+    let tap_trigger_keys_on_press_then_release =
+        parse_key_list(&ac_params[5], s, "tap-trigger-keys-on-release")?;
     if matches!(tap_action, Action::HoldTap { .. }) {
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
-    let num_keys_pressed_to_activate_tap = match ac_params.len() {
-        5 => 2,
-        6 => parse_named_u8_param("num-keys-pressed-activate-tap", &ac_params[5], s)?,
-        _ => unreachable!("validated at top of fn"),
-    };
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
         config: HoldTapConfig::Custom(custom_tap_hold_release_trigger_tap_release(
-            &tap_trigger_keys,
+            &tap_trigger_keys_on_press,
+            &tap_trigger_keys_on_press_then_release,
             &s.a,
-            num_keys_pressed_to_activate_tap,
         )),
         tap_hold_interval: tap_repress_timeout,
         timeout: hold_timeout,
@@ -2149,11 +2147,12 @@ Params in order:
 /// The items name and value must both be strings.
 /// The name string is validated to ensure it matches the input.
 /// The value is parsed into a u8.
+#[allow(unused)]
 fn parse_named_u8_param(name: &str, name_and_param: &SExpr, s: &ParserState) -> Result<u8> {
     let err = || {
         format!(
             "Expected a list with two items: {name} followed by a number. Example:\n\
-                          ({name} 2)"
+             ({name} 2)"
         )
     };
     let Some(list) = name_and_param.list(s.vars()) else {

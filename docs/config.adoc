@@ -1945,7 +1945,7 @@ results in `$tap-action` activating.
 (tap-hold-press-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action)
 (tap-hold-release-timeout $tap-repress-timeout $hold-timeout $tap-action $hold-action $timeout-action [?reset-timeout-on-press])
 (tap-hold-release-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
-(tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys [?(num-keys-pressed-activate-tap $num-pressed-tap-key)])
+(tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-trigger-keys-on-press $tap-trigger-keys-on-press-then-release)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 ----
 
@@ -1974,14 +1974,13 @@ Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold
 
 | `tap-hold-release-tap-keys-release`
 | Activate `$hold-action` early if held and another input key is pressed and released.
-The `$tap-keys` parameter is a list of key names.
-Activates `$tap-action` early if a key within `$tap-keys` is pressed+released before hold activates.
-Additionally activates `$tap-action early` if there are two keys within `$tap-keys` pressed
-and neither are released.
-The number of keys can be customized by specifying the value in an optional list
-as the final parameter:
-`(num-keys-pressed-activate-tap $num-pressed-tap-key)`.
-Specifying `$num-pressed-tap-key` as `2` will be the same as the default behavior.
+The `$tap-keys-...` parameters are lists of key names.
+Activates `$tap-action` early
+if a key within `$tap-trigger-keys-on-press`
+is pressed before hold activates
+Activates `$tap-action` early
+if a key within `$tap-trigger-keys-on-press-then-release`
+is pressed then released before hold activates.
 
 | `tap-hold-except-keys`
 | The `$tap-keys` parameter is a list of key names.
@@ -2121,31 +2120,19 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 - `tap-hold-release-tap-keys-release`
 
 This variant behaves nearly the same as `tap-hold-release-keys`,
-but has different conditions with respect to the eager tap.
-
-The behaviour is similar to QMK's chordal hold:
-- The early tap activates on a press->release of a listed key.
-- The early tap activates on 2 presses of the listed keys.
-
-This is in contrast to eager tap occurring
-on the first press of a listed key.
-
-The tap activation on 2 listed keys can be customized
-to a different number.
-Having the value set to 0 or 1 will behave the same as `tap-hold-release-keys`.
-Having the value set to a number higher than 2
-will require more keys to be pressed within the list
-to activate the eager tap.
-A sufficiently high number will effectively turn the behaviour off.
+but has another condition with respect to the eager tap.
+It accepts a second list that activates the eager tap
+if the any key listed with in is pressed then released;
+as opposed to only on a press.
 
 .Example:
 [source]
 ----
 (defalias
-  ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed THEN released
-  ;;                                 or more than 1 in the list are pressed.
-  umk1 (tap-hold-release-tap-keys-release 200 200 u @msc (a o e))
-  umk2 (tap-hold-release-tap-keys-release 200 200 u @msc (a o e) (num-keys-pressed-activate-tap 3))
+  ;; tap: u    hold: misc layer      early tap if any of:
+  ;;                                 (z x c v) are pressed, OR
+  ;;                                 (a s d f) are pressed THEN released
+  umk2 (tap-hold-release-tap-keys-release 200 200 u @msc (z x c v) (a s d f))
 )
 ----
 
