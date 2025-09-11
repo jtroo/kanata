@@ -2,18 +2,17 @@ use super::*;
 
 #[test]
 fn output_chord_samekey_has_release() {
-    let result = simulate(
-        "
+    let config = "
         (defsrc a b)
         (deflayer _ S-= =)
-        ",
-        "d:a t:10 d:b t:10",
-    )
-    .to_ascii();
+        ";
+    let result = simulate(config, "d:a t:10 d:b t:10").to_ascii();
     assert_eq!(
         "dn:LShift dn:Equal t:10ms up:LShift up:Equal t:1ms dn:Equal",
         result
     );
+    let result = simulate(config, "d:b t:10 d:a t:10").to_ascii();
+    assert_eq!("dn:Equal t:10ms up:Equal dn:LShift t:1ms dn:Equal", result);
 }
 
 #[test]
