@@ -35,3 +35,19 @@ fn sim_switch_base_layer() {
     .no_time();
     assert_eq!("out:↓X out:↑X out:↓Y out:↑Y out:↓Y out:↑Y", result);
 }
+
+#[test]
+fn sim_switch_noop() {
+    let result = simulate(
+        "
+         (defsrc)
+         (deflayermap (-) a XX b (switch
+          ((input real a)) c break
+          () d break
+         ))
+        ",
+        "d:a t:10 d:b t:10",
+    )
+    .no_time();
+    assert_eq!("out:↓C", result);
+}
