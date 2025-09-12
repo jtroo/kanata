@@ -1975,10 +1975,10 @@ Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold
 | `tap-hold-release-tap-keys-release`
 | Activate `$hold-action` early if held and another input key is pressed and released.
 The `$tap-keys-...` parameters are lists of key names.
-Activates `$tap-action` early
+Activate `$tap-action` early
 if a key within `$tap-trigger-keys-on-press`
 is pressed before hold activates
-Activates `$tap-action` early
+Activate `$tap-action` early
 if a key within `$tap-trigger-keys-on-press-then-release`
 is pressed then released before hold activates.
 
@@ -2122,7 +2122,7 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 This variant behaves nearly the same as `tap-hold-release-keys`,
 but has another condition with respect to the eager tap.
 It accepts a second list that activates the eager tap
-if the any key listed with in is pressed then released;
+if the any key listed within is pressed then released;
 as opposed to only on a press.
 
 .Example:
