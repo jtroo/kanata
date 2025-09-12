@@ -22,6 +22,7 @@ body:
       required: true
   - type: textarea
     id: config
+    render: text
     attributes:
       label: Relevant kanata config
       description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config. Please ensure to use code formatting, e.g. surround with triple backticks to avoid pinging users with the @ character.
@@ -32,11 +33,8 @@ body:
     attributes:
       label: To Reproduce
       description: |
-        Walk us through the steps needed to reproduce the bug.
-      value: |
-        1.
-        2.
-        3.
+        Walk through the steps needed to reproduce the bug.
+        Use the simulator if it is not device/OS related: https://jtroo.github.io/.
     validations:
       required: true
   - type: textarea
@@ -61,6 +59,7 @@ body:
       description: If you think it might help with a non-obvious issue, run kanata from the command line and pass the `--debug` flag. This will print more info. Include the relevant log outputs this section if you did so.
     validations:
       required: false
+    render: text
   - type: input
     id: os
     attributes:
