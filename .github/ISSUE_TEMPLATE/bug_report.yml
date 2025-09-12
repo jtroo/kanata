@@ -68,7 +68,6 @@ body:
       label: Operating system
       description: Linux or Windows?
       placeholder: e.g. Windows 11
-      render: text
     validations:
       required: true
   - type: textarea
