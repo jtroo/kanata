@@ -1,5 +1,5 @@
 name: "Bug report"
-description: Create a report to help us improve.
+description: Create a report to help the project improve.
 labels: ["bug"]
 assignees: ["jtroo"]
 title: "Bug: title_goes_here"
@@ -17,7 +17,9 @@ body:
     id: summary
     attributes:
       label: Describe the bug
-      description: A clear and concise description of what the bug is.
+      description: |
+        A clear and concise description of what the bug is.
+        Ensure any config snippets are either in the next section or are code formatted.
     validations:
       required: true
   - type: textarea
@@ -25,7 +27,7 @@ body:
     attributes:
       label: Relevant kanata config
       render: text
-      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config. Please ensure to use code formatting, e.g. surround with triple backticks to avoid pinging users with the @ character.
+      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config.
     validations:
       required: false
   - type: textarea
@@ -66,6 +68,7 @@ body:
       label: Operating system
       description: Linux or Windows?
       placeholder: e.g. Windows 11
+      render: text
     validations:
       required: true
   - type: textarea
