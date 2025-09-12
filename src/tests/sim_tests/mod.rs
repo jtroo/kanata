@@ -68,7 +68,12 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Press,
                     })
                     .expect("input handles fine");
+                    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
                     crate::PRESSED_KEYS.lock().insert(key_code);
+                    #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+                    crate::PRESSED_KEYS
+                        .lock()
+                        .insert(key_code, web_time::Instant::now());
                 }
                 "u" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");

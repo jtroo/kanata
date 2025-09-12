@@ -195,6 +195,9 @@ pub fn clear_states_from_inactivity(
         log::debug!("clearing keyberon normal key states due to inactivity");
         let layout = k.layout.bm();
         release_normalkey_states(layout);
-        PRESSED_KEYS.lock().clear();
+        let now = web_time::Instant::now();
+        PRESSED_KEYS
+            .lock()
+            .retain(|_, v| now - *v < std::time::Duration::from_secs(5));
     }
 }
