@@ -292,6 +292,9 @@ pub enum State<'a, T: 'a> {
     SeqCustomPending(&'a T),
     SeqCustomActive(&'a T),
     Tombstone,
+    NoOpInput {
+        coord: KCoord,
+    },
 }
 impl<T> Copy for State<'_, T> {}
 impl<T> Clone for State<'_, T> {
@@ -312,6 +315,7 @@ impl<'a, T: 'a> State<'a, T> {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
             | Custom { coord, .. }
+            | NoOpInput { coord }
             | RepeatingSequence { coord, .. } => Some(*coord),
             _ => None,
         }
@@ -1501,6 +1505,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if self.states.is_empty() || !matches!(current_custom, CustomEvent::NoEvent) {
             return current_custom;
         }
+        // It is important to note that this code cannot simply be replaced by `retain_mut`.
+        // The `retain_mut` function is not chosen
+        // because it is important to break on the first `SeqCustom` that is discovered.
+        // Such functionality could be replaced by a marker to ignore processing,
+        // but for now that is not necessary.
         self.states.retain(|s| !matches!(s, State::Tombstone));
         for state in self.states.iter_mut() {
             match state {
@@ -1682,6 +1691,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
                 self.rpt_action = Some(action);
+                let _ = self.states.push(NoOpInput { coord });
             }
             Src => {
                 let action = &self.src_keys[usize::from(coord.1)];

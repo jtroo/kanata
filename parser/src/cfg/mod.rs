@@ -1639,11 +1639,6 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             }
         }
         "XX" | "✗" | "∅" | "•" => {
-            if s.pctx.is_within_defvirtualkeys {
-                log::warn!(
-                    "XX within defvirtualkeys is likely incorrect. You should use nop0-nop9 instead."
-                );
-            }
             return Ok(s.a.sref(Action::NoOp));
         }
         "lrld" => return custom(CustomAction::LiveReload, &s.a),
