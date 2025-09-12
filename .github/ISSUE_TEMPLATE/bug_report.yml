@@ -65,9 +65,9 @@ body:
   - type: input
     id: os
     attributes:
-      label: Operating system
-      description: Linux or Windows?
-      placeholder: e.g. Windows 11
+      label: Operating system and I/O mechanism
+      description: Examples: Linux, macOS, Windows 10, Windows 11 with Interception driver
+      placeholder: e.g. Linux
     validations:
       required: true
   - type: textarea
