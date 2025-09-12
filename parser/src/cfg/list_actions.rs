@@ -15,6 +15,7 @@ pub const TAP_HOLD_PRESS_TIMEOUT_A: &str = "tap⬓↓timeout";
 pub const TAP_HOLD_RELEASE_TIMEOUT: &str = "tap-hold-release-timeout";
 pub const TAP_HOLD_RELEASE_TIMEOUT_A: &str = "tap⬓↑timeout";
 pub const TAP_HOLD_RELEASE_KEYS: &str = "tap-hold-release-keys";
+pub const TAP_HOLD_RELEASE_KEYS_TAP_RELEASE: &str = "tap-hold-release-tap-keys-release";
 pub const TAP_HOLD_RELEASE_KEYS_A: &str = "tap⬓↑keys";
 pub const TAP_HOLD_EXCEPT_KEYS: &str = "tap-hold-except-keys";
 pub const TAP_HOLD_EXCEPT_KEYS_A: &str = "tap⬓⤫keys";
@@ -145,6 +146,7 @@ pub fn is_list_action(ac: &str) -> bool {
         TAP_HOLD_RELEASE_TIMEOUT,
         TAP_HOLD_RELEASE_TIMEOUT_A,
         TAP_HOLD_RELEASE_KEYS,
+        TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
         TAP_HOLD_RELEASE_KEYS_A,
         TAP_HOLD_EXCEPT_KEYS,
         TAP_HOLD_EXCEPT_KEYS_A,

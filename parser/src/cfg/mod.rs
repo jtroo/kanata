@@ -1810,11 +1810,12 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_RELEASE_TIMEOUT | TAP_HOLD_RELEASE_TIMEOUT_A => {
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
+        TAP_HOLD_RELEASE_KEYS_TAP_RELEASE => parse_tap_hold_keys_trigger_tap_release(&ac[1..], s),
         TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
-            parse_tap_hold_keys(&ac[1..], s, "release", custom_tap_hold_release)
+            parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_RELEASE_KEYS, custom_tap_hold_release)
         }
         TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
-            parse_tap_hold_keys(&ac[1..], s, "except", custom_tap_hold_except)
+            parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_EXCEPT_KEYS, custom_tap_hold_except)
         }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
@@ -2076,7 +2077,7 @@ fn parse_tap_hold_keys(
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 5 {
         bail!(
-            r"tap-hold-{}-keys expects 5 items after it, got {}.
+            r"{} expects 5 items after it, got {}.
 Params in order:
 <tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys>",
             custom_name,
@@ -2100,6 +2101,73 @@ Params in order:
         timeout_action: *hold_action,
         on_press_reset_timeout_to: None,
     }))))
+}
+
+fn parse_tap_hold_keys_trigger_tap_release(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    if !matches!(ac_params.len(), 6) {
+        bail!(
+            r"{} expects 6 items after it, got {}.
+Params in order:
+<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action> <tap-trigger-keys-on-press> <tap-trigger-keys-on-press-then-release>",
+            TAP_HOLD_RELEASE_KEYS_TAP_RELEASE,
+            ac_params.len(),
+        )
+    }
+    let tap_repress_timeout = parse_u16(&ac_params[0], s, "tap repress timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    let tap_trigger_keys_on_press =
+        parse_key_list(&ac_params[4], s, "tap-trigger-keys-on-multi-press")?;
+    let tap_trigger_keys_on_press_then_release =
+        parse_key_list(&ac_params[5], s, "tap-trigger-keys-on-release")?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Custom(custom_tap_hold_release_trigger_tap_release(
+            &tap_trigger_keys_on_press,
+            &tap_trigger_keys_on_press_then_release,
+            &s.a,
+        )),
+        tap_hold_interval: tap_repress_timeout,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *hold_action,
+        on_press_reset_timeout_to: None,
+    }))))
+}
+
+/// Parse a list expression with length 2 having format:
+///     (name value)
+/// The items name and value must both be strings.
+/// The name string is validated to ensure it matches the input.
+/// The value is parsed into a u8.
+#[allow(unused)]
+fn parse_named_u8_param(name: &str, name_and_param: &SExpr, s: &ParserState) -> Result<u8> {
+    let err = || {
+        format!(
+            "Expected a list with two items: {name} followed by a number. Example:\n\
+             ({name} 2)"
+        )
+    };
+    let Some(list) = name_and_param.list(s.vars()) else {
+        bail_expr!(name_and_param, "{}", err());
+    };
+    if list.len() != 2 {
+        bail_expr!(name_and_param, "{}", err());
+    }
+    let Some(expr_name) = list[0].atom(s.vars()) else {
+        bail_expr!(&list[0], "Expected {name}");
+    };
+    if expr_name != name {
+        bail_expr!(&list[0], "Expected {name}");
+    }
+    parse_u8_with_range(&list[1], s, name, 0, 255)
 }
 
 fn parse_u8_with_range(expr: &SExpr, s: &ParserState, label: &str, min: u8, max: u8) -> Result<u8> {

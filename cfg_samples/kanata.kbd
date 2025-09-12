@@ -552,10 +552,15 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ect2 (tap-hold-release-timeout 200 200 e @chr esc reset-timeout-on-press)
 
   ;; There is another variant of `tap-hold-release` that takes a 5th parameter
-  ;; that is a list of keys that will trigger an early tap.
+  ;; that is a list of keys that will trigger an early tap when pressed.
 
   ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed
   umk (tap-hold-release-keys 200 200 u @msc (a o e))
+
+  ;; A variant of tap-hold-release-keys accepts another parameter,
+  ;; which is a list of keys that activates the tap
+  ;; on a press->release of a listed key.
+  umk2 (tap-hold-release-tap-keys-release 200 200 u @msc (a o e) (' , .))
 
   ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
   uek (tap-hold-except-keys 200 200 u @msc (a o e))
