@@ -242,6 +242,10 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
+    /// Keep track of last pressed non-backspace key for [`CustomAction::SmartRepeat`]
+    last_last_pressed_key: KeyCode,
+    /// Keep track of how many non-backspace repeats have been used in a row for [`CustomAction::SmartRepeat`]
+    repeat_count: i8,
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
@@ -474,6 +478,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            last_last_pressed_key: KeyCode::No,
+            repeat_count: 0,
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -622,6 +628,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            last_last_pressed_key: KeyCode::No,
+            repeat_count: 0,
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -1301,7 +1309,20 @@ impl Kanata {
             // logic there and is easier to add here since we already have
             // allocations and logic.
             self.prev_keys.push(*k);
+
+            if ![self.last_pressed_key, *k].contains(&KeyCode::BSpace) {
+                // never save backspace and avoid accidentally overwriting when the next key is backspace
+                self.last_last_pressed_key = self.last_pressed_key;
+            }
+
             self.last_pressed_key = *k;
+
+            if *k == KeyCode::BSpace {
+                // cancels a repeat
+                self.repeat_count = std::cmp::max(self.repeat_count - 1, -1);
+            } else {
+                self.repeat_count = 0;
+            }
 
             if self.sequence_always_on && self.sequence_state.is_inactive() {
                 self.sequence_state
@@ -1590,8 +1611,24 @@ impl Kanata {
                                 add_noerase(state, *noerase_count);
                             }
                         }
-                        CustomAction::Repeat => {
-                            let keycode = self.last_pressed_key;
+                        CustomAction::Repeat | CustomAction::SmartRepeat => {
+                          let keycode = match (custact, self.repeat_count) {
+                              (CustomAction::SmartRepeat, -1) => self.last_last_pressed_key,
+                              (CustomAction::SmartRepeat, _) => {
+                                  self.repeat_count += 1;
+                                  if self.last_pressed_key != KeyCode::BSpace {
+                                      self.last_pressed_key
+                                  } else {
+                                      self.last_last_pressed_key
+                                  }
+                              }
+                              _ => {
+                                  if self.last_pressed_key == KeyCode::BSpace {
+                                    self.repeat_count = 0;
+                                  }
+                                  self.last_pressed_key
+                              }
+                          };
                             let osc: OsCode = keycode.into();
                             log::debug!("repeating a keypress {osc:?}");
                             let mut do_caps_word = false;

@@ -1160,6 +1160,9 @@ The output chord prefix strings are:
 
 | `rpt-any`
 | String action that outputs the most-recently outputted action.
+
+| `smart-rpt`
+| String action that outputs the most-recently typed key and goes one key back in history after backspace.
 |===
 
 **Description**
@@ -1186,11 +1189,23 @@ There is a variant `rpt-any`
 which will repeat any previous action
 and would output `ctrl+c` in the example case.
 
+.Example:
+[source]
 ----
 (deflayer has-repeat-any
   rpt-any a s d f
 )
 ----
+
+The `smart-rpt` action repeats the most recently input key but goes back at most one additional key on backspace. For example, the sequence `<H> <e> <l> <o> <smart-rpt> <bspace> <bspace> <smart-rpt> <o>` outputs `Hello`, while replacing `smart-rpt` with `rpt` outputs `Heo`.
+
+.Example:
+[source]
+---
+(deflayer has-repeat-skip-bspace
+  smart-rpt a s d f
+)
+---
 
 [[release-a-key-or-layer]]
 === Release a key or layer

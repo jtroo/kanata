@@ -1697,6 +1697,7 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             );
         }
         "rpt" | "repeat" | "rpt-key" => return custom(CustomAction::Repeat, &s.a),
+        "smart-rpt" => return custom(CustomAction::SmartRepeat, &s.a),
         "rpt-any" => return Ok(s.a.sref(Action::Repeat)),
         "dynamic-macro-record-stop" => {
             return custom(CustomAction::DynamicMacroRecordStop(0), &s.a);
