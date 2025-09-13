@@ -80,8 +80,12 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 /// State of pressed keys on the physical keyboard.
 ///
 /// Notably this is not what keys kanata is outputting as pressed.
+#[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
 pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
     Lazy::new(|| Mutex::new(HashSet::default()));
+#[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashMap<OsCode, web_time::Instant>>> =
+    Lazy::new(|| Mutex::new(HashMap::default()));
 
 pub struct Kanata {
     /// Handle to some OS keyboard output mechanism.
