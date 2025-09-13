@@ -39,6 +39,7 @@ test:
 fmt:
   cargo fmt --all
 
+[doc('Run fmt, check, and clippy')]
 check:
   cargo fmt --all
   cargo check
@@ -80,10 +81,13 @@ cfg_to_html output_dir:
   cd docs ; asciidoctor config.adoc
   cd docs ; cp config.html "{{output_dir}}config.html"; rm config.html
 
-# Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
+[doc('Deprecated. The wasm-pack project is no longer maintained; prefer wasm-build instead.
+Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.
+')]
 wasm_pack output_dir:
   cd wasm; wasm-pack build --target web; cd pkg; cp kanata_wasm_bg.wasm "{{output_dir}}"; cp kanata_wasm.js "{{output_dir}}"
 
+[doc('Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.')]
 wasm-build output_dir:
   cd wasm; echo "*" > pkg/.gitignore
   cd wasm; cargo build --lib --release --target wasm32-unknown-unknown
