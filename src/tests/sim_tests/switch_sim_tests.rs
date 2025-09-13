@@ -46,8 +46,8 @@ fn sim_switch_noop() {
           () d break
          ))
         ",
-        "d:a t:10 d:b t:10",
+        "d:a d:b t:10 u:a u:b t:10 d:b u:b t:10",
     )
     .no_time();
-    assert_eq!("out:↓C", result);
+    assert_eq!("out:↓C out:↑C out:↓D out:↑D", result);
 }

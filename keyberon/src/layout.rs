@@ -338,6 +338,7 @@ impl<'a, T: 'a> State<'a, T> {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
             | RepeatingSequence { coord, .. }
+            | NoOpInput { coord }
                 if coord == c =>
             {
                 None
