@@ -102,7 +102,7 @@ pub fn dbg_win(s: &str) {
 }
 
 #[cfg(windows)]
-extern "stdcall" {
+extern "system" {
     fn OutputDebugStringW(chars: *const u16);
 }
 

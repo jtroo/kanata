@@ -34,10 +34,10 @@ impl Kanata {
                 }
                 KeyValue::Press => {
                     let mut pressed_keys = PRESSED_KEYS.lock();
-                    if pressed_keys.contains(&key_event.code) {
+                    if pressed_keys.contains_key(&key_event.code) {
                         key_event.value = KeyValue::Repeat;
                     } else {
-                        pressed_keys.insert(key_event.code);
+                        pressed_keys.insert(key_event.code, web_time::Instant::now());
                     }
                 }
                 _ => {}
