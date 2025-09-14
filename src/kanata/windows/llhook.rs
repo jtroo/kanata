@@ -11,7 +11,7 @@ impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
     /// and run the native_windows_gui event loop.
     pub fn event_loop(
-        _cfg: Arc<Mutex<Self>>,
+        k: Arc<Mutex<Self>>,
         tx: Sender<KeyEvent>,
         #[cfg(all(target_os = "windows", feature = "gui"))]
         ui: crate::gui::system_tray_ui::SystemTrayUi,
@@ -113,11 +113,7 @@ impl Kanata {
         };
 
         #[cfg(feature = "iced_gui")]
-        let _ = iced::run(
-            "Kanata",
-            crate::kanata::iced_gui::Counter::update,
-            crate::kanata::iced_gui::Counter::view,
-        );
+        let _ = crate::kanata::iced_gui::KanataGuiState::start(k.clone());
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
