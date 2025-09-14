@@ -338,7 +338,7 @@ pub fn new_from_str(cfg_text: &str, file_content: HashMap<String, String>) -> MR
 
 pub type MappedKeys = HashSet<OsCode>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
