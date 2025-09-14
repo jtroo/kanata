@@ -1,6 +1,9 @@
 use crate::kanata::Kanata;
-use parking_lot::Mutex;
+
 use std::sync::Arc;
+
+use iced::widget::{Column, column, text};
+use parking_lot::Mutex;
 
 pub(crate) struct KanataGuiState {
     gui_update_tx: Option<smol::channel::Sender<Message>>,
@@ -29,20 +32,65 @@ pub(crate) enum Message {
     Update,
 }
 
-/// - layer
-/// - zipchord state
-/// - chordsv2 state
-/// - active input vkeys
-/// - live reloaded
-use iced::widget::{Column, column, text};
+
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::window::{Window, WindowAttributes, WindowId};
+
+#[derive(Default, Debug)]
+struct App {
+    window: Option<Box<Window>>,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        println!("{event:?}");
+        match event {
+            WindowEvent::CloseRequested => {
+                println!("Close was requested; stopping");
+                event_loop.exit();
+            },
+            WindowEvent::RedrawRequested => {
+                // Redraw the application.
+                //
+                // It's preferable for applications that do not render continuously to render in
+                // this event rather than in AboutToWait, since rendering in here allows
+                // the program to gracefully handle redraws requested by the OS.
+
+                let window = self.window.as_ref().expect("redraw request without a window");
+
+                // Notify that you're about to draw.
+                window.pre_present_notify();
+
+                // For contiguous redraw loop you can request a redraw from here.
+                // window.request_redraw();
+            },
+            _ => (),
+        }
+    }
+}
+
 
 impl KanataGui {
     pub(crate) fn start(k: Arc<Mutex<Kanata>>) -> iced::Result {
         let (tx, rx) = smol::channel::bounded::<Message>(10);
         k.lock().iced_gui_state.gui_update_tx = Some(tx);
+        use winit::*;
+        log::info!("running iced app");
+            let event_loop = event_loop::EventLoop::new().unwrap();
+
+    // For alternative loop run options see `pump_events` and `run_on_demand` examples.
+        log::info!("actually winit not iced");
+    event_loop.run_app(&mut App::default()).unwrap();
+
+        /*
         iced::application("Kanata", Self::update, Self::view)
             .subscription(move |_| iced::Subscription::run_with_id(0u8, rx.clone()))
             .run_with(|| (Self::from_kanata(k), iced::Task::none()))
+            */
+        Ok(())
     }
 
     fn from_kanata(k: Arc<Mutex<Kanata>>) -> Self {
