@@ -74,25 +74,33 @@ impl KanataGui {
     }
 
     pub(crate) fn update(&mut self, _: Message) {
+        log::info!("TODODEBUG: got update");
         let klk = self.k.lock();
+        log::info!("TODODEBUG: got lock");
         let current_layer_index = klk.layout.b().current_layer();
-        let layer_info = klk.layer_info[current_layer_index].clone();
-        self.layer_name = layer_info.name;
-        self.layer_content = layer_info.cfg_text;
+        let layer_info = &klk.layer_info[current_layer_index];
+        self.layer_name.clear();
+        self.layer_name.push_str(&layer_info.name);
+        self.layer_content.clear();
+        self.layer_content.push_str(&layer_info.cfg_text);
+        drop(klk);
     }
 }
 
 impl Kanata {
     pub(crate) fn refresh_iced_gui(&mut self) {
+        log::info!("TODODEBUG: refresh");
         let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
             return;
         };
         self.iced_gui_state.ticks_since_last_update = 0;
         if let Err(e) = tx.try_send(Message::Update) {
-            log::warn!("failed to send to iced gui {e:?}");
+            log::warn!("Failed to send to iced gui {e:?}. Aborting gui updates.");
+            self.iced_gui_state.gui_update_tx = None;
         }
     }
     pub(crate) fn tick_iced_gui(&mut self, ticks: u16) {
+        log::info!("TODODEBUG: tick");
         let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
             return;
         };
@@ -100,7 +108,8 @@ impl Kanata {
         // refresh at 30Hz
         if self.iced_gui_state.ticks_since_last_update > 33 {
             if let Err(e) = tx.try_send(Message::Update) {
-                log::warn!("failed to send to iced gui {e:?}");
+                log::warn!("Failed to send to iced gui {e:?}. Aborting gui updates.");
+                self.iced_gui_state.gui_update_tx = None;
             }
             self.iced_gui_state.ticks_since_last_update = 0;
         }
