@@ -74,9 +74,7 @@ impl KanataGui {
     }
 
     pub(crate) fn update(&mut self, _: Message) {
-        log::info!("TODODEBUG: got update");
         let klk = self.k.lock();
-        log::info!("TODODEBUG: got lock");
         let current_layer_index = klk.layout.b().current_layer();
         let layer_info = &klk.layer_info[current_layer_index];
         self.layer_name.clear();
@@ -89,7 +87,6 @@ impl KanataGui {
 
 impl Kanata {
     pub(crate) fn refresh_iced_gui(&mut self) {
-        log::info!("TODODEBUG: refresh");
         let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
             return;
         };
@@ -100,7 +97,6 @@ impl Kanata {
         }
     }
     pub(crate) fn tick_iced_gui(&mut self, ticks: u16) {
-        log::info!("TODODEBUG: tick");
         let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
             return;
         };

@@ -176,7 +176,7 @@ impl From<KeyEvent> for InputEvent {
 ///     5 KF_ALTDOWN  >> 8 LLKHF_ALTDOWN             context code    : 1=alt↓  0=alt↑
 ///     4 0x10             LLKHF_INJECTED            event was injected: 1=yes, 0=no
 ///     1 0x02             LLKHF_LOWER_IL_INJECTED   injected by proc with lower integrity level
-//                                                   1=yes 0=no (bit 4 will also set)
+///                                                  1=yes 0=no (bit 4 will also set)
 ///     0 KF_EXTENDED >> 8 LLKHF_EXTENDED            extended key (Fn, numpad): 1=yes, 0=no
 ///   time       :DWORD time stamp = GetMessageTime
 ///   dwExtraInfo:ULONG_PTR Additional info
