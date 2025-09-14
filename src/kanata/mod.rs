@@ -268,6 +268,8 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    #[cfg(feature = "iced_gui")]
+    iced_gui_state: iced_gui::KanataGuiState,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -493,6 +495,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: iced_gui::KanataGuiState::new(),
         })
     }
 
@@ -641,6 +645,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: iced_gui::KanataGuiState::new(),
         })
     }
 
@@ -903,6 +909,8 @@ impl Kanata {
                 break;
             }
         }
+        #[cfg(feature = "iced_gui")]
+        self.tick_iced_gui(ms_elapsed as u16);
         Ok(())
     }
 
@@ -2116,7 +2124,12 @@ impl Kanata {
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
-                    k.can_block_update_idle_waiting(ms_elapsed)
+                    let yes = k.can_block_update_idle_waiting(ms_elapsed);
+                    #[cfg(feature = "iced_gui")]
+                    if yes {
+                        k.refresh_iced_gui();
+                    }
+                    yes
                 };
                 if can_block {
                     #[cfg(all(

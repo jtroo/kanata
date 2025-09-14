@@ -3,6 +3,19 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 pub(crate) struct KanataGuiState {
+    gui_update_tx: Option<smol::channel::Sender<Message>>,
+    ticks_since_last_update: u16,
+}
+impl KanataGuiState {
+    pub(crate) fn new() -> Self {
+        Self {
+            gui_update_tx: None,
+            ticks_since_last_update: 0,
+        }
+    }
+}
+
+pub(crate) struct KanataGui {
     k: Arc<Mutex<Kanata>>,
     layer_name: String,
     layer_content: String,
@@ -23,9 +36,10 @@ pub(crate) enum Message {
 /// - live reloaded
 use iced::widget::{Column, column, text};
 
-impl KanataGuiState {
+impl KanataGui {
     pub(crate) fn start(k: Arc<Mutex<Kanata>>) -> iced::Result {
-        let (_tx, rx) = smol::channel::bounded::<Message>(10);
+        let (tx, rx) = smol::channel::bounded::<Message>(10);
+        k.lock().iced_gui_state.gui_update_tx = Some(tx);
         iced::application("Kanata", Self::update, Self::view)
             .subscription(move |_| iced::Subscription::run_with_id(0u8, rx.clone()))
             .run_with(|| (Self::from_kanata(k), iced::Task::none()))
@@ -61,6 +75,31 @@ impl KanataGuiState {
         use Message::*;
         match message {
             Update => todo!(),
+        }
+    }
+}
+
+impl Kanata {
+    pub(crate) fn refresh_iced_gui(&mut self) {
+        let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
+            return;
+        };
+        self.iced_gui_state.ticks_since_last_update = 0;
+        if let Err(e) = tx.try_send(Message::Update) {
+            log::warn!("failed to send to iced gui {e:?}");
+        }
+    }
+    pub(crate) fn tick_iced_gui(&mut self, ticks: u16) {
+        let Some(ref tx) = self.iced_gui_state.gui_update_tx else {
+            return;
+        };
+        self.iced_gui_state.ticks_since_last_update += ticks;
+        // refresh at 30Hz
+        if self.iced_gui_state.ticks_since_last_update > 33 {
+            if let Err(e) = tx.try_send(Message::Update) {
+                log::warn!("failed to send to iced gui {e:?}");
+            }
+            self.iced_gui_state.ticks_since_last_update = 0;
         }
     }
 }

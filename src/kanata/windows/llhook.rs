@@ -113,7 +113,7 @@ impl Kanata {
         };
 
         #[cfg(feature = "iced_gui")]
-        let _ = crate::kanata::iced_gui::KanataGuiState::start(k.clone());
+        let _ = crate::kanata::iced_gui::KanataGui::start(k.clone());
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
