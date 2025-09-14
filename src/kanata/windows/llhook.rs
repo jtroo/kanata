@@ -112,6 +112,9 @@ impl Kanata {
             None
         };
 
+        #[cfg(feature = "iced_gui")]
+        let _ = iced::run("Kanata", crate::kanata::iced_gui::Counter::update, crate::kanata::iced_gui::Counter::view);
+
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
         // The event loop is also required for the low-level keyboard hook to work.
