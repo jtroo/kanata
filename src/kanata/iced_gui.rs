@@ -1,49 +1,66 @@
-#[derive(Default)]
-pub(crate) struct Counter {
-    value: i64,
+use crate::kanata::Kanata;
+use parking_lot::Mutex;
+use std::sync::Arc;
+
+pub(crate) struct KanataGuiState {
+    k: Arc<Mutex<Kanata>>,
+    layer_name: String,
+    layer_content: String,
+    active_vkeys: String,
+    chv2_state: String,
+    zch_state: String,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Message {
-    Increment,
-    Decrement,
+    Update,
 }
 
 /// - layer
 /// - zipchord state
 /// - chordsv2 state
 /// - active input vkeys
-/// - active output keys
 /// - live reloaded
+use iced::widget::{Column, column, text};
 
-use iced::widget::{Column, button, column, text};
+impl KanataGuiState {
+    pub(crate) fn start(k: Arc<Mutex<Kanata>>) -> iced::Result {
+        let (_tx, rx) = smol::channel::bounded::<Message>(10);
+        iced::application("Kanata", Self::update, Self::view)
+            .subscription(move |_| iced::Subscription::run_with_id(0u8, rx.clone()))
+            .run_with(|| (Self::from_kanata(k), iced::Task::none()))
+    }
 
-impl Counter {
-    pub(crate) fn view(&self) -> Column<Message> {
+    fn from_kanata(k: Arc<Mutex<Kanata>>) -> Self {
+        Self {
+            k,
+            layer_name: todo!(),
+            layer_content: todo!(),
+            active_vkeys: todo!(),
+            chv2_state: todo!(),
+            zch_state: todo!(),
+        }
+    }
+
+    pub(crate) fn view(&self) -> Column<'_, Message> {
         column![
             text("Active Layer Name:"),
-            // TODO: name
+            text(&self.layer_name),
             text("Active Layer Content:"),
-            // TODO: content
+            text(&self.layer_content),
             text("Active VKeys:"),
-            text("Zippychord State:"),
+            text(&self.active_vkeys),
             text("ChordsV2 State:"),
-            button("+").on_press(Message::Increment),
-            text(self.value),
-            button("-").on_press(Message::Decrement),
+            text(&self.chv2_state),
+            text("Zippychord State:"),
+            text(&self.zch_state),
         ]
     }
-}
 
-impl Counter {
     pub(crate) fn update(&mut self, message: Message) {
+        use Message::*;
         match message {
-            Message::Increment => {
-                self.value += 1;
-            }
-            Message::Decrement => {
-                self.value -= 1;
-            }
+            Update => todo!(),
         }
     }
 }
