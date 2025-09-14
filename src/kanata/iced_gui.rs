@@ -46,14 +46,16 @@ impl KanataGui {
     }
 
     fn from_kanata(k: Arc<Mutex<Kanata>>) -> Self {
-        Self {
+        let mut kg = Self {
             k,
-            layer_name: todo!(),
-            layer_content: todo!(),
-            active_vkeys: todo!(),
-            chv2_state: todo!(),
-            zch_state: todo!(),
-        }
+            layer_name: String::new(),
+            layer_content: String::new(),
+            active_vkeys: String::new(),
+            chv2_state: String::new(),
+            zch_state: String::new(),
+        };
+        kg.update(Message::Update);
+        kg
     }
 
     pub(crate) fn view(&self) -> Column<'_, Message> {
@@ -71,11 +73,12 @@ impl KanataGui {
         ]
     }
 
-    pub(crate) fn update(&mut self, message: Message) {
-        use Message::*;
-        match message {
-            Update => todo!(),
-        }
+    pub(crate) fn update(&mut self, _: Message) {
+        let klk = self.k.lock();
+        let current_layer_index = klk.layout.b().current_layer();
+        let layer_info = klk.layer_info[current_layer_index].clone();
+        self.layer_name = layer_info.name;
+        self.layer_content = layer_info.cfg_text;
     }
 }
 
