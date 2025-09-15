@@ -17,6 +17,9 @@ use std::io::Write;
 #[cfg(feature = "tcp_server")]
 use std::net::{TcpListener, TcpStream};
 
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
+
 #[cfg(feature = "tcp_server")]
 pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
 
@@ -210,6 +213,19 @@ impl TcpServer {
                                                         // such as sending an error response to
                                                         // the client
                                                     }
+                                                }
+                                            }
+                                            ClientMessage::SubscribeToDetailedInfo => {
+                                                let msg = if cfg!(feature = "iced_gui") {
+                                                    todo!("add to subscription list");
+                                                } else {
+                                                    ServerResponse::Error { msg: "This binary is not compiled with iced_gui feature, SubscribeToDetailedInfo is unsupported.".into() }
+                                                };
+                                                match stream.write_all(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to SubscribeToDetailedInfo: {err}"
+                                                    ),
                                                 }
                                             }
                                             ClientMessage::RequestCurrentLayerInfo {} => {

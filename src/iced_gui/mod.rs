@@ -1,5 +1,9 @@
+//! iced_gui code for the GUI run-gui process option,
+//! which is expected to be a child process.
+//!
 //! Connect to Kanata on TCP port X.
 //! Subscribe to UI updates.
+//! Handle TCP messages from Kanata main process to update the UI.
 
 use iced::widget::{Column, column, text};
 

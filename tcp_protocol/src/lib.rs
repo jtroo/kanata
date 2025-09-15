@@ -10,6 +10,7 @@ pub enum ServerMessage {
     CurrentLayerName { name: String },
     MessagePush { message: serde_json::Value },
     Error { msg: String },
+    DetailedInfo(DetailedInfo),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,6 +52,7 @@ pub enum ClientMessage {
         x: u16,
         y: u16,
     },
+    SubscribeToDetailedInfo,
     Reload {},
     ReloadNext {},
     ReloadPrev {},
@@ -76,6 +78,14 @@ impl FromStr for ClientMessage {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DetailedInfo {
+    layer_config: String,
+    active_vkey_names: String,
+    chordsv2_state: String,
+    zippychord_state: String,
 }
 
 #[cfg(test)]
