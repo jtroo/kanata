@@ -1,6 +1,5 @@
 // disable default console for a Windows GUI app
 #![cfg_attr(feature = "gui", windows_subsystem = "windows")]
-#![cfg_attr(feature = "iced_gui", windows_subsystem = "windows")]
 
 mod main_lib;
 
@@ -31,6 +30,12 @@ mod cli {
         #[cfg(all(target_os = "macos", not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_macos();
+            std::process::exit(0);
+        }
+
+        #[cfg(feature = "iced_gui")]
+        if args.run_gui {
+            iced_gui::KanataGui::start().unwrap();
             std::process::exit(0);
         }
 

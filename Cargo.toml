@@ -42,7 +42,7 @@ path = "src/main.rs"
 anyhow = "1"
 clap = { version = "4", features = [ "std", "derive", "help", "suggestions" ], default-features = false }
 dirs = "5.0.1"
-iced = { version = "0.13", optional = true, features = ["smol"]}
+iced = { version = "0.13", optional = true }
 indoc = { version = "2.0.4", optional = true }
 log = { version = "0.4.8", default-features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
@@ -52,7 +52,6 @@ radix_trie = "0.2"
 rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default-features = false, optional = true }
-smol = { version = "2", optional = true }
 time = "0.3.36"
 web-time = "1.1.0"
 
@@ -140,7 +139,7 @@ gui = ["win_manifest","kanata-parser/gui",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
-iced_gui = [ "iced", "smol" ]
+iced_gui = [ "iced" ]
 zippychord = ["kanata-parser/zippychord"]
 
 [profile.release]
