@@ -213,6 +213,9 @@ mod cli {
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
+        #[cfg(feature = "iced_gui")]
+        iced_gui::spawn_child_gui_process();
+
         Kanata::event_loop(kanata_arc, tx)
     }
 }

@@ -38,6 +38,9 @@ use clipboard::*;
 mod dynamic_macro;
 use dynamic_macro::*;
 
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
+
 mod key_repeat;
 
 mod millisecond_counting;

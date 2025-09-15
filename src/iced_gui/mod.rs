@@ -1,3 +1,6 @@
+//! Connect to Kanata on TCP port X.
+//! Subscribe to UI updates.
+
 use iced::widget::{Column, column, text};
 
 pub(crate) struct KanataGui {
@@ -46,6 +49,14 @@ impl KanataGui {
         ]
     }
 
-    pub(crate) fn update(&mut self, _: Message) {
+    pub(crate) fn update(&mut self, _: Message) {}
+}
+
+pub(crate) fn spawn_child_gui_process() {
+    if let Err(e) = std::process::Command::new(std::env::args().next().unwrap())
+        .arg("--run-gui")
+        .spawn()
+    {
+        log::error!("failed to spawn GUI: {e}");
     }
 }
