@@ -105,4 +105,12 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     pub log_layer_changes: bool,
+
+    /// Start up the process in GUI mode and does not run the Kanata processing.
+    /// You likely don't want to be using this;
+    /// it is typically used internally by the main Kanata process
+    /// to spawn the child GUI process.
+    #[cfg(feature = "iced_gui")]
+    #[arg(long)]
+    pub run_gui: bool,
 }

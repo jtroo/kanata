@@ -11,7 +11,7 @@ impl Kanata {
     /// Initialize the callback that is passed to the Windows low level hook to receive key events
     /// and run the native_windows_gui event loop.
     pub fn event_loop(
-        k: Arc<Mutex<Self>>,
+        _cfg: Arc<Mutex<Self>>,
         tx: Sender<KeyEvent>,
         #[cfg(all(target_os = "windows", feature = "gui"))]
         ui: crate::gui::system_tray_ui::SystemTrayUi,
@@ -111,9 +111,6 @@ impl Kanata {
             log::info!("No mouse inputs were in defsrc on startup. Not activating mouse hook.");
             None
         };
-
-        #[cfg(feature = "iced_gui")]
-        let _ = crate::kanata::iced_gui::KanataGui::start(k.clone());
 
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI

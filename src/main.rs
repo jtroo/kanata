@@ -1,5 +1,7 @@
-#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
 // disable default console for a Windows GUI app
+#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
+#![cfg_attr(feature = "iced_gui", windows_subsystem = "windows")]
+
 mod main_lib;
 
 #[cfg(not(feature = "gui"))]
@@ -14,6 +16,9 @@ use kanata_state_machine::*;
 use main_lib::args::Args;
 #[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
+
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
 
 #[cfg(not(feature = "gui"))]
 mod cli {
