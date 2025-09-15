@@ -1,7 +1,7 @@
-//! iced_gui code for the GUI run-gui process option,
-//! which is expected to be a child process.
+//! iced_gui code for the GUI --run-gui process option,
+//! which is typically expected to be a child process.
 //!
-//! Connect to Kanata on TCP port X.
+//! Connect to Kanata on its TCP port.
 //! Subscribe to UI updates.
 //! Handle TCP messages from Kanata main process to update the UI.
 
@@ -56,6 +56,9 @@ impl KanataGui {
     pub(crate) fn update(&mut self, _: Message) {}
 }
 
+/// Start up the same Kanata binary using the typical argv[0] name as a child process,
+/// but passes in only the `--run-gui` flag
+/// which will start up the GUI process.
 pub(crate) fn spawn_child_gui_process() {
     if let Err(e) = std::process::Command::new(std::env::args().next().unwrap())
         .arg("--run-gui")
