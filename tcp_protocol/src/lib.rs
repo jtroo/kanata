@@ -26,6 +26,9 @@ impl ServerResponse {
         msg.push(b'\n');
         msg
     }
+    pub fn deserialize_json(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<Self>(s)
+    }
 }
 
 impl ServerMessage {
@@ -62,6 +65,14 @@ pub enum ClientMessage {
     ReloadFile {
         path: String,
     },
+}
+
+impl ClientMessage {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut msg = serde_json::to_vec(self).expect("ClientMessage should serialize");
+        msg.push(b'\n');
+        msg
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

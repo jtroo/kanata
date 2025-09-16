@@ -6,6 +6,7 @@
 //! Handle TCP messages from Kanata main process to update the UI.
 
 use iced::widget::{Column, column, text};
+use kanata_tcp_protocol::*;
 
 pub(crate) struct KanataGui {
     layer_name: String,
@@ -21,7 +22,27 @@ pub(crate) enum Message {
 }
 
 impl KanataGui {
-    pub(crate) fn start(_addr: std::net::SocketAddr) -> iced::Result {
+    pub(crate) fn start(addr: std::net::SocketAddr) -> iced::Result {
+        use async_net::TcpStream;
+        use futures::executor::block_on;
+        use futures::io::BufReader;
+        use futures::prelude::*;
+        let mut stream = BufReader::new(
+            block_on(TcpStream::connect(addr)).expect("connect to kanata main proc"),
+        );
+        block_on(stream.write_all(&ClientMessage::SubscribeToDetailedInfo.as_bytes()))
+            .expect("write to kanata");
+        let mut buf = String::new();
+        block_on(stream.read_line(&mut buf)).expect("read Ok");
+        match ServerResponse::deserialize_json(&buf) {
+            Ok(ServerResponse::Ok) => {}
+            Ok(ServerResponse::Error { msg }) => {
+                panic!("kanata rejected subscribe with error: {msg}")
+            }
+            Err(e) => panic!("error: {e:?}"),
+        };
+        buf.clear();
+        // TODO: now subscribed. Need to handle the messages
         iced::application("Kanata", Self::update, Self::view)
             .run_with(|| (Self::new(), iced::Task::none()))
     }
