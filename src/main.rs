@@ -33,11 +33,28 @@ mod cli {
             std::process::exit(0);
         }
 
-        #[cfg(feature = "iced_gui")]
-        if args.run_gui {
-            iced_gui::KanataGui::start().unwrap();
-            std::process::exit(0);
-        }
+        let tcp_server_address = {
+            #[cfg(not(feature = "iced_gui"))]
+            {
+                args.tcp_server_address
+            }
+            #[cfg(feature = "iced_gui")]
+            {
+                // If TCP port is unset, need to use a default port because the GUI relies on TCP
+                // communication between parent kanata processing and child kanata gui.
+                use std::str::FromStr;
+                let addr = match args.tcp_server_address {
+                    Some(addr) => addr,
+                    None => SocketAddrWrapper::from_str("127.0.0.1:13776").unwrap(),
+                };
+                if args.run_gui {
+                    iced_gui::KanataGui::start(addr.0).unwrap();
+                    std::process::exit(0);
+                } else {
+                    Some(addr)
+                }
+            }
+        };
 
         #[cfg(all(target_os = "linux", not(feature = "gui")))]
         if args.list {
@@ -150,7 +167,7 @@ mod cli {
             ValidatedArgs {
                 paths: cfg_paths,
                 #[cfg(feature = "tcp_server")]
-                tcp_server_address: args.tcp_server_address,
+                tcp_server_address,
                 #[cfg(target_os = "linux")]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,

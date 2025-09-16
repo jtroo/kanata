@@ -21,7 +21,7 @@ pub(crate) enum Message {
 }
 
 impl KanataGui {
-    pub(crate) fn start() -> iced::Result {
+    pub(crate) fn start(_addr: std::net::SocketAddr) -> iced::Result {
         iced::application("Kanata", Self::update, Self::view)
             .run_with(|| (Self::new(), iced::Task::none()))
     }

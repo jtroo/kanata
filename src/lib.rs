@@ -44,7 +44,7 @@ pub fn default_cfg() -> Vec<PathBuf> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SocketAddrWrapper(SocketAddr);
+pub struct SocketAddrWrapper(pub SocketAddr);
 
 impl FromStr for SocketAddrWrapper {
     type Err = Error;
