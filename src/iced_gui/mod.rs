@@ -12,7 +12,6 @@ use iced::widget::{Column, column, text};
 use kanata_tcp_protocol::*;
 
 pub(crate) struct KanataGui {
-    layer_name: String,
     layer_content: String,
     active_vkeys: String,
     chv2_state: String,
@@ -33,13 +32,14 @@ impl KanataGui {
                                 .expect("connect to kanata main proc"),
                         );
                         stream.read_line(&mut buf).await.expect("read LayerChange");
-                        let msg = ServerMessage::deserialize_json(&buf).unwrap();
+                        let msg = ServerMessage::deserialize_json(&buf)
+                            .expect("kanata sends LayerChange to client on connect");
                         buf.clear();
                         sender.try_send(msg).unwrap();
                         stream
                             .write_all(&ClientMessage::SubscribeToDetailedInfo.as_bytes())
                             .await
-                            .expect("write to kanata");
+                            .expect("write to kanata succeeds");
                         stream.read_line(&mut buf).await.expect("read Ok");
                         match ServerResponse::deserialize_json(&buf) {
                             Ok(ServerResponse::Ok) => {}
@@ -49,10 +49,21 @@ impl KanataGui {
                             Err(e) => panic!("error: {e:?}"),
                         };
                         loop {
-                            stream.read_line(&mut buf).await.unwrap();
-                            let msg = ServerMessage::deserialize_json(&buf).unwrap();
+                            if let Err(e) = stream.read_line(&mut buf).await {
+                                log::error!("read from kanata sock error: {e:?}");
+                                continue;
+                            }
+                            let msg = match ServerMessage::deserialize_json(&buf) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    log::error!("deserialize server message error {e:?}");
+                                    continue;
+                                }
+                            };
                             buf.clear();
-                            sender.try_send(msg).unwrap();
+                            if let Err(e) = sender.try_send(msg) {
+                                log::error!("write to iced subscribe channel error: {e:?}");
+                            }
                         }
                     }),
                 )
@@ -62,7 +73,6 @@ impl KanataGui {
 
     fn new() -> Self {
         let mut kg = Self {
-            layer_name: String::new(),
             layer_content: String::new(),
             active_vkeys: String::new(),
             chv2_state: String::new(),
@@ -74,9 +84,7 @@ impl KanataGui {
 
     pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
         column![
-            text("Active Layer Name:"),
-            text(&self.layer_name),
-            text("Active Layer Content:"),
+            text("Active Layer:"),
             text(&self.layer_content),
             text("Active VKeys:"),
             text(&self.active_vkeys),
@@ -87,7 +95,23 @@ impl KanataGui {
         ]
     }
 
-    pub(crate) fn update(&mut self, _: ServerMessage) {}
+    pub(crate) fn update(&mut self, msg: ServerMessage) {
+        match msg {
+            ServerMessage::DetailedInfo(info) => {
+                self.layer_content = info.layer_config;
+                self.active_vkeys = info.active_vkey_names;
+                self.chv2_state = info.chordsv2_state;
+                self.zch_state = info.zippychord_state;
+            }
+            ServerMessage::LayerChange { .. }
+            | ServerMessage::LayerNames { .. }
+            | ServerMessage::CurrentLayerInfo { .. }
+            | ServerMessage::ConfigFileReload { .. }
+            | ServerMessage::CurrentLayerName { .. }
+            | ServerMessage::MessagePush { .. }
+            | ServerMessage::Error { .. } => {}
+        }
+    }
 }
 
 /// Start up the same Kanata binary using the typical argv[0] name as a child process,

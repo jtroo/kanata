@@ -96,10 +96,10 @@ impl FromStr for ClientMessage {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DetailedInfo {
-    layer_config: String,
-    active_vkey_names: String,
-    chordsv2_state: String,
-    zippychord_state: String,
+    pub layer_config: String,
+    pub active_vkey_names: String,
+    pub chordsv2_state: String,
+    pub zippychord_state: String,
 }
 
 #[cfg(test)]
