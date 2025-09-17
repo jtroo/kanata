@@ -11,6 +11,7 @@ use futures::prelude::*;
 use iced::widget::{Column, column, text};
 use kanata_tcp_protocol::*;
 
+#[derive(Clone, Debug, Default)]
 pub(crate) struct KanataGui {
     layer_content: String,
     active_vkeys: String,
@@ -68,18 +69,7 @@ impl KanataGui {
                     }),
                 )
             })
-            .run_with(|| (Self::new(), iced::Task::none()))
-    }
-
-    fn new() -> Self {
-        let mut kg = Self {
-            layer_content: String::new(),
-            active_vkeys: String::new(),
-            chv2_state: String::new(),
-            zch_state: String::new(),
-        };
-        kg.update(ServerMessage::ConfigFileReload { new: "".into() });
-        kg
+            .run()
     }
 
     pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
