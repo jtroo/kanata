@@ -107,11 +107,13 @@ impl KanataGui {
 /// Start up the same Kanata binary as a child process,
 /// expecting that the convention is followed that argv[0]
 /// is the executable path of Kanata itself.
-/// Passes in only the `--run-gui` flag to the child,
-/// which will start up the GUI process.
-pub(crate) fn spawn_child_gui_process() {
+/// Passes in only the `--run-gui` and `-p` flags to the child,
+/// which will start up the GUI process, connecting on the specified port.
+pub(crate) fn spawn_child_gui_process(p_flag: &str) {
     if let Err(e) = std::process::Command::new(std::env::args().next().unwrap())
         .arg("--run-gui")
+        .arg("-p")
+        .arg(p_flag)
         .spawn()
     {
         log::error!("failed to spawn GUI: {e}");

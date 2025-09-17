@@ -48,7 +48,7 @@ mod cli {
                     None => SocketAddrWrapper::from_str("127.0.0.1:13776").unwrap(),
                 };
                 if args.run_gui {
-                    iced_gui::KanataGui::start(addr.0).unwrap();
+                    iced_gui::KanataGui::start(addr.clone().into_inner()).unwrap();
                     std::process::exit(0);
                 } else {
                     Some(addr)
@@ -205,14 +205,14 @@ mod cli {
         let (server, ntx, nrx) = if let Some(address) = {
             #[cfg(feature = "tcp_server")]
             {
-                args.tcp_server_address
+                &args.tcp_server_address
             }
             #[cfg(not(feature = "tcp_server"))]
             {
-                None::<SocketAddrWrapper>
+                &None::<SocketAddrWrapper>
             }
         } {
-            let mut server = TcpServer::new(address.into_inner(), tx.clone());
+            let mut server = TcpServer::new(address.clone().into_inner(), tx.clone());
             server.start(kanata_arc.clone());
             let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
             (Some(server), Some(ntx), Some(nrx))
@@ -231,7 +231,11 @@ mod cli {
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
         #[cfg(feature = "iced_gui")]
-        iced_gui::spawn_child_gui_process();
+        iced_gui::spawn_child_gui_process(
+            args.tcp_server_address
+                .expect("iced gui uses TCP always")
+                .get_unparsed(),
+        );
 
         Kanata::event_loop(kanata_arc, tx)
     }
