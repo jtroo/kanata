@@ -5,6 +5,9 @@
 //! Subscribe to UI updates.
 //! Handle TCP messages from Kanata main process to update the UI.
 
+use async_net::TcpStream;
+use futures::io::BufReader;
+use futures::prelude::*;
 use iced::widget::{Column, column, text};
 use kanata_tcp_protocol::*;
 
@@ -16,34 +19,44 @@ pub(crate) struct KanataGui {
     zch_state: String,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum Message {
-    Update,
-}
-
 impl KanataGui {
     pub(crate) fn start(addr: std::net::SocketAddr) -> iced::Result {
-        use async_net::TcpStream;
-        use futures::executor::block_on;
-        use futures::io::BufReader;
-        use futures::prelude::*;
-        let mut stream = BufReader::new(
-            block_on(TcpStream::connect(addr)).expect("connect to kanata main proc"),
-        );
-        block_on(stream.write_all(&ClientMessage::SubscribeToDetailedInfo.as_bytes()))
-            .expect("write to kanata");
-        let mut buf = String::new();
-        block_on(stream.read_line(&mut buf)).expect("read Ok");
-        match ServerResponse::deserialize_json(&buf) {
-            Ok(ServerResponse::Ok) => {}
-            Ok(ServerResponse::Error { msg }) => {
-                panic!("kanata rejected subscribe with error: {msg}")
-            }
-            Err(e) => panic!("error: {e:?}"),
-        };
-        buf.clear();
-        // TODO: now subscribed. Need to handle the messages
         iced::application("Kanata", Self::update, Self::view)
+            .subscription(move |_| {
+                iced::Subscription::run_with_id(
+                    0,
+                    iced::stream::channel(10, async move |mut sender| {
+                        let mut buf = String::new();
+                        let mut stream = BufReader::new(
+                            TcpStream::connect(addr)
+                                .await
+                                .expect("connect to kanata main proc"),
+                        );
+                        stream.read_line(&mut buf).await.expect("read LayerChange");
+                        let msg = ServerMessage::deserialize_json(&buf).unwrap();
+                        buf.clear();
+                        sender.try_send(msg).unwrap();
+                        stream
+                            .write_all(&ClientMessage::SubscribeToDetailedInfo.as_bytes())
+                            .await
+                            .expect("write to kanata");
+                        stream.read_line(&mut buf).await.expect("read Ok");
+                        match ServerResponse::deserialize_json(&buf) {
+                            Ok(ServerResponse::Ok) => {}
+                            Ok(ServerResponse::Error { msg }) => {
+                                panic!("kanata rejected subscribe with error: {msg}")
+                            }
+                            Err(e) => panic!("error: {e:?}"),
+                        };
+                        loop {
+                            stream.read_line(&mut buf).await.unwrap();
+                            let msg = ServerMessage::deserialize_json(&buf).unwrap();
+                            buf.clear();
+                            sender.try_send(msg).unwrap();
+                        }
+                    }),
+                )
+            })
             .run_with(|| (Self::new(), iced::Task::none()))
     }
 
@@ -55,11 +68,11 @@ impl KanataGui {
             chv2_state: String::new(),
             zch_state: String::new(),
         };
-        kg.update(Message::Update);
+        kg.update(ServerMessage::ConfigFileReload { new: "".into() });
         kg
     }
 
-    pub(crate) fn view(&self) -> Column<'_, Message> {
+    pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
         column![
             text("Active Layer Name:"),
             text(&self.layer_name),
@@ -74,7 +87,7 @@ impl KanataGui {
         ]
     }
 
-    pub(crate) fn update(&mut self, _: Message) {}
+    pub(crate) fn update(&mut self, _: ServerMessage) {}
 }
 
 /// Start up the same Kanata binary using the typical argv[0] name as a child process,

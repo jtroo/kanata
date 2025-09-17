@@ -217,10 +217,11 @@ impl TcpServer {
                                             }
                                             ClientMessage::SubscribeToDetailedInfo => {
                                                 let msg = if cfg!(feature = "iced_gui") {
-                                                    todo!("add to subscription list");
+                                                    ServerResponse::Ok
                                                 } else {
                                                     ServerResponse::Error { msg: "This binary is not compiled with iced_gui feature, SubscribeToDetailedInfo is unsupported.".into() }
                                                 };
+                                                // TODO: add to subscription
                                                 match stream.write_all(&msg.as_bytes()) {
                                                     Ok(_) => {}
                                                     Err(err) => log::error!(

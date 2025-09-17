@@ -37,6 +37,9 @@ impl ServerMessage {
         msg.push(b'\n');
         msg
     }
+    pub fn deserialize_json(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<Self>(s)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
