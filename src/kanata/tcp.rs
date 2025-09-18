@@ -68,6 +68,7 @@ impl Kanata {
                         for id in &stale_clients {
                             log::warn!("removing disconnected tcp client: {id}");
                             clients.remove(id);
+                            #[cfg(feature = "iced_gui")]
                             subscribed_to_detailed_info.lock().remove(id);
                         }
                     }
