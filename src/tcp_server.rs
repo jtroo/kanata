@@ -1,9 +1,5 @@
-#[cfg(feature = "iced_gui")]
-pub(crate) mod iced_gui;
-
 use crate::Kanata;
 use crate::oskbd::*;
-use iced_gui::*;
 
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
@@ -44,6 +40,9 @@ fn send_response(
     }
     true
 }
+
+#[cfg(feature = "iced_gui")]
+pub type SubscribedToDetailedInfo = Arc<Mutex<rustc_hash::FxHashSet<String>>>;
 
 #[cfg(feature = "tcp_server")]
 fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
@@ -228,7 +227,8 @@ impl TcpServer {
                                                     ServerResponse::Error { msg: "This binary is not compiled with iced_gui feature, SubscribeToDetailedInfo is unsupported.".into() }
                                                 };
                                                 subscribed_to_detailed_info
-                                                    .add_subscriber(addr.clone());
+                                                    .lock()
+                                                    .insert(addr.clone());
                                                 match stream.write_all(&msg.as_bytes()) {
                                                     Ok(_) => {}
                                                     Err(err) => log::error!(
