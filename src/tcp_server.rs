@@ -1,5 +1,9 @@
+#[cfg(feature = "iced_gui")]
+pub(crate) mod iced_gui;
+
 use crate::Kanata;
 use crate::oskbd::*;
+use iced_gui::*;
 
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
@@ -16,9 +20,6 @@ use kanata_parser::cfg::SimpleSExpr;
 use std::io::Write;
 #[cfg(feature = "tcp_server")]
 use std::net::{TcpListener, TcpStream};
-
-#[cfg(feature = "iced_gui")]
-mod iced_gui;
 
 #[cfg(feature = "tcp_server")]
 pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
@@ -59,6 +60,8 @@ pub struct TcpServer {
     pub address: SocketAddr,
     pub connections: Connections,
     pub wakeup_channel: Sender<KeyEvent>,
+    #[cfg(feature = "iced_gui")]
+    pub subscribed_to_detailed_info: SubscribedToDetailedInfo,
 }
 
 #[cfg(not(feature = "tcp_server"))]
@@ -73,6 +76,7 @@ impl TcpServer {
             address,
             connections: Arc::new(Mutex::new(HashMap::default())),
             wakeup_channel,
+            subscribed_to_detailed_info: Default::default(),
         }
     }
 
@@ -91,6 +95,7 @@ impl TcpServer {
 
         let connections = self.connections.clone();
         let wakeup_channel = self.wakeup_channel.clone();
+        let subscribed_to_detailed_info = self.subscribed_to_detailed_info.clone();
 
         std::thread::spawn(move || {
             for stream in listener.incoming() {
@@ -129,11 +134,12 @@ impl TcpServer {
                         )
                         .into_iter::<ClientMessage>();
 
-                        log::info!("listening for incoming messages {addr}");
+                        log::info!("listening for incoming messages {}", &addr);
 
                         let connections = connections.clone();
                         let kanata = kanata.clone();
                         let wakeup_channel = wakeup_channel.clone();
+                        let subscribed_to_detailed_info = subscribed_to_detailed_info.clone();
                         std::thread::spawn(move || {
                             for v in reader {
                                 match v {
@@ -221,7 +227,8 @@ impl TcpServer {
                                                 } else {
                                                     ServerResponse::Error { msg: "This binary is not compiled with iced_gui feature, SubscribeToDetailedInfo is unsupported.".into() }
                                                 };
-                                                // TODO: add to subscription
+                                                subscribed_to_detailed_info
+                                                    .add_subscriber(addr.clone());
                                                 match stream.write_all(&msg.as_bytes()) {
                                                     Ok(_) => {}
                                                     Err(err) => log::error!(

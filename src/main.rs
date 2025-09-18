@@ -224,7 +224,12 @@ mod cli {
 
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]
-            Kanata::start_notification_loop(nrx, server.connections);
+            Kanata::start_notification_loop(
+                nrx,
+                server.connections,
+                #[cfg(feature = "iced_gui")]
+                server.subscribed_to_detailed_info,
+            );
         }
 
         #[cfg(target_os = "linux")]

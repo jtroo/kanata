@@ -200,7 +200,11 @@ fn main_impl() -> Result<()> {
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         #[allow(clippy::unit_arg)]
-        Kanata::start_notification_loop(nrx, server.connections);
+        Kanata::start_notification_loop(
+            nrx,
+            server.connections,
+            server.subscribed_to_detailed_info,
+        );
     }
 
     Kanata::event_loop(kanata_arc, tx, ui)?;

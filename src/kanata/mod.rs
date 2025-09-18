@@ -2029,6 +2029,8 @@ impl Kanata {
     pub fn start_notification_loop(
         rx: Receiver<ServerMessage>,
         clients: crate::tcp_server::Connections,
+        #[cfg(feature = "iced_gui")]
+        subscribed_to_detailed_info: crate::tcp_server::iced_gui::SubscribedToDetailedInfo,
     ) {
         use std::io::Write;
         info!("listening for event notifications to relay to connected clients");
@@ -2039,20 +2041,48 @@ impl Kanata {
                         panic!("channel disconnected")
                     }
                     Ok(event) => {
-                        let notification = event.as_bytes();
-                        let mut clients = clients.lock();
                         let mut stale_clients = vec![];
-                        for (id, client) in &mut *clients {
-                            match client.write_all(&notification) {
-                                Ok(_) => {
-                                    log::debug!("layer change notification sent");
+                        let mut clients = clients.lock();
+                        if matches!(event, ServerMessage::DetailedInfo { .. }) {
+                            #[cfg(feature = "iced_gui")]
+                            {
+                                let notification = event.as_bytes();
+                                for subscribed in subscribed_to_detailed_info.iter() {
+                                    match clients.get(&subscribed) {
+                                        Some(mut c) => match c.write_all(&notification) {
+                                            Ok(_) => {
+                                                log::debug!(
+                                                    "tcp detailed info sent to {subscribed}"
+                                                );
+                                            }
+                                            Err(e) => {
+                                                log::warn!(
+                                                    "removing tcp client where write failed: {subscribed}, {e:?}"
+                                                );
+                                                // the client is no longer connected, let's remove them
+                                                stale_clients.push(subscribed.clone());
+                                            }
+                                        },
+                                        None => {
+                                            subscribed_to_detailed_info.unsubscribe(&subscribed);
+                                        }
+                                    }
                                 }
-                                Err(e) => {
-                                    log::warn!(
-                                        "removing tcp client where write failed: {id}, {e:?}"
-                                    );
-                                    // the client is no longer connected, let's remove them
-                                    stale_clients.push(id.clone());
+                            }
+                        } else {
+                            let notification = event.as_bytes();
+                            for (id, client) in &mut *clients {
+                                match client.write_all(&notification) {
+                                    Ok(_) => {
+                                        log::debug!("tcp message sent to {id}");
+                                    }
+                                    Err(e) => {
+                                        log::warn!(
+                                            "removing tcp client where write failed: {id}, {e:?}"
+                                        );
+                                        // the client is no longer connected, let's remove them
+                                        stale_clients.push(id.clone());
+                                    }
                                 }
                             }
                         }
@@ -2060,6 +2090,7 @@ impl Kanata {
                         for id in &stale_clients {
                             log::warn!("removing disconnected tcp client: {id}");
                             clients.remove(id);
+                            subscribed_to_detailed_info.unsubscribe(id);
                         }
                     }
                 }
