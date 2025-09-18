@@ -40,6 +40,8 @@ use dynamic_macro::*;
 
 #[cfg(feature = "iced_gui")]
 mod iced_gui;
+#[cfg(feature = "iced_gui")]
+use iced_gui::*;
 
 mod key_repeat;
 
@@ -270,6 +272,8 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    #[cfg(feature = "iced_gui")]
+    iced_gui_state: IcedGuiState,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -495,6 +499,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: Default::default(),
         })
     }
 
@@ -641,6 +647,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: Default::default(),
         })
     }
 
@@ -878,10 +886,10 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    pub fn tick_ms(&mut self, ms_elapsed: u128, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.tick_states(_tx)?;
+            self.tick_states(tx)?;
             if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -892,7 +900,7 @@ impl Kanata {
             }
         }
         for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-            self.tick_states(_tx)?;
+            self.tick_states(tx)?;
             if tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -903,6 +911,7 @@ impl Kanata {
                 break;
             }
         }
+        self.tick_iced_gui_ms(ms_elapsed as u16, tx);
         Ok(())
     }
 
@@ -923,8 +932,8 @@ impl Kanata {
         });
     }
 
-    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
+    fn tick_states(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -1118,7 +1127,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -1535,7 +1544,7 @@ impl Kanata {
                         CustomAction::PushMessage(_message) => {
                             log::debug!("Action push-msg");
                             #[cfg(feature = "tcp_server")]
-                            if let Some(tx) = _tx {
+                            if let Some(tx) = tx {
                                 let message = simple_sexpr_to_json_array(_message);
                                 log::debug!("Action push-msg message: {}", message);
                                 match tx.try_send(ServerMessage::MessagePush { message }) {
@@ -2076,6 +2085,9 @@ impl Kanata {
                         not(feature = "simulated_input"),
                     ))]
                     kanata.lock().win_synchronize_keystates();
+
+                    #[cfg(feature = "iced_gui")]
+                    kanata.lock().iced_gui_handle_idle(&tx);
 
                     log::trace!("blocking on channel");
                     match rx.recv() {
