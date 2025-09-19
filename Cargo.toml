@@ -47,6 +47,7 @@ futures = { version = "0.3.31", optional = true }
 futures-channel = { version = "0.3.31", optional = true }
 iced = { version = "0.13", optional = true }
 indoc = { version = "2.0.4", optional = true }
+itertools = { version = "0.14.0", optional = true }
 log = { version = "0.4.8", default-features = false }
 miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
@@ -142,7 +143,7 @@ gui = ["win_manifest","kanata-parser/gui",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
-iced_gui = [ "async-net", "futures", "futures-channel", "iced", "tcp_server" ]
+iced_gui = [ "async-net", "futures", "futures-channel", "iced", "itertools", "tcp_server" ]
 zippychord = ["kanata-parser/zippychord"]
 
 [profile.release]

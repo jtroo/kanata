@@ -252,6 +252,9 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
+    #[cfg(feature = "iced_gui")]
+    /// Inverted mapping for the above.
+    pub virtual_keys_by_idx: HashMap<usize, String>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
@@ -483,6 +486,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "iced_gui")]
+            virtual_keys_by_idx: cfg.fake_keys.iter().map(|(k, v)| (*v, k.clone())).collect(),
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -631,6 +636,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "iced_gui")]
+            virtual_keys_by_idx: cfg.fake_keys.iter().map(|(k, v)| (*v, k.clone())).collect(),
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
