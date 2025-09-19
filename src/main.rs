@@ -33,6 +33,29 @@ mod cli {
             std::process::exit(0);
         }
 
+        let log_lvl = match (args.debug, args.trace, args.quiet) {
+            (_, true, false) => LevelFilter::Trace,
+            (true, false, false) => LevelFilter::Debug,
+            (false, false, false) => LevelFilter::Info,
+            (_, _, true) => LevelFilter::Error,
+        };
+
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_custom(format_description!(
+            version = 2,
+            "[hour]:[minute]:[second].[subsecond digits:4]"
+        ));
+        CombinedLogger::init(vec![TermLogger::new(
+            log_lvl,
+            log_cfg.build(),
+            TerminalMode::Mixed,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+
         let tcp_server_address = {
             #[cfg(not(feature = "iced_gui"))]
             {
@@ -86,29 +109,6 @@ mod cli {
         } else {
             vec![]
         };
-
-        let log_lvl = match (args.debug, args.trace, args.quiet) {
-            (_, true, false) => LevelFilter::Trace,
-            (true, false, false) => LevelFilter::Debug,
-            (false, false, false) => LevelFilter::Info,
-            (_, _, true) => LevelFilter::Error,
-        };
-
-        let mut log_cfg = ConfigBuilder::new();
-        if let Err(e) = log_cfg.set_time_offset_to_local() {
-            eprintln!("WARNING: could not set log TZ to local: {e:?}");
-        };
-        log_cfg.set_time_format_custom(format_description!(
-            version = 2,
-            "[hour]:[minute]:[second].[subsecond digits:4]"
-        ));
-        CombinedLogger::init(vec![TermLogger::new(
-            log_lvl,
-            log_cfg.build(),
-            TerminalMode::Mixed,
-            ColorChoice::AlwaysAnsi,
-        )])
-        .expect("logger can init");
 
         log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
         #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]

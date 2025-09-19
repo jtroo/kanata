@@ -98,7 +98,6 @@ impl FromStr for ClientMessage {
 pub struct DetailedInfo {
     pub layer_config: String,
     pub active_vkey_names: String,
-    pub chordsv2_state: String,
     pub zippychord_state: String,
 }
 
