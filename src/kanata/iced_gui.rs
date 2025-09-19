@@ -5,6 +5,7 @@
 //! - before idling
 
 use super::*;
+use kanata_tcp_protocol::DetailedInfo;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct IcedGuiState {
@@ -33,6 +34,14 @@ impl Kanata {
     }
 
     fn send_detailed_info(&self, tx: &Sender<ServerMessage>) {
+        let current_layer = self.layout.b().current_layer();
+        let layer_config = self.layer_info[current_layer].name.clone();
+        let msg = ServerMessage::DetailedInfo(DetailedInfo {
+            layer_config,
+            active_vkey_names: todo!(),
+            chordsv2_state: todo!(),
+            zippychord_state: todo!(),
+        });
         todo!()
     }
 }
