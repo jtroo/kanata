@@ -326,6 +326,8 @@ use once_cell::sync::Lazy;
 static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
+const LINUX_PERMISSIONS_ERROR: &str = "Failed to open the output uinput device. Make sure you added the user executing kanata to the 'uinput' group and that the 'uinput' group is configured correctly.\nSee for more detail: https://github.com/jtroo/kanata/blob/main/docs/setup-linux.md";
+
 impl Kanata {
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
         let cfg = match cfg::new_from_file(&args.paths[0]) {
@@ -351,9 +353,7 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!(
-                    "Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group"
-                );
+                error!("{LINUX_PERMISSIONS_ERROR}");
                 bail!(err)
             }
         };
@@ -521,9 +521,7 @@ impl Kanata {
         ) {
             Ok(kbd_out) => kbd_out,
             Err(err) => {
-                error!(
-                    "Failed to open the output uinput device. Make sure you've added the user executing kanata to the `uinput` group"
-                );
+                error!("{LINUX_PERMISSIONS_ERROR}");
                 bail!(err)
             }
         };
