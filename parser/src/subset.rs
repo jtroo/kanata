@@ -180,4 +180,20 @@ where
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
+
+    pub fn iter_sets_with<'a, 'b>(&'a self, key_items: &'b [K]) -> impl Iterator<Item = &'a V> + 'a + 'b {
+        todo!()
+    }
+}
+
+struct SetsWith<'a,'b,K,V> {
+    items: &'a [SsmKeyValue<K, V>],
+    key_items: &'b[K],
+    index: usize,
+}
+
+impl<K, V> Iterator for SetsWith<'_, '_, K, V>{
+    fn next(&mut self) {
+        todo!()
+    }
 }

@@ -53,7 +53,15 @@ impl Kanata {
             })
             .join(" ");
 
-        let zippychord_state = "TODO".to_owned();
+        // active keys - map to likely user-configed name based on their defsrc/deflayermap
+        // available chords
+        // prioritized chords
+        let zch = output_logic::zch();
+        let active_keys = zch.zch_active_keys();
+        let active_keys_by_name = active_keys.clone().map(|_| "TODO").join(" ");
+        let prioritized_activations = zch.zch_prioritized_possible_chords(active_keys.clone());
+        let available_chords = zch.zch_possible_chords(active_keys);
+        let zippychord_state = [active_keys_by_name, prioritized_activations, available_chords].join("\n\n");
         let msg = ServerMessage::DetailedInfo(DetailedInfo {
             layer_config,
             active_vkey_names,
