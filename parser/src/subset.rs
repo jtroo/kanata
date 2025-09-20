@@ -5,7 +5,7 @@
 //! you should ensure values are cheaply clonable. If the value is not, consider putting it inside
 //! `Rc` or `Arc`.
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::hash::Hash;
 
 // # Design considerations:
@@ -181,19 +181,118 @@ where
         self.map.is_empty()
     }
 
-    pub fn iter_sets_with<'a, 'b>(&'a self, key_items: &'b [K]) -> impl Iterator<Item = &'a V> + 'a + 'b {
-        todo!()
+    pub fn iter<'a>(&'a self) -> AllItems<'a, K, V> {
+        AllItems {
+            first_key_iterator: self.map.iter(),
+            items: None,
+            seen_keys: Default::default(),
+        }
+    }
+
+    /// If the key is empty, this is an empty iterator.
+    /// Use `iter` to get every item.
+    pub fn iter_supersets<'a>(&'a self, key: &'a [K]) -> SupersetsOf<'a, K, V> {
+        let items = match key.len() {
+            0 => None,
+            _ => self.map.get(&key[0]).map(|v| &**v),
+        };
+        match (items, key.len()) {
+            (Some(some_items), 1) => SupersetsOf {
+                variant: SupersetsOfKeyLength::One {
+                    iter: some_items.iter(),
+                },
+            },
+            _ => SupersetsOf {
+                variant: SupersetsOfKeyLength::TwoOrMore { key, items },
+            },
+        }
     }
 }
 
-struct SetsWith<'a,'b,K,V> {
-    items: &'a [SsmKeyValue<K, V>],
-    key_items: &'b[K],
-    index: usize,
+pub struct AllItems<'a, K, V> {
+    first_key_iterator: std::collections::hash_map::Iter<'a, K, Vec<SsmKeyValue<K, V>>>,
+    items: Option<&'a [SsmKeyValue<K, V>]>,
+    seen_keys: FxHashSet<&'a [K]>,
 }
 
-impl<K, V> Iterator for SetsWith<'_, '_, K, V>{
-    fn next(&mut self) {
-        todo!()
+impl<'a, K, V> Iterator for AllItems<'a, K, V>
+where
+    K: Clone + PartialEq + Ord + Hash + 'a,
+    V: Clone + 'a,
+{
+    type Item = (&'a [K], &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.items.is_none() {
+            self.items = self
+                .first_key_iterator
+                .next()
+                .map(|(_, vec)| vec.as_slice());
+        }
+        match self.items.as_mut() {
+            None => None,
+            Some(items) => {
+                match items
+                    .iter()
+                    .enumerate()
+                    .find(|(_, ssm_kv)| !self.seen_keys.contains(ssm_kv.key.as_ref()))
+                {
+                    None => {
+                        self.items = None;
+                        None
+                    }
+                    Some((idx, kv)) => {
+                        *items = &items[idx + 1..];
+                        self.seen_keys.insert(kv.key.as_ref());
+                        Some((&kv.key, &kv.value))
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct SupersetsOf<'a, K, V> {
+    variant: SupersetsOfKeyLength<'a, K, V>,
+}
+
+enum SupersetsOfKeyLength<'a, K, V> {
+    One {
+        iter: std::slice::Iter<'a, SsmKeyValue<K, V>>,
+    },
+    TwoOrMore {
+        items: Option<&'a [SsmKeyValue<K, V>]>,
+        key: &'a [K],
+    },
+}
+
+impl<'a, K, V> Iterator for SupersetsOf<'a, K, V>
+where
+    K: Clone + PartialEq + Ord + Hash + 'a,
+    V: Clone + 'a,
+{
+    type Item = (&'a [K], &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.variant {
+            SupersetsOfKeyLength::One { ref mut iter } => {
+                iter.next().map(|kv| (kv.key.as_ref(), &kv.value))
+            }
+            SupersetsOfKeyLength::TwoOrMore { ref mut items, key } => {
+                let items_ref = items.as_mut()?;
+                match items_ref
+                    .iter()
+                    .enumerate()
+                    .find(|(_, ssm_kv)| key.iter().all(|k| ssm_kv.key.contains(k)))
+                {
+                    None => {
+                        *items = None;
+                        None
+                    }
+                    Some((idx, kv)) => {
+                        *items_ref = &items_ref[idx + 1..];
+                        Some((&kv.key, &kv.value))
+                    }
+                }
+            }
+        }
     }
 }

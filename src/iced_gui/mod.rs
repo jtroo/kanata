@@ -26,7 +26,6 @@ impl KanataGui {
                 iced::Subscription::run_with_id(
                     0,
                     iced::stream::channel(10, async move |mut sender| {
-
                         log::info!("Attempting connection to Kanata");
                         let mut buf = String::new();
                         let mut stream = BufReader::new(
@@ -63,7 +62,9 @@ impl KanataGui {
                             let msg = match ServerMessage::deserialize_json(&buf) {
                                 Ok(v) => v,
                                 Err(e) => {
-                                    log::error!("deserialize server message error {e:?}. msg: {buf}");
+                                    log::error!(
+                                        "deserialize server message error {e:?}. msg: {buf}"
+                                    );
                                     continue;
                                 }
                             };
@@ -97,7 +98,6 @@ impl KanataGui {
                 log::debug!("got info!");
                 self.layer_content = info.layer_config;
                 self.active_vkeys = info.active_vkey_names;
-                self.chv2_state = info.chordsv2_state;
                 self.zch_state = info.zippychord_state;
             }
             ServerMessage::LayerChange { .. }
