@@ -5,7 +5,17 @@ In Linux, kanata needs to be able to access the input and uinput subsystem to in
 ### 1. If the uinput group does not exist, create a new group
 
 ```bash
-sudo groupadd uinput
+sudo groupadd --system uinput
+```
+
+If the `uinput` group already exists,
+it may have been created without the `--system` flag.
+First delete it then re-add again with the above command.
+
+To delete:
+
+```
+sudo groupdel uinput
 ```
 
 ### 2. Add your user to the input and the uinput group
