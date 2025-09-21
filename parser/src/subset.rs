@@ -207,6 +207,10 @@ where
             },
         }
     }
+
+    pub fn iter_unique_set_elements<'a>(&'a self) -> impl Iterator<Item=&'a K> {
+        self.map.keys()
+    }
 }
 
 pub struct AllItems<'a, K, V> {
