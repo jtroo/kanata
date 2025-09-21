@@ -56,6 +56,7 @@ impl KanataGui {
                             log::debug!("trying to read a line");
                             if let Err(e) = stream.read_line(&mut buf).await {
                                 log::error!("read from kanata sock error: {e:?}");
+                                std::thread::sleep(std::time::Duration::from_secs(1));
                                 continue;
                             }
                             let msg = match ServerMessage::deserialize_json(&buf) {
@@ -79,13 +80,26 @@ impl KanataGui {
     }
 
     pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
+        use iced::advanced::text::*;
         column![
-            text("Active Layer:"),
-            text(&self.layer_content),
-            text("Active VKeys:"),
-            text(&self.active_vkeys),
-            text("Zippychord State:"),
-            text(&self.zch_state),
+            text("Active Layer:")
+                .size(32)
+                .line_height(LineHeight::Absolute(50f32.into())),
+            text(&self.layer_content)
+                .font(iced::Font::MONOSPACE)
+                .shaping(Shaping::Advanced),
+            text("Active VKeys:")
+                .size(32)
+                .line_height(LineHeight::Absolute(50f32.into())),
+            text(&self.active_vkeys)
+                .font(iced::Font::MONOSPACE)
+                .shaping(Shaping::Advanced),
+            text("Zippychord State:")
+                .size(32)
+                .line_height(LineHeight::Absolute(50f32.into())),
+            text(&self.zch_state)
+                .font(iced::Font::MONOSPACE)
+                .shaping(Shaping::Advanced),
         ]
     }
 

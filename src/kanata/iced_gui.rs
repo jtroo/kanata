@@ -58,7 +58,11 @@ impl Kanata {
         // prioritized chords
         let zch = output_logic::zch();
         let active_keys = zch.zch_active_keys();
-        let active_keys_by_name = active_keys.iter().map(|_| "TODO").join(" ");
+        let active_keys_by_name = active_keys
+            .iter()
+            .copied()
+            .map(kanata_parser::cfg::iced_gui::names)
+            .join(" ");
         let prioritized_activations = zch.zch_prioritized_possible_chords(active_keys);
         let available_chords = zch.zch_possible_chords(active_keys);
         let zippychord_state = [

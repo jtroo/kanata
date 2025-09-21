@@ -208,7 +208,7 @@ where
         }
     }
 
-    pub fn iter_unique_set_elements<'a>(&'a self) -> impl Iterator<Item=&'a K> {
+    pub fn iter_unique_set_elements(&self) -> impl Iterator<Item = &K> {
         self.map.keys()
     }
 }
@@ -226,28 +226,32 @@ where
 {
     type Item = (&'a [K], &'a V);
     fn next(&mut self) -> Option<Self::Item> {
-        if self.items.is_none() {
-            self.items = self
-                .first_key_iterator
-                .next()
-                .map(|(_, vec)| vec.as_slice());
-        }
-        match self.items.as_mut() {
-            None => None,
-            Some(items) => {
-                match items
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ssm_kv)| !self.seen_keys.contains(ssm_kv.key.as_ref()))
-                {
-                    None => {
-                        self.items = None;
-                        None
-                    }
-                    Some((idx, kv)) => {
-                        *items = &items[idx + 1..];
-                        self.seen_keys.insert(kv.key.as_ref());
-                        Some((&kv.key, &kv.value))
+        loop {
+            if self.items.is_none() {
+                self.items = self
+                    .first_key_iterator
+                    .next()
+                    .map(|(_, vec)| vec.as_slice());
+            }
+            match self.items.as_mut() {
+                None => {
+                    return None;
+                }
+                Some(items) => {
+                    match items
+                        .iter()
+                        .enumerate()
+                        .find(|(_, ssm_kv)| !self.seen_keys.contains(ssm_kv.key.as_ref()))
+                    {
+                        None => {
+                            self.items = None;
+                            continue;
+                        }
+                        Some((idx, kv)) => {
+                            *items = &items[idx + 1..];
+                            self.seen_keys.insert(kv.key.as_ref());
+                            return Some((&kv.key, &kv.value));
+                        }
                     }
                 }
             }
