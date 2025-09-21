@@ -15,7 +15,6 @@ use kanata_tcp_protocol::*;
 pub(crate) struct KanataGui {
     layer_content: String,
     active_vkeys: String,
-    chv2_state: String,
     zch_state: String,
 }
 
@@ -85,8 +84,6 @@ impl KanataGui {
             text(&self.layer_content),
             text("Active VKeys:"),
             text(&self.active_vkeys),
-            text("ChordsV2 State:"),
-            text(&self.chv2_state),
             text("Zippychord State:"),
             text(&self.zch_state),
         ]
