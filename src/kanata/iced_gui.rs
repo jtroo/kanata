@@ -39,7 +39,7 @@ impl Kanata {
     fn send_detailed_info(&self, tx: &Sender<ServerMessage>) {
         let current_layer = self.layout.b().current_layer();
         log::debug!("sending detailed info msg");
-        let layer_config = self.layer_info[current_layer].name.clone();
+        let layer_config = self.layer_info[current_layer].cfg_text.clone();
         let vkey_names = &self.virtual_keys_by_idx;
         let active_vkey_names = self
             .layout
