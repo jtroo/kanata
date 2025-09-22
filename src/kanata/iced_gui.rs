@@ -57,19 +57,32 @@ impl Kanata {
         // available chords
         // prioritized chords
         let zch = output_logic::zch();
-        let active_keys = zch.zch_active_keys();
-        let active_keys_by_name = active_keys
-            .iter()
-            .copied()
-            .map(kanata_parser::cfg::iced_gui::names)
-            .join(" ");
-        let prioritized_activations = zch.zch_prioritized_possible_chords(active_keys);
-        let available_chords = zch.zch_possible_chords(active_keys);
-        let zippychord_state = [
-            active_keys_by_name,
-            prioritized_activations,
-            available_chords,
-        ]
+        let zippychord_state = if zch.zch_is_enabled() {
+            let active_keys = zch.zch_active_keys();
+            let active_keys_by_name = format!(
+                "ZIPPYCHORD ACTIVE KEYS:\n{}",
+                active_keys
+                    .iter()
+                    .copied()
+                    .map(kanata_parser::cfg::iced_gui::names)
+                    .join(" ")
+            );
+            let prioritized_activations = zch.zch_prioritized_possible_chords(active_keys);
+            let available_chords = zch.zch_possible_chords(active_keys);
+
+            let mut zippychord_state_items = vec![];
+            if !active_keys.is_empty() {
+                zippychord_state_items.push(active_keys_by_name);
+            }
+            if !prioritized_activations.is_empty() {
+                zippychord_state_items.push(prioritized_activations);
+            }
+            zippychord_state_items.push(available_chords);
+            zippychord_state_items
+        } else {
+            vec![]
+        }
+        .iter()
         .join("\n\n");
         let msg = ServerMessage::DetailedInfo(DetailedInfo {
             layer_config,

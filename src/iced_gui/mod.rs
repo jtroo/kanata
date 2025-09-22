@@ -81,26 +81,46 @@ impl KanataGui {
 
     pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
         use iced::advanced::text::*;
-        column![
-            text("Active Layer:")
-                .size(32)
-                .line_height(LineHeight::Absolute(50f32.into())),
-            text(&self.layer_content)
-                .font(iced::Font::MONOSPACE)
-                .shaping(Shaping::Advanced),
-            text("Active VKeys:")
-                .size(32)
-                .line_height(LineHeight::Absolute(50f32.into())),
-            text(&self.active_vkeys)
-                .font(iced::Font::MONOSPACE)
-                .shaping(Shaping::Advanced),
-            text("Zippychord State:")
-                .size(32)
-                .line_height(LineHeight::Absolute(50f32.into())),
-            text(&self.zch_state)
-                .font(iced::Font::MONOSPACE)
-                .shaping(Shaping::Advanced),
-        ]
+        match self.zch_state.is_empty() {
+            false => {
+                column![
+                    text("Active Layer:")
+                        .size(32)
+                        .line_height(LineHeight::Absolute(60f32.into())),
+                    text(&self.layer_content)
+                        .font(iced::Font::MONOSPACE)
+                        .shaping(Shaping::Advanced),
+                    text("Active VKeys:")
+                        .size(32)
+                        .line_height(LineHeight::Absolute(60f32.into())),
+                    text(&self.active_vkeys)
+                        .font(iced::Font::MONOSPACE)
+                        .shaping(Shaping::Advanced),
+                    text("Zippychord State:")
+                        .size(32)
+                        .line_height(LineHeight::Absolute(60f32.into())),
+                    text(&self.zch_state)
+                        .font(iced::Font::MONOSPACE)
+                        .shaping(Shaping::Advanced),
+                ]
+            }
+            true => {
+                column![
+                    text("Active Layer:")
+                        .size(32)
+                        .line_height(LineHeight::Absolute(60f32.into())),
+                    text(&self.layer_content)
+                        .font(iced::Font::MONOSPACE)
+                        .shaping(Shaping::Advanced),
+                    text("Active VKeys:")
+                        .size(32)
+                        .line_height(LineHeight::Absolute(60f32.into())),
+                    text(&self.active_vkeys)
+                        .font(iced::Font::MONOSPACE)
+                        .shaping(Shaping::Advanced),
+                ]
+            }
+        }
     }
 
     pub(crate) fn update(&mut self, msg: ServerMessage) {

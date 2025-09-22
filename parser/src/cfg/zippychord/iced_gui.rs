@@ -33,7 +33,7 @@ pub(crate) fn commit_mappings() {
 
 pub(crate) fn reset_uncommitted_mappings() {
     UNCOMMITTED_MAPPING.lock().clear();
-    add_uncommitted_mapping(OsCode::KEY_SPACE.into(), ' ');
+    add_uncommitted_mapping(OsCode::KEY_SPACE.into(), '␣');
 }
 
 pub(crate) fn add_uncommitted_mapping(code: u16, mapped_to: char) {
