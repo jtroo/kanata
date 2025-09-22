@@ -2552,8 +2552,12 @@ fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
         State::NormalKey { coord, .. }
         | State::LayerModifier { coord, .. }
         | State::Custom { coord, .. }
+        | State::NoOpInput { coord }
         | State::RepeatingSequence { coord, .. } => *coord == (x, y),
-        _ => false,
+        State::FakeKey { .. }
+        | State::SeqCustomPending(_)
+        | State::SeqCustomActive(_)
+        | State::Tombstone => false,
     })
 }
 
