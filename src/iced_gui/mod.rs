@@ -8,7 +8,7 @@
 use async_net::TcpStream;
 use futures::io::BufReader;
 use futures::prelude::*;
-use iced::widget::{Column, column, text};
+use iced::widget::{Column, column, Rule, Space, text};
 use kanata_tcp_protocol::*;
 
 #[derive(Clone, Debug, Default)]
@@ -90,12 +90,21 @@ impl KanataGui {
                     text(&self.layer_content)
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
+                    Space::new(0, 30),
+                    Rule::horizontal(0),
+                    Space::new(0, 10),
                     text("Active VKeys:")
                         .size(32)
                         .line_height(LineHeight::Absolute(60f32.into())),
-                    text(&self.active_vkeys)
+                    text(match self.active_vkeys.is_empty() {
+                        false => &self.active_vkeys,
+                        true => "No active virtual keys",
+                    })
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
+                    Space::new(0, 30),
+                    Rule::horizontal(0),
+                    Space::new(0, 10),
                     text("Zippychord State:")
                         .size(32)
                         .line_height(LineHeight::Absolute(60f32.into())),
