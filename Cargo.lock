@@ -852,9 +852,9 @@ dependencies = [
 
 [[package]]
 name = "karabiner-driverkit"
-version = "0.1.6"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78bdf5f53c01493d3c2c69e29628fd158e0a93907973ed0ee0f9aff21c24c31a"
+checksum = "7348953ebe65644771a0d921902e732bc7ca2f0efc6e6c4209904a538dd8ee7e"
 dependencies = [
  "cc",
  "os_info",
