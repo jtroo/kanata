@@ -83,12 +83,13 @@ impl KbdIn {
             let devices_to_include = kb_list
                 .iter()
                 .filter(|k| !excluded_names.iter().any(|n| *k == n.as_str()))
-                .map(|k| 
+                .map(|k| {
                     if k.product_key.trim().is_empty() {
                         format!("{:x}", k.hash)
                     } else {
                         k.product_key.clone()
-                    })
+                    }
+                })
                 .collect::<Vec<String>>();
 
             // register the remeining devices

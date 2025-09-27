@@ -13,11 +13,20 @@ pub(crate) fn list_devices_macos() {
     let kb_list = fetch_devices();
 
     let print_header = || {
-        println!( "{:<20} {:<10} {:<10} {}", "hash", "vendor_id", "product_id", "product_key");
+        println!(
+            "{:<20} {:<10} {:<10} {}",
+            "hash", "vendor_id", "product_id", "product_key"
+        );
     };
-    
+
     let print_line = || {
-        println!("{}   {}   {}   {}", "-".repeat(18), "-".repeat(8), "-".repeat(8), "-".repeat(50));
+        println!(
+            "{}   {}   {}   {}",
+            "-".repeat(18),
+            "-".repeat(8),
+            "-".repeat(8),
+            "-".repeat(50)
+        );
     };
 
     print_header();
@@ -32,15 +41,17 @@ pub(crate) fn list_devices_macos() {
         return;
     }
 
-    println!("\nTo address devices with empty names (product key), hash values can be used in the configuration!");
-
+    println!(
+        "\nTo address devices with empty names (product key), hash values can be used in the configuration!"
+    );
 
     println!("\nConfiguration example:");
     println!("  (defcfg");
     println!("    macos-dev-names-include (");
-    for kb in kb_list.iter()
+    for kb in kb_list
+        .iter()
         .map(|k| k.product_key.clone())
-        .filter(|k| !k.trim().is_empty()) 
+        .filter(|k| !k.trim().is_empty())
     {
         println!("      \"{}\"", kb.trim());
     }
@@ -52,7 +63,6 @@ pub(crate) fn list_devices_macos() {
     }
     println!("    )");
     println!("  )");
-
 }
 
 #[cfg(all(target_os = "linux", not(feature = "gui")))]
