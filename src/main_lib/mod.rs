@@ -14,8 +14,8 @@ pub(crate) fn list_devices_macos() {
 
     let print_header = || {
         println!(
-            "{:<20} {:<10} {:<10} {}",
-            "hash", "vendor_id", "product_id", "product_key"
+            "{:<20} {:<10} {:<10} product_key",
+            "hash", "vendor_id", "product_id"
         );
     };
 
