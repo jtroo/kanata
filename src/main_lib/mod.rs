@@ -5,50 +5,54 @@ pub(crate) mod win_gui;
 
 #[cfg(all(target_os = "macos", not(feature = "gui")))]
 pub(crate) fn list_devices_macos() {
-    use crate::oskbd::capture_stdout;
-    use karabiner_driverkit::list_keyboards;
+    use karabiner_driverkit::fetch_devices;
 
     println!("Available keyboard devices:");
-    println!("===========================");
+    println!("===========================\n");
 
-    let kb_list = capture_stdout(list_keyboards);
-    let device_names: Vec<&str> = kb_list.lines().collect();
+    let kb_list = fetch_devices();
 
-    if device_names.is_empty() {
+    let print_header = || {
+        println!( "{:<20} {:<10} {:<10} {}", "hash", "vendor_id", "product_id", "product_key");
+    };
+    
+    let print_line = || {
+        println!("{}   {}   {}   {}", "-".repeat(18), "-".repeat(8), "-".repeat(8), "-".repeat(50));
+    };
+
+    print_header();
+    print_line();
+    for kb in kb_list.iter() {
+        println!("{}", kb);
+    }
+    print_line();
+
+    if kb_list.is_empty() {
         println!("No devices found. Ensure Karabiner-VirtualHIDDevice driver is activated.");
         return;
     }
 
-    let mut valid_count = 0;
-    let mut empty_count = 0;
+    println!("\nTo address devices with empty names (product key), hash values can be used in the configuration!");
 
-    for (i, device) in device_names.iter().enumerate() {
-        let trimmed = device.trim();
-        if trimmed.is_empty() {
-            println!("  {}. (empty name) - ⚠️  Will be skipped", i + 1);
-            empty_count += 1;
-        } else {
-            println!("  {}. \"{}\"", i + 1, trimmed);
-            valid_count += 1;
-        }
-    }
 
-    if empty_count > 0 {
-        println!(
-            "\n⚠️  Note: {empty_count} device(s) with empty names will be skipped to prevent crashes."
-        );
+    println!("\nConfiguration example:");
+    println!("  (defcfg");
+    println!("    macos-dev-names-include (");
+    for kb in kb_list.iter()
+        .map(|k| k.product_key.clone())
+        .filter(|k| !k.trim().is_empty()) 
+    {
+        println!("      \"{}\"", kb.trim());
     }
+    println!("    )");
+    println!("    or instead:");
+    println!("    macos-dev-names-include (");
+    for kb in kb_list.iter().map(|k| k.hash) {
+        println!("      \"0x{:<16X}\"", kb);
+    }
+    println!("    )");
+    println!("  )");
 
-    if valid_count > 0 {
-        println!("\nConfiguration example:");
-        println!("  (defcfg");
-        println!("    macos-dev-names-include (");
-        for device in device_names.iter().filter(|d| !d.trim().is_empty()) {
-            println!("      \"{}\"", device.trim());
-        }
-        println!("    )");
-        println!("  )");
-    }
 }
 
 #[cfg(all(target_os = "linux", not(feature = "gui")))]
