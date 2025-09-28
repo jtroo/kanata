@@ -8,14 +8,21 @@
 use async_net::TcpStream;
 use futures::io::BufReader;
 use futures::prelude::*;
-use iced::widget::{Column, column, Rule, Space, text};
+use iced::widget::{Column, Rule, Space, column, container, text};
 use kanata_tcp_protocol::*;
+
+#[derive(Debug)]
+pub(crate) enum Message {
+    ServerMessage(ServerMessage),
+    WindowSize(iced::Size),
+}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KanataGui {
     layer_content: String,
     active_vkeys: String,
     zch_state: String,
+    window_size: iced::Size,
 }
 
 impl KanataGui {
@@ -36,7 +43,7 @@ impl KanataGui {
                         let msg = ServerMessage::deserialize_json(&buf)
                             .expect("kanata sends LayerChange to client on connect");
                         buf.clear();
-                        sender.try_send(msg).unwrap();
+                        sender.try_send(Message::ServerMessage(msg)).unwrap();
                         stream
                             .write_all(&ClientMessage::SubscribeToDetailedInfo.as_bytes())
                             .await
@@ -69,7 +76,7 @@ impl KanataGui {
                                 }
                             };
                             buf.clear();
-                            if let Err(e) = sender.try_send(msg) {
+                            if let Err(e) = sender.try_send(Message::ServerMessage(msg)) {
                                 log::error!("write to iced subscribe channel error: {e:?}");
                             }
                         }
@@ -79,43 +86,56 @@ impl KanataGui {
             .run()
     }
 
-    pub(crate) fn view(&self) -> Column<'_, ServerMessage> {
+    pub(crate) fn view(&self) -> Column<'_, Message> {
         use iced::advanced::text::*;
         match self.zch_state.is_empty() {
             false => {
                 // Zippychord is enabled
                 column![
-                    text("Active Layer:")
-                        .size(32)
-                        .line_height(LineHeight::Absolute(60f32.into())),
-                    text(&self.layer_content)
-                        .font(iced::Font::MONOSPACE)
-                        .shaping(Shaping::Advanced),
-                    Space::new(0, 30),
+                    container(
+                        column![
+                            text("Active Layer:")
+                                .size(32)
+                                .line_height(LineHeight::Absolute(60f32.into())),
+                            text(&self.layer_content)
+                                .font(iced::Font::MONOSPACE)
+                                .shaping(Shaping::Advanced),
+                        ]
+                    )
+                    .height(self.window_size.height / 3.0),
 
                     // Container boundary
                     Rule::horizontal(0),
-                    Space::new(0, 10),
-                    text("Active VKeys:")
-                        .size(32)
-                        .line_height(LineHeight::Absolute(60f32.into())),
-                    text(match self.active_vkeys.is_empty() {
-                        false => &self.active_vkeys,
-                        true => "No active virtual keys",
-                    })
-                        .font(iced::Font::MONOSPACE)
-                        .shaping(Shaping::Advanced),
-                    Space::new(0, 30),
+
+                    container(
+                        column![
+                            text("Active VKeys:")
+                                .size(32)
+                                .line_height(LineHeight::Absolute(60f32.into())),
+                            text(match self.active_vkeys.is_empty() {
+                                false => &self.active_vkeys,
+                                true => "No active virtual keys",
+                            })
+                            .font(iced::Font::MONOSPACE)
+                            .shaping(Shaping::Advanced),
+                        ]
+                    )
+                    .height(self.window_size.height / 3.0),
 
                     // Container boundary
                     Rule::horizontal(0),
-                    Space::new(0, 10),
-                    text("Zippychord State:")
-                        .size(32)
-                        .line_height(LineHeight::Absolute(60f32.into())),
-                    text(&self.zch_state)
-                        .font(iced::Font::MONOSPACE)
-                        .shaping(Shaping::Advanced),
+
+                    container(
+                        column![
+                        text("Zippychord State:")
+                            .size(32)
+                            .line_height(LineHeight::Absolute(60f32.into())),
+                        text(&self.zch_state)
+                            .font(iced::Font::MONOSPACE)
+                            .shaping(Shaping::Advanced),
+                        ]
+                    )
+                    .height(self.window_size.height / 3.0),
                 ]
             }
             true => {
@@ -128,7 +148,6 @@ impl KanataGui {
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
                     Space::new(0, 30),
-
                     // Container boundary
                     Rule::horizontal(0),
                     Space::new(0, 10),
@@ -143,21 +162,30 @@ impl KanataGui {
         }
     }
 
-    pub(crate) fn update(&mut self, msg: ServerMessage) {
+    pub(crate) fn update(&mut self, msg: Message) -> iced::Task<Message> {
         match msg {
-            ServerMessage::DetailedInfo(info) => {
-                log::debug!("got info!");
-                self.layer_content = info.layer_config;
-                self.active_vkeys = info.active_vkey_names;
-                self.zch_state = info.zippychord_state;
+            Message::ServerMessage(smsg) => match smsg {
+                ServerMessage::DetailedInfo(info) => {
+                    log::debug!("got info!");
+                    self.layer_content = info.layer_config;
+                    self.active_vkeys = info.active_vkey_names;
+                    self.zch_state = info.zippychord_state;
+                    iced::window::get_latest()
+                        .and_then(iced::window::get_size)
+                        .then(|size| iced::Task::done(Message::WindowSize(size)))
+                }
+                ServerMessage::LayerChange { .. }
+                | ServerMessage::LayerNames { .. }
+                | ServerMessage::CurrentLayerInfo { .. }
+                | ServerMessage::ConfigFileReload { .. }
+                | ServerMessage::CurrentLayerName { .. }
+                | ServerMessage::MessagePush { .. }
+                | ServerMessage::Error { .. } => iced::Task::none(),
+            },
+            Message::WindowSize(size) => {
+                self.window_size = size;
+                iced::Task::none()
             }
-            ServerMessage::LayerChange { .. }
-            | ServerMessage::LayerNames { .. }
-            | ServerMessage::CurrentLayerInfo { .. }
-            | ServerMessage::ConfigFileReload { .. }
-            | ServerMessage::CurrentLayerName { .. }
-            | ServerMessage::MessagePush { .. }
-            | ServerMessage::Error { .. } => {}
         }
     }
 }
