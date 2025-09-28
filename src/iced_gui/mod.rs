@@ -83,6 +83,7 @@ impl KanataGui {
         use iced::advanced::text::*;
         match self.zch_state.is_empty() {
             false => {
+                // Zippychord is enabled
                 column![
                     text("Active Layer:")
                         .size(32)
@@ -91,6 +92,8 @@ impl KanataGui {
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
                     Space::new(0, 30),
+
+                    // Container boundary
                     Rule::horizontal(0),
                     Space::new(0, 10),
                     text("Active VKeys:")
@@ -103,6 +106,8 @@ impl KanataGui {
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
                     Space::new(0, 30),
+
+                    // Container boundary
                     Rule::horizontal(0),
                     Space::new(0, 10),
                     text("Zippychord State:")
@@ -114,6 +119,7 @@ impl KanataGui {
                 ]
             }
             true => {
+                // Zippychord is disabled
                 column![
                     text("Active Layer:")
                         .size(32)
@@ -121,6 +127,11 @@ impl KanataGui {
                     text(&self.layer_content)
                         .font(iced::Font::MONOSPACE)
                         .shaping(Shaping::Advanced),
+                    Space::new(0, 30),
+
+                    // Container boundary
+                    Rule::horizontal(0),
+                    Space::new(0, 10),
                     text("Active VKeys:")
                         .size(32)
                         .line_height(LineHeight::Absolute(60f32.into())),
@@ -152,7 +163,7 @@ impl KanataGui {
 }
 
 /// Start up the same Kanata binary as a child process,
-/// expecting that the convention is followed that argv[0]
+/// expecting that the convention is followed that `argv[0]`
 /// is the executable path of Kanata itself.
 /// Passes in only the `--run-gui` and `-p` flags to the child,
 /// which will start up the GUI process, connecting on the specified port.
