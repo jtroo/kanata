@@ -1,8 +1,8 @@
 //! Store the following data for presenting in the GUI:
-//! - characters used in the output, for a mapping of u16->zippy config char
+//! - characters used in the input
+//!   for a mapping of u16->zippy config char
 
 use super::*;
-
 use std::sync::LazyLock;
 
 use itertools::Itertools;

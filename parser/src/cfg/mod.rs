@@ -5,12 +5,15 @@
 //!
 //! If the mapped keys are defined as:
 //!
+//! ```
 //! (defsrc
 //!     esc  1    2    3    4
 //! )
+//! ```
 //!
 //! and the layers are:
 //!
+//! ```
 //! (deflayer one
 //!     _   a    s    d    _
 //! )
@@ -18,23 +21,22 @@
 //! (deflayer two
 //!     _   a    o    e    _
 //! )
+//! ```
 //!
 //! Then the keyberon layers will be as follows:
 //!
 //! (xx means unimportant and _ means transparent)
 //!
+//! ```
 //! layers[0] = { xx, esc, a, s, d, 4, xx... }
 //! layers[1] = { xx, _  , a, s, d, _, xx... }
 //! layers[2] = { xx, esc, a, o, e, 4, xx... }
 //! layers[3] = { xx, _  , a, o, e, _, xx... }
+//! ```
 //!
 //! Note that this example isn't practical, but `(defsrc esc 1 2 3 4)` is used because these keys
 //! are at the beginning of the array. The column index for layers is the numerical value of
 //! the key from `keys::OsCode`.
-//!
-//! In addition, there are two versions of each layer. One version delegates transparent entries to
-//! the key defined in defsrc, while the other keeps them as actually transparent. This is to match
-//! the behaviour in kmonad.
 //!
 //! The specific values in example above applies to Linux, but the same logic applies to Windows.
 
