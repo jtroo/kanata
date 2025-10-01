@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
@@ -94,7 +94,7 @@ impl FromStr for ClientMessage {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DetailedInfo {
     pub layer_config: String,
     pub active_vkey_names: String,

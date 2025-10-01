@@ -8,27 +8,33 @@
 use async_net::TcpStream;
 use futures::io::BufReader;
 use futures::prelude::*;
-use iced::Element;
-use iced::widget::{column, container, pane_grid, text};
+use iced::widget::pane_grid::PaneGrid;
+use iced::widget::{button, column, container, pane_grid, responsive, row, scrollable, text};
+use iced::{Element, Fill};
+
 use kanata_tcp_protocol::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum Message {
     ServerMessage(ServerMessage),
+    Dragged(pane_grid::DragEvent),
+    Resized(pane_grid::ResizeEvent),
+    Maximize(pane_grid::Pane),
+    Restore,
+    Close(pane_grid::Pane),
 }
 
-#[derive(Debug)]
 pub(crate) struct KanataGui {
     panes: pane_grid::State<Pane>,
 }
 
 #[derive(Debug, Clone)]
-enum Pane {
-    LayerPane(String),
-    VkeysPane(String),
-    ZippyPane(String),
+enum PaneContent {
+    Layer(String),
+    Vkeys(String),
+    Zippy(String),
 }
-use Pane::*;
+use PaneContent::*;
 
 impl KanataGui {
     pub(crate) fn start(addr: std::net::SocketAddr) -> iced::Result {
@@ -89,48 +95,56 @@ impl KanataGui {
                 )
             })
             .run_with(|| {
-                let (mut panes, first_pane) = pane_grid::State::new(LayerPane("".into()));
-                let _ = panes.split(pane_grid::Axis::Vertical, first_pane, ZippyPane("".into()));
-                let _ = panes.split(pane_grid::Axis::Horizontal, first_pane, VkeysPane("".into()));
+                let (mut panes, first_pane) = pane_grid::State::new(Pane::new(
+                    "Active Layer Configuration",
+                    Layer("".into()),
+                ));
+                let _ = panes.split(
+                    pane_grid::Axis::Vertical,
+                    first_pane,
+                    Pane::new("Zippychord", Zippy("".into())),
+                );
+                let _ = panes.split(
+                    pane_grid::Axis::Horizontal,
+                    first_pane,
+                    Pane::new("Virtual Keys Active", Vkeys("".into())),
+                );
                 (Self { panes }, iced::Task::none())
             })
     }
 
     pub(crate) fn view(&self) -> Element<'_, Message> {
-        use iced::advanced::text::*;
-        pane_grid(&self.panes, |_pane, pane_type, _is_maximized| {
-            pane_grid::Content::new(match pane_type {
-                LayerPane(l) => container(column![
-                    text("Active Layer:")
-                        .size(18)
-                        .line_height(LineHeight::Absolute(32f32.into())),
-                    text(l)
-                        .font(iced::Font::MONOSPACE)
-                        .shaping(Shaping::Advanced),
-                ]),
+        let total_panes = self.panes.len();
 
-                VkeysPane(v) => container(column![
-                    text("Active VKeys:")
-                        .size(18)
-                        .line_height(LineHeight::Absolute(32f32.into())),
-                    text(match v.is_empty() {
-                        false => v,
-                        true => "No active virtual keys",
-                    })
-                    .font(iced::Font::MONOSPACE)
-                    .shaping(Shaping::Advanced),
-                ]),
+        let pane_grid = PaneGrid::new(&self.panes, |id, pane, is_maximized| {
+            let title = row![text(&pane.name),].spacing(5);
 
-                ZippyPane(z) => container(column![
-                    text("Zippychord State:")
-                        .size(18)
-                        .line_height(LineHeight::Absolute(32f32.into())),
-                    text(z)
-                        .font(iced::Font::MONOSPACE)
-                        .shaping(Shaping::Advanced),
-                ]),
-            })
-        }).into()
+            let title_bar = pane_grid::TitleBar::new(title)
+                .controls(pane_grid::Controls::dynamic(
+                    view_controls(id, total_panes, is_maximized),
+                    button(text("X").size(14))
+                        .style(button::danger)
+                        .padding(3)
+                        .on_press(Message::Close(id)),
+                ))
+                .padding(10)
+                .style(style::title_bar_active);
+
+            pane_grid::Content::new(responsive(move |_size| view_content(&pane.pane_content)))
+                .title_bar(title_bar)
+                .style(style::pane_active)
+        })
+        .width(Fill)
+        .height(Fill)
+        .spacing(10)
+        .on_drag(Message::Dragged)
+        .on_resize(10, Message::Resized);
+
+        container(pane_grid)
+            .width(Fill)
+            .height(Fill)
+            .padding(10)
+            .into()
     }
 
     pub(crate) fn update(&mut self, msg: Message) {
@@ -139,12 +153,12 @@ impl KanataGui {
                 ServerMessage::DetailedInfo(info) => {
                     log::debug!("got info!");
                     for pane in self.panes.panes.values_mut() {
-                        match pane {
-                            LayerPane(l) => l.replace_range(.., &info.layer_config),
-                            VkeysPane(v) => v.replace_range(.., &info.active_vkey_names),
-                            ZippyPane(z) => z.replace_range(.., &info.zippychord_state),
+                        match &mut pane.pane_content {
+                            Layer(l) => l.replace_range(.., &info.layer_config),
+                            Vkeys(v) => v.replace_range(.., &info.active_vkey_names),
+                            Zippy(z) => z.replace_range(.., &info.zippychord_state),
                         }
-                    };
+                    }
                 }
                 ServerMessage::LayerChange { .. }
                 | ServerMessage::LayerNames { .. }
@@ -152,8 +166,20 @@ impl KanataGui {
                 | ServerMessage::ConfigFileReload { .. }
                 | ServerMessage::CurrentLayerName { .. }
                 | ServerMessage::MessagePush { .. }
-                | ServerMessage::Error { .. } => {},
+                | ServerMessage::Error { .. } => {}
             },
+            Message::Resized(pane_grid::ResizeEvent { split, ratio }) => {
+                self.panes.resize(split, ratio);
+            }
+            Message::Dragged(pane_grid::DragEvent::Dropped { pane, target }) => {
+                self.panes.drop(pane, target);
+            }
+            Message::Dragged(_) => {}
+            Message::Maximize(pane) => self.panes.maximize(pane),
+            Message::Restore => {
+                self.panes.restore();
+            }
+            Message::Close(_pane) => {}
         }
     }
 }
@@ -171,5 +197,104 @@ pub(crate) fn spawn_child_gui_process(p_flag: &str) {
         .spawn()
     {
         log::error!("failed to spawn GUI: {e}");
+    }
+}
+
+#[derive(Clone)]
+struct Pane {
+    name: String,
+    pane_content: PaneContent,
+}
+
+impl Pane {
+    fn new(name: &str, pane_content: PaneContent) -> Self {
+        Self {
+            name: name.into(),
+            pane_content,
+        }
+    }
+}
+
+fn view_content<'a>(pane_content: &'a PaneContent) -> Element<'a, Message> {
+    let content = match pane_content {
+        Layer(l) => column![
+            text(l)
+                .font(iced::Font::MONOSPACE)
+                .shaping(text::Shaping::Advanced),
+        ],
+
+        Vkeys(v) => column![
+            text(match v.is_empty() {
+                false => v,
+                true => "No active virtual keys",
+            })
+            .font(iced::Font::MONOSPACE)
+            .shaping(text::Shaping::Advanced),
+        ],
+
+        Zippy(z) => column![
+            text(z)
+                .font(iced::Font::MONOSPACE)
+                .shaping(text::Shaping::Advanced),
+        ],
+    };
+
+    container(scrollable(content)).padding(5).into()
+}
+
+fn view_controls<'a>(
+    pane: pane_grid::Pane,
+    total_panes: usize,
+    is_maximized: bool,
+) -> Element<'a, Message> {
+    let row = row![].spacing(5).push_maybe(if total_panes > 1 {
+        let (content, message) = if is_maximized {
+            ("Restore", Message::Restore)
+        } else {
+            ("Maximize", Message::Maximize(pane))
+        };
+
+        Some(
+            button(text(content).size(14))
+                .style(button::secondary)
+                .padding(3)
+                .on_press(message),
+        )
+    } else {
+        None
+    });
+
+    let close = button(text("Close").size(14))
+        .style(button::danger)
+        .padding(3)
+        .on_press(Message::Close(pane));
+
+    row.push(close).into()
+}
+
+mod style {
+    use iced::widget::container;
+    use iced::{Border, Theme};
+
+    pub fn title_bar_active(theme: &Theme) -> container::Style {
+        let palette = theme.extended_palette();
+
+        container::Style {
+            background: Some(palette.background.weak.color.into()),
+            ..Default::default()
+        }
+    }
+
+    pub fn pane_active(theme: &Theme) -> container::Style {
+        let palette = theme.extended_palette();
+
+        container::Style {
+            border: Border {
+                width: 2.0,
+                color: palette.background.strong.color,
+                ..Border::default()
+            },
+            ..Default::default()
+        }
     }
 }
