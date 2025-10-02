@@ -56,6 +56,7 @@ mod cli {
         )])
         .expect("logger can init");
 
+        #[cfg(feature = "tcp_server")]
         let tcp_server_address = {
             #[cfg(not(feature = "iced_gui"))]
             {

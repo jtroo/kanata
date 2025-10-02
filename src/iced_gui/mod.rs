@@ -179,7 +179,9 @@ impl KanataGui {
             Message::Restore => {
                 self.panes.restore();
             }
-            Message::Close(_pane) => {}
+            Message::Close(pane) => {
+                self.panes.close(pane);
+            }
         }
     }
 }

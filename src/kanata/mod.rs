@@ -918,6 +918,7 @@ impl Kanata {
                 break;
             }
         }
+        #[cfg(feature = "iced_gui")]
         self.tick_iced_gui_ms(ms_elapsed as u16, tx);
         Ok(())
     }
@@ -1134,7 +1135,7 @@ impl Kanata {
     /// Updates self.cur_keys.
     ///
     /// Returns whether live reload was requested.
-    fn handle_keystate_changes(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
+    fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
         let mut live_reload_requested = false;
@@ -1551,10 +1552,10 @@ impl Kanata {
                         CustomAction::PushMessage(_message) => {
                             log::debug!("Action push-msg");
                             #[cfg(feature = "tcp_server")]
-                            if let Some(tx) = tx {
+                            if let Some(_tx) = _tx {
                                 let message = simple_sexpr_to_json_array(_message);
                                 log::debug!("Action push-msg message: {}", message);
-                                match tx.try_send(ServerMessage::MessagePush { message }) {
+                                match _tx.try_send(ServerMessage::MessagePush { message }) {
                                     Ok(_) => {}
                                     Err(error) => {
                                         log::error!(
