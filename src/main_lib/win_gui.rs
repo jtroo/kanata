@@ -132,8 +132,32 @@ fn cli_init() -> Result<ValidatedArgs> {
     Ok(ValidatedArgs {
         paths: cfg_paths,
         #[cfg(feature = "tcp_server")]
-        tcp_server_address: args.tcp_server_address,
+        tcp_server_address: {
+            #[cfg(not(feature = "iced_gui"))]
+            {
+                args.tcp_server_address
+            }
+            #[cfg(feature = "iced_gui")]
+            {
+                // If TCP port is unset, need to use a default port because the GUI relies on TCP
+                // communication between parent kanata processing and child kanata gui.
+                use std::str::FromStr;
+                let addr = match args.tcp_server_address {
+                    Some(ref a) => a.clone(),
+                    None => SocketAddrWrapper::from_str("127.0.0.1:13776").unwrap(),
+                };
+                if args.run_gui {
+                    crate::iced_gui::KanataGui::start(addr.clone().into_inner()).unwrap();
+                    std::process::exit(0);
+                } else {
+                    Some(addr)
+                }
+            }
+        },
+
         nodelay: args.nodelay,
+        #[cfg(feature = "iced_gui")]
+        run_gui: args.run_gui,
     })
 }
 
@@ -160,22 +184,24 @@ fn main_impl() -> Result<()> {
 
     let (tx, rx) = std::sync::mpsc::sync_channel(100);
 
-    let (server, ntx, nrx) = if let Some(address) = {
+    let address = {
         #[cfg(feature = "tcp_server")]
         {
-            args.tcp_server_address
+            args.tcp_server_address.clone()
         }
         #[cfg(not(feature = "tcp_server"))]
         {
             None::<SocketAddrWrapper>
         }
-    } {
-        let mut server = TcpServer::new(address.into_inner(), tx.clone());
-        server.start(kanata_arc.clone());
-        let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
-        (Some(server), Some(ntx), Some(nrx))
-    } else {
-        (None, None, None)
+    };
+    let (server, ntx, nrx) = match address {
+        Some(address) => {
+            let mut server = TcpServer::new(address.into_inner(), tx.clone());
+            server.start(kanata_arc.clone());
+            let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
+            (Some(server), Some(ntx), Some(nrx))
+        }
+        None => (None, None, None),
     };
 
     native_windows_gui::init().context("Failed to init Native Windows GUI")?;
@@ -203,9 +229,17 @@ fn main_impl() -> Result<()> {
         Kanata::start_notification_loop(
             nrx,
             server.connections,
+            #[cfg(feature = "iced_gui")]
             server.subscribed_to_detailed_info,
         );
     }
+
+    #[cfg(feature = "iced_gui")]
+    crate::iced_gui::spawn_child_gui_process(
+        args.tcp_server_address
+            .expect("iced gui uses TCP always")
+            .get_unparsed(),
+    );
 
     Kanata::event_loop(kanata_arc, tx, ui)?;
 

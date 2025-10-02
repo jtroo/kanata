@@ -23,6 +23,8 @@ pub struct ValidatedArgs {
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
+    #[cfg(all(feature = "iced_gui", feature = "gui"))]
+    pub run_gui: bool,
 }
 
 pub fn default_cfg() -> Vec<PathBuf> {
