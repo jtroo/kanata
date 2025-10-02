@@ -5,7 +5,7 @@
 //!
 //! If the mapped keys are defined as:
 //!
-//! ```
+//! ```text
 //! (defsrc
 //!     esc  1    2    3    4
 //! )
@@ -13,7 +13,7 @@
 //!
 //! and the layers are:
 //!
-//! ```
+//! ```text
 //! (deflayer one
 //!     _   a    s    d    _
 //! )
@@ -27,7 +27,7 @@
 //!
 //! (xx means unimportant and _ means transparent)
 //!
-//! ```
+//! ```text
 //! layers[0] = { xx, esc, a, s, d, 4, xx... }
 //! layers[1] = { xx, _  , a, s, d, _, xx... }
 //! layers[2] = { xx, esc, a, o, e, 4, xx... }
