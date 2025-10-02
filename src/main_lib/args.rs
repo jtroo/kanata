@@ -9,10 +9,10 @@ use std::path::PathBuf;
 ///
 /// kanata remaps key presses to other keys or complex actions depending on the
 /// configuration for that key. You can find the guide for creating a config
-/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
+/// file here: <https://github.com/jtroo/kanata/blob/main/docs/config.adoc>
 ///
 /// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository: https://github.com/jtroo/kanata
+/// the kanata repository: <https://github.com/jtroo/kanata>
 pub struct Args {
     // Display different platform specific paths based on the target OS
     #[cfg_attr(
@@ -105,4 +105,12 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     pub log_layer_changes: bool,
+
+    /// Start up the process in GUI mode and does not run the Kanata processing.
+    /// You likely don't want to be using this;
+    /// it is typically used internally by the main Kanata process
+    /// to spawn the child GUI process.
+    #[cfg(feature = "iced_gui")]
+    #[arg(long)]
+    pub run_gui: bool,
 }

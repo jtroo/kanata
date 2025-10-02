@@ -1,3 +1,6 @@
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
+
 use super::*;
 
 use kanata_parser::subset::GetOrIsSubsetOfKnownKey::*;
