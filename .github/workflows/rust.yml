@@ -75,6 +75,11 @@ jobs:
     - name: Run clippy for parser with lsp feature
       run: cargo clippy -p kanata-parser --features=lsp -- -D warnings
 
+    - name: Run tests iced_gui
+      run: cargo test --all --features=cmd,iced_gui
+    - name: Run clippy iced_gui
+      run: cargo clippy --all --features=cmd,iced_gui -- -D warnings
+
   build-test-clippy-windows:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -127,6 +132,11 @@ jobs:
     - name: Check gui+cmd+interception
       run: cargo check --features gui,cmd,interception_driver
 
+    - name: Run tests iced_gui
+      run: cargo test --all --features=cmd,iced_gui
+    - name: Run clippy iced_gui
+      run: cargo clippy --all --features=cmd,iced_gui -- -D warnings
+
   build-test-clippy-macos:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -153,3 +163,9 @@ jobs:
       run: cargo test --all --features=cmd
     - name: Run clippy all features
       run: cargo clippy --all --features=cmd -- -D warnings
+
+    - name: Run tests iced_gui
+      run: cargo test --all --features=cmd,iced_gui
+    - name: Run clippy iced_gui
+      run: cargo clippy --all --features=cmd,iced_gui -- -D warnings
+
