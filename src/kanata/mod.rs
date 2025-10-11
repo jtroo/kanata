@@ -38,6 +38,11 @@ use clipboard::*;
 mod dynamic_macro;
 use dynamic_macro::*;
 
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
+#[cfg(feature = "iced_gui")]
+use iced_gui::*;
+
 mod key_repeat;
 
 mod millisecond_counting;
@@ -45,6 +50,8 @@ pub use millisecond_counting::*;
 
 mod sequences;
 use sequences::*;
+
+mod tcp;
 
 pub mod cfg_forced;
 use cfg_forced::*;
@@ -245,6 +252,9 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
+    #[cfg(feature = "iced_gui")]
+    /// Inverted mapping for the above.
+    pub virtual_keys_by_idx: HashMap<usize, String>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub switch_max_key_timing: u16,
     #[cfg(feature = "tcp_server")]
@@ -265,6 +275,8 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    #[cfg(feature = "iced_gui")]
+    iced_gui_state: IcedGuiState,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -474,6 +486,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "iced_gui")]
+            virtual_keys_by_idx: cfg.fake_keys.iter().map(|(k, v)| (*v, k.clone())).collect(),
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -490,6 +504,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: Default::default(),
         })
     }
 
@@ -620,6 +636,8 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
+            #[cfg(feature = "iced_gui")]
+            virtual_keys_by_idx: cfg.fake_keys.iter().map(|(k, v)| (*v, k.clone())).collect(),
             #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
@@ -636,6 +654,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "iced_gui")]
+            iced_gui_state: Default::default(),
         })
     }
 
@@ -873,10 +893,10 @@ impl Kanata {
         Ok(ms_elapsed as u16)
     }
 
-    pub fn tick_ms(&mut self, ms_elapsed: u128, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    pub fn tick_ms(&mut self, ms_elapsed: u128, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let mut extra_ticks: u16 = 0;
         for _ in 0..ms_elapsed {
-            self.tick_states(_tx)?;
+            self.tick_states(tx)?;
             if let Some(event) = tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -887,7 +907,7 @@ impl Kanata {
             }
         }
         for i in 0..(extra_ticks.saturating_sub(ms_elapsed as u16)) {
-            self.tick_states(_tx)?;
+            self.tick_states(tx)?;
             if tick_replay_state(
                 &mut self.dynamic_macro_replay_state,
                 self.dynamic_macro_replay_behaviour,
@@ -898,6 +918,8 @@ impl Kanata {
                 break;
             }
         }
+        #[cfg(feature = "iced_gui")]
+        self.tick_iced_gui_ms(ms_elapsed as u16, tx);
         Ok(())
     }
 
@@ -918,8 +940,8 @@ impl Kanata {
         });
     }
 
-    fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
-        self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
+    fn tick_states(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        self.live_reload_requested |= self.handle_keystate_changes(tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -1530,10 +1552,10 @@ impl Kanata {
                         CustomAction::PushMessage(_message) => {
                             log::debug!("Action push-msg");
                             #[cfg(feature = "tcp_server")]
-                            if let Some(tx) = _tx {
+                            if let Some(_tx) = _tx {
                                 let message = simple_sexpr_to_json_array(_message);
                                 log::debug!("Action push-msg message: {}", message);
-                                match tx.try_send(ServerMessage::MessagePush { message }) {
+                                match _tx.try_send(ServerMessage::MessagePush { message }) {
                                     Ok(_) => {}
                                     Err(error) => {
                                         log::error!(
@@ -2022,55 +2044,6 @@ impl Kanata {
         }
     }
 
-    #[cfg(feature = "tcp_server")]
-    pub fn start_notification_loop(
-        rx: Receiver<ServerMessage>,
-        clients: crate::tcp_server::Connections,
-    ) {
-        use std::io::Write;
-        info!("listening for event notifications to relay to connected clients");
-        std::thread::spawn(move || {
-            loop {
-                match rx.recv() {
-                    Err(_) => {
-                        panic!("channel disconnected")
-                    }
-                    Ok(event) => {
-                        let notification = event.as_bytes();
-                        let mut clients = clients.lock();
-                        let mut stale_clients = vec![];
-                        for (id, client) in &mut *clients {
-                            match client.write_all(&notification) {
-                                Ok(_) => {
-                                    log::debug!("layer change notification sent");
-                                }
-                                Err(e) => {
-                                    log::warn!(
-                                        "removing tcp client where write failed: {id}, {e:?}"
-                                    );
-                                    // the client is no longer connected, let's remove them
-                                    stale_clients.push(id.clone());
-                                }
-                            }
-                        }
-
-                        for id in &stale_clients {
-                            log::warn!("removing disconnected tcp client: {id}");
-                            clients.remove(id);
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    #[cfg(not(feature = "tcp_server"))]
-    pub fn start_notification_loop(
-        _rx: Receiver<ServerMessage>,
-        _clients: crate::tcp_server::Connections,
-    ) {
-    }
-
     /// Starts a new thread that processes OS key events and advances the keyberon layout's state.
     pub fn start_processing_loop(
         kanata: Arc<Mutex<Self>>,
@@ -2120,6 +2093,9 @@ impl Kanata {
                         not(feature = "simulated_input"),
                     ))]
                     kanata.lock().win_synchronize_keystates();
+
+                    #[cfg(feature = "iced_gui")]
+                    kanata.lock().iced_gui_handle_idle(&tx);
 
                     log::trace!("blocking on channel");
                     match rx.recv() {

@@ -1,5 +1,6 @@
-#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
 // disable default console for a Windows GUI app
+#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
+
 mod main_lib;
 
 #[cfg(not(feature = "gui"))]
@@ -15,6 +16,9 @@ use main_lib::args::Args;
 #[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
 
+#[cfg(feature = "iced_gui")]
+mod iced_gui;
+
 #[cfg(not(feature = "gui"))]
 mod cli {
     use super::*;
@@ -28,6 +32,53 @@ mod cli {
             main_lib::list_devices_macos();
             std::process::exit(0);
         }
+
+        let log_lvl = match (args.debug, args.trace, args.quiet) {
+            (_, true, false) => LevelFilter::Trace,
+            (true, false, false) => LevelFilter::Debug,
+            (false, false, false) => LevelFilter::Info,
+            (_, _, true) => LevelFilter::Error,
+        };
+
+        let mut log_cfg = ConfigBuilder::new();
+        if let Err(e) = log_cfg.set_time_offset_to_local() {
+            eprintln!("WARNING: could not set log TZ to local: {e:?}");
+        };
+        log_cfg.set_time_format_custom(format_description!(
+            version = 2,
+            "[hour]:[minute]:[second].[subsecond digits:4]"
+        ));
+        CombinedLogger::init(vec![TermLogger::new(
+            log_lvl,
+            log_cfg.build(),
+            TerminalMode::Mixed,
+            ColorChoice::AlwaysAnsi,
+        )])
+        .expect("logger can init");
+
+        #[cfg(feature = "tcp_server")]
+        let tcp_server_address = {
+            #[cfg(not(feature = "iced_gui"))]
+            {
+                args.tcp_server_address
+            }
+            #[cfg(feature = "iced_gui")]
+            {
+                // If TCP port is unset, need to use a default port because the GUI relies on TCP
+                // communication between parent kanata processing and child kanata gui.
+                use std::str::FromStr;
+                let addr = match args.tcp_server_address {
+                    Some(addr) => addr,
+                    None => SocketAddrWrapper::from_str("127.0.0.1:13776").unwrap(),
+                };
+                if args.run_gui {
+                    iced_gui::KanataGui::start(addr.clone().into_inner()).unwrap();
+                    std::process::exit(0);
+                } else {
+                    Some(addr)
+                }
+            }
+        };
 
         #[cfg(all(target_os = "linux", not(feature = "gui")))]
         if args.list {
@@ -59,29 +110,6 @@ mod cli {
         } else {
             vec![]
         };
-
-        let log_lvl = match (args.debug, args.trace, args.quiet) {
-            (_, true, false) => LevelFilter::Trace,
-            (true, false, false) => LevelFilter::Debug,
-            (false, false, false) => LevelFilter::Info,
-            (_, _, true) => LevelFilter::Error,
-        };
-
-        let mut log_cfg = ConfigBuilder::new();
-        if let Err(e) = log_cfg.set_time_offset_to_local() {
-            eprintln!("WARNING: could not set log TZ to local: {e:?}");
-        };
-        log_cfg.set_time_format_custom(format_description!(
-            version = 2,
-            "[hour]:[minute]:[second].[subsecond digits:4]"
-        ));
-        CombinedLogger::init(vec![TermLogger::new(
-            log_lvl,
-            log_cfg.build(),
-            TerminalMode::Mixed,
-            ColorChoice::AlwaysAnsi,
-        )])
-        .expect("logger can init");
 
         log::info!("kanata v{} starting", env!("CARGO_PKG_VERSION"));
         #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
@@ -140,7 +168,7 @@ mod cli {
             ValidatedArgs {
                 paths: cfg_paths,
                 #[cfg(feature = "tcp_server")]
-                tcp_server_address: args.tcp_server_address,
+                tcp_server_address,
                 #[cfg(target_os = "linux")]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,
@@ -178,14 +206,14 @@ mod cli {
         let (server, ntx, nrx) = if let Some(address) = {
             #[cfg(feature = "tcp_server")]
             {
-                args.tcp_server_address
+                &args.tcp_server_address
             }
             #[cfg(not(feature = "tcp_server"))]
             {
-                None::<SocketAddrWrapper>
+                &None::<SocketAddrWrapper>
             }
         } {
-            let mut server = TcpServer::new(address.into_inner(), tx.clone());
+            let mut server = TcpServer::new(address.clone().into_inner(), tx.clone());
             server.start(kanata_arc.clone());
             let (ntx, nrx) = std::sync::mpsc::sync_channel(100);
             (Some(server), Some(ntx), Some(nrx))
@@ -197,11 +225,23 @@ mod cli {
 
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]
-            Kanata::start_notification_loop(nrx, server.connections);
+            Kanata::start_notification_loop(
+                nrx,
+                server.connections,
+                #[cfg(feature = "iced_gui")]
+                server.subscribed_to_detailed_info,
+            );
         }
 
         #[cfg(target_os = "linux")]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
+
+        #[cfg(feature = "iced_gui")]
+        iced_gui::spawn_child_gui_process(
+            args.tcp_server_address
+                .expect("iced gui uses TCP always")
+                .get_unparsed(),
+        );
 
         Kanata::event_loop(kanata_arc, tx)
     }

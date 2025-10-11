@@ -164,7 +164,7 @@ fn add_default_str_osc_mappings(mapping: &mut HashMap<String, OsCode>) {
 /// Convert a `&str` to an `OsCode`.
 ///
 /// kmonad's str to key mapping is found here as a reference:
-/// https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs
+/// <https://github.com/kmonad/kmonad/blob/master/src/KMonad/Keyboard/Keycode.hs>
 ///
 /// Do your best to keep the str side a maximum character length of 4 so that configuration file
 /// can stay clean.
