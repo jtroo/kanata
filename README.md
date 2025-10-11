@@ -169,7 +169,12 @@ cargo install --features cmd,interception_driver
 
 ## Other installation methods
 
+<details>
+<summary>Repositories for kanata</summary>
+
 [![Packaging status](https://repology.org/badge/vertical-allrepos/kanata.svg)](https://repology.org/project/kanata/versions)
+
+</details>
 
 ## Notable features
 

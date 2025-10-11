@@ -2093,7 +2093,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.10.0-prerelease-1"
+version = "1.10.0-prerelease-2"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-keyberon"
-version = "0.1100.0"
+version = "0.1101.0"
 dependencies = [
  "arraydeque",
  "heapless",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-parser"
-version = "0.1100.0"
+version = "0.1101.0"
 dependencies = [
  "anyhow",
  "bitflags 2.9.4",
@@ -2206,7 +2206,7 @@ dependencies = [
 
 [[package]]
 name = "kanata-tcp-protocol"
-version = "0.1100.0"
+version = "0.1101.0"
 dependencies = [
  "serde",
  "serde_derive",
@@ -2227,9 +2227,9 @@ dependencies = [
 
 [[package]]
 name = "karabiner-driverkit"
-version = "0.1.6"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78bdf5f53c01493d3c2c69e29628fd158e0a93907973ed0ee0f9aff21c24c31a"
+checksum = "7348953ebe65644771a0d921902e732bc7ca2f0efc6e6c4209904a538dd8ee7e"
 dependencies = [
  "cc",
  "os_info",

@@ -69,9 +69,13 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtr
 <details>
 <summary>Instructions</summary>
 
-**WARNING**: feature support on macOS [is limited](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc#macos).
+The supported Karabiner driver version in this release is `v6.2.0`.
+
+**WARNING**: macOS does not support mouse as input. The `mbck` and `mfwd` mouse button actions are also not operational.
 
 ### Instructions for macOS 11 and newer
+
+You must use the Karabiner driver version `v6.2.0`.
 
 Please read through this issue comment:
 

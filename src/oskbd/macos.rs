@@ -18,16 +18,12 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
-use libc;
 use objc::runtime::Class;
 use objc::{msg_send, sel, sel_impl};
-use os_pipe::pipe;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::Error;
-use std::io::Read;
-use std::os::unix::io::AsRawFd;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -64,40 +60,6 @@ impl Drop for KbdIn {
     }
 }
 
-pub fn capture_stdout<F>(func: F) -> String
-where
-    F: FnOnce(),
-{
-    // Create a pipe to capture stdout
-    let (mut reader, writer) = pipe().unwrap();
-
-    // Save the original stdout file descriptor
-    let stdout_fd = std::io::stdout().as_raw_fd();
-    let saved_stdout = unsafe { libc::dup(stdout_fd) };
-
-    // Redirect stdout to the pipe's writer
-    unsafe {
-        libc::dup2(writer.as_raw_fd(), stdout_fd);
-    }
-
-    // Close `writer` to prevent `read_to_string` deadlock: https://docs.rs/os_pipe/latest/os_pipe/#common-deadlocks-related-to-pipes
-    drop(writer);
-
-    // Run the provided function
-    func();
-
-    // Restore the original stdout
-    unsafe {
-        libc::dup2(saved_stdout, stdout_fd);
-        libc::close(saved_stdout);
-    }
-
-    // Read all data from the pipe
-    let mut captured_output = String::new();
-    reader.read_to_string(&mut captured_output).unwrap();
-    captured_output
-}
-
 impl KbdIn {
     pub fn new(
         include_names: Option<Vec<String>>,
@@ -109,20 +71,29 @@ impl KbdIn {
             ));
         }
 
-        let device_names = if let Some(names) = include_names {
-            validate_and_register_devices(names)
-        } else if let Some(names) = exclude_names {
-            // TODO: filter include_names when both exclude_names and include_names are present
-            let kb_list = capture_stdout(list_keyboards);
-            let names_: Vec<String> = kb_list
-                .split("\n")
-                .filter(|kb| {
-                    let kb_trimmed = kb.trim();
-                    !kb_trimmed.is_empty() && !names.contains(&kb_trimmed.to_string())
+        // Based on the definition of include and exclude names, they should never be used together.
+        // Kanata config parser should probably enforce this.
+        let device_names = if let Some(included_names) = include_names {
+            validate_and_register_devices(included_names)
+        } else if let Some(excluded_names) = exclude_names {
+            // get all devices
+            let kb_list = fetch_devices();
+
+            // filter out excluded devices
+            let devices_to_include = kb_list
+                .iter()
+                .filter(|k| !excluded_names.iter().any(|n| *k == n.as_str()))
+                .map(|k| {
+                    if k.product_key.trim().is_empty() {
+                        format!("{:x}", k.hash)
+                    } else {
+                        k.product_key.clone()
+                    }
                 })
-                .map(|kb| kb.trim().to_string())
-                .collect();
-            validate_and_register_devices(names_)
+                .collect::<Vec<String>>();
+
+            // register the remeining devices
+            validate_and_register_devices(devices_to_include)
         } else {
             vec![]
         };
@@ -164,10 +135,16 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
                 return None;
             }
 
+            // Also skip the Karabiner device
+            // driverkit already prevents registering it, but this avoids unnecessary warnings
+            if dev.to_lowercase().contains("karabiner") {
+                return None;
+            }
+
             match device_matches(dev) {
                 true => Some(dev.to_string()),
                 false => {
-                    log::warn!("Not a valid device name '{dev}'");
+                    log::warn!("'{dev}' doesn't match any connected device");
                     None
                 }
             }
