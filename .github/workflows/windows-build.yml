@@ -9,7 +9,7 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build-windows:
+  build-windows-x64:
     runs-on: windows-latest
 
     steps:
@@ -18,16 +18,39 @@ jobs:
         with:
           shared-key: "persist-cross-job"
       - name: Build x64
-        shell: bash
+        shell: powershell
         run: |
-          mkdir -p artifacts
-          cargo build --release --target x86_64-pc-windows-msvc
-          move target\release\kanata.exe artifacts\kanata_windows_x64.exe
-          cargo build --release --features cmd --target x86_64-pc-windows-msvc
-          move target\release\kanata.exe artifacts\kanata_windows_cmd_allowed_x64.exe
+          md artifacts
+          cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_x64.exe
+          cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes,cmd --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_cmd_allowed_x64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows-binaries-x64
           path: |
-            artifacts/kanata_windows_x64.exe
-            artifacts/kanata_windows_cmd_allowed_x64.exe
+            artifacts/kanata_windows_winIOv2_x64.exe
+            artifacts/kanata_windows_winIOv2_cmd_allowed_x64.exe
+
+  build-windows-arm64:
+    runs-on: windows-11-arm
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "persist-cross-job"
+      - name: Build arm64
+        shell: powershell
+        run: |
+          md artifacts
+          cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes --target aarch64-pc-windows-msvc
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_arm64.exe
+          cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes,cmd --target aarch64-pc-windows-msvc
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_cmd_allowed_arm64.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries-arm64
+          path: |
+            artifacts/kanata_windows_winIOv2_arm64.exe
+            artifacts/kanata_windows_winIOv2_cmd_allowed_arm64.exe
