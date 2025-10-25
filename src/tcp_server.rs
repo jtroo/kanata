@@ -41,6 +41,9 @@ fn send_response(
     true
 }
 
+#[cfg(feature = "iced_gui")]
+pub type SubscribedToDetailedInfo = Arc<Mutex<rustc_hash::FxHashSet<String>>>;
+
 #[cfg(feature = "tcp_server")]
 fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
     match val {
@@ -56,6 +59,8 @@ pub struct TcpServer {
     pub address: SocketAddr,
     pub connections: Connections,
     pub wakeup_channel: Sender<KeyEvent>,
+    #[cfg(feature = "iced_gui")]
+    pub subscribed_to_detailed_info: SubscribedToDetailedInfo,
 }
 
 #[cfg(not(feature = "tcp_server"))]
@@ -70,6 +75,8 @@ impl TcpServer {
             address,
             connections: Arc::new(Mutex::new(HashMap::default())),
             wakeup_channel,
+            #[cfg(feature = "iced_gui")]
+            subscribed_to_detailed_info: Default::default(),
         }
     }
 
@@ -88,6 +95,8 @@ impl TcpServer {
 
         let connections = self.connections.clone();
         let wakeup_channel = self.wakeup_channel.clone();
+        #[cfg(feature = "iced_gui")]
+        let subscribed_to_detailed_info = self.subscribed_to_detailed_info.clone();
 
         std::thread::spawn(move || {
             for stream in listener.incoming() {
@@ -126,11 +135,13 @@ impl TcpServer {
                         )
                         .into_iter::<ClientMessage>();
 
-                        log::info!("listening for incoming messages {addr}");
+                        log::info!("listening for incoming messages {}", &addr);
 
                         let connections = connections.clone();
                         let kanata = kanata.clone();
                         let wakeup_channel = wakeup_channel.clone();
+                        #[cfg(feature = "iced_gui")]
+                        let subscribed_to_detailed_info = subscribed_to_detailed_info.clone();
                         std::thread::spawn(move || {
                             for v in reader {
                                 match v {
@@ -210,6 +221,23 @@ impl TcpServer {
                                                         // such as sending an error response to
                                                         // the client
                                                     }
+                                                }
+                                            }
+                                            ClientMessage::SubscribeToDetailedInfo => {
+                                                let msg = if cfg!(feature = "iced_gui") {
+                                                    ServerResponse::Ok
+                                                } else {
+                                                    ServerResponse::Error { msg: "This binary is not compiled with iced_gui feature, SubscribeToDetailedInfo is unsupported.".into() }
+                                                };
+                                                #[cfg(feature = "iced_gui")]
+                                                subscribed_to_detailed_info
+                                                    .lock()
+                                                    .insert(addr.clone());
+                                                match stream.write_all(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to SubscribeToDetailedInfo: {err}"
+                                                    ),
                                                 }
                                             }
                                             ClientMessage::RequestCurrentLayerInfo {} => {

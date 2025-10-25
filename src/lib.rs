@@ -23,6 +23,8 @@ pub struct ValidatedArgs {
     #[cfg(target_os = "linux")]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
+    #[cfg(all(feature = "iced_gui", feature = "gui"))]
+    pub run_gui: bool,
 }
 
 pub fn default_cfg() -> Vec<PathBuf> {
@@ -44,7 +46,7 @@ pub fn default_cfg() -> Vec<PathBuf> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SocketAddrWrapper(SocketAddr);
+pub struct SocketAddrWrapper(SocketAddr, String);
 
 impl FromStr for SocketAddrWrapper {
     type Err = Error;
@@ -56,7 +58,7 @@ impl FromStr for SocketAddrWrapper {
         }
         address
             .parse::<SocketAddr>()
-            .map(SocketAddrWrapper)
+            .map(|sa| SocketAddrWrapper(sa, s.to_owned()))
             .map_err(|e| anyhow!("Please specify either a port number, e.g. 8081 or an address, e.g. 127.0.0.1:8081.\n{e}"))
     }
 }
@@ -67,5 +69,8 @@ impl SocketAddrWrapper {
     }
     pub fn get_ref(&self) -> &SocketAddr {
         &self.0
+    }
+    pub fn get_unparsed(&self) -> &str {
+        &self.1
     }
 }

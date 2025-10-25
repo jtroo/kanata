@@ -331,7 +331,7 @@ fn get_icon_p_impl(
                                 continue 'p;
                             }
                         } else {
-                            debug!("✓ found icon file: {}", icon_file.display().to_string());
+                            debug!("✓ found icon file: {}", icon_file.display());
                             return Some(icon_file.display().to_string());
                         }
                     }
@@ -1222,7 +1222,7 @@ impl SystemTray {
             } else {
                 info!(
                     "no icon found, using default for config: {}",
-                    path_cur_cc.display().to_string()
+                    path_cur_cc.display()
                 );
                 self.tray.set_icon(&self.icon);
                 *icon_act_key = Some(path_cur_cc);
@@ -1245,7 +1245,7 @@ impl SystemTray {
                 if let Ok(icn) = self.get_icon_from_file(ico_p) {
                     info!(
                         "✓ Using an icon from this config: {}",
-                        path_cur_cc.display().to_string()
+                        path_cur_cc.display()
                     );
                     self.tray.set_icon(&icn.icon);
                     if !skip_tt {
@@ -1256,7 +1256,7 @@ impl SystemTray {
                 } else {
                     warn!(
                         "✗ Invalid icon file \"{cfg_icon_p}\" from this config: {}",
-                        cfg_layer_pkey.display().to_string()
+                        cfg_layer_pkey.display()
                     );
                     let _ = img_dyn.insert(cfg_layer_pkey.clone(), None);
                     *icon_act_key = Some(cfg_layer_pkey);
@@ -1266,7 +1266,7 @@ impl SystemTray {
             } else {
                 warn!(
                     "✗ Invalid icon path \"{cfg_icon_p}\" from this config: {}",
-                    cfg_layer_pkey.display().to_string()
+                    cfg_layer_pkey.display()
                 );
                 let _ = img_dyn.insert(cfg_layer_pkey.clone(), None);
                 *icon_act_key = Some(cfg_layer_pkey);

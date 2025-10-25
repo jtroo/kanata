@@ -30,6 +30,10 @@
 //!   -> chord: (space a)
 //!   -> output: "Washington"
 //!   -> note: do observe the two spaces between 'w' and 'a'
+
+#[cfg(feature = "iced_gui")]
+pub mod iced_gui;
+
 use super::*;
 use crate::bail_expr;
 
@@ -150,6 +154,8 @@ mod inner {
     pub struct ZchChordOutput {
         pub zch_output: Box<[ZchOutput]>,
         pub zch_followups: Option<Arc<Mutex<ZchPossibleChords>>>,
+        #[cfg(feature = "iced_gui")]
+        pub zch_config_line: String,
     }
 
     /// Zch output can be uppercase, lowercase, altgr, and shift-altgr characters.
@@ -564,6 +570,9 @@ mod inner {
             config.zch_cfg_smart_space_punctuation.shrink_to_fit();
         }
 
+        #[cfg(feature = "iced_gui")]
+        iced_gui::reset_uncommitted_mappings();
+
         // process zippy file
         let input_data = f
             .get_file_content(file_name.as_ref())
@@ -660,6 +669,8 @@ mod inner {
                                         line_number + 1
                                     )
                                 })?;
+                                #[cfg(feature = "iced_gui")]
+                                iced_gui::add_uncommitted_mapping(osc.into(), chord_char);
                                 input_chord.zchik_insert(osc);
                                 Ok(())
                             })?;
@@ -682,6 +693,8 @@ mod inner {
                                     Arc::new(ZchChordOutput {
                                         zch_output: output,
                                         zch_followups: None,
+                                        #[cfg(feature = "iced_gui")]
+                                        zch_config_line: line.to_owned(),
                                     }),
                                 );
                                 break;
@@ -698,6 +711,8 @@ mod inner {
                                             ZchChordOutput {
                                                 zch_output: next_nested_map.zch_output.clone(),
                                                 zch_followups: Some(map),
+                                                #[cfg(feature = "iced_gui")]
+                                                zch_config_line: line.to_owned(),
                                             }
                                             .into(),
                                         );
@@ -716,6 +731,8 @@ mod inner {
                                     Arc::new(ZchChordOutput {
                                         zch_output: Box::new([]),
                                         zch_followups: Some(map),
+                                        #[cfg(feature = "iced_gui")]
+                                        zch_config_line: line.to_owned(),
                                     }),
                                 );
                             }
@@ -727,6 +744,8 @@ mod inner {
                     Ok(zch)
                 },
             )?;
+        #[cfg(feature = "iced_gui")]
+        iced_gui::commit_mappings();
         Ok((
             Arc::into_inner(res).expect("no other refs").into_inner(),
             config,

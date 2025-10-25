@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     LayerChange { new: String },
     LayerNames { names: Vec<String> },
@@ -10,6 +10,7 @@ pub enum ServerMessage {
     CurrentLayerName { name: String },
     MessagePush { message: serde_json::Value },
     Error { msg: String },
+    DetailedInfo(DetailedInfo),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,6 +26,9 @@ impl ServerResponse {
         msg.push(b'\n');
         msg
     }
+    pub fn deserialize_json(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<Self>(s)
+    }
 }
 
 impl ServerMessage {
@@ -32,6 +36,9 @@ impl ServerMessage {
         let mut msg = serde_json::to_vec(self).expect("ServerMessage should serialize");
         msg.push(b'\n');
         msg
+    }
+    pub fn deserialize_json(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<Self>(s)
     }
 }
 
@@ -51,6 +58,7 @@ pub enum ClientMessage {
         x: u16,
         y: u16,
     },
+    SubscribeToDetailedInfo,
     Reload {},
     ReloadNext {},
     ReloadPrev {},
@@ -60,6 +68,14 @@ pub enum ClientMessage {
     ReloadFile {
         path: String,
     },
+}
+
+impl ClientMessage {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut msg = serde_json::to_vec(self).expect("ClientMessage should serialize");
+        msg.push(b'\n');
+        msg
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -76,6 +92,13 @@ impl FromStr for ClientMessage {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DetailedInfo {
+    pub layer_config: String,
+    pub active_vkey_names: String,
+    pub zippychord_state: String,
 }
 
 #[cfg(test)]
