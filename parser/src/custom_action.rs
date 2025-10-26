@@ -9,6 +9,11 @@ use kanata_keyberon::key_code::KeyCode;
 
 use crate::{cfg::SimpleSExpr, keys::OsCode};
 
+// TODO:
+// Live reload has a memory leak
+// on allocated types in this enum.
+// To fix, the types should be changed to &'static allocation types
+// that are created by calls to `Allocations`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
     Cmd(Vec<String>),
@@ -35,6 +40,7 @@ pub enum CustomAction {
         direction: MWheelDirection,
         interval: u16,
         distance: u16,
+        inertial_scroll_params: Option<Box<MWheelInertial>>,
     },
     MWheelNotch {
         direction: MWheelDirection,
@@ -180,6 +186,14 @@ impl TryFrom<OsCode> for MWheelDirection {
             _ => return Err(()),
         })
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+pub struct MWheelInertial {
+    pub initial_velocity: ordered_float::OrderedFloat<f32>,
+    pub maximum_velocity: ordered_float::OrderedFloat<f32>,
+    pub acceleration_multiplier: ordered_float::OrderedFloat<f32>,
+    pub deceleration_multiplier: ordered_float::OrderedFloat<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

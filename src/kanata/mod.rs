@@ -43,6 +43,9 @@ mod key_repeat;
 mod millisecond_counting;
 pub use millisecond_counting::*;
 
+mod scroll;
+use scroll::*;
+
 mod sequences;
 use sequences::*;
 
@@ -294,13 +297,6 @@ enum ReloadAction {
 #[derive(Clone, Copy)]
 pub struct CalculatedMouseMove {
     pub direction: MoveDirection,
-    pub distance: u16,
-}
-
-pub struct ScrollState {
-    pub direction: MWheelDirection,
-    pub interval: u16,
-    pub ticks_until_scroll: u16,
     pub distance: u16,
 }
 
@@ -939,22 +935,25 @@ impl Kanata {
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
-        if let Some(scroll_state) = &mut self.scroll_state {
-            if scroll_state.ticks_until_scroll == 0 {
-                scroll_state.ticks_until_scroll = scroll_state.interval - 1;
-                self.kbd_out
-                    .scroll(scroll_state.direction, scroll_state.distance)?;
-            } else {
-                scroll_state.ticks_until_scroll -= 1;
+        if let Some((direction, distance)) = update_scrollstate_get_result(&mut self.scroll_state) {
+            match distance {
+                0 => {
+                    self.scroll_state = None;
+                }
+                _ => {
+                    self.kbd_out.scroll(direction, distance)?;
+                }
             }
         }
-        if let Some(hscroll_state) = &mut self.hscroll_state {
-            if hscroll_state.ticks_until_scroll == 0 {
-                hscroll_state.ticks_until_scroll = hscroll_state.interval - 1;
-                self.kbd_out
-                    .scroll(hscroll_state.direction, hscroll_state.distance)?;
-            } else {
-                hscroll_state.ticks_until_scroll -= 1;
+        if let Some((direction, distance)) = update_scrollstate_get_result(&mut self.hscroll_state)
+        {
+            match distance {
+                0 => {
+                    self.hscroll_state = None;
+                }
+                _ => {
+                    self.kbd_out.scroll(direction, distance)?;
+                }
             }
         }
         Ok(())
@@ -1371,6 +1370,7 @@ impl Kanata {
                             direction,
                             interval,
                             distance,
+                            inertial_scroll_params,
                         } => match direction {
                             MWheelDirection::Up | MWheelDirection::Down => {
                                 self.scroll_state = Some(ScrollState {
@@ -1378,6 +1378,15 @@ impl Kanata {
                                     distance: *distance,
                                     ticks_until_scroll: 0,
                                     interval: *interval,
+                                    scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
+                                        ScrollAccelState {
+                                        deceleration_multiplier: isp.deceleration_multiplier.0,
+                                        acceleration_multiplier: isp.acceleration_multiplier.0,
+                                        max_velocity: isp.maximum_velocity.0,
+                                        current_velocity: isp.initial_velocity.0,
+                                        scroll_released: false,
+                                        }
+                                    ),
                                 })
                             }
                             MWheelDirection::Left | MWheelDirection::Right => {
@@ -1386,6 +1395,7 @@ impl Kanata {
                                     distance: *distance,
                                     ticks_until_scroll: 0,
                                     interval: *interval,
+                                    scroll_accel_state: None,
                                 })
                             }
                         },
@@ -1763,17 +1773,23 @@ impl Kanata {
                         CustomAction::MWheel { direction, .. } => {
                             match direction {
                                 MWheelDirection::Up | MWheelDirection::Down => {
-                                    if let Some(ss) = &self.scroll_state
+                                    if let Some(ss) = &mut self.scroll_state
                                         && ss.direction == *direction
                                     {
-                                        self.scroll_state = None;
+                                        ss.distance = 0;
+                                        if let Some(acs) = &mut ss.scroll_accel_state {
+                                            acs.scroll_released = true
+                                        }
                                     }
                                 }
                                 MWheelDirection::Left | MWheelDirection::Right => {
-                                    if let Some(ss) = &self.hscroll_state
+                                    if let Some(ss) = &mut self.hscroll_state
                                         && ss.direction == *direction
                                     {
-                                        self.hscroll_state = None;
+                                        ss.distance = 0;
+                                        if let Some(acs) = &mut ss.scroll_accel_state {
+                                            acs.scroll_released = true
+                                        }
                                     }
                                 }
                             }

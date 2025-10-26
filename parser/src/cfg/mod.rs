@@ -103,6 +103,7 @@ pub use str_ext::*;
 
 use crate::trie::Trie;
 use anyhow::anyhow;
+use ordered_float::OrderedFloat;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -1870,6 +1871,10 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         MWHEEL_DOWN | MWHEEL_DOWN_A => parse_mwheel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_LEFT | MWHEEL_LEFT_A => parse_mwheel(&ac[1..], MWheelDirection::Left, s),
         MWHEEL_RIGHT | MWHEEL_RIGHT_A => parse_mwheel(&ac[1..], MWheelDirection::Right, s),
+        MWHEEL_ACCEL_UP => parse_mwheel_accel(&ac[1..], MWheelDirection::Up, s),
+        MWHEEL_ACCEL_DOWN => parse_mwheel_accel(&ac[1..], MWheelDirection::Down, s),
+        MWHEEL_ACCEL_LEFT => parse_mwheel_accel(&ac[1..], MWheelDirection::Left, s),
+        MWHEEL_ACCEL_RIGHT => parse_mwheel_accel(&ac[1..], MWheelDirection::Right, s),
         MOVEMOUSE_UP | MOVEMOUSE_UP_A => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
         MOVEMOUSE_DOWN | MOVEMOUSE_DOWN_A => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
         MOVEMOUSE_LEFT | MOVEMOUSE_LEFT_A => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
@@ -2181,6 +2186,27 @@ fn parse_u16(expr: &SExpr, s: &ParserState, label: &str) -> Result<u16> {
         .map(str::parse::<u16>)
         .and_then(|u| u.ok())
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 0-65535"))
+}
+
+fn parse_f32(
+    expr: &SExpr,
+    s: &ParserState,
+    label: &str,
+    min: f32,
+    max: f32,
+) -> Result<OrderedFloat<f32>> {
+    expr.atom(s.vars())
+        .map(str::parse::<f32>)
+        .and_then(|u| {
+            u.ok().and_then(|v| {
+                if v >= min && v <= max {
+                    Some(v.into())
+                } else {
+                    None
+                }
+            })
+        })
+        .ok_or_else(|| anyhow_expr!(expr, "{label} must be {min:.2}-{max:.2}"))
 }
 
 // Note on allows:
@@ -3316,6 +3342,39 @@ fn parse_mwheel(
             direction,
             interval,
             distance,
+            inertial_scroll_params: None,
+        },
+    )))))
+}
+
+fn parse_mwheel_accel(
+    ac_params: &[SExpr],
+    direction: MWheelDirection,
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    const ERR_MSG: &str = "mwheel-accel expects 4 float32 parameters:\n\
+                           - initial velocity\n- maximum velocity\n\
+                           - acceleration multiplier\n- deceleration multiplier";
+    if ac_params.len() != 4 {
+        bail!("{ERR_MSG}, found {}", ac_params.len());
+    }
+    let initial_velocity = parse_f32(&ac_params[0], s, "initial velocity", 1.0, 12000.0)?;
+    let maximum_velocity = parse_f32(&ac_params[1], s, "maximum velocity", 1.0, 12000.0)?;
+    let acceleration_multiplier =
+        parse_f32(&ac_params[2], s, "acceleration multiplier", 1.0, 1000.0)?;
+    let deceleration_multiplier =
+        parse_f32(&ac_params[3], s, "deceleration multiplier", 0.0, 0.99)?;
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::MWheel {
+            direction,
+            interval: 16,
+            distance: 1,
+            inertial_scroll_params: Some(Box::new(MWheelInertial {
+                initial_velocity,
+                maximum_velocity,
+                acceleration_multiplier,
+                deceleration_multiplier,
+            })),
         },
     )))))
 }

@@ -1061,6 +1061,19 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   mwl (mwheel-left 50 120)
   mwr (mwheel-right 50 120)
 
+  ;; There are similar wheel actions with `-accel` that have
+  ;; accelerating/inertial scrolling.
+  ;; The parameters are:
+  ;; 1. initial velocity
+  ;; 2. maximum velocity
+  ;; 3. acceleration multiplier
+  ;; 4. deceleration multiplier
+  ;; The units are arbitrary.
+  ;; The author finds the values in the example below
+  ;; to be a decent feeling starting paint.
+  ;; Experiment to find your preference.
+  mal (mwheel-accel-left 3 1200 1.15 0.93)
+
   ;; Mouse movement actions.The first number is the interval in milliseconds
   ;; between mouse actions. The second number is the distance traveled per interval
   ;; in pixels.
