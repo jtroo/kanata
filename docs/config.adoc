@@ -1506,6 +1506,65 @@ only a full "notch" of the scroll wheel will activate the action.
 NOTE: If you are using a high-resolution mouse with Interception,
 you will probably get way more events than you intended.
 
+[[mouse-wheel-inertial]]
+===== Mouse wheel: inertial variants
+
+**Reference**
+
+The `mwheel-accel-*` actions allow you to emulate a mouse wheel,
+with "inertial" properties,
+meaning scroll speed accelerates while active and decelerates when not.
+You can adjust factors of acceleration and deceleration.
+
+.Syntax:
+[source]
+----
+(mwheel-accel-$variant $initial-velocity $maximum-velocity $acceleration-multiplier $deceleration-multiplier)
+----
+
+[cols="2,3"]
+|===
+| `$variant`
+| One of `up down left right` representing the scroll direction to use.
+
+| `$initial-velocity`
+| Starting scroll speed, in arbitrary units.
+Suggested starting point: `3`.
+
+| `$maximum-velocity`
+| Starting scroll speed, in arbitrary units.
+Suggested starting point: `1200`.
+
+| `$acceleration-multiplier`
+| Determines acceleration rate of scroll speed.
+Suggested starting point: `1.15`.
+
+| `deceleration-multiplier`
+| Determines deceleration rate of scroll speed.
+Suggested starting point: `0.93`.
+Setting to 0 will make scroll stop abruptly.
+|===
+
+**Description**
+
+An alternative scrolling action can be used via `mwheel-accel-*`.
+This action has "inertial" behaviour which you may prefer.
+
+The recommended starting point for the parameters are as below:
+
+.Example configuration:
+[source]
+----
+(defvar
+  mw-initial-v 3
+  mw-maximum-v 1200
+  mw-accel 1.15
+  mw-decel 0.93)
+(defalias
+  mwu (mwheel-accel-up   $mw-initial-v $mw-maximum-v $mw-accel $mw-decel)
+  mwd (mwheel-accel-down $mw-initial-v $mw-maximum-v $mw-accel $mw-decel))
+----
+
 [[mouse-movement]]
 ==== Mouse movement
 

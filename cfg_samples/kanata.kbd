@@ -1070,9 +1070,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; 4. deceleration multiplier
   ;; The units are arbitrary.
   ;; The author finds the values in the example below
-  ;; to be a decent feeling starting paint.
+  ;; to be a decent-feeling starting paint.
   ;; Experiment to find your preference.
-  mal (mwheel-accel-left 3 1200 1.15 0.93)
+  mau (mwheel-accel-up   3 1200 1.15 0.93)
+  mad (mwheel-accel-down 3 1200 1.15 0.93)
 
   ;; Mouse movement actions.The first number is the interval in milliseconds
   ;; between mouse actions. The second number is the distance traveled per interval
