@@ -22,15 +22,25 @@ jobs:
         run: |
           md artifacts
           cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes --target x86_64-pc-windows-msvc
-          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_x64.exe
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_x64.exe
           cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes,cmd --target x86_64-pc-windows-msvc
-          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_cmd_allowed_x64.exe
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_cmd_allowed_x64.exe
+          cargo build --release --features win_manifest,interception_driver --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_wintercept_x64.exe
+          cargo build --release --features win_manifest,cmd,interception_driver --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_wintercept_cmd_allowed_x64.exe
+          cargo build --release --features win_manifest,gui --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_x64.exe
+          cargo build --release --features win_manifest,gui,cmd --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_cmd_allowed_x64.exe
+          cargo build --release --features win_manifest,gui,interception_driver --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_wintercept_x64.exe
+          cargo build --release --features win_manifest,gui,cmd,interception_driver --target x86_64-pc-windows-msvc
+          mv target/x86_64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_wintercept_cmd_allowed_x64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows-binaries-x64
-          path: |
-            artifacts/kanata_windows_winIOv2_x64.exe
-            artifacts/kanata_windows_winIOv2_cmd_allowed_x64.exe
+          path: artifacts/*
 
   build-windows-arm64:
     runs-on: windows-11-arm
@@ -45,12 +55,14 @@ jobs:
         run: |
           md artifacts
           cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes --target aarch64-pc-windows-msvc
-          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_arm64.exe
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_arm64.exe
           cargo build --release --features win_manifest,win_sendinput_send_scancodes,win_llhook_read_scancodes,cmd --target aarch64-pc-windows-msvc
-          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_windows_winIOv2_cmd_allowed_arm64.exe
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_tty_cmd_allowed_arm64.exe
+          cargo build --release --features win_manifest,gui --target aarch64-pc-windows-msvc
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_arm64.exe
+          cargo build --release --features win_manifest,gui,cmd --target aarch64-pc-windows-msvc
+          mv target/aarch64-pc-windows-msvc/release/kanata.exe artifacts/kanata_gui_cmd_allowed_arm64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows-binaries-arm64
-          path: |
-            artifacts/kanata_windows_winIOv2_arm64.exe
-            artifacts/kanata_windows_winIOv2_cmd_allowed_arm64.exe
+          path: artifacts/*
