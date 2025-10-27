@@ -71,6 +71,10 @@ pub const MWHEEL_UP_A: &str = "🖱☸↑";
 pub const MWHEEL_DOWN_A: &str = "🖱☸↓";
 pub const MWHEEL_LEFT_A: &str = "🖱☸←";
 pub const MWHEEL_RIGHT_A: &str = "🖱☸→";
+pub const MWHEEL_ACCEL_UP: &str = "mwheel-accel-up";
+pub const MWHEEL_ACCEL_DOWN: &str = "mwheel-accel-down";
+pub const MWHEEL_ACCEL_LEFT: &str = "mwheel-accel-left";
+pub const MWHEEL_ACCEL_RIGHT: &str = "mwheel-accel-right";
 pub const MOVEMOUSE_UP: &str = "movemouse-up";
 pub const MOVEMOUSE_DOWN: &str = "movemouse-down";
 pub const MOVEMOUSE_LEFT: &str = "movemouse-left";
@@ -195,6 +199,10 @@ pub fn is_list_action(ac: &str) -> bool {
         MWHEEL_LEFT_A,
         MWHEEL_RIGHT,
         MWHEEL_RIGHT_A,
+        MWHEEL_ACCEL_UP,
+        MWHEEL_ACCEL_DOWN,
+        MWHEEL_ACCEL_LEFT,
+        MWHEEL_ACCEL_RIGHT,
         MOVEMOUSE_UP,
         MOVEMOUSE_UP_A,
         MOVEMOUSE_DOWN,

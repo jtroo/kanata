@@ -11,6 +11,11 @@ use std::sync::Arc;
 ///
 /// In practice, this is not difficult to do in the `cfg` module which only exposes a single public
 /// method.
+///
+/// To avoid leaks, types transformed to &'static by this struct
+/// should not contain nested allocations,
+/// or if they do, the nested allocations should also
+/// be managed by this struct.
 pub(crate) struct Allocations {
     allocations: Mutex<Vec<Allocation>>,
 }
