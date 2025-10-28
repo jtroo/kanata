@@ -62,7 +62,7 @@ mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::*;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod linux;
 
 #[cfg(target_os = "macos")]
@@ -162,17 +162,17 @@ pub struct Kanata {
     time_remainder: u128,
     /// Is true if a live reload was requested by the user and false otherwise.
     live_reload_requested: bool,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     /// Linux input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     /// Tracks the Linux user configuration to continue or abort if no devices are found.
     continue_if_no_devices: bool,
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "macos"))]
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// included for interception and processing by kanata.
     pub include_names: Option<Vec<String>>,
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "macos"))]
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
@@ -202,10 +202,10 @@ pub struct Kanata {
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
     pub caps_word: Option<CapsWordState>,
     /// Config items from `defcfg`.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub x11_repeat_rate: Option<KeyRepeatSettings>,
     /// Determines what types of devices to grab based on autodetection mode.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub device_detect_mode: DeviceDetectMode,
     /// Fake key actions that are waiting for a certain duration of kanata idling.
     pub waiting_for_idle: HashSet<FakeKeyOnIdle>,
@@ -264,7 +264,7 @@ pub struct Kanata {
     // if set, key taps of this code are sent whenever mouse movement events are passed through
     #[cfg(any(
         all(target_os = "windows", feature = "interception_driver"),
-        target_os = "linux",
+        any(target_os = "linux", target_os = "android"),
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
@@ -335,13 +335,13 @@ impl Kanata {
         };
 
         let kbd_out = match KbdOut::new(
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             &args.symlink_path,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             cfg.options.linux_opts.linux_use_trackpoint_property,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             &cfg.options.linux_opts.linux_output_name,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             match cfg.options.linux_opts.linux_output_bus_type {
                 LinuxCfgOutputBusType::BusUsb => evdev::BusType::BUS_USB,
                 LinuxCfgOutputBusType::BusI8042 => evdev::BusType::BUS_I8042,
@@ -412,13 +412,13 @@ impl Kanata {
             include_names: cfg.options.macos_opts.macos_dev_names_include,
             #[cfg(target_os = "macos")]
             exclude_names: cfg.options.macos_opts.macos_dev_names_exclude,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
@@ -452,9 +452,9 @@ impl Kanata {
             dynamic_macro_replay_behaviour: ReplayBehaviour {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             device_detect_mode: cfg
                 .options
                 .linux_opts
@@ -482,7 +482,7 @@ impl Kanata {
             saved_clipboard_content: Default::default(),
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
-                target_os = "linux",
+                any(target_os = "linux", target_os = "android"),
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
@@ -503,13 +503,13 @@ impl Kanata {
         };
 
         let kbd_out = match KbdOut::new(
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             &None,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             cfg.options.linux_opts.linux_use_trackpoint_property,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             &cfg.options.linux_opts.linux_output_name,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             match cfg.options.linux_opts.linux_output_bus_type {
                 LinuxCfgOutputBusType::BusUsb => evdev::BusType::BUS_USB,
                 LinuxCfgOutputBusType::BusI8042 => evdev::BusType::BUS_I8042,
@@ -558,13 +558,13 @@ impl Kanata {
             include_names: cfg.options.macos_opts.macos_dev_names_include,
             #[cfg(target_os = "macos")]
             exclude_names: cfg.options.macos_opts.macos_dev_names_exclude,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
             windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
@@ -598,9 +598,9 @@ impl Kanata {
             dynamic_macro_replay_behaviour: ReplayBehaviour {
                 delay: cfg.options.dynamic_macro_replay_delay_behaviour,
             },
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             x11_repeat_rate: cfg.options.linux_opts.linux_x11_repeat_delay_rate,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             device_detect_mode: cfg
                 .options
                 .linux_opts
@@ -628,7 +628,7 @@ impl Kanata {
             saved_clipboard_content: Default::default(),
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
-                target_os = "linux",
+                any(target_os = "linux", target_os = "android"),
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
@@ -702,7 +702,7 @@ impl Kanata {
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
@@ -730,7 +730,7 @@ impl Kanata {
 
         #[cfg(any(
             all(target_os = "windows", feature = "interception_driver"),
-            target_os = "linux",
+            any(target_os = "linux", target_os = "android"),
             target_os = "unknown"
         ))]
         {
@@ -2470,7 +2470,7 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     release_normalkey_states(layout);
     k.tick_ms(tick, &None)?;
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     {
         let mut k_pressed = PRESSED_KEYS.lock();
         for key_os in k_pressed.clone() {
@@ -2516,13 +2516,13 @@ fn check_for_exit(_event: &KeyEvent) {
                 // can't stop main thread's dispatch
             }
             #[cfg(all(
-                not(target_os = "linux"),
+                not(any(target_os = "linux", target_os = "android")),
                 not(all(target_os = "windows", feature = "gui"))
             ))]
             {
                 panic!("{EXIT_MSG}");
             }
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             {
                 signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
             }
@@ -2531,7 +2531,7 @@ fn check_for_exit(_event: &KeyEvent) {
 }
 
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
-    #[cfg(all(not(feature = "simulated_output"), target_os = "linux"))]
+    #[cfg(all(not(feature = "simulated_output"), any(target_os = "linux", target_os = "android")))]
     {
         _kbd_out.update_unicode_termination(_cfg.linux_opts.linux_unicode_termination);
         _kbd_out.update_unicode_u_code(_cfg.linux_opts.linux_unicode_u_code);

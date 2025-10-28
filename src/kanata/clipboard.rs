@@ -1,8 +1,8 @@
 use super::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "android")))]
 pub use real::*;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "android")))]
 mod real {
     use super::*;
     use std::sync::LazyLock;
@@ -288,9 +288,9 @@ mod real {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
 pub use fake::*;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
 mod fake {
     #![allow(unused)]
     use super::*;

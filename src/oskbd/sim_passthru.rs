@@ -29,11 +29,11 @@ pub struct KbdOut {
 
 use std::io::{Error as IoErr, ErrorKind::NotConnected};
 impl KbdOut {
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn new(
         _s: &Option<String>,
         _tp: bool,
@@ -42,7 +42,7 @@ impl KbdOut {
     ) -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
         trace!("out-raw:{event:?}");
         Ok(())
