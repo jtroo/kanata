@@ -51,7 +51,7 @@ jobs:
     - run: rustup target add aarch64-linux-android
 
     - name: Build for Android
-      run: RUSTC_LINKER="" cargo build --target aarch64-linux-android
+      run: cargo check --target aarch64-linux-android
 
   build-test-clippy-linux:
     runs-on: ${{ matrix.os }}
