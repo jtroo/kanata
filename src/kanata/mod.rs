@@ -2531,7 +2531,10 @@ fn check_for_exit(_event: &KeyEvent) {
 }
 
 fn update_kbd_out(_cfg: &CfgOptions, _kbd_out: &KbdOut) -> Result<()> {
-    #[cfg(all(not(feature = "simulated_output"), any(target_os = "linux", target_os = "android")))]
+    #[cfg(all(
+        not(feature = "simulated_output"),
+        any(target_os = "linux", target_os = "android")
+    ))]
     {
         _kbd_out.update_unicode_termination(_cfg.linux_opts.linux_unicode_termination);
         _kbd_out.update_unicode_u_code(_cfg.linux_opts.linux_unicode_u_code);

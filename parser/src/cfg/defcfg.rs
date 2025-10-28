@@ -282,7 +282,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             })??;
                     }
                     "linux-dev" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_dev = parse_dev(val)?;
                             if cfg.linux_opts.linux_dev.is_empty() {
@@ -294,7 +297,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-dev-names-include" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let dev_names = parse_dev(val)?;
                             if dev_names.is_empty() {
@@ -304,13 +310,19 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-dev-names-exclude" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             cfg.linux_opts.linux_unicode_u_code = crate::keys::str_to_oscode(v)
@@ -320,7 +332,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-unicode-termination" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             cfg.linux_opts.linux_unicode_termination = match v {
@@ -337,7 +352,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-x11-repeat-delay-rate" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             let delay_rate = v.split(',').collect::<Vec<_>>();
@@ -358,14 +376,20 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-use-trackpoint-property" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_use_trackpoint_property =
                                 parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "linux-output-device-name" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let device_name = sexpr_to_str_or_err(val, label)?;
                             if device_name.is_empty() {
@@ -386,7 +410,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"
                             ),
                         };
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let bus_type = match bus_type {
                                 "USB" => LinuxCfgOutputBusType::BusUsb,
@@ -405,7 +432,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"
                             ),
                         };
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             let detect_mode = Some(match detect_mode {
                                 "any" => DeviceDetectMode::Any,
@@ -802,7 +832,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-continue-if-no-devs-found" => {
-                        #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "unknown"))]
+                        #[cfg(any(
+                            any(target_os = "linux", target_os = "android"),
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_continue_if_no_devs_found =
                                 parse_defcfg_val_bool(val, label)?
@@ -954,7 +987,11 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     all_paths
 }
 
-#[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "macos", target_os = "unknown"))]
+#[cfg(any(
+    any(target_os = "linux", target_os = "android"),
+    target_os = "macos",
+    target_os = "unknown"
+))]
 pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
