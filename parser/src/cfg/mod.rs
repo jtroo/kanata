@@ -409,7 +409,7 @@ const DEF_LOCAL_KEYS: &str = "deflocalkeys-winiov2";
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-wintercept";
 #[cfg(target_os = "macos")]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-macos";
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 const DEF_LOCAL_KEYS: &str = "deflocalkeys-linux";
 
 fn deflocalkeys_variant_applies_to_current_os(variant: &str) -> bool {
@@ -664,7 +664,7 @@ pub fn parse_cfg_raw_string(
         )
     }
     let (mut mapped_keys, mapping_order, _mouse_in_defsrc) = parse_defsrc(src_expr, &cfg)?;
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
     if cfg.linux_opts.linux_device_detect_mode.is_none() {
         cfg.linux_opts.linux_device_detect_mode = Some(match _mouse_in_defsrc {
             MouseInDefsrc::MouseUsed => DeviceDetectMode::Any,

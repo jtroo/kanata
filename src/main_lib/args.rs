@@ -53,14 +53,14 @@ kanata.kbd in the current working directory and
 
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[arg(short, long, verbatim_doc_comment)]
     pub symlink_path: Option<String>,
 
     /// List the keyboards available for grabbing and exit.
     #[cfg(any(
         target_os = "macos",
-        target_os = "linux",
+        any(target_os = "linux", target_os = "android"),
         all(
             target_os = "windows",
             feature = "interception_driver",
@@ -92,7 +92,7 @@ kanata.kbd in the current working directory and
     ///
     /// You may wish to increase this if you have a device that is failing
     /// to register - the device may be taking too long to become ready.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[arg(short, long, verbatim_doc_comment)]
     pub wait_device_ms: Option<u64>,
 

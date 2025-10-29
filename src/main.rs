@@ -29,7 +29,7 @@ mod cli {
             std::process::exit(0);
         }
 
-        #[cfg(all(target_os = "linux", not(feature = "gui")))]
+        #[cfg(all(any(target_os = "linux", target_os = "android"), not(feature = "gui")))]
         if args.list {
             main_lib::list_devices_linux();
             std::process::exit(0);
@@ -125,7 +125,7 @@ mod cli {
             std::process::exit(status);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         if let Some(wait) = args.wait_device_ms {
             use std::sync::atomic::Ordering;
             log::info!("Setting device registration wait time to {wait} ms.");
@@ -141,7 +141,7 @@ mod cli {
                 paths: cfg_paths,
                 #[cfg(feature = "tcp_server")]
                 tcp_server_address: args.tcp_server_address,
-                #[cfg(target_os = "linux")]
+                #[cfg(any(target_os = "linux", target_os = "android"))]
                 symlink_path: args.symlink_path,
                 nodelay: args.nodelay,
             },
@@ -200,7 +200,7 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
         Kanata::event_loop(kanata_arc, tx)

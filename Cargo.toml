@@ -58,7 +58,7 @@ kanata-keyberon = { path = "keyberon", version = "0.1101.0" }
 kanata-parser =   { path = "parser", version = "0.1101.0" }
 kanata-tcp-protocol = { path = "tcp_protocol", version = "0.1101.0" }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
 arboard = "3.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -69,7 +69,7 @@ open = { version = "5", optional = true }
 libc = "0.2"
 os_pipe = "1.2.1"
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 evdev = "0.13.0"
 inotify = { version = "0.10.0", default-features = false }
 mio = { version = "0.8.11", features = ["os-poll", "os-ext"] }

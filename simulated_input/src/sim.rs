@@ -137,7 +137,7 @@ fn cli_init_fsim() -> Result<(ValidatedArgs, Vec<PathBuf>, Option<String>)> {
             paths: cfg_paths,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None::<SocketAddrWrapper>,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             symlink_path: None,
             nodelay: true,
         },

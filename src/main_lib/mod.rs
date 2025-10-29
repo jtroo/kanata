@@ -65,7 +65,7 @@ pub(crate) fn list_devices_macos() {
     println!("  )");
 }
 
-#[cfg(all(target_os = "linux", not(feature = "gui")))]
+#[cfg(all(any(target_os = "linux", target_os = "android"), not(feature = "gui")))]
 pub(crate) fn list_devices_linux() {
     use crate::oskbd::discover_devices;
     use kanata_parser::cfg::DeviceDetectMode;

@@ -197,7 +197,7 @@ impl LogFmt {
         };
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn write_raw(&mut self, event: InputEvent) {
         let key_name = KeyCode::from(OsCode::from(event.code));
         if event.up {
@@ -348,11 +348,11 @@ impl KbdOut {
         })
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn new() -> Result<Self, io::Error> {
         Self::new_actual()
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn new(
         _s: &Option<String>,
         _tp: bool,
@@ -361,7 +361,7 @@ impl KbdOut {
     ) -> Result<Self, io::Error> {
         Self::new_actual()
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
         self.log.write_raw(event);
         self.outputs.push(format!("out-raw:{event:?}"));

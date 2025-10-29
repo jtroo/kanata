@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap as HashMap;
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 mod linux;
 #[cfg(any(target_os = "macos", target_os = "unknown"))]
 mod macos;
@@ -39,7 +39,7 @@ impl OsCode {
             Platform::Macos => self.as_u16_macos(),
         };
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         return self.as_u16_linux();
 
         #[cfg(target_os = "windows")]
@@ -57,7 +57,7 @@ impl OsCode {
             Platform::Macos => OsCode::from_u16_macos(code),
         };
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         return OsCode::from_u16_linux(code);
 
         #[cfg(target_os = "windows")]
@@ -316,11 +316,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "fn" | "🌐" | "ƒ" | "ⓕ" | "Ⓕ" | "🄵" | "🅕" | "🅵" => OsCode::KEY_FN,
         #[cfg(target_os = "windows")]
         "kana" | "katakana" | "katakanahiragana" => OsCode::KEY_HANGEUL,
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "kana" | "katakanahiragana" => OsCode::KEY_KATAKANAHIRAGANA,
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "hiragana" => OsCode::KEY_HIRAGANA,
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "katakana" => OsCode::KEY_KATAKANA,
         "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
         "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,       
@@ -332,7 +332,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(any(target_os = "windows", target_os = "macos"))]
         "IntlRo" | "ro" => OsCode::KEY_RO,
 
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "PrintScreen" | "prtsc" | "prnt" | "⎙" => OsCode::KEY_SYSRQ,
         #[cfg(target_os = "windows")]
         "PrintScreen" | "prtsc" | "prnt" | "⎙" => OsCode::KEY_PRINT,
@@ -355,11 +355,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "calc" => OsCode::KEY_CALC,
 
         // NOTE: these are linux-only right now due to missing the mappings in windows.rs
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "plyr" | "player" => OsCode::KEY_PLAYER,
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "powr" | "power" => OsCode::KEY_POWER,
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "zzz" | "sleep" => OsCode::KEY_SLEEP,
 
         "sls" | "SpotLightSearch" => OsCode::KEY_249,

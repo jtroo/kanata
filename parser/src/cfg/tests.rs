@@ -62,7 +62,7 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
                 .iter()
                 .all(|action| *action != DEFAULT_ACTION)
         }));
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         assert!(icfg.options.linux_opts.linux_device_detect_mode.is_some());
     }
     icfg
@@ -1304,7 +1304,7 @@ fn parse_device_paths() {
 }
 
 #[test]
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 fn test_parse_dev() {
     // The old colon separated devices format
     assert_eq!(
