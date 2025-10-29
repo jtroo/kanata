@@ -168,11 +168,11 @@ pub struct Kanata {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     /// Tracks the Linux user configuration to continue or abort if no devices are found.
     continue_if_no_devices: bool,
-    #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// included for interception and processing by kanata.
     pub include_names: Option<Vec<String>>,
-    #[cfg(any(any(target_os = "linux", target_os = "android"), target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
