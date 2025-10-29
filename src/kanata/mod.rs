@@ -264,7 +264,8 @@ pub struct Kanata {
     // if set, key taps of this code are sent whenever mouse movement events are passed through
     #[cfg(any(
         all(target_os = "windows", feature = "interception_driver"),
-        any(target_os = "linux", target_os = "android"),
+        target_os = "linux",
+        target_os = "android",
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
@@ -628,7 +629,8 @@ impl Kanata {
             saved_clipboard_content: Default::default(),
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
-                any(target_os = "linux", target_os = "android"),
+                target_os = "linux",
+                target_os = "android",
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
@@ -730,7 +732,8 @@ impl Kanata {
 
         #[cfg(any(
             all(target_os = "windows", feature = "interception_driver"),
-            any(target_os = "linux", target_os = "android"),
+            target_os = "linux",
+            target_os = "android",
             target_os = "unknown"
         ))]
         {

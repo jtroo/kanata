@@ -156,7 +156,8 @@ pub struct CfgOptions {
     pub chords_v2_min_idle: u16,
     #[cfg(any(
         all(target_os = "windows", feature = "interception_driver"),
-        any(target_os = "linux", target_os = "android"),
+        target_os = "linux",
+        target_os = "android",
         target_os = "unknown"
     ))]
     pub mouse_movement_key: Option<OsCode>,
