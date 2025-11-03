@@ -46,18 +46,18 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job-macos-x64"
-    - name: Do the stuff on x86-64
+    - name: Do the stuff on x64
       shell: bash
       run: |
         mkdir -p artifacts
         cargo build --release
-        mv target/release/kanata artifacts/kanata_macos_x86_64
+        mv target/release/kanata artifacts/kanata_macos_x64
         cargo build --release --features cmd
-        mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x86_64
+        mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x64
     - uses: actions/upload-artifact@v4
       with:
-        name: macos-binaries-x86-64
+        name: macos-binaries-x64
         path: |
-          artifacts/kanata_macos_x86_64
-          artifacts/kanata_macos_cmd_allowed_x86_64
+          artifacts/kanata_macos_x64
+          artifacts/kanata_macos_cmd_allowed_x64
 
