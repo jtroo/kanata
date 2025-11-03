@@ -3,13 +3,14 @@ name: macos-build
 on:
   workflow_dispatch:
     branches: [ "main" ]
+  workflow_call:
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build-macos-aarch:
+  build-macos-arm64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,8 +38,8 @@ jobs:
             artifacts-arm64/kanata_macos_arm64
             artifacts-arm64/kanata_macos_cmd_allowed_arm64
 
-  build-macos:
-    runs-on: macos-13
+  build-macos-x64:
+    runs-on: macos-15-intel
 
     steps:
     - uses: actions/checkout@v3
