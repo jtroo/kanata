@@ -15,10 +15,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
+          profile: default
           toolchain: stable
-          override: true
-          target: aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "persist-cross-job-linux-x64"
@@ -28,7 +26,7 @@ jobs:
           mkdir -p artifacts-x64
           cargo build --release
           mv target/release/kanata artifacts-x64/kanata_linux_x64
-          cargo build --release --features cmd --target aarch64-apple-darwin
+          cargo build --release --features cmd
           mv target/release/kanata artifacts-x64/kanata_linux_cmd_allowed_x64
       - uses: actions/upload-artifact@v4
         with:
