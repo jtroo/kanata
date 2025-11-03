@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "persist-cross-job"
+          shared-key: "persist-cross-job-win-x64"
       - name: Build x64
         shell: powershell
         run: |
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "persist-cross-job"
+          shared-key: "persist-cross-job-win-aarch64"
       - name: Build arm64
         shell: powershell
         run: |
