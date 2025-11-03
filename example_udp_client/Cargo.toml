@@ -1,0 +1,9 @@
+[package]
+name = "kanata_example_udp_client"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+kanata-tcp-protocol = { path = "../tcp_protocol", version = "0.1101.0" }

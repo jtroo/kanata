@@ -187,8 +187,11 @@ cargo install --features cmd,interception_driver
 - Multiple layers of key functionality
 - Advanced actions such as tap-hold, unicode output, dynamic and static macros
 - Vim-like leader sequences to execute other actions
-- Optionally run a TCP server to interact with other programs
+- Optionally run TCP and/or UDP servers to interact with other programs
+  - **TCP server**: Reliable connection-based communication for external programs
+  - **UDP server**: Low-latency (~10x faster) with secure token-based authentication
   - Other programs can respond to [layer changes or trigger layer changes](https://github.com/jtroo/kanata/issues/47)
+  - See [UDP Implementation Guide](./UDP_IMPLEMENTATION.md) for advanced features and examples
 - [Interception driver](https://web.archive.org/web/20240209172129/http://www.oblita.com/interception) support (use `kanata_wintercept.exe`)
   - Note that this issue exists, which is outside the control of this project:
     https://github.com/oblitum/Interception/issues/25

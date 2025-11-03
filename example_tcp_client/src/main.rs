@@ -41,8 +41,18 @@ fn main() {
     )
     .expect("connect to kanata");
     log::info!("successfully connected");
-    let writer_stream = kanata_conn.try_clone().expect("clone writer");
+    let mut writer_stream = kanata_conn.try_clone().expect("clone writer");
     let reader_stream = kanata_conn;
+
+    // Send Hello command to detect capabilities
+    let hello_msg = serde_json::to_string(&ClientMessage::Hello { session_id: None })
+        .expect("Hello message should serialize");
+    writer_stream
+        .write_all(hello_msg.as_bytes())
+        .expect("write Hello");
+    writer_stream.write_all(b"\n").expect("write newline");
+    log::info!("sent Hello command");
+
     std::thread::spawn(move || write_to_kanata(writer_stream));
     read_from_kanata(reader_stream);
 }
@@ -75,15 +85,40 @@ fn print_usage() {
         })
         .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ChangeLayer {
-            new: "requested-layer".into()
+            new: "requested-layer".into(),
+            session_id: None,
         })
         .expect("deserializable"),
-        serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadNum { index: 1 }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::Reload {
+            session_id: None,
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNext {
+            session_id: None,
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadPrev {
+            session_id: None,
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNum {
+            index: 1,
+            session_id: None,
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ReloadFile {
-            path: "/path/to/config.kbd".to_string()
+            path: "/path/to/config.kbd".to_string(),
+            session_id: None,
+            wait: None,
+            timeout_ms: None
         })
         .expect("deserializable"),
         serde_json::to_string(&ServerResponse::Ok).expect("deserializable"),
@@ -127,6 +162,9 @@ fn write_to_kanata(mut s: TcpStream) {
     log::info!("  - reload-prev: reload previous config");
     log::info!("  - reload-num:N: reload config at index N");
     log::info!("  - reload-file:PATH: reload config file at PATH");
+    log::info!("  - hello: send Hello command (capability detection)");
+    log::info!("  - status: get engine status");
+    log::info!("  - reload-wait: reload with readiness wait");
     let mut input = String::new();
     loop {
         stdin().read_line(&mut input).expect("stdin is readable");
@@ -138,24 +176,45 @@ fn write_to_kanata(mut s: TcpStream) {
             serde_json::to_string(&ClientMessage::ActOnFakeKey {
                 name: fkname,
                 action: FakeKeyActionMessage::Tap,
+                session_id: None,
             })
             .expect("deserializable")
         } else if command == "reload" {
             log::info!("writer: telling kanata to reload current config");
-            serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::Reload {
+                session_id: None,
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command == "reload-next" {
             log::info!("writer: telling kanata to reload next config");
-            serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadNext {
+                session_id: None,
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command == "reload-prev" {
             log::info!("writer: telling kanata to reload previous config");
-            serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadPrev {
+                session_id: None,
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command.starts_with("reload-num:") {
             let index_str = command.trim_start_matches("reload-num:");
             match index_str.parse::<usize>() {
                 Ok(index) => {
                     log::info!("writer: telling kanata to reload config at index {index}");
-                    serde_json::to_string(&ClientMessage::ReloadNum { index })
-                        .expect("deserializable")
+                    serde_json::to_string(&ClientMessage::ReloadNum {
+                        index,
+                        session_id: None,
+                        wait: None,
+                        timeout_ms: None,
+                    })
+                    .expect("deserializable")
                 }
                 Err(_) => {
                     log::error!("Invalid number format for reload-num: {index_str}");
@@ -166,11 +225,36 @@ fn write_to_kanata(mut s: TcpStream) {
         } else if command.starts_with("reload-file:") {
             let path = command.trim_start_matches("reload-file:").to_string();
             log::info!("writer: telling kanata to reload config file \"{path}\"");
-            serde_json::to_string(&ClientMessage::ReloadFile { path }).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadFile {
+                path,
+                session_id: None,
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
+        } else if command == "hello" {
+            log::info!("writer: sending Hello command");
+            serde_json::to_string(&ClientMessage::Hello { session_id: None })
+                .expect("deserializable")
+        } else if command == "status" {
+            log::info!("writer: requesting status");
+            serde_json::to_string(&ClientMessage::Status { session_id: None })
+                .expect("deserializable")
+        } else if command == "reload-wait" {
+            log::info!("writer: telling kanata to reload current config with wait");
+            serde_json::to_string(&ClientMessage::Reload {
+                session_id: None,
+                wait: Some(true),
+                timeout_ms: Some(2000),
+            })
+            .expect("deserializable")
         } else {
             log::info!("writer: telling kanata to change layer to \"{command}\"");
-            serde_json::to_string(&ClientMessage::ChangeLayer { new: command })
-                .expect("deserializable")
+            serde_json::to_string(&ClientMessage::ChangeLayer {
+                new: command,
+                session_id: None,
+            })
+            .expect("deserializable")
         };
 
         s.write_all(msg.as_bytes()).expect("stream writable");
@@ -196,6 +280,69 @@ fn read_from_kanata(s: TcpStream) {
                     log::error!("✗ Command failed: {}", msg);
                 }
             }
+            // After receiving a ServerResponse, try to read an optional second line
+            // with detailed information (HelloOk, StatusInfo, ReloadResult, etc.)
+            msg.clear();
+            // Try to read next line (non-blocking check)
+            // Note: This is a simple approach - in production you might want to use
+            // a timeout or better buffering strategy
+            match reader.read_line(&mut msg) {
+                Ok(0) => {
+                    // No more data available
+                }
+                Ok(_) => {
+                    if !msg.trim().is_empty() {
+                        // Try to parse as ServerMessage (for detailed responses)
+                        if let Ok(detail_msg) = serde_json::from_str::<ServerMessage>(&msg) {
+                            match detail_msg {
+                                ServerMessage::HelloOk {
+                                    version,
+                                    protocol,
+                                    capabilities,
+                                } => {
+                                    log::info!(
+                                        "HelloOk: version={}, protocol={}, capabilities={:?}",
+                                        version,
+                                        protocol,
+                                        capabilities
+                                    );
+                                }
+                                ServerMessage::StatusInfo {
+                                    engine_version,
+                                    uptime_s,
+                                    ready,
+                                    last_reload,
+                                } => {
+                                    log::info!(
+                                        "StatusInfo: version={}, uptime={}s, ready={}, last_reload={{ok={}, at={}}}",
+                                        engine_version,
+                                        uptime_s,
+                                        ready,
+                                        last_reload.ok,
+                                        last_reload.at
+                                    );
+                                }
+                                ServerMessage::ReloadResult { ready, timeout_ms } => {
+                                    if ready {
+                                        log::info!("ReloadResult: ready=true");
+                                    } else {
+                                        log::warn!(
+                                            "ReloadResult: ready=false, timeout_ms={:?}",
+                                            timeout_ms
+                                        );
+                                    }
+                                }
+                                _ => {
+                                    log::info!("Got detail message: {:?}", detail_msg);
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Error reading - likely no more data or connection closed
+                }
+            }
             continue;
         }
 
@@ -210,6 +357,43 @@ fn read_from_kanata(s: TcpStream) {
         match parsed_msg {
             ServerMessage::LayerChange { new } => {
                 log::info!("reader: kanata changed layers to \"{new}\"");
+            }
+            ServerMessage::HelloOk {
+                version,
+                protocol,
+                capabilities,
+            } => {
+                log::info!(
+                    "reader: HelloOk - version={}, protocol={}, capabilities={:?}",
+                    version,
+                    protocol,
+                    capabilities
+                );
+            }
+            ServerMessage::StatusInfo {
+                engine_version,
+                uptime_s,
+                ready,
+                last_reload,
+            } => {
+                log::info!(
+                    "reader: StatusInfo - version={}, uptime={}s, ready={}, last_reload={{ok={}, at={}}}",
+                    engine_version,
+                    uptime_s,
+                    ready,
+                    last_reload.ok,
+                    last_reload.at
+                );
+            }
+            ServerMessage::ReloadResult { ready, timeout_ms } => {
+                if ready {
+                    log::info!("reader: ReloadResult - ready=true");
+                } else {
+                    log::warn!(
+                        "reader: ReloadResult - ready=false, timeout_ms={:?}",
+                        timeout_ms
+                    );
+                }
             }
             msg => {
                 log::info!("got msg: {msg:?}");

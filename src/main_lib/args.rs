@@ -1,5 +1,5 @@
 use clap::Parser;
-#[cfg(feature = "tcp_server")]
+#[cfg(any(feature = "tcp_server", feature = "udp_server"))]
 use kanata_state_machine::SocketAddrWrapper;
 use std::path::PathBuf;
 
@@ -50,6 +50,37 @@ kanata.kbd in the current working directory and
         verbatim_doc_comment
     )]
     pub tcp_server_address: Option<SocketAddrWrapper>,
+
+    /// Port or full address (IP:PORT) to run the optional UDP server on. If blank,
+    /// no UDP port will be listened on.
+    #[cfg(feature = "udp_server")]
+    #[arg(
+        long = "udp-port",
+        value_name = "PORT or IP:PORT",
+        verbatim_doc_comment
+    )]
+    pub udp_server_address: Option<SocketAddrWrapper>,
+
+    /// Use a specific authentication token for the UDP server instead of generating one.
+    /// Useful for automation and testing.
+    #[cfg(feature = "udp_server")]
+    #[arg(long = "udp-auth-token", verbatim_doc_comment)]
+    pub udp_auth_token: Option<String>,
+
+    /// Disable authentication for the UDP server. WARNING: This is insecure and should
+    /// only be used for testing on trusted networks.
+    #[cfg(feature = "udp_server")]
+    #[arg(long = "udp-no-auth", verbatim_doc_comment)]
+    pub udp_no_auth: bool,
+
+    /// Session timeout in seconds for UDP server authentication. Default is 1800 (30 minutes).
+    #[cfg(feature = "udp_server")]
+    #[arg(
+        long = "udp-session-timeout",
+        default_value = "1800",
+        verbatim_doc_comment
+    )]
+    pub udp_session_timeout: u64,
 
     /// Path for the symlink pointing to the newly-created device. If blank, no
     /// symlink will be created.

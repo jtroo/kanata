@@ -4,6 +4,7 @@ members = [
     "parser",
     "keyberon",
     "example_tcp_client",
+    "example_udp_client",
     "tcp_protocol",
     "windows_key_tester",
     "simulated_input",
@@ -53,6 +54,7 @@ simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default-features = false, optional = true }
 time = "0.3.36"
 web-time = "1.1.0"
+rand = { version = "0.8", optional = true }
 
 kanata-keyberon = { path = "keyberon", version = "0.1101.0" }
 kanata-parser =   { path = "parser", version = "0.1101.0" }
@@ -120,9 +122,10 @@ indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
 
 [features]
-default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
+default = ["tcp_server", "udp_server", "win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []
 tcp_server = ["serde_json"]
+udp_server = ["serde_json", "rand"]
 win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
 win_llhook_read_scancodes = ["kanata-parser/win_llhook_read_scancodes"]
 win_manifest = ["embed-resource", "indoc", "regex"]

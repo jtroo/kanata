@@ -245,7 +245,7 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
-    #[cfg(feature = "tcp_server")]
+    #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
@@ -269,6 +269,15 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    /// Time when kanata started (for uptime tracking)
+    #[cfg(feature = "tcp_server")]
+    start_time: web_time::Instant,
+    /// Timestamp of last successful reload (for status endpoint)
+    #[cfg(feature = "tcp_server")]
+    last_reload_time: Option<web_time::Instant>,
+    /// Whether last reload was successful
+    #[cfg(feature = "tcp_server")]
+    last_reload_ok: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -471,7 +480,7 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            #[cfg(feature = "tcp_server")]
+            #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
@@ -487,6 +496,12 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "tcp_server")]
+            start_time: web_time::Instant::now(),
+            #[cfg(feature = "tcp_server")]
+            last_reload_time: None,
+            #[cfg(feature = "tcp_server")]
+            last_reload_ok: false,
         })
     }
 
@@ -617,7 +632,7 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            #[cfg(feature = "tcp_server")]
+            #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
@@ -634,6 +649,12 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "tcp_server")]
+            start_time: web_time::Instant::now(),
+            #[cfg(feature = "tcp_server")]
+            last_reload_time: None,
+            #[cfg(feature = "tcp_server")]
+            last_reload_ok: false,
         })
     }
 
@@ -677,7 +698,7 @@ impl Kanata {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
         self.switch_max_key_timing = cfg.switch_max_key_timing;
-        #[cfg(feature = "tcp_server")]
+        #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
         {
             self.virtual_keys = cfg.fake_keys;
         }
@@ -765,6 +786,12 @@ impl Kanata {
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
         send_gui_cfg_notice();
+
+        #[cfg(feature = "tcp_server")]
+        {
+            self.last_reload_time = Some(web_time::Instant::now());
+            self.last_reload_ok = true;
+        }
 
         Ok(())
     }
@@ -1898,7 +1925,7 @@ impl Kanata {
         Ok(live_reload_requested)
     }
 
-    #[cfg(feature = "tcp_server")]
+    #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
     pub fn change_layer(&mut self, layer_name: String) {
         for (i, l) in self.layer_info.iter().enumerate() {
             if l.name == layer_name {
@@ -1917,9 +1944,9 @@ impl Kanata {
         );
     }
 
-    /// Handle a client command from TCP server and return a result.
+    /// Handle a client command from TCP/UDP server and return a result.
     /// This centralizes validation logic and provides proper error messages.
-    #[cfg(feature = "tcp_server")]
+    #[cfg(any(feature = "tcp_server", feature = "udp_server"))]
     pub fn handle_client_command(
         &mut self,
         command: kanata_tcp_protocol::ClientMessage,
@@ -1927,20 +1954,20 @@ impl Kanata {
         use kanata_tcp_protocol::ClientMessage;
 
         match command {
-            ClientMessage::Reload {} => {
+            ClientMessage::Reload { .. } => {
                 self.request_live_reload();
                 Ok(())
             }
-            ClientMessage::ReloadNext {} => {
+            ClientMessage::ReloadNext { .. } => {
                 self.request_live_reload_next();
                 Ok(())
             }
-            ClientMessage::ReloadPrev {} => {
+            ClientMessage::ReloadPrev { .. } => {
                 self.request_live_reload_prev();
                 Ok(())
             }
-            ClientMessage::ReloadNum { index } => self.request_live_reload_num(index),
-            ClientMessage::ReloadFile { path } => self.request_live_reload_file(path),
+            ClientMessage::ReloadNum { index, .. } => self.request_live_reload_num(index),
+            ClientMessage::ReloadFile { path, .. } => self.request_live_reload_file(path),
             _ => {
                 // For non-reload commands, we don't validate here - they're handled directly in tcp_server
                 Ok(())
@@ -2009,6 +2036,54 @@ impl Kanata {
             self.cfg_paths[self.cur_cfg_idx].display()
         );
         Ok(())
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Get engine uptime in seconds
+    pub fn get_uptime_s(&self) -> u64 {
+        self.start_time.elapsed().as_secs()
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Check if engine is ready (not currently reloading, has been initialized)
+    pub fn is_ready(&self) -> bool {
+        !self.live_reload_requested && self.last_reload_time.is_some()
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Get last reload info for status endpoint
+    pub fn get_last_reload_info(&self) -> kanata_tcp_protocol::LastReloadInfo {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        // Format timestamp as epoch seconds (ISO8601/RFC3339 format can be added later if needed)
+        let timestamp = self.last_reload_time.map(|reload_time| {
+            // We track Instant, but need SystemTime for formatting
+            // Approximate by using current time minus elapsed
+            let elapsed = reload_time.elapsed();
+            let now = SystemTime::now();
+            if let Ok(duration) = now.duration_since(UNIX_EPOCH) {
+                let reload_epoch = duration.as_secs().saturating_sub(elapsed.as_secs());
+                format!("{}", reload_epoch)
+            } else {
+                // Fallback: use current time
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    .to_string()
+            }
+        });
+
+        kanata_tcp_protocol::LastReloadInfo {
+            ok: self.last_reload_ok,
+            at: timestamp.unwrap_or_else(|| {
+                // If no reload yet, use current time
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    .to_string()
+            }),
+        }
     }
 
     #[allow(unused_variables)]

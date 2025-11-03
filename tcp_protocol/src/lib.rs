@@ -3,13 +3,60 @@ use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
-    LayerChange { new: String },
-    LayerNames { names: Vec<String> },
-    CurrentLayerInfo { name: String, cfg_text: String },
-    ConfigFileReload { new: String },
-    CurrentLayerName { name: String },
-    MessagePush { message: serde_json::Value },
-    Error { msg: String },
+    LayerChange {
+        new: String,
+    },
+    LayerNames {
+        names: Vec<String>,
+    },
+    CurrentLayerInfo {
+        name: String,
+        cfg_text: String,
+    },
+    ConfigFileReload {
+        new: String,
+    },
+    CurrentLayerName {
+        name: String,
+    },
+    MessagePush {
+        message: serde_json::Value,
+    },
+    Error {
+        msg: String,
+    },
+    // UDP Authentication messages
+    AuthResult {
+        success: bool,
+        session_id: Option<String>,
+        expires_in_seconds: Option<u64>,
+    },
+    AuthRequired,
+    SessionExpired,
+    // Protocol expansion messages
+    HelloOk {
+        version: String,
+        protocol: u8,
+        capabilities: Vec<String>,
+    },
+    StatusInfo {
+        engine_version: String,
+        uptime_s: u64,
+        ready: bool,
+        last_reload: LastReloadInfo,
+    },
+    ReloadResult {
+        ready: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LastReloadInfo {
+    pub ok: bool,
+    /// Timestamp as epoch seconds (Unix timestamp). ISO8601/RFC3339 format can be added in future if needed.
+    pub at: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -37,28 +84,90 @@ impl ServerMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
+    // UDP Authentication message
+    Authenticate {
+        token: String,
+        client_name: Option<String>,
+    },
+    // Existing messages with optional session_id for UDP auth
     ChangeLayer {
         new: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
-    RequestLayerNames {},
-    RequestCurrentLayerInfo {},
-    RequestCurrentLayerName {},
+    RequestLayerNames {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
+    RequestCurrentLayerInfo {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
+    RequestCurrentLayerName {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
     ActOnFakeKey {
         name: String,
         action: FakeKeyActionMessage,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
     SetMouse {
         x: u16,
         y: u16,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
-    Reload {},
-    ReloadNext {},
-    ReloadPrev {},
+    Reload {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wait: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
+    },
+    ReloadNext {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wait: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
+    },
+    ReloadPrev {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wait: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
+    },
     ReloadNum {
         index: usize,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wait: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
     },
     ReloadFile {
         path: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wait: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout_ms: Option<u64>,
+    },
+    Hello {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
+    Status {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
 }
 
@@ -113,5 +222,54 @@ mod tests {
             error_bytes.ends_with(b"\n"),
             "Error response should end with newline"
         );
+    }
+
+    #[test]
+    fn test_hello_ok_json_format() {
+        let msg = ServerMessage::HelloOk {
+            version: "1.10.x".to_string(),
+            protocol: 1,
+            capabilities: vec!["reload".into(), "status".into(), "ready".into()],
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("HelloOk"));
+        assert!(json.contains("\"protocol\":1"));
+        assert!(json.contains("\"capabilities\""));
+    }
+
+    #[test]
+    fn test_status_info_json_format() {
+        let msg = ServerMessage::StatusInfo {
+            engine_version: "1.10.x".into(),
+            uptime_s: 12,
+            ready: true,
+            last_reload: LastReloadInfo {
+                ok: true,
+                at: "1730619223".into(),
+            },
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("StatusInfo"));
+        assert!(json.contains("\"uptime_s\":12"));
+        assert!(json.contains("\"ready\":true"));
+        assert!(json.contains("\"last_reload\""));
+    }
+
+    #[test]
+    fn test_reload_result_json_format() {
+        let ready_msg = ServerMessage::ReloadResult {
+            ready: true,
+            timeout_ms: None,
+        };
+        let not_ready_msg = ServerMessage::ReloadResult {
+            ready: false,
+            timeout_ms: Some(2000),
+        };
+        let ready_json = serde_json::to_string(&ready_msg).unwrap();
+        let not_ready_json = serde_json::to_string(&not_ready_msg).unwrap();
+        assert!(ready_json.contains("ReloadResult"));
+        assert!(ready_json.contains("\"ready\":true"));
+        assert!(not_ready_json.contains("\"ready\":false"));
+        assert!(not_ready_json.contains("\"timeout_ms\":2000"));
     }
 }

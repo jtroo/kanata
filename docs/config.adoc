@@ -4623,6 +4623,33 @@ The TCP server supports live configuration reloading through the following comma
 
 These commands mirror the existing keyboard live reload actions and allow external tools to trigger configuration reloads via TCP.
 
+==== TCP Protocol Expansion Commands
+
+The TCP server supports additional commands for capability detection, status monitoring, and improved reload handling:
+
+**Capability Detection:**
+- `{"Hello":{}}` - Request server capabilities and version information
+  - Response: First line `{"status":"Ok"}`, second line `{"HelloOk":{"version":"...","protocol":1,"capabilities":["reload","status","ready"]}}`
+
+**Status Monitoring:**
+- `{"Status":{}}` - Get engine status including uptime, readiness, and last reload information
+  - Response: First line `{"status":"Ok"}`, second line `{"StatusInfo":{"engine_version":"...","uptime_s":1234,"ready":true,"last_reload":{"ok":true,"at":"<epoch_seconds>"}}}`
+  - Note: `last_reload.at` is epoch seconds (Unix timestamp). RFC3339 formatting can be added in a future update without breaking compatibility.
+
+**Reload with Readiness Contract:**
+All reload commands (`Reload`, `ReloadNext`, `ReloadPrev`, `ReloadNum`, `ReloadFile`) support optional parameters:
+- `{"Reload":{"wait":true,"timeout_ms":2000}}` - Reload and wait for readiness
+  - When `wait:true` is specified, the server will block the handler thread until the engine reaches a "ready to remap" state or the timeout expires (bounded; default 2000 ms)
+  - Response: First line `{"status":"Ok"}`, second line `{"ReloadResult":{"ready":true}}` or `{"ReloadResult":{"ready":false,"timeout_ms":2000}}`
+  - If `wait` is not specified or `false`, the command behaves as before: returns immediately after acknowledging the reload request
+
+**Response Format:**
+Commands return a two-line response pattern:
+1. First line: `{"status":"Ok"}` or `{"status":"Error","msg":"..."}` (standard status response)
+2. Second line (optional): Detailed information such as `HelloOk`, `StatusInfo`, or `ReloadResult` (only sent when applicable)
+
+This pattern maintains backward compatibility: older clients that only read the first line continue to work, while new clients can read the optional second line for detailed information.
+
 [[args-quiet]]
 === Disable logs other than errors: `-q`, `--quiet`
 
