@@ -165,6 +165,8 @@ fn write_to_kanata(mut s: TcpStream) {
     log::info!("  - hello: send Hello command (capability detection)");
     log::info!("  - status: get engine status");
     log::info!("  - reload-wait: reload with readiness wait");
+    log::info!("  - validate: send a small validation request");
+    log::info!("  - subscribe: subscribe to ready/config_error events");
     let mut input = String::new();
     loop {
         stdin().read_line(&mut input).expect("stdin is readable");
@@ -240,6 +242,23 @@ fn write_to_kanata(mut s: TcpStream) {
             log::info!("writer: requesting status");
             serde_json::to_string(&ClientMessage::Status { session_id: None })
                 .expect("deserializable")
+        } else if command == "validate" {
+            // Minimal demo validation payload
+            let cfg = "(defsrc)\n(deflayer base)\n".to_string();
+            log::info!("writer: requesting validation");
+            serde_json::to_string(&ClientMessage::Validate {
+                config: cfg,
+                mode: Some("strict".into()),
+                session_id: None,
+            })
+            .expect("deserializable")
+        } else if command == "subscribe" {
+            log::info!("writer: subscribing to events");
+            serde_json::to_string(&ClientMessage::Subscribe {
+                events: vec!["ready".into(), "config_error".into()],
+                session_id: None,
+            })
+            .expect("deserializable")
         } else if command == "reload-wait" {
             log::info!("writer: telling kanata to reload current config with wait");
             serde_json::to_string(&ClientMessage::Reload {

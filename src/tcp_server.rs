@@ -87,6 +87,9 @@ impl TcpServer {
         let listener = TcpListener::bind(self.address).expect("TCP server starts");
 
         let connections = self.connections.clone();
+        // Minimal subscription registry keyed by addr -> events
+        let subscriptions: Arc<Mutex<HashMap<String, Vec<String>>>> =
+            Arc::new(Mutex::new(HashMap::default()));
         let wakeup_channel = self.wakeup_channel.clone();
 
         std::thread::spawn(move || {
@@ -129,6 +132,7 @@ impl TcpServer {
                         log::info!("listening for incoming messages {addr}");
 
                         let connections = connections.clone();
+                        let subscriptions = subscriptions.clone();
                         let kanata = kanata.clone();
                         let wakeup_channel = wakeup_channel.clone();
                         std::thread::spawn(move || {
@@ -325,6 +329,57 @@ impl TcpServer {
                                                     }
                                                 }
                                             }
+
+                                            // Validate config (preflight)
+                                            ClientMessage::Validate { config, .. } => {
+                                                // Default: strict mode behavior; for now unused
+                                                // Try parsing using kanata_parser
+                                                let (warnings, errors) =
+                                                    match kanata_parser::cfg::new_from_str(
+                                                        &config,
+                                                        HashMap::default(),
+                                                    ) {
+                                                        Ok(_) => (Vec::new(), Vec::new()),
+                                                        Err(e) => {
+                                                            let item = ValidationItem {
+                                                                message: format!("{e}"),
+                                                                line: None,
+                                                                column: None,
+                                                                code: Some(
+                                                                    "CONFIG_PARSE".to_string(),
+                                                                ),
+                                                            };
+                                                            (Vec::new(), vec![item])
+                                                        }
+                                                    };
+
+                                                // Send status then details
+                                                if !send_response(
+                                                    &mut stream,
+                                                    ServerResponse::Ok,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
+                                                let msg = ServerMessage::ValidationResult {
+                                                    warnings,
+                                                    errors,
+                                                };
+                                                let _ = stream.write_all(&msg.as_bytes());
+                                            }
+
+                                            // Subscribe to events (stubbed)
+                                            ClientMessage::Subscribe { events, .. } => {
+                                                subscriptions.lock().insert(addr.clone(), events);
+                                                let _ = send_response(
+                                                    &mut stream,
+                                                    ServerResponse::Ok,
+                                                    &connections,
+                                                    &addr,
+                                                );
+                                            }
+
                                             // Handle reload commands with unified response protocol
                                             ref reload_cmd @ (ClientMessage::Reload { .. }
                                             | ClientMessage::ReloadNext {
@@ -412,6 +467,18 @@ impl TcpServer {
                                                     &addr,
                                                 ) {
                                                     break;
+                                                }
+
+                                                // If there was an immediate error, optionally send structured detail
+                                                if !was_ok {
+                                                    let detail = ServerMessage::ErrorDetail {
+                                                        code: "RELOAD_FAILED".to_string(),
+                                                        message: "Reload request failed"
+                                                            .to_string(),
+                                                        line: None,
+                                                        column: None,
+                                                    };
+                                                    let _ = stream.write_all(&detail.as_bytes());
                                                 }
 
                                                 // If wait is requested, check readiness and send ReloadResult

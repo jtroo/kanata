@@ -50,6 +50,35 @@ pub enum ServerMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         timeout_ms: Option<u64>,
     },
+    // New in PR2: validation and events
+    ValidationResult {
+        #[serde(default)]
+        warnings: Vec<ValidationItem>,
+        #[serde(default)]
+        errors: Vec<ValidationItem>,
+    },
+    // Optional structured error detail that may follow a status Error line
+    ErrorDetail {
+        code: String,
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        line: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        column: Option<u32>,
+    },
+    // Event messages for subscription
+    Ready {
+        at: String,
+    },
+    ConfigError {
+        code: String,
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        line: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        column: Option<u32>,
+        at: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,6 +198,30 @@ pub enum ClientMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         session_id: Option<String>,
     },
+    // New in PR2
+    Validate {
+        config: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        mode: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
+    Subscribe {
+        events: Vec<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationItem {
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -271,5 +324,21 @@ mod tests {
         assert!(ready_json.contains("\"ready\":true"));
         assert!(not_ready_json.contains("\"ready\":false"));
         assert!(not_ready_json.contains("\"timeout_ms\":2000"));
+    }
+
+    #[test]
+    fn test_validation_result_json_format() {
+        let msg = ServerMessage::ValidationResult {
+            warnings: vec![ValidationItem {
+                message: "w".into(),
+                line: Some(1),
+                column: None,
+                code: None,
+            }],
+            errors: vec![],
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("ValidationResult"));
+        assert!(json.contains("warnings"));
     }
 }
