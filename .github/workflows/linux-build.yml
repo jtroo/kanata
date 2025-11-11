@@ -14,10 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: default
-          toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "persist-cross-job-linux-x64"
