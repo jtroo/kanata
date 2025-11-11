@@ -71,9 +71,9 @@ cov:
   cargo llvm-cov report --html
 
 publish:
-  cd keyberon && cargo publish
-  cd tcp_protocol && cargo publish
-  cd parser && cargo publish
+  cd keyberon; cargo publish
+  cd tcp_protocol; cargo publish
+  cd parser; cargo publish
   cargo publish
 
 # Include the trailing `\` or `/` in the output_dir parameter. The parameter should be an absolute path.

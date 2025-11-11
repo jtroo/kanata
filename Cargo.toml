@@ -18,7 +18,7 @@ resolver = "2"
 
 [package]
 name = "kanata"
-version = "1.10.0-prerelease-3"
+version = "1.10.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "Multi-layer keyboard customization"
 keywords = ["keyboard", "layout", "remapping"]
@@ -54,9 +54,9 @@ serde_json = { version = "1", features = ["std"], default-features = false, opti
 time = "0.3.36"
 web-time = "1.1.0"
 
-kanata-keyberon = { path = "keyberon", version = "0.1102.0" }
-kanata-parser =   { path = "parser", version = "0.1102.0" }
-kanata-tcp-protocol = { path = "tcp_protocol", version = "0.1102.0" }
+kanata-keyberon = { path = "keyberon", version = "0.1103.0" }
+kanata-parser =   { path = "parser", version = "0.1103.0" }
+kanata-tcp-protocol = { path = "tcp_protocol", version = "0.1103.0" }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
 arboard = "3.4"
