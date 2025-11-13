@@ -41,7 +41,7 @@ impl Drop for Allocations {
         for a in self.allocations.lock().iter().rev().copied() {
             log::debug!("freeing ptr 0x{:x} len{}", a.ptr, a.len);
             unsafe {
-                drop(Box::<[u8]>::from_raw(std::slice::from_raw_parts_mut(
+                drop(Box::<[u8]>::from_raw(std::ptr::slice_from_raw_parts_mut(
                     a.ptr as *mut u8,
                     a.len,
                 )))

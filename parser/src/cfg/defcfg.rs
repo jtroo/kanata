@@ -1113,20 +1113,15 @@ pub enum UnicodeTermination {
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AltGrBehaviour {
+    #[default]
     DoNothing,
     CancelLctlPress,
     AddLctlRelease,
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
-impl Default for AltGrBehaviour {
-    fn default() -> Self {
-        Self::DoNothing
-    }
-}
-
 #[cfg(any(
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"
