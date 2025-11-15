@@ -1352,7 +1352,7 @@ impl Kanata {
                             reload_action = Some(ReloadAction::ReloadNum(usize::from(*n)));
                         }
                         CustomAction::LiveReloadFile(path) => {
-                            reload_action = Some(ReloadAction::ReloadFile(path.clone()));
+                            reload_action = Some(ReloadAction::ReloadFile(path.to_string()));
                         }
                         CustomAction::Mouse(btn) => {
                             log::debug!("click     {:?}", btn);
@@ -1508,7 +1508,7 @@ impl Kanata {
                             cmds.push((
                                 Some(log::Level::Info),
                                 Some(log::Level::Error),
-                                _cmd.clone(),
+                                Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
                             ));
                         }
                         CustomAction::CmdLog(_log_level, _error_log_level, _cmd) => {
@@ -1516,18 +1516,17 @@ impl Kanata {
                             cmds.push((
                                 _log_level.get_level(),
                                 _error_log_level.get_level(),
-                                _cmd.clone(),
+                                Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
                             ));
                         }
                         CustomAction::CmdOutputKeys(_cmd) => {
                             #[cfg(feature = "cmd")]
                             {
-                                let cmd = _cmd.clone();
                                 // Maybe improvement in the future:
                                 // A delay here, as in KeyAction::Delay, will pause the entire
                                 // state machine loop. That is _probably_ OK, but ideally this
                                 // would be done in a separate thread or somehow
-                                for key_action in keys_for_cmd_output(&cmd) {
+                                for key_action in keys_for_cmd_output(_cmd) {
                                     match key_action {
                                         KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
                                         KeyAction::Release(osc) => {

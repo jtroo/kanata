@@ -44,7 +44,7 @@ mod real {
         }
     }
 
-    pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {
+    pub(crate) fn clpb_cmd_set(cmd_and_args: &[&str]) {
         let mut newclip = None;
         for _ in 0..10 {
             match CLIPBOARD.lock().get_text() {
@@ -67,7 +67,7 @@ mod real {
         }
     }
 
-    fn run_cmd_get_stdout(cmd_and_args: &[String], stdin: &str) -> String {
+    fn run_cmd_get_stdout(cmd_and_args: &[&str], stdin: &str) -> String {
         use std::io::Write;
         use std::process::{Command, Stdio};
         let mut args = cmd_and_args.iter();
@@ -183,7 +183,7 @@ mod real {
 
     pub(crate) fn clpb_save_cmd_set(
         id: u16,
-        cmd_and_args: &[String],
+        cmd_and_args: &[&str],
         save_data: &mut SavedClipboardData,
     ) {
         let stdin_content = match save_data.get(&id) {
@@ -303,7 +303,7 @@ mod fake {
 
     pub(crate) fn clpb_set(clipboard_string: &str) {}
 
-    pub(crate) fn clpb_cmd_set(cmd_and_args: &[String]) {}
+    pub(crate) fn clpb_cmd_set(cmd_and_args: &[&str]) {}
 
     pub(crate) fn clpb_save(id: u16, save_data: &mut SavedClipboardData) {}
 
@@ -313,7 +313,7 @@ mod fake {
 
     pub(crate) fn clpb_save_cmd_set(
         id: u16,
-        cmd_and_args: &[String],
+        cmd_and_args: &[&str],
         save_data: &mut SavedClipboardData,
     ) {
     }

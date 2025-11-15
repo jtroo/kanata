@@ -187,7 +187,7 @@ fn try_parse_chorded_list<'a>(
 }
 
 #[cfg(not(feature = "simulated_output"))]
-pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item = Item> {
+pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item = Item> {
     let mut args = cmd_and_args.iter();
     let mut cmd = std::process::Command::new(
         args.next()
@@ -230,7 +230,7 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item
 }
 
 #[cfg(feature = "simulated_output")]
-pub(super) fn keys_for_cmd_output(cmd_and_args: &[String]) -> impl Iterator<Item = Item> {
+pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item = Item> {
     println!("cmd-keys:{cmd_and_args:?}");
     [].iter().copied()
 }
