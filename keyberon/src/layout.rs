@@ -1549,24 +1549,23 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
             Press(i, j) => {
                 let mut layer_stack = self.trans_resolution_layer_order().into_iter();
-                if let Some(tde) = self.tap_dance_eager {
+                if let Some(tde) = &mut self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
+                        let tde_action = tde.actions[usize::from(tde.num_taps)];
+                        tde.incr_taps();
                         let custom = self.do_action(
-                            tde.actions[usize::from(tde.num_taps)],
+                            tde_action,
                             (i, j),
                             queue.since,
                             false,
                             &mut layer_stack.skip(1),
                         );
-                        // unwrap is here because tde cannot be ref mut
-                        self.tap_dance_eager.as_mut().expect("some").incr_taps();
                         custom
                     } else {
                         // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
                         // interrupt tap-dance-eager if real key.
                         if i == REAL_KEY_ROW {
-                            // unwrap is here because tde cannot be ref mut
-                            self.tap_dance_eager.as_mut().expect("some").set_expired();
+                            tde.set_expired();
                         }
                         self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
                     }
@@ -1846,7 +1845,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                 }
                             }
                         };
-                        self.do_action(td.actions[0], coord, delay, false, layer_stack);
+                        return self.do_action(td.actions[0], coord, delay, false, layer_stack);
                     }
                 }
             }
