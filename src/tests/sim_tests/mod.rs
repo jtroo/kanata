@@ -26,6 +26,7 @@ mod release_sim_tests;
 mod repeat_sim_tests;
 mod seq_sim_tests;
 mod switch_sim_tests;
+mod tap_dance_tests;
 mod tap_hold_tests;
 mod template_sim_tests;
 mod timing_tests;
