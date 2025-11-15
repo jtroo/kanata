@@ -9,17 +9,12 @@ use kanata_keyberon::key_code::KeyCode;
 
 use crate::{cfg::SimpleSExpr, keys::OsCode};
 
-// TODO:
-// Live reload has a memory leak
-// on allocated types in this enum.
-// To fix, the types should be changed to &'static allocation types
-// that are created by calls to `Allocations`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
-    Cmd(Vec<String>),
-    CmdLog(LogLevel, LogLevel, Vec<String>),
-    CmdOutputKeys(Vec<String>),
-    PushMessage(Vec<SimpleSExpr>),
+    Cmd(&'static [&'static str]),
+    CmdLog(LogLevel, LogLevel, &'static [&'static str]),
+    CmdOutputKeys(&'static [&'static str]),
+    PushMessage(&'static [SimpleSExpr]),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
@@ -40,7 +35,7 @@ pub enum CustomAction {
         direction: MWheelDirection,
         interval: u16,
         distance: u16,
-        inertial_scroll_params: Option<Box<MWheelInertial>>,
+        inertial_scroll_params: Option<&'static MWheelInertial>,
     },
     MWheelNotch {
         direction: MWheelDirection,
@@ -75,7 +70,7 @@ pub enum CustomAction {
     /// the first configuration file provided. The rest of the parser code is free to choose 0 or 1
     /// as the user-facing value though.
     LiveReloadNum(u16),
-    LiveReloadFile(String),
+    LiveReloadFile(&'static str),
     Repeat,
     CancelMacroOnRelease,
     CancelMacroOnNextPress(u32),
@@ -89,19 +84,19 @@ pub enum CustomAction {
         y: u16,
     },
     Unmodded {
-        keys: Box<[KeyCode]>,
+        keys: &'static [KeyCode],
         mods: UnmodMods,
     },
     Unshifted {
-        keys: Box<[KeyCode]>,
+        keys: &'static [KeyCode],
     },
     ReverseReleaseOrder,
-    ClipboardSet(String),
-    ClipboardCmdSet(Vec<String>),
+    ClipboardSet(&'static str),
+    ClipboardCmdSet(&'static [&'static str]),
     ClipboardSave(u16),
     ClipboardRestore(u16),
-    ClipboardSaveSet(u16, String),
-    ClipboardSaveCmdSet(u16, Vec<String>),
+    ClipboardSaveSet(u16, &'static str),
+    ClipboardSaveCmdSet(u16, &'static [&'static str]),
     ClipboardSaveSwap(u16, u16),
 }
 

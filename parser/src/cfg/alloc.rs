@@ -110,4 +110,19 @@ impl Allocations {
         log::debug!("sref_slice {}", std::any::type_name::<T>());
         self.bref_slice(vec![self.sref(v)].into_boxed_slice())
     }
+
+    /// Returns a `&'static str` by leaking a String.
+    pub(crate) fn sref_str(&self, v: String) -> &'static str {
+        if !v.capacity() == 0 {
+            ""
+        } else {
+            let len = v.len();
+            let s = v.leak();
+            self.allocations.lock().push(Allocation {
+                ptr: s.as_ptr() as usize,
+                len,
+            });
+            s
+        }
+    }
 }

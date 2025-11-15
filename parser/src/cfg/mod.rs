@@ -2690,9 +2690,10 @@ fn parse_cmd_log(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kanata
     if cmd.is_empty() {
         bail!(ERR_STR);
     }
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::CmdLog(log_level, error_log_level, cmd)),
-    ))))
+    let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::CmdLog(log_level, error_log_level, s.a.sref_vec(cmds)),
+    )))))
 }
 
 #[allow(unused_variables)]
@@ -2723,9 +2724,10 @@ fn parse_cmd(
             if cmd.is_empty() {
                 bail_expr!(&ac_params[1], "{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
             }
-            return Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveCmdSet(save_id, cmd))),
-            )));
+            let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
+            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+                CustomAction::ClipboardSaveCmdSet(save_id, s.a.sref_vec(cmds)),
+            )))));
         }
 
         const ERR_STR: &str = "cmd expects at least one string";
@@ -2737,11 +2739,13 @@ fn parse_cmd(
         if cmd.is_empty() {
             bail!(ERR_STR);
         }
+        let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
+        let cmds = s.a.sref_vec(cmds);
         Ok(s.a
             .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
-                CmdType::Standard => CustomAction::Cmd(cmd),
-                CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmd),
-                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmd),
+                CmdType::Standard => CustomAction::Cmd(cmds),
+                CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmds),
+                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmds),
                 CmdType::ClipboardSaveSet => unreachable!(),
             })))))
     }
@@ -2783,7 +2787,7 @@ fn parse_push_message(ac_params: &[SExpr], s: &ParserState) -> Result<&'static K
         );
     }
     let message = to_simple_expr(ac_params, s);
-    custom(CustomAction::PushMessage(message), &s.a)
+    custom(CustomAction::PushMessage(s.a.sref_vec(message)), &s.a)
 }
 
 fn to_simple_expr(params: &[SExpr], s: &ParserState) -> Vec<SimpleSExpr> {
@@ -3369,7 +3373,7 @@ fn parse_mwheel_accel(
             direction,
             interval: 16,
             distance: 1,
-            inertial_scroll_params: Some(Box::new(MWheelInertial {
+            inertial_scroll_params: Some(s.a.sref(MWheelInertial {
                 initial_velocity,
                 maximum_velocity,
                 acceleration_multiplier,
@@ -3507,7 +3511,7 @@ fn parse_live_reload_file(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
     };
     let lrld_file_path = spanned_filepath.t.trim_atom_quotes();
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
-        CustomAction::LiveReloadFile(lrld_file_path.to_string()),
+        CustomAction::LiveReloadFile(s.a.sref_str(lrld_file_path.to_string())),
     )))))
 }
 
@@ -3524,9 +3528,9 @@ fn parse_clipboard_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'static 
         }
     };
     let clip_string = clip_string.t.trim_atom_quotes();
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::ClipboardSet(clip_string.to_string())),
-    ))))
+    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+        CustomAction::ClipboardSet(s.a.sref_str(clip_string.to_string())),
+    )))))
 }
 
 fn parse_clipboard_save(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
@@ -3577,7 +3581,7 @@ fn parse_clipboard_save_set(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(&ac_params[1], "save content must be a string"))?;
     Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
-        CustomAction::ClipboardSaveSet(id, save_content.into()),
+        CustomAction::ClipboardSaveSet(id, s.a.sref_str(save_content.into())),
     )))))
 }
 
@@ -4248,7 +4252,7 @@ fn parse_unmod(
         );
         Ok::<_, ParseError>(keys)
     })?;
-    let keys = keys.into_boxed_slice();
+    let keys = s.a.sref_vec(keys);
     match unmod_type {
         UNMOD => Ok(s.a.sref(Action::Custom(
             s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys, mods })),
