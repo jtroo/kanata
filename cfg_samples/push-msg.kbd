@@ -1,0 +1,110 @@
+;; push-msg Sample Configuration
+;;
+;; This configuration demonstrates the push-msg action for sending
+;; messages to external tools via Kanata's TCP server.
+;;
+;; To use this config:
+;;   kanata -p 7070 -c push-msg.kbd
+;;
+;; Then connect a TCP client to localhost:7070 to receive messages.
+
+(defcfg
+  process-unmapped-keys yes
+)
+
+(defsrc
+  caps a s d f g h j k l ; '
+  z x c v b n m , . /
+)
+
+;; ==========================================================================
+;; Layer Definitions
+;; ==========================================================================
+
+(deflayer base
+  @caps a s d f g h j k l ; '
+  z x c v b n m , . /
+)
+
+(deflayer nav
+  @caps left down up right g h j k l ; '
+  z x c v b n m , . /
+)
+
+;; ==========================================================================
+;; Aliases with push-msg
+;; ==========================================================================
+
+(defalias
+  ;; Caps Lock: tap for Esc (with notification), hold for nav layer (with notification)
+  caps (tap-hold 200 200
+    (multi esc (push-msg "layer:base"))
+    (multi (layer-toggle nav) (push-msg "layer:nav:hold"))
+  )
+)
+
+;; ==========================================================================
+;; Virtual Keys - Triggerable via TCP ActOnFakeKey
+;; ==========================================================================
+;;
+;; External tools can trigger these using TCP commands:
+;;   {"ActOnFakeKey":{"name":"email-sig","action":"Tap"}}
+;;   {"ActOnFakeKey":{"name":"switch-nav","action":"Tap"}}
+
+(defvirtualkeys
+  ;; Text expansion macro (S-x for shift+x to get capitals)
+  email-sig (macro
+    S-b e s t spc r e g a r d s , ret ret
+    S-j o h n spc S-d o e
+  )
+
+  ;; Layer switches that also push messages
+  switch-nav (multi
+    (layer-switch nav)
+    (push-msg "layer:nav:activated")
+  )
+
+  switch-base (multi
+    (layer-switch base)
+    (push-msg "layer:base:activated")
+  )
+
+  ;; Notify external tools (no keyboard action)
+  notify-ready (push-msg "status:ready")
+  notify-busy (push-msg "status:busy")
+)
+
+;; ==========================================================================
+;; Usage Examples for External Tools
+;; ==========================================================================
+;;
+;; Python TCP client example:
+;;
+;;   import socket
+;;   import json
+;;
+;;   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+;;   sock.connect(('127.0.0.1', 7070))
+;;   buffer = ""
+;;
+;;   while True:
+;;       data = sock.recv(4096).decode()
+;;       buffer += data
+;;       while '\n' in buffer:
+;;           line, buffer = buffer.split('\n', 1)
+;;           if line:
+;;               msg = json.loads(line)
+;;               if 'MessagePush' in msg:
+;;                   print(f"Received: {msg['MessagePush']['message']}")
+;;               elif 'LayerChange' in msg:
+;;                   print(f"Layer: {msg['LayerChange']['new']}")
+;;
+;; Triggering virtual keys from external tools:
+;;
+;;   # Send this JSON to trigger the email-sig virtual key:
+;;   echo '{"ActOnFakeKey":{"name":"email-sig","action":"Tap"}}' | nc localhost 7070
+;;
+;;   # Or trigger layer switch:
+;;   echo '{"ActOnFakeKey":{"name":"switch-nav","action":"Tap"}}' | nc localhost 7070
+;;
+;; ==========================================================================
