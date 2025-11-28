@@ -145,7 +145,8 @@ fn tap_hold_tap_keys() {
     // This is the critical behavioral difference that tap-hold-tap-keys provides
     let result = simulate(cfg, "d:a t:50 d:b u:b t:100").to_ascii();
     // After 100ms timeout, hold activates, then b events are replayed
-    assert_eq!("t:100ms dn:Y t:1ms dn:B t:49ms up:B", result);
+    // d:b and u:b have no delay between them, so both replay with minimal gap
+    assert_eq!("t:100ms dn:Y t:1ms dn:B t:1ms up:B", result);
 
     // Tap repress behavior
     let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
