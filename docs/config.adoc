@@ -2004,6 +2004,7 @@ results in `$tap-action` activating.
 (tap-hold-release-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-trigger-keys-on-press $tap-trigger-keys-on-press-then-release)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-tap-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 ----
 
 [cols="1,2"]
@@ -2046,6 +2047,14 @@ or if the action key is released before hold timeout.
 No key is ever output until the action key is released
 or another key is pressed,
 which differs from the default `tap-hold` behaviour.
+
+| `tap-hold-tap-keys`
+| The `$tap-keys` parameter is a list of key names.
+Activates `$tap-action` early if a key within `$tap-keys` is pressed before hold activates.
+Unlike `tap-hold-release-keys`, does NOT activate `$hold-action` early
+when other keys are pressed and released.
+Waits for full `$hold-timeout` before activating `$hold-action`.
+This is useful for home row mods where fast typing should not trigger modifiers.
 |===
 **Description**
 
@@ -2213,6 +2222,27 @@ that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
 (defalias
   ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
   umk (tap-hold-except-keys 200 200 u @msc (a o e))
+)
+----
+
+- `tap-hold-tap-keys` or `tap⬓tapkeys`
+
+This variant takes a 5th parameter which is a list of keys
+that trigger an early tap when they are pressed.
+Unlike `tap-hold-release-keys`, pressing and releasing other keys
+does NOT activate hold early - the full hold timeout is always waited.
+This is useful for home row mods where fast typing should not trigger modifiers.
+
+The keys in the 5th parameter correspond to the physical input keys,
+or in other words the key that corresponds to `defsrc`.
+
+.Example:
+[source]
+----
+(defalias
+  ;; tap: a    hold: lsft    early tap if any of: (s d f) are pressed
+  ;; other keys do NOT trigger early hold
+  ath (tap-hold-tap-keys 200 200 a lsft (s d f))
 )
 ----
 

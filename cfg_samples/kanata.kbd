@@ -565,6 +565,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; tap: u    hold: misc layer      always tap if any of: (a o e) are pressed
   uek (tap-hold-except-keys 200 200 u @msc (a o e))
 
+  ;; tap: u    hold: misc layer      early tap if any of: (a o e) are pressed
+  ;; Unlike tap-hold-release-keys, other keys do NOT trigger early hold.
+  ;; This is useful for home row mods where fast typing should not trigger modifiers.
+  utk (tap-hold-tap-keys 200 200 u @msc (a o e))
+
   ;; tap for capslk, hold for lctl
   cap (tap-hold 200 200 caps lctl)
 

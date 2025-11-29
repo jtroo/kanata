@@ -1813,6 +1813,9 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_EXCEPT_KEYS | TAP_HOLD_EXCEPT_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_EXCEPT_KEYS, custom_tap_hold_except)
         }
+        TAP_HOLD_TAP_KEYS | TAP_HOLD_TAP_KEYS_A => {
+            parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_TAP_KEYS, custom_tap_hold_tap_keys)
+        }
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),

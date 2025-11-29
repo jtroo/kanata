@@ -120,3 +120,35 @@ fn tap_hold_release_keys() {
     let result = simulate(cfg, "d:a t:50 d:z u:z t:75").to_ascii();
     assert_eq!("t:50ms dn:X t:6ms dn:Z t:1ms up:Z", result);
 }
+
+#[test]
+fn tap_hold_tap_keys() {
+    let cfg = "
+        (defsrc a b z)
+        (deflayer l1 (tap-hold-tap-keys 100 100 x y (z)) b z)
+    ";
+
+    // Basic tap: release before timeout → tap action
+    let result = simulate(cfg, "d:a t:50 u:a t:50").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+
+    // Basic hold: timeout elapsed → hold action
+    let result = simulate(cfg, "d:a t:150 u:a t:50").to_ascii();
+    assert_eq!("t:100ms dn:Y t:50ms up:Y", result);
+
+    // $tap-keys (z) pressed → immediate tap
+    let result = simulate(cfg, "d:a t:50 d:z t:75").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms dn:Z", result);
+
+    // KEY DIFFERENCE from tap-hold-release-keys:
+    // Other key (b) pressed+released → wait for timeout, NOT immediate hold
+    // This is the critical behavioral difference that tap-hold-tap-keys provides
+    let result = simulate(cfg, "d:a t:50 d:b u:b t:100").to_ascii();
+    // After 100ms timeout, hold activates, then b events are replayed
+    // d:b and u:b have no delay between them, so both replay with minimal gap
+    assert_eq!("t:100ms dn:Y t:1ms dn:B t:1ms up:B", result);
+
+    // Tap repress behavior
+    let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms up:X t:14ms dn:X", result);
+}
