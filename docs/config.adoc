@@ -4831,6 +4831,16 @@ Your final desired `defcfg` could be to have logging of layer changes as false.
 However, for testing purposes you may want to temporarily log the layers.
 This configuration forces logging to happen for this use case.
 
+[[args-no-wait]]
+=== Skip exit prompt: `--no-wait`
+
+By default, kanata displays "Press enter to exit" and waits for user input
+before exiting. This flag skips that prompt and exits immediately.
+
+This is useful when running kanata as a background service (e.g., systemd)
+where you want automatic restart on failure. Without this flag,
+the service would hang waiting for stdin input that never comes.
+
 [[args-linux-dev-symlink]]
 === Linux only - Device symlink path: `-s`, `--symlink-path`
 

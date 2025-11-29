@@ -209,12 +209,16 @@ mod cli {
 
 #[cfg(not(feature = "gui"))]
 pub fn main() -> Result<()> {
+    let args = Args::parse();
+    let no_wait = args.no_wait;
     let ret = cli::main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
-    eprintln!("\nPress enter to exit");
-    let _ = std::io::stdin().read_line(&mut String::new());
+    if !no_wait {
+        eprintln!("\nPress enter to exit");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
     ret
 }
 
