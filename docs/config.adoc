@@ -3219,6 +3219,108 @@ chorded lists are supported. Other actions are not supported.
 )
 ----
 
+[[push-msg]]
+=== push-msg
+
+NOTE: This action requires the TCP server to be enabled via the
+<<args-port,`-p` / `--port`>> command line argument.
+If used without the TCP server enabled, a warning will be logged
+and the action will have no effect.
+
+**Reference**
+
+The `push-msg` action sends an arbitrary message to all connected TCP clients.
+This enables communication between your keyboard configuration and external tools
+without the security risks or performance overhead of executing shell commands.
+
+.Syntax:
+[source]
+----
+(push-msg $message)
+----
+
+[cols="1,3"]
+|===
+| `$message`
+| A string or S-expression to send to TCP clients.
+  Strings are sent as-is; S-expressions are converted to JSON arrays.
+|===
+
+**Description**
+
+The `push-msg` action broadcasts a message to all TCP clients connected to Kanata's
+TCP server. This is useful for:
+
+- Triggering external tool actions from keyboard shortcuts
+- Layer change notifications to status bars or tray applications
+- Integration with automation tools like Raycast, Alfred, or Hammerspoon
+- Controlling other applications without spawning shell processes
+
+Messages are sent as newline-terminated JSON in the format:
+
+[source,json]
+----
+{"MessagePush":{"message":"your-message-here"}}
+----
+
+Compared to the <<cmd>> action, `push-msg` offers:
+
+- **Better security**: No shell execution, no privilege escalation risks
+- **Better performance**: Sub-millisecond latency vs ~100ms for command execution
+- **No special flags**: Does not require `danger-enable-cmd` in defcfg
+
+.Example - Basic messages:
+[source]
+----
+(defalias
+  ;; Send a simple string message
+  notify (push-msg "key-pressed")
+
+  ;; Send layer change notification
+  nav-on (push-msg "layer:nav:activated")
+  nav-off (push-msg "layer:nav:deactivated")
+)
+----
+
+.Example - Integration with external tools:
+[source]
+----
+(defalias
+  ;; Trigger a Raycast extension
+  raycast-clip (push-msg "raycast:clipboard-history")
+
+  ;; Control media playback via external script
+  play-pause (push-msg "media:toggle")
+  next-track (push-msg "media:next")
+
+  ;; Switch keyboard layouts via external tool
+  layout-next (push-msg "xkb:next-layout")
+)
+----
+
+.Example - Using with defvirtualkeys for external triggering:
+[source]
+----
+;; Define virtual keys that can be triggered via TCP's ActOnFakeKey command
+;; External tools can trigger these using: {"ActOnFakeKey":{"name":"email-sig","action":"Tap"}}
+(defvirtualkeys
+  email-sig (macro S-b e s t spc r e g a r d s , ret ret S-j o h n)
+  nav-mode (layer-switch nav)
+)
+
+;; Combine push-msg with other actions
+(defalias
+  launch-term (multi
+    (push-msg "app:launch:terminal")
+    (layer-switch base)
+  )
+)
+----
+
+To receive these messages, connect a TCP client to Kanata's server port.
+See the https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example TCP client]
+for implementation guidance.
+
 [[clipboard-actions]]
 === clipboard actions
 

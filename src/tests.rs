@@ -151,6 +151,16 @@ fn parse_automousekeys_full_map() {
 }
 
 #[test]
+fn parse_push_msg() {
+    init_log();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    new_from_file(&std::path::PathBuf::from("./cfg_samples/push-msg.kbd")).unwrap();
+}
+
+#[test]
 #[cfg(target_pointer_width = "64")]
 fn sizeof_state() {
     init_log();
