@@ -4706,6 +4706,12 @@ for at least `idle time` milliseconds.
 Press a virtual key for `hold time` milliseconds.
 If `hold-for-duration` retriggered on a virtual key before release,
 the time will be reset with no additional press/release events.
+* `(on-press-delay <delay>)` or `(on↓fakekey-delay <delay>)`:
+Pause key processing for `delay` milliseconds (0-65535) when a key is pressed.
+This does not activate a virtual key; it simply adds a delay.
+* `(on-release-delay <delay>)` or `(on↑fakekey-delay <delay>)`:
+Pause key processing for `delay` milliseconds (0-65535) when a key is released.
+This does not activate a virtual key; it simply adds a delay.
 
 The `<action>` parameter can be one of:
 
@@ -4765,6 +4771,9 @@ to only start based on having all keyboard keys be released.
 
   isf (on-idle 1000 tap-vkey sft)
   hfd (hold-for-duration 1000 met)
+
+  ;; Add a 50ms delay when pressing/releasing a key
+  dly (multi (on-press-delay 50) (on-release-delay 50) a)
 )
 
 (deflayer use-virtual-keys
