@@ -105,4 +105,35 @@ kanata.kbd in the current working directory and
     /// configuration but want to default to no logging.
     #[arg(long, verbatim_doc_comment)]
     pub log_layer_changes: bool,
+
+    /// Skip the "Press enter to exit" prompt and exit immediately.
+    /// Useful for running kanata as a background service (e.g., systemd)
+    /// where automatic restart on failure is desired.
+    #[arg(long, verbatim_doc_comment)]
+    pub no_wait: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_wait_flag_default_false() {
+        let args = Args::try_parse_from(["kanata"]).unwrap();
+        assert!(!args.no_wait);
+    }
+
+    #[test]
+    fn no_wait_flag_enabled() {
+        let args = Args::try_parse_from(["kanata", "--no-wait"]).unwrap();
+        assert!(args.no_wait);
+    }
+
+    #[test]
+    fn no_wait_with_other_flags() {
+        let args =
+            Args::try_parse_from(["kanata", "--no-wait", "--nodelay", "-c", "test.kbd"]).unwrap();
+        assert!(args.no_wait);
+        assert!(args.nodelay);
+    }
 }
