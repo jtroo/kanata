@@ -246,6 +246,8 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "NumpadSubtract" | "kp-" | "🔢₋" => OsCode::KEY_KPMINUS,
         "NumpadDecimal" | "kp." | "🔢．" => OsCode::KEY_KPDOT,
         "NumpadComma" | "kp," | "🔢⸴" =>OsCode::KEY_KPCOMMA,
+        "NumpadLeftParen" | "leftparen" | "lpar" | "kp(" | "🔢₍" => OsCode::KEY_KPLEFTPAREN,
+        "NumpadRightParen" | "rightparen" | "rpar" | "kp)" | "🔢₎" => OsCode::KEY_KPRIGHTPAREN,
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
         // Typically the Non-US backslash, near the left shift key
         "IntlBackslash" | "102d" | "lsgt" | "nubs" | "nonusbslash" | "﹨" | "<" => OsCode::KEY_102ND,
