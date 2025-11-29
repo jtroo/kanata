@@ -3189,6 +3189,56 @@ chorded lists are supported. Other actions are not supported.
 )
 ----
 
+[[delay]]
+=== delay
+
+**Reference**
+
+The delay actions pause key processing for a specified duration.
+These are useful for timing-sensitive macros,
+working around application-specific timing issues,
+or debouncing rapid key events.
+
+.Syntax:
+[source]
+----
+(on-press-delay <delay>)
+(on-release-delay <delay>)
+----
+
+[cols="1,3"]
+|===
+| `on-press-delay`
+| Pause key processing for `delay` milliseconds when a key is pressed.
+
+| `on-release-delay`
+| Pause key processing for `delay` milliseconds when a key is released.
+
+| `<delay>`
+| Duration in milliseconds (0-65535).
+|===
+
+**Description**
+
+These actions add a configurable delay to key processing.
+Unlike virtual key actions, they do not activate any keys;
+they simply pause execution for the specified duration.
+
+The delay actions are commonly used with `multi` to add timing
+between other actions.
+
+.Example:
+[source]
+----
+(defalias
+  ;; Add a 50ms delay when pressing and releasing a key
+  dly (multi (on-press-delay 50) (on-release-delay 50) a)
+
+  ;; Use delay in a macro-like sequence
+  slow-hello (multi h (on-press-delay 100) e (on-press-delay 100) l l o)
+)
+----
+
 [[clipboard-actions]]
 === clipboard actions
 
@@ -4706,12 +4756,6 @@ for at least `idle time` milliseconds.
 Press a virtual key for `hold time` milliseconds.
 If `hold-for-duration` retriggered on a virtual key before release,
 the time will be reset with no additional press/release events.
-* `(on-press-delay <delay>)` or `(on↓fakekey-delay <delay>)`:
-Pause key processing for `delay` milliseconds (0-65535) when a key is pressed.
-This does not activate a virtual key; it simply adds a delay.
-* `(on-release-delay <delay>)` or `(on↑fakekey-delay <delay>)`:
-Pause key processing for `delay` milliseconds (0-65535) when a key is released.
-This does not activate a virtual key; it simply adds a delay.
 
 The `<action>` parameter can be one of:
 
@@ -4771,9 +4815,6 @@ to only start based on having all keyboard keys be released.
 
   isf (on-idle 1000 tap-vkey sft)
   hfd (hold-for-duration 1000 met)
-
-  ;; Add a 50ms delay when pressing/releasing a key
-  dly (multi (on-press-delay 50) (on-release-delay 50) a)
 )
 
 (deflayer use-virtual-keys
