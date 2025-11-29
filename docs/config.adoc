@@ -4627,29 +4627,166 @@ The startup configuration will be the first file listed.
 
 Enable the TCP server capability and listen on either:
 - a specified port, on all IP addresses
-- a specifiec `IP:PORT`
+- a specific `IP:PORT`
 
 This enables use cases such as
 https://github.com/jtroo/kanata?tab=readme-ov-file#community-projects-related-to-kanata[application aware switching].
 
-The protocol is plaintext JSON, not formally documented anywhere at this time.
+The protocol is plaintext newline-terminated JSON.
 The source of truth is the
 https://github.com/jtroo/kanata/blob/main/tcp_protocol/src/lib.rs[TCP protocol code].
 
 You may also be interested in the
 https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example client].
 
-==== TCP Configuration Reload Commands
+==== TCP Protocol Overview
 
-The TCP server supports live configuration reloading through the following commands:
+The TCP server uses a simple request/response model with JSON messages.
+Each message is a single line of JSON terminated by a newline (`\n`).
 
-- `{"Reload":{}}` - Reload the current configuration file (equivalent to `lrld` keyboard action)
-- `{"ReloadNext":{}}` - Reload the next configuration file (equivalent to `lrnx` keyboard action)
-- `{"ReloadPrev":{}}` - Reload the previous configuration file (equivalent to `lrpv` keyboard action)
-- `{"ReloadNum":{"index":N}}` - Reload configuration file at index N (equivalent to `lrld-num N` keyboard action)
-- `{"ReloadFile":{"path":"/path/to/config.kbd"}}` - Reload a specific configuration file (equivalent to `lrld-file` keyboard action)
+- **Client → Server**: Commands to control Kanata (reload config, switch layers, etc.)
+- **Server → Client**: Responses to commands and event notifications (layer changes, config reloads, etc.)
 
-These commands mirror the existing keyboard live reload actions and allow external tools to trigger configuration reloads via TCP.
+==== Client Commands
+
+These JSON messages can be sent from a TCP client to control Kanata:
+
+===== Layer Control
+
+[cols="1,2"]
+|===
+| Command | Description
+
+| `{"ChangeLayer":{"new":"layer-name"}}`
+| Switch to the specified layer. Equivalent to the `layer-switch` keyboard action.
+
+| `{"RequestLayerNames":{}}`
+| Request a list of all defined layer names. Server responds with `LayerNames`.
+
+| `{"RequestCurrentLayerName":{}}`
+| Request the name of the currently active layer. Server responds with `CurrentLayerName`.
+
+| `{"RequestCurrentLayerInfo":{}}`
+| Request the current layer's name and full configuration text. Server responds with `CurrentLayerInfo`.
+|===
+
+.Example - Query and switch layers:
+[source,bash]
+----
+# Get all layer names
+echo '{"RequestLayerNames":{}}' | nc localhost 7070
+
+# Get current layer
+echo '{"RequestCurrentLayerName":{}}' | nc localhost 7070
+
+# Switch to nav layer
+echo '{"ChangeLayer":{"new":"nav"}}' | nc localhost 7070
+----
+
+===== Virtual Key Actions
+
+[cols="1,2"]
+|===
+| Command | Description
+
+| `{"ActOnFakeKey":{"name":"key-name","action":"Tap"}}`
+| Trigger a virtual key defined in `defvirtualkeys`. Actions: `Press`, `Release`, `Tap`, `Toggle`.
+|===
+
+Virtual keys must be defined in your configuration using `defvirtualkeys`.
+See the <<virtual-keys>> section for details.
+
+.Example - Trigger a text expansion macro:
+[source]
+----
+;; In your config:
+(defvirtualkeys
+  email-sig (macro S-b e s t spc r e g a r d s)
+)
+
+;; From TCP client:
+echo '{"ActOnFakeKey":{"name":"email-sig","action":"Tap"}}' | nc localhost 7070
+----
+
+===== Mouse Control
+
+[cols="1,2"]
+|===
+| Command | Description
+
+| `{"SetMouse":{"x":100,"y":200}}`
+| Set the mouse cursor position to absolute screen coordinates.
+|===
+
+This is the TCP equivalent of the <<set-mouse>> keyboard action.
+
+===== Configuration Reload
+
+[cols="1,2"]
+|===
+| Command | Description
+
+| `{"Reload":{}}`
+| Reload the current configuration file. Equivalent to `lrld` keyboard action.
+
+| `{"ReloadNext":{}}`
+| Load the next configuration file in the list. Equivalent to `lrnx` keyboard action.
+
+| `{"ReloadPrev":{}}`
+| Load the previous configuration file in the list. Equivalent to `lrpv` keyboard action.
+
+| `{"ReloadNum":{"index":0}}`
+| Load configuration file at the specified index (0-based).
+
+| `{"ReloadFile":{"path":"/path/to/config.kbd"}}`
+| Load a specific configuration file by path.
+|===
+
+==== Server Messages
+
+These JSON messages are sent from Kanata to connected TCP clients:
+
+===== Event Notifications
+
+These are sent automatically when events occur:
+
+[cols="1,2"]
+|===
+| Message | Description
+
+| `{"LayerChange":{"new":"layer-name"}}`
+| Sent when the active layer changes.
+
+| `{"ConfigFileReload":{"new":"/path/to/config.kbd"}}`
+| Sent when a configuration file is reloaded.
+
+| `{"MessagePush":{"message":"your-message"}}`
+| Sent when a `push-msg` action is triggered from the keyboard configuration.
+
+| `{"Error":{"msg":"error description"}}`
+| Sent when an error occurs processing a command.
+|===
+
+===== Query Responses
+
+These are sent in response to client queries:
+
+[cols="1,2"]
+|===
+| Message | Description
+
+| `{"LayerNames":{"names":["base","nav","num"]}}`
+| Response to `RequestLayerNames`. Contains all defined layer names.
+
+| `{"CurrentLayerName":{"name":"base"}}`
+| Response to `RequestCurrentLayerName`. Contains the active layer name.
+
+| `{"CurrentLayerInfo":{"name":"base","cfg_text":"..."}}`
+| Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
+|===
+
+For a complete implementation example, see the
+https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example TCP client].
 
 [[args-quiet]]
 === Disable logs other than errors: `-q`, `--quiet`
