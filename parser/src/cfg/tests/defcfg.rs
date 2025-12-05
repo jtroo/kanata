@@ -62,6 +62,9 @@ fn unmapped_except_keys_respects_deflocalkeys() {
                 KeyCode::No | KeyCode::K555 => {
                     assert!(!cfg.mapped_keys.contains(&osc));
                 }
+                _ if osc.is_mouse_code() => {
+                    assert!(!cfg.mapped_keys.contains(&osc));
+                }
                 _ => {
                     assert!(cfg.mapped_keys.contains(&osc));
                 }
@@ -74,7 +77,7 @@ fn unmapped_except_keys_respects_deflocalkeys() {
 fn unmapped_except_keys_is_removed_from_mapping() {
     let source = "
 (defcfg process-unmapped-keys (all-except 1 2 3))
-(defsrc)
+(defsrc mlft mmid)
 (deflayermap (name) 0 0)
 ";
     let cfg = parse_cfg(source)
@@ -90,6 +93,13 @@ fn unmapped_except_keys_is_removed_from_mapping() {
         if let Some(osc) = OsCode::from_u16(osc) {
             match KeyCode::from(osc) {
                 KeyCode::No | KeyCode::Kb1 | KeyCode::Kb2 | KeyCode::Kb3 => {
+                    assert!(!cfg.mapped_keys.contains(&osc));
+                }
+                // mlft, mmid
+                KeyCode::K272 | KeyCode::K274 => {
+                    assert!(cfg.mapped_keys.contains(&osc));
+                }
+                _ if osc.is_mouse_code() => {
                     assert!(!cfg.mapped_keys.contains(&osc));
                 }
                 _ => {

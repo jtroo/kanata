@@ -1197,6 +1197,14 @@ fn parse_defsrc(
     if defcfg.process_unmapped_keys {
         for osc in 0..KEYS_IN_ROW as u16 {
             if let Some(osc) = OsCode::from_u16(osc) {
+                if osc.is_mouse_code() {
+                    // Bugfix #1879:
+                    // Auto-including mouse activity in mapped keys
+                    // seems strictly incorrect to do, so never do it.
+                    // Users can still choose to opt in if they want.
+                    // Auto-including mouse activity breaks many scenarios.
+                    continue;
+                }
                 match KeyCode::from(osc) {
                     KeyCode::No => {}
                     _ => {
