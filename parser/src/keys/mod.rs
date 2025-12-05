@@ -325,7 +325,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         "katakana" => OsCode::KEY_KATAKANA,
         "cnv" | "conv" | "henk" | "hnk" | "henkan" => OsCode::KEY_HENKAN,
-        "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,       
+        "ncnv" | "mhnk" | "muhenkan" => OsCode::KEY_MUHENKAN,
         #[cfg(target_os = "macos")]
         "Lang1" | "kana" => OsCode::KEY_HANGEUL,
         #[cfg(any(target_os = "macos", target_os = "unknown"))]
@@ -339,7 +339,6 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(target_os = "windows")]
         "PrintScreen" | "prtsc" | "prnt" | "⎙" => OsCode::KEY_PRINT,
 
-        // NOTE: these are linux and interception-only due to missing implementation for LLHOOK.
         "mlft" | "mouseleft" | "🖰1" | "‹🖰" => OsCode::BTN_LEFT,
         "mrgt" | "mouseright" | "🖰2" | "🖰›" => OsCode::BTN_RIGHT,
         "mmid" | "mousemid" | "🖰3" => OsCode::BTN_MIDDLE,
@@ -1173,6 +1172,24 @@ pub enum OsCode {
     KEY_766 = 766, // aliased to mvmt as a dummy input for use with mouse-movement-key
 
     KEY_MAX = 767,
+}
+
+impl OsCode {
+    pub fn is_mouse_code(&self) -> bool {
+        use OsCode::*;
+        matches!(
+            self,
+            BTN_LEFT
+                | BTN_RIGHT
+                | BTN_MIDDLE
+                | BTN_SIDE
+                | BTN_EXTRA
+                | MouseWheelUp
+                | MouseWheelDown
+                | MouseWheelLeft
+                | MouseWheelRight
+        )
+    }
 }
 
 use core::fmt;
