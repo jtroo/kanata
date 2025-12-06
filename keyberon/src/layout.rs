@@ -911,6 +911,17 @@ pub struct OneShotState {
     pub keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// KCoordinates of one shot keys that have been released
     pub released_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
+    /// Fix #1874:
+    /// Represents the one-shot state that must not be released on physical key release.
+    /// Consider the case `(multi a (one-shot 100 b))`,
+    /// when only tracking coordinates (which this used to in the past),
+    /// the `a` would not release a even upon releasing the action key
+    /// because its state falls on the same coordinate as the oneshot b.
+    /// The fix is to explicitly know which key/layer states
+    /// — which are the only actions allowed within one-shot —
+    /// should be kept, and normally release others.
+    pub state_to_retain_on_release:
+        ArrayDeque<OneShotRetainableState, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Used to keep track of already-pressed keys for the release variants.
     pub other_pressed_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Timeout (ms) after which all one shot keys expire
@@ -939,6 +950,20 @@ pub struct OneShotState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum OneShotRetainableState {
+    KeyCode { coord: KCoord, kc: KeyCode },
+    Layer { coord: KCoord, layer: u16 },
+}
+
+impl OneShotRetainableState {
+    pub fn coord(&self) -> KCoord {
+        match self {
+            Self::KeyCode { coord, .. } | Self::Layer { coord, .. } => *coord,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum OneShotHandlePressKey {
     OneShotKey(KCoord),
     Other(KCoord),
@@ -958,12 +983,18 @@ impl OneShotState {
             self.ticks_to_ignore_events = 0;
             self.keys.clear();
             self.other_pressed_keys.clear();
+            self.state_to_retain_on_release.clear();
             Some(self.released_keys.drain(..).collect())
         } else {
             None
         }
     }
 
+    /// Returns the coordinates associated with an active oneshot.
+    /// The intended use of this is for `rpt-any` to be able to repeat
+    /// the output chord of a one-shot+normal key,
+    /// which are two separate actions that users
+    /// would likely want to combine under a repeat condition.
     fn handle_press(&mut self, key: OneShotHandlePressKey) -> OneShotCoords {
         let mut oneshot_coords = ArrayDeque::new();
         if self.keys.is_empty() || self.ticks_to_ignore_events > 0 {
@@ -980,6 +1011,7 @@ impl OneShotState {
                     self.release_on_next_tick = true;
                     oneshot_coords.extend(self.keys.iter().copied());
                 }
+
                 self.released_keys.retain(|coord| *coord != pressed_coord);
             }
             OneShotHandlePressKey::Other(pressed_coord) => {
@@ -1017,6 +1049,12 @@ impl OneShotState {
         } else {
             // delay release for one shot keys
             (false, self.released_keys.push_back((i, j)))
+        }
+    }
+
+    fn add_state_to_retain(&mut self, state: OneShotRetainableState) {
+        if !self.state_to_retain_on_release.contains(&state) {
+            self.state_to_retain_on_release.push_back(state);
         }
     }
 }
@@ -1109,6 +1147,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 end_config: OneShotEndConfig::EndOnFirstPress,
                 keys: ArrayDeque::new(),
                 released_keys: ArrayDeque::new(),
+                state_to_retain_on_release: ArrayDeque::new(),
                 other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
                 pause_input_processing_delay: 0,
@@ -1539,6 +1578,44 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.states.retain(|s| {
                         !s.clear_on_next_release() && s.release((i, j), &mut custom).is_some()
                     });
+                } else {
+                    // Fix #1874:
+                    // Might still need to apply release,
+                    // but need to check against states on same coordinate
+                    // that aren't part of a OneShot.
+                    self.states.retain(|s| {
+                        match s {
+                            NormalKey { coord, keycode, .. } => {
+                                // NormalKey is a valid oneshot state,
+                                // may need to keep.
+                                *coord != (i, j)
+                                    || self.oneshot.state_to_retain_on_release.contains(
+                                        &OneShotRetainableState::KeyCode {
+                                            coord: *coord,
+                                            kc: *keycode,
+                                        },
+                                    )
+                            }
+                            LayerModifier { coord, value } => {
+                                // LayerModifier is a valid oneshot state,
+                                // may need to keep.
+                                *coord != (i, j)
+                                    || self.oneshot.state_to_retain_on_release.contains(
+                                        &OneShotRetainableState::Layer {
+                                            coord: *coord,
+                                            layer: *value as u16,
+                                        },
+                                    )
+                            }
+                            // Everything else is not a valid oneshot state,
+                            // if it falls on the same coordinate
+                            // as a oneshot key, it should still be released here.
+                            _ => {
+                                !s.clear_on_next_release()
+                                    && s.release((i, j), &mut custom).is_some()
+                            }
+                        }
+                    });
                 }
                 if let Some((i2, j2)) = overflow_key {
                     self.states
@@ -1880,6 +1957,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     oneshot_coords = self
                         .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    self.oneshot
+                        .add_state_to_retain(OneShotRetainableState::KeyCode {
+                            coord,
+                            kc: keycode,
+                        });
                 }
                 if oneshot_coords.is_empty() {
                     self.rpt_action = Some(action);
@@ -1938,6 +2021,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     oneshot_coords = self
                         .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    for &keycode in *v {
+                        self.oneshot
+                            .add_state_to_retain(OneShotRetainableState::KeyCode {
+                                coord,
+                                kc: keycode,
+                            });
+                    }
                 }
                 if oneshot_coords.is_empty() {
                     self.rpt_action = Some(action);
@@ -2026,6 +2117,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    self.oneshot
+                        .add_state_to_retain(OneShotRetainableState::Layer {
+                            coord,
+                            layer: value as u16,
+                        });
                 }
                 // Notably missing in Layer and below in DefaultLayer is setting rpt_action. This
                 // is so that if the Repeat key is on a different layer than the base, it can still
