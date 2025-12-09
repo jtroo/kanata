@@ -38,6 +38,11 @@ pub enum ServerMessage {
         protocol: u8,
         capabilities: Vec<String>,
     },
+    /// Basic status info response.
+    /// Introduced in protocol v1.11.
+    StatusInfo {
+        ready: bool,
+    },
     /// Response to Reload commands when `wait: true` was specified.
     /// Introduced in protocol v1.11.
     ReloadResult {
@@ -127,6 +132,9 @@ pub enum ClientMessage {
     /// Request server capabilities and version.
     /// Introduced in protocol v1.11.
     Hello {},
+    /// Request basic status info (ready flag).
+    /// Introduced in protocol v1.11.
+    StatusInfo {},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]

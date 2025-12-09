@@ -249,6 +249,7 @@ impl TcpServer {
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),
                                                     "set-mouse".to_string(),
+                                                    "status".to_string(),
                                                 ];
                                                 let msg = ServerMessage::HelloOk {
                                                     version,
@@ -262,6 +263,22 @@ impl TcpServer {
                                                     Err(err) => {
                                                         log::error!(
                                                             "Error writing HelloOk response: {err}"
+                                                        );
+                                                        connections.lock().remove(&addr);
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            // Basic status info (ready flag)
+                                            ClientMessage::StatusInfo {} => {
+                                                let msg = ServerMessage::StatusInfo { ready: true };
+                                                match stream.write_all(&msg.as_bytes()) {
+                                                    Ok(_) => {
+                                                        let _ = stream.flush();
+                                                    }
+                                                    Err(err) => {
+                                                        log::error!(
+                                                            "Error writing StatusInfo response: {err}"
                                                         );
                                                         connections.lock().remove(&addr);
                                                         break;
