@@ -76,7 +76,7 @@ pub const ACTION_QUEUE_LEN: usize = 8;
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type Delay = u16;
-pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
+pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>, LayerStack)>;
 
 pub const REAL_KEY_ROW: u8 = 0;
 
@@ -843,7 +843,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 .unwrap_or(0);
             if let Some(action) = config.get_chord(chord_mask) {
                 let coord = get_coord_for_chord(chord_mask);
-                let _ = action_queue.push_back(Some((coord, delay, action)));
+                // Note on LayerStack being default (empty):
+                // A chordv1 allows transparency, so this is broken right now,
+                // and could result in an infinite loop, because
+                // the queue activating code falls back to top-level resolution order
+                // if the stored layer stack is empty.
+                let _ = action_queue.push_back(Some((coord, delay, action, Default::default())));
             } else {
                 end -= 1;
                 // shrink from end until something is found, or have checked up to and including
@@ -857,7 +862,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         .unwrap_or(0);
                     if let Some(action) = config.get_chord(chord_mask) {
                         let coord = get_coord_for_chord(chord_mask);
-                        let _ = action_queue.push_back(Some((coord, delay, action)));
+                        let _ = action_queue.push_back(Some((
+                            coord,
+                            delay,
+                            action,
+                            Default::default(),
+                        )));
                         break;
                     }
                     end -= 1;
@@ -1355,16 +1365,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             }
         }
         self.keys_to_suppress_for_one_cycle.clear();
-        if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
+        if let Some(Some((coord, delay, action, layer_stack))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
-            return self.do_action(
-                action,
-                coord,
-                delay,
-                false,
-                &mut self.trans_resolution_layer_order().into_iter().skip(1),
-            );
+            return self.do_action(action, coord, delay, false, &mut layer_stack.into_iter());
         }
         self.queue.iter_mut().for_each(Queued::tick_qd);
         self.last_press_tracker.tick_lpt();
@@ -2190,7 +2194,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // assertions.
                     self.default_layer as u16,
                 ) {
-                    action_queue.push_back(Some((coord, 0, ac)));
+                    action_queue.push_back(Some((coord, 0, ac, layer_stack.collect())));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the
                 // purpose of proper Custom action handling, because a single switch action can
@@ -4587,6 +4591,7 @@ mod test {
             ]],
         ];
         let mut layout = Layout::new(LAYERS);
+        layout.trans_resolution_behavior_v2 = true;
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());

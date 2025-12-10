@@ -301,40 +301,8 @@ pub fn new_from_str(cfg_text: &str, file_content: HashMap<String, String>) -> MR
         DEF_LOCAL_KEYS,
         Err("environment variables are not supported".into()),
     )?;
-    let (layers, allocations) = icfg.klayers.get();
-    let key_outputs = create_key_outputs(&layers, &icfg.overrides, &icfg.chords_v2);
-    let switch_max_key_timing = s.switch_max_key_timing.get();
-    let mut layout = KanataLayout::new(
-        Layout::new_with_trans_action_settings(
-            s.a.sref(s.defsrc_layer),
-            layers,
-            icfg.options.trans_resolution_behavior_v2,
-            icfg.options.delegate_to_first_layer,
-        ),
-        allocations,
-    );
-    layout.bm().chords_v2 = icfg.chords_v2;
-    layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
-    layout.bm().oneshot.pause_input_processing_delay = icfg.options.rapid_event_delay;
-    let mut fake_keys: HashMap<String, usize> = s
-        .virtual_keys
-        .iter()
-        .map(|(k, v)| (k.clone(), v.0))
-        .collect();
-    fake_keys.shrink_to_fit();
     log::info!("config file is valid");
-    Ok(Cfg {
-        options: icfg.options,
-        mapped_keys: icfg.mapped_keys,
-        layer_info: icfg.layer_info,
-        key_outputs,
-        layout,
-        sequences: icfg.sequences,
-        overrides: icfg.overrides,
-        fake_keys,
-        switch_max_key_timing,
-        zippy: icfg.zippy,
-    })
+    Ok(populate_cfg_with_icfg(icfg, s))
 }
 
 pub type MappedKeys = HashSet<OsCode>;
@@ -350,6 +318,11 @@ pub struct LayerInfo {
 fn parse_cfg(p: &Path) -> MResult<Cfg> {
     let mut s = ParserState::default();
     let icfg = parse_cfg_raw(p, &mut s)?;
+    log::info!("config file is valid");
+    Ok(populate_cfg_with_icfg(icfg, s))
+}
+
+fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
     let (layers, allocations) = icfg.klayers.get();
     let key_outputs = create_key_outputs(&layers, &icfg.overrides, &icfg.chords_v2);
     let switch_max_key_timing = s.switch_max_key_timing.get();
@@ -366,7 +339,10 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
     layout.bm().oneshot.pause_input_processing_delay = icfg.options.rapid_event_delay;
     if let Some(s) = icfg.start_action {
-        layout.bm().action_queue.push_front(Some(((1, 0), 0, s)));
+        layout
+            .bm()
+            .action_queue
+            .push_front(Some(((1, 0), 0, s, Default::default())));
     }
     let mut fake_keys: HashMap<String, usize> = s
         .virtual_keys
@@ -374,8 +350,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         .map(|(k, v)| (k.clone(), v.0))
         .collect();
     fake_keys.shrink_to_fit();
-    log::info!("config file is valid");
-    Ok(Cfg {
+    Cfg {
         options: icfg.options,
         mapped_keys: icfg.mapped_keys,
         layer_info: icfg.layer_info,
@@ -386,7 +361,7 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
         fake_keys,
         switch_max_key_timing,
         zippy: icfg.zippy,
-    })
+    }
 }
 
 #[cfg(all(
