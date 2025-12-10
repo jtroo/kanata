@@ -1651,20 +1651,22 @@ There is a toggable defcfg option related to `movemouse-accel` - <<movemouse-inh
 
 The action `setmouse` or `set🖱` sets the absolute mouse position.
 
-WARNING: This is only supported in Windows right now.
+WARNING: This is not supported on Linux.
 For an interesting keyboard-centric mouse solution in Linux,
 try looking at
 https://github.com/rvaiya/warpd[warpd].
 
 This list action takes two parameters which are `x` and `y` positions
 of the absolute movement.
-The values go from 0,0 which is the upper-left corner of the screen
-to 65535,65535 which is the lower-right corner of the screen.
-If you have multiple monitors,
-`setmouse` treats them all as a single large screen.
-This can make it a little confusing for how to set the `x, y` values
-to get the positions that you want.
-Experimentation will be needed.
+
+The coordinate system is platform-specific:
+
+* **macOS**: Pixel coordinates. `0,0` is the top-left of the main display,
+  maximum values are your screen resolution (e.g., `1920,1080`).
+* **Windows**: Normalized coordinates from `0,0` (top-left)
+  to `65535,65535` (bottom-right). Multiple monitors are treated as one virtual desktop.
+
+Experimentation will be needed to find the correct values for your setup.
 
 [[mouse-speed]]
 ==== Modify the speed of mouse movements
