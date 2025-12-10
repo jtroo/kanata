@@ -185,11 +185,24 @@ impl<'a, T> ChordsV2<'a, T> {
             .find_map(|ach| match ach.status {
                 Unread => {
                     ach.status = Releasable;
-                    Some(Some(((0, ach.coordinate), ach.delay, ach.action)))
+                    // Note on LayerStack being default (empty):
+                    // A chordv2 is not allowed to use transparency,
+                    // so it does not need to handle this case.
+                    Some(Some((
+                        (0, ach.coordinate),
+                        ach.delay,
+                        ach.action,
+                        Default::default(),
+                    )))
                 }
                 UnreadReleased => {
                     ach.status = Released;
-                    Some(Some(((0, ach.coordinate), ach.delay, ach.action)))
+                    Some(Some((
+                        (0, ach.coordinate),
+                        ach.delay,
+                        ach.action,
+                        Default::default(),
+                    )))
                 }
                 Releasable | Released => None,
             })
