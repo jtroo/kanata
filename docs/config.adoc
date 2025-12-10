@@ -325,6 +325,8 @@ e.g. in the example above, these affect keys other than `caps`.
 | Map all unmapped keys in this layer.
 |===
 
+If a key is not mapped explicitly or through these wildcards, it will be implicitly mapped to a <<transparent-key,transparent key>>.
+
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
 
@@ -909,11 +911,17 @@ inaccurate with regards to its meaning.
 
 **Description**
 
-If you use a single underscore for a key `+_+` then it acts as a "transparent"
-key in a `+deflayer+`. The behaviour depends if `+_+` is on a base layer or a
-while-held layer. When `+_+` is pressed on the active base layer, the key will
-default to the corresponding `defsrc` key. If `+_+` is pressed on the active
-while-held layer, the base layer's behaviour will activate.
+Kanata maintains a layer stack consisting in order of:
+
+* a stack of temporary layers, where each `layer-while-held` adds one layer on top
+* the base layer, manipulated by `layer-switch`
+* if `delegate-to-first-layer` is enabled: the first layer defined by `deflayer` or `deflayermap`
+* `defsrc`
+
+A single underscore `+_+` acts as a "transparent" key in the current layer.
+It will invoke the action assigned to the same key position on the next layer in the stack.
+
+NOTE: If `delegate-to-first-layer` is enabled and the base layer is currently set to the first defined layer, a transparent key on the base layer will fall through directly to `defsrc`.
 
 [[use-defsrc]]
 === use-defsrc
