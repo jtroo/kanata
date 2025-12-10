@@ -911,12 +911,12 @@ inaccurate with regards to its meaning.
 
 **Description**
 
-Kanata maintains a layer stack consisting of:
+Kanata maintains a layer stack consisting in order of:
 
-* `defsrc`
-* if `delegate-to-first-layer` is enabled: the first layer defined by `deflayer` or `deflayermap`
-* the base layer, manipulated by `layer-switch`
 * a stack of temporary layers, where each `layer-while-held` adds one layer on top
+* the base layer, manipulated by `layer-switch`
+* if `delegate-to-first-layer` is enabled: the first layer defined by `deflayer` or `deflayermap`
+* `defsrc`
 
 A single underscore `+_+` acts as a "transparent" key in the current layer.
 It will invoke the action assigned to the same key position on the next layer in the stack.
