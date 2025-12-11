@@ -78,12 +78,31 @@ fn print_usage() {
             new: "requested-layer".into()
         })
         .expect("deserializable"),
-        serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable"),
-        serde_json::to_string(&ClientMessage::ReloadNum { index: 1 }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::Reload {
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNext {
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadPrev {
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNum {
+            index: 1,
+            wait: None,
+            timeout_ms: None
+        })
+        .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ReloadFile {
-            path: "/path/to/config.kbd".to_string()
+            path: "/path/to/config.kbd".to_string(),
+            wait: None,
+            timeout_ms: None,
         })
         .expect("deserializable"),
         serde_json::to_string(&ServerResponse::Ok).expect("deserializable"),
@@ -142,20 +161,36 @@ fn write_to_kanata(mut s: TcpStream) {
             .expect("deserializable")
         } else if command == "reload" {
             log::info!("writer: telling kanata to reload current config");
-            serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::Reload {
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command == "reload-next" {
             log::info!("writer: telling kanata to reload next config");
-            serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadNext {
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command == "reload-prev" {
             log::info!("writer: telling kanata to reload previous config");
-            serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadPrev {
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else if command.starts_with("reload-num:") {
             let index_str = command.trim_start_matches("reload-num:");
             match index_str.parse::<usize>() {
                 Ok(index) => {
                     log::info!("writer: telling kanata to reload config at index {index}");
-                    serde_json::to_string(&ClientMessage::ReloadNum { index })
-                        .expect("deserializable")
+                    serde_json::to_string(&ClientMessage::ReloadNum {
+                        index,
+                        wait: None,
+                        timeout_ms: None,
+                    })
+                    .expect("deserializable")
                 }
                 Err(_) => {
                     log::error!("Invalid number format for reload-num: {index_str}");
@@ -166,7 +201,12 @@ fn write_to_kanata(mut s: TcpStream) {
         } else if command.starts_with("reload-file:") {
             let path = command.trim_start_matches("reload-file:").to_string();
             log::info!("writer: telling kanata to reload config file \"{path}\"");
-            serde_json::to_string(&ClientMessage::ReloadFile { path }).expect("deserializable")
+            serde_json::to_string(&ClientMessage::ReloadFile {
+                path,
+                wait: None,
+                timeout_ms: None,
+            })
+            .expect("deserializable")
         } else {
             log::info!("writer: telling kanata to change layer to \"{command}\"");
             serde_json::to_string(&ClientMessage::ChangeLayer { new: command })
