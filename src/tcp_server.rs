@@ -380,8 +380,7 @@ impl TcpServer {
 
                                                     // Check final state: ok means success,
                                                     // complete but not ok means failure
-                                                    let ok =
-                                                        kanata.lock().last_reload_succeeded();
+                                                    let ok = kanata.lock().last_reload_succeeded();
                                                     let msg = ServerMessage::ReloadResult {
                                                         ok,
                                                         timeout_ms: if timed_out {
