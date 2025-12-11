@@ -4908,7 +4908,7 @@ These are sent in response to client queries:
 | `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
 | Response to `Hello`. Contains server version, protocol version, and supported capabilities.
 
-| `{"ReloadResult":{"ready":true}}`
+| `{"ReloadResult":{"ok":true}}`
 | Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.
 |===
 

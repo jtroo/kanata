@@ -41,7 +41,7 @@ pub enum ServerMessage {
     /// Response to Reload commands when `wait: true` was specified.
     /// Introduced in protocol v1.11.
     ReloadResult {
-        ready: bool,
+        ok: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
         timeout_ms: Option<u64>,
     },

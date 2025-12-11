@@ -378,12 +378,12 @@ impl TcpServer {
                                                         std::thread::sleep(poll_interval);
                                                     }
 
-                                                    // Check final state: ready means success,
-                                                    // complete but not ready means failure
-                                                    let ready =
+                                                    // Check final state: ok means success,
+                                                    // complete but not ok means failure
+                                                    let ok =
                                                         kanata.lock().last_reload_succeeded();
                                                     let msg = ServerMessage::ReloadResult {
-                                                        ready,
+                                                        ok,
                                                         timeout_ms: if timed_out {
                                                             Some(timeout_ms)
                                                         } else {
