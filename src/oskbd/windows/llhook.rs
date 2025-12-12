@@ -111,7 +111,9 @@ impl InputEvent {
                 } else {
                     0
                 };
-                crate::oskbd::u16_to_osc((lparam.scanCode as u16) | extended)
+                let sc_with_ext = (lparam.scanCode as u16) | extended;
+                log::debug!("converting {sc_with_ext}");
+                crate::oskbd::u16_to_osc(sc_with_ext)
                     .map(Into::into)
                     .unwrap_or(lparam.vkCode)
             }
