@@ -60,7 +60,7 @@ Expected output:
 crw-rw---- 1 root uinput 10, <minor> <MMM DD HH:MM> /dev/uinput
 ```
 
-## 5. Run Kanata immediately if the group change isn’t active
+## 5. (Optional) Run Kanata immediately if the group change isn’t active
 
 If `uinput` is not listed in `groups` even after adding your user:
 
