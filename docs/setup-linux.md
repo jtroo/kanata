@@ -2,16 +2,10 @@
 
 In Linux, kanata needs to be able to access the input and uinput subsystem to inject events. To do this, your user needs to have permissions. Follow the steps in this page to obtain user permissions.
 
-### 1. If the uinput group does not exist, create it
+### 1. Create the uinput group (if it doesn’t exist)
 
 ```bash
-sudo groupadd --system uinput
-```
-
-If the group exists but wasn’t created with `--system`, delete it first:
-
-```
-sudo groupdel uinput
+sudo groupdel uinput 2>/dev/null
 sudo groupadd --system uinput
 ```
 
