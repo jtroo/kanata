@@ -9,23 +9,38 @@ sudo groupadd --system uinput
 ```
 
 If the group exists but wasn’t created with `--system`, delete it first:
+
 ```
 sudo groupdel uinput
 sudo groupadd --system uinput
 ```
 
-### 2. Add your user to the input and the uinput group
+### 2. Add your user to the `input` and `uinput` group
 
-```bash
+```sh
 sudo usermod -aG input $USER
 sudo usermod -aG uinput $USER
 ```
 
-Make sure that it's effective by running `groups`. You might have to logout and login.
+Verify:
 
-### 3. Make sure the uinput device file has the right permissions.
+```sh
+groups
+```
 
-#### Run this to create the udev rule automatically:
+You may need to log out and back in for it to take effect.
+
+### 3. Load the uinput kernel module
+
+```sh
+sudo modprobe uinput
+```
+
+This ensures /dev/uinput exists.
+
+### 4. Make sure the uinput device file has the right permissions.
+
+Create the udev rule:
 
 ```bash
 sudo tee /etc/udev/rules.d/99-input.rules > /dev/null <<EOF
@@ -33,51 +48,50 @@ KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
 EOF
 ```
 
+Reload udev rules:
+
 #### Machine reboot or run this to reload
+
 ```bash
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-#### Verify settings by following command:
+Verify:
+
 ```bash
 ls -l /dev/uinput
 ```
 
-#### Output:
-```bash
-crw-rw---- 1 root date uinput /dev/uinput
-```
-
-## 5. Ensure your user can access `/dev/uinput`
-
-Check if your user is in the uinput group
+Expected output:
 
 ```bash
-groups
+crw-rw---- 1 root uinput 10, <minor> <MMM DD HH:MM> /dev/uinput
 ```
 
-If uinput is not listed, even after running: `sudo usermod -aG uinput $USER` you can run Kanata immediately without logging out as a temporary workaround:
+## 5. Run Kanata immediately if the group change isn’t active
+
+If `uinput` is not listed in `groups` even after adding your user:
 
 ```bash
 newgrp uinput -c kanata
 ```
-This gives your current shell the uinput group just for that command, so Kanata can access `/dev/uinput` until your next login.
 
-### 4. Make sure the uinput drivers are loaded
+This temporarily gives the current shell the `uinput` group so kanata can access `/dev/uinput` until the next login.
 
-You may need to run this command whenever you start kanata for the first time:
-
+```bash
+newgrp uinput -c kanata
 ```
-sudo modprobe uinput
-```
-### 5a. To create and enable a systemd daemon service
+
+### 6. To create and enable a systemd daemon service
 
 Run this command first:
+
 ```bash
 mkdir -p ~/.config/systemd/user
 ```
 
 Then add this to: `~/.config/systemd/user/kanata.service`:
+
 ```bash
 [Unit]
 Description=Kanata keyboard remapper
@@ -109,6 +123,7 @@ Without it, kanata waits for user input on exit, which blocks automatic restart.
 Make sure to update the executable location for sh in the snippet above.
 This would be the line starting with `ExecStart=/usr/bin/sh -c`.
 You can check the executable path with:
+
 ```bash
 which sh
 ```
@@ -118,14 +133,18 @@ For example, if executing `which kanata` returns `/home/[user]/.cargo/bin/kanata
 `%h` is one of the specifiers allowed in systemd, more can be found in https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers
 
 Then run:
+
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable kanata.service
 systemctl --user start kanata.service
 systemctl --user status kanata.service   # check whether the service is running
 ```
+
 ### 5b. To create and enable an OpenRC daemon service
+
 Edit new file `/etc/init.d/kanata` as root, replacing \<username\> as appropriate:
+
 ```bash
 #!/sbin/openrc-run
 
@@ -139,6 +158,7 @@ command_user="<username>"
 ```
 
 Then run:
+
 ```
 sudo chmod +x /etc/init.d/kanata # script must be executable
 sudo rc-service kanata start
