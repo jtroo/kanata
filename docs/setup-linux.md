@@ -29,12 +29,12 @@ Make sure that it's effective by running `groups`. You might have to logout and 
 
 ### 3. Make sure the uinput device file has the right permissions.
 
-#### Create a new file:
-`/etc/udev/rules.d/99-input.rules`
+#### Run this to create the udev rule automatically:
 
-#### Insert the following in the code
 ```bash
+sudo tee /etc/udev/rules.d/99-input.rules > /dev/null <<EOF
 KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
+EOF
 ```
 
 #### Machine reboot or run this to reload
