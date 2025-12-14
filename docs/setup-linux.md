@@ -70,9 +70,9 @@ newgrp uinput -c kanata
 
 This temporarily gives the current shell the `uinput` group so kanata can access `/dev/uinput` until the next login.
 
-### 6. To create and enable a systemd daemon service
+### 6. (Optional) Create and enable a systemd user service
 
-Run this command first:
+First, create the directory for user services:
 
 ```bash
 mkdir -p ~/.config/systemd/user
