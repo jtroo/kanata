@@ -44,8 +44,6 @@ EOF
 
 Reload udev rules:
 
-#### Machine reboot or run this to reload
-
 ```bash
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
