@@ -70,7 +70,7 @@ newgrp uinput -c kanata
 
 This temporarily gives the current shell the `uinput` group so kanata can access `/dev/uinput` until the next login.
 
-### 6. (Optional) Create and enable a systemd user service
+### 6a. (Optional) Create and enable a systemd user service
 
 First, create the directory for user services:
 
@@ -129,7 +129,7 @@ systemctl --user start kanata.service
 systemctl --user status kanata.service   # check whether the service is running
 ```
 
-### 5b. To create and enable an OpenRC daemon service
+### 6b. To create and enable an OpenRC daemon service
 
 Edit new file `/etc/init.d/kanata` as root, replacing \<username\> as appropriate:
 
