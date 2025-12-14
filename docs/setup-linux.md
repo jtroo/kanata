@@ -2,20 +2,16 @@
 
 In Linux, kanata needs to be able to access the input and uinput subsystem to inject events. To do this, your user needs to have permissions. Follow the steps in this page to obtain user permissions.
 
-### 1. If the uinput group does not exist, create a new group
+### 1. If the uinput group does not exist, create it
 
 ```bash
 sudo groupadd --system uinput
 ```
 
-If the `uinput` group already exists,
-it may have been created without the `--system` flag.
-First delete it then re-add again with the above command.
-
-To delete:
-
+If the group exists but wasn’t created with `--system`, delete it first:
 ```
 sudo groupdel uinput
+sudo groupadd --system uinput
 ```
 
 ### 2. Add your user to the input and the uinput group
@@ -51,6 +47,21 @@ ls -l /dev/uinput
 ```bash
 crw-rw---- 1 root date uinput /dev/uinput
 ```
+
+## 5. Ensure your user can access `/dev/uinput`
+
+Check if your user is in the uinput group
+
+```bash
+groups
+```
+
+If uinput is not listed, even after running: `sudo usermod -aG uinput $USER` you can run Kanata immediately without logging out as a temporary workaround:
+
+```bash
+newgrp uinput -c kanata
+```
+This gives your current shell the uinput group just for that command, so Kanata can access `/dev/uinput` until your next login.
 
 ### 4. Make sure the uinput drivers are loaded
 
