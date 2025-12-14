@@ -784,6 +784,16 @@ pub enum KeyCode {
     KeyMax = 767,
 }
 
+impl KeyCode {
+    pub fn is_mod(self) -> bool {
+        use KeyCode::*;
+        matches!(
+            self,
+            LShift | RShift | LCtrl | RCtrl | LAlt | RAlt | LGui | RGui
+        )
+    }
+}
+
 use core::fmt;
 impl fmt::Display for KeyCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -857,7 +867,7 @@ impl fmt::Display for KeyCode {
             KeyCode::Mute => write!(f, "🔇"),
             KeyCode::VolUp => write!(f, "🔊"),
             KeyCode::VolDown => write!(f, "🔉"),
-            _ => write!(f, "{:?}", self),
+            _ => write!(f, "{self:?}"),
         }
     }
 }

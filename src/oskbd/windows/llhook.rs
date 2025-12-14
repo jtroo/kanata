@@ -8,6 +8,9 @@
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
 
+mod mouse;
+pub use mouse::*;
+
 use core::fmt;
 use std::cell::Cell;
 use std::io;
@@ -84,7 +87,7 @@ impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let direction = if self.up { "↑" } else { "↓" };
         let key_name = KeyCode::from(OsCode::from(self.code));
-        write!(f, "{}{:?}", direction, key_name)
+        write!(f, "{direction}{key_name:?}")
     }
 }
 
@@ -178,49 +181,51 @@ impl From<KeyEvent> for InputEvent {
 ///   time       :DWORD time stamp = GetMessageTime
 ///   dwExtraInfo:ULONG_PTR Additional info
 unsafe extern "system" fn hook_proc(code: c_int, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
-    let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
-    log::trace!("{code} {}{wparam} {is_injected}", {
-        match wparam as u32 {
-            WM_KEYDOWN => "↓",
-            WM_KEYUP => "↑",
-            WM_SYSKEYDOWN => "sys↓",
-            WM_SYSKEYUP => "sys↑",
-            _ => "?",
+    unsafe {
+        let hook_lparam = &*(lparam as *const KBDLLHOOKSTRUCT);
+        let is_injected = hook_lparam.flags & LLKHF_INJECTED != 0;
+        log::trace!("{code} {}{wparam} {is_injected}", {
+            match wparam as u32 {
+                WM_KEYDOWN => "↓",
+                WM_KEYUP => "↑",
+                WM_SYSKEYDOWN => "sys↓",
+                WM_SYSKEYUP => "sys↑",
+                _ => "?",
+            }
+        });
+
+        // Regarding code check:
+        // If code is non-zero (technically <0, but 0 is the only valid value anyway),
+        // then it must be forwarded.
+        // Source: https://learn.microsoft.com/windows/win32/winmsg/lowlevelkeyboardproc
+        //
+        // Regarding in_injected check:
+        // `SendInput()` internally calls the hook function.
+        // Filter out injected events to prevent infinite recursion.
+        if code != HC_ACTION || is_injected {
+            return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
         }
-    });
 
-    // Regarding code check:
-    // If code is non-zero (technically <0, but 0 is the only valid value anyway),
-    // then it must be forwarded.
-    // Source: https://learn.microsoft.com/windows/win32/winmsg/lowlevelkeyboardproc
-    //
-    // Regarding in_injected check:
-    // `SendInput()` internally calls the hook function.
-    // Filter out injected events to prevent infinite recursion.
-    if code != HC_ACTION || is_injected {
-        return CallNextHookEx(ptr::null_mut(), code, wparam, lparam);
-    }
+        let key_event = InputEvent::from_hook_lparam(hook_lparam);
 
-    let key_event = InputEvent::from_hook_lparam(hook_lparam);
+        let mut handled = false;
+        HOOK.with(|state| {
+            // The unwrap cannot fail, because we have initialized [`HOOK`] with a
+            // valid closure before registering the hook (this function).
+            // To access the closure we move it out of the cell and put it back
+            // after it returned. For this to work we need to prevent recursion by
+            // dropping injected events. Otherwise we would try to take the closure
+            // twice and the call would fail the second time.
+            let mut hook = state.take().expect("no recurse");
+            handled = hook(key_event);
+            state.set(Some(hook));
+        });
 
-    let mut handled = false;
-    HOOK.with(|state| {
-        // The unwrap cannot fail, because we have initialized [`HOOK`] with a
-        // valid closure before registering the hook (this function).
-        // To access the closure we move it out of the cell and put it back
-        // after it returned. For this to work we need to prevent recursion by
-        // dropping injected events. Otherwise we would try to take the closure
-        // twice and the call would fail the second time.
-        let mut hook = state.take().expect("no recurse");
-        handled = hook(key_event);
-        state.set(Some(hook));
-    });
-
-    if handled {
-        1
-    } else {
-        CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
+        if handled {
+            1
+        } else {
+            CallNextHookEx(ptr::null_mut(), code, wparam, lparam)
+        }
     }
 }
 

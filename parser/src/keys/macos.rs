@@ -400,7 +400,10 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x07,
                 code: 0x64,
             }), //KeyboardNonUSBackslash
-            // KeyboardApplication               => 0x0765, todo
+            OsCode::KEY_COMPOSE => Ok(PageCode {
+                page: 0x07,
+                code: 0x65,
+            }),
             OsCode::KEY_POWER => Ok(PageCode {
                 page: 0x07,
                 code: 0x66,
@@ -510,12 +513,28 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x0C,
                 code: 0xEA,
             }), // 0x0781
+            OsCode::KEY_EJECTCD => Ok(PageCode {
+                page: 0x0C,
+                code: 0xB8,
+            }), // 0x0781
             //KeyboardLockingCapsLock   => 82, todo
             //KeyboardLockingNumLock    => 83, todo
             //KeyboardLockingScrollLock => 84, todo
             OsCode::KEY_KPCOMMA => Ok(PageCode {
                 page: 0x07,
                 code: 0x85,
+            }),
+            OsCode::KEY_RO => Ok(PageCode {
+                page: 0x07,
+                code: 0x87,
+            }),
+            OsCode::KEY_HANGEUL => Ok(PageCode {
+                page: 0x07,
+                code: 0x90,
+            }),
+            OsCode::KEY_HANJA => Ok(PageCode {
+                page: 0x07,
+                code: 0x91,
             }),
             OsCode::KEY_ALTERASE => Ok(PageCode {
                 page: 0x07,
@@ -1172,9 +1191,25 @@ impl TryFrom<PageCode> for OsCode {
                 code: 0xEA,
             } => Ok(OsCode::KEY_VOLUMEDOWN),
             PageCode {
+                page: 0x0C,
+                code: 0xB8,
+            } => Ok(OsCode::KEY_EJECTCD),
+            PageCode {
                 page: 0x07,
                 code: 0x85,
             } => Ok(OsCode::KEY_KPCOMMA),
+            PageCode {
+                page: 0x07,
+                code: 0x87,
+            } => Ok(OsCode::KEY_RO),
+            PageCode {
+                page: 0x07,
+                code: 0x90,
+            } => Ok(OsCode::KEY_HANGEUL),
+            PageCode {
+                page: 0x07,
+                code: 0x91,
+            } => Ok(OsCode::KEY_HANJA),
             PageCode {
                 page: 0x07,
                 code: 0x99,

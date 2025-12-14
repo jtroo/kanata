@@ -123,7 +123,7 @@ Sample configuration files are found in [cfg_samples](./cfg_samples). The
 that is hopefully easy to understand but does not contain all features. The
 `kanata.kbd` contains an example of all features with documentation. The
 release assets also have a `kanata.kbd` file that is tested to work with that
-release. All key names can be found in the [keys module](./src/keys/mod.rs),
+release. All key names can be found in the [keys module](./parser/src/keys/mod.rs),
 and you can also define your own key names.
 
 </details>
@@ -169,7 +169,12 @@ cargo install --features cmd,interception_driver
 
 ## Other installation methods
 
+<details>
+<summary>Repositories for kanata</summary>
+
 [![Packaging status](https://repology.org/badge/vertical-allrepos/kanata.svg)](https://repology.org/project/kanata/versions)
+
+</details>
 
 ## Notable features
 

@@ -37,7 +37,7 @@ fn cli_init() {
 
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
-        eprintln!("WARNING: could not set log TZ to local: {:?}", e);
+        eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,

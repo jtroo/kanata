@@ -411,8 +411,7 @@ fn evaluate_boolean(
                 });
                 assert!(
                     res.is_ok(),
-                    "exceeded boolean op depth {}",
-                    MAX_BOOL_EXPR_DEPTH
+                    "exceeded boolean op depth {MAX_BOOL_EXPR_DEPTH}"
                 );
                 (current_op, current_end_index) = (operator.op, operator.idx);
                 current_index += 1;

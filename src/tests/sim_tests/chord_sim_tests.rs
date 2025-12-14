@@ -232,11 +232,11 @@ static CHORD_INTO_TAP_HOLD_CFG: &str = "\
 fn sim_chord_into_tap_hold() {
     let result = simulate(
         CHORD_INTO_TAP_HOLD_CFG,
-        "d:a t:50 d:b t:149 u:a u:b t:5 \
-         d:a t:50 d:b t:148 u:a u:b t:1000",
+        "d:a t:50 d:b t:150 u:a u:b t:5 \
+         d:a t:50 d:b t:149 u:a u:b t:1000",
     );
     assert_eq!(
-        "t:199ms\nout:↓Y\nt:10ms\nout:↑Y\nt:193ms\nout:↓X\nt:10ms\nout:↑X",
+        "t:199ms\nout:↓Y\nt:10ms\nout:↑Y\nt:195ms\nout:↓X\nt:10ms\nout:↑X",
         result
     );
 }

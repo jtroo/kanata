@@ -33,6 +33,26 @@ jobs:
     - name: Check fmt
       run: cargo fmt --all --check
 
+  build-android:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: aarch64-linux-android
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "persist-cross-job"
+        workspaces: ./
+    - run: rustup target add aarch64-linux-android
+
+    - name: Build for Android
+      run: cargo check --target aarch64-linux-android
+
   build-test-clippy-linux:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -67,6 +87,8 @@ jobs:
 
     - name: Run tests simulated output
       run: cargo test --features=simulated_output -- sim_tests
+    - name: Run tests simulated output on_idle
+      run: cargo test --features=simulated_output -- must_be_single_threaded --ignored --test-threads=1
     - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
 
@@ -112,6 +134,8 @@ jobs:
 
     - name: Run tests simulated output
       run: cargo test --features=simulated_output -- sim_tests
+    - name: Run tests simulated output on_idle
+      run: cargo test --features=simulated_output -- sim_tests::vkey_sim_tests::on_idle --ignored
     - name: Run clippy simulated output
       run: cargo clippy --all --features=simulated_output,cmd -- -D warnings
 

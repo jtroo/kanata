@@ -1,6 +1,6 @@
 #![cfg(all(feature = "passthru_ahk", target_os = "windows"))]
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::bail;
 
 use kanata_state_machine::{oskbd::*, *};
 use log::*;
@@ -85,13 +85,13 @@ fn lib_impl(cfg_path: &str) -> Result<()> {
     let (tx, rx) = std::sync::mpsc::sync_channel(100);
     let ntx = None;
     Kanata::start_processing_loop(cfg_arc.clone(), rx, ntx, args.nodelay); // 2 handles keyboard
-                                                                           // events while also
-                                                                           // maintaining `tick()`
-                                                                           // calls to keyberon
+    // events while also
+    // maintaining `tick()`
+    // calls to keyberon
 
     Kanata::event_loop(cfg_arc, tx)?; // 1 only listens for keyboard events
-                                      // (not a real loop, just registers callback closures
-                                      // for external function to call at will)
+    // (not a real loop, just registers callback closures
+    // for external function to call at will)
 
     Ok(())
 }
@@ -121,12 +121,12 @@ pub extern "win64" fn lib_kanata_passthru(
         return 1;
     };
     let cfg_path_wc = unsafe { U16CStr::from_ptr_str(cfg_path) }; // Constructs a wide C string
-                                                                  // slice from a nul-terminated
-                                                                  // string pointer
+    // slice from a nul-terminated
+    // string pointer
     let cfg_path_wx: &U16Str = cfg_path_wc.as_ustr(); // 16b wide string slice with undefined
-                                                      // encoding reject invalid UTF16 (skip check
-                                                      // with from_ustr_unchecked if certain input
-                                                      // is valid UTF16)
+    // encoding reject invalid UTF16 (skip check
+    // with from_ustr_unchecked if certain input
+    // is valid UTF16)
     let cfg_path_w: &Utf16Str = match Utf16Str::from_ustr(cfg_path_wx) {
         Ok(s) => s,
         Err(_e) => {

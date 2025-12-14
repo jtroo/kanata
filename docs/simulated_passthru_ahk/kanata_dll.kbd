@@ -5,7 +5,7 @@
 )
 
 (defvar
-  🕐↕	1000 ;;|500| tap-timeout
+  🕐↕	1000 ;;|500| tap-repress-timeout
   🕐🠿	1500 ;;|500| hold-timeout
   )
 (defalias	;;      timeout→ 	tap	  hold   ¦	 tap	 hold ←action

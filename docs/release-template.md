@@ -20,28 +20,59 @@ The attached `kanata.kbd` file is tested to work with the current version. The o
 <details>
 <summary>Instructions</summary>
 
-**NOTE:** All Windows binaries are compiled for x86-64 architectures only.
+Download the appropriate `kanata-windows-variant.zip` file for your machine CPU. Extract and move the desired binary variant to its intended location. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the extracted `.exe` file to start kanata. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/193) for tips to run kanata in the background.
 
-Download `kanata.exe`. Optionally, download `kanata.kbd`. With the two files in the same directory, you can double-click the `exe` to start kanata. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/193) for tips to run kanata in the background.
+You need to run via `cmd` or `powershell` to use a different configuration file:
 
-You need to run `kanata.exe` via `cmd` or `powershell` to use a different configuration file:
+`kanata_windows_binaryvariant.exe --cfg <cfg_file>`
 
-`kanata.exe --cfg <cfg_file>`
+### Binary variants
 
----
+Explanation of items in the binary variant:
 
-**NOTE:** The `kanata_winIOv2.exe` variant contains an experimental breaking change that fixes [an issue](https://github.com/jtroo/kanata/issues/152) where the Windows LLHOOK+SendInput version of kanata does not handle `defsrc` consistently compared to other versions and other operating systems. This variant will be of interest to you for any of the following reasons:
-- you are a new user
-- you are a cross-platform user
-- you use multiple language layouts within Windows and want kanata to handle the key positions consistently
+- x64 vs. arm64:
+  - Select x64 if your machine's CPU is Intel or AMD. If ARM, use arm64.
+- tty vs gui:
+  - tty runs in a terminal, gui runs as a system tray application
+- cmd\_allowed vs. not
+  - cmd\_allowed allows the `cmd` actions; otherwise, they are compiled out of the application
+- winIOv2 vs. wintercept
+  - winIOv2 uses the LLHOOK and SendInput Windows mechanisms to intercept and send events.
+  - wintercept uses the [Interception driver](https://github.com/oblitum/Interception). Beware of its known issue that disables keyboards and mice until system reboot: [Link to issue](https://github.com/oblitum/Interception/issues/25).
+    - you will need to install the driver using the release or from the [copy in this repo](https://github.com/jtroo/kanata/tree/main/assets).
+    - the benefit of using this driver is that it is a lower-level mechanism than Windows hooks, and `kanata` will work in more applications.
 
-This variant contains the same output change as in the `scancode` variant below, and also changes the input to also operate on scancodes.
+### wintercept installation
 
----
+#### Steps to install the driver
 
-**NOTE:** The `kanata_legacy_output.exe` variant has the same input `defsrc` handling as the standard `kanata.exe` file. It uses the same output mechanism as the standard `kanata.exe` variant in version 1.6.1 and earlier. In other words the formerly `experimental_scancode` variant is now the default binary. The non-legacy variants contain changes for [an issue](https://github.com/jtroo/kanata/issues/567); the fix is omitted from this legacy variant. The legacy variant is included in case issues are found with the new output mechanism.
+- extract the `.zip`
+- run a shell with administrator privilege
+- run the script `"command line installer/install-interception.exe"`
+- reboot
 
----
+#### Additional installation steps
+
+The above steps are those recommended by the interception driver author. However, I have found that those steps work inconsistently and sometimes the dll stops being able to be loaded. I suspect it has something to do with being installed in the privileged location of `system32\drivers`.
+
+To help with the dll issue, you can copy the following file in the zip archive to the directory that kanata starts from: `Interception\library\x64\interception.dll`.
+
+E.g. if you start kanata from your `Documents` folder, put the file there:
+
+**Example:**
+
+```
+C:\Users\my_user\Documents\
+    kanata_windows_wintercept_x64.exe
+    kanata.kbd
+    interception.dll
+```
+
+### kanata\_passthru_x64.dll
+
+The Windows `kanata_passthru_x64.dll` file allows using Kanata as a library within AutoHotkey to avoid conflicts between keyboard hooks installed by both. You can channel keyboard input events received by AutoHotkey into Kanata's keyboard engine and get the transformed keyboard output events (per your Kanata config) that AutoHotkey can then send to the OS.
+
+To make use of this, take `kanata_passthru_x64.dll`, then the [simulated\_passthru\_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief example, place the dll there, open `kanata_passthru.ahk` to read what the example does and then double-click to launch it.
 
 </details>
 
@@ -50,17 +81,25 @@ This variant contains the same output change as in the `scancode` variant below,
 <details>
 <summary>Instructions</summary>
 
-**NOTE:** All Linux binaries are compiled for x86 architectures only.
+Download the `kanata-linux-x64.zip` file.
 
-Download `kanata`.
+ Extract and move the desired binary variant to its intended location. Run the binary in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
 
-Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup. See [this discussion](https://github.com/jtroo/kanata/discussions/130) for how to set up kanata with systemd.
+**Example:**
+
 ```
 chmod +x kanata   # may be downloaded without executable permissions
-sudo ./kanata --cfg <cfg_file>`
+sudo ./kanata_linux_x64 --cfg <cfg_file>`
 ```
 
 To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtroo/kanata/wiki/Avoid-using-sudo-on-Linux).
+
+### Binary variants
+
+Explanation of items in the binary variant:
+
+- cmd\_allowed vs. not
+  - cmd\_allowed allows the `cmd` actions; otherwise, they are compiled out of the application
 
 </details>
 
@@ -69,9 +108,22 @@ To avoid requiring `sudo`, [follow the instructions here](https://github.com/jtr
 <details>
 <summary>Instructions</summary>
 
-**WARNING**: feature support on macOS [is limited](https://github.com/jtroo/kanata/blob/main/docs/platform-known-issues.adoc#macos).
+The supported Karabiner driver version in this release is `v6.2.0`.
+
+**WARNING**: macOS does not support mouse as input. The `mbck` and `mfwd` mouse button actions are also not operational.
+
+### Binary variants
+
+Explanation of items in the binary variant:
+
+- x64 vs. arm64:
+  - Select x64 if your machine's CPU is Intel. If ARM, use arm64.
+- cmd\_allowed vs. not
+  - cmd\_allowed allows the `cmd` actions; otherwise, they are compiled out of the application
 
 ### Instructions for macOS 11 and newer
+
+You must use the Karabiner driver version `v6.2.0`.
 
 Please read through this issue comment:
 
@@ -81,28 +133,7 @@ Also have a read through this discussion:
 
 https://github.com/jtroo/kanata/discussions/1537
 
-### Old instructions for macOS 11 and newer
-
-<details>
-  <summary>Click to expand</summary>
-
-First install Karabiner driver for macOS 11 and newer:
-
-- Install the [V5 Karabiner VirtualHiDDevice Driver](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/blob/main/dist/Karabiner-DriverKit-VirtualHIDDevice-5.0.0.pkg).
-
-To activate it:
-
-```
-sudo /Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager activate
-```
-
-Then you need to run the daemon. You should run this in the background somehow or leave the terminal window where you run this command open.
-
-```
-sudo '/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice/Applications/Karabiner-VirtualHIDDevice-Daemon.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Daemon'
-```
-
-</details>
+At some point it may be beneficial to provide concise and accurate instructions within this documentation. The maintainer (jtroo) does not own macOS devices to validate; please contribute the instructions to the file `docs/release-template.md` if you are able.
 
 ### Install Karabiner driver for macOS 10 and older:
 
@@ -110,11 +141,12 @@ sudo '/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice
 
 ### After installing the appropriate driver for your OS (both macOS <=10 and >=11)
 
-Download a `kanata_macos` variant.
+Download the appropriate `kanata-macos-variant.zip` for your machine CPU.
 
-Run it in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup.
+Extract and move the desired binary variant to its intended location. Run the binary in a terminal and point it to a valid configuration file. Kanata does not start a background process, so the window needs to stay open after startup.
 
-Example
+**Example:**
+
 ```
 chmod +x kanata_macos_arm64   # may be downloaded without executable permissions
 sudo ./kanata_macos_arm64 --cfg <cfg_file>`
@@ -124,64 +156,6 @@ sudo ./kanata_macos_arm64 --cfg <cfg_file>`
 
 If Kanata is not behaving correctly, you may need to add permissions. Please see this issue: [link to macOS permissions issue](https://github.com/jtroo/kanata/issues/1211).
 
-</details>
-
-## cmd\_allowed variants
-
-<details>
-<summary>Explanation</summary>
-
-The binaries with the name `cmd_allowed` are conditionally compiled with the `cmd` action enabled.
-
-Using the regular binaries, there is no way to get the `cmd` action to work. This action is restricted behind conditional compilation because I consider the action to be a security risk that should be explicitly opted into and completely forbidden by default.
-
-</details>
-
-## wintercept variants
-
-<details>
-<summary>Explanation and instructions</summary>
-
-### Warning: known issue
-
-This issue in the Interception driver exists: https://github.com/oblitum/Interception/issues/25. This will affect you if you put your PC to sleep instead of shutting it down, or if you frequently plug/unplug USB devices.
-
-### Description
-
-These variants use the [Interception driver](https://github.com/oblitum/Interception) instead of Windows hooks. You will need to install the driver using the release or from the [copy in this repo](https://github.com/jtroo/kanata/tree/main/assets). The benefit of using this driver is that it is a lower-level mechanism than Windows hooks. This means `kanata` will work in more applications.
-
-### Steps to install the driver
-
-- extract the `.zip`
-- run a shell with administrator privilege
-- run the script `"command line installer/install-interception.exe"`
-- reboot
-
-### Additional installation steps
-
-The above steps are those recommended by the interception driver author. However, I have found that those steps work inconsistently and sometimes the dll stops being able to be loaded. I think it has something to do with being installed in the privileged location of `system32\drivers`.
-
-To help with the dll issue, you can copy the following file in the zip archive to the directory that kanata starts from: `Interception\library\x64\interception.dll`.
-
-E.g. if you start kanata from your `Documents` folder, put the file there:
-
-```
-C:\Users\my_user\Documents\
-    kanata_wintercept.exe
-    kanata.kbd
-    interception.dll
-```
-
-</details>
-
-## kanata\_passthru.dll
-
-<details>
-<summary>Explanation and instructions</summary>
-
-The Windows `kanata_passthru.dll` file allows using Kanata as a library within AutoHotkey to avoid conflicts between keyboard hooks installed by both. You can channel keyboard input events received by AutoHotkey into Kanata's keyboard engine and get the transformed keyboard output events (per your Kanata config) that AutoHotkey can then send to the OS.
-
-To make use of this, download `kanata_passthru.dll`, then the [simulated_passthru_ahk](https://github.com/jtroo/kanata/blob/main/docs/simulated_passthru_ahk) folder with a brief example, place the dll there, open `kanata_passthru.ahk` to read what the example does and then double-click to launch it.
 </details>
 
 ## sha256 checksums

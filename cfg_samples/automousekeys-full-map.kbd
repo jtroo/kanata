@@ -1,0 +1,76 @@
+(defcfg
+  ;; F* keys and arrow keys are left unmapped
+  process-unmapped-keys yes
+
+  ;; you may wish to only capture a trackpoint and keyboard
+  ;; but not e.g. a trackpad or external mouse
+  ;;linux-dev-names-include (
+  ;;                         "AT Translated Set 2 keyboard"
+  ;;                         "TPPS/2 Elan TrackPoint"
+  ;;)
+  ;; optional, but useful with the trackpoint
+  ;;linux-use-trackpoint-property yes
+
+  mouse-movement-key mvmt
+)
+
+;; ANSI layout for eg thinkpad internal or external keyboard
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt menu rctl
+  mvmt
+)
+
+(defvirtualkeys
+  mouse (layer-while-held mouse-layer)
+)
+
+(defalias
+  mhld (hold-for-duration 750 mouse)
+
+  moff (on-press release-vkey mouse)
+
+  _ (multi
+     @moff
+     _
+  )
+
+   ;; mouse click extended time out for double tap
+  mdbt (hold-for-duration 500 mouse)
+  mbl (multi
+       mlft
+       @mdbt
+  )
+  mbm (multi
+       mmid
+       @mdbt
+  )
+  mbr (multi
+       mrgt
+       @mdbt
+  )
+)
+
+;; no mappings
+(deflayer qwerty
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt menu rctl
+  @mhld
+)
+
+;; places mouse keys on the row above the home row.
+;; pressing any other keys exits the mouse layer until mouse movement stops and restarts again.
+(deflayer mouse-layer
+  @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_
+  @_   @_   mrgt mmid @mbl @_   @_   @mbl mmid mrgt @_   @_   @_   @_
+  @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_
+  @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_   @_
+  @_   @_   @_             @_             @_   @_   @_
+  @mhld
+)

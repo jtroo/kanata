@@ -10,8 +10,8 @@ edition = "2021"
 crate-type = [ "cdylib", "rlib" ]
 
 [dependencies]
-wasm-bindgen = "0.2.95"
-kanata = { path = ".." , default-features = false, features = [ "simulated_output", "wasm", "zippychord" ] }
+wasm-bindgen = "0.2.100"
+kanata = { path = ".." , default-features = false, features = [ "simulated_output", "zippychord" ] }
 anyhow = "1.0.81"
 log = "0.4.21"
 console_error_panic_hook = "0.1.7"

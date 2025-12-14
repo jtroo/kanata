@@ -62,6 +62,9 @@ fn unmapped_except_keys_respects_deflocalkeys() {
                 KeyCode::No | KeyCode::K555 => {
                     assert!(!cfg.mapped_keys.contains(&osc));
                 }
+                _ if osc.is_mouse_code() => {
+                    assert!(!cfg.mapped_keys.contains(&osc));
+                }
                 _ => {
                     assert!(cfg.mapped_keys.contains(&osc));
                 }
@@ -74,7 +77,7 @@ fn unmapped_except_keys_respects_deflocalkeys() {
 fn unmapped_except_keys_is_removed_from_mapping() {
     let source = "
 (defcfg process-unmapped-keys (all-except 1 2 3))
-(defsrc)
+(defsrc mlft mmid)
 (deflayermap (name) 0 0)
 ";
     let cfg = parse_cfg(source)
@@ -92,10 +95,29 @@ fn unmapped_except_keys_is_removed_from_mapping() {
                 KeyCode::No | KeyCode::Kb1 | KeyCode::Kb2 | KeyCode::Kb3 => {
                     assert!(!cfg.mapped_keys.contains(&osc));
                 }
+                // mlft, mmid
+                KeyCode::K272 | KeyCode::K274 => {
+                    assert!(cfg.mapped_keys.contains(&osc));
+                }
+                _ if osc.is_mouse_code() => {
+                    assert!(!cfg.mapped_keys.contains(&osc));
+                }
                 _ => {
                     assert!(cfg.mapped_keys.contains(&osc));
                 }
             }
         }
     }
+}
+
+#[test]
+fn non_applicable_os_deflocalkeys_always_succeeds_parsing() {
+    let source = "
+(deflocalkeys-linux å 26 ' 43)
+(defsrc)
+(deflayer base)
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
 }

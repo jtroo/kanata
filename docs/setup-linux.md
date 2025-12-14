@@ -5,7 +5,17 @@ In Linux, kanata needs to be able to access the input and uinput subsystem to in
 ### 1. If the uinput group does not exist, create a new group
 
 ```bash
-sudo groupadd uinput
+sudo groupadd --system uinput
+```
+
+If the `uinput` group already exists,
+it may have been created without the `--system` flag.
+First delete it then re-add again with the above command.
+
+To delete:
+
+```
+sudo groupdel uinput
 ```
 
 ### 2. Add your user to the input and the uinput group
@@ -74,12 +84,16 @@ Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
 # IOSchedulingClass=realtime
 # Nice=-20
 Type=simple
-ExecStart=/usr/bin/sh -c 'exec $$(which kanata) --cfg $${HOME}/.config/kanata/config.kbd'
-Restart=no
+ExecStart=/usr/bin/sh -c 'exec $$(which kanata) --cfg $${HOME}/.config/kanata/config.kbd --no-wait'
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=default.target
 ```
+
+Note: The `--no-wait` flag is required for `Restart=on-failure` to work.
+Without it, kanata waits for user input on exit, which blocks automatic restart.
 
 Make sure to update the executable location for sh in the snippet above.
 This would be the line starting with `ExecStart=/usr/bin/sh -c`.

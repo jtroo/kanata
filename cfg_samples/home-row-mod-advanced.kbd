@@ -5,6 +5,16 @@
 ;; - tap-hold-release helps make the hold action more responsive
 ;; - pressing another key on the same half of the keyboard
 ;;   as the home row mod will activate an early tap action
+;;
+;; Suggested further reading:
+;;
+;; GitHub discussion on more advanced tap-hold improvements:
+;;
+;;    https://github.com/jtroo/kanata/discussions/1455
+;;
+;; Configuration guide documentation on all tap-hold options:
+;;
+;;    https://github.com/jtroo/kanata/blob/main/docs/config.adoc#tap-hold
 
 (defcfg
   process-unmapped-keys yes

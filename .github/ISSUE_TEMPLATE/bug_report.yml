@@ -1,5 +1,5 @@
 name: "Bug report"
-description: Create a report to help us improve.
+description: Create a report to help the project improve.
 labels: ["bug"]
 assignees: ["jtroo"]
 title: "Bug: title_goes_here"
@@ -17,14 +17,17 @@ body:
     id: summary
     attributes:
       label: Describe the bug
-      description: A clear and concise description of what the bug is.
+      description: |
+        A clear and concise description of what the bug is.
+        Ensure any config snippets are either in the next section or are code formatted.
     validations:
       required: true
   - type: textarea
     id: config
     attributes:
       label: Relevant kanata config
-      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config. Please ensure to use code formatting, e.g. surround with triple backticks to avoid pinging users with the @ character.
+      render: text
+      description: E.g. defcfg, defsrc, deflayer, defalias items. If in doubt, feel free to include your entire config.
     validations:
       required: false
   - type: textarea
@@ -32,11 +35,8 @@ body:
     attributes:
       label: To Reproduce
       description: |
-        Walk us through the steps needed to reproduce the bug.
-      value: |
-        1.
-        2.
-        3.
+        Walk through the steps needed to reproduce the bug.
+        Use the simulator if it is not device/OS related: https://jtroo.github.io/.
     validations:
       required: true
   - type: textarea
@@ -59,14 +59,15 @@ body:
     attributes:
       label: Debug logs
       description: If you think it might help with a non-obvious issue, run kanata from the command line and pass the `--debug` flag. This will print more info. Include the relevant log outputs this section if you did so.
+      render: text
     validations:
       required: false
   - type: input
     id: os
     attributes:
-      label: Operating system
-      description: Linux or Windows?
-      placeholder: e.g. Windows 11
+      label: Operating system and I/O mechanism
+      description: E.g. Linux, macOS, Windows 10, Windows 11 with Interception driver
+      placeholder: e.g. Linux
     validations:
       required: true
   - type: textarea

@@ -1,8 +1,8 @@
 //! Platform specific code for low level keyboard read/write.
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod linux;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use linux::*;
 
 #[cfg(target_os = "windows")]
@@ -126,7 +126,7 @@ impl fmt::Display for KeyEvent {
             KeyValue::WakeUp => "!",
         };
         let key_name = KeyCode::from(self.code);
-        write!(f, "{}{:?}", direction, key_name)
+        write!(f, "{direction}{key_name:?}")
     }
 }
 

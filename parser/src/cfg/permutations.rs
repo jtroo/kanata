@@ -39,7 +39,7 @@ fn heaps_alg<T: Clone>(k: usize, a: &mut [T], outs: &mut Vec<Vec<T>>) {
     } else {
         heaps_alg(k - 1, a, outs);
         for i in 0..k - 1 {
-            if (k % 2) == 0 {
+            if k.is_multiple_of(2) {
                 a.swap(i, k - 1);
             } else {
                 a.swap(0, k - 1);

@@ -22,6 +22,8 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
+use std::num::NonZeroU16;
+
 use crate::chord::*;
 use crate::key_code::KeyCode;
 use crate::{action::*, multikey_buffer::MultiKeyBuffer};
@@ -74,9 +76,9 @@ pub const ACTION_QUEUE_LEN: usize = 8;
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type Delay = u16;
-pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>)>;
+pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>, LayerStack)>;
 
-const REAL_KEY_ROW: u8 = 0;
+pub const REAL_KEY_ROW: u8 = 0;
 
 const HISTORICAL_EVENT_LEN: usize = 8;
 const EXTRA_WAITING_LEN: usize = 8;
@@ -103,6 +105,7 @@ where
     pub tap_dance_eager: Option<TapDanceEagerState<'a, T>>,
     pub queue: Queue,
     pub oneshot: OneShotState,
+    pub keys_to_suppress_for_one_cycle: Vec<KeyCode, 8>,
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<SequenceState<'a, T>, 4, arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
@@ -289,6 +292,9 @@ pub enum State<'a, T: 'a> {
     SeqCustomPending(&'a T),
     SeqCustomActive(&'a T),
     Tombstone,
+    NoOpInput {
+        coord: KCoord,
+    },
 }
 impl<T> Copy for State<'_, T> {}
 impl<T> Clone for State<'_, T> {
@@ -309,6 +315,7 @@ impl<'a, T: 'a> State<'a, T> {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
             | Custom { coord, .. }
+            | NoOpInput { coord }
             | RepeatingSequence { coord, .. } => Some(*coord),
             _ => None,
         }
@@ -331,6 +338,7 @@ impl<'a, T: 'a> State<'a, T> {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
             | RepeatingSequence { coord, .. }
+            | NoOpInput { coord }
                 if coord == c =>
             {
                 None
@@ -433,6 +441,8 @@ enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
 pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     coord: KCoord,
     timeout: u16,
+    original_timeout: Option<NonZeroU16>,
+    on_press_reset_timeout_to: Option<NonZeroU16>,
     delay: u16,
     ticks: u16,
     hold: &'a Action<'a, T>,
@@ -506,6 +516,13 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             // Fast path: nothing has changed since last tick and we haven't timed out yet.
             return None;
         }
+        if let Some(timeout_reset_val) = self.on_press_reset_timeout_to {
+            if let Some(last) = queued.iter().next_back() {
+                if last.event.is_press() {
+                    self.timeout = timeout_reset_val.into();
+                }
+            }
+        }
         self.prev_queue_len = queued.len() as u8;
         let mut skip_timeout = false;
         match cfg {
@@ -535,11 +552,22 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 skip_timeout = local_skip;
             }
         }
-        if let Some(&Queued { since, .. }) = queued
+        if let Some(&Queued {
+            since: since_release,
+            ..
+        }) = queued
             .iter()
             .find(|s| self.is_corresponding_release(&s.event))
         {
-            if self.timeout > self.delay.saturating_sub(since) {
+            let gap_between_press_and_release = self.delay.saturating_sub(since_release);
+            if self.timeout > gap_between_press_and_release
+                || match self.original_timeout {
+                    None => false,
+                    Some(original_timeout) => {
+                        u16::from(original_timeout) >= gap_between_press_and_release
+                    }
+                }
+            {
                 Some(WaitingAction::Tap)
             } else {
                 Some(WaitingAction::Timeout)
@@ -815,7 +843,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 .unwrap_or(0);
             if let Some(action) = config.get_chord(chord_mask) {
                 let coord = get_coord_for_chord(chord_mask);
-                let _ = action_queue.push_back(Some((coord, delay, action)));
+                // Note on LayerStack being default (empty):
+                // A chordv1 allows transparency, so this is broken right now,
+                // and could result in an infinite loop, because
+                // the queue activating code falls back to top-level resolution order
+                // if the stored layer stack is empty.
+                let _ = action_queue.push_back(Some((coord, delay, action, Default::default())));
             } else {
                 end -= 1;
                 // shrink from end until something is found, or have checked up to and including
@@ -829,7 +862,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         .unwrap_or(0);
                     if let Some(action) = config.get_chord(chord_mask) {
                         let coord = get_coord_for_chord(chord_mask);
-                        let _ = action_queue.push_back(Some((coord, delay, action)));
+                        let _ = action_queue.push_back(Some((
+                            coord,
+                            delay,
+                            action,
+                            Default::default(),
+                        )));
                         break;
                     }
                     end -= 1;
@@ -883,6 +921,17 @@ pub struct OneShotState {
     pub keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// KCoordinates of one shot keys that have been released
     pub released_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
+    /// Fix #1874:
+    /// Represents the one-shot state that must not be released on physical key release.
+    /// Consider the case `(multi a (one-shot 100 b))`,
+    /// when only tracking coordinates (which this used to in the past),
+    /// the `a` would not release a even upon releasing the action key
+    /// because its state falls on the same coordinate as the oneshot b.
+    /// The fix is to explicitly know which key/layer states
+    /// — which are the only actions allowed within one-shot —
+    /// should be kept, and normally release others.
+    pub state_to_retain_on_release:
+        ArrayDeque<OneShotRetainableState, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Used to keep track of already-pressed keys for the release variants.
     pub other_pressed_keys: ArrayDeque<KCoord, ONE_SHOT_MAX_ACTIVE, arraydeque::behavior::Wrapping>,
     /// Timeout (ms) after which all one shot keys expire
@@ -911,6 +960,20 @@ pub struct OneShotState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum OneShotRetainableState {
+    KeyCode { coord: KCoord, kc: KeyCode },
+    Layer { coord: KCoord, layer: u16 },
+}
+
+impl OneShotRetainableState {
+    pub fn coord(&self) -> KCoord {
+        match self {
+            Self::KeyCode { coord, .. } | Self::Layer { coord, .. } => *coord,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum OneShotHandlePressKey {
     OneShotKey(KCoord),
     Other(KCoord),
@@ -930,12 +993,18 @@ impl OneShotState {
             self.ticks_to_ignore_events = 0;
             self.keys.clear();
             self.other_pressed_keys.clear();
+            self.state_to_retain_on_release.clear();
             Some(self.released_keys.drain(..).collect())
         } else {
             None
         }
     }
 
+    /// Returns the coordinates associated with an active oneshot.
+    /// The intended use of this is for `rpt-any` to be able to repeat
+    /// the output chord of a one-shot+normal key,
+    /// which are two separate actions that users
+    /// would likely want to combine under a repeat condition.
     fn handle_press(&mut self, key: OneShotHandlePressKey) -> OneShotCoords {
         let mut oneshot_coords = ArrayDeque::new();
         if self.keys.is_empty() || self.ticks_to_ignore_events > 0 {
@@ -952,6 +1021,7 @@ impl OneShotState {
                     self.release_on_next_tick = true;
                     oneshot_coords.extend(self.keys.iter().copied());
                 }
+
                 self.released_keys.retain(|coord| *coord != pressed_coord);
             }
             OneShotHandlePressKey::Other(pressed_coord) => {
@@ -989,6 +1059,12 @@ impl OneShotState {
         } else {
             // delay release for one shot keys
             (false, self.released_keys.push_back((i, j)))
+        }
+    }
+
+    fn add_state_to_retain(&mut self, state: OneShotRetainableState) {
+        if !self.state_to_retain_on_release.contains(&state) {
+            self.state_to_retain_on_release.push_back(state);
         }
     }
 }
@@ -1081,12 +1157,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 end_config: OneShotEndConfig::EndOnFirstPress,
                 keys: ArrayDeque::new(),
                 released_keys: ArrayDeque::new(),
+                state_to_retain_on_release: ArrayDeque::new(),
                 other_pressed_keys: ArrayDeque::new(),
                 release_on_next_tick: false,
                 pause_input_processing_delay: 0,
                 pause_input_processing_ticks: 0,
                 ticks_to_ignore_events: 0,
             },
+            keys_to_suppress_for_one_cycle: Vec::new(),
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
@@ -1115,7 +1193,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
     /// Iterates on the key codes of the current state.
     pub fn keycodes(&self) -> impl Iterator<Item = KeyCode> + Clone + '_ {
-        self.states.iter().filter_map(State::keycode)
+        let keys_to_suppress_for_one_cycle = self.keys_to_suppress_for_one_cycle.clone();
+        self.states
+            .iter()
+            .filter_map(State::keycode)
+            .filter(move |kc| !keys_to_suppress_for_one_cycle.contains(kc))
     }
     fn waiting_into_hold(&mut self, idx: i8) -> CustomEvent<'a, T> {
         let waiting = if idx < 0 {
@@ -1282,16 +1364,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.oneshot.pause_input_processing_delay;
             }
         }
-        if let Some(Some((coord, delay, action))) = self.action_queue.pop_front() {
+        self.keys_to_suppress_for_one_cycle.clear();
+        if let Some(Some((coord, delay, action, layer_stack))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
-            return self.do_action(
-                action,
-                coord,
-                delay,
-                false,
-                &mut self.trans_resolution_layer_order().into_iter().skip(1),
-            );
+            return self.do_action(action, coord, delay, false, &mut layer_stack.into_iter());
         }
         self.queue.iter_mut().for_each(Queued::tick_qd);
         self.last_press_tracker.tick_lpt();
@@ -1472,6 +1549,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if self.states.is_empty() || !matches!(current_custom, CustomEvent::NoEvent) {
             return current_custom;
         }
+        // It is important to note that this code cannot simply be replaced by `retain_mut`.
+        // The `retain_mut` function is not chosen
+        // because it is important to break on the first `SeqCustom` that is discovered.
+        // Such functionality could be replaced by a marker to ignore processing,
+        // but for now that is not necessary.
         self.states.retain(|s| !matches!(s, State::Tombstone));
         for state in self.states.iter_mut() {
             match state {
@@ -1500,6 +1582,44 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.states.retain(|s| {
                         !s.clear_on_next_release() && s.release((i, j), &mut custom).is_some()
                     });
+                } else {
+                    // Fix #1874:
+                    // Might still need to apply release,
+                    // but need to check against states on same coordinate
+                    // that aren't part of a OneShot.
+                    self.states.retain(|s| {
+                        match s {
+                            NormalKey { coord, keycode, .. } => {
+                                // NormalKey is a valid oneshot state,
+                                // may need to keep.
+                                *coord != (i, j)
+                                    || self.oneshot.state_to_retain_on_release.contains(
+                                        &OneShotRetainableState::KeyCode {
+                                            coord: *coord,
+                                            kc: *keycode,
+                                        },
+                                    )
+                            }
+                            LayerModifier { coord, value } => {
+                                // LayerModifier is a valid oneshot state,
+                                // may need to keep.
+                                *coord != (i, j)
+                                    || self.oneshot.state_to_retain_on_release.contains(
+                                        &OneShotRetainableState::Layer {
+                                            coord: *coord,
+                                            layer: *value as u16,
+                                        },
+                                    )
+                            }
+                            // Everything else is not a valid oneshot state,
+                            // if it falls on the same coordinate
+                            // as a oneshot key, it should still be released here.
+                            _ => {
+                                !s.clear_on_next_release()
+                                    && s.release((i, j), &mut custom).is_some()
+                            }
+                        }
+                    });
                 }
                 if let Some((i2, j2)) = overflow_key {
                     self.states
@@ -1510,24 +1630,23 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
             Press(i, j) => {
                 let mut layer_stack = self.trans_resolution_layer_order().into_iter();
-                if let Some(tde) = self.tap_dance_eager {
+                if let Some(tde) = &mut self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
+                        let tde_action = tde.actions[usize::from(tde.num_taps)];
+                        tde.incr_taps();
                         let custom = self.do_action(
-                            tde.actions[usize::from(tde.num_taps)],
+                            tde_action,
                             (i, j),
                             queue.since,
                             false,
                             &mut layer_stack.skip(1),
                         );
-                        // unwrap is here because tde cannot be ref mut
-                        self.tap_dance_eager.as_mut().expect("some").incr_taps();
                         custom
                     } else {
                         // i == 0 means real key, i == 1 means fake key. Let fake keys do whatever, but
                         // interrupt tap-dance-eager if real key.
                         if i == REAL_KEY_ROW {
-                            // unwrap is here because tde cannot be ref mut
-                            self.tap_dance_eager.as_mut().expect("some").set_expired();
+                            tde.set_expired();
                         }
                         self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
                     }
@@ -1553,6 +1672,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             self.dequeue(overflow);
         }
     }
+
+    /// Put a key event at the front instead of back.
+    /// These events will not participate in chordsv2.
+    pub fn event_to_front(&mut self, event: Event) {
+        if let Event::Press(x, y) = event {
+            self.historical_inputs.push_front((x, y));
+        }
+        if let Some(overflow) = self.queue.push_front(event.into()) {
+            for i in -1..(EXTRA_WAITING_LEN as i8) {
+                self.waiting_into_hold(i);
+            }
+            self.dequeue(overflow);
+        }
+    }
+
     /// Resolve coordinate to first non-Trans actions.
     /// Trans on base layer, resolves to key from defsrc.
     fn resolve_coord(
@@ -1573,11 +1707,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 action => return action,
             }
         }
-        if x == 0 {
-            &self.src_keys[y]
-        } else {
-            &NoOp
-        }
+        if x == 0 { &self.src_keys[y] } else { &NoOp }
     }
     fn do_action(
         &mut self,
@@ -1593,12 +1723,40 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         }
         let action = action;
 
-        if self.last_press_tracker.coord != coord {
+        if self.last_press_tracker.coord != coord && coord.0 == REAL_KEY_ROW {
             self.last_press_tracker.tap_hold_timeout = 0;
         }
         use Action::*;
         self.states.retain(|s| match s {
-            NormalKey { flags, .. } => !flags.nkf_clear_on_next_action(),
+            // Need to solve a problem here - if the output chord `S-=` is active, and then a
+            // different keypress `=` happens, the `lsft =` states are cleared; but the `=`
+            // is immediately re-added again. This means the release is never observed..
+            //
+            // Bug introduced:
+            //
+            // If doing something like typing parentheses using output chords,
+            // e.g. S-9 followed by S-0,
+            // the trivial fix will suppress the shift key for a bit
+            // but the `0` still gets output,
+            // resulting in an unshifted `0` which is incorrect.
+            //
+            // Fix added:
+            //
+            // Do not apply the suppression to modifiers.
+            // Modifiers typically don't have a usage pattern similar to
+            // the real use case of `S-=` followed by `=` example,
+            // such as `S-=` followed by only `lsft`,
+            // with a desire for the lone `lsft` to actually activate something.
+            NormalKey { flags, keycode, .. } => match flags.nkf_clear_on_next_action() {
+                true => {
+                    self.oneshot.pause_input_processing_ticks += 2;
+                    if !keycode.is_mod() {
+                        let _ = self.keys_to_suppress_for_one_cycle.push(*keycode);
+                    }
+                    false
+                }
+                false => true,
+            },
             _ => true,
         });
         match action {
@@ -1614,6 +1772,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
                 self.rpt_action = Some(action);
+                let _ = self.states.push(NoOpInput { coord });
             }
             Src => {
                 let action = &self.src_keys[usize::from(coord.1)];
@@ -1653,6 +1812,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 timeout_action,
                 config,
                 tap_hold_interval,
+                on_press_reset_timeout_to,
             }) => {
                 let mut custom = CustomEvent::NoEvent;
                 if *tap_hold_interval == 0
@@ -1673,6 +1833,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             delay
                         },
                         ticks: 0,
+                        original_timeout: match self.quick_tap_hold_timeout {
+                            true => NonZeroU16::new(*timeout),
+                            false => None,
+                        },
+                        on_press_reset_timeout_to: *on_press_reset_timeout_to,
                         hold,
                         tap,
                         timeout_action,
@@ -1727,6 +1892,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             timeout_action: &Action::NoOp,
+                            original_timeout: None,
+                            on_press_reset_timeout_to: None,
                             config: WaitingConfig::TapDance(TapDanceState {
                                 actions: td.actions,
                                 timeout: td.timeout,
@@ -1759,7 +1926,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                 }
                             }
                         };
-                        self.do_action(td.actions[0], coord, delay, false, layer_stack);
+                        return self.do_action(td.actions[0], coord, delay, false, layer_stack);
                     }
                 }
             }
@@ -1773,6 +1940,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
+                    original_timeout: None,
+                    on_press_reset_timeout_to: None,
                     config: WaitingConfig::Chord(chords),
                     layer_stack: layer_stack.collect(),
                     prev_queue_len: QueueLen::MAX,
@@ -1792,6 +1961,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     oneshot_coords = self
                         .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    self.oneshot
+                        .add_state_to_retain(OneShotRetainableState::KeyCode {
+                            coord,
+                            kc: keycode,
+                        });
                 }
                 if oneshot_coords.is_empty() {
                     self.rpt_action = Some(action);
@@ -1814,6 +1989,17 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             &MultipleKeyCodes(v) => {
                 self.last_press_tracker.update_coord(coord);
                 for &keycode in *v {
+                    // BUG:
+                    // In the original implementation, activating an action sequence such as b ->
+                    // S-b will not type a separate instance of "B" because b is already held and
+                    // wont be re-sent by the outer processing loop.
+                    //
+                    // FIX:
+                    // If `keycode` is not a mod, suppress it for a cycle if it exists in the
+                    // status. This is not expected to have any negative perceptible effects.
+                    if !keycode.is_mod() && self.keycodes().any(|kc| kc == keycode) {
+                        let _ = self.keys_to_suppress_for_one_cycle.push(keycode);
+                    }
                     self.historical_keys.push_front(keycode);
                     let _ = self.states.push(NormalKey {
                         coord,
@@ -1839,6 +2025,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     oneshot_coords = self
                         .oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    for &keycode in *v {
+                        self.oneshot
+                            .add_state_to_retain(OneShotRetainableState::KeyCode {
+                                coord,
+                                kc: keycode,
+                            });
+                    }
                 }
                 if oneshot_coords.is_empty() {
                     self.rpt_action = Some(action);
@@ -1927,6 +2121,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
+                } else {
+                    self.oneshot
+                        .add_state_to_retain(OneShotRetainableState::Layer {
+                            coord,
+                            layer: value as u16,
+                        });
                 }
                 // Notably missing in Layer and below in DefaultLayer is setting rpt_action. This
                 // is so that if the Repeat key is on a different layer than the base, it can still
@@ -1994,7 +2194,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // assertions.
                     self.default_layer as u16,
                 ) {
-                    action_queue.push_back(Some((coord, 0, ac)));
+                    action_queue.push_back(Some((coord, 0, ac, layer_stack.collect())));
                 }
                 // Switch is not properly repeatable. This has to use the action queue for the
                 // purpose of proper Custom action handling, because a single switch action can
@@ -2073,6 +2273,7 @@ mod test {
         static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: l(1),
                     tap: k(Space),
@@ -2081,6 +2282,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: k(LCtrl),
                     timeout_action: k(LShift),
@@ -2121,10 +2323,11 @@ mod test {
     }
 
     #[test]
-    fn basic_hold_tap_timeout() {
+    fn basic_hold_tap_repress_timeout() {
         static LAYERS: Layers<2, 1> = &[
             [[
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: l(1),
                     tap: k(Space),
@@ -2133,6 +2336,7 @@ mod test {
                     tap_hold_interval: 0,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 200,
                     hold: k(LCtrl),
                     timeout_action: k(LCtrl),
@@ -2176,6 +2380,7 @@ mod test {
     fn hold_tap_interleaved_timeout() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2184,6 +2389,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 20,
                 hold: k(LCtrl),
                 timeout_action: k(LCtrl),
@@ -2225,6 +2431,7 @@ mod test {
     fn hold_on_press() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2283,6 +2490,7 @@ mod test {
     fn permissive_hold() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2323,6 +2531,7 @@ mod test {
     fn simultaneous_hold() {
         static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2331,6 +2540,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(RAlt),
                 timeout_action: k(RAlt),
@@ -2339,6 +2549,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LCtrl),
                 timeout_action: k(LCtrl),
@@ -2503,6 +2714,7 @@ mod test {
         }
         static LAYERS: Layers<4, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb1),
                 timeout_action: k(Kb1),
@@ -2511,6 +2723,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb3),
                 timeout_action: k(Kb3),
@@ -2519,6 +2732,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb5),
                 timeout_action: k(Kb5),
@@ -2527,6 +2741,7 @@ mod test {
                 tap_hold_interval: 0,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(Kb7),
                 timeout_action: k(Kb7),
@@ -2600,6 +2815,7 @@ mod test {
     fn tap_hold_interval() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2655,6 +2871,7 @@ mod test {
     fn tap_hold_interval_interleave() {
         static LAYERS: Layers<3, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2664,6 +2881,7 @@ mod test {
             }),
             k(Enter),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2777,6 +2995,7 @@ mod test {
     #[test]
     fn tap_hold_interval_short_hold() {
         static LAYERS: Layers<1, 1> = &[[[HoldTap(&HoldTapAction {
+            on_press_reset_timeout_to: None,
             timeout: 50,
             hold: k(LAlt),
             timeout_action: k(LAlt),
@@ -2820,6 +3039,7 @@ mod test {
     fn tap_hold_interval_different_hold() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 50,
                 hold: k(LAlt),
                 timeout_action: k(LAlt),
@@ -2828,6 +3048,7 @@ mod test {
                 tap_hold_interval: 200,
             }),
             HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
                 timeout: 200,
                 hold: k(RAlt),
                 timeout_action: k(RAlt),
@@ -3345,6 +3566,7 @@ mod test {
                     end_config: OneShotEndConfig::EndOnFirstPress,
                 }),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 100,
                     hold: k(LAlt),
                     timeout_action: k(LAlt),
@@ -3410,6 +3632,7 @@ mod test {
                             end_config: OneShotEndConfig::EndOnFirstPress,
                         }),
                         &HoldTap(&HoldTapAction {
+                            on_press_reset_timeout_to: None,
                             timeout: 100,
                             hold: k(LAlt),
                             timeout_action: k(LAlt),
@@ -3850,6 +4073,7 @@ mod test {
                 (
                     1,
                     &HoldTap(&HoldTapAction {
+                        on_press_reset_timeout_to: None,
                         timeout: 100,
                         hold: k(A),
                         timeout_action: k(A),
@@ -3861,6 +4085,7 @@ mod test {
                 (
                     2,
                     &HoldTap(&HoldTapAction {
+                        on_press_reset_timeout_to: None,
                         timeout: 100,
                         hold: k(B),
                         timeout_action: k(B),
@@ -4112,6 +4337,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(Space),
                     timeout_action: k(Space),
@@ -4159,6 +4385,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: Trans,
                     timeout_action: Trans,
@@ -4364,6 +4591,7 @@ mod test {
             ]],
         ];
         let mut layout = Layout::new(LAYERS);
+        layout.trans_resolution_behavior_v2 = true;
 
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
@@ -4393,6 +4621,7 @@ mod test {
                 Layer(2),
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(B),
                     timeout_action: k(B),
@@ -4406,6 +4635,7 @@ mod test {
                 NoOp,
                 Layer(3),
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(C),
                     timeout_action: k(C),
@@ -4419,6 +4649,7 @@ mod test {
                 NoOp,
                 NoOp,
                 HoldTap(&HoldTapAction {
+                    on_press_reset_timeout_to: None,
                     timeout: 50,
                     hold: k(D),
                     timeout_action: k(D),

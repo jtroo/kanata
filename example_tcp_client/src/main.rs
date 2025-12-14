@@ -1,7 +1,7 @@
 use clap::Parser;
 use kanata_tcp_protocol::*;
 use simplelog::*;
-use std::io::{stdin, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write, stdin};
 use std::net::{SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;
@@ -58,6 +58,17 @@ fn print_usage() {
 \n\
     Requests to change kanata's layer look like:\n\
     {}
+\n\
+    Configuration reload commands:\n\
+    - reload: {}\n\
+    - reload next: {}\n\
+    - reload previous: {}\n\
+    - reload specific index: {}\n\
+    - reload specific file: {}
+\n\
+    Server responses for commands look like:\n\
+    - Success: {}\n\
+    - Error: {}
     ",
         serde_json::to_string(&ServerMessage::LayerChange {
             new: "newly-changed-to-layer".into()
@@ -65,6 +76,19 @@ fn print_usage() {
         .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ChangeLayer {
             new: "requested-layer".into()
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadNum { index: 1 }).expect("deserializable"),
+        serde_json::to_string(&ClientMessage::ReloadFile {
+            path: "/path/to/config.kbd".to_string()
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ServerResponse::Ok).expect("deserializable"),
+        serde_json::to_string(&ServerResponse::Error {
+            msg: "Invalid config index: 5. Only 2 configs are available (0-1).".to_string()
         })
         .expect("deserializable"),
     )
@@ -78,7 +102,7 @@ fn init_logger(args: &Args) {
     };
     let mut log_cfg = ConfigBuilder::new();
     if let Err(e) = log_cfg.set_time_offset_to_local() {
-        eprintln!("WARNING: could not set log TZ to local: {:?}", e);
+        eprintln!("WARNING: could not set log TZ to local: {e:?}");
     };
     CombinedLogger::init(vec![TermLogger::new(
         log_lvl,
@@ -95,28 +119,62 @@ fn init_logger(args: &Args) {
 
 fn write_to_kanata(mut s: TcpStream) {
     log::info!("writer starting");
-    log::info!("writer: type layer name then press enter to send a change layer request to kanata");
-    let mut layer = String::new();
+    log::info!("writer: enter commands to send to kanata:");
+    log::info!("  - layer name: change to that layer");
+    log::info!("  - fk:KEYNAME: tap fake key");
+    log::info!("  - reload: reload current config");
+    log::info!("  - reload-next: reload next config");
+    log::info!("  - reload-prev: reload previous config");
+    log::info!("  - reload-num:N: reload config at index N");
+    log::info!("  - reload-file:PATH: reload config file at PATH");
+    let mut input = String::new();
     loop {
-        stdin().read_line(&mut layer).expect("stdin is readable");
-        let new = layer.trim_end().to_owned();
-        if new.starts_with("fk:") {
-            let fkname = new.trim_start_matches("fk:").into();
+        stdin().read_line(&mut input).expect("stdin is readable");
+        let command = input.trim_end().to_owned();
+
+        let msg = if command.starts_with("fk:") {
+            let fkname = command.trim_start_matches("fk:").into();
             log::info!("writer: telling kanata to tap fake key \"{fkname}\"");
-            let msg = serde_json::to_string(&ClientMessage::ActOnFakeKey {
+            serde_json::to_string(&ClientMessage::ActOnFakeKey {
                 name: fkname,
                 action: FakeKeyActionMessage::Tap,
             })
-            .expect("deserializable");
-            s.write_all(msg.as_bytes()).expect("stream writable");
-            layer.clear();
-            continue;
-        }
-        log::info!("writer: telling kanata to change layer to \"{new}\"");
-        let msg =
-            serde_json::to_string(&ClientMessage::ChangeLayer { new }).expect("deserializable");
+            .expect("deserializable")
+        } else if command == "reload" {
+            log::info!("writer: telling kanata to reload current config");
+            serde_json::to_string(&ClientMessage::Reload {}).expect("deserializable")
+        } else if command == "reload-next" {
+            log::info!("writer: telling kanata to reload next config");
+            serde_json::to_string(&ClientMessage::ReloadNext {}).expect("deserializable")
+        } else if command == "reload-prev" {
+            log::info!("writer: telling kanata to reload previous config");
+            serde_json::to_string(&ClientMessage::ReloadPrev {}).expect("deserializable")
+        } else if command.starts_with("reload-num:") {
+            let index_str = command.trim_start_matches("reload-num:");
+            match index_str.parse::<usize>() {
+                Ok(index) => {
+                    log::info!("writer: telling kanata to reload config at index {index}");
+                    serde_json::to_string(&ClientMessage::ReloadNum { index })
+                        .expect("deserializable")
+                }
+                Err(_) => {
+                    log::error!("Invalid number format for reload-num: {index_str}");
+                    input.clear();
+                    continue;
+                }
+            }
+        } else if command.starts_with("reload-file:") {
+            let path = command.trim_start_matches("reload-file:").to_string();
+            log::info!("writer: telling kanata to reload config file \"{path}\"");
+            serde_json::to_string(&ClientMessage::ReloadFile { path }).expect("deserializable")
+        } else {
+            log::info!("writer: telling kanata to change layer to \"{command}\"");
+            serde_json::to_string(&ClientMessage::ChangeLayer { new: command })
+                .expect("deserializable")
+        };
+
         s.write_all(msg.as_bytes()).expect("stream writable");
-        layer.clear();
+        input.clear();
     }
 }
 
@@ -127,6 +185,21 @@ fn read_from_kanata(s: TcpStream) {
     loop {
         msg.clear();
         reader.read_line(&mut msg).expect("stream readable");
+
+        // Try to parse as ServerResponse first (for command responses)
+        if let Ok(response) = serde_json::from_str::<ServerResponse>(&msg) {
+            match response {
+                ServerResponse::Ok => {
+                    log::info!("✓ Command executed successfully");
+                }
+                ServerResponse::Error { msg } => {
+                    log::error!("✗ Command failed: {}", msg);
+                }
+            }
+            continue;
+        }
+
+        // Fall back to parsing as ServerMessage (for notifications)
         let parsed_msg: ServerMessage = match serde_json::from_str(&msg) {
             Ok(msg) => msg,
             Err(e) => {

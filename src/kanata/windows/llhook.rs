@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender as Sender, TryRecvError};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError, sync_channel};
 use std::time;
 
 use super::PRESSED_KEYS;
@@ -27,6 +27,7 @@ impl Kanata {
 
         let (preprocess_tx, preprocess_rx) = sync_channel(100);
         start_event_preprocessor(preprocess_rx, tx);
+        let kb_preprocess_tx = preprocess_tx.clone();
 
         // This callback should return `false` if the input event is **not** handled by the
         // callback and `true` if the input event **is** handled by the callback. Returning false
@@ -39,7 +40,7 @@ impl Kanata {
             };
 
             check_for_exit(&key_event);
-            let oscode = OsCode::from(input_event.code);
+            let oscode = key_event.code;
             if !MAPPED_KEYS.lock().contains(&oscode) {
                 return false;
             }
@@ -53,10 +54,12 @@ impl Kanata {
                 }
                 KeyValue::Press => {
                     let mut pressed_keys = PRESSED_KEYS.lock();
-                    if pressed_keys.contains(&key_event.code) {
-                        key_event.value = KeyValue::Repeat;
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        pressed_keys.entry(key_event.code)
+                    {
+                        e.insert(web_time::Instant::now());
                     } else {
-                        pressed_keys.insert(key_event.code);
+                        key_event.value = KeyValue::Repeat;
                     }
                 }
                 _ => {}
@@ -67,13 +70,51 @@ impl Kanata {
             // getting full, assuming regular operation of the program and some other bug isn't the
             // problem. I've tried to crash the program by pressing as many keys on my keyboard at
             // the same time as I could, but was unable to.
-            try_send_panic(&preprocess_tx, key_event);
+            try_send_panic(&kb_preprocess_tx, key_event);
             true
         });
 
+        use OsCode::*;
+        let oscodes_for_mhook_active = &[
+            BTN_LEFT,
+            BTN_RIGHT,
+            BTN_MIDDLE,
+            BTN_SIDE,
+            BTN_EXTRA,
+            MouseWheelUp,
+            MouseWheelDown,
+            MouseWheelLeft,
+            MouseWheelRight,
+        ];
+        let _handle = if oscodes_for_mhook_active
+            .iter()
+            .any(|osc| MAPPED_KEYS.lock().contains(osc))
+        {
+            log::info!("Installing mouse hook callback.");
+            let mousehook = MouseHook::set_input_cb(move |mouse_event| {
+                log::debug!("llhook mouse event: {mouse_event:?}");
+                let key_event = match KeyEvent::try_from(mouse_event) {
+                    Ok(ev) => ev,
+                    _ => return false,
+                };
+                let oscode = key_event.code;
+                if !MAPPED_KEYS.lock().contains(&oscode) {
+                    return false;
+                }
+                log::debug!("event loop - mouse: {:?}", key_event);
+                try_send_panic(&preprocess_tx, key_event);
+                true
+            });
+            log::info!("Installed mouse hook callback successfully.");
+            Some(mousehook)
+        } else {
+            log::info!("No mouse inputs were in defsrc on startup. Not activating mouse hook.");
+            None
+        };
+
         #[cfg(all(target_os = "windows", feature = "gui"))]
         let _ui = ui; // prevents thread from panicking on exiting via a GUI
-                      // The event loop is also required for the low-level keyboard hook to work.
+        // The event loop is also required for the low-level keyboard hook to work.
         native_windows_gui::dispatch_thread_events();
         Ok(())
     }
@@ -166,7 +207,9 @@ impl Kanata {
                 continue;
             }
 
-            log::error!("Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}");
+            log::error!(
+                "Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}"
+            );
             // Need to clear internal state about this key.
             // find coordinate(s) in keyberon associated with pvk
             let mut coords_to_clear = Vec::<KCoord>::new();
@@ -176,10 +219,8 @@ impl Kanata {
                     Some(k) => k != *pvk,
                     _ => true,
                 };
-                if !retain {
-                    if let Some(coord) = s.coord() {
-                        coords_to_clear.push(coord);
-                    }
+                if !retain && let Some(coord) = s.coord() {
+                    coords_to_clear.push(coord);
                 }
                 retain
             });
@@ -232,7 +273,9 @@ impl Kanata {
             if self.prev_keys.contains(&osc.into()) {
                 continue;
             }
-            log::error!("Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}");
+            log::error!(
+                "Unexpected keycode is pressed in Windows but not Kanata. Releasing in Windows: {osc}"
+            );
             let _ = release_key(&mut self.kbd_out, osc);
         }
         drop(mapped_keys);

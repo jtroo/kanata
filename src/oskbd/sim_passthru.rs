@@ -29,19 +29,20 @@ pub struct KbdOut {
 
 use std::io::{Error as IoErr, ErrorKind::NotConnected};
 impl KbdOut {
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn new() -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn new(
         _s: &Option<String>,
         _tp: bool,
+        _name: &str,
         _bustype: evdev::BusType,
     ) -> Result<Self, io::Error> {
         Ok(Self { tx_kout: None })
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn write_raw(&mut self, event: InputEvent) -> Result<(), io::Error> {
         trace!("out-raw:{event:?}");
         Ok(())
@@ -53,11 +54,15 @@ impl KbdOut {
             match tx_kout.send(event) {
                 // send won't block for an async channel
                 Ok(res) => {
-                    debug!("✓ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)");
+                    debug!(
+                        "✓ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)"
+                    );
                     return Ok(res);
                 }
                 Err(SendError(event)) => {
-                    error!("✗ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)");
+                    error!(
+                        "✗ tx_kout → rx_kout@key_out(dll) ‘{event}’ from send_out_ev_msg@sim_passthru(oskbd)"
+                    );
                     return Err(IoErr::new(
                         NotConnected,
                         format!("Failed sending sending {event}"),

@@ -1,6 +1,6 @@
 use super::*;
 #[allow(unused_imports)]
-use crate::cfg::sexpr::{parse, Span};
+use crate::cfg::sexpr::{Span, parse};
 use kanata_keyberon::action::BooleanOperator::*;
 
 use std::sync::{Mutex, MutexGuard};
@@ -35,7 +35,7 @@ fn init_log() {
     });
 }
 
-fn lock<T>(lk: &Mutex<T>) -> MutexGuard<T> {
+fn lock<T>(lk: &Mutex<T>) -> MutexGuard<'_, T> {
     match lk.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -57,14 +57,12 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
         Err("env vars not implemented".into()),
     );
     if let Ok(ref icfg) = icfg {
-        assert!(icfg
-            .klayers
-            .layers
-            .iter()
-            .all(|layer| layer[usize::from(NORMAL_KEY_ROW)]
+        assert!(icfg.klayers.layers.iter().all(|layer| {
+            layer[usize::from(NORMAL_KEY_ROW)]
                 .iter()
-                .all(|action| *action != DEFAULT_ACTION)));
-        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                .all(|action| *action != DEFAULT_ACTION)
+        }));
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
         assert!(icfg.options.linux_opts.linux_device_detect_mode.is_some());
     }
     icfg
@@ -241,9 +239,11 @@ fn parse_action_vars() {
   tht (tap-hold-release-timeout $one $two $chr $two $one)
   thk (tap-hold-release-keys $one $two $chr $two $three)
   the (tap-hold-except-keys $one $two $chr $two $three)
+  thtt (tap-hold-tap-keys $one $two $chr $two $three)
   thta (tap⬓↑timeout $one $two $chr $two $one)
   thka (tap⬓↑keys $one $two $chr $two $three)
   thea (tap⬓⤫keys $one $two $chr $two $three)
+  thtta (tap⬓tapkeys $one $two $chr $two $three)
   mac (macro $one $two $one $two $chr C-S-$three $one)
   rmc (macro-repeat $one $two $one $two $chr C-S-$three $one)
   mrca (macro↑⤫ $one 500 bspc S-1 500 bspc S-2)
@@ -1306,7 +1306,7 @@ fn parse_device_paths() {
 }
 
 #[test]
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 fn test_parse_dev() {
     // The old colon separated devices format
     assert_eq!(
@@ -1400,6 +1400,7 @@ fn parse_all_defcfg() {
   linux-unicode-termination space
   linux-x11-repeat-delay-rate 400,50
   linux-use-trackpoint-property yes
+  linux-output-device-name "Kanata Test"
   linux-output-device-bus-type USB
   tray-icon symbols.ico
   icon-match-layer-name no
@@ -1448,9 +1449,10 @@ fn parse_defcfg_linux_output_bus() {
 (deflayer base a)
 "#;
     let err = parse_cfg(source).expect_err("should err");
-    assert!(err
-        .msg
-        .contains("Invalid value for linux-output-device-bus-type"));
+    assert!(
+        err.msg
+            .contains("Invalid value for linux-output-device-bus-type")
+    );
 }
 
 #[test]
@@ -1489,9 +1491,10 @@ fn using_parentheses_in_deflayer_directly_fails_with_custom_message() {
         Err("env vars not implemented".into()),
     )
     .expect_err("should err");
-    assert!(err
-        .msg
-        .contains("You can't put parentheses in deflayer directly"));
+    assert!(
+        err.msg
+            .contains("You can't put parentheses in deflayer directly")
+    );
 }
 
 #[test]
@@ -1513,9 +1516,10 @@ fn using_escaped_parentheses_in_deflayer_fails_with_custom_message() {
         Err("env vars not implemented".into()),
     )
     .expect_err("should err");
-    assert!(err
-        .msg
-        .contains("Escaping shifted characters with `\\` is currently not supported"));
+    assert!(
+        err.msg
+            .contains("Escaping shifted characters with `\\` is currently not supported")
+    );
 }
 
 #[test]

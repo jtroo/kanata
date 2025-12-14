@@ -1,2 +1,10 @@
 **/target
 .vscode/
+CLAUDE.md
+.DS_Store
+PLAN.md
+
+# Manual testing files
+test_*.kbd
+manual_test/
+*.test.kbd

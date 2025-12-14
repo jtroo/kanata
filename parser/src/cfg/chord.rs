@@ -83,7 +83,7 @@ pub(crate) fn parse_defchordv2(
         bail_expr!(
             rem.last().unwrap(),
             "Incomplete chord entry. Each chord entry must have 5 items:\n\
-        particpating-keys, action, timeout, release-type, disabled-layers"
+        participating-keys, action, timeout, release-type, disabled-layers"
         );
     }
     Ok(chords_container)
@@ -191,8 +191,8 @@ fn parse_disabled_layers(disabled_layers: &SExpr, s: &ParserState) -> Result<Vec
 }
 
 fn parse_chord_file(file_name: &str) -> Result<Vec<ChordDefinition>> {
-    let input_data = fs::read_to_string(file_name)
-        .unwrap_or_else(|_| panic!("Unable to read file {}", file_name));
+    let input_data =
+        fs::read_to_string(file_name).unwrap_or_else(|_| panic!("Unable to read file {file_name}"));
     let parsed_chords = parse_input(&input_data).unwrap();
     Ok(parsed_chords)
 }
@@ -204,8 +204,7 @@ fn parse_input(input: &str) -> Result<Vec<ChordDefinition>> {
         .map(|line| {
             let mut caps = line.split('\t');
             let error_message = format!(
-                "Each line needs to have an action separated by a tab character, got '{}'",
-                line
+                "Each line needs to have an action separated by a tab character, got '{line}'"
             );
             let keys = caps.next().expect(&error_message);
             let action = caps.next().expect(&error_message);

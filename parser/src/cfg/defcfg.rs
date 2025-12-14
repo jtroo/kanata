@@ -1,27 +1,27 @@
-use super::sexpr::SExpr;
 use super::HashSet;
-use super::{error::*, TrimAtomQuotes};
+use super::sexpr::SExpr;
+use super::{TrimAtomQuotes, error::*};
 use crate::cfg::check_first_expr;
 use crate::custom_action::*;
 use crate::keys::*;
 #[allow(unused)]
 use crate::{anyhow_expr, anyhow_span, bail, bail_expr, bail_span};
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DeviceDetectMode {
     KeyboardOnly,
     KeyboardMice,
     Any,
 }
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 impl std::fmt::Display for DeviceDetectMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 #[derive(Debug, Clone)]
 pub struct CfgLinuxOptions {
     pub linux_dev: Vec<String>,
@@ -32,10 +32,11 @@ pub struct CfgLinuxOptions {
     pub linux_unicode_termination: UnicodeTermination,
     pub linux_x11_repeat_delay_rate: Option<KeyRepeatSettings>,
     pub linux_use_trackpoint_property: bool,
+    pub linux_output_name: String,
     pub linux_output_bus_type: LinuxCfgOutputBusType,
     pub linux_device_detect_mode: Option<DeviceDetectMode>,
 }
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 impl Default for CfgLinuxOptions {
     fn default() -> Self {
         Self {
@@ -49,12 +50,13 @@ impl Default for CfgLinuxOptions {
             linux_unicode_termination: UnicodeTermination::Enter,
             linux_x11_repeat_delay_rate: None,
             linux_use_trackpoint_property: false,
+            linux_output_name: "kanata".to_owned(),
             linux_output_bus_type: LinuxCfgOutputBusType::BusI8042,
             linux_device_detect_mode: None,
         }
     }
 }
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 #[derive(Debug, Clone, Copy)]
 pub enum LinuxCfgOutputBusType {
     BusUsb,
@@ -152,7 +154,14 @@ pub struct CfgOptions {
     pub rapid_event_delay: u16,
     pub trans_resolution_behavior_v2: bool,
     pub chords_v2_min_idle: u16,
-    #[cfg(any(target_os = "linux", target_os = "unknown"))]
+    #[cfg(any(
+        all(target_os = "windows", feature = "interception_driver"),
+        target_os = "linux",
+        target_os = "android",
+        target_os = "unknown"
+    ))]
+    pub mouse_movement_key: Option<OsCode>,
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
     pub linux_opts: CfgLinuxOptions,
     #[cfg(any(target_os = "macos", target_os = "unknown"))]
     pub macos_opts: CfgMacosOptions,
@@ -191,7 +200,14 @@ impl Default for CfgOptions {
             rapid_event_delay: 5,
             trans_resolution_behavior_v2: true,
             chords_v2_min_idle: 5,
-            #[cfg(any(target_os = "linux", target_os = "unknown"))]
+            #[cfg(any(
+                all(target_os = "windows", feature = "interception_driver"),
+                target_os = "linux",
+                target_os = "android",
+                target_os = "unknown"
+            ))]
+            mouse_movement_key: None,
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
             linux_opts: Default::default(),
             #[cfg(any(target_os = "windows", target_os = "unknown"))]
             windows_opts: Default::default(),
@@ -220,7 +236,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
             Some(k) => k,
             None => {
                 if !is_process_unmapped_keys_defined {
-                    log::warn!("The item process-unmapped-keys is not defined in defcfg. Consider whether process-unmapped-keys should be yes vs. no.");
+                    log::warn!(
+                        "The item process-unmapped-keys is not defined in defcfg. Consider whether process-unmapped-keys should be yes vs. no."
+                    );
                 }
                 return Ok(cfg);
             }
@@ -266,7 +284,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             })??;
                     }
                     "linux-dev" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_dev = parse_dev(val)?;
                             if cfg.linux_opts.linux_dev.is_empty() {
@@ -278,7 +300,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-dev-names-include" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let dev_names = parse_dev(val)?;
                             if dev_names.is_empty() {
@@ -288,13 +314,21 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-dev-names-exclude" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_dev_names_exclude = Some(parse_dev(val)?);
                         }
                     }
                     "linux-unicode-u-code" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             cfg.linux_opts.linux_unicode_u_code = crate::keys::str_to_oscode(v)
@@ -304,7 +338,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-unicode-termination" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             cfg.linux_opts.linux_unicode_termination = match v {
@@ -321,7 +359,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-x11-repeat-delay-rate" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let v = sexpr_to_str_or_err(val, label)?;
                             let delay_rate = v.split(',').collect::<Vec<_>>();
@@ -342,19 +384,47 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "linux-use-trackpoint-property" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_use_trackpoint_property =
                                 parse_defcfg_val_bool(val, label)?
                         }
                     }
+                    "linux-output-device-name" => {
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
+                        {
+                            let device_name = sexpr_to_str_or_err(val, label)?;
+                            if device_name.is_empty() {
+                                log::warn!(
+                                    "linux-output-device-name is empty, using kanata as default value"
+                                );
+                            } else {
+                                cfg.linux_opts.linux_output_name = device_name.to_owned();
+                            }
+                        }
+                    }
                     "linux-output-device-bus-type" => {
                         let bus_type = sexpr_to_str_or_err(val, label)?;
                         match bus_type {
-                            "USB" | "I8042" => {},
-                            _ => bail_expr!(val, "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"),
+                            "USB" | "I8042" => {}
+                            _ => bail_expr!(
+                                val,
+                                "Invalid value for linux-output-device-bus-type.\nExpected one of: USB or I8042"
+                            ),
                         };
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let bus_type = match bus_type {
                                 "USB" => LinuxCfgOutputBusType::BusUsb,
@@ -367,10 +437,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "linux-device-detect-mode" => {
                         let detect_mode = sexpr_to_str_or_err(val, label)?;
                         match detect_mode {
-                            "any" | "keyboard-only" | "keyboard-mice" => {},
-                            _ => bail_expr!(val, "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"),
+                            "any" | "keyboard-only" | "keyboard-mice" => {}
+                            _ => bail_expr!(
+                                val,
+                                "Invalid value for linux-device-detect-mode.\nExpected one of: any | keyboard-only | keyboard-mice"
+                            ),
                         };
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let detect_mode = Some(match detect_mode {
                                 "any" => DeviceDetectMode::Any,
@@ -417,7 +494,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid-exclude cannot both be included"
+                                );
                             }
                             let v = sexpr_to_str_or_err(val, label)?;
                             let hwid = v;
@@ -470,7 +550,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid-exclude cannot both be included");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid-exclude cannot both be included"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -508,7 +591,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_mouse_hwids
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-mouse-hwid(s) cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-mouse-hwid(s) cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -530,7 +616,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_keyboard_hwids_exclude
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid-exclude cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-keyboard-hwid-exclude cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -552,7 +641,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 .windows_interception_keyboard_hwids
                                 .is_some()
                             {
-                                bail_expr!(val, "{label} and windows-interception-keyboard-hwid cannot both be used");
+                                bail_expr!(
+                                    val,
+                                    "{label} and windows-interception-keyboard-hwid cannot both be used"
+                                );
                             }
                             let parsed_hwids = sexpr_to_hwids_vec(
                                 val,
@@ -746,11 +838,17 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "delegate-to-first-layer" => {
                         cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, label)?;
                         if cfg.delegate_to_first_layer {
-                            log::info!("delegating transparent keys on other layers to first defined layer");
+                            log::info!(
+                                "delegating transparent keys on other layers to first defined layer"
+                            );
                         }
                     }
                     "linux-continue-if-no-devs-found" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.linux_continue_if_no_devs_found =
                                 parse_defcfg_val_bool(val, label)?
@@ -785,14 +883,35 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "chords-v2-min-idle" | "chords-v2-min-idle-experimental" => {
                         if label == "chords-v2-min-idle-experimental" {
-                            log::warn!("You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
-                                        Using -experimental will be invalid in the future.")
+                            log::warn!(
+                                "You should replace chords-v2-min-idle-experimental with chords-v2-min-idle\n\
+                                        Using -experimental will be invalid in the future."
+                            )
                         }
                         let min_idle = parse_cfg_val_u16(val, label, true)?;
                         if min_idle < 5 {
                             bail_expr!(val, "{label} must be 5-65535");
                         }
                         cfg.chords_v2_min_idle = min_idle;
+                    }
+                    "mouse-movement-key" => {
+                        #[cfg(any(
+                            all(target_os = "windows", feature = "interception_driver"),
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
+                        {
+                            if let Some(keystr) = parse_defcfg_val_string(val, label)? {
+                                if let Some(key) = str_to_oscode(&keystr) {
+                                    cfg.mouse_movement_key = Some(key);
+                                } else {
+                                    bail_expr!(val, "{label} not a recognised key code");
+                                }
+                            } else {
+                                bail_expr!(val, "{label} not a string for a key code");
+                            }
+                        }
                     }
                     _ => bail_expr!(key, "Unknown defcfg option {}", label),
                 };
@@ -882,7 +1001,12 @@ pub fn parse_colon_separated_text(paths: &str) -> Vec<String> {
     all_paths
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "unknown"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    target_os = "unknown"
+))]
 pub fn parse_dev(val: &SExpr) -> Result<Vec<String>> {
     Ok(match val {
         SExpr::Atom(a) => {
@@ -972,14 +1096,14 @@ fn sexpr_to_hwids_vec(
     Ok(parsed_hwids)
 }
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct KeyRepeatSettings {
     pub delay: u16,
     pub rate: u16,
 }
 
-#[cfg(any(target_os = "linux", target_os = "unknown"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UnicodeTermination {
     Enter,
@@ -989,20 +1113,15 @@ pub enum UnicodeTermination {
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AltGrBehaviour {
+    #[default]
     DoNothing,
     CancelLctlPress,
     AddLctlRelease,
 }
 
 #[cfg(any(target_os = "windows", target_os = "unknown"))]
-impl Default for AltGrBehaviour {
-    fn default() -> Self {
-        Self::DoNothing
-    }
-}
-
 #[cfg(any(
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"

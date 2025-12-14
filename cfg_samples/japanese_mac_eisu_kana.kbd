@@ -1,0 +1,27 @@
+#|
+  Using meta keys as japanese eisu and kana on Mac with US keyboard.
+
+  | Source  | Tap          | Hold |
+  | ------- | ------------ | ---- |
+  | lmet    | lang2 (eisu) | lmet |
+  | rmet    | lang1 (kana) | rmet |
+
+|#
+
+(defcfg
+  process-unmapped-keys yes
+)
+
+(defsrc
+  lmet  rmet
+)
+
+(deflayer default
+  @lmet @rmet
+)
+
+(defalias
+  lmet (tap-hold-press 200 200 eisu lmet)
+  rmet (tap-hold-press 200 200 kana rmet)
+)
+

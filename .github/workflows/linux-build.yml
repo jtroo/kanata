@@ -1,0 +1,33 @@
+name: linux-build
+
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "persist-cross-job-linux-x64"
+      - name: Do the stuff on x64 ubuntu linux
+        shell: bash
+        run: |
+          mkdir -p artifacts-x64
+          cargo build --release
+          mv target/release/kanata artifacts-x64/kanata_linux_x64
+          cargo build --release --features cmd
+          mv target/release/kanata artifacts-x64/kanata_linux_cmd_allowed_x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries-x64
+          path: |
+            artifacts-x64/kanata_linux_x64
+            artifacts-x64/kanata_linux_cmd_allowed_x64

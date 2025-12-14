@@ -1,13 +1,10 @@
 use super::*;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
-use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
-
-pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
-    Lazy::new(|| Mutex::new(HashSet::default()));
+use std::sync::mpsc::SyncSender as Sender;
 
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.

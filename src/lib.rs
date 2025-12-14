@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result, anyhow};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -20,7 +20,7 @@ pub struct ValidatedArgs {
     pub paths: Vec<CfgPath>,
     #[cfg(feature = "tcp_server")]
     pub tcp_server_address: Option<SocketAddrWrapper>,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub symlink_path: Option<String>,
     pub nodelay: bool,
 }
@@ -52,7 +52,7 @@ impl FromStr for SocketAddrWrapper {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut address = s.to_string();
         if let Ok(port) = s.parse::<u16>() {
-            address = format!("127.0.0.1:{}", port);
+            address = format!("127.0.0.1:{port}");
         }
         address
             .parse::<SocketAddr>()

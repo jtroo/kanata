@@ -1,12 +1,12 @@
-use crate::oskbd::*;
 use crate::Kanata;
+use crate::oskbd::*;
 
 #[cfg(feature = "tcp_server")]
 use kanata_tcp_protocol::*;
 use parking_lot::Mutex;
 use std::net::SocketAddr;
-use std::sync::mpsc::SyncSender as Sender;
 use std::sync::Arc;
+use std::sync::mpsc::SyncSender as Sender;
 
 #[cfg(feature = "tcp_server")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -25,6 +25,21 @@ pub type Connections = ();
 
 #[cfg(feature = "tcp_server")]
 use kanata_parser::custom_action::FakeKeyAction;
+
+#[cfg(feature = "tcp_server")]
+fn send_response(
+    stream: &mut TcpStream,
+    response: ServerResponse,
+    connections: &Connections,
+    addr: &str,
+) -> bool {
+    if let Err(write_err) = stream.write_all(&response.as_bytes()) {
+        log::error!("stream write error: {write_err}");
+        connections.lock().remove(addr);
+        return false;
+    }
+    true
+}
 
 #[cfg(feature = "tcp_server")]
 fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
@@ -94,10 +109,13 @@ impl TcpServer {
                             }
                         }
 
-                        let addr = stream
-                            .peer_addr()
-                            .expect("incoming conn has known address")
-                            .to_string();
+                        let addr = match stream.peer_addr() {
+                            Ok(addr) => addr.to_string(),
+                            Err(e) => {
+                                log::warn!("failed to get peer address, using fallback: {e:?}");
+                                format!("unknown_{}", std::ptr::addr_of!(stream) as usize)
+                            }
+                        };
 
                         connections.lock().insert(
                             addr.clone(),
@@ -117,6 +135,7 @@ impl TcpServer {
                             for v in reader {
                                 match v {
                                     Ok(event) => {
+                                        log::debug!("tcp server received command: {:?}", event);
                                         match event {
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
@@ -158,7 +177,9 @@ impl TcpServer {
                                                     }
                                                 };
                                                 if let Some(index) = index {
-                                                    log::info!("tcp server fake-key action: {name},{action:?}");
+                                                    log::info!(
+                                                        "tcp server fake-key action: {name},{action:?}"
+                                                    );
                                                     handle_fakekey_action(
                                                         to_action(action),
                                                         k.layout.bm(),
@@ -174,7 +195,9 @@ impl TcpServer {
                                                 );
                                                 match kanata.lock().kbd_out.set_mouse(x, y) {
                                                     Ok(_) => {
-                                                        log::info!("sucessfully did set mouse position to: x {x} y {y}");
+                                                        log::info!(
+                                                            "sucessfully did set mouse position to: x {x} y {y}"
+                                                        );
                                                         // Optionally send a success message to the
                                                         // client
                                                     }
@@ -200,11 +223,11 @@ impl TcpServer {
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
-                                                Ok(_) => {}
-                                                Err(err) => log::error!(
-                                                    "Error writing response to RequestCurrentLayerInfo: {err}"
-                                                ),
-                                            }
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to RequestCurrentLayerInfo: {err}"
+                                                    ),
+                                                }
                                             }
                                             ClientMessage::RequestCurrentLayerName {} => {
                                                 let mut k = kanata.lock();
@@ -214,11 +237,59 @@ impl TcpServer {
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
-                                                Ok(_) => {}
-                                                Err(err) => log::error!(
-                                                    "Error writing response to RequestCurrentLayerName: {err}"
-                                                ),
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "Error writing response to RequestCurrentLayerName: {err}"
+                                                    ),
+                                                }
                                             }
+                                            // Handle reload commands with unified response protocol
+                                            reload_cmd @ (ClientMessage::Reload {}
+                                            | ClientMessage::ReloadNext {}
+                                            | ClientMessage::ReloadPrev {}
+                                            | ClientMessage::ReloadNum { .. }
+                                            | ClientMessage::ReloadFile { .. }) => {
+                                                // Log specific action type
+                                                match &reload_cmd {
+                                                    ClientMessage::Reload {} => {
+                                                        log::info!("tcp server Reload action")
+                                                    }
+                                                    ClientMessage::ReloadNext {} => {
+                                                        log::info!("tcp server ReloadNext action")
+                                                    }
+                                                    ClientMessage::ReloadPrev {} => {
+                                                        log::info!("tcp server ReloadPrev action")
+                                                    }
+                                                    ClientMessage::ReloadNum { index } => {
+                                                        log::info!(
+                                                            "tcp server ReloadNum action: index {index}"
+                                                        )
+                                                    }
+                                                    ClientMessage::ReloadFile { path } => {
+                                                        log::info!(
+                                                            "tcp server ReloadFile action: path {path}"
+                                                        )
+                                                    }
+                                                    _ => unreachable!(),
+                                                }
+
+                                                let response = match kanata
+                                                    .lock()
+                                                    .handle_client_command(reload_cmd)
+                                                {
+                                                    Ok(_) => ServerResponse::Ok,
+                                                    Err(e) => ServerResponse::Error {
+                                                        msg: format!("{e}"),
+                                                    },
+                                                };
+                                                if !send_response(
+                                                    &mut stream,
+                                                    response,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
                                         }
                                         use kanata_parser::keys::*;
@@ -231,17 +302,13 @@ impl TcpServer {
                                     }
                                     Err(e) => {
                                         log::warn!(
-                                        "client sent an invalid message, disconnecting them. Err: {e:?}"
-                                    );
-                                        // Ignore write result because we're about to disconnect
-                                        // the client anyway.
-                                        let _ = stream.write_all(
-                                            &ServerMessage::Error {
-                                                msg: "disconnecting - you sent an invalid message"
-                                                    .into(),
-                                            }
-                                            .as_bytes(),
+                                            "client sent an invalid message, disconnecting them. Err: {e:?}"
                                         );
+                                        // Send proper error response for malformed JSON
+                                        let response = ServerResponse::Error {
+                                            msg: format!("Failed to deserialize command: {e}"),
+                                        };
+                                        let _ = stream.write_all(&response.as_bytes());
                                         connections.lock().remove(&addr);
                                         break;
                                     }

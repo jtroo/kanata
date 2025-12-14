@@ -1,14 +1,14 @@
 //! Contains code to handle global override keys.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use rustc_hash::FxHashMap as HashMap;
 
 use crate::keys::*;
 
 use kanata_keyberon::key_code::KeyCode;
-use kanata_keyberon::layout::State;
 use kanata_keyberon::layout::NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION;
 use kanata_keyberon::layout::NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE;
+use kanata_keyberon::layout::State;
 
 /// Scratch space containing allocations used to process override information. Exists as an
 /// optimization to reuse allocations between iterations.
@@ -142,7 +142,7 @@ impl Overrides {
                     false
                 }
             })
-            .last()
+            .next_back()
         {
             log::debug!("using override {ovd:?}");
             ovd.add_override_keys(oscs_to_add);

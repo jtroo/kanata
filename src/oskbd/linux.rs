@@ -3,9 +3,9 @@
 #![cfg_attr(feature = "simulated_output", allow(dead_code, unused_imports))]
 
 pub use evdev::BusType;
-use evdev::{uinput, Device, EventType, InputEvent, Key, PropType, RelativeAxisType};
+use evdev::{Device, EventType, InputEvent, KeyCode, PropType, RelativeAxisCode, uinput};
 use inotify::{Inotify, WatchMask};
-use mio::{unix::SourceFd, Events, Interest, Poll, Token};
+use mio::{Events, Interest, Poll, Token, unix::SourceFd};
 use nix::ioctl_read_buf;
 use rustc_hash::FxHashMap as HashMap;
 use signal_hook::{
@@ -77,7 +77,11 @@ impl KbdIn {
             } else {
                 return Err(io::Error::new(
                     io::ErrorKind::NotFound,
-                    "No keyboard devices were found",
+                    "No keyboard devices were found. Try:\n\
+                     1. Run 'kanata --list' to see available devices\n\
+                     2. Check permissions: sudo usermod -a -G input $USER\n\
+                     3. Log out and back in for group changes to take effect\n\
+                     4. Ensure devices are connected and working",
                 ));
             }
         }
@@ -264,7 +268,7 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     let is_keyboard = device.supported_keys().is_some_and(has_keyboard_keys);
     let is_mouse = device
         .supported_relative_axes()
-        .is_some_and(|axes| axes.contains(RelativeAxisType::REL_X));
+        .is_some_and(|axes| axes.contains(RelativeAxisCode::REL_X));
     let device_type = match (is_keyboard, is_mouse) {
         (true, true) => DeviceType::KeyboardMouse,
         (true, false) => DeviceType::Keyboard,
@@ -305,14 +309,14 @@ pub fn is_input_device(device: &Device, detect_mode: DeviceDetectMode) -> bool {
     }
 }
 
-fn has_keyboard_keys(keys: &evdev::AttributeSetRef<Key>) -> bool {
+fn has_keyboard_keys(keys: &evdev::AttributeSetRef<KeyCode>) -> bool {
     const SENSIBLE_KEYBOARD_SCANCODE_LOWER_BOUND: u16 = 1;
     // The next one is power button. Some keyboards have it,
     // but so does the power button...
     const SENSIBLE_KEYBOARD_SCANCODE_UPPER_BOUND: u16 = 115;
     let mut sensible_keyboard_keys = (SENSIBLE_KEYBOARD_SCANCODE_LOWER_BOUND
         ..=SENSIBLE_KEYBOARD_SCANCODE_UPPER_BOUND)
-        .map(Key::new);
+        .map(KeyCode::new);
     sensible_keyboard_keys.any(|k| keys.contains(k))
 }
 
@@ -320,22 +324,22 @@ impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
         use OsCode::*;
-        match item.kind() {
-            evdev::InputEventKind::Key(k) => Ok(Self {
+        match item.destructure() {
+            evdev::EventSummary::Key(_, k, _) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
             }),
-            evdev::InputEventKind::RelAxis(axis_type) => {
+            evdev::EventSummary::RelativeAxis(_, axis_type, _) => {
                 let dist = item.value();
                 let code: OsCode = match axis_type {
-                    RelativeAxisType::REL_WHEEL | RelativeAxisType::REL_WHEEL_HI_RES => {
+                    RelativeAxisCode::REL_WHEEL | RelativeAxisCode::REL_WHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelUp
                         } else {
                             MouseWheelDown
                         }
                     }
-                    RelativeAxisType::REL_HWHEEL | RelativeAxisType::REL_HWHEEL_HI_RES => {
+                    RelativeAxisCode::REL_HWHEEL | RelativeAxisCode::REL_HWHEEL_HI_RES => {
                         if dist > 0 {
                             MouseWheelRight
                         } else {
@@ -356,7 +360,7 @@ impl TryFrom<InputEvent> for KeyEvent {
 
 impl From<KeyEvent> for InputEvent {
     fn from(item: KeyEvent) -> Self {
-        InputEvent::new(EventType::KEY, item.code as u16, item.value as i32)
+        InputEvent::new(EventType::KEY.0, item.code as u16, item.value as i32)
     }
 }
 
@@ -377,30 +381,31 @@ impl KbdOut {
     pub fn new(
         symlink_path: &Option<String>,
         trackpoint: bool,
+        name: &str,
         bus_type: BusType,
     ) -> Result<Self, io::Error> {
         // Support pretty much every feature of a Keyboard or a Mouse in a VirtualDevice so that no event from the original input devices gets lost
         // TODO investigate the rare possibility that a device is e.g. a Joystick and a Keyboard or a Mouse at the same time, which could lead to lost events
 
         // For some reason 0..0x300 (max value for a key) doesn't work, the closest that I've got to work is 560
-        let keys = evdev::AttributeSet::from_iter((0..560).map(evdev::Key));
+        let keys = evdev::AttributeSet::from_iter((0..560).map(evdev::KeyCode));
         let relative_axes = evdev::AttributeSet::from_iter([
-            RelativeAxisType::REL_WHEEL,
-            RelativeAxisType::REL_HWHEEL,
-            RelativeAxisType::REL_X,
-            RelativeAxisType::REL_Y,
-            RelativeAxisType::REL_Z,
-            RelativeAxisType::REL_RX,
-            RelativeAxisType::REL_RY,
-            RelativeAxisType::REL_RZ,
-            RelativeAxisType::REL_DIAL,
-            RelativeAxisType::REL_MISC,
-            RelativeAxisType::REL_WHEEL_HI_RES,
-            RelativeAxisType::REL_HWHEEL_HI_RES,
+            RelativeAxisCode::REL_WHEEL,
+            RelativeAxisCode::REL_HWHEEL,
+            RelativeAxisCode::REL_X,
+            RelativeAxisCode::REL_Y,
+            RelativeAxisCode::REL_Z,
+            RelativeAxisCode::REL_RX,
+            RelativeAxisCode::REL_RY,
+            RelativeAxisCode::REL_RZ,
+            RelativeAxisCode::REL_DIAL,
+            RelativeAxisCode::REL_MISC,
+            RelativeAxisCode::REL_WHEEL_HI_RES,
+            RelativeAxisCode::REL_HWHEEL_HI_RES,
         ]);
 
-        let device = uinput::VirtualDeviceBuilder::new()?
-            .name("kanata")
+        let device = uinput::VirtualDevice::builder()?
+            .name(&name)
             // libinput's "disable while typing" feature don't work when bus_type
             // is set to BUS_USB, but appears to work when it's set to BUS_I8042.
             .input_id(evdev::InputId::new(bus_type, 1, 1, 1))
@@ -495,7 +500,7 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let event = InputEvent::new(EventType::KEY, code as u16, value as i32);
+        let event = InputEvent::new(EventType::KEY.0, code as u16, value as i32);
         self.device.emit(&[event])?;
         Ok(())
     }
@@ -583,11 +588,11 @@ impl KbdOut {
         }
 
         let hi_res_scroll_event = InputEvent::new(
-            EventType::RELATIVE,
+            EventType::RELATIVE.0,
             match direction {
-                MWheelDirection::Up | MWheelDirection::Down => RelativeAxisType::REL_WHEEL_HI_RES.0,
+                MWheelDirection::Up | MWheelDirection::Down => RelativeAxisCode::REL_WHEEL_HI_RES.0,
                 MWheelDirection::Left | MWheelDirection::Right => {
-                    RelativeAxisType::REL_HWHEEL_HI_RES.0
+                    RelativeAxisCode::REL_HWHEEL_HI_RES.0
                 }
             },
             match direction {
@@ -600,13 +605,13 @@ impl KbdOut {
             self.write_many(&[
                 hi_res_scroll_event,
                 InputEvent::new(
-                    EventType::RELATIVE,
+                    EventType::RELATIVE.0,
                     match direction {
                         MWheelDirection::Up | MWheelDirection::Down => {
-                            RelativeAxisType::REL_WHEEL.0
+                            RelativeAxisCode::REL_WHEEL.0
                         }
                         MWheelDirection::Left | MWheelDirection::Right => {
-                            RelativeAxisType::REL_HWHEEL.0
+                            RelativeAxisCode::REL_HWHEEL.0
                         }
                     },
                     match direction {
@@ -624,30 +629,32 @@ impl KbdOut {
 
     pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
         let (axis, distance) = match mv.direction {
-            MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(mv.distance)),
-            MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(mv.distance)),
-            MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(mv.distance)),
-            MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(mv.distance)),
+            MoveDirection::Up => (RelativeAxisCode::REL_Y, -i32::from(mv.distance)),
+            MoveDirection::Down => (RelativeAxisCode::REL_Y, i32::from(mv.distance)),
+            MoveDirection::Left => (RelativeAxisCode::REL_X, -i32::from(mv.distance)),
+            MoveDirection::Right => (RelativeAxisCode::REL_X, i32::from(mv.distance)),
         };
-        self.write(InputEvent::new(EventType::RELATIVE, axis.0, distance))
+        self.write(InputEvent::new(EventType::RELATIVE.0, axis.0, distance))
     }
 
     pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
         let mut events = vec![];
         for mv in moves {
             let (axis, distance) = match mv.direction {
-                MoveDirection::Up => (RelativeAxisType::REL_Y, -i32::from(mv.distance)),
-                MoveDirection::Down => (RelativeAxisType::REL_Y, i32::from(mv.distance)),
-                MoveDirection::Left => (RelativeAxisType::REL_X, -i32::from(mv.distance)),
-                MoveDirection::Right => (RelativeAxisType::REL_X, i32::from(mv.distance)),
+                MoveDirection::Up => (RelativeAxisCode::REL_Y, -i32::from(mv.distance)),
+                MoveDirection::Down => (RelativeAxisCode::REL_Y, i32::from(mv.distance)),
+                MoveDirection::Left => (RelativeAxisCode::REL_X, -i32::from(mv.distance)),
+                MoveDirection::Right => (RelativeAxisCode::REL_X, i32::from(mv.distance)),
             };
-            events.push(InputEvent::new(EventType::RELATIVE, axis.0, distance));
+            events.push(InputEvent::new(EventType::RELATIVE.0, axis.0, distance));
         }
         self.write_many(&events)
     }
 
     pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
-        log::warn!("setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd");
+        log::warn!(
+            "setmouse does not work in Linux yet. Maybe try out warpd:\n\thttps://github.com/rvaiya/warpd"
+        );
         Ok(())
     }
 }
@@ -670,7 +677,7 @@ fn devices_from_input_paths(
         .collect()
 }
 
-fn discover_devices(
+pub fn discover_devices(
     include_names: Option<&[String]>,
     exclude_names: Option<&[String]>,
     device_detect_mode: DeviceDetectMode,

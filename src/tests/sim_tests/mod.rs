@@ -6,8 +6,9 @@
 
 use crate::tests::*;
 use crate::{
+    Kanata,
     oskbd::{KeyEvent, KeyValue},
-    str_to_oscode, Kanata,
+    str_to_oscode,
 };
 
 use rustc_hash::FxHashMap;
@@ -19,16 +20,21 @@ mod delay_tests;
 mod layer_sim_tests;
 mod macro_sim_tests;
 mod oneshot_tests;
+mod output_chord_tests;
 mod override_tests;
 mod release_sim_tests;
 mod repeat_sim_tests;
 mod seq_sim_tests;
 mod switch_sim_tests;
+mod tap_dance_tests;
+mod tap_hold_tests;
 mod template_sim_tests;
+mod timing_tests;
 mod unicode_sim_tests;
 mod unmod_sim_tests;
 mod use_defsrc_sim_tests;
 mod vkey_sim_tests;
+#[cfg(feature = "zippychord")]
 mod zippychord_sim_tests;
 
 fn simulate<S: AsRef<str>>(cfg: S, sim: S) -> String {
@@ -50,8 +56,11 @@ fn simulate_with_file_content<S: AsRef<str>>(
         match pair.split_once(':') {
             Some((kind, val)) => match kind {
                 "t" => {
-                    let tick = str::parse::<u128>(val).expect("valid num for tick");
-                    k.tick_ms(tick, &None).unwrap();
+                    let ticks = str::parse::<u128>(val).expect("valid num for tick");
+                    for _ in 0..ticks {
+                        let _ = k.tick_ms(1, &None);
+                        let _ = k.can_block_update_idle_waiting(1);
+                    }
                 }
                 "d" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
@@ -60,6 +69,12 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Press,
                     })
                     .expect("input handles fine");
+                    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+                    crate::PRESSED_KEYS.lock().insert(key_code);
+                    #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+                    crate::PRESSED_KEYS
+                        .lock()
+                        .insert(key_code, web_time::Instant::now());
                 }
                 "u" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
@@ -68,6 +83,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Release,
                     })
                     .expect("input handles fine");
+                    crate::PRESSED_KEYS.lock().remove(&key_code);
                 }
                 "r" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");

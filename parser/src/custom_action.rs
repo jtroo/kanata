@@ -3,7 +3,7 @@
 //! When adding a new custom action, the macro section of the config.adoc documentation may need to
 //! be updated, to include the new action to the documented list of supported actions in macro.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use core::fmt;
 use kanata_keyberon::key_code::KeyCode;
 
@@ -11,10 +11,10 @@ use crate::{cfg::SimpleSExpr, keys::OsCode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomAction {
-    Cmd(Vec<String>),
-    CmdLog(LogLevel, LogLevel, Vec<String>),
-    CmdOutputKeys(Vec<String>),
-    PushMessage(Vec<SimpleSExpr>),
+    Cmd(&'static [&'static str]),
+    CmdLog(LogLevel, LogLevel, &'static [&'static str]),
+    CmdOutputKeys(&'static [&'static str]),
+    PushMessage(&'static [SimpleSExpr]),
     Unicode(char),
     Mouse(Btn),
     MouseTap(Btn),
@@ -27,6 +27,7 @@ pub enum CustomAction {
         action: FakeKeyAction,
     },
     FakeKeyOnIdle(FakeKeyOnIdle),
+    FakeKeyOnPhysicalIdle(FakeKeyOnIdle),
     FakeKeyHoldForDuration(FakeKeyHoldForDuration),
     Delay(u16),
     DelayOnRelease(u16),
@@ -34,6 +35,7 @@ pub enum CustomAction {
         direction: MWheelDirection,
         interval: u16,
         distance: u16,
+        inertial_scroll_params: Option<&'static MWheelInertial>,
     },
     MWheelNotch {
         direction: MWheelDirection,
@@ -68,7 +70,7 @@ pub enum CustomAction {
     /// the first configuration file provided. The rest of the parser code is free to choose 0 or 1
     /// as the user-facing value though.
     LiveReloadNum(u16),
-    LiveReloadFile(String),
+    LiveReloadFile(&'static str),
     Repeat,
     CancelMacroOnRelease,
     CancelMacroOnNextPress(u32),
@@ -82,19 +84,19 @@ pub enum CustomAction {
         y: u16,
     },
     Unmodded {
-        keys: Box<[KeyCode]>,
+        keys: &'static [KeyCode],
         mods: UnmodMods,
     },
     Unshifted {
-        keys: Box<[KeyCode]>,
+        keys: &'static [KeyCode],
     },
     ReverseReleaseOrder,
-    ClipboardSet(String),
-    ClipboardCmdSet(Vec<String>),
+    ClipboardSet(&'static str),
+    ClipboardCmdSet(&'static [&'static str]),
     ClipboardSave(u16),
     ClipboardRestore(u16),
-    ClipboardSaveSet(u16, String),
-    ClipboardSaveCmdSet(u16, Vec<String>),
+    ClipboardSaveSet(u16, &'static str),
+    ClipboardSaveCmdSet(u16, &'static [&'static str]),
     ClipboardSaveSwap(u16, u16),
 }
 
@@ -181,6 +183,14 @@ impl TryFrom<OsCode> for MWheelDirection {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+pub struct MWheelInertial {
+    pub initial_velocity: ordered_float::OrderedFloat<f32>,
+    pub maximum_velocity: ordered_float::OrderedFloat<f32>,
+    pub acceleration_multiplier: ordered_float::OrderedFloat<f32>,
+    pub deceleration_multiplier: ordered_float::OrderedFloat<f32>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MoveDirection {
     Up,
@@ -245,7 +255,9 @@ impl SequenceInputMode {
     }
 
     pub fn err_msg() -> String {
-        format!("sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}")
+        format!(
+            "sequence input mode must be one of: {SEQ_VISIBLE_BACKSPACED}, {SEQ_HIDDEN_SUPPRESSED}, {SEQ_HIDDEN_DELAY_TYPE}"
+        )
     }
 }
 
@@ -288,7 +300,9 @@ impl LogLevel {
     }
 
     pub fn err_msg() -> String {
-        format!("log level must be one of: {LOG_LEVEL_DEBUG}, {LOG_LEVEL_INFO}, {LOG_LEVEL_WARN}, {LOG_LEVEL_ERROR}, {LOG_LEVEL_NONE}")
+        format!(
+            "log level must be one of: {LOG_LEVEL_DEBUG}, {LOG_LEVEL_INFO}, {LOG_LEVEL_WARN}, {LOG_LEVEL_ERROR}, {LOG_LEVEL_NONE}"
+        )
     }
 }
 

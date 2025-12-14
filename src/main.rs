@@ -2,119 +2,63 @@
 // disable default console for a Windows GUI app
 mod main_lib;
 
-use anyhow::{bail, Result};
+#[cfg(not(feature = "gui"))]
+use anyhow::{Result, bail};
+#[cfg(not(feature = "gui"))]
 use clap::Parser;
+#[cfg(not(feature = "gui"))]
 use kanata_parser::cfg;
+#[cfg(not(feature = "gui"))]
 use kanata_state_machine::*;
+#[cfg(not(feature = "gui"))]
+use main_lib::args::Args;
+#[cfg(not(feature = "gui"))]
 use simplelog::{format_description, *};
-use std::path::PathBuf;
-
-#[derive(Parser, Debug)]
-#[command(author, version, verbatim_doc_comment)]
-/// kanata: an advanced software key remapper
-///
-/// kanata remaps key presses to other keys or complex actions depending on the
-/// configuration for that key. You can find the guide for creating a config
-/// file here: https://github.com/jtroo/kanata/blob/main/docs/config.adoc
-///
-/// If you need help, please feel welcome to create an issue or discussion in
-/// the kanata repository: https://github.com/jtroo/kanata
-struct Args {
-    // Display different platform specific paths based on the target OS
-    #[cfg_attr(
-        target_os = "windows",
-        doc = r"Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'C:\Users\user\AppData\Roaming\kanata\kanata.kbd'."
-    )]
-    #[cfg_attr(
-        target_os = "macos",
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$HOME/Library/Application Support/kanata/kanata.kbd'."
-    )]
-    #[cfg_attr(
-        not(any(target_os = "macos", target_os = "windows")),
-        doc = "Configuration file(s) to use with kanata. If not specified, defaults to
-kanata.kbd in the current working directory and
-'$XDG_CONFIG_HOME/kanata/kanata.kbd'."
-    )]
-    #[arg(short, long, verbatim_doc_comment)]
-    cfg: Option<Vec<PathBuf>>,
-
-    /// Port or full address (IP:PORT) to run the optional TCP server on. If blank,
-    /// no TCP port will be listened on.
-    #[cfg(feature = "tcp_server")]
-    #[arg(
-        short = 'p',
-        long = "port",
-        value_name = "PORT or IP:PORT",
-        verbatim_doc_comment
-    )]
-    tcp_server_address: Option<SocketAddrWrapper>,
-    /// Path for the symlink pointing to the newly-created device. If blank, no
-    /// symlink will be created.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    symlink_path: Option<String>,
-
-    /// List the keyboards available for grabbing and exit.
-    #[cfg(target_os = "macos")]
-    #[arg(short, long)]
-    list: bool,
-
-    /// Disable logging, except for errors. Takes precedent over debug and trace.
-    #[arg(short, long)]
-    quiet: bool,
-
-    /// Enable debug logging.
-    #[arg(short, long)]
-    debug: bool,
-
-    /// Enable trace logging; implies --debug as well.
-    #[arg(short, long)]
-    trace: bool,
-
-    /// Remove the startup delay.
-    /// In some cases, removing the delay may cause keyboard issues on startup.
-    #[arg(short, long, verbatim_doc_comment)]
-    nodelay: bool,
-
-    /// Milliseconds to wait before attempting to register a newly connected
-    /// device. The default is 200.
-    ///
-    /// You may wish to increase this if you have a device that is failing
-    /// to register - the device may be taking too long to become ready.
-    #[cfg(target_os = "linux")]
-    #[arg(short, long, verbatim_doc_comment)]
-    wait_device_ms: Option<u64>,
-
-    /// Validate configuration file and exit
-    #[arg(long, verbatim_doc_comment)]
-    check: bool,
-
-    /// Log layer changes even if the configuration file has set the defcfg
-    /// option to false. Useful if you are experimenting with a new
-    /// configuration but want to default to no logging.
-    #[arg(long, verbatim_doc_comment)]
-    log_layer_changes: bool,
-}
 
 #[cfg(not(feature = "gui"))]
 mod cli {
     use super::*;
 
     /// Parse CLI arguments and initialize logging.
-    fn cli_init() -> Result<ValidatedArgs> {
+    fn cli_init() -> Result<(ValidatedArgs, Option<String>)> {
         let args = Args::parse();
 
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", not(feature = "gui")))]
         if args.list {
-            karabiner_driverkit::list_keyboards();
+            main_lib::list_devices_macos();
             std::process::exit(0);
         }
 
-        let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
+        #[cfg(all(any(target_os = "linux", target_os = "android"), not(feature = "gui")))]
+        if args.list {
+            main_lib::list_devices_linux();
+            std::process::exit(0);
+        }
+
+        #[cfg(all(
+            target_os = "windows",
+            feature = "interception_driver",
+            not(feature = "gui")
+        ))]
+        if args.list {
+            main_lib::list_devices_windows();
+            std::process::exit(0);
+        }
+
+        let config_string = if args.cfg_stdin {
+            use std::io::Read;
+            let mut buf = String::new();
+            std::io::stdin().read_to_string(&mut buf)?;
+            Some(buf)
+        } else {
+            None
+        };
+
+        let cfg_paths = if config_string.is_none() {
+            args.cfg.unwrap_or_else(default_cfg)
+        } else {
+            vec![]
+        };
 
         let log_lvl = match (args.debug, args.trace, args.quiet) {
             (_, true, false) => LevelFilter::Trace,
@@ -145,30 +89,43 @@ mod cli {
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         log::info!("using the Interception driver for keyboard IO");
 
-        if let Some(config_file) = cfg_paths.first() {
-            if !config_file.exists() {
-                bail!(
-                "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
-                cfg_paths[0].to_str().unwrap_or("?")
-            )
+        if config_string.is_none() {
+            if let Some(config_file) = cfg_paths.first() {
+                if !config_file.exists() {
+                    bail!(
+                        "Could not find the config file ({})\nFor more info, pass the `-h` or `--help` flags.",
+                        cfg_paths[0].to_str().unwrap_or("?")
+                    )
+                }
+            } else {
+                bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
             }
-        } else {
-            bail!("No config files provided\nFor more info, pass the `-h` or `--help` flags.");
         }
 
         if args.check {
             log::info!("validating config only and exiting");
-            let status = match cfg::new_from_file(&cfg_paths[0]) {
-                Ok(_) => 0,
-                Err(e) => {
-                    log::error!("{e:?}");
-                    1
+            let status = if let Some(ref cfg_str) = config_string {
+                use rustc_hash::FxHashMap;
+                match cfg::new_from_str(cfg_str, FxHashMap::default()) {
+                    Ok(_) => 0,
+                    Err(e) => {
+                        log::error!("{e:?}");
+                        1
+                    }
+                }
+            } else {
+                match cfg::new_from_file(&cfg_paths[0]) {
+                    Ok(_) => 0,
+                    Err(e) => {
+                        log::error!("{e:?}");
+                        1
+                    }
                 }
             };
             std::process::exit(status);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         if let Some(wait) = args.wait_device_ms {
             use std::sync::atomic::Ordering;
             log::info!("Setting device registration wait time to {wait} ms.");
@@ -179,22 +136,34 @@ mod cli {
             cfg_forced::force_log_layer_changes(true);
         }
 
-        Ok(ValidatedArgs {
-            paths: cfg_paths,
-            #[cfg(feature = "tcp_server")]
-            tcp_server_address: args.tcp_server_address,
-            #[cfg(target_os = "linux")]
-            symlink_path: args.symlink_path,
-            nodelay: args.nodelay,
-        })
+        Ok((
+            ValidatedArgs {
+                paths: cfg_paths,
+                #[cfg(feature = "tcp_server")]
+                tcp_server_address: args.tcp_server_address,
+                #[cfg(any(target_os = "linux", target_os = "android"))]
+                symlink_path: args.symlink_path,
+                nodelay: args.nodelay,
+            },
+            config_string,
+        ))
     }
 
     pub(crate) fn main_impl() -> Result<()> {
-        let args = cli_init()?;
-        let kanata_arc = Kanata::new_arc(&args)?;
+        let (args, config_string) = cli_init()?;
+
+        let kanata_arc = if let Some(cfg_str) = config_string {
+            use rustc_hash::FxHashMap;
+            let kanata = Kanata::new_from_str(&cfg_str, FxHashMap::default())?;
+            std::sync::Arc::new(parking_lot::Mutex::new(kanata))
+        } else {
+            Kanata::new_arc(&args)?
+        };
 
         if !args.nodelay {
-            log::info!("Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep.");
+            log::info!(
+                "Sleeping for 2s. Please release all keys and don't press additional ones. Run kanata with --help to see how understand more and how to disable this sleep."
+            );
             std::thread::sleep(std::time::Duration::from_secs(2));
         }
 
@@ -231,7 +200,7 @@ mod cli {
             Kanata::start_notification_loop(nrx, server.connections);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
         Kanata::event_loop(kanata_arc, tx)
@@ -240,16 +209,25 @@ mod cli {
 
 #[cfg(not(feature = "gui"))]
 pub fn main() -> Result<()> {
+    let args = Args::parse();
+    let no_wait = args.no_wait;
     let ret = cli::main_impl();
     if let Err(ref e) = ret {
         log::error!("{e}\n");
     }
-    eprintln!("\nPress enter to exit");
-    let _ = std::io::stdin().read_line(&mut String::new());
+    if !no_wait {
+        eprintln!("\nPress enter to exit");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
     ret
 }
 
 #[cfg(all(feature = "gui", target_os = "windows"))]
 fn main() {
     main_lib::win_gui::lib_main_gui();
+}
+
+#[cfg(all(feature = "gui", not(target_os = "windows")))]
+fn main() {
+    panic!("GUI feature is only supported on Windows");
 }

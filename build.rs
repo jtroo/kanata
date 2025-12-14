@@ -31,7 +31,7 @@ mod windows {
         let mut version: String = env!("CARGO_PKG_VERSION").to_string();
 
         if re_version3.find(&version).is_some() {
-            version = format!("{}.0", version);
+            version = format!("{version}.0");
         } else if re_ver_build.find(&version).is_some() {
             version = re_ver_build
                 .replace_all(&version, r"$vpre.$vpos")
@@ -65,7 +65,7 @@ mod windows {
             version
         );
         let mut manifest_f = File::create(manifest_path)?;
-        write!(manifest_f, "{}", manifest_str)?;
+        write!(manifest_f, "{manifest_str}")?;
         embed_resource::compile("./src/kanata.exe.manifest.rc", embed_resource::NONE);
         Ok(())
     }

@@ -29,9 +29,6 @@ which map to the binaries
 
 == Windows 11 LLHOOK
 
-* Mouse inputs cannot be used for processing or remapping
-** https://github.com/jtroo/kanata/issues/108
-** https://github.com/jtroo/kanata/issues/170
 * Some input key combinations (e.g. Win+L) cannot be intercepted before
   running their default action
 ** https://github.com/jtroo/kanata/issues/192
@@ -74,7 +71,10 @@ without also having the shift keys in `defsrc` will break shift highlighting
 ** https://github.com/jtroo/kanata/discussions/422
 ** https://github.com/jtroo/kanata/issues/450
 ** https://github.com/jtroo/kanata/issues/1441
-* Unicode support has limitations, using xkb is a more consistent solution
+* Unicode support has varying success due to many applications
+  not supporting the `ibus` input mechanism.
+  Using xkb to map keys to unicode
+  or using clipboard actions are more consistent solutions
 ** https://github.com/jtroo/kanata/discussions/703
 * Key actions can behave incorrectly due to the rapidity of key events
 ** https://github.com/jtroo/kanata/discussions/733
