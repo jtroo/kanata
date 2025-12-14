@@ -30,7 +30,7 @@ You may need to log out and back in for it to take effect.
 sudo modprobe uinput
 ```
 
-This ensures /dev/uinput exists.
+This ensures `/dev/uinput` exists.
 
 ### 4. Make sure the uinput device file has the right permissions.
 
