@@ -270,11 +270,12 @@ pub(crate) fn osc_to_u16(osc: OsCode) -> Option<u16> {
         OsCode::KEY_F22 => 0x6D,
         OsCode::KEY_F23 => 0x6E,
         OsCode::KEY_F24 => 0x76,
-        OsCode::KEY_KATAKANA => 0x70,
+        OsCode::KEY_KATAKANA => 0x70, // https://kbdlayout.info/kbdjpn/virtualkeys?arrangement=ISO105
+        // Apparantly SC 0x70 does not exist.
+        // But seems to be hiragana/katakana?
         OsCode::KEY_HENKAN => 0x79,   // Convert
         OsCode::KEY_MUHENKAN => 0x7B, // Noconvert
         OsCode::KEY_YEN => 0x7D,      // Yen / Pipe
-        OsCode::KEY_KATAKANA => 0x70,
         OsCode::KEY_PREVIOUSSONG => 0xE010,
         OsCode::KEY_NEXTSONG => 0xE019,
         OsCode::KEY_KPENTER => 0xE01C,
