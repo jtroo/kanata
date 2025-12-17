@@ -125,25 +125,21 @@ impl Overrides {
             return;
         };
         let mut cur_chord_size = 0;
-        if let Some(ovd) = ovds
-            .iter()
-            .filter(|ovd| {
-                let mask = ovd.get_mod_mask();
-                if mask & active_mod_mask == mask {
-                    // keep only the longest matching prefix.
-                    let chord_size = ovd.in_mod_oscs.len() + 1;
-                    if chord_size <= cur_chord_size {
-                        false
-                    } else {
-                        cur_chord_size = chord_size;
-                        true
-                    }
-                } else {
+        if let Some(ovd) = ovds.iter().rfind(|ovd| {
+            let mask = ovd.get_mod_mask();
+            if mask & active_mod_mask == mask {
+                // keep only the longest matching prefix.
+                let chord_size = ovd.in_mod_oscs.len() + 1;
+                if chord_size <= cur_chord_size {
                     false
+                } else {
+                    cur_chord_size = chord_size;
+                    true
                 }
-            })
-            .next_back()
-        {
+            } else {
+                false
+            }
+        }) {
             log::debug!("using override {ovd:?}");
             ovd.add_override_keys(oscs_to_add);
             ovd.add_removed_keys(oscs_to_remove);

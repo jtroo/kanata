@@ -669,7 +669,6 @@ pub fn parse_cfg_raw_string(
     let layer_exprs = spanned_root_exprs
         .iter()
         .filter(deflayer_spanned_filter)
-        .cloned()
         .map(|e| match e.t[0].atom(None).unwrap() {
             DEFLAYER => SpannedLayerExprs::DefsrcMapping(e.clone()),
             DEFLAYER_MAPPED => SpannedLayerExprs::CustomMapping(e.clone()),
@@ -726,7 +725,6 @@ pub fn parse_cfg_raw_string(
     let layer_exprs = root_exprs
         .iter()
         .filter(deflayer_filter)
-        .cloned()
         .map(|e| match e[0].atom(None).unwrap() {
             DEFLAYER => LayerExprs::DefsrcMapping(e.clone()),
             DEFLAYER_MAPPED => LayerExprs::CustomMapping(e.clone()),
