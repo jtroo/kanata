@@ -383,10 +383,7 @@ impl KbdOut {
 
     fn pressed_buttons() -> usize {
         if let Some(ns_event) = Class::get("NSEvent") {
-            unsafe {
-                #[allow(unexpected_cfgs)]
-                msg_send![ns_event, pressedMouseButtons]
-            }
+            unsafe { msg_send![ns_event, pressedMouseButtons] }
         } else {
             0
         }
