@@ -127,6 +127,8 @@ win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
 win_llhook_read_scancodes = ["kanata-parser/win_llhook_read_scancodes"]
 winiov2 = ["win_llhook_read_scancodes","win_sendinput_send_scancodes"]
 win_manifest = ["embed-resource", "indoc", "regex"]
+# delete cargo-clippy when the objc crate is replaced
+cargo-clippy = []
 cmd = ["kanata-parser/cmd"]
 interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
 simulated_output = ["indoc"]
