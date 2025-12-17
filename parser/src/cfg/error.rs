@@ -1,3 +1,9 @@
+// # Regarding #[allow(unused_assignments)]
+//
+// Seems the miette macros no longer trigger the compiler to find usage.
+
+#![allow(unused_assignments)]
+
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use thiserror::Error;
 
@@ -68,7 +74,6 @@ impl From<ParseError> for miette::Error {
 #[error("Error in configuration")]
 #[diagnostic()]
 struct CfgError {
-    // Snippets and highlights can be included in the diagnostic!
     #[label("Error here")]
     err_span: Option<SourceSpan>,
     #[help]

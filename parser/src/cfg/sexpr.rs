@@ -565,17 +565,3 @@ fn parse_with(
         .collect::<Result<_>>()?;
     Ok((exprs, metadata))
 }
-
-use miette::{Diagnostic, SourceSpan};
-use thiserror::Error;
-
-#[derive(Error, Debug, Diagnostic)]
-#[error("Error in configuration syntax")]
-#[diagnostic()]
-pub struct LexError {
-    // Snippets and highlights can be included in the diagnostic!
-    #[label("Here")]
-    pub err_span: SourceSpan,
-    #[help]
-    pub help_msg: String,
-}
