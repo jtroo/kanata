@@ -331,7 +331,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         #[cfg(any(target_os = "macos", target_os = "unknown"))]
         "Lang2" | "eisu" => OsCode::KEY_HANJA,
 
-        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "unknown"))]
         "IntlRo" | "ro" => OsCode::KEY_RO,
 
         #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
