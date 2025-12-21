@@ -65,7 +65,12 @@ fn handle_reload_with_wait(
 ) -> bool {
     let (response, reload_ok) = match kanata.lock().handle_client_command(reload_cmd) {
         Ok(_) => (ServerResponse::Ok, true),
-        Err(e) => (ServerResponse::Error { msg: format!("{e}") }, false),
+        Err(e) => (
+            ServerResponse::Error {
+                msg: format!("{e}"),
+            },
+            false,
+        ),
     };
     if !send_response(stream, response, connections, addr) {
         return false;
@@ -322,36 +327,91 @@ impl TcpServer {
                                                 log::info!("tcp server Reload action");
                                                 if !handle_reload_with_wait(
                                                     ClientMessage::Reload { wait, timeout_ms },
-                                                    wait, timeout_ms, &mut stream, &kanata, &connections, &addr,
-                                                ) { break; }
+                                                    wait,
+                                                    timeout_ms,
+                                                    &mut stream,
+                                                    &kanata,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
                                             ClientMessage::ReloadNext { wait, timeout_ms } => {
                                                 log::info!("tcp server ReloadNext action");
                                                 if !handle_reload_with_wait(
                                                     ClientMessage::ReloadNext { wait, timeout_ms },
-                                                    wait, timeout_ms, &mut stream, &kanata, &connections, &addr,
-                                                ) { break; }
+                                                    wait,
+                                                    timeout_ms,
+                                                    &mut stream,
+                                                    &kanata,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
                                             ClientMessage::ReloadPrev { wait, timeout_ms } => {
                                                 log::info!("tcp server ReloadPrev action");
                                                 if !handle_reload_with_wait(
                                                     ClientMessage::ReloadPrev { wait, timeout_ms },
-                                                    wait, timeout_ms, &mut stream, &kanata, &connections, &addr,
-                                                ) { break; }
+                                                    wait,
+                                                    timeout_ms,
+                                                    &mut stream,
+                                                    &kanata,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
-                                            ClientMessage::ReloadNum { index, wait, timeout_ms } => {
-                                                log::info!("tcp server ReloadNum action: index {index}");
+                                            ClientMessage::ReloadNum {
+                                                index,
+                                                wait,
+                                                timeout_ms,
+                                            } => {
+                                                log::info!(
+                                                    "tcp server ReloadNum action: index {index}"
+                                                );
                                                 if !handle_reload_with_wait(
-                                                    ClientMessage::ReloadNum { index, wait, timeout_ms },
-                                                    wait, timeout_ms, &mut stream, &kanata, &connections, &addr,
-                                                ) { break; }
+                                                    ClientMessage::ReloadNum {
+                                                        index,
+                                                        wait,
+                                                        timeout_ms,
+                                                    },
+                                                    wait,
+                                                    timeout_ms,
+                                                    &mut stream,
+                                                    &kanata,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
-                                            ClientMessage::ReloadFile { path, wait, timeout_ms } => {
-                                                log::info!("tcp server ReloadFile action: path {path}");
+                                            ClientMessage::ReloadFile {
+                                                path,
+                                                wait,
+                                                timeout_ms,
+                                            } => {
+                                                log::info!(
+                                                    "tcp server ReloadFile action: path {path}"
+                                                );
                                                 if !handle_reload_with_wait(
-                                                    ClientMessage::ReloadFile { path, wait, timeout_ms },
-                                                    wait, timeout_ms, &mut stream, &kanata, &connections, &addr,
-                                                ) { break; }
+                                                    ClientMessage::ReloadFile {
+                                                        path,
+                                                        wait,
+                                                        timeout_ms,
+                                                    },
+                                                    wait,
+                                                    timeout_ms,
+                                                    &mut stream,
+                                                    &kanata,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
+                                                }
                                             }
                                         }
                                         use kanata_parser::keys::*;
