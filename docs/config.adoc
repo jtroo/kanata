@@ -4854,6 +4854,25 @@ This is the TCP equivalent of the <<set-mouse>> keyboard action.
 | Load a specific configuration file by path.
 |===
 
+All reload commands support optional `wait` and `timeout_ms` fields for synchronous confirmation:
+
+[source,json]
+----
+{"Reload":{"wait":true,"timeout_ms":5000}}
+----
+
+When `wait` is `true`, the server blocks until the reload completes or times out, then sends a `ReloadResult` message. The `timeout_ms` field specifies the maximum wait time in milliseconds (default: 5000).
+
+===== Server Information
+
+[cols="1,2"]
+|===
+| Command | Description
+
+| `{"Hello":{}}`
+| Request server version and capabilities. Server responds with `HelloOk`.
+|===
+
 ==== Server Messages
 
 These JSON messages are sent from Kanata to connected TCP clients:
@@ -4895,6 +4914,12 @@ These are sent in response to client queries:
 
 | `{"CurrentLayerInfo":{"name":"base","cfg_text":"..."}}`
 | Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
+
+| `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
+| Response to `Hello`. Contains server version, protocol version, and supported capabilities.
+
+| `{"ReloadResult":{"ok":true}}`
+| Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.
 |===
 
 For a complete implementation example, see the

@@ -269,6 +269,12 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    /// Time when kanata started (for uptime tracking)
+    #[cfg(feature = "tcp_server")]
+    start_time: web_time::Instant,
+    /// Whether last reload was successful
+    #[cfg(feature = "tcp_server")]
+    last_reload_ok: bool,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -487,6 +493,10 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "tcp_server")]
+            start_time: web_time::Instant::now(),
+            #[cfg(feature = "tcp_server")]
+            last_reload_ok: true,
         })
     }
 
@@ -634,6 +644,10 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(feature = "tcp_server")]
+            start_time: web_time::Instant::now(),
+            #[cfg(feature = "tcp_server")]
+            last_reload_ok: true,
         })
     }
 
@@ -652,6 +666,10 @@ impl Kanata {
             Ok(c) => c,
             Err(e) => {
                 log::error!("{e:?}");
+                #[cfg(feature = "tcp_server")]
+                {
+                    self.last_reload_ok = false;
+                }
                 bail!("failed to parse config file");
             }
         };
@@ -765,6 +783,11 @@ impl Kanata {
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
         send_gui_cfg_notice();
+
+        #[cfg(feature = "tcp_server")]
+        {
+            self.last_reload_ok = true;
+        }
 
         Ok(())
     }
@@ -1926,20 +1949,20 @@ impl Kanata {
         use kanata_tcp_protocol::ClientMessage;
 
         match command {
-            ClientMessage::Reload {} => {
+            ClientMessage::Reload { .. } => {
                 self.request_live_reload();
                 Ok(())
             }
-            ClientMessage::ReloadNext {} => {
+            ClientMessage::ReloadNext { .. } => {
                 self.request_live_reload_next();
                 Ok(())
             }
-            ClientMessage::ReloadPrev {} => {
+            ClientMessage::ReloadPrev { .. } => {
                 self.request_live_reload_prev();
                 Ok(())
             }
-            ClientMessage::ReloadNum { index } => self.request_live_reload_num(index),
-            ClientMessage::ReloadFile { path } => self.request_live_reload_file(path),
+            ClientMessage::ReloadNum { index, .. } => self.request_live_reload_num(index),
+            ClientMessage::ReloadFile { path, .. } => self.request_live_reload_file(path),
             _ => {
                 // For non-reload commands, we don't validate here - they're handled directly in tcp_server
                 Ok(())
@@ -2038,6 +2061,24 @@ impl Kanata {
         if self.log_layer_changes {
             log::info!("Entered layer:\n\n{}", self.layer_info[layer].cfg_text);
         }
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Get engine uptime in seconds
+    pub fn get_uptime_s(&self) -> u64 {
+        self.start_time.elapsed().as_secs()
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Check if a reload has completed (regardless of success or failure)
+    pub fn is_reload_complete(&self) -> bool {
+        !self.live_reload_requested
+    }
+
+    #[cfg(feature = "tcp_server")]
+    /// Whether the most recent reload succeeded.
+    pub fn last_reload_succeeded(&self) -> bool {
+        self.last_reload_ok
     }
 
     #[cfg(feature = "tcp_server")]
