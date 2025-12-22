@@ -5,19 +5,38 @@ fn delayed_timedout_released_taphold_can_still_tap() {
     let result = simulate(
         "
         (defcfg concurrent-tap-hold yes )
-        (defsrc a j )
-        (deflayer base @a @j)
+        (defsrc a b j)
+        (deflayer base @a @b @j)
         (defalias
          a (tap-hold 200 1000 a lctl)
+         b (tap-hold-tap-keys 0 100 b c (j))
          j (tap-hold 200 500 j lsft))
         ",
-        "d:a t:100 d:j t:10 u:j t:1100 u:a t:50",
+        "d:a t:50 d:b t:50 d:j t:10 u:j t:100 u:b t:100 u:a t:50",
     )
     .to_ascii();
     assert_eq!(
-        "t:999ms dn:LCtrl t:2ms dn:J t:6ms up:J t:203ms up:LCtrl",
+        "t:310ms dn:A t:7ms dn:B t:7ms dn:J t:6ms up:J t:1ms up:B t:1ms up:A",
         result
     );
+}
+
+#[test]
+fn delayed_timedout_released_taphold_can_hold() {
+    let result = simulate(
+        "
+        (defcfg concurrent-tap-hold yes)
+        (defsrc a b)
+        (deflayer base @a @b)
+        (defalias
+          a (tap-hold 0 300 a b)
+          b (tap-hold 0 100 c d)
+        )
+        ",
+        "d:a t:50 d:b t:150 u:b t:50 u:a t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:250ms dn:A t:7ms dn:D t:1ms up:D t:1ms up:A", result);
 }
 
 #[test]

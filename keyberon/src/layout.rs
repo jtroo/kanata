@@ -441,7 +441,6 @@ enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
 pub struct WaitingState<'a, T: 'a + std::fmt::Debug> {
     coord: KCoord,
     timeout: u16,
-    original_timeout: Option<NonZeroU16>,
     on_press_reset_timeout_to: Option<NonZeroU16>,
     delay: u16,
     ticks: u16,
@@ -559,15 +558,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             .iter()
             .find(|s| self.is_corresponding_release(&s.event))
         {
-            let gap_between_press_and_release = self.delay.saturating_sub(since_release);
-            if self.timeout > gap_between_press_and_release
-                || match self.original_timeout {
-                    None => false,
-                    Some(original_timeout) => {
-                        u16::from(original_timeout) >= gap_between_press_and_release
-                    }
-                }
-            {
+            if self.timeout >= self.delay.saturating_sub(since_release) {
                 Some(WaitingAction::Tap)
             } else {
                 Some(WaitingAction::Timeout)
@@ -1819,24 +1810,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     || coord != self.last_press_tracker.coord
                     || self.last_press_tracker.tap_hold_timeout == 0
                 {
+                    let ticks = match self.quick_tap_hold_timeout {
+                        // Leave 1 tick to timeout as it will be consumed in the next processing cycle
+                        true => delay.min(timeout.saturating_sub(1)),
+                        false => 0,
+                    };
                     let waiting: WaitingState<T> = WaitingState {
                         coord,
-                        timeout: if self.quick_tap_hold_timeout {
-                            timeout.saturating_sub(delay)
-                        } else {
-                            *timeout
-                        },
-                        delay: if self.quick_tap_hold_timeout {
-                            // Note: don't want to double-count this.
-                            0
-                        } else {
-                            delay
-                        },
-                        ticks: 0,
-                        original_timeout: match self.quick_tap_hold_timeout {
-                            true => NonZeroU16::new(*timeout),
-                            false => None,
-                        },
+                        timeout: timeout.saturating_sub(ticks),
+                        delay: delay.saturating_sub(ticks),
+                        ticks,
                         on_press_reset_timeout_to: *on_press_reset_timeout_to,
                         hold,
                         tap,
@@ -1892,7 +1875,6 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             hold: &Action::NoOp,
                             tap: &Action::NoOp,
                             timeout_action: &Action::NoOp,
-                            original_timeout: None,
                             on_press_reset_timeout_to: None,
                             config: WaitingConfig::TapDance(TapDanceState {
                                 actions: td.actions,
@@ -1940,7 +1922,6 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     hold: &Action::NoOp,
                     tap: &Action::NoOp,
                     timeout_action: &Action::NoOp,
-                    original_timeout: None,
                     on_press_reset_timeout_to: None,
                     config: WaitingConfig::Chord(chords),
                     layer_stack: layer_stack.collect(),
