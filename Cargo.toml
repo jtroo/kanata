@@ -114,7 +114,7 @@ strip-ansi-escapes = { version = "0.2.0", optional = true }
 open = { version = "5", features = ["shellexecute-on-windows"], optional = true}
 # shellexecute fix allows opening files already opened for writing, needs _detached mode
 
-[target.'cfg(target_os = "windows")'.build-dependencies]
+[build-dependencies]
 embed-resource = { version = "2.4.2", optional = true }
 indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
@@ -122,21 +122,21 @@ regex = { version = "1.10.4", optional = true }
 [features]
 default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []
-tcp_server = ["serde_json"]
+tcp_server = ["dep:serde_json"]
 win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
 win_llhook_read_scancodes = ["kanata-parser/win_llhook_read_scancodes"]
 winiov2 = ["win_llhook_read_scancodes","win_sendinput_send_scancodes"]
-win_manifest = ["embed-resource", "indoc", "regex"]
+win_manifest = ["dep:embed-resource", "dep:indoc", "dep:regex"]
 # delete cargo-clippy when the objc crate is replaced
 cargo-clippy = []
 cmd = ["kanata-parser/cmd"]
-interception_driver = ["kanata-interception", "kanata-parser/interception_driver"]
-simulated_output = ["indoc"]
-simulated_input = ["indoc"]
+interception_driver = ["dep:kanata-interception", "kanata-parser/interception_driver"]
+simulated_output = ["dep:indoc"]
+simulated_input = ["dep:indoc"]
 passthru_ahk = ["simulated_input","simulated_output"]
 gui = ["win_manifest","kanata-parser/gui",
   "win_sendinput_send_scancodes","win_llhook_read_scancodes",
-  "muldiv","strip-ansi-escapes","open",
+  "dep:muldiv","dep:strip-ansi-escapes","dep:open",
   "dep:windows-sys",
   "winapi/processthreadsapi",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
