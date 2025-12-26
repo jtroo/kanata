@@ -262,7 +262,7 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "AltRight" | "ralt" | "altgr" | "⎇›" | "⌥›" | "⇮" => OsCode::KEY_RIGHTALT,
         "ContextMenu" | "comp" | "cmps" | "cmp" | "menu" | "apps" | "▤" | "☰" | "𝌆" => OsCode::KEY_COMPOSE,
         "🎛" => OsCode::KEY_DASHBOARD,
-        // Also known as Windows, GUI, Comand, Super
+        // Also known as Windows, GUI, Command, Super
         "MetaLeft" | "lmeta" | "lmet" | "met" | "‹◆" | "‹⌘" | "‹❖" | "‹⊞" => OsCode::KEY_LEFTMETA,
         "MetaRight" | "rmeta" | "rmet" | "◆›" | "⌘›" | "❖›" | "⊞›" => OsCode::KEY_RIGHTMETA,
         "ControlRight" | "rctrl" | "rctl" | "⎈›" | "⌃›" => OsCode::KEY_RIGHTCTRL,
