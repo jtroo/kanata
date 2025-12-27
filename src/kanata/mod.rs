@@ -2563,7 +2563,7 @@ fn check_for_exit(_event: &KeyEvent) {
                 not(all(target_os = "windows", feature = "gui"))
             ))]
             {
-                panic!("{EXIT_MSG}");
+                std::process::exit(0);
             }
             #[cfg(any(target_os = "linux", target_os = "android"))]
             {
