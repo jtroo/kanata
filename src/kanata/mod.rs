@@ -90,6 +90,10 @@ pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashSet<OsCode>>> =
 pub(crate) static PRESSED_KEYS: Lazy<Mutex<HashMap<OsCode, web_time::Instant>>> =
     Lazy::new(|| Mutex::new(HashMap::default()));
 
+/// Exit code to use when emergency exit (LCtrl+Space+Escape) is triggered.
+/// Configurable via --emergency-exit-code CLI argument. Default is 0.
+pub static EMERGENCY_EXIT_CODE: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+
 pub struct Kanata {
     /// Handle to some OS keyboard output mechanism.
     pub kbd_out: KbdOut,
@@ -2558,16 +2562,31 @@ fn check_for_exit(_event: &KeyEvent) {
                 // from a thread that has no access to the main one, so
                 // can't stop main thread's dispatch
             }
-            #[cfg(all(
-                not(any(target_os = "linux", target_os = "android")),
-                not(all(target_os = "windows", feature = "gui"))
-            ))]
+            // macOS: Use SIGTERM to trigger signal handler which releases keyboards then exits
+            #[cfg(target_os = "macos")]
             {
-                panic!("{EXIT_MSG}");
+                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
             }
+            // Linux/Android: Use SIGTERM to trigger signal handler for cleanup
             #[cfg(any(target_os = "linux", target_os = "android"))]
             {
                 signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+            }
+            // Windows non-GUI: Direct exit (no cleanup needed like macOS/Linux)
+            #[cfg(all(target_os = "windows", not(feature = "gui")))]
+            {
+                let code = EMERGENCY_EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst);
+                std::process::exit(code);
+            }
+            // Unsupported platforms: panic to indicate emergency exit isn't implemented
+            #[cfg(not(any(
+                target_os = "macos",
+                target_os = "linux",
+                target_os = "android",
+                target_os = "windows"
+            )))]
+            {
+                panic!("{EXIT_MSG}");
             }
         }
     }
