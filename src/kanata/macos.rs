@@ -2,45 +2,14 @@ use super::*;
 use anyhow::{Result, anyhow, bail};
 use log::info;
 use parking_lot::Mutex;
-use signal_hook::{
-    consts::{SIGINT, SIGTERM},
-    iterator::Signals,
-};
 use std::convert::TryFrom;
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender as Sender;
-use std::thread;
-
-/// Spawn a thread to handle signals for clean shutdown.
-/// On SIGINT/SIGTERM, releases grabbed keyboards and exits with configured code.
-fn handle_signals() {
-    thread::spawn(|| {
-        let mut signals = Signals::new([SIGINT, SIGTERM]).expect("signals register");
-        if let Some(signal) = (&mut signals).into_iter().next() {
-            match signal {
-                SIGINT | SIGTERM => {
-                    log::info!(
-                        "Received signal {}, releasing keyboards and exiting",
-                        signal
-                    );
-                    // Release grabbed keyboards before exiting
-                    karabiner_driverkit::release();
-                    let code = EMERGENCY_EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst);
-                    std::process::exit(code);
-                }
-                _ => unreachable!(),
-            }
-        }
-    });
-}
 
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
-
-        // Set up signal handler for clean shutdown
-        handle_signals();
 
         let k = kanata.lock();
         let allow_hardware_repeat = k.allow_hardware_repeat;

@@ -2562,10 +2562,11 @@ fn check_for_exit(_event: &KeyEvent) {
                 // from a thread that has no access to the main one, so
                 // can't stop main thread's dispatch
             }
-            // macOS: Use SIGTERM to trigger signal handler which releases keyboards then exits
+            // macOS: Direct exit (no special signal handling)
             #[cfg(target_os = "macos")]
             {
-                signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
+                let code = EMERGENCY_EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst);
+                std::process::exit(code);
             }
             // Linux/Android: Use SIGTERM to trigger signal handler for cleanup
             #[cfg(any(target_os = "linux", target_os = "android"))]
