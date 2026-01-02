@@ -68,6 +68,7 @@ core-graphics = "0.24.0"
 open = { version = "5", optional = true }
 libc = "0.2"
 os_pipe = "1.2.1"
+signal-hook = "0.3.14"
 
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 evdev = "0.13.0"

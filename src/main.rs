@@ -136,6 +136,12 @@ mod cli {
             cfg_forced::force_log_layer_changes(true);
         }
 
+        // Set emergency exit code from CLI args
+        kanata::EMERGENCY_EXIT_CODE.store(
+            args.emergency_exit_code,
+            std::sync::atomic::Ordering::SeqCst,
+        );
+
         Ok((
             ValidatedArgs {
                 paths: cfg_paths,
