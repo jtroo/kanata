@@ -102,6 +102,7 @@ pub fn u16_to_osc(input: u16) -> Option<OsCode> {
             0x6C => OsCode::KEY_F21,
             0x6D => OsCode::KEY_F22,
             0x6E => OsCode::KEY_F23,
+            0x73 => OsCode::KEY_RO,
             0x76 => OsCode::KEY_F24,
             0x70 => OsCode::KEY_KATAKANA,
             0x79 => OsCode::KEY_HENKAN,   // Convert
@@ -269,6 +270,7 @@ pub(crate) fn osc_to_u16(osc: OsCode) -> Option<u16> {
         OsCode::KEY_F21 => 0x6C,
         OsCode::KEY_F22 => 0x6D,
         OsCode::KEY_F23 => 0x6E,
+        OsCode::KEY_RO => 0x73,
         OsCode::KEY_F24 => 0x76,
         OsCode::KEY_KATAKANA => 0x70, // https://kbdlayout.info/kbdjpn/virtualkeys?arrangement=ISO105
         // Apparantly SC 0x70 does not exist.
