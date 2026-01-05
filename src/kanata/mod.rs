@@ -2573,7 +2573,7 @@ fn check_for_exit(_event: &KeyEvent) {
             {
                 signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise signal");
             }
-            // Windows non-GUI: Direct exit (no cleanup needed like macOS/Linux)
+            // Windows non-GUI: Direct exit (no cleanup needed)
             #[cfg(all(target_os = "windows", not(feature = "gui")))]
             {
                 let code = EMERGENCY_EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst);
