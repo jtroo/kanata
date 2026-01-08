@@ -204,7 +204,7 @@ impl TryFrom<KeyEvent> for InputEvent {
     fn try_from(item: KeyEvent) -> Result<Self, Self::Error> {
         if let Ok(pagecode) = PageCode::try_from(item.code) {
             let val = match item.value {
-                KeyValue::Press => 1,
+                KeyValue::Press | KeyValue::Repeat => 1,
                 _ => 0,
             };
             Ok(InputEvent {
