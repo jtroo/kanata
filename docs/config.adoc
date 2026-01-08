@@ -5828,11 +5828,20 @@ Input sequence file format: whitespace insensitive list of `prefix:key` pairs wh
   - `↓`, `d`, `down`, or `press` +
   - `↑`, `u`, `up`, or `release` +
   - `⟳`, `r`, or `repeat` +
+  - `🎭`, `fakekey`, `vk`, or `virtualkey` to activate virtual keys +
+
+Virtual key format is `vk:name[:action]`, `fakekey:name[:action]`, or `virtualkey:name[:action]`. +
+When using the emoji prefix, the format is `🎭name[:action]`. Action is one of: +
+  - `press` or `p` (default if omitted) +
+  - `release` +
+  - `tap` or `t` +
+  - `toggle` or `g` +
+Example: `vk:vk_bear:tap` or `🎭vk_bear:tap`. +
 
 And key names are defined in the https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode function],
 for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1
 
-Using unicode symbols `🕐`,`↓`,`↑`,`⟳` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
+Using unicode symbols `🕐`,`↓`,`↑`,`⟳`,`🎭` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
 
 [[zippychord]]
 === Zippychord

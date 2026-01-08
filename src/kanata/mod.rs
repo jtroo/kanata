@@ -249,7 +249,6 @@ pub struct Kanata {
     unshifted_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
-    #[cfg(feature = "tcp_server")]
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
@@ -481,7 +480,6 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
@@ -631,7 +629,6 @@ impl Kanata {
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
-            #[cfg(feature = "tcp_server")]
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
             #[cfg(feature = "tcp_server")]
@@ -699,10 +696,7 @@ impl Kanata {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
         self.switch_max_key_timing = cfg.switch_max_key_timing;
-        #[cfg(feature = "tcp_server")]
-        {
-            self.virtual_keys = cfg.fake_keys;
-        }
+        self.virtual_keys = cfg.fake_keys;
         #[cfg(target_os = "windows")]
         {
             self.windows_sync_keystates = cfg.options.windows_opts.sync_keystates;

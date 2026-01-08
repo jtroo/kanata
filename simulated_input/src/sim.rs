@@ -1,7 +1,8 @@
 use anyhow::Result;
 use anyhow::{anyhow, bail};
 use clap::Parser;
-use kanata_state_machine::{oskbd::*, *};
+use kanata_state_machine::kanata::handle_fakekey_action;
+use kanata_state_machine::{FAKE_KEY_ROW, FakeKeyAction, oskbd::*, *};
 use simplelog::{format_description, *};
 use std::path::PathBuf;
 
@@ -152,6 +153,40 @@ fn split_at_1(s: &str) -> (&str, &str) {
         None => s.split_at(0),
     }
 }
+
+fn parse_fakekey_spec(spec: &str) -> Result<(&str, FakeKeyAction)> {
+    let (name, action) = match spec.split_once(':') {
+        Some((name, action_str)) => {
+            let action = match action_str {
+                "press" | "p" => FakeKeyAction::Press,
+                "release" => FakeKeyAction::Release,
+                "tap" | "t" => FakeKeyAction::Tap,
+                "toggle" | "g" => FakeKeyAction::Toggle,
+                _ => bail!(
+                    "unknown fakekey action: {action_str}. Expected: press, release, tap, or toggle"
+                ),
+            };
+            (name, action)
+        }
+        None => (spec, FakeKeyAction::Press),
+    };
+
+    if name.is_empty() {
+        bail!("fakekey name cannot be empty");
+    }
+
+    Ok((name, action))
+}
+
+fn apply_fakekey_action(k: &mut Kanata, name: &str, action: FakeKeyAction) -> Result<()> {
+    let index = k
+        .virtual_keys
+        .get(name)
+        .ok_or_else(|| anyhow!("unknown virtual key: {name}"))?;
+    log::info!("fakekey action: {name} {action:?}");
+    handle_fakekey_action(action, k.layout.bm(), FAKE_KEY_ROW, *index as u16);
+    Ok(())
+}
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LogFmtT {
     // partial dupe of @simulated since otherwise no-features clippy fails when features are disabled since even though the function body is conditional and doesn't use the enum, the ↓ function signature still uses it, so will warn
@@ -252,6 +287,13 @@ fn main_impl() -> Result<()> {
                                 value: KeyValue::Repeat,
                             })?;
                         }
+                        // Virtual/fake key activation: fakekey:name[:action] or vk:name[:action]
+                        // Supported actions: press, release, tap, toggle
+                        // Examples: fakekey:vk_bear:press, vk:vk_bear, virtualkey:vk_bear:tap
+                        "fakekey" | "vk" | "virtualkey" | "🎭" => {
+                            let (vk_name, action) = parse_fakekey_spec(val)?;
+                            apply_fakekey_action(&mut k, vk_name, action)?;
+                        }
                         _ => bail!("invalid pair prefix: {kind}"),
                     },
                     None => {
@@ -299,6 +341,12 @@ fn main_impl() -> Result<()> {
                                     code: key_code,
                                     value: KeyValue::Repeat,
                                 })?;
+                            }
+                            "🎭" => {
+                                // Virtual key activation with emoji prefix (defaults to press)
+                                // Format: 🎭vk_name or 🎭vk_name:action
+                                let (vk_name, action) = parse_fakekey_spec(val)?;
+                                apply_fakekey_action(&mut k, vk_name, action)?;
                             }
                             _ => bail!("invalid pair: {l}"),
                         }
