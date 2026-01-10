@@ -199,7 +199,10 @@ fn vk_sim_multiple_vkeys() {
         "vk:vk_ctrl:press vk:vk_alt:press t:10 vk:vk_alt:release vk:vk_ctrl:release t:10",
     )
     .to_ascii();
-    assert_eq!("dn:LCtrl t:1ms dn:LAlt t:9ms up:LAlt t:1ms up:LCtrl", result);
+    assert_eq!(
+        "dn:LCtrl t:1ms dn:LAlt t:9ms up:LAlt t:1ms up:LCtrl",
+        result
+    );
 }
 
 // =============================================================================
