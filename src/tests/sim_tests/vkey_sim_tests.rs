@@ -38,8 +38,9 @@ fn vk_sim_default_press() {
         (deflayer base a)
     ";
     // vk:name without action should default to press
+    // Virtual key actions happen immediately (no preceding tick)
     let result = simulate(CFG, "vk:vk_test t:10").to_ascii();
-    assert_eq!("t:1ms dn:LCtrl dn:LAlt", result);
+    assert_eq!("dn:LCtrl dn:LAlt", result);
 }
 
 /// Test vk:name:press explicit action
@@ -50,8 +51,9 @@ fn vk_sim_explicit_press() {
         (defvirtualkeys vk_test lmet)
         (deflayer base a)
     ";
+    // Virtual key actions happen immediately (no preceding tick)
     let result = simulate(CFG, "vk:vk_test:press t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui", result);
+    assert_eq!("dn:LGui", result);
 }
 
 /// Test vk:name:p shorthand for press
@@ -63,7 +65,7 @@ fn vk_sim_press_shorthand() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "vk:vk_test:p t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui", result);
+    assert_eq!("dn:LGui", result);
 }
 
 /// Test vk:name:release action
@@ -74,9 +76,9 @@ fn vk_sim_release() {
         (defvirtualkeys vk_test lmet)
         (deflayer base a)
     ";
-    // Press first, then release
+    // Press first, then release after tick
     let result = simulate(CFG, "vk:vk_test:press t:10 vk:vk_test:release t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui t:10ms up:LGui", result);
+    assert_eq!("dn:LGui t:10ms up:LGui", result);
 }
 
 /// Test vk:name:tap action (press + release)
@@ -87,8 +89,9 @@ fn vk_sim_tap() {
         (defvirtualkeys vk_test lmet)
         (deflayer base a)
     ";
+    // For tap, press happens immediately, then 1ms tick, then release
     let result = simulate(CFG, "vk:vk_test:tap t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui up:LGui", result);
+    assert_eq!("dn:LGui t:1ms up:LGui", result);
 }
 
 /// Test vk:name:t shorthand for tap
@@ -100,7 +103,7 @@ fn vk_sim_tap_shorthand() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "vk:vk_test:t t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui up:LGui", result);
+    assert_eq!("dn:LGui t:1ms up:LGui", result);
 }
 
 /// Test vk:name:toggle action
@@ -114,7 +117,7 @@ fn vk_sim_toggle() {
     // First toggle: press (key not active -> activate)
     // Second toggle: release (key active -> deactivate)
     let result = simulate(CFG, "vk:vk_test:toggle t:10 vk:vk_test:toggle t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui t:10ms up:LGui", result);
+    assert_eq!("dn:LGui t:10ms up:LGui", result);
 }
 
 /// Test vk:name:g shorthand for toggle
@@ -126,7 +129,7 @@ fn vk_sim_toggle_shorthand() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "vk:vk_test:g t:10 vk:vk_test:g t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui t:10ms up:LGui", result);
+    assert_eq!("dn:LGui t:10ms up:LGui", result);
 }
 
 /// Test fakekey: prefix (alias for vk:)
@@ -138,7 +141,7 @@ fn vk_sim_fakekey_prefix() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "fakekey:vk_test:tap t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui up:LGui", result);
+    assert_eq!("dn:LGui t:1ms up:LGui", result);
 }
 
 /// Test virtualkey: prefix (alias for vk:)
@@ -150,7 +153,7 @@ fn vk_sim_virtualkey_prefix() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "virtualkey:vk_test:tap t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui up:LGui", result);
+    assert_eq!("dn:LGui t:1ms up:LGui", result);
 }
 
 /// Test 🎭 emoji prefix
@@ -162,7 +165,7 @@ fn vk_sim_emoji_prefix() {
         (deflayer base a)
     ";
     let result = simulate(CFG, "🎭:vk_test:tap t:10").to_ascii();
-    assert_eq!("t:1ms dn:LGui up:LGui", result);
+    assert_eq!("dn:LGui t:1ms up:LGui", result);
 }
 
 /// Test virtual key with layer switching
@@ -176,7 +179,7 @@ fn vk_sim_layer_switch() {
     ";
     // Activate the layer switch virtual key, then press 'a' which should output '1'
     let result = simulate(CFG, "vk:vk_layer t:10 d:a u:a t:10").to_ascii();
-    assert_eq!("t:11ms dn:Kb1 t:1ms up:Kb1", result);
+    assert_eq!("t:10ms dn:Kb1 t:1ms up:Kb1", result);
 }
 
 /// Test multiple virtual keys in sequence
@@ -190,8 +193,12 @@ fn vk_sim_multiple_vkeys() {
         )
         (deflayer base a)
     ";
-    let result = simulate(CFG, "vk:vk_ctrl:press vk:vk_alt:press t:10 vk:vk_alt:release vk:vk_ctrl:release t:10").to_ascii();
-    assert_eq!("t:1ms dn:LCtrl dn:LAlt t:10ms up:LAlt up:LCtrl", result);
+    let result = simulate(
+        CFG,
+        "vk:vk_ctrl:press vk:vk_alt:press t:10 vk:vk_alt:release vk:vk_ctrl:release t:10",
+    )
+    .to_ascii();
+    assert_eq!("dn:LCtrl dn:LAlt t:10ms up:LAlt up:LCtrl", result);
 }
 
 // =============================================================================
