@@ -6,12 +6,42 @@
 
 use crate::tests::*;
 use crate::{
-    Kanata,
+    FAKE_KEY_ROW, FakeKeyAction, Kanata,
+    kanata::handle_fakekey_action,
     oskbd::{KeyEvent, KeyValue},
     str_to_oscode,
 };
 
 use rustc_hash::FxHashMap;
+
+/// Parse a fakekey specification like "name" or "name:action"
+/// Returns (name, action) where action defaults to Press if not specified.
+fn parse_fakekey_spec(spec: &str) -> (&str, FakeKeyAction) {
+    match spec.split_once(':') {
+        Some((name, action_str)) => {
+            let action = match action_str {
+                "press" | "p" => FakeKeyAction::Press,
+                "release" => FakeKeyAction::Release,
+                "tap" | "t" => FakeKeyAction::Tap,
+                "toggle" | "g" => FakeKeyAction::Toggle,
+                _ => panic!(
+                    "unknown fakekey action: {action_str}. Expected: press, release, tap, or toggle"
+                ),
+            };
+            (name, action)
+        }
+        None => (spec, FakeKeyAction::Press),
+    }
+}
+
+/// Apply a fakekey action to the kanata instance
+fn apply_fakekey_action(k: &mut Kanata, name: &str, action: FakeKeyAction) {
+    let index = k
+        .virtual_keys
+        .get(name)
+        .unwrap_or_else(|| panic!("unknown virtual key: {name}"));
+    handle_fakekey_action(action, k.layout.bm(), FAKE_KEY_ROW, *index as u16);
+}
 
 mod block_keys_tests;
 mod capsword_sim_tests;
@@ -92,6 +122,12 @@ fn simulate_with_file_content<S: AsRef<str>>(
                         value: KeyValue::Repeat,
                     })
                     .expect("input handles fine");
+                }
+                // Virtual/fake key activation: vk:name[:action] or fakekey:name[:action]
+                // Supported actions: press (p), release, tap (t), toggle (g)
+                "vk" | "fakekey" | "virtualkey" | "🎭" => {
+                    let (vk_name, action) = parse_fakekey_spec(val);
+                    apply_fakekey_action(&mut k, vk_name, action);
                 }
                 _ => panic!("invalid item {pair}"),
             },
