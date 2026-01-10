@@ -193,12 +193,13 @@ fn vk_sim_multiple_vkeys() {
         )
         (deflayer base a)
     ";
+    // Each vk action triggers a layout tick, so there's 1ms between each action
     let result = simulate(
         CFG,
         "vk:vk_ctrl:press vk:vk_alt:press t:10 vk:vk_alt:release vk:vk_ctrl:release t:10",
     )
     .to_ascii();
-    assert_eq!("dn:LCtrl dn:LAlt t:10ms up:LAlt up:LCtrl", result);
+    assert_eq!("dn:LCtrl t:1ms dn:LAlt t:9ms up:LAlt t:1ms up:LCtrl", result);
 }
 
 // =============================================================================
