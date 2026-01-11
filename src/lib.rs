@@ -12,6 +12,8 @@ pub mod tcp_server;
 pub mod tests;
 
 pub use kanata::*;
+pub use kanata_parser::cfg::FAKE_KEY_ROW;
+pub use kanata_parser::custom_action::FakeKeyAction;
 pub use tcp_server::TcpServer;
 
 type CfgPath = PathBuf;
