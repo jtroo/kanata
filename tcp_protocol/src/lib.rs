@@ -37,6 +37,9 @@ pub enum ServerMessage {
         version: String,
         protocol: u8,
         capabilities: Vec<String>,
+        /// Echo of client's request_id for response correlation.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        request_id: Option<u64>,
     },
     /// Response to Reload commands when `wait: true` was specified.
     /// Introduced in protocol v1.11.
@@ -126,7 +129,11 @@ pub enum ClientMessage {
 
     /// Request server capabilities and version.
     /// Introduced in protocol v1.11.
-    Hello {},
+    Hello {
+        /// Optional request ID for response correlation.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        request_id: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -169,10 +176,43 @@ mod tests {
             version: "1.10.0".to_string(),
             protocol: 1,
             capabilities: vec!["reload".to_string()],
+            request_id: None,
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("HelloOk"));
         assert!(json.contains("\"version\":\"1.10.0\""));
+        // request_id should be omitted when None
+        assert!(!json.contains("request_id"));
+    }
+
+    #[test]
+    fn test_hello_ok_with_request_id() {
+        let msg = ServerMessage::HelloOk {
+            version: "1.10.0".to_string(),
+            protocol: 1,
+            capabilities: vec!["reload".to_string()],
+            request_id: Some(12345),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"request_id\":12345"));
+    }
+
+    #[test]
+    fn test_hello_with_request_id() {
+        let msg = ClientMessage::Hello {
+            request_id: Some(67890),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"request_id\":67890"));
+    }
+
+    #[test]
+    fn test_hello_without_request_id() {
+        let msg = ClientMessage::Hello { request_id: None };
+        let json = serde_json::to_string(&msg).unwrap();
+        // Should still be valid JSON, request_id omitted
+        assert!(json.contains("Hello"));
+        assert!(!json.contains("request_id"));
     }
 
     #[test]

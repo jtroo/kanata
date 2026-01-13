@@ -293,7 +293,7 @@ impl TcpServer {
                                                 }
                                             }
                                             // New command: Hello - capability detection
-                                            ClientMessage::Hello {} => {
+                                            ClientMessage::Hello { request_id } => {
                                                 let version = env!("CARGO_PKG_VERSION").to_string();
                                                 let capabilities = vec![
                                                     "reload".to_string(),
@@ -308,6 +308,7 @@ impl TcpServer {
                                                     version,
                                                     protocol: 1,
                                                     capabilities,
+                                                    request_id,
                                                 };
                                                 match stream.write_all(&msg.as_bytes()) {
                                                     Ok(_) => {

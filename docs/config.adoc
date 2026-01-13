@@ -4869,8 +4869,8 @@ When `wait` is `true`, the server blocks until the reload completes or times out
 |===
 | Command | Description
 
-| `{"Hello":{}}`
-| Request server version and capabilities. Server responds with `HelloOk`.
+| `{"Hello":{}}` or `{"Hello":{"request_id":123}}`
+| Request server version and capabilities. Server responds with `HelloOk`. If `request_id` is provided, it will be echoed in the response for correlation.
 |===
 
 ==== Server Messages
@@ -4915,8 +4915,8 @@ These are sent in response to client queries:
 | `{"CurrentLayerInfo":{"name":"base","cfg_text":"..."}}`
 | Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
 
-| `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
-| Response to `Hello`. Contains server version, protocol version, and supported capabilities.
+| `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...],"request_id":123}}`
+| Response to `Hello`. Contains server version, protocol version, and supported capabilities. If the client sent a `request_id`, it is echoed back for response correlation.
 
 | `{"ReloadResult":{"ok":true}}`
 | Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.
