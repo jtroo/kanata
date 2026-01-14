@@ -1849,32 +1849,6 @@ This is also the variant selected by the name `one-shot`.
   or on re-press of another active one-shot key.
 |===
 
-.Choosing a one-shot variant
-****
-[cols="1,2,2"]
-|===
-|Variant |Choose when... |Example use case
-
-|`one-shot` / `one-shot-press`
-|You want the modifier to apply immediately when the next key is pressed (default behavior)
-|Standard sticky-shift for typing capital letters
-
-|`one-shot-release`
-|You need the modifier held until the next key is fully released
-|Applications that distinguish press vs release timing
-
-|`one-shot-press-pcancel`
-|You want typo forgiveness: pressing a _different_ one-shot key cancels the first one
-|Chaining one-shot modifiers (e.g., Ctrl then Shift then key) where mistakes happen
-
-|`one-shot-release-pcancel`
-|Same typo forgiveness but with release-based timing
-|Rare; use only if your workflow specifically needs release-based behavior + cancel
-|===
-
-TIP: Start with `one-shot` (equivalent to `one-shot-press`). Only switch to `-pcancel` variants if you find yourself accidentally stacking multiple one-shot modifiers.
-****
-
 Other items:
 [cols="1,3"]
 |===
@@ -1927,6 +1901,32 @@ even if a following one-shot key has a different configuration
 than the initial key pressed.
 
 The default name `+one-shot+` corresponds to `+one-shot-press+`.
+
+.Choosing a one-shot variant
+****
+[cols="1,2,2"]
+|===
+|Variant |Choose when... |Example use case
+
+|`one-shot` / `one-shot-press`
+|You want the modifier to apply immediately when the next key is pressed (default behavior)
+|Standard sticky-shift for typing capital letters
+
+|`one-shot-release`
+|You need the modifier held until the next key is fully released
+|Applications that distinguish press vs release timing
+
+|`one-shot-press-pcancel`
+|You want typo forgiveness: pressing a _different_ one-shot key cancels the first one
+|Chaining one-shot modifiers (e.g., Ctrl then Shift then key) where mistakes happen
+
+|`one-shot-release-pcancel`
+|Same typo forgiveness but with release-based timing
+|Rare; use only if your workflow specifically needs release-based behavior + cancel
+|===
+
+TIP: Start with `one-shot` (equivalent to `one-shot-press`). Only switch to `-pcancel` variants if you find yourself accidentally stacking multiple one-shot modifiers.
+****
 
 NOTE: When using one-shot with keys that will trigger defoverrides,
 you will likely want to adjust <<override-release-on-activation>> to yes in `defcfg`.
@@ -2006,34 +2006,6 @@ Example:
 
 The `tap-hold` action lets you activate different actions
 depending it a key is tapped or held.
-
-.Quick guide: Which tap-hold variant do I need?
-****
-[cols="2,3"]
-|===
-|Your situation |Recommended variant
-
-|Basic tap vs hold behavior
-|`tap-hold`
-
-|Home-row mods (fast typing shouldn't trigger hold)
-|`tap-hold-release` or `tap-hold-release-keys`
-
-|Gaming or timing-sensitive applications
-|`tap-hold-press`
-
-|Need a third action if timeout expires without other keypresses
-|`tap-hold-press-timeout` or `tap-hold-release-timeout`
-
-|Only certain keys should trigger early tap resolution
-|`tap-hold-release-keys` with a `$tap-keys` list
-
-|Want hold to activate only if non-listed keys are pressed
-|`tap-hold-except-keys`
-|===
-
-TIP: The most common choice for home-row mods is `tap-hold-release` because it waits for the next key to be _released_ before deciding tap vs hold. This prevents accidental modifier activation during fast typing like "the" where you might still be holding "t" when "h" is pressed.
-****
 
 .Syntax:
 [source]
@@ -2132,6 +2104,34 @@ The action takes 4 parameters in the listed order:
 . hold timeout (unit: ms)
 . tap action
 . hold action
+
+.Quick guide: Which tap-hold variant do I need?
+****
+[cols="2,3"]
+|===
+|Your situation |Recommended variant
+
+|Basic tap vs hold behavior
+|`tap-hold`
+
+|Home-row mods (fast typing shouldn't trigger hold)
+|`tap-hold-release` or `tap-hold-release-keys`
+
+|Gaming or timing-sensitive applications
+|`tap-hold-press`
+
+|Need a third action if timeout expires without other keypresses
+|`tap-hold-press-timeout` or `tap-hold-release-timeout`
+
+|Only certain keys should trigger early tap resolution
+|`tap-hold-release-keys` with a `$tap-keys` list
+
+|Want hold to activate only if non-listed keys are pressed
+|`tap-hold-except-keys`
+|===
+
+TIP: The most common choice for home-row mods is `tap-hold-release` because it waits for the next key to be _released_ before deciding tap vs hold. This prevents accidental modifier activation during fast typing like "the" where you might still be holding "t" when "h" is pressed.
+****
 
 The tap repress timeout is the number of milliseconds within which a rapid
 press+release+press of a key will result in the tap action being held instead
@@ -2359,24 +2359,6 @@ Cancels the final repeat according the behaviour of one of the variants:
 `release-cancel`, `cancel-on-press`, `release-cancel-and-cancel-on-press`.
 |===
 
-.Common macro patterns
-****
-[source]
-----
-;; Text entry with delays (useful for slow-responding applications)
-(defalias slow-hello (macro H e l l o 50 W o r l d))  ;; 50ms pause between words
-
-;; Repeat action while key is held (gaming, rapid input)
-(defalias spam-click (macro-repeat 50 lctl))  ;; Ctrl every 50ms
-
-;; Interruptible macro (cancels if you release the key)
-(defalias safe-macro (macro-release-cancel a b c d e f g))
-
-;; Application launcher (macOS example)
-(defalias launch-term (cmd open -a Terminal))
-----
-****
-
 **Description**
 
 The `+macro+` action will tap a sequence of keys with optional
@@ -2396,6 +2378,24 @@ To use the numbered keys they must be aliased
 or otherwise use the key names `Digit0-Digit9`.
 
 Up to 4 macros can be active at the same time.
+
+.Common macro patterns
+****
+[source]
+----
+;; Text entry with delays (useful for slow-responding applications)
+(defalias slow-hello (macro H e l l o 50 W o r l d))  ;; 50ms pause between words
+
+;; Repeat action while key is held (gaming, rapid input)
+(defalias spam-click (macro-repeat 50 lctl))  ;; Ctrl every 50ms
+
+;; Interruptible macro (cancels if you release the key)
+(defalias safe-macro (macro-release-cancel a b c d e f g))
+
+;; Application launcher (macOS example)
+(defalias launch-term (cmd open -a Terminal))
+----
+****
 
 The actions supported in `+macro+` are:
 
