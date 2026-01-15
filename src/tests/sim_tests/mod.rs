@@ -43,6 +43,16 @@ fn apply_fakekey_action(k: &mut Kanata, name: &str, action: FakeKeyAction) {
     handle_fakekey_action(action, k.layout.bm(), FAKE_KEY_ROW, *index as u16);
 }
 
+/// Apply a layer switch to the kanata instance
+fn apply_layer_switch(k: &mut Kanata, layer_name: &str) {
+    let layer_idx = k
+        .layer_info
+        .iter()
+        .position(|l| l.name == layer_name)
+        .unwrap_or_else(|| panic!("unknown layer: {layer_name}"));
+    k.layout.bm().set_default_layer(layer_idx);
+}
+
 mod block_keys_tests;
 mod capsword_sim_tests;
 mod chord_sim_tests;
@@ -128,6 +138,10 @@ fn simulate_with_file_content<S: AsRef<str>>(
                 "vk" | "fakekey" | "virtualkey" | "🎭" => {
                     let (vk_name, action) = parse_fakekey_spec(val);
                     apply_fakekey_action(&mut k, vk_name, action);
+                }
+                // Layer switch: ls:layer_name
+                "ls" | "layer-switch" | "🔀" => {
+                    apply_layer_switch(&mut k, val);
                 }
                 _ => panic!("invalid item {pair}"),
             },
