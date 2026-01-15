@@ -1842,11 +1842,11 @@ This is also the variant selected by the name `one-shot`.
 
 | `+one-shot-press-pcancel+`
 | End on the first press of another key
-  or on re-press of another active one-shot key
+  or on re-press of this key, or of another active one-shot key
 
 | `+one-shot-release-pcancel+`
 | End on the first release of a newly pressed key
-  or on re-press of another active one-shot key.
+  or on re-press of this key, or of another active one-shot key.
 |===
 
 Other items:
@@ -2071,6 +2071,10 @@ This is useful for home row mods where fast typing should not trigger modifiers.
 The `+tap-hold+` action allows you to have one action/key for a "tap" and a
 different action/key for a "hold". A tap is a rapid press then release of the
 key whereas a hold is a long press.
+
+NOTE: for more discussion on tap-hold,
+you may want to have a look at this GitHub discussion:
+https://github.com/jtroo/kanata/discussions/1455[link to discussion].
 
 The action takes 4 parameters in the listed order:
 
