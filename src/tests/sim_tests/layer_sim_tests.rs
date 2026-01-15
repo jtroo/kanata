@@ -123,11 +123,7 @@ fn ls_sim_switch_multiple_layers() {
         (deflayer nav left right)
     ";
     // Switch to num, press a (outputs 1), switch to nav, press a (outputs left)
-    let result = simulate(
-        CFG,
-        "ls:num d:a t:10 u:a t:10 ls:nav d:a t:10 u:a t:10",
-    )
-    .to_ascii();
+    let result = simulate(CFG, "ls:num d:a t:10 u:a t:10 ls:nav d:a t:10 u:a t:10").to_ascii();
     assert_eq!("dn:Kb1 t:10ms up:Kb1 t:10ms dn:Left t:10ms up:Left", result);
 }
 
@@ -140,11 +136,7 @@ fn ls_sim_switch_back_to_base() {
         (deflayer other 1)
     ";
     // Switch to other (a->1), switch back to base (a->a)
-    let result = simulate(
-        CFG,
-        "ls:other d:a t:10 u:a t:10 ls:base d:a t:10 u:a t:10",
-    )
-    .to_ascii();
+    let result = simulate(CFG, "ls:other d:a t:10 u:a t:10 ls:base d:a t:10 u:a t:10").to_ascii();
     assert_eq!("dn:Kb1 t:10ms up:Kb1 t:10ms dn:A t:10ms up:A", result);
 }
 
@@ -171,11 +163,7 @@ fn ls_sim_with_delegate_to_first_layer() {
         (deflayer nav left _)
     ";
     // Switch to nav: 'a' -> left, 'b' -> transparent -> delegates to base -> y
-    let result = simulate(
-        CFG,
-        "ls:nav d:a t:10 u:a t:10 d:b t:10 u:b t:10",
-    )
-    .to_ascii();
+    let result = simulate(CFG, "ls:nav d:a t:10 u:a t:10 d:b t:10 u:b t:10").to_ascii();
     assert_eq!("dn:Left t:10ms up:Left t:10ms dn:Y t:10ms up:Y", result);
 }
 
@@ -190,11 +178,7 @@ fn ls_sim_transparent_no_delegate() {
         (deflayer nav left _)
     ";
     // Switch to nav: 'a' -> left, 'b' -> transparent -> passthrough (outputs B)
-    let result = simulate(
-        CFG,
-        "ls:nav d:a t:10 u:a t:10 d:b t:10 u:b t:10",
-    )
-    .to_ascii();
+    let result = simulate(CFG, "ls:nav d:a t:10 u:a t:10 d:b t:10 u:b t:10").to_ascii();
     assert_eq!("dn:Left t:10ms up:Left t:10ms dn:B t:10ms up:B", result);
 }
 

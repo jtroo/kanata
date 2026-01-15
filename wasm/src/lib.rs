@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use kanata_state_machine::{kanata::handle_fakekey_action, oskbd::*, *};
 use rustc_hash::FxHashMap;
 use wasm_bindgen::prelude::*;
@@ -112,8 +112,9 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
             match pair.split_once(':') {
                 Some((kind, val)) => match kind {
                     "tick" | "🕐" | "t" => {
-                        let ticks = str::parse::<u128>(val)
-                            .map_err(|e| anyhow!("line: {l}\ninvalid number in {kind}:{val}\n{e}"))?;
+                        let ticks = str::parse::<u128>(val).map_err(|e| {
+                            anyhow!("line: {l}\ninvalid number in {kind}:{val}\n{e}")
+                        })?;
                         if ticks > 60000 {
                             bail!("line: {l}\nmax tick is 60000: {kind}:{val}")
                         }
@@ -126,28 +127,30 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                         }
                         accumulated_ticks += ticks;
                         if accumulated_ticks > 3600000 {
-                            bail!("You are trying to simulate over an hour's worth of time.\nAborting to avoid wasting your CPU cycles.")
+                            bail!(
+                                "You are trying to simulate over an hour's worth of time.\nAborting to avoid wasting your CPU cycles."
+                            )
                         }
                     }
                     "press" | "↓" | "d" | "down" => {
-                        let key_code =
-                            str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
+                        let key_code = str_to_oscode(val)
+                            .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Press,
                         })?;
                     }
                     "release" | "↑" | "u" | "up" => {
-                        let key_code =
-                        str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
+                        let key_code = str_to_oscode(val)
+                            .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Release,
                         })?;
                     }
                     "repeat" | "⟳" | "r" => {
-                        let key_code =
-                        str_to_oscode(val).ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
+                        let key_code = str_to_oscode(val)
+                            .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Repeat,
@@ -167,7 +170,9 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                             .ok_or_else(|| anyhow!("line: {l}\nunknown layer: {val}"))?;
                         k.layout.bm().set_default_layer(layer_idx);
                     }
-                    _ => bail!("line: {l}\ninvalid action: {kind}\nvalid actions:\nu | up\nd | down\nt | tick\nvk | fakekey\nls | layer-switch"),
+                    _ => bail!(
+                        "line: {l}\ninvalid action: {kind}\nvalid actions:\nu | up\nd | down\nt | tick\nvk | fakekey\nls | layer-switch"
+                    ),
                 },
                 None => bail!("line: {l}\ninvalid item: {pair}\nexpected format: action:item"),
             }
@@ -190,15 +195,14 @@ mod tests {
     }
 
     fn sim_err(cfg: &str, sim: &str) -> String {
-        simulate_impl(cfg, sim).expect_err("simulation should fail").to_string()
+        simulate_impl(cfg, sim)
+            .expect_err("simulation should fail")
+            .to_string()
     }
 
     #[test]
     fn basic_key_press_release() {
-        let result = sim(
-            "(defsrc a)(deflayer base b)",
-            "d:a t:10 u:a t:1",
-        );
+        let result = sim("(defsrc a)(deflayer base b)", "d:a t:10 u:a t:1");
         assert!(result.contains("↓(press)   B"));
         assert!(result.contains("↑(release) B"));
     }
@@ -238,10 +242,7 @@ mod tests {
 
     #[test]
     fn repeat_key() {
-        let result = sim(
-            "(defsrc a)(deflayer base b)",
-            "d:a t:10 r:a t:10 u:a t:1",
-        );
+        let result = sim("(defsrc a)(deflayer base b)", "d:a t:10 r:a t:10 u:a t:1");
         assert!(result.contains("↓(press)   B"));
         assert!(result.contains("↑(release) B"));
     }
@@ -267,9 +268,18 @@ mod tests {
 
     #[test]
     fn layer_switch_syntax_variants() {
-        let r1 = sim("(defsrc a)(deflayer base a)(deflayer x 1)", "ls:x d:a t:1 u:a t:1");
-        let r2 = sim("(defsrc a)(deflayer base a)(deflayer x 1)", "layer-switch:x d:a t:1 u:a t:1");
-        let r3 = sim("(defsrc a)(deflayer base a)(deflayer x 1)", "🔀:x d:a t:1 u:a t:1");
+        let r1 = sim(
+            "(defsrc a)(deflayer base a)(deflayer x 1)",
+            "ls:x d:a t:1 u:a t:1",
+        );
+        let r2 = sim(
+            "(defsrc a)(deflayer base a)(deflayer x 1)",
+            "layer-switch:x d:a t:1 u:a t:1",
+        );
+        let r3 = sim(
+            "(defsrc a)(deflayer base a)(deflayer x 1)",
+            "🔀:x d:a t:1 u:a t:1",
+        );
         assert!(r1.contains("Kb1"));
         assert!(r2.contains("Kb1"));
         assert!(r3.contains("Kb1"));
@@ -296,10 +306,22 @@ mod tests {
 
     #[test]
     fn virtual_key_syntax_variants() {
-        let r1 = sim("(defsrc a)(defvirtualkeys v lctl)(deflayer base a)", "vk:v t:1");
-        let r2 = sim("(defsrc a)(defvirtualkeys v lctl)(deflayer base a)", "fakekey:v t:1");
-        let r3 = sim("(defsrc a)(defvirtualkeys v lctl)(deflayer base a)", "virtualkey:v t:1");
-        let r4 = sim("(defsrc a)(defvirtualkeys v lctl)(deflayer base a)", "🎭:v t:1");
+        let r1 = sim(
+            "(defsrc a)(defvirtualkeys v lctl)(deflayer base a)",
+            "vk:v t:1",
+        );
+        let r2 = sim(
+            "(defsrc a)(defvirtualkeys v lctl)(deflayer base a)",
+            "fakekey:v t:1",
+        );
+        let r3 = sim(
+            "(defsrc a)(defvirtualkeys v lctl)(deflayer base a)",
+            "virtualkey:v t:1",
+        );
+        let r4 = sim(
+            "(defsrc a)(defvirtualkeys v lctl)(deflayer base a)",
+            "🎭:v t:1",
+        );
         assert!(r1.contains("LCtrl"));
         assert!(r2.contains("LCtrl"));
         assert!(r3.contains("LCtrl"));
