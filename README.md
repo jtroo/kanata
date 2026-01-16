@@ -232,6 +232,7 @@ Some directories are exceptions:
    - [nata (Linux)](https://github.com/mdSlash/nata)
    - [kanata-vk-agent (macOS)](https://github.com/devsunb/kanata-vk-agent)
    - [hyprkan (Linux)](https://github.com/mdSlash/hyprkan)
+   - [kanata-switcher (Linux, all DEs)](https://github.com/7mind/kanata-switcher)
 
 ## What does the name mean?
 
