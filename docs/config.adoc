@@ -5833,6 +5833,7 @@ Input sequence file format: whitespace insensitive list of `prefix:key` pairs wh
   - `↑`, `u`, `up`, or `release` +
   - `⟳`, `r`, or `repeat` +
   - `🎭`, `fakekey`, `vk`, or `virtualkey` to activate virtual keys +
+  - `🔀`, `ls`, or `layer-switch` to switch layers +
 
 Virtual key format is `vk:name[:action]`, `fakekey:name[:action]`, or `virtualkey:name[:action]`. +
 When using the emoji prefix, the format is `🎭name[:action]`. Action is one of: +
@@ -5842,10 +5843,15 @@ When using the emoji prefix, the format is `🎭name[:action]`. Action is one of
   - `toggle` or `g` +
 Example: `vk:vk_bear:tap` or `🎭vk_bear:tap`. +
 
+Layer switch format is `ls:name` or `layer-switch:name`. +
+When using the emoji prefix, the format is `🔀name`. +
+This switches to the specified layer as the new default layer. +
+Example: `ls:nav` or `🔀nav`. +
+
 And key names are defined in the https://github.com/jtroo/kanata/blob/main/parser/src/keys/mod.rs[str_to_oscode function],
 for example, `1` for the numeric key 1 or `kp1`/`🔢₁` for the keypad numeric key 1
 
-Using unicode symbols `🕐`,`↓`,`↑`,`⟳`,`🎭` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
+Using unicode symbols `🕐`,`↓`,`↑`,`⟳`,`🎭`,`🔀` allows skipping the `:` separator, e.g., `↓k` ≝ `↓:k` ≝ `d:k`
 
 [[zippychord]]
 === Zippychord

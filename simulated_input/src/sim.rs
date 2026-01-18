@@ -187,6 +187,17 @@ fn apply_fakekey_action(k: &mut Kanata, name: &str, action: FakeKeyAction) -> Re
     handle_fakekey_action(action, k.layout.bm(), FAKE_KEY_ROW, *index as u16);
     Ok(())
 }
+
+fn apply_layer_switch(k: &mut Kanata, layer_name: &str) -> Result<()> {
+    let layer_idx = k
+        .layer_info
+        .iter()
+        .position(|l| l.name == layer_name)
+        .ok_or_else(|| anyhow!("unknown layer: {layer_name}"))?;
+    log::info!("layer-switch: {layer_name} (index {layer_idx})");
+    k.layout.bm().set_default_layer(layer_idx);
+    Ok(())
+}
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LogFmtT {
     // partial dupe of @simulated since otherwise no-features clippy fails when features are disabled since even though the function body is conditional and doesn't use the enum, the ↓ function signature still uses it, so will warn
@@ -294,6 +305,12 @@ fn main_impl() -> Result<()> {
                             let (vk_name, action) = parse_fakekey_spec(val)?;
                             apply_fakekey_action(&mut k, vk_name, action)?;
                         }
+                        // Layer switch: ls:layer_name
+                        // Switches to the specified layer as the new default layer.
+                        // Example: ls:nav, ls:symbols
+                        "ls" | "layer-switch" | "🔀" => {
+                            apply_layer_switch(&mut k, val)?;
+                        }
                         _ => bail!("invalid pair prefix: {kind}"),
                     },
                     None => {
@@ -347,6 +364,11 @@ fn main_impl() -> Result<()> {
                                 // Format: 🎭vk_name or 🎭vk_name:action
                                 let (vk_name, action) = parse_fakekey_spec(val)?;
                                 apply_fakekey_action(&mut k, vk_name, action)?;
+                            }
+                            "🔀" => {
+                                // Layer switch with emoji prefix
+                                // Format: 🔀layer_name
+                                apply_layer_switch(&mut k, val)?;
                             }
                             _ => bail!("invalid pair: {l}"),
                         }
