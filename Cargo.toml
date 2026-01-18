@@ -8,11 +8,11 @@ members = [
     "windows_key_tester",
     "simulated_input",
     "simulated_passthru",
+    "wasm",
 ]
 exclude = [
     "interception",
     "key-sort-add",
-    "wasm",
 ]
 resolver = "2"
 

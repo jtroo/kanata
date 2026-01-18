@@ -280,6 +280,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -837,6 +847,18 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+]
+
+[[package]]
+name = "kanata-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "console_error_panic_hook",
+ "kanata",
+ "log",
+ "rustc-hash",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1454,6 +1476,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
 name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1882,6 +1910,7 @@ checksum = "1edc8929d7499fc4e8f0be2262a241556cfc54a0bea223790e71446f2aab1ef5"
 dependencies = [
  "cfg-if",
  "once_cell",
+ "rustversion",
  "wasm-bindgen-macro",
 ]
 
