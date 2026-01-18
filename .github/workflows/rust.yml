@@ -132,7 +132,7 @@ jobs:
       run: cargo clippy --all --features=cmd,win_llhook_read_scancodes,win_sendinput_send_scancodes -- -D warnings
 
     - name: Run tests all features
-      run: cargo test --all --features=cmd,interception_driver,win_sendinput_send_scancodes
+      run: cargo test  -p kanata -p kanata-parser -p kanata-keyberon -p kanata-tcp-protocol --features=cmd,interception_driver,win_sendinput_send_scancodes
     - name: Run clippy all features
       run: cargo clippy --all --features=cmd,interception_driver,win_sendinput_send_scancodes -- -D warnings
 

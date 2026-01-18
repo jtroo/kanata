@@ -450,10 +450,10 @@ impl KbdOut {
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
     pub code: u32,
-
     /// Key was released
     pub up: bool,
 }
+
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
