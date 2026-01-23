@@ -15,6 +15,9 @@ pub enum ServerMessage {
     LayerNames {
         names: Vec<String>,
     },
+    FakeKeyNames {
+        names: Vec<String>,
+    },
     CurrentLayerInfo {
         name: String,
         cfg_text: String,
@@ -77,6 +80,7 @@ pub enum ClientMessage {
         new: String,
     },
     RequestLayerNames {},
+    RequestFakeKeyNames {},
     RequestCurrentLayerInfo {},
     RequestCurrentLayerName {},
     ActOnFakeKey {
@@ -212,5 +216,40 @@ mod tests {
 
         let json = r#"{"ActOnFakeKey":{"name":"test","action":"Tap"}}"#;
         let _msg: ClientMessage = serde_json::from_str(json).unwrap();
+    }
+
+    #[test]
+    fn test_request_fake_key_names() {
+        let json = r#"{"RequestFakeKeyNames":{}}"#;
+        let msg: ClientMessage = serde_json::from_str(json).unwrap();
+        assert!(matches!(msg, ClientMessage::RequestFakeKeyNames {}));
+    }
+
+    #[test]
+    fn test_fake_key_names_response() {
+        let msg = ServerMessage::FakeKeyNames {
+            names: vec!["email-sig".to_string(), "nav-mode".to_string()],
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(
+            json,
+            r#"{"FakeKeyNames":{"names":["email-sig","nav-mode"]}}"#
+        );
+
+        // Round-trip
+        let parsed: ServerMessage = serde_json::from_str(&json).unwrap();
+        match parsed {
+            ServerMessage::FakeKeyNames { names } => {
+                assert_eq!(names, vec!["email-sig", "nav-mode"]);
+            }
+            _ => panic!("Expected FakeKeyNames"),
+        }
+    }
+
+    #[test]
+    fn test_fake_key_names_empty() {
+        let msg = ServerMessage::FakeKeyNames { names: vec![] };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, r#"{"FakeKeyNames":{"names":[]}}"#);
     }
 }
