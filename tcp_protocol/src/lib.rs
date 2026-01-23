@@ -231,7 +231,10 @@ mod tests {
             names: vec!["email-sig".to_string(), "nav-mode".to_string()],
         };
         let json = serde_json::to_string(&msg).unwrap();
-        assert_eq!(json, r#"{"FakeKeyNames":{"names":["email-sig","nav-mode"]}}"#);
+        assert_eq!(
+            json,
+            r#"{"FakeKeyNames":{"names":["email-sig","nav-mode"]}}"#
+        );
 
         // Round-trip
         let parsed: ServerMessage = serde_json::from_str(&json).unwrap();
