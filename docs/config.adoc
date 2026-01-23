@@ -4805,6 +4805,9 @@ echo '{"ChangeLayer":{"new":"nav"}}' | nc localhost 7070
 |===
 | Command | Description
 
+| `{"RequestFakeKeyNames":{}}`
+| Request a list of all defined virtual key names. Server responds with `FakeKeyNames`.
+
 | `{"ActOnFakeKey":{"name":"key-name","action":"Tap"}}`
 | Trigger a virtual key defined in `defvirtualkeys`. Actions: `Press`, `Release`, `Tap`, `Toggle`.
 |===
@@ -4912,6 +4915,9 @@ These are sent in response to client queries:
 
 | `{"LayerNames":{"names":["base","nav","num"]}}`
 | Response to `RequestLayerNames`. Contains all defined layer names.
+
+| `{"FakeKeyNames":{"names":["email-sig","nav-mode"]}}`
+| Response to `RequestFakeKeyNames`. Contains all defined virtual key names.
 
 | `{"CurrentLayerName":{"name":"base"}}`
 | Response to `RequestCurrentLayerName`. Contains the active layer name.

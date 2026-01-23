@@ -210,6 +210,22 @@ impl TcpServer {
                                                     ),
                                                 }
                                             }
+                                            ClientMessage::RequestFakeKeyNames {} => {
+                                                let msg = ServerMessage::FakeKeyNames {
+                                                    names: kanata
+                                                        .lock()
+                                                        .virtual_keys
+                                                        .keys()
+                                                        .cloned()
+                                                        .collect::<Vec<_>>(),
+                                                };
+                                                match stream.write_all(&msg.as_bytes()) {
+                                                    Ok(_) => {}
+                                                    Err(err) => log::error!(
+                                                        "server could not send response: {err}"
+                                                    ),
+                                                }
+                                            }
                                             ClientMessage::ActOnFakeKey { name, action } => {
                                                 let mut k = kanata.lock();
                                                 let index = match k.virtual_keys.get(&name) {
@@ -298,6 +314,7 @@ impl TcpServer {
                                                 let capabilities = vec![
                                                     "reload".to_string(),
                                                     "layer-names".to_string(),
+                                                    "fake-key-names".to_string(),
                                                     "layer-change".to_string(),
                                                     "current-layer-name".to_string(),
                                                     "current-layer-info".to_string(),
