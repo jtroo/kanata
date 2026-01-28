@@ -68,3 +68,65 @@ fn override_eagerly_releases() {
         result
     );
 }
+
+#[test]
+#[should_panic]
+fn config_with_both_overrides() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+(defoverridesv2 (lsft a) (lsft 9) () ())
+        ",
+        "",
+    );
+}
+
+#[test]
+#[should_panic]
+fn config_with_two_overrides() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+(defoverrides (lsft a) (lsft 9))
+        ",
+        "",
+    );
+}
+
+#[test]
+#[should_panic]
+fn config_with_both_overridesv2() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverridesv2 (lsft a) (lsft 9) () ())
+(defoverridesv2 (lsft a) (lsft 9) () ())
+        ",
+        "",
+    );
+}
+
+#[test]
+fn config_with_overridev2() {
+    let result = simulate(
+        "
+(defsrc)
+(deflayer base)
+(defoverridesv2 (lsft a) (lsft 9) (lctl) ())
+        ",
+        "d:lctl d:lsft d:a t:10 u:a u:lsft u:lctl t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:LCtrl t:1ms dn:LShift t:1ms dn:A t:8ms up:A t:1ms up:LShift t:1ms up:LCtrl",
+        result
+    );
+}
