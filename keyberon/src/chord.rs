@@ -257,7 +257,7 @@ impl<'a, T> ChordsV2<'a, T> {
 
     fn drain_inputs(&mut self, drainq: &mut SmolQueue, active_layer: u16) {
         if self.ticks_to_ignore_chord > 0 {
-            drainq.extend(self.queue.drain(0..));
+            self.drain_without_new_activations(drainq);
             return;
         }
         if self.ticks_until_next_state_change > 0
@@ -276,6 +276,31 @@ impl<'a, T> ChordsV2<'a, T> {
         self.drain_virtual_keys(drainq);
         self.drain_releases(drainq);
         self.process_presses(active_layer);
+    }
+
+    /// Used to process keys while chordsv2 is in the disabled state from rapid typing.
+    /// Releases must still be processed to release already-activated chords.
+    fn drain_without_new_activations(&mut self, drainq: &mut SmolQueue) {
+        let achs = &mut self.active_chords;
+        for qd in self.queue.iter() {
+            if let Event::Release(_, j) = qd.event {
+                // Release the key from active chords.
+                achs.iter_mut().for_each(|ach| {
+                    if !ach.participating_keys.contains(&j) {
+                        return;
+                    }
+                    ach.remaining_keys_to_release.retain(|pk| *pk != j);
+                    if ach.remaining_keys_to_release.is_empty() {
+                        ach.status = match ach.status {
+                            Unread | UnreadReleased => UnreadReleased,
+                            Releasable | Released => Released,
+                        }
+                    }
+                });
+            }
+            drainq.push_back(*qd);
+        }
+        self.queue.clear();
     }
 
     fn drain_virtual_keys(&mut self, drainq: &mut SmolQueue) {
