@@ -30,9 +30,12 @@ impl Kanata {
                 return Ok(());
             }
         }
-        self.cur_keys.extend(self.layout.bm().keycodes());
-        self.overrides
-            .override_keys(&mut self.cur_keys, &mut self.override_states);
+        self.cur_keys.extend(self.layout.b().keycodes());
+        self.overrides.override_keys(
+            &mut self.cur_keys,
+            &mut self.override_states,
+            self.layout.b().current_layer() as u16,
+        );
 
         // Prioritize checking the active layer in case a layer-while-held is active.
         let active_held_layers = self.layout.bm().trans_resolution_layer_order();

@@ -40,7 +40,7 @@ impl OverrideStates {
         self.mods_pressed = 0;
     }
 
-    fn update(&mut self, osc: OsCode, overrides: &Overrides) {
+    fn update(&mut self, osc: OsCode, overrides: &Overrides, active_layer: u16) {
         if let Some(mod_mask) = mask_for_key(osc) {
             self.mods_pressed |= mod_mask;
         } else {
@@ -49,6 +49,7 @@ impl OverrideStates {
                 self.mods_pressed,
                 &mut self.oscs_to_add,
                 &mut self.oscs_to_remove,
+                active_layer,
             );
         }
     }
@@ -88,13 +89,18 @@ impl Overrides {
         Self { overrides_by_osc }
     }
 
-    pub fn override_keys(&self, kcs: &mut Vec<KeyCode>, states: &mut OverrideStates) {
+    pub fn override_keys(
+        &self,
+        kcs: &mut Vec<KeyCode>,
+        states: &mut OverrideStates,
+        active_layer: u16,
+    ) {
         if self.is_empty() {
             return;
         }
         states.cleanup();
         for kc in kcs.iter().copied() {
-            states.update(kc.into(), self);
+            states.update(kc.into(), self, active_layer);
         }
         kcs.retain(|kc| !states.is_key_overridden((*kc).into()));
         states.add_overrides(kcs);
@@ -120,25 +126,23 @@ impl Overrides {
         active_mod_mask: u8,
         oscs_to_add: &mut Vec<OsCode>,
         oscs_to_remove: &mut Vec<OsCode>,
+        active_layer: u16,
     ) {
         let Some(ovds) = self.overrides_by_osc.get(&active_osc) else {
             return;
         };
-        let mut cur_chord_size = 0;
         if let Some(ovd) = ovds.iter().rfind(|ovd| {
-            let mask = ovd.get_mod_mask();
-            if mask & active_mod_mask == mask {
-                // keep only the longest matching prefix.
-                let chord_size = ovd.in_mod_oscs.len() + 1;
-                if chord_size <= cur_chord_size {
-                    false
-                } else {
-                    cur_chord_size = chord_size;
-                    true
-                }
-            } else {
-                false
+            if ovd
+                .excluded_layers
+                .as_ref()
+                .map(|excluded_layers| excluded_layers.iter().copied().any(|l| l == active_layer))
+                .unwrap_or(false)
+            {
+                return false;
             }
+            let mask = ovd.get_mod_mask();
+            let exclude_mask = ovd.get_excluded_mod_mask();
+            mask & active_mod_mask == mask && exclude_mask & active_mod_mask == 0
         }) {
             log::debug!("using override {ovd:?}");
             ovd.add_override_keys(oscs_to_add);
@@ -152,8 +156,10 @@ impl Overrides {
 pub struct Override {
     in_non_mod_osc: OsCode,
     out_non_mod_osc: OsCode,
-    in_mod_oscs: Vec<OsCode>,
-    out_mod_oscs: Vec<OsCode>,
+    in_mod_oscs: Box<[OsCode]>,
+    out_mod_oscs: Box<[OsCode]>,
+    excluded_mod_oscs: Option<Box<[OsCode]>>,
+    excluded_layers: Option<Box<[u16]>>,
 }
 
 impl Override {
@@ -178,30 +184,52 @@ impl Override {
         if out_nmoscs.next().is_some() {
             bail!("override must contain exactly one output non-modifier key; found multiple");
         }
-        let mut in_mod_oscs = in_oscs
+        let in_mod_oscs = in_oscs
             .iter()
             .copied()
-            .filter(|osc| mask_for_key(*osc).is_some())
+            .filter(|osc| osc.is_modifier())
             .collect::<Vec<_>>();
-        let mut out_mod_oscs = out_oscs
+        let out_mod_oscs = out_oscs
             .iter()
             .copied()
-            .filter(|osc| mask_for_key(*osc).is_some())
+            .filter(|osc| osc.is_modifier())
             .collect::<Vec<_>>();
-        in_mod_oscs.shrink_to_fit();
-        out_mod_oscs.shrink_to_fit();
         Ok(Self {
             in_non_mod_osc,
             out_non_mod_osc,
-            in_mod_oscs,
-            out_mod_oscs,
+            in_mod_oscs: in_mod_oscs.into_boxed_slice(),
+            out_mod_oscs: out_mod_oscs.into_boxed_slice(),
+            excluded_mod_oscs: None,
+            excluded_layers: None,
         })
+    }
+
+    pub fn try_new_v2(
+        in_oscs: &[OsCode],
+        out_oscs: &[OsCode],
+        excluded_mod_oscs: Box<[OsCode]>,
+        excluded_layers: Box<[u16]>,
+    ) -> Result<Self> {
+        let mut override_cfg = Self::try_new(in_oscs, out_oscs)?;
+        override_cfg.excluded_mod_oscs = Some(excluded_mod_oscs);
+        override_cfg.excluded_layers = Some(excluded_layers);
+        Ok(override_cfg)
     }
 
     fn get_mod_mask(&self) -> u8 {
         let mut mask = 0;
         for osc in self.in_mod_oscs.iter().copied() {
             mask |= mask_for_key(osc).expect("mod only");
+        }
+        mask
+    }
+
+    fn get_excluded_mod_mask(&self) -> u8 {
+        let mut mask = 0;
+        if let Some(mods) = self.excluded_mod_oscs.as_ref() {
+            for osc in mods.iter().copied() {
+                mask |= mask_for_key(osc).expect("mod only");
+            }
         }
         mask
     }

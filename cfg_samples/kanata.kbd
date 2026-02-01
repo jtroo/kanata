@@ -1496,6 +1496,30 @@ If you need help, please feel welcome to ask in the GitHub discussions.
 )
 
 #|
+There is a more recent version of defoverrides that offers more customizability.
+Instead of 2 list items per override entry,
+`defoverridesv2` mandates 4, though the extra 2 can be empty.
+
+You cannot have both a v1 and v2 of `defoverrides` at the same time.
+
+The 3rd item is an "exclude modifiers list" which is composed of modifier key names
+(such as `lctl`, `lalt`) that, if held, will disable the override from activating.
+
+The 4th item is an "exclude layers" list which is composed of layer names
+that while active as the most recent `layer-switch` or `layer-while-held`,
+will disable the override from activating.
+
+(defoverridesv2
+  ;; lctl+a will become lalt+9
+  ;; except when lsft is held or other-layer is active.
+  (lctl a) (lalt 9) (lsft) (other-layer))
+
+  ;; lctl+b will always become lalt+0
+  (lctl b) (lalt 0) () ()
+)
+|#
+
+#|
 
 Global input chords.
 

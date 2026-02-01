@@ -1203,8 +1203,11 @@ impl Kanata {
             cur_keys.extend(self.unshifted_keys.iter());
         }
 
-        self.overrides
-            .override_keys(cur_keys, &mut self.override_states);
+        self.overrides.override_keys(
+            cur_keys,
+            &mut self.override_states,
+            layout.current_layer() as u16,
+        );
         mark_overridden_nonmodkeys_for_eager_erasure(&self.override_states, &mut layout.states);
         if self.override_release_on_activation {
             for removed in self.override_states.removed_oscs() {

@@ -68,3 +68,99 @@ fn override_eagerly_releases() {
         result
     );
 }
+
+#[test]
+#[should_panic]
+fn config_with_both_overrides() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+(defoverridesv2 (lsft a) (lsft 9) () ())
+        ",
+        "",
+    );
+}
+
+#[test]
+#[should_panic]
+fn config_with_two_overrides() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverrides (lsft a) (lsft 9))
+(defoverrides (lsft a) (lsft 9))
+        ",
+        "",
+    );
+}
+
+#[test]
+#[should_panic]
+fn config_with_both_overridesv2() {
+    simulate(
+        "
+(defcfg override-release-on-activation yes)
+(defsrc)
+(deflayer base)
+(defoverridesv2 (lsft a) (lsft 9) () ())
+(defoverridesv2 (lsft a) (lsft 9) () ())
+        ",
+        "",
+    );
+}
+
+#[test]
+fn config_with_overridev2() {
+    let cfg = "
+(defsrc)
+(deflayermap (l1) b (layer-switch l2))
+(deflayermap (l2) b (layer-switch l1))
+(defoverridesv2 (lsft a) (lsft 9) (lctl) (l2))
+        ";
+
+    // Override works.
+    let result = simulate(cfg, "d:lctl d:lsft d:a t:10 u:a u:lsft u:lctl t:10").to_ascii();
+    assert_eq!(
+        "dn:LCtrl t:1ms dn:LShift t:1ms dn:A t:8ms up:A t:1ms up:LShift t:1ms up:LCtrl",
+        result
+    );
+
+    // Override doesn't apply while lctl is held
+    let result = simulate(cfg, "d:lctl d:lsft d:a u:a t:10 u:lctl t:10 u:lsft t:10").to_ascii();
+    assert_eq!(
+        "dn:LCtrl t:1ms dn:LShift t:1ms dn:A t:1ms up:A t:7ms up:LCtrl t:10ms up:LShift",
+        result
+    );
+    let result = simulate(cfg, "d:lctl d:lsft d:a t:10 u:lctl t:10 u:lsft u:a t:10").to_ascii();
+    assert_eq!(
+        // Note that this may not be desirable...
+        // One could imagine that the desired behavior is that A is released, or that A remains
+        // held, so that irrespective of which key is released first, the 9 never activates.
+        //
+        // Doing the latter not-implemented behaviour is more complicated in code though, so for
+        // now stick to "worse is better" and keep it as-is.
+        // The user workaround is to always release the A before releasing modifiers.
+        "dn:LCtrl t:1ms dn:LShift t:1ms dn:A t:8ms up:LCtrl up:A dn:Kb9 t:10ms up:LShift up:Kb9",
+        result
+    );
+
+    // Override doesn't apply while on disabled layer is held
+    let result = simulate(
+        cfg,
+        "d:b u:b \
+         t:10 d:lsft d:a t:10 u:lsft t:10 u:a t:10 \
+         d:b u:b \
+         t:10 d:lsft d:a t:10 u:lsft t:10 u:a t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:LShift t:1ms dn:A t:9ms up:LShift t:10ms up:A \
+         t:20ms dn:LShift t:1ms dn:Kb9 t:9ms up:LShift up:Kb9",
+        result
+    );
+}
