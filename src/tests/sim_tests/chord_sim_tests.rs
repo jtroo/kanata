@@ -430,3 +430,25 @@ fn sim_chord_timeout_events() {
         result
     );
 }
+
+#[test]
+fn sim_chordsv2_quick_release() {
+    let result = simulate(
+        "
+(defsrc)
+(defcfg concurrent-tap-hold yes)
+(deflayermap layer1)
+(defchordsv2
+ (k l) rsft 75 all-released ()
+)
+        ",
+        "
+d:k d:l t:10
+d:t t:1
+u:k t:1 u:l t:10
+u:t t:10
+",
+    )
+    .to_ascii();
+    assert_eq!("dn:RShift t:11ms dn:T t:4ms up:RShift t:7ms up:T", result);
+}
