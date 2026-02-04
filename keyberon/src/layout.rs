@@ -1365,11 +1365,13 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             }
         }
         self.keys_to_suppress_for_one_cycle.clear();
-        if let Some(Some((coord, delay, action, layer_stack))) = self.action_queue.pop_front() {
-            // If there's anything in the action queue, don't process anything else yet - execute
-            // everything. Otherwise an action may never be released.
-            return self.do_action(action, coord, delay, false, &mut layer_stack.into_iter());
+
+        if self.waiting.is_none() && self.extra_waiting.is_empty() {
+            if let Some(Some((coord, delay, action, layer_stack))) = self.action_queue.pop_front() {
+                return self.do_action(action, coord, delay, false, &mut layer_stack.into_iter());
+            }
         }
+
         self.queue.iter_mut().for_each(Queued::tick_qd);
         self.last_press_tracker.tick_lpt();
         if let Some(ref mut tde) = self.tap_dance_eager {
@@ -1414,9 +1416,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             self.oneshot.pause_input_processing_ticks.saturating_sub(1);
                         CustomEvent::NoEvent
                     } else {
-                        match self.queue.pop_front() {
-                            Some(s) => self.dequeue(s),
-                            None => CustomEvent::NoEvent,
+                        // Do not process any inputs until the action queue is emptied.
+                        // Otherwise an action waiting in the queue may never be released.
+                        match self.action_queue.is_empty() {
+                            true => match self.queue.pop_front() {
+                                Some(s) => self.dequeue(s),
+                                None => CustomEvent::NoEvent,
+                            }
+                            false => CustomEvent::NoEvent,
                         }
                     }
                 } else {
