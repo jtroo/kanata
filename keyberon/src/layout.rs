@@ -22,6 +22,9 @@
 /// to do when not using a macro.
 pub use kanata_keyberon_macros::*;
 
+mod contextual_execution;
+use contextual_execution::*;
+
 use std::num::NonZeroU16;
 
 use crate::chord::*;
@@ -117,6 +120,7 @@ where
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
     delegate_to_first_layer: bool,
+    contextual_execution: ContextualExecution,
 }
 
 pub struct History<T> {
@@ -1167,6 +1171,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             trans_resolution_behavior_v2: true,
             delegate_to_first_layer: false,
             chords_v2: None,
+            contextual_execution: ContextualExecution::new(),
         }
     }
     pub fn new_with_trans_action_settings(
@@ -1247,7 +1252,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 false,
                 &mut layer_stack.clone().into_iter(),
             );
+
             if let Some(pq) = pq {
+                self.contextual_execution.pause_historical_keys_updates = true;
                 match tap {
                     Action::KeyCode(_)
                     | Action::MultipleKeyCodes(_)
@@ -1292,7 +1299,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     }
                     _ => {}
                 }
+                self.contextual_execution.pause_historical_keys_updates = false;
             }
+
             // Similar issue happens for the quick tap-hold tap as with on-press release;
             // the rapidity of the release can cause issues. See pause_input_processing_delay
             // comments for more detail.
@@ -1446,7 +1455,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         Some(SequenceEvent::Press(keycode)) => {
                             // Start tracking this fake key Press() event
                             let _ = self.states.push(FakeKey { keycode });
-                            self.historical_keys.push_front(keycode);
+                            self.contextual_execution
+                                .push_historical_key(&mut self.historical_keys, keycode);
                             // Fine to fake (0, 0). This is sequences anyway. In Kanata, nothing
                             // valid should be at (0, 0) that this would interfere with.
                             self.oneshot
@@ -1455,7 +1465,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         Some(SequenceEvent::Tap(keycode)) => {
                             // Same as Press() except we track it for one tick via seq.tapped:
                             let _ = self.states.push(FakeKey { keycode });
-                            self.historical_keys.push_front(keycode);
+                            self.contextual_execution
+                                .push_historical_key(&mut self.historical_keys, keycode);
                             self.oneshot
                                 .handle_press(OneShotHandlePressKey::Other((0, 0)));
                             seq.tapped = Some(keycode);
@@ -1931,7 +1942,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             &KeyCode(keycode) => {
                 self.last_press_tracker.update_coord(coord);
                 // Most-recent-first!
-                self.historical_keys.push_front(keycode);
+                self.contextual_execution
+                    .push_historical_key(&mut self.historical_keys, keycode);
                 let _ = self.states.push(NormalKey {
                     coord,
                     keycode,
@@ -1981,7 +1993,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     if !keycode.is_mod() && self.keycodes().any(|kc| kc == keycode) {
                         let _ = self.keys_to_suppress_for_one_cycle.push(keycode);
                     }
-                    self.historical_keys.push_front(keycode);
+                    self.contextual_execution
+                        .push_historical_key(&mut self.historical_keys, keycode);
                     let _ = self.states.push(NormalKey {
                         coord,
                         keycode,

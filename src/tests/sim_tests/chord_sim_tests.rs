@@ -452,3 +452,38 @@ u:t t:10
     .to_ascii();
     assert_eq!("dn:RShift t:11ms dn:T t:4ms up:RShift t:7ms up:T", result);
 }
+
+#[test]
+fn sim_chordsv1_key_history_updates_once() {
+    let result = simulate(
+        "
+(defsrc)
+(defchords iobspc 50
+  (i o) bspc
+)
+(deflayermap (base)
+  i (chord iobspc i)
+  o (chord iobspc o)
+  t (switch
+    ((key-history bspc 3)) a fallthrough
+    ((key-history bspc 2)) b fallthrough
+    ((key-history bspc 1)) c fallthrough
+  )
+)
+        ",
+        "
+d:i d:o t:10
+u:i u:o t:10
+d:t u:t t:10
+d:t u:t t:10
+",
+    )
+    .to_ascii();
+    // For first press of `t`, only position 1 should be filled.
+    // The key history should unpause, so on pressing `t` again,
+    // position 2 is now where bspc is because C was sent.
+    assert_eq!(
+        "t:1ms dn:BSpace t:10ms up:BSpace t:10ms dn:C t:1ms up:C t:9ms dn:B t:1ms up:B",
+        result
+    );
+}
