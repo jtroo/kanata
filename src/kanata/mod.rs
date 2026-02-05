@@ -8,6 +8,54 @@ use log::{error, info};
 use parking_lot::Mutex;
 use std::sync::mpsc::{Receiver, SyncSender as Sender, TryRecvError};
 
+/// Reorders events so modifiers are processed first on press, last on release.
+fn collect_and_sort_events(
+    first_event: KeyEvent,
+    rx: &Receiver<KeyEvent>,
+    events: &mut Vec<KeyEvent>,
+) {
+    events.clear();
+    events.push(first_event);
+    while let Ok(ev) = rx.try_recv() {
+        events.push(ev);
+    }
+    if events.len() > 1 {
+        log::debug!("collected {} events, reordering", events.len());
+        events.sort_by(|a, b| {
+            let a_is_mod = a.code.is_modifier();
+            let b_is_mod = b.code.is_modifier();
+            // Same modifier status: preserve original order
+            if a_is_mod == b_is_mod {
+                return std::cmp::Ordering::Equal;
+            }
+            let a_is_press = matches!(a.value, KeyValue::Press | KeyValue::Repeat);
+            let b_is_press = matches!(b.value, KeyValue::Press | KeyValue::Repeat);
+            // Different event types (press vs release): preserve original order
+            // to maintain valid total ordering
+            if a_is_press != b_is_press {
+                return std::cmp::Ordering::Equal;
+            }
+            // Same event type, different modifier status: reorder
+            if a_is_press {
+                // Press/Repeat: modifiers first
+                if a_is_mod {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            } else {
+                // Release: modifiers last
+                if a_is_mod {
+                    std::cmp::Ordering::Greater
+                } else {
+                    std::cmp::Ordering::Less
+                }
+            }
+        });
+        log::debug!("reordered: {:?}", events);
+    }
+}
+
 #[cfg(feature = "passthru_ahk")]
 use std::sync::mpsc::Sender as ASender;
 
@@ -2168,6 +2216,7 @@ impl Kanata {
             #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
             let mut last_input_time = web_time::Instant::now();
 
+            let mut events = Vec::new();
             let err = loop {
                 let can_block = {
                     let mut k = kanata.lock();
@@ -2184,6 +2233,8 @@ impl Kanata {
                     log::trace!("blocking on channel");
                     match rx.recv() {
                         Ok(kev) => {
+                            collect_and_sort_events(kev, &rx, &mut events);
+
                             let mut k = kanata.lock();
                             let now = web_time::Instant::now()
                                 .checked_sub(time::Duration::from_millis(1))
@@ -2215,7 +2266,14 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
-                            if let Err(e) = k.handle_input_event(&kev) {
+                            let mut event_error = None;
+                            for ev in &events {
+                                if let Err(e) = k.handle_input_event(ev) {
+                                    event_error = Some(e);
+                                    break;
+                                }
+                            }
+                            if let Some(e) = event_error {
                                 break e;
                             }
                             #[cfg(all(
@@ -2258,9 +2316,11 @@ impl Kanata {
                         }
                     }
                 } else {
-                    let mut k = kanata.lock();
                     match rx.try_recv() {
                         Ok(kev) => {
+                            collect_and_sort_events(kev, &rx, &mut events);
+
+                            let mut k = kanata.lock();
                             // Check for live reload BEFORE processing the key event
                             if k.live_reload_requested
                                 && ((k.prev_keys.is_empty() && k.cur_keys.is_empty())
@@ -2275,7 +2335,14 @@ impl Kanata {
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
-                            if let Err(e) = k.handle_input_event(&kev) {
+                            let mut event_error = None;
+                            for ev in &events {
+                                if let Err(e) = k.handle_input_event(ev) {
+                                    event_error = Some(e);
+                                    break;
+                                }
+                            }
+                            if let Some(e) = event_error {
                                 break e;
                             }
                             #[cfg(all(
@@ -2313,6 +2380,8 @@ impl Kanata {
                             );
                         }
                         Err(TryRecvError::Empty) => {
+                            let mut k = kanata.lock();
+
                             #[cfg(feature = "perf_logging")]
                             let start = web_time::Instant::now();
 
@@ -2671,5 +2740,174 @@ where
     }
     for coord in coords_to_release.into_iter() {
         layout.event(Event::Release(coord.0, coord.1));
+    }
+}
+
+#[cfg(test)]
+mod collect_and_sort_events_tests {
+    use super::*;
+    use kanata_parser::keys::OsCode;
+    use std::sync::mpsc::sync_channel;
+
+    fn make_event(code: OsCode, value: KeyValue) -> KeyEvent {
+        KeyEvent { code, value }
+    }
+
+    #[test]
+    fn single_event_unchanged() {
+        let (_tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Press);
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].code, OsCode::KEY_A);
+    }
+
+    #[test]
+    fn modifiers_first_on_press() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Press);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Press))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Press)).unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[1].code, OsCode::KEY_A);
+        assert_eq!(result[2].code, OsCode::KEY_B);
+    }
+
+    #[test]
+    fn modifiers_last_on_release() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Release);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Release))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Release))
+            .unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].code, OsCode::KEY_A);
+        assert_eq!(result[1].code, OsCode::KEY_B);
+        assert_eq!(result[2].code, OsCode::KEY_LEFTCTRL);
+    }
+
+    #[test]
+    fn multiple_modifiers_on_press() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Press);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Press))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_LEFTSHIFT, KeyValue::Press))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Press)).unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[1].code, OsCode::KEY_LEFTSHIFT);
+        assert_eq!(result[2].code, OsCode::KEY_A);
+        assert_eq!(result[3].code, OsCode::KEY_B);
+    }
+
+    #[test]
+    fn multiple_modifiers_on_release() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Release);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Release))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_LEFTSHIFT, KeyValue::Release))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Release))
+            .unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0].code, OsCode::KEY_A);
+        assert_eq!(result[1].code, OsCode::KEY_B);
+        assert_eq!(result[2].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[3].code, OsCode::KEY_LEFTSHIFT);
+    }
+
+    #[test]
+    fn repeat_treated_like_press() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Repeat);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Repeat))
+            .unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[1].code, OsCode::KEY_A);
+    }
+
+    #[test]
+    fn all_modifiers_no_reorder_needed() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_LEFTCTRL, KeyValue::Press);
+        tx.send(make_event(OsCode::KEY_LEFTSHIFT, KeyValue::Press))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_LEFTALT, KeyValue::Press))
+            .unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[1].code, OsCode::KEY_LEFTSHIFT);
+        assert_eq!(result[2].code, OsCode::KEY_LEFTALT);
+    }
+
+    #[test]
+    fn all_non_modifiers_no_reorder_needed() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Press);
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Press)).unwrap();
+        tx.send(make_event(OsCode::KEY_C, KeyValue::Press)).unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].code, OsCode::KEY_A);
+        assert_eq!(result[1].code, OsCode::KEY_B);
+        assert_eq!(result[2].code, OsCode::KEY_C);
+    }
+
+    #[test]
+    fn mixed_press_release_preserves_interleaving() {
+        let (tx, rx) = sync_channel::<KeyEvent>(10);
+        let first = make_event(OsCode::KEY_A, KeyValue::Press);
+        tx.send(make_event(OsCode::KEY_LEFTCTRL, KeyValue::Release))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_B, KeyValue::Release))
+            .unwrap();
+        tx.send(make_event(OsCode::KEY_LEFTSHIFT, KeyValue::Press))
+            .unwrap();
+
+        let mut result = Vec::new();
+        collect_and_sort_events(first, &rx, &mut result);
+
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0].code, OsCode::KEY_A);
+        assert_eq!(result[1].code, OsCode::KEY_B);
+        assert_eq!(result[2].code, OsCode::KEY_LEFTCTRL);
+        assert_eq!(result[3].code, OsCode::KEY_LEFTSHIFT);
     }
 }
