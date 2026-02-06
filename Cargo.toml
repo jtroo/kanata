@@ -62,7 +62,7 @@ kanata-tcp-protocol = { path = "tcp_protocol", version = "0.190.0" }
 arboard = "3.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-karabiner-driverkit = "0.1.5"
+karabiner-driverkit = { git = "https://github.com/malpern/driverkit.git", branch = "fix/expose-sink-health" }
 objc = "0.2.7"
 core-graphics = "0.24.0"
 open = { version = "5", optional = true }

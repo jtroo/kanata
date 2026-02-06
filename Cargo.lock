@@ -853,8 +853,7 @@ dependencies = [
 [[package]]
 name = "karabiner-driverkit"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "000dc9189dc126ed5ec1ba477b3f524d88f1527260b423dbc79d23356c82165f"
+source = "git+https://github.com/malpern/driverkit.git?branch=fix%2Fexpose-sink-health#a1309eeb1429e0f9b1209fa94fe7c6fb6a729f4f"
 dependencies = [
  "cc",
  "os_info",
