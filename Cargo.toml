@@ -1,18 +1,18 @@
 [workspace]
 members = [
-    "./",
-    "parser",
-    "keyberon",
-    "example_tcp_client",
-    "tcp_protocol",
-    "windows_key_tester",
-    "simulated_input",
-    "simulated_passthru",
-    "wasm",
+	"./",
+	"parser",
+	"keyberon",
+	"example_tcp_client",
+	"tcp_protocol",
+	"windows_key_tester",
+	"simulated_input",
+	"simulated_passthru",
+	"wasm",
 ]
 exclude = [
-    "interception",
-    "key-sort-add",
+	"interception",
+	"key-sort-add",
 ]
 resolver = "2"
 
@@ -51,7 +51,7 @@ radix_trie = "0.2"
 rustc-hash = "1.1.0"
 simplelog = "0.12.0"
 serde_json = { version = "1", features = ["std"], default-features = false, optional = true }
-time = "0.3.36"
+time = "0.3.47"
 web-time = "1.1.0"
 
 kanata-keyberon = { path = "keyberon", version = "0.1105.0" }
