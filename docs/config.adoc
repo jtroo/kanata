@@ -3741,9 +3741,48 @@ activated by a chord.
 )
 ----
 
-
 NOTE: Also see <<input-chords,v1 chords>>,
 which are configured differently and can be defined per-layer.
+
+[[chordsv2-processing-order]]
+=== Action processing order
+
+The chordsv2 system handles keys before any layer action handling.
+This has a consequence of not entering the delay and interruption flow
+of actions such as `tap-hold-release`.
+
+If you want a chordsv2 action activation to be processed
+by the aforementioned category of actions
+you can move the action into a virtual key
+(see <<virtual-keys>>) and have the chordsv2 action
+press and release the virtual key.
+
+See a sample below that showcases a reusable template.
+
+.Example:
+[source]
+----
+(defcfg concurrent-tap-hold yes)
+(defsrc)
+(deflayermap (base)
+  caps (tap-hold-release 0 200 esc lctl))
+
+;; defines a vkey named v-$key, example v-bspc
+;; and an alias @v-bspc that press and and releases the v-key
+;; within on-press and on-release respectively.
+(deftemplate v- (key)
+  (defvirtualkeys (concat v- $key) $key)
+  (defalias (concat v- $key)
+    (multi (on-press press-vkey (concat v- $key)) (on-release release-vkey (concat v- $key))))
+)
+
+(t! v- bspc)
+(t! v- del)
+(defchordsv2
+  (j k) @v-bspc 75 first-release ()
+  (s d) @v-del 75 first-release ()
+)
+----
 
 [[optional-defcfg-options]]
 == defcfg options

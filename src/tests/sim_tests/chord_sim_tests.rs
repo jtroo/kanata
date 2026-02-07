@@ -303,13 +303,26 @@ fn sim_chord_eager_tapholdpress_activation() {
 fn sim_chord_eager_tapholdrelease_activation() {
     let result = simulate(
         "
-    (defcfg concurrent-tap-hold yes)
-    (defsrc caps j k bspc)
-    (deflayer one (tap-hold-release 0 200 esc lctl) j k bspc)
-    (defvirtualkeys bspc bspc)
-    (defchordsv2
-      (j k) (multi (on-press press-vkey bspc) (on-release release-vkey bspc)) 75 first-release ()
-    )
+(defcfg concurrent-tap-hold yes)
+(defsrc)
+(deflayermap (base)
+  caps (tap-hold-release 0 200 esc lctl))
+
+;; defines a vkey named v-$key, example v-bspc
+;; and an alias @v-bspc that press and and releases the v-key
+;; within on-press and on-release respectively.
+(deftemplate v- (key)
+  (defvirtualkeys (concat v- $key) $key)
+  (defalias (concat v- $key)
+    (multi (on-press press-vkey (concat v- $key)) (on-release release-vkey (concat v- $key))))
+)
+
+(t! v- bspc)
+(t! v- del)
+(defchordsv2
+  (j k) @v-bspc 75 first-release ()
+  (s d) @v-del 75 first-release ()
+)
         ",
         "d:caps t:10 d:j d:k t:10 u:j u:k t:100 u:caps t:1000",
     )
