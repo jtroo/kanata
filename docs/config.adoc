@@ -4940,6 +4940,12 @@ These are sent automatically when events occur:
 
 | `{"Error":{"msg":"error description"}}`
 | Sent when an error occurs processing a command.
+
+| `{"HoldActivated":{"key":"caps"}}`
+| Sent when a tap-hold key transitions to hold state. The `key` field is the physical key name.
+
+| `{"TapActivated":{"key":"a"}}`
+| Sent when a tap-hold key triggers its tap action. The `key` field is the physical key name.
 |===
 
 ===== Query Responses
@@ -4963,7 +4969,7 @@ These are sent in response to client queries:
 | Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
 
 | `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
-| Response to `Hello`. Contains server version, protocol version, and supported capabilities.
+| Response to `Hello`. Contains server version, protocol version, and supported capabilities. Includes `hold-activated` and `tap-activated`.
 
 | `{"ReloadResult":{"ok":true}}`
 | Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.

@@ -48,6 +48,16 @@ pub enum ServerMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         timeout_ms: Option<u64>,
     },
+    /// Sent when a tap-hold key transitions to hold state.
+    /// The `key` field is the physical key name (e.g., `"caps"`, `"a"`).
+    HoldActivated {
+        key: String,
+    },
+    /// Sent when a tap-hold key triggers its tap action.
+    /// The `key` field is the physical key name (e.g., `"caps"`, `"a"`).
+    TapActivated {
+        key: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -251,5 +261,23 @@ mod tests {
         let msg = ServerMessage::FakeKeyNames { names: vec![] };
         let json = serde_json::to_string(&msg).unwrap();
         assert_eq!(json, r#"{"FakeKeyNames":{"names":[]}}"#);
+    }
+
+    #[test]
+    fn test_hold_activated_json_format() {
+        let msg = ServerMessage::HoldActivated {
+            key: "caps".to_string(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, r#"{"HoldActivated":{"key":"caps"}}"#);
+    }
+
+    #[test]
+    fn test_tap_activated_json_format() {
+        let msg = ServerMessage::TapActivated {
+            key: "a".to_string(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, r#"{"TapActivated":{"key":"a"}}"#);
     }
 }

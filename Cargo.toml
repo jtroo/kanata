@@ -122,7 +122,7 @@ regex = { version = "1.10.4", optional = true }
 [features]
 default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []
-tcp_server = ["dep:serde_json"]
+tcp_server = ["dep:serde_json", "kanata-keyberon/tap_hold_tracker"]
 win_sendinput_send_scancodes = ["kanata-parser/win_sendinput_send_scancodes"]
 win_llhook_read_scancodes = ["kanata-parser/win_llhook_read_scancodes"]
 winiov2 = ["win_llhook_read_scancodes","win_sendinput_send_scancodes"]

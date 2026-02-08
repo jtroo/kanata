@@ -11,6 +11,9 @@ categories = ["no-std"]
 license = "MIT"
 readme = "README.md"
 
+[features]
+tap_hold_tracker = []
+
 [dependencies]
 kanata-keyberon-macros = { version = "0.2.0" }
 heapless = "0.7.16"

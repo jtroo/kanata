@@ -1187,6 +1187,38 @@ impl Kanata {
     fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
         let layout = self.layout.bm();
         let custom_event = layout.tick();
+
+        #[cfg(feature = "tcp_server")]
+        if let Some(hold_info) = layout.tap_hold_tracker.take_hold_activated()
+            && hold_info.coord.0 == NORMAL_KEY_ROW
+            && let Some(tx) = _tx
+        {
+            let osc = OsCode::from(hold_info.coord.1);
+            let key = osc.to_string().to_lowercase();
+            log::debug!("HoldActivated: key={key} coord={:?}", hold_info.coord);
+            match tx.try_send(ServerMessage::HoldActivated { key }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send HoldActivated event: {}", error);
+                }
+            }
+        }
+        #[cfg(feature = "tcp_server")]
+        if let Some(tap_info) = layout.tap_hold_tracker.take_tap_activated()
+            && tap_info.coord.0 == NORMAL_KEY_ROW
+            && let Some(tx) = _tx
+        {
+            let osc = OsCode::from(tap_info.coord.1);
+            let key = osc.to_string().to_lowercase();
+            log::debug!("TapActivated: key={key} coord={:?}", tap_info.coord);
+            match tx.try_send(ServerMessage::TapActivated { key }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send TapActivated event: {}", error);
+                }
+            }
+        }
+
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
