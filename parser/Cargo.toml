@@ -1,6 +1,6 @@
 [package]
 name = "kanata-parser"
-version = "0.1105.0"
+version = "0.1110.0"
 authors = ["jtroo <j.andreitabs@gmail.com>"]
 description = "A parser for configuration language of kanata, a keyboard remapper."
 keywords = ["kanata", "parser"]
@@ -24,7 +24,7 @@ patricia_tree = "0.8"
 rustc-hash = "1.1.0"
 thiserror = "1.0.38"
 
-kanata-keyberon = { path = "../keyberon", version = "0.1105.0" }
+kanata-keyberon = { path = "../keyberon", version = "0.1110.0" }
 
 [dev-dependencies]
 simplelog = "0.12.0"
