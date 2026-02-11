@@ -403,6 +403,7 @@ impl Kanata {
             match cfg.options.linux_opts.linux_output_bus_type {
                 LinuxCfgOutputBusType::BusUsb => evdev::BusType::BUS_USB,
                 LinuxCfgOutputBusType::BusI8042 => evdev::BusType::BUS_I8042,
+                LinuxCfgOutputBusType::BusVirtual => evdev::BusType::BUS_VIRTUAL,
             },
         ) {
             Ok(kbd_out) => kbd_out,
@@ -574,6 +575,7 @@ impl Kanata {
             match cfg.options.linux_opts.linux_output_bus_type {
                 LinuxCfgOutputBusType::BusUsb => evdev::BusType::BUS_USB,
                 LinuxCfgOutputBusType::BusI8042 => evdev::BusType::BUS_I8042,
+                LinuxCfgOutputBusType::BusVirtual => evdev::BusType::BUS_VIRTUAL,
             },
         ) {
             Ok(kbd_out) => kbd_out,

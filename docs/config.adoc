@@ -4471,7 +4471,7 @@ The default value is kanata.
 === Linux only: linux-output-device-bus-type
 
 Kanata on Linux needs to declare a "bus type" for its evdev output device.
-The options are `USB` and `I8042`, with the default as `I8042`.
+The options are `USB`, `I8042`, and `virtual`, with the default as `I8042`.
 Using USB can https://github.com/jtroo/kanata/pull/661[break disable-touchpad-while-typing on Wayland].
 But using I8042 appears to break https://github.com/jtroo/kanata/issues/1131[some other scenarios].
 Thus the output bus type is configurable.
