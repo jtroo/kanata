@@ -121,7 +121,13 @@ where
     trans_resolution_behavior_v2: bool,
     delegate_to_first_layer: bool,
     contextual_execution: ContextualExecution,
+    /// Tracks tap-hold activation events (hold/tap resolved).
+    /// Only stores data when the `tap_hold_tracker` feature is enabled;
+    /// otherwise this is a zero-sized no-op.
+    pub tap_hold_tracker: crate::tap_hold_tracker::TapHoldTracker,
 }
+
+pub use crate::tap_hold_tracker::{HoldActivatedInfo, TapActivatedInfo};
 
 pub struct History<T> {
     events: ArrayDeque<T, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
@@ -400,7 +406,7 @@ impl<'a, T: 'a> State<'a, T> {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct TapDanceState<'a, T: 'a> {
+pub(crate) struct TapDanceState<'a, T: 'a> {
     actions: &'a [&'a Action<'a, T>],
     timeout: u16,
     num_taps: u16,
@@ -435,7 +441,7 @@ impl<T> TapDanceEagerState<'_, T> {
 }
 
 #[derive(Debug)]
-enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
+pub(crate) enum WaitingConfig<'a, T: 'a + std::fmt::Debug> {
     HoldTap(HoldTapConfig<'a>),
     TapDance(TapDanceState<'a, T>),
     Chord(&'a ChordsGroup<'a, T>),
@@ -1172,6 +1178,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             delegate_to_first_layer: false,
             chords_v2: None,
             contextual_execution: ContextualExecution::new(),
+            tap_hold_tracker: Default::default(),
         }
     }
     pub fn new_with_trans_action_settings(
@@ -1209,6 +1216,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 WaitingConfig::TapDance(_) => 0,
             };
             let layer_stack = w.layer_stack.clone();
+            self.tap_hold_tracker.set_hold_activated(coord, &w.config);
             if idx < 0 {
                 self.waiting = None;
             } else {
@@ -1240,6 +1248,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 WaitingConfig::TapDance(_) => 0,
             };
             let layer_stack = w.layer_stack.clone();
+            self.tap_hold_tracker.set_tap_activated(coord, &w.config);
             if idx < 0 {
                 self.waiting = None;
             } else {
@@ -1325,6 +1334,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 WaitingConfig::TapDance(_) => 0,
             };
             let layer_stack = w.layer_stack.clone();
+            self.tap_hold_tracker.set_hold_activated(coord, &w.config);
             if idx < 0 {
                 self.waiting = None;
             } else {
@@ -4745,5 +4755,185 @@ mod test {
                 assert_keys(&[], layout.keycodes());
             }
         }
+    }
+
+    #[cfg(feature = "tap_hold_tracker")]
+    #[test]
+    fn hold_activated_is_set_on_hold_timeout() {
+        static LAYERS: Layers<1, 1> = &[[[HoldTap(&HoldTapAction {
+            timeout: 5,
+            hold: k(LAlt),
+            timeout_action: k(LAlt),
+            tap: k(Space),
+            config: HoldTapConfig::Default,
+            tap_hold_interval: 0,
+            on_press_reset_timeout_to: None,
+        })]]];
+        let mut layout = Layout::new(LAYERS);
+        // Nothing set initially.
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+
+        layout.event(Press(0, 0));
+        for _ in 0..6 {
+            let _ = layout.tick();
+        }
+        // Hold action should be active.
+        assert_keys(&[LAlt], layout.keycodes());
+
+        // Flag should be set exactly once.
+        let info = layout
+            .tap_hold_tracker
+            .take_hold_activated()
+            .expect("hold_activated should be set");
+        assert_eq!(info.coord, (0, 0));
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+    }
+
+    #[cfg(feature = "tap_hold_tracker")]
+    #[test]
+    fn tap_activated_is_set_on_tap_release() {
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(LAlt),
+                timeout_action: k(LAlt),
+                tap: k(Space),
+                config: HoldTapConfig::Default,
+                tap_hold_interval: 0,
+                on_press_reset_timeout_to: None,
+            }),
+            k(A),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+
+        // Quick press and release triggers tap.
+        layout.event(Press(0, 0));
+        let _ = layout.tick();
+        layout.event(Release(0, 0));
+        let _ = layout.tick();
+
+        assert_keys(&[Space], layout.keycodes());
+        let info = layout
+            .tap_hold_tracker
+            .take_tap_activated()
+            .expect("tap_activated should be set");
+        assert_eq!(info.coord, (0, 0));
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+    }
+
+    #[cfg(feature = "tap_hold_tracker")]
+    #[test]
+    fn hold_activated_is_set_on_permissive_hold() {
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(LAlt),
+                timeout_action: k(LAlt),
+                tap: k(Space),
+                config: HoldTapConfig::PermissiveHold,
+                tap_hold_interval: 0,
+                on_press_reset_timeout_to: None,
+            }),
+            k(A),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+
+        // PermissiveHold: press hold-tap key, press another key, release it => hold.
+        layout.event(Press(0, 0));
+        let _ = layout.tick();
+        layout.event(Press(0, 1));
+        let _ = layout.tick();
+        layout.event(Release(0, 1));
+        let _ = layout.tick();
+
+        assert_keys(&[LAlt], layout.keycodes());
+        let info = layout
+            .tap_hold_tracker
+            .take_hold_activated()
+            .expect("hold_activated should be set via waiting_into_hold");
+        assert_eq!(info.coord, (0, 0));
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+    }
+
+    #[cfg(feature = "tap_hold_tracker")]
+    #[test]
+    fn hold_activated_is_set_on_hold_on_other_key_press() {
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                timeout: 200,
+                hold: k(LAlt),
+                timeout_action: k(LAlt),
+                tap: k(Space),
+                config: HoldTapConfig::HoldOnOtherKeyPress,
+                tap_hold_interval: 0,
+                on_press_reset_timeout_to: None,
+            }),
+            k(A),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+
+        // HoldOnOtherKeyPress: press hold-tap key, then press another key => hold.
+        layout.event(Press(0, 0));
+        let _ = layout.tick();
+        layout.event(Press(0, 1));
+        let _ = layout.tick();
+
+        assert_keys(&[LAlt], layout.keycodes());
+        let info = layout
+            .tap_hold_tracker
+            .take_hold_activated()
+            .expect("hold_activated should be set via waiting_into_hold");
+        assert_eq!(info.coord, (0, 0));
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+    }
+
+    #[test]
+    fn chord_does_not_set_tap_hold_activated() {
+        const GROUP: ChordsGroup<core::convert::Infallible> = ChordsGroup {
+            coords: &[((0, 0), 1), ((0, 1), 2)],
+            chords: &[(3, &KeyCode(Kb5))],
+            timeout: 100,
+        };
+        static LAYERS: Layers<2, 1> = &[[[Chords(&GROUP), Chords(&GROUP)]]];
+
+        let mut layout = Layout::new(LAYERS);
+        layout.event(Press(0, 0));
+        for _ in 0..50 {
+            let _ = layout.tick();
+        }
+        layout.event(Press(0, 1));
+        for _ in 0..50 {
+            let _ = layout.tick();
+        }
+        assert_keys(&[Kb5], layout.keycodes());
+        // Chord resolution must not set tap or hold activated flags.
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+    }
+
+    #[test]
+    fn tap_dance_does_not_set_tap_hold_activated() {
+        static LAYERS: Layers<2, 1> = &[[[
+            TapDance(&crate::action::TapDance {
+                timeout: 100,
+                actions: &[&k(LShift), &k(LCtrl)],
+                config: TapDanceConfig::Lazy,
+            }),
+            k(A),
+        ]]];
+
+        let mut layout = Layout::new(LAYERS);
+        // Single tap, wait for timeout.
+        layout.event(Press(0, 0));
+        for _ in 0..101 {
+            let _ = layout.tick();
+        }
+        assert_keys(&[LShift], layout.keycodes());
+        // Tap-dance resolution must not set tap or hold activated flags.
+        assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
+        assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
     }
 }
