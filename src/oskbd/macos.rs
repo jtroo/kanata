@@ -52,11 +52,15 @@ impl From<InputEvent> for DKEvent {
     }
 }
 
-pub struct KbdIn {}
+pub struct KbdIn {
+    grabbed: bool,
+}
 
 impl Drop for KbdIn {
     fn drop(&mut self) {
-        release();
+        if self.grabbed {
+            release();
+        }
     }
 }
 
@@ -100,7 +104,29 @@ impl KbdIn {
 
         if !device_names.is_empty() || register_device("") {
             if grab() {
-                Ok(Self {})
+                // Wait for the DriverKit virtual keyboard to become ready.
+                // The pqrs client connects asynchronously; give it time.
+                let mut ready = false;
+                for i in 0..100 {
+                    if is_sink_ready() {
+                        ready = true;
+                        break;
+                    }
+                    if i % 10 == 0 && i > 0 {
+                        log::info!(
+                            "Waiting for DriverKit virtual keyboard... ({:.1}s)",
+                            i as f64 * 0.1
+                        );
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+                if !ready {
+                    log::warn!(
+                        "DriverKit virtual keyboard not ready after 10s. \
+                         Key output may fail until the daemon connects."
+                    );
+                }
+                Ok(Self { grabbed: true })
             } else {
                 Err(anyhow!("grab failed"))
             }
@@ -119,9 +145,41 @@ impl KbdIn {
             code: 0,
         };
 
-        wait_key(&mut event);
+        let got_event = wait_key(&mut event);
+        if got_event == 0 {
+            // Pipe returned EOF — input was released via release_input_only()
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "input pipe closed (devices released)",
+            ));
+        }
 
         Ok(InputEvent::new(event))
+    }
+
+    /// Release seized input devices without tearing down the output connection.
+    /// After this call, `read()` will return `UnexpectedEof`.
+    pub fn release_input(&mut self) {
+        if self.grabbed {
+            release_input_only();
+            self.grabbed = false;
+        }
+    }
+
+    /// Re-seize input devices after a previous `release_input()`.
+    /// Returns true if at least one device was seized.
+    pub fn regrab_input(&mut self) -> bool {
+        if !self.grabbed {
+            let ok = karabiner_driverkit::regrab_input();
+            self.grabbed = ok;
+            ok
+        } else {
+            true
+        }
+    }
+
+    pub fn is_grabbed(&self) -> bool {
+        self.grabbed
     }
 }
 
@@ -230,7 +288,13 @@ impl KbdOut {
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         let mut devent = event.into();
         log::debug!("Attempting to write {event:?} {devent:?}");
-        let _sent = send_key(&mut devent);
+        let rc = send_key(&mut devent);
+        if rc == 2 {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "DriverKit virtual keyboard not ready (sink disconnected)",
+            ));
+        }
         Ok(())
     }
 

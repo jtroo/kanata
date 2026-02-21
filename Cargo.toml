@@ -62,7 +62,7 @@ kanata-tcp-protocol = { path = "tcp_protocol", version = "0.1110.0" }
 arboard = "3.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-karabiner-driverkit = "0.2.0"
+karabiner-driverkit = "0.2.1"
 objc = "0.2.7"
 core-graphics = "0.24.0"
 open = { version = "5", optional = true }
