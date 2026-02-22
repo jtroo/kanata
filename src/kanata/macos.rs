@@ -10,10 +10,15 @@ use std::sync::mpsc::SyncSender as Sender;
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
     ///
-    /// Contains an outer recovery loop: if the DriverKit output connection drops
+    /// Contains a recovery mechanism: if the DriverKit output connection drops
     /// (daemon crash, not installed, etc.), input devices are released so the
     /// keyboard returns to normal operation. When the connection recovers,
     /// devices are re-seized and remapping resumes.
+    ///
+    /// Recovery uses `regrab_input()` rather than recreating `KbdIn` to avoid
+    /// re-initializing the pqrs client (via `init_sink()`). A second client
+    /// causes duplicate connection callbacks that race with the IOHIDManager,
+    /// leading to "exclusive access" errors on the input device.
     pub fn event_loop(kanata: Arc<Mutex<Self>>, tx: Sender<KeyEvent>) -> Result<()> {
         info!("entering the event loop");
 
@@ -23,16 +28,15 @@ impl Kanata {
         let exclude_names = k.exclude_names.clone();
         drop(k);
 
+        let mut kb = match KbdIn::new(include_names, exclude_names) {
+            Ok(kbd_in) => kbd_in,
+            Err(e) => bail!("failed to open keyboard device(s): {}", e),
+        };
+
+        info!("keyboard grabbed, entering event processing loop");
+
         loop {
-            // --- (Re)create KbdIn and grab input devices ---
-            let mut kb = match KbdIn::new(include_names.clone(), exclude_names.clone()) {
-                Ok(kbd_in) => kbd_in,
-                Err(e) => bail!("failed to open keyboard device(s): {}", e),
-            };
-
-            info!("keyboard grabbed, entering event processing loop");
-
-            // --- Inner event processing loop ---
+            // --- Event processing loop ---
             let needs_recovery = loop {
                 // Check output health before blocking on input
                 if !is_sink_ready() {
@@ -114,23 +118,36 @@ impl Kanata {
 
             // --- Release input so the keyboard works normally (unseized) ---
             kb.release_input();
-            drop(kb);
 
             info!(
                 "Input devices released. Keyboard is usable (without remapping). \
                  Waiting for DriverKit output to recover..."
             );
 
-            // --- Wait for the pqrs client heartbeat to re-establish the connection ---
+            // --- Wait for the pqrs client to re-establish the connection ---
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(500));
                 if is_sink_ready() {
+                    // Let the pqrs client's callback sequence finish before
+                    // we re-seize input devices. The client fires several
+                    // callbacks in quick succession (connected, driver_connected,
+                    // virtual_hid_keyboard_ready); seizing too early can race
+                    // with IOKit enumeration triggered by those callbacks.
+                    std::thread::sleep(std::time::Duration::from_secs(1));
                     info!("DriverKit output recovered — re-grabbing input devices");
                     break;
                 }
             }
 
-            // The outer loop will create a new KbdIn and resume remapping.
+            // Re-seize input devices using regrab_input() which creates a fresh
+            // pipe and listener thread without re-initializing the sink client.
+            if !kb.regrab_input() {
+                bail!("failed to re-grab keyboard devices after DriverKit recovery");
+            }
+
+            info!("keyboard grabbed, entering event processing loop");
+
+            // Back to the event processing loop.
         }
     }
 
