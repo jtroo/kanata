@@ -7,6 +7,7 @@ use std::sync::{Mutex, MutexGuard};
 
 mod ambiguous;
 mod defcfg;
+mod defhands;
 mod device_detect;
 mod environment;
 mod macros;

@@ -2017,6 +2017,7 @@ results in `$tap-action` activating.
 (tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-trigger-keys-on-press $tap-trigger-keys-on-press-then-release)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-tap-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-opposite-hand $timeout $tap-action $hold-action [options...])
 ----
 
 [cols="1,2"]
@@ -2067,6 +2068,11 @@ Unlike `tap-hold-release-keys`, does NOT activate `$hold-action` early
 when other keys are pressed and released.
 Waits for full `$hold-timeout` before activating `$hold-action`.
 This is useful for home row mods where fast typing should not trigger modifiers.
+
+| `tap-hold-opposite-hand`
+| Resolves to `$hold-action` when a key from the opposite hand (per `defhands`) is pressed.
+Requires a `defhands` directive. Supports keyword options for fine-grained control.
+See <<defhands and tap-hold-opposite-hand>> below.
 |===
 **Description**
 
@@ -2261,6 +2267,46 @@ or in other words the key that corresponds to `defsrc`.
   ath (tap-hold-tap-keys 200 200 a lsft (s d f))
 )
 ----
+
+==== defhands and tap-hold-opposite-hand
+
+`defhands` assigns physical keys to `left` / `right` hand groups.
+`tap-hold-opposite-hand` uses this to resolve hold when the next key
+is on the opposite hand — reducing misfires compared to manual key lists.
+
+[source]
+----
+(defhands
+  left  (q w e r t a s d f g z x c v b)
+  right (y u i o p h j k l ; n m , . /))
+
+(defalias
+  fctl (tap-hold-opposite-hand 180 f lctl))
+----
+
+`defhands` rules: at most one block; each group (`left`/`right`) at most once;
+a key cannot appear in both groups; partial definitions (only one hand) are allowed;
+unlisted keys have no hand assignment.
+
+`tap-hold-opposite-hand` takes `$timeout $tap-action $hold-action` followed by
+optional keyword pairs. It requires `defhands` to be defined.
+Internally it uses the same `HoldTapConfig::Custom` machinery as `tap-hold-release-keys`.
+
+[cols="1,1,1,2"]
+|===
+| Option | Values | Default | Description
+
+| `:timeout` | `tap`, `hold` | `tap` | Action when hold timeout elapses (optimized for home-row-mod behavior).
+| `:same-hand` | `tap`, `hold`, `ignore` | `tap` | Action when a same-hand key is pressed.
+| `:neutral-keys` | `(key list)` | (empty) | Keys treated as neutral, overriding their `defhands` assignment.
+| `:neutral` | `tap`, `hold`, `ignore` | `ignore` | Action when a `:neutral-keys` key is pressed.
+| `:unknown-hand` | `tap`, `hold`, `ignore` | `ignore` | Action when a key not in `defhands` is pressed.
+|===
+
+When a value is `ignore`, that key press is skipped and the action
+waits for the next key or timeout.
+
+See `cfg_samples/opposite-hand-hrm.kbd` for a full working example.
 
 [[macro]]
 === macro

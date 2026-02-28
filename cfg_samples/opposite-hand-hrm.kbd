@@ -1,0 +1,47 @@
+;; Home row mods using tap-hold-opposite-hand
+;;
+;; Hold activates only when the next key is on the opposite hand,
+;; which substantially reduces misfires during fast same-hand rolls.
+;; Same-hand keys resolve as tap by default.
+;;
+;; Compare with home-row-mod-basic.kbd which uses plain tap-hold.
+
+(defcfg
+  process-unmapped-keys yes
+)
+
+;; Assign physical keys to hands. Keys not listed have no hand
+;; assignment and are governed by :unknown-hand (default: ignore).
+(defhands
+  left  (q w e r t a s d f g z x c v b)
+  right (y u i o p h j k l ; n m , . /))
+
+(defsrc
+  q   w   e   r   t   y   u   i   o   p
+  a   s   d   f   g   h   j   k   l   ;
+  z   x   c   v   b   n   m   ,   .   /
+                  spc
+)
+
+(defvar
+  tap-time 200
+  hold-time 180
+)
+
+(defalias
+  a (tap-hold-opposite-hand $hold-time a lmet)
+  s (tap-hold-opposite-hand $hold-time s lalt)
+  d (tap-hold-opposite-hand $hold-time d lctl)
+  f (tap-hold-opposite-hand $hold-time f lsft)
+  j (tap-hold-opposite-hand $hold-time j rsft)
+  k (tap-hold-opposite-hand $hold-time k rctl)
+  l (tap-hold-opposite-hand $hold-time l ralt)
+  ; (tap-hold-opposite-hand $hold-time ; rmet)
+)
+
+(deflayer base
+  q   w   e   r   t   y   u   i   o   p
+  @a  @s  @d  @f  g   h   @j  @k  @l  @;
+  z   x   c   v   b   n   m   ,   .   /
+                  spc
+)

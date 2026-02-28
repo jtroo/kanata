@@ -554,7 +554,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 }
             }
             HoldTapConfig::Custom(func) => {
-                let (waiting_action, local_skip) = (func)(QueuedIter(queued.iter()));
+                let (waiting_action, local_skip) = (func)(QueuedIter(queued.iter()), self.coord);
                 if waiting_action.is_some() {
                     return waiting_action;
                 }
@@ -2704,16 +2704,16 @@ mod test {
 
     #[test]
     fn custom_handler() {
-        fn always_tap(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+        fn always_tap(_: QueuedIter, _: KCoord) -> (Option<WaitingAction>, bool) {
             (Some(WaitingAction::Tap), false)
         }
-        fn always_hold(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+        fn always_hold(_: QueuedIter, _: KCoord) -> (Option<WaitingAction>, bool) {
             (Some(WaitingAction::Hold), false)
         }
-        fn always_nop(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+        fn always_nop(_: QueuedIter, _: KCoord) -> (Option<WaitingAction>, bool) {
             (Some(WaitingAction::NoOp), false)
         }
-        fn always_none(_: QueuedIter) -> (Option<WaitingAction>, bool) {
+        fn always_none(_: QueuedIter, _: KCoord) -> (Option<WaitingAction>, bool) {
             (None, false)
         }
         static LAYERS: Layers<4, 1> = &[[[

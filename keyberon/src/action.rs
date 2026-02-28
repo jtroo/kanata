@@ -1,7 +1,7 @@
 //! The different actions that can be executed via any given key.
 
 use crate::key_code::KeyCode;
-use crate::layout::{QueuedIter, WaitingAction};
+use crate::layout::{KCoord, QueuedIter, WaitingAction};
 use core::fmt::Debug;
 
 pub mod switch;
@@ -72,10 +72,14 @@ pub enum HoldTapConfig<'a> {
     /// A custom configuration. Allows the behavior to be controlled by a caller
     /// supplied handler function.
     ///
-    /// The input to the custom handler will be an iterator that returns
+    /// The first argument to the custom handler will be an iterator that returns
     /// [Stacked] [Events](Event). The order of the events matches the order the
     /// corresponding key was pressed/released, i.e. the first event is the
     /// event first received after the HoldTap action key is pressed.
+    ///
+    /// The second argument is the coordinate `(row, col)` of the key that
+    /// initiated the HoldTap action, allowing the handler to identify which
+    /// physical key is waiting for resolution.
     ///
     /// The return value should be the intended action that should be used. A
     /// [Some] value will cause one of: [WaitingAction::Tap] for the configured
@@ -87,7 +91,8 @@ pub enum HoldTapConfig<'a> {
     /// The bool value defines if the timeout check should be skipped at the
     /// next tick. This should generally be false. This is used by `tap-hold-
     /// except-keys` to handle presses even when the timeout has been reached.
-    Custom(&'a (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync)),
+    #[allow(clippy::type_complexity)]
+    Custom(&'a (dyn Fn(QueuedIter, KCoord) -> (Option<WaitingAction>, bool) + Send + Sync)),
 }
 
 impl Debug for HoldTapConfig<'_> {

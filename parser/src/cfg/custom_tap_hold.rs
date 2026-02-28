@@ -1,8 +1,30 @@
-use kanata_keyberon::layout::{Event, QueuedIter, REAL_KEY_ROW, WaitingAction};
+use kanata_keyberon::layout::{Event, KCoord, QueuedIter, REAL_KEY_ROW, WaitingAction};
 
 use crate::keys::OsCode;
+use crate::layers::KEYS_IN_ROW;
 
 use super::alloc::Allocations;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Hand {
+    Left,
+    Right,
+}
+
+/// Maps OsCode (as u16 index) to an optional Hand.
+/// None = unassigned (not in defhands).
+pub(crate) type HandMap = [Option<Hand>; KEYS_IN_ROW];
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum DecisionBehavior {
+    Tap,
+    Hold,
+    Ignore,
+}
+
+/// The function-trait object stored inside `HoldTapConfig::Custom`.
+pub(crate) type CustomTapHoldFn =
+    dyn Fn(QueuedIter, KCoord) -> (Option<WaitingAction>, bool) + Send + Sync;
 
 /// Returns a closure that can be used in `HoldTapConfig::Custom`, which will return early with a
 /// Tap action in the case that any of `keys` are pressed. Otherwise it behaves as
@@ -10,10 +32,10 @@ use super::alloc::Allocations;
 pub(crate) fn custom_tap_hold_release(
     keys: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+) -> &'static CustomTapHoldFn {
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
-        move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
+        move |mut queued: QueuedIter, _coord: KCoord| -> (Option<WaitingAction>, bool) {
             while let Some(q) = queued.next() {
                 if q.event().is_press() {
                     let (i, j) = q.event().coord();
@@ -41,7 +63,7 @@ pub(crate) fn custom_tap_hold_release_trigger_tap_release(
     keys_press_trigger_tap: &[OsCode],
     keys_press_then_release_trigger_tap: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+) -> &'static CustomTapHoldFn {
     let keys_press_then_release_trigger_tap = a.sref_vec(Vec::from_iter(
         keys_press_then_release_trigger_tap
             .iter()
@@ -52,7 +74,7 @@ pub(crate) fn custom_tap_hold_release_trigger_tap_release(
         keys_press_trigger_tap.iter().copied().map(u16::from),
     ));
     a.sref(
-        move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
+        move |mut queued: QueuedIter, _coord: KCoord| -> (Option<WaitingAction>, bool) {
             while let Some(q) = queued.next() {
                 if q.event().is_press() {
                     let (i, j) = q.event().coord();
@@ -88,13 +110,10 @@ pub(crate) fn custom_tap_hold_release_trigger_tap_release(
     )
 }
 
-pub(crate) fn custom_tap_hold_except(
-    keys: &[OsCode],
-    a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+pub(crate) fn custom_tap_hold_except(keys: &[OsCode], a: &Allocations) -> &'static CustomTapHoldFn {
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
-        move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
+        move |mut queued: QueuedIter, _coord: KCoord| -> (Option<WaitingAction>, bool) {
             for q in queued.by_ref() {
                 if q.event().is_press() {
                     let (_i, j) = q.event().coord();
@@ -118,10 +137,10 @@ pub(crate) fn custom_tap_hold_except(
 pub(crate) fn custom_tap_hold_tap_keys(
     keys: &[OsCode],
     a: &Allocations,
-) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync) {
+) -> &'static CustomTapHoldFn {
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(
-        move |mut queued: QueuedIter| -> (Option<WaitingAction>, bool) {
+        move |mut queued: QueuedIter, _coord: KCoord| -> (Option<WaitingAction>, bool) {
             for q in queued.by_ref() {
                 if q.event().is_press() {
                     let (_i, j) = q.event().coord();
@@ -134,6 +153,71 @@ pub(crate) fn custom_tap_hold_tap_keys(
             }
             // Wait for timeout (key difference from custom_tap_hold_except which returns true)
             (None, false)
+        },
+    )
+}
+
+pub(crate) fn custom_tap_hold_opposite_hand(
+    hand_map: &'static HandMap,
+    same_hand: DecisionBehavior,
+    neutral_behavior: DecisionBehavior,
+    unknown_hand: DecisionBehavior,
+    neutral_keys: &'static [OsCode],
+    a: &Allocations,
+) -> &'static CustomTapHoldFn {
+    a.sref(
+        move |queued: QueuedIter, coord: KCoord| -> (Option<WaitingAction>, bool) {
+            let (_row, col) = coord;
+            // Hand of the waiting key (the key that initiated the hold-tap)
+            let waiting_hand = hand_map.get(col as usize).copied().flatten();
+
+            for q in queued {
+                if !q.event().is_press() {
+                    continue;
+                }
+                let (i, j) = q.event().coord();
+                if i != REAL_KEY_ROW {
+                    continue;
+                }
+
+                // Check :neutral-keys first (takes precedence over defhands)
+                if let Some(osc) = OsCode::from_u16(j) {
+                    if neutral_keys.contains(&osc) {
+                        match neutral_behavior {
+                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                            DecisionBehavior::Ignore => continue,
+                        }
+                    }
+                }
+
+                // Look up hand of pressed key
+                let pressed_hand = hand_map.get(j as usize).copied().flatten();
+
+                match (waiting_hand, pressed_hand) {
+                    (Some(wh), Some(ph)) if wh != ph => {
+                        // Opposite hand -> HOLD
+                        return (Some(WaitingAction::Hold), false);
+                    }
+                    (Some(_), Some(_)) => {
+                        // Same hand
+                        match same_hand {
+                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                            DecisionBehavior::Ignore => continue,
+                        }
+                    }
+                    _ => {
+                        // At least one key has unknown hand (not in defhands)
+                        match unknown_hand {
+                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                            DecisionBehavior::Ignore => continue,
+                        }
+                    }
+                }
+            }
+            (None, false) // No decision yet; await more events or timeout
         },
     )
 }
