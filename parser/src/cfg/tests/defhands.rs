@@ -101,11 +101,11 @@ fn opposite_hand_unknown_option() {
     let source = "
 (defhands left (a s d f) right (j k l ;))
 (defsrc a)
-(deflayer base (tap-hold-opposite-hand 180 a lctl :foo bar))
+(deflayer base (tap-hold-opposite-hand 180 a lctl (foo bar)))
 ";
     parse_cfg(source)
         .map(|_| ())
-        .expect_err("unknown option :foo should fail");
+        .expect_err("unknown option foo should fail");
 }
 
 #[test]
@@ -113,11 +113,11 @@ fn opposite_hand_trailing_keyword() {
     let source = "
 (defhands left (a s d f) right (j k l ;))
 (defsrc a)
-(deflayer base (tap-hold-opposite-hand 180 a lctl :timeout))
+(deflayer base (tap-hold-opposite-hand 180 a lctl (timeout)))
 ";
     parse_cfg(source)
         .map(|_| ())
-        .expect_err("trailing keyword without value should fail");
+        .expect_err("option list without value should fail");
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn opposite_hand_invalid_behavior() {
     let source = "
 (defhands left (a s d f) right (j k l ;))
 (defsrc a)
-(deflayer base (tap-hold-opposite-hand 180 a lctl :same-hand maybe))
+(deflayer base (tap-hold-opposite-hand 180 a lctl (same-hand maybe)))
 ";
     parse_cfg(source)
         .map(|_| ())
@@ -137,11 +137,23 @@ fn opposite_hand_duplicate_option() {
     let source = "
 (defhands left (a s d f) right (j k l ;))
 (defsrc a)
-(deflayer base (tap-hold-opposite-hand 180 a lctl :timeout tap :timeout hold))
+(deflayer base (tap-hold-opposite-hand 180 a lctl (timeout tap) (timeout hold)))
 ";
     parse_cfg(source)
         .map(|_| ())
-        .expect_err("duplicate option :timeout should fail");
+        .expect_err("duplicate option timeout should fail");
+}
+
+#[test]
+fn opposite_hand_colon_syntax_rejected() {
+    let source = "
+(defhands left (a s d f) right (j k l ;))
+(defsrc a)
+(deflayer base (tap-hold-opposite-hand 180 a lctl :timeout hold))
+";
+    parse_cfg(source)
+        .map(|_| ())
+        .expect_err("colon-style option syntax should fail");
 }
 
 #[test]

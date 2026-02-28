@@ -180,7 +180,7 @@ pub(crate) fn custom_tap_hold_opposite_hand(
                     continue;
                 }
 
-                // Check :neutral-keys first (takes precedence over defhands)
+                // Check neutral-keys first (takes precedence over defhands)
                 if let Some(osc) = OsCode::from_u16(j) {
                     if neutral_keys.contains(&osc) {
                         match neutral_behavior {

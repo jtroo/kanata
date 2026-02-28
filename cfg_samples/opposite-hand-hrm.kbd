@@ -11,7 +11,7 @@
 )
 
 ;; Assign physical keys to hands. Keys not listed have no hand
-;; assignment and are governed by :unknown-hand (default: ignore).
+;; assignment and are governed by (unknown-hand <value>) (default: ignore).
 (defhands
   left  (q w e r t a s d f g z x c v b)
   right (y u i o p h j k l ; n m , . /))
