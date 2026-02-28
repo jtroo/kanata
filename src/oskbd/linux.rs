@@ -790,7 +790,7 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
         ioctl_read_buf!(read_keystates, 'E', 0x18, u8);
         unsafe { read_keystates(dev.as_raw_fd(), &mut keystate) }
             .map_err(|_| io::Error::last_os_error())?;
-        for i in 0..=KEY_MAX {
+        for i in 0..KEY_MAX {
             if (keystate[i / 8] >> (i % 8)) & 0x1 > 0 {
                 n_pressed_keys += 1;
             }
