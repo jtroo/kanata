@@ -785,6 +785,7 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
     let mut pending_release = false;
     const KEY_MAX: usize = OsCode::KEY_MAX as usize;
     let mut keystate = [0u8; KEY_MAX / 8 + 1];
+    let mut loop_attempts: usize = 0;
     loop {
         let mut n_pressed_keys = 0;
         ioctl_read_buf!(read_keystates, 'E', 0x18, u8);
@@ -799,6 +800,30 @@ fn wait_for_all_keys_unpressed(dev: &Device) -> Result<(), io::Error> {
             0 => break,
             _ => pending_release = true,
         }
+        if loop_attempts > 1250 {
+            let dev_str = if let Some(dev_name) = dev.name() {
+                format!("\"{}\"", dev_name)
+            } else if let Some(dev_path) = dev.physical_path() {
+                format!("\"{}\"", dev_path)
+            } else {
+                let dev_input_id = dev.input_id();
+                let vendor = dev_input_id.vendor();
+                let product = dev_input_id.product();
+                let version = dev_input_id.version();
+                format!(
+                    "{{ Vendor:{:#04x}, Product:{:#04x}, Version:{:#04x} }}",
+                    vendor, product, version
+                )
+            };
+            log::warn!(
+                "timed out waiting for {} to release its keys ({} pressed)",
+                dev_str,
+                n_pressed_keys
+            );
+            break;
+        }
+        loop_attempts += 1;
+        std::thread::sleep(std::time::Duration::from_millis(4));
     }
     if pending_release {
         std::thread::sleep(std::time::Duration::from_micros(100));
