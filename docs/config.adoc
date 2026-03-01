@@ -2071,7 +2071,7 @@ This is useful for home row mods where fast typing should not trigger modifiers.
 
 | `tap-hold-opposite-hand`
 | Resolves to `$hold-action` when a key from the opposite hand (per `defhands`) is pressed.
-Requires a `defhands` directive. Supports keyword options for fine-grained control.
+Requires a `defhands` directive. Supports list-form options for fine-grained control.
 See <<defhands and tap-hold-opposite-hand>> below.
 |===
 **Description**
