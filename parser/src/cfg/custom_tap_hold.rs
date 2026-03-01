@@ -1,7 +1,6 @@
 use kanata_keyberon::layout::{Event, KCoord, QueuedIter, REAL_KEY_ROW, WaitingAction};
 
 use crate::keys::OsCode;
-use crate::layers::KEYS_IN_ROW;
 
 use super::alloc::Allocations;
 
@@ -9,11 +8,27 @@ use super::alloc::Allocations;
 pub(crate) enum Hand {
     Left,
     Right,
+    Neutral,
 }
 
-/// Maps OsCode (as u16 index) to an optional Hand.
-/// None = unassigned (not in defhands).
-pub(crate) type HandMap = [Option<Hand>; KEYS_IN_ROW];
+/// Compact mapping from key codes to hand assignments.
+/// Stores only keys that have an explicit left/right assignment;
+/// any key not present is treated as `Hand::Neutral`.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct HandMap {
+    pub(crate) keys: &'static [u16],
+    pub(crate) hands: &'static [Hand],
+}
+
+impl HandMap {
+    pub(crate) fn get(&self, key_code: u16) -> Hand {
+        self.keys
+            .iter()
+            .position(|&k| k == key_code)
+            .map(|i| self.hands[i])
+            .unwrap_or(Hand::Neutral)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum DecisionBehavior {
@@ -168,8 +183,7 @@ pub(crate) fn custom_tap_hold_opposite_hand(
     a.sref(
         move |queued: QueuedIter, coord: KCoord| -> (Option<WaitingAction>, bool) {
             let (_row, col) = coord;
-            // Hand of the waiting key (the key that initiated the hold-tap)
-            let waiting_hand = hand_map.get(col as usize).copied().flatten();
+            let waiting_hand = hand_map.get(col);
 
             for q in queued {
                 if !q.event().is_press() {
@@ -191,24 +205,19 @@ pub(crate) fn custom_tap_hold_opposite_hand(
                     }
                 }
 
-                // Look up hand of pressed key
-                let pressed_hand = hand_map.get(j as usize).copied().flatten();
+                let pressed_hand = hand_map.get(j);
 
                 match (waiting_hand, pressed_hand) {
-                    (Some(wh), Some(ph)) if wh != ph => {
-                        // Opposite hand -> HOLD
+                    (Hand::Left, Hand::Right) | (Hand::Right, Hand::Left) => {
                         return (Some(WaitingAction::Hold), false);
                     }
-                    (Some(_), Some(_)) => {
-                        // Same hand
-                        match same_hand {
-                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
-                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
-                            DecisionBehavior::Ignore => continue,
-                        }
-                    }
+                    (Hand::Left, Hand::Left) | (Hand::Right, Hand::Right) => match same_hand {
+                        DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                        DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                        DecisionBehavior::Ignore => continue,
+                    },
                     _ => {
-                        // At least one key has unknown hand (not in defhands)
+                        // At least one key is Neutral (not in defhands)
                         match unknown_hand {
                             DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
                             DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
@@ -217,7 +226,7 @@ pub(crate) fn custom_tap_hold_opposite_hand(
                     }
                 }
             }
-            (None, false) // No decision yet; await more events or timeout
+            (None, false)
         },
     )
 }

@@ -6,59 +6,69 @@ pub(super) fn parse_defhands(expr: &[SExpr], s: &ParserState) -> Result<custom_t
     use custom_tap_hold::Hand;
 
     let exprs_iter = check_first_expr(expr.iter(), "defhands")?;
-    let exprs: Vec<&SExpr> = exprs_iter.collect();
-    let mut hand_map: custom_tap_hold::HandMap = [None; KEYS_IN_ROW];
+    let mut keys: Vec<u16> = Vec::new();
+    let mut hands: Vec<Hand> = Vec::new();
     let mut seen_left = false;
     let mut seen_right = false;
 
-    let mut i = 0;
-    while i < exprs.len() {
-        let hand_name = exprs[i]
+    for group_expr in exprs_iter {
+        let group = group_expr
+            .list(s.vars())
+            .ok_or_else(|| anyhow_expr!(group_expr, "expected (left ...) or (right ...)"))?;
+        if group.is_empty() {
+            bail_expr!(group_expr, "expected (left ...) or (right ...)");
+        }
+        let hand_name = group[0]
             .atom(s.vars())
-            .ok_or_else(|| anyhow_expr!(exprs[i], "expected 'left' or 'right'"))?;
+            .ok_or_else(|| anyhow_expr!(&group[0], "expected 'left' or 'right'"))?;
         let hand = match hand_name {
             "left" => {
                 if seen_left {
-                    bail_expr!(exprs[i], "duplicate 'left' group in defhands");
+                    bail_expr!(&group[0], "duplicate 'left' group in defhands");
                 }
                 seen_left = true;
                 Hand::Left
             }
             "right" => {
                 if seen_right {
-                    bail_expr!(exprs[i], "duplicate 'right' group in defhands");
+                    bail_expr!(&group[0], "duplicate 'right' group in defhands");
                 }
                 seen_right = true;
                 Hand::Right
             }
-            _ => bail_expr!(exprs[i], "expected 'left' or 'right', got '{}'", hand_name),
+            _ => bail_expr!(&group[0], "expected 'left' or 'right', got '{}'", hand_name),
         };
-        i += 1;
-        if i >= exprs.len() {
-            bail_expr!(exprs[i - 1], "expected key list after '{}'", hand_name);
-        }
-        let keys = parse_key_list(exprs[i], s, hand_name)?;
-        for key in &keys {
-            let idx = u16::from(*key) as usize;
-            if let Some(existing) = hand_map[idx] {
-                let existing_name = if existing == Hand::Left {
+        for key_expr in &group[1..] {
+            let key_name = key_expr
+                .atom(s.vars())
+                .ok_or_else(|| anyhow_expr!(key_expr, "expected a key name, found list"))?;
+            let osc = str_to_oscode(key_name)
+                .ok_or_else(|| anyhow_expr!(key_expr, "unknown key '{}'", key_name))?;
+            let code = u16::from(osc);
+            if let Some(pos) = keys.iter().position(|&k| k == code) {
+                let existing_name = if hands[pos] == Hand::Left {
                     "left"
                 } else {
                     "right"
                 };
                 bail_expr!(
-                    exprs[i],
+                    key_expr,
                     "Key already assigned to '{}' hand, cannot also be in '{}'",
                     existing_name,
                     hand_name
                 );
             }
-            hand_map[idx] = Some(hand);
+            keys.push(code);
+            hands.push(hand);
         }
-        i += 1;
     }
 
-    Ok(hand_map)
+    let keys_static = s.a.sref_vec(keys);
+    let hands_static = s.a.sref_vec(hands);
+    Ok(custom_tap_hold::HandMap {
+        keys: keys_static,
+        hands: hands_static,
+    })
 }
 
 pub(super) fn parse_tap_hold_opposite_hand(

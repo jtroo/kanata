@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn opposite_hand_no_args() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand))
 ";
@@ -15,7 +15,7 @@ fn opposite_hand_no_args() {
 #[test]
 fn opposite_hand_one_arg() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180))
 ";
@@ -27,7 +27,7 @@ fn opposite_hand_one_arg() {
 #[test]
 fn opposite_hand_two_args() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a))
 ";
@@ -50,8 +50,8 @@ fn defhands_missing_for_opposite_hand() {
 #[test]
 fn defhands_duplicate_blocks() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
-(defhands left (q w e r))
+(defhands (left a s d f) (right j k l ;))
+(defhands (left q w e r))
 (defsrc a)
 (deflayer base a)
 ";
@@ -63,7 +63,7 @@ fn defhands_duplicate_blocks() {
 #[test]
 fn defhands_key_in_both_groups() {
     let source = "
-(defhands left (a s d f) right (a j k l))
+(defhands (left a s d f) (right a j k l))
 (defsrc a)
 (deflayer base a)
 ";
@@ -75,7 +75,7 @@ fn defhands_key_in_both_groups() {
 #[test]
 fn defhands_duplicate_group_name() {
     let source = "
-(defhands left (a s d f) left (q w e r))
+(defhands (left a s d f) (left q w e r))
 (defsrc a)
 (deflayer base a)
 ";
@@ -87,7 +87,7 @@ fn defhands_duplicate_group_name() {
 #[test]
 fn defhands_invalid_group_name() {
     let source = "
-(defhands center (a s d f))
+(defhands (center a s d f))
 (defsrc a)
 (deflayer base a)
 ";
@@ -99,7 +99,7 @@ fn defhands_invalid_group_name() {
 #[test]
 fn opposite_hand_unknown_option() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl (foo bar)))
 ";
@@ -111,7 +111,7 @@ fn opposite_hand_unknown_option() {
 #[test]
 fn opposite_hand_trailing_keyword() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl (timeout)))
 ";
@@ -123,7 +123,7 @@ fn opposite_hand_trailing_keyword() {
 #[test]
 fn opposite_hand_invalid_behavior() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl (same-hand maybe)))
 ";
@@ -135,7 +135,7 @@ fn opposite_hand_invalid_behavior() {
 #[test]
 fn opposite_hand_duplicate_option() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl (timeout tap) (timeout hold)))
 ";
@@ -147,7 +147,7 @@ fn opposite_hand_duplicate_option() {
 #[test]
 fn opposite_hand_colon_syntax_rejected() {
     let source = "
-(defhands left (a s d f) right (j k l ;))
+(defhands (left a s d f) (right j k l ;))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl :timeout hold))
 ";
@@ -159,11 +159,23 @@ fn opposite_hand_colon_syntax_rejected() {
 #[test]
 fn defhands_valid_partial() {
     let source = "
-(defhands left (a s d f))
+(defhands (left a s d f))
 (defsrc a)
 (deflayer base (tap-hold-opposite-hand 180 a lctl))
 ";
     parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("partial defhands with only left should succeed");
+}
+
+#[test]
+fn defhands_bare_atom_syntax_rejected() {
+    let source = "
+(defhands left (a s d f) right (j k l ;))
+(defsrc a)
+(deflayer base a)
+";
+    parse_cfg(source)
+        .map(|_| ())
+        .expect_err("bare atom syntax (left (...)) should fail; use (left ...) instead");
 }

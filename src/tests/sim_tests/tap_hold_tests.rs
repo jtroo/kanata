@@ -177,8 +177,8 @@ fn tap_hold_tap_keys() {
 fn opposite_hand_cfg() -> &'static str {
     "
     (defhands
-      left (a s d f g)
-      right (h j k l ;))
+      (left a s d f g)
+      (right h j k l ;))
     (defsrc f j h)
     (deflayer base @f j h)
     (defalias
@@ -201,7 +201,7 @@ fn same_hand_press_resolves_tap() {
     // Press f (left hand), then d (left hand) -> same hand default = tap
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc d f)
         (deflayer base d @f)
         (defalias f (tap-hold-opposite-hand 200 f lctl))
@@ -217,7 +217,7 @@ fn same_hand_ignore_defers_to_timeout() {
     // With (same-hand ignore), a same-hand press is ignored, timeout fires
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc d f)
         (deflayer base d @f)
         (defalias f (tap-hold-opposite-hand 200 f lctl (same-hand ignore)))
@@ -234,7 +234,7 @@ fn neutral_key_ignore_defers() {
     // With default (neutral ignore), neutral keys are skipped, timeout fires
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
         (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc))))
@@ -254,7 +254,7 @@ fn neutral_key_tap_resolves_immediately() {
     // With (neutral tap), neutral key press triggers TAP immediately
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
         (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc)) (neutral tap)))
@@ -273,7 +273,7 @@ fn unknown_hand_key_defers_by_default() {
     // Key not in defhands at all -> unknown hand, default = ignore
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f b)
         (deflayer base @f b)
         (defalias f (tap-hold-opposite-hand 200 f lctl))
@@ -297,7 +297,7 @@ fn timeout_hold_option() {
     // (timeout hold) makes timeout resolve to hold action
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f j)
         (deflayer base @f j)
         (defalias f (tap-hold-opposite-hand 200 f lctl (timeout hold)))
@@ -320,7 +320,7 @@ fn multiple_options_combined() {
     // Combine (same-hand hold), (timeout hold), (neutral-keys ...) with (neutral tap)
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc d f j spc)
         (deflayer base d @f j spc)
         (defalias f (tap-hold-opposite-hand 200 f lctl
@@ -342,7 +342,7 @@ fn unknown_hand_tap_resolves_immediately() {
     // (unknown-hand tap) makes unassigned keys resolve as tap
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f b)
         (deflayer base @f b)
         (defalias f (tap-hold-opposite-hand 200 f lctl (unknown-hand tap)))
@@ -358,7 +358,7 @@ fn unknown_hand_hold_resolves_immediately() {
     // (unknown-hand hold) makes unassigned keys resolve as hold
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f b)
         (deflayer base @f b)
         (defalias f (tap-hold-opposite-hand 200 f lctl (unknown-hand hold)))
@@ -377,7 +377,7 @@ fn neutral_key_hold_resolves_immediately() {
     // (neutral hold) makes neutral keys resolve as hold
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
         (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc)) (neutral hold)))
@@ -398,7 +398,7 @@ fn waiting_key_unassigned_in_defhands() {
     // Default (unknown-hand ignore), so it defers; timeout fires as tap.
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc b j)
         (deflayer base @b j)
         (defalias b (tap-hold-opposite-hand 200 b lctl))
@@ -416,7 +416,7 @@ fn neutral_keys_override_defhands_assignment() {
     // With (neutral tap), pressing j should resolve as tap (not hold).
     let result = simulate(
         "
-        (defhands left (a s d f g) right (h j k l ;))
+        (defhands (left a s d f g) (right h j k l ;))
         (defsrc f j)
         (deflayer base @f j)
         (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (j)) (neutral tap)))
