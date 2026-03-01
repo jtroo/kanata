@@ -18,6 +18,92 @@ fn set_virtual_key_reference_lsp_hint(vk_name_expr: &SExpr, s: &ParserState) {
     }
 }
 
+pub(crate) fn parse_fake_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
+    for expr in exprs {
+        let mut subexprs = check_first_expr(expr.iter(), "deffakekeys")?;
+        // Read k-v pairs from the configuration
+        while let Some(key_name_expr) = subexprs.next() {
+            let key_name = key_name_expr
+                .atom(s.vars())
+                .ok_or_else(|| anyhow_expr!(key_name_expr, "Fake key name must not be a list."))?
+                .to_owned();
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail_expr!(
+                    key_name_expr,
+                    "Fake key name has no action - you should add an action."
+                ),
+            };
+            let action = parse_action(action, s)?;
+            let idx = s.virtual_keys.len();
+            log::trace!("inserting {key_name}->{idx}:{action:?}");
+            if s.virtual_keys
+                .insert(key_name.clone(), (idx, action))
+                .is_some()
+            {
+                bail_expr!(key_name_expr, "Duplicate fake key: {}", key_name);
+            }
+            #[cfg(feature = "lsp")]
+            s.lsp_hints
+                .borrow_mut()
+                .definition_locations
+                .virtual_key
+                .insert(key_name, key_name_expr.span());
+        }
+    }
+    if s.virtual_keys.len() > KEYS_IN_ROW {
+        bail!(
+            "Maximum number of fake keys is {KEYS_IN_ROW}, found {}",
+            s.virtual_keys.len()
+        );
+    }
+    Ok(())
+}
+
+pub(crate) fn parse_virtual_keys(exprs: &[&Vec<SExpr>], s: &mut ParserState) -> Result<()> {
+    s.pctx.is_within_defvirtualkeys = true;
+    for expr in exprs {
+        let mut subexprs = check_first_expr(expr.iter(), "defvirtualkeys")?;
+        // Read k-v pairs from the configuration
+        while let Some(key_name_expr) = subexprs.next() {
+            let key_name = key_name_expr
+                .atom(s.vars())
+                .ok_or_else(|| anyhow_expr!(key_name_expr, "Virtual key name must not be a list."))?
+                .to_owned();
+            let action = match subexprs.next() {
+                Some(v) => v,
+                None => bail_expr!(
+                    key_name_expr,
+                    "Virtual key name has no action - you must add an action."
+                ),
+            };
+            let action = parse_action(action, s)?;
+            let idx = s.virtual_keys.len();
+            log::trace!("inserting {key_name}->{idx}:{action:?}");
+            if s.virtual_keys
+                .insert(key_name.clone(), (idx, action))
+                .is_some()
+            {
+                bail_expr!(key_name_expr, "Duplicate virtual key: {}", key_name);
+            };
+            #[cfg(feature = "lsp")]
+            s.lsp_hints
+                .borrow_mut()
+                .definition_locations
+                .virtual_key
+                .insert(key_name, key_name_expr.span());
+        }
+    }
+    s.pctx.is_within_defvirtualkeys = false;
+    if s.virtual_keys.len() > KEYS_IN_ROW {
+        bail!(
+            "Maximum number of virtual keys is {KEYS_IN_ROW}, found {}",
+            s.virtual_keys.len()
+        );
+    }
+    Ok(())
+}
+
 pub(crate) fn parse_on_press_fake_key_op(
     ac_params: &[SExpr],
     s: &ParserState,
