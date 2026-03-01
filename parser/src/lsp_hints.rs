@@ -1,3 +1,5 @@
+use crate::cfg::sexpr::SExpr;
+
 pub use inner::*;
 
 #[cfg(not(feature = "lsp"))]
@@ -65,5 +67,20 @@ mod inner {
                 }
             };
         }
+    }
+}
+
+#[allow(unused)]
+pub(crate) fn set_layer_change_lsp_hint(layer_name_expr: &SExpr, lsp_hints: &mut LspHints) {
+    #[cfg(feature = "lsp")]
+    {
+        let layer_name_atom = match layer_name_expr {
+            SExpr::Atom(x) => x,
+            SExpr::List(_) => unreachable!("checked in layer_idx"),
+        };
+        lsp_hints
+            .reference_locations
+            .layer
+            .push_from_atom(layer_name_atom);
     }
 }
