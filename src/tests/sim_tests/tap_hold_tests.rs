@@ -427,3 +427,157 @@ fn neutral_keys_override_defhands_assignment() {
     // j would normally be opposite-hand (hold), but neutral-keys overrides -> tap
     assert_eq!("t:50ms dn:F t:6ms dn:J t:44ms up:J t:50ms up:F", result);
 }
+
+// ========== tap-hold-require-prior-idle tests ==========
+
+#[test]
+fn require_prior_idle_typing_streak_resolves_tap() {
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a b d)
+(deflayer base a b @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        // Type a, release, then quickly press d within idle window.
+        // 'a' was pressed 20ms ago (10ms press + 10ms gap), well within 150ms threshold.
+        "d:a t:10 u:a t:10 d:d t:50 u:d t:50",
+    )
+    .to_ascii();
+    // d should resolve as tap immediately (no 200ms waiting state)
+    assert_eq!("dn:A t:10ms up:A t:10ms dn:D t:50ms up:D", result);
+}
+
+#[test]
+fn require_prior_idle_idle_long_enough_enters_hold() {
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a b d)
+(deflayer base a b @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        // Press a, release, wait 200ms (longer than 150ms threshold), then press d.
+        // d should enter normal WaitingState (hold on other key press).
+        "d:a t:10 u:a t:200 d:d t:250 u:d t:50",
+    )
+    .to_ascii();
+    // After 200ms idle, d enters normal tap-hold. Timeout at 200ms → hold (lctl).
+    assert_eq!("dn:A t:10ms up:A t:400ms dn:LCtrl t:50ms up:LCtrl", result);
+}
+
+#[test]
+fn require_prior_idle_no_prior_key_enters_hold() {
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a b d)
+(deflayer base a b @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        // No prior key at all. d should enter normal WaitingState.
+        "d:d t:250 u:d t:50",
+    )
+    .to_ascii();
+    // Timeout → hold (lctl)
+    assert_eq!("t:200ms dn:LCtrl t:50ms up:LCtrl", result);
+}
+
+#[test]
+fn require_prior_idle_boundary_just_within_threshold() {
+    // Prior key pressed 149ms ago (just within 150ms threshold).
+    // ticks_since_occurrence will be ~150 (149 + 1 tick offset), which is
+    // <= 150 threshold, so tap fires.
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a d)
+(deflayer base a @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        "d:a t:10 u:a t:139 d:d t:50 u:d t:50",
+    )
+    .to_ascii();
+    assert_eq!("dn:A t:10ms up:A t:139ms dn:D t:50ms up:D", result);
+}
+
+#[test]
+fn require_prior_idle_boundary_just_outside_threshold() {
+    // Prior key pressed 150ms ago (just outside 150ms threshold).
+    // ticks_since_occurrence will be ~151 (150 + 1 tick offset), which is
+    // > 150 threshold, so normal tap-hold behavior applies.
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a d)
+(deflayer base a @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        // d enters WaitingState; released at 50ms → tap via release
+        "d:a t:10 u:a t:140 d:d t:50 u:d t:50",
+    )
+    .to_ascii();
+    assert_eq!("dn:A t:10ms up:A t:190ms dn:D t:6ms up:D", result);
+}
+
+#[test]
+fn require_prior_idle_with_opposite_hand() {
+    // tap-hold-require-prior-idle should short-circuit before tap-hold-opposite-hand
+    // evaluates hand membership. During a typing streak, even an opposite-hand
+    // key should resolve as tap.
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defhands (left a s d f g) (right h j k l ;))
+(defsrc a f j)
+(deflayer base a @f j)
+(defalias f (tap-hold-opposite-hand 200 f lctl))
+        ",
+        // a is left hand, f is left hand tap-hold. a pressed 20ms ago.
+        // Without tap-hold-require-prior-idle, pressing j (opposite hand) would hold.
+        // With tap-hold-require-prior-idle active, f resolves as tap before hand check.
+        "d:a t:10 u:a t:10 d:f t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!("dn:A t:10ms up:A t:10ms dn:F t:50ms up:F", result);
+}
+
+#[test]
+fn require_prior_idle_with_tap_hold_interval() {
+    // tap-hold-require-prior-idle check runs before tap-hold-interval (quick re-press).
+    // Both should work together: typing streak → tap immediately,
+    // idle re-press → tap via tap_hold_interval.
+    let cfg = "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc a d)
+(deflayer base a @d)
+(defalias d (tap-hold 200 200 d lctl))
+    ";
+    // Case 1: typing streak (a then d quickly) → tap-hold-require-prior-idle fires
+    let result = simulate(cfg, "d:a t:10 u:a t:10 d:d t:50 u:d t:50").to_ascii();
+    assert_eq!("dn:A t:10ms up:A t:10ms dn:D t:50ms up:D", result);
+    // Case 2: idle, then d pressed twice (tap-hold-interval re-press)
+    let result = simulate(cfg, "d:d t:50 u:d t:50 d:d t:50 u:d t:50").to_ascii();
+    assert_eq!("t:50ms dn:D t:6ms up:D t:44ms dn:D t:50ms up:D", result);
+}
+
+#[test]
+fn require_prior_idle_ignores_virtual_keys() {
+    // Virtual key events (row 1) should not count as prior physical input.
+    // Only real physical key presses (row 0) trigger the typing streak.
+    let result = simulate(
+        "
+(defcfg tap-hold-require-prior-idle 150)
+(defsrc d)
+(defvirtualkeys vk1 a)
+(deflayer base @d)
+(defalias d (tap-hold 200 200 d lctl))
+        ",
+        // Virtual key tap, then d pressed 10ms later.
+        // vk should NOT trigger typing streak — d should enter normal hold.
+        "vk:vk1:tap t:10 d:d t:250 u:d t:50",
+    )
+    .to_ascii();
+    // Virtual key outputs A, then d times out to hold (lctl).
+    assert_eq!("dn:A t:1ms up:A t:209ms dn:LCtrl t:50ms up:LCtrl", result);
+}

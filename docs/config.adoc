@@ -4128,6 +4128,36 @@ The default (and minimum) value is `5` and the unit is milliseconds.
 )
 ----
 
+[[tap-hold-require-prior-idle]]
+=== tap-hold-require-prior-idle
+
+This configuration applies to all `tap-hold` variants.
+When a different physical key was pressed within the configured number of
+milliseconds before a `tap-hold` key is pressed, the `tap-hold` key will
+immediately resolve as its tap action without entering the waiting state.
+This prevents accidental modifier activations during fast typing.
+The concept is equivalent to ZMK's `require-prior-idle-ms`.
+
+NOTE: For more info, see <<tap-hold>>.
+
+The default value is `0` (disabled) and the unit is milliseconds.
+
+.Example:
+[source]
+----
+(defcfg
+  tap-hold-require-prior-idle 150
+)
+----
+
+- If you type a normal key and then press a `tap-hold` key within the threshold,
+  the `tap-hold` key immediately outputs its tap action.
+- If the keyboard is idle for longer than the threshold before pressing a `tap-hold` key,
+  normal `tap-hold` behavior applies (waiting state, hold on timeout, etc.).
+- When `tap-hold-require-prior-idle` triggers, the tap action is chosen before any other
+  `tap-hold` configuration (e.g., `tap-hold-opposite-hand`, `concurrent-tap-hold`)
+  is consulted.
+
 [[override-release-on-activation]]
 === override-release-on-activation
 

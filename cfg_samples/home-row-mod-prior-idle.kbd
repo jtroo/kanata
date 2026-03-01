@@ -1,0 +1,52 @@
+;; Home row mods with tap-hold-require-prior-idle.
+;;
+;; This replaces the layer-switching workaround in home-row-mod-advanced.kbd
+;; with two native features:
+;;
+;;   tap-hold-require-prior-idle  — during fast typing, tap-hold keys resolve as tap
+;;                         immediately (no waiting state, no accidental holds)
+;;
+;;   tap-hold-opposite-hand — hold activates only when the next key is on
+;;                            the opposite hand; same-hand rolls always tap
+;;
+;; The result: no nomods layer, no fakekeys, no multi wrappers.
+;;
+;; Configuration guide:
+;;   https://github.com/jtroo/kanata/blob/main/docs/config.adoc#tap-hold-require-prior-idle
+;;   https://github.com/jtroo/kanata/blob/main/docs/config.adoc#tap-hold
+
+(defcfg
+  process-unmapped-keys yes
+  ;; If any key was pressed within 150ms, resolve tap-hold as tap immediately.
+  ;; Prevents accidental modifier activation during fast typing.
+  tap-hold-require-prior-idle 150
+)
+
+(defsrc
+  a   s   d   f   j   k   l   ;
+)
+
+;; Declare which keys belong to each hand.
+;; tap-hold-opposite-hand uses this to decide hold vs tap.
+(defhands
+  (left  q w e r t a s d f g z x c v b)
+  (right y u i o p h j k l ; n m , . /)
+)
+
+(deflayer base
+  @a  @s  @d  @f  @j  @k  @l  @;
+)
+
+(defalias
+  ;; Note: consider using different time values for your different fingers.
+  ;; For example, your pinkies might be slower to release keys and index
+  ;; fingers faster.
+  a (tap-hold-opposite-hand 150 a lmet)
+  s (tap-hold-opposite-hand 150 s lalt)
+  d (tap-hold-opposite-hand 150 d lctl)
+  f (tap-hold-opposite-hand 150 f lsft)
+  j (tap-hold-opposite-hand 150 j rsft)
+  k (tap-hold-opposite-hand 150 k rctl)
+  l (tap-hold-opposite-hand 150 l ralt)
+  ; (tap-hold-opposite-hand 150 ; rmet)
+)
