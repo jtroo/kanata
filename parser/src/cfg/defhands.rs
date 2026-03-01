@@ -113,14 +113,11 @@ pub(super) fn parse_tap_hold_opposite_hand(
         let Some(option) = option_expr.list(s.vars()) else {
             bail_expr!(
                 option_expr,
-                "expected option list `(name value)`, e.g. `(timeout hold)`"
+                "expected option list, e.g. `(timeout hold)` or `(neutral-keys spc tab)`"
             );
         };
-        if option.len() != 2 {
-            bail_expr!(
-                option_expr,
-                "option must contain exactly 2 items: `(name value)`"
-            );
+        if option.is_empty() {
+            bail_expr!(option_expr, "option list cannot be empty");
         }
         let kw = option[0]
             .atom(s.vars())
@@ -134,19 +131,49 @@ pub(super) fn parse_tap_hold_opposite_hand(
         }
         match kw {
             "timeout" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
                 timeout_behavior = parse_decision_behavior_tap_hold(&option[1], s)?;
             }
             "same-hand" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
                 same_hand = parse_decision_behavior(&option[1], s)?;
             }
             "neutral" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
                 neutral_behavior = parse_decision_behavior(&option[1], s)?;
             }
             "unknown-hand" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
                 unknown_hand = parse_decision_behavior(&option[1], s)?;
             }
             "neutral-keys" => {
-                neutral_keys = parse_key_list(&option[1], s, "neutral-keys")?;
+                if option.len() < 2 {
+                    bail_expr!(
+                        option_expr,
+                        "neutral-keys expects one or more key atoms, e.g. `(neutral-keys spc tab)`"
+                    );
+                }
+                neutral_keys = parse_key_atoms(&option[1..], s, "neutral-keys")?;
             }
             _ => bail_expr!(
                 &option[0],
@@ -181,6 +208,19 @@ pub(super) fn parse_tap_hold_opposite_hand(
         timeout_action: *timeout_action,
         on_press_reset_timeout_to: None,
     }))))
+}
+
+fn parse_key_atoms(exprs: &[SExpr], s: &ParserState, label: &str) -> Result<Vec<OsCode>> {
+    exprs
+        .iter()
+        .map(|key_expr| {
+            let key_name = key_expr
+                .atom(s.vars())
+                .ok_or_else(|| anyhow_expr!(key_expr, "{label} expects key atoms, found list"))?;
+            str_to_oscode(key_name)
+                .ok_or_else(|| anyhow_expr!(key_expr, "unknown key '{key_name}'"))
+        })
+        .collect()
 }
 
 fn parse_decision_behavior(

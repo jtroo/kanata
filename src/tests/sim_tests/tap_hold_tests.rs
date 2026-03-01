@@ -237,7 +237,7 @@ fn neutral_key_ignore_defers() {
         (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
-        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc))))
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc)))
         ",
         "d:f t:50 d:spc t:200 u:spc t:50 u:f t:50",
     )
@@ -257,7 +257,7 @@ fn neutral_key_tap_resolves_immediately() {
         (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
-        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc)) (neutral tap)))
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc) (neutral tap)))
         ",
         "d:f t:50 d:spc t:50 u:spc t:50 u:f t:50",
     )
@@ -325,7 +325,7 @@ fn multiple_options_combined() {
         (deflayer base d @f j spc)
         (defalias f (tap-hold-opposite-hand 200 f lctl
           (same-hand hold) (timeout hold)
-          (neutral-keys (spc)) (neutral tap)))
+          (neutral-keys spc) (neutral tap)))
         ",
         "d:f t:50 d:d t:50 u:d t:50 u:f t:50",
     )
@@ -380,7 +380,7 @@ fn neutral_key_hold_resolves_immediately() {
         (defhands (left a s d f g) (right h j k l ;))
         (defsrc f h spc)
         (deflayer base @f h spc)
-        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (spc)) (neutral hold)))
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc) (neutral hold)))
         ",
         "d:f t:50 d:spc t:50 u:spc t:50 u:f t:50",
     )
@@ -419,7 +419,7 @@ fn neutral_keys_override_defhands_assignment() {
         (defhands (left a s d f g) (right h j k l ;))
         (defsrc f j)
         (deflayer base @f j)
-        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys (j)) (neutral tap)))
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys j) (neutral tap)))
         ",
         "d:f t:50 d:j t:50 u:j t:50 u:f t:50",
     )

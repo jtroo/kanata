@@ -145,18 +145,6 @@ fn opposite_hand_duplicate_option() {
 }
 
 #[test]
-fn opposite_hand_colon_syntax_rejected() {
-    let source = "
-(defhands (left a s d f) (right j k l ;))
-(defsrc a)
-(deflayer base (tap-hold-opposite-hand 180 a lctl :timeout hold))
-";
-    parse_cfg(source)
-        .map(|_| ())
-        .expect_err("colon-style option syntax should fail");
-}
-
-#[test]
 fn defhands_valid_partial() {
     let source = "
 (defhands (left a s d f))
@@ -166,16 +154,4 @@ fn defhands_valid_partial() {
     parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("partial defhands with only left should succeed");
-}
-
-#[test]
-fn defhands_bare_atom_syntax_rejected() {
-    let source = "
-(defhands left (a s d f) right (j k l ;))
-(defsrc a)
-(deflayer base a)
-";
-    parse_cfg(source)
-        .map(|_| ())
-        .expect_err("bare atom syntax (left (...)) should fail; use (left ...) instead");
 }

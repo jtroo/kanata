@@ -2289,7 +2289,9 @@ a key cannot appear in both groups; partial definitions (only one hand) are allo
 unlisted keys have no hand assignment.
 
 `tap-hold-opposite-hand` takes `$timeout $tap-action $hold-action` followed by
-optional option lists in the form `(name value)`. It requires `defhands` to be defined.
+optional option lists. Most use `(name value)`, while `neutral-keys` uses
+followup key atoms: `(neutral-keys spc tab ...)`.
+It requires `defhands` to be defined.
 Internally it uses the same `HoldTapConfig::Custom` machinery as `tap-hold-release-keys`.
 
 [cols="1,1,1,2"]
@@ -2298,7 +2300,7 @@ Internally it uses the same `HoldTapConfig::Custom` machinery as `tap-hold-relea
 
 | `(timeout <value>)` | `tap`, `hold` | `tap` | Action when hold timeout elapses (optimized for home-row-mod behavior).
 | `(same-hand <value>)` | `tap`, `hold`, `ignore` | `tap` | Action when a same-hand key is pressed.
-| `(neutral-keys (key list))` | `(key list)` | (empty) | Keys treated as neutral, overriding their `defhands` assignment.
+| `(neutral-keys key ...)` | one or more key names | (empty) | Keys treated as neutral, overriding their `defhands` assignment.
 | `(neutral <value>)` | `tap`, `hold`, `ignore` | `ignore` | Action when a `neutral-keys` key is pressed.
 | `(unknown-hand <value>)` | `tap`, `hold`, `ignore` | `ignore` | Action when a key not in `defhands` is pressed.
 |===
@@ -2313,7 +2315,7 @@ Example with options:
   fctl (tap-hold-opposite-hand 180 f lctl
     (same-hand ignore)
     (timeout hold)
-    (neutral-keys (spc tab))
+    (neutral-keys spc tab)
     (neutral tap)))
 ----
 
