@@ -136,6 +136,7 @@ pub const CLIPBOARD_RESTORE: &str = "clipboard-restore";
 pub const CLIPBOARD_SAVE_SET: &str = "clipboard-save-set";
 pub const CLIPBOARD_SAVE_CMD_SET: &str = "clipboard-save-cmd-set";
 pub const CLIPBOARD_SAVE_SWAP: &str = "clipboard-save-swap";
+pub const TAP_HOLD_OPPOSITE_HAND: &str = "tap-hold-opposite-hand";
 
 pub fn is_list_action(ac: &str) -> bool {
     const LIST_ACTIONS: &[&str] = &[
@@ -271,6 +272,7 @@ pub fn is_list_action(ac: &str) -> bool {
         CLIPBOARD_SAVE_SET,
         CLIPBOARD_SAVE_CMD_SET,
         CLIPBOARD_SAVE_SWAP,
+        TAP_HOLD_OPPOSITE_HAND,
     ];
     LIST_ACTIONS.contains(&ac)
 }

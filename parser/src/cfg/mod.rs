@@ -52,6 +52,9 @@ pub use key_override::*;
 mod custom_tap_hold;
 use custom_tap_hold::*;
 
+mod defhands;
+use defhands::{parse_defhands, parse_tap_hold_opposite_hand};
+
 pub mod layer_opts;
 use layer_opts::*;
 
@@ -218,11 +221,7 @@ pub type KanataCustom = &'static &'static [&'static CustomAction];
 pub type KanataAction = Action<'static, KanataCustom>;
 type KLayout = Layout<'static, KEYS_IN_ROW, 2, KanataCustom>;
 
-type TapHoldCustomFunc =
-    fn(
-        &[OsCode],
-        &Allocations,
-    ) -> &'static (dyn Fn(QueuedIter) -> (Option<WaitingAction>, bool) + Send + Sync);
+type TapHoldCustomFunc = fn(&[OsCode], &Allocations) -> &'static custom_tap_hold::CustomTapHoldFn;
 
 pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a &'a [&'a CustomAction]>;
 pub type KeySeqsToFKeys = Trie<(u8, u16)>;
@@ -763,6 +762,29 @@ pub fn parse_cfg_raw_string(
         ..Default::default()
     };
 
+    let defhands_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defhands"))
+        .collect::<Vec<_>>();
+    match defhands_exprs.len() {
+        0 => {}
+        1 => {
+            let hand_map = parse_defhands(defhands_exprs[0], s)?;
+            s.hand_map = Some(s.a.sref(hand_map));
+        }
+        _ => {
+            let spanned = spanned_root_exprs
+                .iter()
+                .filter(gen_first_atom_filter_spanned("defhands"))
+                .nth(1)
+                .expect(">= 2 defhands");
+            bail_span!(
+                spanned,
+                "Only one defhands block is allowed, found more. Delete the extras."
+            );
+        }
+    }
+
     let chords_exprs = spanned_root_exprs
         .iter()
         .filter(gen_first_atom_filter_spanned("defchords"))
@@ -998,7 +1020,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defchordsv2-experimental"
                 | "defzippy"
                 | "defzippy-experimental"
-                | "defseq" => Ok(()),
+                | "defseq"
+                | "defhands" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
@@ -1377,6 +1400,7 @@ pub struct ParserState {
     multi_action_nest_count: Cell<u16>,
     pctx: ParserContext,
     pub lsp_hints: RefCell<LspHints>,
+    hand_map: Option<&'static custom_tap_hold::HandMap>,
     a: Arc<Allocations>,
 }
 
@@ -1407,6 +1431,7 @@ impl Default for ParserState {
             switch_max_key_timing: Cell::new(0),
             multi_action_nest_count: Cell::new(0),
             lsp_hints: Default::default(),
+            hand_map: None,
             a: unsafe { Allocations::new() },
             pctx: ParserContext::default(),
         }
@@ -1831,6 +1856,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_TAP_KEYS | TAP_HOLD_TAP_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_TAP_KEYS, custom_tap_hold_tap_keys)
         }
+        TAP_HOLD_OPPOSITE_HAND => parse_tap_hold_opposite_hand(&ac[1..], s),
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),

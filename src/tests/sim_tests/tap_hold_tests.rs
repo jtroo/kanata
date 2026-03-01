@@ -171,3 +171,259 @@ fn tap_hold_tap_keys() {
     let result = simulate(cfg, "d:a t:20 u:a t:20 d:a t:200").to_ascii();
     assert_eq!("t:20ms dn:X t:6ms up:X t:14ms dn:X", result);
 }
+
+// ========== tap-hold-opposite-hand tests ==========
+
+fn opposite_hand_cfg() -> &'static str {
+    "
+    (defhands
+      (left a s d f g)
+      (right h j k l ;))
+    (defsrc f j h)
+    (deflayer base @f j h)
+    (defalias
+      f (tap-hold-opposite-hand 200 f lctl))
+    "
+}
+
+#[test]
+fn opposite_hand_press_resolves_hold() {
+    // Press f (left hand), then j (right hand) -> should resolve as HOLD (lctl)
+    let result = simulate(opposite_hand_cfg(), "d:f t:50 d:j t:50 u:j t:50 u:f t:50").to_ascii();
+    assert_eq!(
+        "t:50ms dn:LCtrl t:6ms dn:J t:44ms up:J t:50ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn same_hand_press_resolves_tap() {
+    // Press f (left hand), then d (left hand) -> same hand default = tap
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc d f)
+        (deflayer base d @f)
+        (defalias f (tap-hold-opposite-hand 200 f lctl))
+        ",
+        "d:f t:50 d:d t:50 u:d t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:50ms dn:F t:6ms dn:D t:44ms up:D t:50ms up:F", result);
+}
+
+#[test]
+fn same_hand_ignore_defers_to_timeout() {
+    // With (same-hand ignore), a same-hand press is ignored, timeout fires
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc d f)
+        (deflayer base d @f)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (same-hand ignore)))
+        ",
+        "d:f t:50 d:d t:200 u:d t:50 u:f t:50",
+    )
+    .to_ascii();
+    // timeout (default=tap) fires at 200ms from f press
+    assert_eq!("t:200ms dn:F t:1ms dn:D t:49ms up:D t:50ms up:F", result);
+}
+
+#[test]
+fn neutral_key_ignore_defers() {
+    // With default (neutral ignore), neutral keys are skipped, timeout fires
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f h spc)
+        (deflayer base @f h spc)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc)))
+        ",
+        "d:f t:50 d:spc t:200 u:spc t:50 u:f t:50",
+    )
+    .to_ascii();
+    // spc is neutral, default (neutral ignore), so timeout fires
+    assert_eq!(
+        "t:200ms dn:F t:1ms dn:Space t:49ms up:Space t:50ms up:F",
+        result
+    );
+}
+
+#[test]
+fn neutral_key_tap_resolves_immediately() {
+    // With (neutral tap), neutral key press triggers TAP immediately
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f h spc)
+        (deflayer base @f h spc)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc) (neutral tap)))
+        ",
+        "d:f t:50 d:spc t:50 u:spc t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:50ms dn:F t:6ms dn:Space t:44ms up:Space t:50ms up:F",
+        result
+    );
+}
+
+#[test]
+fn unknown_hand_key_defers_by_default() {
+    // Key not in defhands at all -> unknown hand, default = ignore
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f b)
+        (deflayer base @f b)
+        (defalias f (tap-hold-opposite-hand 200 f lctl))
+        ",
+        "d:f t:50 d:b t:200 u:b t:50 u:f t:50",
+    )
+    .to_ascii();
+    // b is not in defhands, unknown-hand default = ignore, timeout fires
+    assert_eq!("t:200ms dn:F t:1ms dn:B t:49ms up:B t:50ms up:F", result);
+}
+
+#[test]
+fn timeout_default_is_tap() {
+    // Default timeout behavior is tap
+    let result = simulate(opposite_hand_cfg(), "d:f t:250 u:f t:50").to_ascii();
+    assert_eq!("t:200ms dn:F t:50ms up:F", result);
+}
+
+#[test]
+fn timeout_hold_option() {
+    // (timeout hold) makes timeout resolve to hold action
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f j)
+        (deflayer base @f j)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (timeout hold)))
+        ",
+        "d:f t:250 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:200ms dn:LCtrl t:50ms up:LCtrl", result);
+}
+
+#[test]
+fn release_before_timeout_taps() {
+    // Release the hold-tap key before timeout -> immediate tap
+    let result = simulate(opposite_hand_cfg(), "d:f t:50 u:f t:50").to_ascii();
+    assert_eq!("t:50ms dn:F t:6ms up:F", result);
+}
+
+#[test]
+fn multiple_options_combined() {
+    // Combine (same-hand hold), (timeout hold), (neutral-keys ...) with (neutral tap)
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc d f j spc)
+        (deflayer base d @f j spc)
+        (defalias f (tap-hold-opposite-hand 200 f lctl
+          (same-hand hold) (timeout hold)
+          (neutral-keys spc) (neutral tap)))
+        ",
+        "d:f t:50 d:d t:50 u:d t:50 u:f t:50",
+    )
+    .to_ascii();
+    // d is same hand, (same-hand hold) -> resolves as hold
+    assert_eq!(
+        "t:50ms dn:LCtrl t:6ms dn:D t:44ms up:D t:50ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn unknown_hand_tap_resolves_immediately() {
+    // (unknown-hand tap) makes unassigned keys resolve as tap
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f b)
+        (deflayer base @f b)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (unknown-hand tap)))
+        ",
+        "d:f t:50 d:b t:50 u:b t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:50ms dn:F t:6ms dn:B t:44ms up:B t:50ms up:F", result);
+}
+
+#[test]
+fn unknown_hand_hold_resolves_immediately() {
+    // (unknown-hand hold) makes unassigned keys resolve as hold
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f b)
+        (deflayer base @f b)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (unknown-hand hold)))
+        ",
+        "d:f t:50 d:b t:50 u:b t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:50ms dn:LCtrl t:6ms dn:B t:44ms up:B t:50ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn neutral_key_hold_resolves_immediately() {
+    // (neutral hold) makes neutral keys resolve as hold
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f h spc)
+        (deflayer base @f h spc)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys spc) (neutral hold)))
+        ",
+        "d:f t:50 d:spc t:50 u:spc t:50 u:f t:50",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:50ms dn:LCtrl t:6ms dn:Space t:44ms up:Space t:50ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn waiting_key_unassigned_in_defhands() {
+    // The hold-tap key (b) is NOT in defhands, so its hand is unknown.
+    // Pressing j (right hand) still triggers unknown-hand logic (both sides unknown = unknown).
+    // Default (unknown-hand ignore), so it defers; timeout fires as tap.
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc b j)
+        (deflayer base @b j)
+        (defalias b (tap-hold-opposite-hand 200 b lctl))
+        ",
+        "d:b t:50 d:j t:200 u:j t:50 u:b t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:200ms dn:B t:1ms dn:J t:49ms up:J t:50ms up:B", result);
+}
+
+#[test]
+fn neutral_keys_override_defhands_assignment() {
+    // j is in defhands (right hand), but also in (neutral-keys ...).
+    // (neutral-keys ...) takes precedence, so j is treated as neutral.
+    // With (neutral tap), pressing j should resolve as tap (not hold).
+    let result = simulate(
+        "
+        (defhands (left a s d f g) (right h j k l ;))
+        (defsrc f j)
+        (deflayer base @f j)
+        (defalias f (tap-hold-opposite-hand 200 f lctl (neutral-keys j) (neutral tap)))
+        ",
+        "d:f t:50 d:j t:50 u:j t:50 u:f t:50",
+    )
+    .to_ascii();
+    // j would normally be opposite-hand (hold), but neutral-keys overrides -> tap
+    assert_eq!("t:50ms dn:F t:6ms dn:J t:44ms up:J t:50ms up:F", result);
+}
