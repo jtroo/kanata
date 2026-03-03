@@ -336,7 +336,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
     );
     layout.bm().chords_v2 = icfg.chords_v2;
     layout.bm().quick_tap_hold_timeout = icfg.options.concurrent_tap_hold;
-    layout.bm().require_prior_idle = icfg.options.require_prior_idle;
+    layout.bm().tap_hold_require_prior_idle = icfg.options.tap_hold_require_prior_idle;
     layout.bm().oneshot.pause_input_processing_delay = icfg.options.rapid_event_delay;
     if let Some(s) = icfg.start_action {
         layout

@@ -123,7 +123,7 @@ fn non_applicable_os_deflocalkeys_always_succeeds_parsing() {
 }
 
 #[test]
-fn require_prior_idle_parses_valid_value() {
+fn tap_hold_require_prior_idle_parses_valid_value() {
     let source = "
 (defcfg tap-hold-require-prior-idle 150)
 (defsrc a)
@@ -132,11 +132,11 @@ fn require_prior_idle_parses_valid_value() {
     let cfg = parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("passes");
-    assert_eq!(cfg.options.require_prior_idle, 150);
+    assert_eq!(cfg.options.tap_hold_require_prior_idle, 150);
 }
 
 #[test]
-fn require_prior_idle_allows_zero() {
+fn tap_hold_require_prior_idle_allows_zero() {
     let source = "
 (defcfg tap-hold-require-prior-idle 0)
 (defsrc a)
@@ -145,11 +145,11 @@ fn require_prior_idle_allows_zero() {
     let cfg = parse_cfg(source)
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("passes");
-    assert_eq!(cfg.options.require_prior_idle, 0);
+    assert_eq!(cfg.options.tap_hold_require_prior_idle, 0);
 }
 
 #[test]
-fn require_prior_idle_rejects_non_numeric() {
+fn tap_hold_require_prior_idle_rejects_non_numeric() {
     let source = "
 (defcfg tap-hold-require-prior-idle nope)
 (defsrc a)

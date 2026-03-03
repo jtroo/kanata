@@ -431,7 +431,7 @@ fn neutral_keys_override_defhands_assignment() {
 // ========== tap-hold-require-prior-idle tests ==========
 
 #[test]
-fn require_prior_idle_typing_streak_resolves_tap() {
+fn tap_hold_require_prior_idle_typing_streak_resolves_tap() {
     let result = simulate(
         "
 (defcfg tap-hold-require-prior-idle 150)
@@ -449,7 +449,7 @@ fn require_prior_idle_typing_streak_resolves_tap() {
 }
 
 #[test]
-fn require_prior_idle_idle_long_enough_enters_hold() {
+fn tap_hold_require_prior_idle_idle_long_enough_enters_hold() {
     let result = simulate(
         "
 (defcfg tap-hold-require-prior-idle 150)
@@ -467,7 +467,7 @@ fn require_prior_idle_idle_long_enough_enters_hold() {
 }
 
 #[test]
-fn require_prior_idle_no_prior_key_enters_hold() {
+fn tap_hold_require_prior_idle_no_prior_key_enters_hold() {
     let result = simulate(
         "
 (defcfg tap-hold-require-prior-idle 150)
@@ -484,7 +484,7 @@ fn require_prior_idle_no_prior_key_enters_hold() {
 }
 
 #[test]
-fn require_prior_idle_boundary_just_within_threshold() {
+fn tap_hold_require_prior_idle_boundary_just_within_threshold() {
     // Prior key pressed 149ms ago (just within 150ms threshold).
     // ticks_since_occurrence will be ~150 (149 + 1 tick offset), which is
     // <= 150 threshold, so tap fires.
@@ -502,7 +502,7 @@ fn require_prior_idle_boundary_just_within_threshold() {
 }
 
 #[test]
-fn require_prior_idle_boundary_just_outside_threshold() {
+fn tap_hold_require_prior_idle_boundary_just_outside_threshold() {
     // Prior key pressed 150ms ago (just outside 150ms threshold).
     // ticks_since_occurrence will be ~151 (150 + 1 tick offset), which is
     // > 150 threshold, so normal tap-hold behavior applies.
@@ -521,7 +521,7 @@ fn require_prior_idle_boundary_just_outside_threshold() {
 }
 
 #[test]
-fn require_prior_idle_with_opposite_hand() {
+fn tap_hold_require_prior_idle_with_opposite_hand() {
     // tap-hold-require-prior-idle should short-circuit before tap-hold-opposite-hand
     // evaluates hand membership. During a typing streak, even an opposite-hand
     // key should resolve as tap.
@@ -543,7 +543,7 @@ fn require_prior_idle_with_opposite_hand() {
 }
 
 #[test]
-fn require_prior_idle_with_tap_hold_interval() {
+fn tap_hold_require_prior_idle_with_tap_hold_interval() {
     // tap-hold-require-prior-idle check runs before tap-hold-interval (quick re-press).
     // Both should work together: typing streak → tap immediately,
     // idle re-press → tap via tap_hold_interval.
@@ -562,7 +562,7 @@ fn require_prior_idle_with_tap_hold_interval() {
 }
 
 #[test]
-fn require_prior_idle_ignores_virtual_keys() {
+fn tap_hold_require_prior_idle_ignores_virtual_keys() {
     // Virtual key events (row 1) should not count as prior physical input.
     // Only real physical key presses (row 0) trigger the typing streak.
     let result = simulate(
