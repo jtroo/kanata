@@ -155,6 +155,7 @@ pub struct CfgOptions {
     pub rapid_event_delay: u16,
     pub trans_resolution_behavior_v2: bool,
     pub chords_v2_min_idle: u16,
+    pub tap_hold_require_prior_idle: u16,
     #[cfg(any(
         all(target_os = "windows", feature = "interception_driver"),
         target_os = "linux",
@@ -201,6 +202,7 @@ impl Default for CfgOptions {
             rapid_event_delay: 5,
             trans_resolution_behavior_v2: true,
             chords_v2_min_idle: 5,
+            tap_hold_require_prior_idle: 0,
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
                 target_os = "linux",
@@ -895,6 +897,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             bail_expr!(val, "{label} must be 5-65535");
                         }
                         cfg.chords_v2_min_idle = min_idle;
+                    }
+                    "tap-hold-require-prior-idle" => {
+                        cfg.tap_hold_require_prior_idle = parse_cfg_val_u16(val, label, false)?;
                     }
                     "mouse-movement-key" => {
                         #[cfg(any(

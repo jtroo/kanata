@@ -116,6 +116,9 @@ where
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
     pub quick_tap_hold_timeout: bool,
+    /// If a different key was pressed within this many ticks before a HoldTap key,
+    /// immediately resolve as tap (typing streak detection). 0 = disabled.
+    pub tap_hold_require_prior_idle: u16,
     pub chords_v2: Option<ChordsV2<'a, T>>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
@@ -1174,6 +1177,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             historical_inputs: History::new(),
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
+            tap_hold_require_prior_idle: 0,
             trans_resolution_behavior_v2: true,
             delegate_to_first_layer: false,
             chords_v2: None,
@@ -1826,6 +1830,22 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 tap_hold_interval,
                 on_press_reset_timeout_to,
             }) => {
+                // Typing streak detection: if a different physical key was pressed
+                // recently, resolve as tap immediately without entering WaitingState.
+                if self.tap_hold_require_prior_idle > 0 {
+                    let prior_idle_tap = self
+                        .historical_inputs
+                        .iter_hevents()
+                        .find(|prior| prior.event.0 == REAL_KEY_ROW && prior.event != coord)
+                        .is_some_and(|prior| {
+                            prior.ticks_since_occurrence <= self.tap_hold_require_prior_idle
+                        });
+                    if prior_idle_tap {
+                        let custom = self.do_action(tap, coord, delay, is_oneshot, layer_stack);
+                        self.last_press_tracker.update_coord(coord);
+                        return custom;
+                    }
+                }
                 let mut custom = CustomEvent::NoEvent;
                 if *tap_hold_interval == 0
                     || coord != self.last_press_tracker.coord
