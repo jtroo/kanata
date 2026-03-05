@@ -81,14 +81,27 @@ static SIMPLE_OVERLAPPING_CHORD_CFG: &str = "\
 
 #[test]
 fn sim_chord_overlapping_timeout() {
-    let result = simulate(SIMPLE_OVERLAPPING_CHORD_CFG, "d:a d:b t:201 d:z t:300");
-    assert_eq!(
-        "t:200ms
-out:↓C
-t:252ms
-out:↓Z",
-        result
-    );
+    let result = simulate(SIMPLE_OVERLAPPING_CHORD_CFG, "d:a d:b t:201 d:z t:500").to_ascii();
+    assert_eq!("t:400ms dn:D", result);
+}
+
+#[test]
+fn sim_chord_overlapping_timeout_v2() {
+    let result = simulate(
+        "
+(defcfg process-unmapped-keys yes
+ concurrent-tap-hold yes)
+(defsrc e f j)
+(deflayermap (layer1))
+(defchordsv2
+ (e f) lctl 5 all-released ()
+ (f j) ret  10 first-release ()
+)
+        ",
+        "d:f t:7 d:j t:100",
+    )
+    .to_ascii();
+    assert_eq!("t:7ms dn:Enter", result);
 }
 
 #[test]
@@ -96,8 +109,9 @@ fn sim_chord_overlapping_release() {
     let result = simulate(
         SIMPLE_OVERLAPPING_CHORD_CFG,
         "d:a d:b t:100 u:a d:z t:300 u:b t:300",
-    );
-    assert_eq!("t:100ms\nout:↓C\nt:251ms\nout:↓Z\nt:51ms\nout:↑C", result);
+    )
+    .to_ascii();
+    assert_eq!("t:100ms dn:C t:301ms up:C t:100ms dn:Z", result);
 }
 
 #[test]

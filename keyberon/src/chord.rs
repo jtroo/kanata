@@ -30,7 +30,7 @@ pub enum ReleaseBehaviour {
     OnLastRelease,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ChordV2<'a, T> {
     /// The action associated with this chord.
     pub action: &'a Action<'a, T>,
@@ -45,6 +45,17 @@ pub struct ChordV2<'a, T> {
     pub disabled_layers: &'a [u16],
     /// When should the action for this chord be released.
     pub release_behaviour: ReleaseBehaviour,
+}
+
+impl<'a, T> std::fmt::Debug for ChordV2<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Point")
+            .field("participating_keys", &self.participating_keys)
+            .field("pending_duration", &self.pending_duration)
+            .field("disabled_layers", &self.disabled_layers)
+            .field("release_behaviour", &self.release_behaviour)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -387,7 +398,6 @@ impl<'a, T> ChordsV2<'a, T> {
         // 2. Longer chord
         let mut accumulated_presses = HVec::<u16, SMOL_Q_LEN>::new();
         let mut chord_candidates = HVec::<&ChordV2<'a, T>, SMOL_Q_LEN>::new();
-        let mut timed_out_chord = Option::<(&ChordV2<'a, T>, u8)>::default();
         let mut prev_count = usize::MAX;
         let mut min_timeout;
 
@@ -405,7 +415,9 @@ impl<'a, T> ChordsV2<'a, T> {
                 // chord_candidates will keep getting shrunk.
                 chord_candidates.retain(|chc| chc.participating_keys.contains(&press));
                 for chc in chord_candidates.iter() {
-                    min_timeout = std::cmp::min(min_timeout, chc.pending_duration);
+                    if chc.pending_duration > since {
+                        min_timeout = std::cmp::min(min_timeout, chc.pending_duration);
+                    }
                 }
                 chord_candidates.len()
             } else {
@@ -419,19 +431,12 @@ impl<'a, T> ChordsV2<'a, T> {
                             .iter()
                             .all(|acp| pch.participating_keys.contains(acp))
                         {
-                            if pch.pending_duration <= since
-                                && pch
-                                    .participating_keys
-                                    .iter()
-                                    .all(|pk| accumulated_presses.contains(pk))
-                            {
-                                // this should only happen at most once per iteration due to needing an exact match.
-                                timed_out_chord = Some((pch, accumulated_presses.len() as u8));
-                            }
                             // If full, can't run the optimization above, but not fatal.
                             // Can ignore the overflow.
                             let _overflow = chord_candidates.push(pch);
-                            min_timeout = std::cmp::min(min_timeout, pch.pending_duration);
+                            if pch.pending_duration > since {
+                                min_timeout = std::cmp::min(min_timeout, pch.pending_duration);
+                            }
                             true
                         } else {
                             false
@@ -494,7 +499,10 @@ impl<'a, T> ChordsV2<'a, T> {
                 }
                 _ => {}
             }
-            self.ticks_until_next_state_change = min_timeout.saturating_sub(since);
+            self.ticks_until_next_state_change = match min_timeout {
+                u16::MAX => 0,
+                t => t.saturating_sub(since),
+            };
             prev_count = count_possible;
         }
         if self.ticks_until_next_state_change == 0 || relevant_release_found {
