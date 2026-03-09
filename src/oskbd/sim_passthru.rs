@@ -74,6 +74,12 @@ impl KbdOut {
         }
         Ok(())
     }
+    pub fn output_ready(&self) -> bool {
+        true
+    }
+    pub fn wait_until_ready(&self, _timeout: Option<std::time::Duration>) -> bool {
+        true
+    }
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         let key_ev = KeyEvent::new(key, value);
         let event = {
@@ -98,6 +104,7 @@ impl KbdOut {
     pub fn release_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
     }
+    pub fn release_tracked_output_keys(&mut self, _reason: &str) {}
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
         trace!("outU:{c}");
         Ok(())

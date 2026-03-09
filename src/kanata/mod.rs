@@ -56,7 +56,10 @@ fn collect_and_sort_events(
     }
 }
 
-#[cfg(feature = "passthru_ahk")]
+#[cfg(any(
+    feature = "passthru_ahk",
+    all(feature = "simulated_input", feature = "simulated_output")
+))]
 use std::sync::mpsc::Sender as ASender;
 
 use kanata_keyberon::action::ReleasableState;
@@ -702,7 +705,10 @@ impl Kanata {
         })
     }
 
-    #[cfg(feature = "passthru_ahk")]
+    #[cfg(any(
+        feature = "passthru_ahk",
+        all(feature = "simulated_input", feature = "simulated_output")
+    ))]
     pub fn new_with_output_channel(
         args: &ValidatedArgs,
         tx: Option<ASender<InputEvent>>,

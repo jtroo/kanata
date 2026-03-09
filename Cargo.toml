@@ -33,6 +33,7 @@ default-run = "kanata"
 [lib]
 name = "kanata_state_machine"
 path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
 
 [[bin]]
 name = "kanata"
