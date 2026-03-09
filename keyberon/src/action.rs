@@ -61,6 +61,11 @@ pub enum HoldTapConfig<'a> {
     /// not used in the flow of typing, like escape for example. If
     /// you are annoyed by accidental tap, you can try this behavior.
     HoldOnOtherKeyPress,
+    /// Like HoldOnOtherKeyPress, but requires a minimum gap (in ticks/ms)
+    /// between the tap-hold keydown and the next keydown before activating hold.
+    /// If the next key arrives before the gap, resolves as tap instead.
+    /// This filters fast-typing overlap from intentional modifier holds.
+    HoldOnOtherKeyPressWithGap(u16),
     /// If there is a press and release of another key, the hold
     /// action is activated.
     ///
@@ -100,6 +105,9 @@ impl Debug for HoldTapConfig<'_> {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
             HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
+            HoldTapConfig::HoldOnOtherKeyPressWithGap(gap) => {
+                write!(f, "HoldOnOtherKeyPressWithGap({gap})")
+            }
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
@@ -113,6 +121,10 @@ impl PartialEq for HoldTapConfig<'_> {
             (HoldTapConfig::Default, HoldTapConfig::Default)
             | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
             | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
+            (
+                HoldTapConfig::HoldOnOtherKeyPressWithGap(a),
+                HoldTapConfig::HoldOnOtherKeyPressWithGap(b),
+            ) => a == b,
             _ => false,
         }
     }

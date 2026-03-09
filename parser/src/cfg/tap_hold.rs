@@ -188,6 +188,35 @@ pub(crate) fn parse_tap_hold_timeout(
     }))))
 }
 
+pub(crate) fn parse_tap_hold_press_gap(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    if ac_params.len() != 3 {
+        bail!(
+            r"tap-hold-press-gap expects 3 items after it, got {}.
+Params in order:
+<min-gap-ms> <tap-action> <hold-action>",
+            ac_params.len(),
+        )
+    }
+    let min_gap = parse_non_zero_u16(&ac_params[0], s, "min gap threshold")?;
+    let tap_action = parse_action(&ac_params[1], s)?;
+    let hold_action = parse_action(&ac_params[2], s)?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::HoldOnOtherKeyPressWithGap(min_gap),
+        tap_hold_interval: 0,
+        timeout: u16::MAX,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *tap_action,
+        on_press_reset_timeout_to: None,
+    }))))
+}
+
 pub(crate) fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParserState,
