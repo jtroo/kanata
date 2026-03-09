@@ -309,92 +309,101 @@ enum CanBlock {
     NoMustPeriodicPoll,
 }
 
+fn preprocessor_recv(preprocess_rx: &Receiver<KeyEvent>, can_block: CanBlock) -> RecvValue {
+    match can_block {
+        CanBlock::YesCanBlock => match preprocess_rx.recv() {
+            Ok(kev) => RecvValue::Ok(kev),
+            Err(RecvError) => RecvValue::Disconnected,
+        },
+        CanBlock::NoMustPeriodicPoll => match preprocess_rx.try_recv() {
+            Ok(kev) => RecvValue::Ok(kev),
+            Err(TryRecvError::Empty) => RecvValue::Empty,
+            Err(TryRecvError::Disconnected) => RecvValue::Disconnected,
+        },
+    }
+}
+
 fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sender<KeyEvent>) {
     use CanBlock::*;
     use RecvValue::*;
     std::thread::spawn(move || {
         let mut lctl_state = LctlState::None;
-        let mut can_block = YesCanBlock;
+        let mut can_block = NoMustPeriodicPoll;
         loop {
             can_block = match preprocessor_recv(&preprocess_rx, can_block) {
-                Ok(kev) => match (*ALTGR_BEHAVIOUR.lock(), kev) {
-                    (AltGrBehaviour::DoNothing, _) => {
-                        try_send_panic(&process_tx, kev);
-                        YesCanBlock
-                    }
-                    (
-                        AltGrBehaviour::AddLctlRelease,
-                        KeyEvent {
-                            value: KeyValue::Release,
-                            code: OsCode::KEY_RIGHTALT,
-                            ..
-                        },
-                    ) => {
-                        log::debug!("altgr add: adding lctl release");
-                        try_send_panic(&process_tx, kev);
-                        try_send_panic(
-                            &process_tx,
-                            KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
-                        );
-                        PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);
-                        YesCanBlock
-                    }
-                    (
-                        AltGrBehaviour::CancelLctlPress,
-                        KeyEvent {
-                            value: KeyValue::Press,
-                            code: OsCode::KEY_LEFTCTRL,
-                            ..
-                        },
-                    ) => {
-                        log::debug!("altgr cancel: lctl state->pressed");
-                        lctl_state = LctlState::Pressed;
-                        NoMustPeriodicPoll
-                    }
-                    (
-                        AltGrBehaviour::CancelLctlPress,
-                        KeyEvent {
-                            value: KeyValue::Release,
-                            code: OsCode::KEY_LEFTCTRL,
-                            ..
-                        },
-                    ) => match lctl_state {
-                        LctlState::Pressed => {
-                            log::debug!("altgr cancel: lctl state->released");
-                            lctl_state = LctlState::Released;
-                            NoMustPeriodicPoll
-                        }
-                        LctlState::Pending => {
-                            log::debug!("altgr cancel: lctl state->pending-released");
-                            lctl_state = LctlState::PendingReleased;
-                            NoMustPeriodicPoll
-                        }
-                        LctlState::None => {
+                Ok(kev) => {
+                    match (*ALTGR_BEHAVIOUR.lock(), kev) {
+                        (AltGrBehaviour::DoNothing, _) => {
                             try_send_panic(&process_tx, kev);
-                            YesCanBlock
                         }
-                        _ => YesCanBlock,
-                    },
-                    (
-                        AltGrBehaviour::CancelLctlPress,
-                        KeyEvent {
-                            value: KeyValue::Press,
-                            code: OsCode::KEY_RIGHTALT,
-                            ..
+                        (
+                            AltGrBehaviour::AddLctlRelease,
+                            KeyEvent {
+                                value: KeyValue::Release,
+                                code: OsCode::KEY_RIGHTALT,
+                                ..
+                            },
+                        ) => {
+                            log::debug!("altgr add: adding lctl release");
+                            try_send_panic(&process_tx, kev);
+                            try_send_panic(
+                                &process_tx,
+                                KeyEvent::new(OsCode::KEY_LEFTCTRL, KeyValue::Release),
+                            );
+                            PRESSED_KEYS.lock().remove(&OsCode::KEY_LEFTCTRL);
+                        }
+                        (
+                            AltGrBehaviour::CancelLctlPress,
+                            KeyEvent {
+                                value: KeyValue::Press,
+                                code: OsCode::KEY_LEFTCTRL,
+                                ..
+                            },
+                        ) => {
+                            log::debug!("altgr cancel: lctl state->pressed");
+                            lctl_state = LctlState::Pressed;
+                        }
+                        (
+                            AltGrBehaviour::CancelLctlPress,
+                            KeyEvent {
+                                value: KeyValue::Release,
+                                code: OsCode::KEY_LEFTCTRL,
+                                ..
+                            },
+                        ) => match lctl_state {
+                            LctlState::Pressed => {
+                                log::debug!("altgr cancel: lctl state->released");
+                                lctl_state = LctlState::Released;
+                            }
+                            LctlState::Pending => {
+                                log::debug!("altgr cancel: lctl state->pending-released");
+                                lctl_state = LctlState::PendingReleased;
+                            }
+                            LctlState::None => {
+                                try_send_panic(&process_tx, kev);
+                            }
+                            _ => {}
                         },
-                    ) => {
-                        log::debug!("altgr cancel: lctl state->none");
-                        lctl_state = LctlState::None;
-                        try_send_panic(&process_tx, kev);
-                        YesCanBlock
+                        (
+                            AltGrBehaviour::CancelLctlPress,
+                            KeyEvent {
+                                value: KeyValue::Press,
+                                code: OsCode::KEY_RIGHTALT,
+                                ..
+                            },
+                        ) => {
+                            log::debug!("altgr cancel: lctl state->none");
+                            lctl_state = LctlState::None;
+                            try_send_panic(&process_tx, kev);
+                        }
+                        (_, _) => {
+                            try_send_panic(&process_tx, kev);
+                        }
                     }
-                    (_, _) => {
-                        try_send_panic(&process_tx, kev);
-                        YesCanBlock
-                    }
-                },
+                    NoMustPeriodicPoll
+                }
                 Empty => {
-                    let can_block = if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
+                    can_block = if *ALTGR_BEHAVIOUR.lock() == AltGrBehaviour::CancelLctlPress {
                         match lctl_state {
                             LctlState::Pressed => {
                                 log::debug!("altgr cancel: lctl state->pending");
@@ -442,18 +451,4 @@ fn start_event_preprocessor(preprocess_rx: Receiver<KeyEvent>, process_tx: Sende
             }
         }
     });
-}
-
-fn preprocessor_recv(preprocess_rx: &Receiver<KeyEvent>, can_block: CanBlock) -> RecvValue {
-    match can_block {
-        CanBlock::YesCanBlock => match preprocess_rx.recv() {
-            Ok(kev) => RecvValue::Ok(kev),
-            Err(RecvError) => RecvValue::Disconnected,
-        },
-        CanBlock::NoMustPeriodicPoll => match preprocess_rx.try_recv() {
-            Ok(kev) => RecvValue::Ok(kev),
-            Err(TryRecvError::Empty) => RecvValue::Empty,
-            Err(TryRecvError::Disconnected) => RecvValue::Disconnected,
-        },
-    }
 }
