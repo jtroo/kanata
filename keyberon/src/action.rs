@@ -61,11 +61,11 @@ pub enum HoldTapConfig<'a> {
     /// not used in the flow of typing, like escape for example. If
     /// you are annoyed by accidental tap, you can try this behavior.
     HoldOnOtherKeyPress,
-    /// Like HoldOnOtherKeyPress, but requires a minimum gap (in ticks/ms)
-    /// between the tap-hold keydown and the next keydown before activating hold.
-    /// If the next key arrives before the gap, resolves as tap instead.
-    /// This filters fast-typing overlap from intentional modifier holds.
-    HoldOnOtherKeyPressWithGap(u16),
+    /// Resolves based on release order after both keys are down.
+    /// If the other key releases first (modifier still held) → Hold.
+    /// If the modifier releases first (other key still held) → Tap.
+    /// No timers, no thresholds — purely event-driven.
+    ReleaseOrder,
     /// If there is a press and release of another key, the hold
     /// action is activated.
     ///
@@ -105,9 +105,7 @@ impl Debug for HoldTapConfig<'_> {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
             HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
-            HoldTapConfig::HoldOnOtherKeyPressWithGap(gap) => {
-                write!(f, "HoldOnOtherKeyPressWithGap({gap})")
-            }
+            HoldTapConfig::ReleaseOrder => f.write_str("ReleaseOrder"),
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
@@ -121,10 +119,7 @@ impl PartialEq for HoldTapConfig<'_> {
             (HoldTapConfig::Default, HoldTapConfig::Default)
             | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
             | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
-            (
-                HoldTapConfig::HoldOnOtherKeyPressWithGap(a),
-                HoldTapConfig::HoldOnOtherKeyPressWithGap(b),
-            ) => a == b,
+            (HoldTapConfig::ReleaseOrder, HoldTapConfig::ReleaseOrder) => true,
             _ => false,
         }
     }

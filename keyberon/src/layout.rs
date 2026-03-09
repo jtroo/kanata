@@ -544,12 +544,18 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                     return Some(WaitingAction::Hold);
                 }
             }
-            HoldTapConfig::HoldOnOtherKeyPressWithGap(min_gap) => {
-                if queued.iter().any(|s| s.event.is_press()) {
-                    if self.ticks >= min_gap {
-                        return Some(WaitingAction::Hold);
-                    } else {
-                        return Some(WaitingAction::Tap);
+            HoldTapConfig::ReleaseOrder => {
+                // Like PermissiveHold: if another key was pressed AND released
+                // (while modifier is still held), resolve as Hold.
+                // If modifier is released first, the fallthrough below handles Tap.
+                let mut queued = queued.iter();
+                while let Some(q) = queued.next() {
+                    if q.event.is_press() {
+                        let (i, j) = q.event.coord();
+                        let target = Event::Release(i, j);
+                        if queued.clone().any(|q| q.event == target) {
+                            return Some(WaitingAction::Hold);
+                        }
                     }
                 }
             }
@@ -2528,9 +2534,8 @@ mod test {
     }
 
     #[test]
-    fn hold_on_press_with_gap_clean_tap() {
-        // Clean tap: press and release the tap-hold key with no other keys.
-        // Should emit the tap action (Space).
+    fn release_order_clean_tap() {
+        // Press and release modifier with no other keys → Tap.
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 on_press_reset_timeout_to: None,
@@ -2538,18 +2543,16 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::HoldOnOtherKeyPressWithGap(100),
+                config: HoldTapConfig::ReleaseOrder,
                 tap_hold_interval: 0,
             }),
             k(Enter),
         ]]];
         let mut layout = Layout::new(LAYERS);
 
-        // Press the tap-hold key
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        // Wait a bit, then release (no other key pressed)
         for _ in 0..50 {
             assert_eq!(CustomEvent::NoEvent, layout.tick());
             assert_keys(&[], layout.keycodes());
@@ -2562,9 +2565,8 @@ mod test {
     }
 
     #[test]
-    fn hold_on_press_with_gap_fast_typing_overlap() {
-        // Fast typing overlap: another key pressed within min_gap (100ms).
-        // Should resolve as tap: emit Space then Enter.
+    fn release_order_hold() {
+        // Modifier down → other down → other up first → Hold.
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 on_press_reset_timeout_to: None,
@@ -2572,77 +2574,36 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::HoldOnOtherKeyPressWithGap(100),
+                config: HoldTapConfig::ReleaseOrder,
                 tap_hold_interval: 0,
             }),
             k(Enter),
         ]]];
         let mut layout = Layout::new(LAYERS);
 
-        // Press the tap-hold key
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        // Wait only 30ms, then press another key (within the 100ms gap)
-        for _ in 0..29 {
-            assert_eq!(CustomEvent::NoEvent, layout.tick());
-            assert_keys(&[], layout.keycodes());
-        }
         layout.event(Press(0, 1));
-        // Next tick: gap is 30 ticks < 100 min_gap, so resolves as Tap
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[Space], layout.keycodes());
-        // Buffered Enter gets dequeued
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[Space, Enter], layout.keycodes());
-    }
-
-    #[test]
-    fn hold_on_press_with_gap_intentional_hold() {
-        // Intentional hold: another key pressed after min_gap (100ms).
-        // Should resolve as hold: activate LAlt, then Enter is processed with LAlt active.
-        static LAYERS: Layers<2, 1> = &[[[
-            HoldTap(&HoldTapAction {
-                on_press_reset_timeout_to: None,
-                timeout: u16::MAX,
-                hold: k(LAlt),
-                timeout_action: k(Space),
-                tap: k(Space),
-                config: HoldTapConfig::HoldOnOtherKeyPressWithGap(100),
-                tap_hold_interval: 0,
-            }),
-            k(Enter),
-        ]]];
-        let mut layout = Layout::new(LAYERS);
-
-        // Press the tap-hold key
-        layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        // Wait 150ms (past the 100ms gap threshold)
-        for _ in 0..149 {
-            assert_eq!(CustomEvent::NoEvent, layout.tick());
-            assert_keys(&[], layout.keycodes());
-        }
-        layout.event(Press(0, 1));
-        // Next tick: gap is 150 ticks >= 100 min_gap, so resolves as Hold
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LAlt], layout.keycodes());
-        // Buffered Enter gets dequeued
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LAlt, Enter], layout.keycodes());
-        // Release both
+        // Other key releases first → Hold
         layout.event(Release(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, Enter], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        // Release modifier
         layout.event(Release(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
 
     #[test]
-    fn hold_on_press_with_gap_exact_boundary() {
-        // Exactly at min_gap: should resolve as hold (>= check).
+    fn release_order_tap() {
+        // Modifier down → other down → modifier up first → Tap.
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {
                 on_press_reset_timeout_to: None,
@@ -2650,28 +2611,25 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::HoldOnOtherKeyPressWithGap(100),
+                config: HoldTapConfig::ReleaseOrder,
                 tap_hold_interval: 0,
             }),
             k(Enter),
         ]]];
         let mut layout = Layout::new(LAYERS);
 
-        // Press the tap-hold key
         layout.event(Press(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
-        // Wait exactly 100 ticks
-        for _ in 0..99 {
-            assert_eq!(CustomEvent::NoEvent, layout.tick());
-            assert_keys(&[], layout.keycodes());
-        }
         layout.event(Press(0, 1));
-        // Next tick: gap is exactly 100 ticks == 100 min_gap, resolves as Hold
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LAlt], layout.keycodes());
+        assert_keys(&[], layout.keycodes());
+        // Modifier releases first → Tap
+        layout.event(Release(0, 0));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[LAlt, Enter], layout.keycodes());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space, Enter], layout.keycodes());
     }
 
     #[test]

@@ -188,26 +188,25 @@ pub(crate) fn parse_tap_hold_timeout(
     }))))
 }
 
-pub(crate) fn parse_tap_hold_press_gap(
+pub(crate) fn parse_tap_hold_release_order(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    if ac_params.len() != 3 {
+    if ac_params.len() != 2 {
         bail!(
-            r"tap-hold-press-gap expects 3 items after it, got {}.
+            r"tap-hold-release-order expects 2 items after it, got {}.
 Params in order:
-<min-gap-ms> <tap-action> <hold-action>",
+<tap-action> <hold-action>",
             ac_params.len(),
         )
     }
-    let min_gap = parse_non_zero_u16(&ac_params[0], s, "min gap threshold")?;
-    let tap_action = parse_action(&ac_params[1], s)?;
-    let hold_action = parse_action(&ac_params[2], s)?;
+    let tap_action = parse_action(&ac_params[0], s)?;
+    let hold_action = parse_action(&ac_params[1], s)?;
     if matches!(tap_action, Action::HoldTap { .. }) {
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
-        config: HoldTapConfig::HoldOnOtherKeyPressWithGap(min_gap),
+        config: HoldTapConfig::ReleaseOrder,
         tap_hold_interval: 0,
         timeout: u16::MAX,
         tap: *tap_action,
