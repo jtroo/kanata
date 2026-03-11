@@ -544,13 +544,21 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                     return Some(WaitingAction::Hold);
                 }
             }
-            HoldTapConfig::ReleaseOrder => {
+            HoldTapConfig::ReleaseOrder { buffer } => {
                 // Like PermissiveHold: if another key was pressed AND released
                 // (while modifier is still held), resolve as Hold.
                 // If modifier is released first, the fallthrough below handles Tap.
+                //
+                // Buffer: key presses that occurred within `buffer` ticks of the
+                // hold-tap key press are ignored by release-order logic, allowing
+                // fast typing to resolve as Tap regardless of release order.
                 let mut queued = queued.iter();
                 while let Some(q) = queued.next() {
                     if q.event.is_press() {
+                        let press_tick = self.ticks.saturating_sub(q.since);
+                        if press_tick < buffer {
+                            continue;
+                        }
                         let (i, j) = q.event.coord();
                         let target = Event::Release(i, j);
                         if queued.clone().any(|q| q.event == target) {
@@ -2543,7 +2551,7 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::ReleaseOrder,
+                config: HoldTapConfig::ReleaseOrder { buffer: 0 },
                 tap_hold_interval: 0,
             }),
             k(Enter),
@@ -2574,7 +2582,7 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::ReleaseOrder,
+                config: HoldTapConfig::ReleaseOrder { buffer: 0 },
                 tap_hold_interval: 0,
             }),
             k(Enter),
@@ -2611,7 +2619,7 @@ mod test {
                 hold: k(LAlt),
                 timeout_action: k(Space),
                 tap: k(Space),
-                config: HoldTapConfig::ReleaseOrder,
+                config: HoldTapConfig::ReleaseOrder { buffer: 0 },
                 tap_hold_interval: 0,
             }),
             k(Enter),

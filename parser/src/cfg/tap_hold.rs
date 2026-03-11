@@ -192,21 +192,22 @@ pub(crate) fn parse_tap_hold_release_order(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    if ac_params.len() != 2 {
+    if ac_params.len() != 3 {
         bail!(
-            r"tap-hold-release-order expects 2 items after it, got {}.
+            r"tap-hold-release-order expects 3 items after it, got {}.
 Params in order:
-<tap-action> <hold-action>",
+<buffer-ms> <tap-action> <hold-action>",
             ac_params.len(),
         )
     }
-    let tap_action = parse_action(&ac_params[0], s)?;
-    let hold_action = parse_action(&ac_params[1], s)?;
+    let buffer = parse_u16(&ac_params[0], s, "buffer")?;
+    let tap_action = parse_action(&ac_params[1], s)?;
+    let hold_action = parse_action(&ac_params[2], s)?;
     if matches!(tap_action, Action::HoldTap { .. }) {
         bail!("tap-hold does not work in the tap-action of tap-hold")
     }
     Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
-        config: HoldTapConfig::ReleaseOrder,
+        config: HoldTapConfig::ReleaseOrder { buffer },
         tap_hold_interval: 0,
         timeout: u16::MAX,
         tap: *tap_action,
