@@ -160,3 +160,154 @@ fn tap_hold_require_prior_idle_rejects_non_numeric() {
         //.map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect_err("fails");
 }
+
+#[test]
+fn per_action_require_prior_idle_parses() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold 200 200 a lctl (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_zero_parses() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold 200 200 a lctl (require-prior-idle 0)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_rejects_non_numeric() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold 200 200 a lctl (require-prior-idle nope)))
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}
+
+#[test]
+fn per_action_require_prior_idle_rejects_unknown_option() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold 200 200 a lctl (unknown-option 100)))
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}
+
+#[test]
+fn per_action_require_prior_idle_rejects_duplicate() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold 200 200 a lctl (require-prior-idle 100) (require-prior-idle 50)))
+";
+    parse_cfg(source).map(|_| ()).expect_err("fails");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_press() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold-press 200 200 a lctl (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_release() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold-release 200 200 a lctl (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_release_timeout() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold-release-timeout 200 200 a lctl lalt (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_press_timeout() {
+    let source = "
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold-press-timeout 200 200 a lctl lalt (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_release_keys() {
+    let source = "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-release-keys 200 200 a lctl (b) (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_except_keys() {
+    let source = "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-except-keys 200 200 a lctl (b) (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_opposite_hand() {
+    let source = "
+(defhands (left a s d f g) (right h j k l ;))
+(defsrc a)
+(deflayer base @a)
+(defalias a (tap-hold-opposite-hand 200 a lctl (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}
+
+#[test]
+fn per_action_require_prior_idle_on_tap_hold_release_tap_keys_release() {
+    let source = "
+(defsrc a b c)
+(deflayer base @a b c)
+(defalias a (tap-hold-release-tap-keys-release 200 200 a lctl (b) (c) (require-prior-idle 100)))
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+}

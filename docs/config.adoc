@@ -2074,6 +2074,11 @@ This is useful for home row mods where fast typing should not trigger modifiers.
 Requires a `defhands` directive. Supports list-form options for fine-grained control.
 See <<defhands and tap-hold-opposite-hand>> below.
 |===
+
+All `tap-hold` variants support an optional trailing `(require-prior-idle <ms>)` option
+to override the global <<tap-hold-require-prior-idle>> setting for that specific action.
+Use `(require-prior-idle 0)` to disable idle detection for a specific key.
+
 **Description**
 
 The `+tap-hold+` action allows you to have one action/key for a "tap" and a
@@ -4157,6 +4162,47 @@ The default value is `0` (disabled) and the unit is milliseconds.
 - When `tap-hold-require-prior-idle` triggers, the tap action is chosen before any other
   `tap-hold` configuration (e.g., `tap-hold-opposite-hand`, `concurrent-tap-hold`)
   is consulted.
+
+==== Per-action override
+
+The global `tap-hold-require-prior-idle` value can be overridden on individual
+`tap-hold` actions using the `(require-prior-idle <ms>)` option.
+This is useful when most keys benefit from idle detection (e.g., home-row mods)
+but specific keys (e.g., a layer-tap key) need immediate activation even during
+fast typing.
+
+The option can be appended to any `tap-hold` variant as a trailing
+`(keyword value)` list:
+
+.Example: disable for a specific key
+[source]
+----
+(defcfg tap-hold-require-prior-idle 150)
+(defalias
+  ;; HRMs use the global 150ms threshold
+  a (tap-hold 200 200 a lmet)
+  s (tap-hold 200 200 s lalt)
+  ;; Layer key disables idle detection for immediate activation
+  nav (tap-hold 200 200 tab (layer-toggle nav) (require-prior-idle 0))
+)
+----
+
+.Example: enable for a specific key without a global setting
+[source]
+----
+(defalias
+  a (tap-hold 200 200 a lmet (require-prior-idle 150))
+)
+----
+
+- `(require-prior-idle 0)` disables the feature for that action,
+  even when a global threshold is set.
+- A non-zero value enables or changes the threshold for that action only.
+- When no per-action override is specified, the global `defcfg` value is used.
+- Works with all `tap-hold` variants: `tap-hold`, `tap-hold-press`,
+  `tap-hold-release`, `tap-hold-press-timeout`, `tap-hold-release-timeout`,
+  `tap-hold-release-keys`, `tap-hold-except-keys`, `tap-hold-tap-keys`,
+  and `tap-hold-opposite-hand`.
 
 [[override-release-on-activation]]
 === override-release-on-activation

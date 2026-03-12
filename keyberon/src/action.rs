@@ -177,6 +177,10 @@ where
     /// because a human might have a slow release but they did
     /// indeed want a hold to activate.
     pub on_press_reset_timeout_to: Option<std::num::NonZeroU16>,
+    /// Per-action override for the global `tap_hold_require_prior_idle` setting.
+    /// If `Some(n)`, uses `n` instead of the global value (0 = disabled for this action).
+    /// If `None`, falls back to the global `defcfg` value.
+    pub require_prior_idle: Option<u16>,
 }
 
 /// Define one shot key behaviour.
