@@ -8,6 +8,13 @@ use std::sync::Mutex;
 ))]
 mod sim_tests;
 
+#[cfg(all(
+    target_os = "macos",
+    feature = "simulated_input",
+    feature = "simulated_output"
+))]
+mod passthru_macos_tests;
+
 static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
 fn init_log() {
