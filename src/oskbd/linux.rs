@@ -168,7 +168,11 @@ impl KbdIn {
             let mut do_rediscover = false;
             for event in &self.events {
                 if let Some((device, _)) = self.devices.get_mut(&event.token()) {
-                    let dev_idx = self.device_indices.get(&event.token()).copied().unwrap_or(0);
+                    let dev_idx = self
+                        .device_indices
+                        .get(&event.token())
+                        .copied()
+                        .unwrap_or(0);
                     if let Err(e) = device.fetch_events().map(|evs| {
                         evs.into_iter()
                             .take(EVENT_LIMIT)

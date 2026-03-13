@@ -323,7 +323,11 @@ impl KbdOut {
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
-        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key, device_index: 0 }) {
+        if let Ok(event) = InputEvent::try_from(KeyEvent {
+            value,
+            code: key,
+            device_index: 0,
+        }) {
             let result = self.write(event);
             if result.is_ok() {
                 self.record_output_transition_after_write(key, value);

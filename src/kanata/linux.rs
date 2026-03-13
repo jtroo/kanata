@@ -48,7 +48,8 @@ impl Kanata {
                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock()
                     && let EventSummary::RelativeAxis(_, _, _) = in_event.destructure()
                 {
-                    let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap).with_device(device_idx);
+                    let fake_event =
+                        KeyEvent::new(ms_mvmt_key, KeyValue::Tap).with_device(device_idx);
                     if let Err(e) = tx.try_send(fake_event) {
                         bail!("failed to send on channel: {}", e)
                     }
