@@ -362,6 +362,7 @@ impl TryFrom<InputEvent> for KeyEvent {
             evdev::EventSummary::Key(_, k, _) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
+                device_index: 0,
             }),
             evdev::EventSummary::RelativeAxis(_, axis_type, _) => {
                 let dist = item.value();
@@ -385,6 +386,7 @@ impl TryFrom<InputEvent> for KeyEvent {
                 Ok(KeyEvent {
                     code,
                     value: KeyValue::Tap,
+                    device_index: 0,
                 })
             }
             _ => Err(()),

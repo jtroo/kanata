@@ -490,6 +490,7 @@ impl TryFrom<InputEvent> for KeyEvent {
                 true => KeyValue::Release,
                 false => KeyValue::Press,
             },
+            device_index: 0,
         })
     }
 }

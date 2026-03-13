@@ -107,6 +107,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Press,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
                     #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
@@ -121,6 +122,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Release,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
                     crate::PRESSED_KEYS.lock().remove(&key_code);
@@ -130,6 +132,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Repeat,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
                 }
