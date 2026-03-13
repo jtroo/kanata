@@ -40,6 +40,15 @@ pub struct KbdIn {
     include_names: Option<Vec<String>>,
     exclude_names: Option<Vec<String>>,
     device_detect_mode: DeviceDetectMode,
+    device_indices: HashMap<Token, u8>,
+    next_device_index: u8,
+}
+
+/// Information about a registered input device.
+#[derive(Debug, Clone)]
+pub struct DeviceInfo {
+    pub name: String,
+    pub index: u8,
 }
 
 const INOTIFY_TOKEN_VALUE: usize = 0;
@@ -105,6 +114,8 @@ impl KbdIn {
             include_names,
             exclude_names,
             device_detect_mode,
+            device_indices: HashMap::default(),
+            next_device_index: 0,
         };
 
         for (device, dev_path) in devices.into_iter() {
@@ -134,11 +145,15 @@ impl KbdIn {
         self.poll
             .registry()
             .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
+        let device_idx = self.next_device_index;
+        self.next_device_index = self.next_device_index.saturating_add(1);
+        self.device_indices.insert(tok, device_idx);
+        log::info!("assigned device index {device_idx} to {path}");
         self.devices.insert(tok, (dev, path));
         Ok(())
     }
 
-    pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
+    pub fn read(&mut self) -> Result<Vec<(InputEvent, u8)>, io::Error> {
         let mut input_events = vec![];
         loop {
             log::trace!("polling");
@@ -153,10 +168,11 @@ impl KbdIn {
             let mut do_rediscover = false;
             for event in &self.events {
                 if let Some((device, _)) = self.devices.get_mut(&event.token()) {
+                    let dev_idx = self.device_indices.get(&event.token()).copied().unwrap_or(0);
                     if let Err(e) = device.fetch_events().map(|evs| {
                         evs.into_iter()
                             .take(EVENT_LIMIT)
-                            .for_each(|ev| input_events.push(ev))
+                            .for_each(|ev| input_events.push((ev, dev_idx)))
                     }) {
                         // Currently the kind() is uncategorized... not helpful, need to match
                         // on os error. code 19 is ENODEV, "no such device".
@@ -250,6 +266,20 @@ impl KbdIn {
             })?;
         }
         Ok(())
+    }
+
+    /// Returns information about all registered input devices.
+    pub fn device_info(&self) -> Vec<DeviceInfo> {
+        self.devices
+            .iter()
+            .filter_map(|(tok, (dev, _path))| {
+                let idx = self.device_indices.get(tok).copied()?;
+                Some(DeviceInfo {
+                    name: dev.name().unwrap_or("unknown").to_string(),
+                    index: idx,
+                })
+            })
+            .collect()
     }
 }
 

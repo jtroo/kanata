@@ -49,6 +49,7 @@ const INPUT_VAL: u16 = 851;
 const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
 const BASE_LAYER_VAL: u16 = 854;
+const DEVICE_VAL: u16 = 855;
 
 // Binary values:
 // 0b0100 ...
@@ -87,6 +88,7 @@ enum OpCodeType {
     TicksSinceGreaterThan(TicksSinceNthKey),
     Layer(u16),
     BaseLayer(u16),
+    Device(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -139,6 +141,7 @@ impl<'a, T> Switch<'a, T> {
         historical_positions: H2,
         layers: L,
         default_layer: u16,
+        current_device: Option<u8>,
     ) -> SwitchActions<'a, T, A1, A2, H1, H2, L>
     where
         A1: Iterator<Item = KeyCode> + Clone,
@@ -155,6 +158,7 @@ impl<'a, T> Switch<'a, T> {
             historical_positions,
             layers,
             default_layer,
+            current_device,
             case_index: 0,
         }
     }
@@ -177,6 +181,7 @@ where
     historical_positions: H2,
     layers: L,
     default_layer: u16,
+    current_device: Option<u8>,
     case_index: usize,
 }
 
@@ -201,6 +206,7 @@ where
                 self.historical_positions.clone(),
                 self.layers.clone(),
                 self.default_layer,
+                self.current_device,
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -315,6 +321,12 @@ impl OpCode {
         (Self(BASE_LAYER_VAL), Self(base_layer))
     }
 
+    /// Return OpCodes specifying a device index check.
+    pub fn new_device(device_idx: u16) -> (Self, Self) {
+        assert!(device_idx <= u8::MAX as u16);
+        (Self(DEVICE_VAL), Self(device_idx))
+    }
+
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
         if self.0 < KEY_MAX {
@@ -329,6 +341,7 @@ impl OpCode {
                 }),
                 LAYER_VAL => OpCodeType::Layer(op2.0),
                 BASE_LAYER_VAL => OpCodeType::BaseLayer(op2.0),
+                DEVICE_VAL => OpCodeType::Device(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -374,6 +387,7 @@ fn evaluate_boolean(
     historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
+    current_device: Option<u8>,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -465,6 +479,11 @@ fn evaluate_boolean(
                 current_index += 1;
                 ret = default_layer == base_layer;
             }
+            OpCodeType::Device(device_idx) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = current_device == Some(device_idx as u8);
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -493,6 +512,7 @@ fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     )
 }
 
@@ -752,6 +772,7 @@ fn switch_fallthrough() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
@@ -773,6 +794,7 @@ fn switch_break() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
@@ -801,6 +823,7 @@ fn switch_no_actions() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     );
     assert_eq!(actions.next(), None);
 }
@@ -861,6 +884,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
@@ -870,6 +894,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
@@ -879,6 +904,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
@@ -888,6 +914,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        None,
     ));
 }
 
@@ -973,6 +1000,7 @@ fn switch_historical_bools() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                None,
             ),
             expectation
         );
@@ -1089,6 +1117,7 @@ fn switch_historical_ticks_since() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                None,
             ),
             expectation
         );
@@ -1323,6 +1352,7 @@ fn switch_inputs() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                None,
             ),
             expectation
         );
@@ -1391,6 +1421,7 @@ fn switch_historical_inputs() {
                 historical_inputs.iter().copied(),
                 [].iter().copied(),
                 0,
+                None,
             ),
             expectation
         );
@@ -1401,4 +1432,91 @@ fn switch_historical_inputs() {
     test(&opcodes_false_or, false);
     test(&opcodes_true_or1, true);
     test(&opcodes_true_or2, true);
+}
+
+#[test]
+fn device_opcode_encoding_roundtrip() {
+    let (op1, op2) = OpCode::new_device(0);
+    assert_eq!(op1.opcode_type(Some(op2)), OpCodeType::Device(0));
+    let (op1, op2) = OpCode::new_device(255);
+    assert_eq!(op1.opcode_type(Some(op2)), OpCodeType::Device(255));
+    let (op1, op2) = OpCode::new_device(42);
+    assert_eq!(op1.opcode_type(Some(op2)), OpCodeType::Device(42));
+}
+
+#[test]
+fn device_evaluate_boolean_matches() {
+    let (op1, op2) = OpCode::new_device(0);
+    let opcodes = [op1, op2];
+    assert!(evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        Some(0),
+    ));
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        Some(1),
+    ));
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        None,
+    ));
+}
+
+#[test]
+fn device_evaluate_boolean_with_and() {
+    let (d1, d2) = OpCode::new_device(1);
+    let opcodes = [
+        OpCode::new_bool(And, 4),
+        OpCode::new_key(KeyCode::A),
+        d1,
+        d2,
+    ];
+    assert!(evaluate_boolean(
+        &opcodes,
+        [KeyCode::A].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        Some(1),
+    ));
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [KeyCode::A].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        Some(0),
+    ));
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [KeyCode::B].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        Some(1),
+    ));
 }
