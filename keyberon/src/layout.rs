@@ -128,6 +128,9 @@ where
     /// Only stores data when the `tap_hold_tracker` feature is enabled;
     /// otherwise this is a zero-sized no-op.
     pub tap_hold_tracker: crate::tap_hold_tracker::TapHoldTracker,
+    /// The device index of the most recently processed input event.
+    /// Used by switch `(device N)` conditions.
+    pub current_device: Option<u8>,
 }
 
 pub use crate::tap_hold_tracker::{HoldActivatedInfo, TapActivatedInfo};
@@ -1183,6 +1186,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             chords_v2: None,
             contextual_execution: ContextualExecution::new(),
             tap_hold_tracker: Default::default(),
+            current_device: None,
         }
     }
     pub fn new_with_trans_action_settings(
@@ -2218,6 +2222,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // Note on truncating cast: I expect default layer to be in range by other
                     // assertions.
                     self.default_layer as u16,
+                    self.current_device,
                 ) {
                     action_queue.push_back(Some((coord, 0, ac, layer_stack.collect())));
                 }

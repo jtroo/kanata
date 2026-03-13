@@ -53,6 +53,40 @@ fn sim_switch_noop() {
 }
 
 #[test]
+fn sim_switch_device() {
+    let result = simulate(
+        "
+         (defcfg)
+         (defsrc a)
+         (deflayer base (switch
+            ((device 0)) x break
+            ((device 1)) y break))
+        ",
+        // Press 'a' from device 0, then from device 1
+        "d0:a u0:a t:10 d1:a u1:a t:10",
+    )
+    .no_time();
+    assert_eq!("out:↓X out:↑X out:↓Y out:↑Y", result);
+}
+
+#[test]
+fn sim_switch_device_with_not() {
+    let result = simulate(
+        "
+         (defcfg)
+         (defsrc a)
+         (deflayer base (switch
+            ((not (device 0))) y break
+            () x break))
+        ",
+        // Device 0 should fall through to default, device 1 matches (not (device 0))
+        "d0:a u0:a t:10 d1:a u1:a t:10",
+    )
+    .no_time();
+    assert_eq!("out:↓X out:↑X out:↓Y out:↑Y", result);
+}
+
+#[test]
 fn sim_switch_trans_not_top_layer() {
     let result = simulate(
         "

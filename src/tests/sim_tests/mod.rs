@@ -107,6 +107,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Press,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
                     #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
@@ -121,6 +122,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Release,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
                     crate::PRESSED_KEYS.lock().remove(&key_code);
@@ -130,8 +132,46 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     k.handle_input_event(&KeyEvent {
                         code: key_code,
                         value: KeyValue::Repeat,
+                        device_index: 0,
                     })
                     .expect("input handles fine");
+                }
+                // Device-specific press: d0:key, d1:key, ... d9:key
+                dev_press
+                    if dev_press.len() == 2
+                        && dev_press.starts_with('d')
+                        && dev_press.as_bytes()[1].is_ascii_digit() =>
+                {
+                    let device_index = dev_press.as_bytes()[1] - b'0';
+                    let key_code = str_to_oscode(val).expect("valid keycode");
+                    k.handle_input_event(&KeyEvent {
+                        code: key_code,
+                        value: KeyValue::Press,
+                        device_index,
+                    })
+                    .expect("input handles fine");
+                    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+                    crate::PRESSED_KEYS.lock().insert(key_code);
+                    #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+                    crate::PRESSED_KEYS
+                        .lock()
+                        .insert(key_code, web_time::Instant::now());
+                }
+                // Device-specific release: u0:key, u1:key, ... u9:key
+                dev_rel
+                    if dev_rel.len() == 2
+                        && dev_rel.starts_with('u')
+                        && dev_rel.as_bytes()[1].is_ascii_digit() =>
+                {
+                    let device_index = dev_rel.as_bytes()[1] - b'0';
+                    let key_code = str_to_oscode(val).expect("valid keycode");
+                    k.handle_input_event(&KeyEvent {
+                        code: key_code,
+                        value: KeyValue::Release,
+                        device_index,
+                    })
+                    .expect("input handles fine");
+                    crate::PRESSED_KEYS.lock().remove(&key_code);
                 }
                 // Virtual/fake key activation: vk:name[:action] or fakekey:name[:action]
                 // Supported actions: press (p), release, tap (t), toggle (g)
