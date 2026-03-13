@@ -29,7 +29,8 @@ use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 
 pub struct KbdIn {
-    devices: HashMap<Token, (Device, String)>,
+    /// Maps poll tokens to (device, path, device_index).
+    devices: HashMap<Token, (Device, String, u8)>,
     /// Some(_) if devices are explicitly listed, otherwise None.
     missing_device_paths: Option<Vec<String>>,
     poll: Poll,
@@ -40,6 +41,16 @@ pub struct KbdIn {
     include_names: Option<Vec<String>>,
     exclude_names: Option<Vec<String>>,
     device_detect_mode: DeviceDetectMode,
+    next_device_index: u8,
+}
+
+/// Information about a registered input device.
+/// Currently unused — scaffolding for device name-based matching (see follow-up issue #6).
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct DeviceInfo {
+    pub name: String,
+    pub index: u8,
 }
 
 const INOTIFY_TOKEN_VALUE: usize = 0;
@@ -105,6 +116,7 @@ impl KbdIn {
             include_names,
             exclude_names,
             device_detect_mode,
+            next_device_index: 0,
         };
 
         for (device, dev_path) in devices.into_iter() {
@@ -134,11 +146,19 @@ impl KbdIn {
         self.poll
             .registry()
             .register(&mut SourceFd(&fd), tok, Interest::READABLE)?;
-        self.devices.insert(tok, (dev, path));
+        let device_idx = self.next_device_index;
+        match self.next_device_index.checked_add(1) {
+            Some(next) => self.next_device_index = next,
+            None => log::warn!(
+                "device index overflow: device {path} shares index 255 with another device"
+            ),
+        }
+        log::info!("assigned device index {device_idx} to {path}");
+        self.devices.insert(tok, (dev, path, device_idx));
         Ok(())
     }
 
-    pub fn read(&mut self) -> Result<Vec<InputEvent>, io::Error> {
+    pub fn read(&mut self) -> Result<Vec<(InputEvent, u8)>, io::Error> {
         let mut input_events = vec![];
         loop {
             log::trace!("polling");
@@ -152,11 +172,12 @@ impl KbdIn {
 
             let mut do_rediscover = false;
             for event in &self.events {
-                if let Some((device, _)) = self.devices.get_mut(&event.token()) {
+                if let Some((device, _, dev_idx)) = self.devices.get_mut(&event.token()) {
+                    let dev_idx = *dev_idx;
                     if let Err(e) = device.fetch_events().map(|evs| {
                         evs.into_iter()
                             .take(EVENT_LIMIT)
-                            .for_each(|ev| input_events.push(ev))
+                            .for_each(|ev| input_events.push((ev, dev_idx)))
                     }) {
                         // Currently the kind() is uncategorized... not helpful, need to match
                         // on os error. code 19 is ENODEV, "no such device".
@@ -165,7 +186,7 @@ impl KbdIn {
                                 self.poll
                                     .registry()
                                     .deregister(&mut SourceFd(&device.as_raw_fd()))?;
-                                if let Some((_, path)) = self.devices.remove(&event.token()) {
+                                if let Some((_, path, _)) = self.devices.remove(&event.token()) {
                                     log::warn!("removing kbd device: {path}");
                                     if let Some(ref mut missing) = self.missing_device_paths {
                                         missing.push(path);
@@ -241,7 +262,7 @@ impl KbdIn {
                 if !self
                     .devices
                     .values()
-                    .any(|(_, registered_path)| &path == registered_path)
+                    .any(|(_, registered_path, _)| &path == registered_path)
                 {
                     self.register_device(dev, path)
                 } else {
@@ -250,6 +271,18 @@ impl KbdIn {
             })?;
         }
         Ok(())
+    }
+
+    /// Returns information about all registered input devices.
+    #[allow(dead_code)]
+    pub fn device_info(&self) -> Vec<DeviceInfo> {
+        self.devices
+            .values()
+            .map(|(dev, _path, idx)| DeviceInfo {
+                name: dev.name().unwrap_or("unknown").to_string(),
+                index: *idx,
+            })
+            .collect()
     }
 }
 
@@ -328,6 +361,7 @@ impl TryFrom<InputEvent> for KeyEvent {
             evdev::EventSummary::Key(_, k, _) => Ok(Self {
                 code: OsCode::from_u16(k.0).ok_or(())?,
                 value: KeyValue::from(item.value()),
+                device_index: 0,
             }),
             evdev::EventSummary::RelativeAxis(_, axis_type, _) => {
                 let dist = item.value();
@@ -351,6 +385,7 @@ impl TryFrom<InputEvent> for KeyEvent {
                 Ok(KeyEvent {
                     code,
                     value: KeyValue::Tap,
+                    device_index: 0,
                 })
             }
             _ => Err(()),

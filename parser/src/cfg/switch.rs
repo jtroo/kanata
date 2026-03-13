@@ -90,6 +90,7 @@ pub fn parse_switch_case_bool(
             InputHistory,
             Layer,
             BaseLayer,
+            Device,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -116,6 +117,7 @@ pub fn parse_switch_case_bool(
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
+                "device" => Some(AllowedListOps::Device),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -123,7 +125,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer",
+                    | input | input-history | layer | base-layer | device",
                 )
             })?;
 
@@ -266,6 +268,18 @@ pub fn parse_switch_case_bool(
                     AllowedListOps::BaseLayer => OpCode::new_base_layer(layer),
                     _ => unreachable!(),
                 };
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::Device => {
+                if l.len() != 2 {
+                    bail_expr!(
+                        op_expr,
+                        "device must have 1 parameter: device-index (0-255)"
+                    );
+                }
+                let device_idx = parse_u8_with_range(&l[1], s, "device-index", 0, 255)?;
+                let (op1, op2) = OpCode::new_device(device_idx);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }

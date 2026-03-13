@@ -733,6 +733,8 @@ fn parse_switch() {
     ((input real lctl)) $var1 break
     ((input-history virtual vk2 1)) $var1 break
     ((input-history real lsft 8)) $var1 break
+    ((device 0)) $var1 break
+    ((and (device 1) a)) $var1 break
   )
 )
 "#;
@@ -854,6 +856,27 @@ fn parse_switch() {
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
+                {
+                    let (d1, d2) = OpCode::new_device(0);
+                    (
+                        &[d1, d2][..],
+                        &Action::KeyCode(KeyCode::A),
+                        BreakOrFallthrough::Break,
+                    )
+                },
+                {
+                    let (d1, d2) = OpCode::new_device(1);
+                    (
+                        &[
+                            OpCode::new_bool(And, 4),
+                            d1,
+                            d2,
+                            OpCode::new_key(KeyCode::A),
+                        ][..],
+                        &Action::KeyCode(KeyCode::A),
+                        BreakOrFallthrough::Break,
+                    )
+                },
             ]
         })
     );

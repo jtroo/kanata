@@ -44,18 +44,19 @@ impl Kanata {
             let events = kbd_in.read().map_err(|e| anyhow!("failed read: {}", e))?;
             log::trace!("event count: {}\nevents:\n{events:?}", events.len());
 
-            for in_event in events.iter().copied() {
+            for (in_event, device_idx) in events.iter().copied() {
                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock()
                     && let EventSummary::RelativeAxis(_, _, _) = in_event.destructure()
                 {
-                    let fake_event = KeyEvent::new(ms_mvmt_key, KeyValue::Tap);
+                    let fake_event =
+                        KeyEvent::new(ms_mvmt_key, KeyValue::Tap).with_device(device_idx);
                     if let Err(e) = tx.try_send(fake_event) {
                         bail!("failed to send on channel: {}", e)
                     }
                 }
 
                 let key_event = match KeyEvent::try_from(in_event) {
-                    Ok(ev) => ev,
+                    Ok(ev) => ev.with_device(device_idx),
                     _ => {
                         // Pass-through non-key and non-scroll events
                         let mut kanata = kanata.lock();
@@ -154,7 +155,7 @@ fn handle_scroll(
     kanata: &Mutex<Kanata>,
     in_event: InputEvent,
     code: OsCode,
-    all_events: &[InputEvent],
+    all_events: &[(InputEvent, u8)],
 ) -> Result<bool> {
     let direction: MWheelDirection = code.try_into().unwrap();
     let scroll_distance = in_event.value().unsigned_abs() as u16;
@@ -176,7 +177,7 @@ fn handle_scroll(
                     // scroll event. In this scenario, the hi-res event should be used to call
                     // scroll, and not the normal event. Otherwise, too much scrolling will happen.
                     let mut kanata = kanata.lock();
-                    if !all_events.iter().any(|ev| {
+                    if !all_events.iter().any(|(ev, _)| {
                         matches!(
                             ev.destructure(),
                             EventSummary::RelativeAxis(

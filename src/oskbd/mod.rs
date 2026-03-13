@@ -105,12 +105,22 @@ use kanata_parser::keys::OsCode;
 pub struct KeyEvent {
     pub code: OsCode,
     pub value: KeyValue,
+    pub device_index: u8,
 }
 
 #[allow(dead_code, unused)]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
-        Self { code, value }
+        Self {
+            code,
+            value,
+            device_index: 0,
+        }
+    }
+
+    pub fn with_device(mut self, idx: u8) -> Self {
+        self.device_index = idx;
+        self
     }
 }
 
@@ -138,6 +148,7 @@ impl fmt::Debug for KeyEvent {
                 &format_args!("{:?} ({})", self.code, self.code.as_u16()),
             )
             .field("value", &self.value)
+            .field("device_index", &self.device_index)
             .finish()
     }
 }

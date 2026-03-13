@@ -68,7 +68,11 @@ impl Kanata {
                                 false => KeyValue::Press,
                                 true => KeyValue::Release,
                             };
-                            KeyEvent { code, value }
+                            KeyEvent {
+                                code,
+                                value,
+                                device_index: 0,
+                            }
                         }
                         ic::Stroke::Mouse {
                             state,
@@ -194,51 +198,61 @@ fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent>
         Some(KeyEvent {
             code: OsCode::BTN_RIGHT,
             value: KeyValue::Press,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::RIGHT_BUTTON_UP) {
         Some(KeyEvent {
             code: OsCode::BTN_RIGHT,
             value: KeyValue::Release,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::LEFT_BUTTON_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_LEFT,
             value: KeyValue::Press,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::LEFT_BUTTON_UP) {
         Some(KeyEvent {
             code: OsCode::BTN_LEFT,
             value: KeyValue::Release,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::MIDDLE_BUTTON_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_MIDDLE,
             value: KeyValue::Press,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::MIDDLE_BUTTON_UP) {
         Some(KeyEvent {
             code: OsCode::BTN_MIDDLE,
             value: KeyValue::Release,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::BUTTON_4_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_SIDE,
             value: KeyValue::Press,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::BUTTON_4_UP) {
         Some(KeyEvent {
             code: OsCode::BTN_SIDE,
             value: KeyValue::Release,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::BUTTON_5_DOWN) {
         Some(KeyEvent {
             code: OsCode::BTN_EXTRA,
             value: KeyValue::Press,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::BUTTON_5_UP) {
         Some(KeyEvent {
             code: OsCode::BTN_EXTRA,
             value: KeyValue::Release,
+            device_index: 0,
         })
     } else if state.contains(ic::MouseState::WHEEL) {
         let osc = if rolling >= 0 {
@@ -250,6 +264,7 @@ fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent>
             Some(KeyEvent {
                 code: osc,
                 value: KeyValue::Tap,
+                device_index: 0,
             })
         } else {
             None
@@ -264,6 +279,7 @@ fn mouse_state_to_event(state: ic::MouseState, rolling: i16) -> Option<KeyEvent>
             Some(KeyEvent {
                 code: osc,
                 value: KeyValue::Tap,
+                device_index: 0,
             })
         } else {
             None

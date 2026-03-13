@@ -438,6 +438,7 @@ impl TcpServer {
                                             .send(KeyEvent {
                                                 code: OsCode::KEY_RESERVED,
                                                 value: KeyValue::WakeUp,
+                                                device_index: 0,
                                             })
                                             .expect("write key event");
                                     }
