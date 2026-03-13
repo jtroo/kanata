@@ -278,6 +278,7 @@ fn main_impl() -> Result<()> {
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Press,
+                                device_index: 0,
                             })?;
                         }
                         "release" | "↑" | "u" | "up" => {
@@ -287,6 +288,7 @@ fn main_impl() -> Result<()> {
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Release,
+                                device_index: 0,
                             })?;
                         }
                         "repeat" | "⟳" | "r" => {
@@ -296,6 +298,7 @@ fn main_impl() -> Result<()> {
                             k.handle_input_event(&KeyEvent {
                                 code: key_code,
                                 value: KeyValue::Repeat,
+                                device_index: 0,
                             })?;
                         }
                         // Virtual/fake key activation: fakekey:name[:action] or vk:name[:action]
@@ -334,6 +337,7 @@ fn main_impl() -> Result<()> {
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Press,
+                                    device_index: 0,
                                 })?;
                             }
                             "↑" => {
@@ -343,6 +347,7 @@ fn main_impl() -> Result<()> {
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Release,
+                                    device_index: 0,
                                 })?;
                             }
                             "⟳" => {
@@ -357,6 +362,7 @@ fn main_impl() -> Result<()> {
                                 k.handle_input_event(&KeyEvent {
                                     code: key_code,
                                     value: KeyValue::Repeat,
+                                    device_index: 0,
                                 })?;
                             }
                             "🎭" => {

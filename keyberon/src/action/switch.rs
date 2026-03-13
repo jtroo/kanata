@@ -133,6 +133,7 @@ impl<'a, T> Switch<'a, T> {
     /// the currently active keys, and historically pressed keys.
     ///
     /// The `historical_keys` parameter should iterate in the order of most-recent-first.
+    #[allow(clippy::too_many_arguments)]
     pub fn actions<A1, A2, H1, H2, L>(
         &self,
         active_keys: A1,
@@ -379,6 +380,7 @@ impl From<u16> for OperatorAndEndIndex {
 }
 
 /// Evaluate the return value of an expression evaluated on the given key codes.
+#[allow(clippy::too_many_arguments)]
 fn evaluate_boolean(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,

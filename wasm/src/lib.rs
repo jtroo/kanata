@@ -138,6 +138,7 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Press,
+                            device_index: 0,
                         })?;
                     }
                     "release" | "↑" | "u" | "up" => {
@@ -146,6 +147,7 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Release,
+                            device_index: 0,
                         })?;
                     }
                     "repeat" | "⟳" | "r" => {
@@ -154,6 +156,7 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                         k.handle_input_event(&KeyEvent {
                             code: key_code,
                             value: KeyValue::Repeat,
+                            device_index: 0,
                         })?;
                     }
                     // Virtual/fake key activation: vk:name[:action]
