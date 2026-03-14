@@ -544,6 +544,30 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                     return Some(WaitingAction::Hold);
                 }
             }
+            HoldTapConfig::Order { buffer, .. } => {
+                // Like PermissiveHold: if another key was pressed AND released
+                // (while modifier is still held), resolve as Hold.
+                // If modifier is released first, the fallthrough below handles Tap.
+                //
+                // Buffer: key presses that occurred within `buffer` ticks of the
+                // hold-tap key press are ignored by release-order logic, allowing
+                // fast typing to resolve as Tap regardless of release order.
+                let mut queued = queued.iter();
+                while let Some(q) = queued.next() {
+                    if q.event.is_press() {
+                        // Elapsed ticks since this key entered the queue, compared against buffer window.
+                        let press_tick = self.ticks.saturating_sub(q.since);
+                        if press_tick < buffer {
+                            continue;
+                        }
+                        let (i, j) = q.event.coord();
+                        let target = Event::Release(i, j);
+                        if queued.clone().any(|q| q.event == target) {
+                            return Some(WaitingAction::Hold);
+                        }
+                    }
+                }
+            }
             HoldTapConfig::PermissiveHold => {
                 let mut queued = queued.iter();
                 while let Some(q) = queued.next() {
@@ -2514,6 +2538,207 @@ mod test {
         layout.event(Release(0, 1));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn order_clean_tap() {
+        // Press and release modifier with no other keys → Tap.
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 0 },
+                tap_hold_interval: 0,
+                require_prior_idle: None,
+            }),
+            k(Enter),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        for _ in 0..50 {
+            assert_eq!(CustomEvent::NoEvent, layout.tick());
+            assert_keys(&[], layout.keycodes());
+        }
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn order_hold() {
+        // Modifier down → other down → other up first → Hold.
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 0 },
+                tap_hold_interval: 0,
+                require_prior_idle: None,
+            }),
+            k(Enter),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Other key releases first → Hold
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, Enter], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        // Release modifier
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn order_tap() {
+        // Modifier down → other down → modifier up first → Tap.
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 0 },
+                tap_hold_interval: 0,
+                require_prior_idle: None,
+            }),
+            k(Enter),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Modifier releases first → Tap
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space, Enter], layout.keycodes());
+    }
+
+    #[test]
+    fn order_multi_key_hold() {
+        // TH down → A down → B down → A up (while B still held) → TH up.
+        // A's press+release cycle completes while TH is held → Hold.
+        static LAYERS: Layers<3, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 0 },
+                tap_hold_interval: 0,
+                require_prior_idle: None,
+            }),
+            k(Enter),
+            k(Tab),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        // TH down
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // A down
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // B down
+        layout.event(Press(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // A up — A's press+release cycle is complete → Hold resolves
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        // Queued keys replay: Enter press, Tab press, Enter release
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, Enter], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, Enter, Tab], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt, Tab], layout.keycodes());
+        // Release B
+        layout.event(Release(0, 2));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LAlt], layout.keycodes());
+        // Release TH
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn order_buffer_ignores_press_within_window() {
+        // TH down (buffer=50) → other key pressed+released within 50 ticks.
+        // Without buffer this would be Hold (other key's press+release cycle
+        // completes while TH held). With buffer=50, the press is ignored by
+        // release-order logic, so TH remains unresolved. Releasing TH → Tap.
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                require_prior_idle: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 50 },
+                tap_hold_interval: 0,
+            }),
+            k(Enter),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        // TH down
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Other key pressed at tick ~1 (well within 50-tick buffer)
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Other key released — would normally trigger Hold, but press is buffered
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // TH released → Tap (buffered press was ignored).
+        // Space activates, then queued Enter press+release replays.
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space, Enter], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }
