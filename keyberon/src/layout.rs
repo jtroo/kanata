@@ -2698,6 +2698,52 @@ mod test {
     }
 
     #[test]
+    fn order_buffer_ignores_press_within_window() {
+        // TH down (buffer=50) → other key pressed+released within 50 ticks.
+        // Without buffer this would be Hold (other key's press+release cycle
+        // completes while TH held). With buffer=50, the press is ignored by
+        // release-order logic, so TH remains unresolved. Releasing TH → Tap.
+        static LAYERS: Layers<2, 1> = &[[[
+            HoldTap(&HoldTapAction {
+                on_press_reset_timeout_to: None,
+                require_prior_idle: None,
+                timeout: u16::MAX,
+                hold: k(LAlt),
+                timeout_action: k(Space),
+                tap: k(Space),
+                config: HoldTapConfig::Order { buffer: 50 },
+                tap_hold_interval: 0,
+            }),
+            k(Enter),
+        ]]];
+        let mut layout = Layout::new(LAYERS);
+
+        // TH down
+        layout.event(Press(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Other key pressed at tick ~1 (well within 50-tick buffer)
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // Other key released — would normally trigger Hold, but press is buffered
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+        // TH released → Tap (buffered press was ignored).
+        // Space activates, then queued Enter press+release replays.
+        layout.event(Release(0, 0));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space, Enter], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[Space], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
     fn permissive_hold() {
         static LAYERS: Layers<2, 1> = &[[[
             HoldTap(&HoldTapAction {

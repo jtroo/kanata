@@ -712,3 +712,130 @@ fn per_action_require_prior_idle_with_opposite_hand() {
     // f enters normal opposite-hand behavior: j is opposite → hold
     assert_eq!("dn:J t:10ms up:J t:210ms dn:LCtrl t:50ms up:LCtrl", result);
 }
+
+// ========== tap-hold-order simulation tests ==========
+// Note: t:6ms gaps after resolution are sim framework processing overhead for
+// event-triggered resolution (as opposed to timeout-triggered). This is consistent
+// with other event-driven tap-hold variants (e.g., tap-hold-opposite-hand).
+
+#[test]
+fn tap_hold_order_clean_tap() {
+    // Press and release tap-hold-order key with no other keys → Tap.
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-order 200 50 a lctl))
+        ",
+        "d:a t:100 u:a t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:100ms dn:A t:6ms up:A", result);
+}
+
+#[test]
+fn tap_hold_order_hold_other_released_first() {
+    // TH down → other down → other up (released first) → Hold.
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-order 200 0 a lctl))
+        ",
+        "d:a t:10 d:b t:10 u:b t:10 u:a t:50",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:20ms dn:LCtrl t:6ms dn:B t:1ms up:B t:3ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_order_tap_modifier_released_first() {
+    // TH down → other down → TH up first → Tap.
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-order 200 0 a lctl))
+        ",
+        "d:a t:10 d:b t:10 u:a t:10 u:b t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:20ms dn:A t:6ms dn:B t:1ms up:A t:3ms up:B", result);
+}
+
+#[test]
+fn tap_hold_order_buffer_ignores_fast_typing() {
+    // Other key pressed+released within buffer window → ignored by
+    // release-order logic. TH released → Tap.
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-order 200 50 a lctl))
+        ",
+        "d:a t:10 d:b t:10 u:b t:10 u:a t:50",
+    )
+    .to_ascii();
+    // Without buffer, b's press+release would trigger Hold.
+    // With buffer=50, b's press at 10ms is within window → ignored → Tap.
+    assert_eq!("t:30ms dn:A t:6ms dn:B t:1ms up:B t:1ms up:A", result);
+}
+
+#[test]
+fn tap_hold_order_hold_after_buffer_expires() {
+    // Other key pressed after buffer window expires → release-order applies.
+    // Other released first → Hold.
+    let result = simulate(
+        "
+(defsrc a b)
+(deflayer base @a b)
+(defalias a (tap-hold-order 200 50 a lctl))
+        ",
+        "d:a t:60 d:b t:10 u:b t:10 u:a t:50",
+    )
+    .to_ascii();
+    // b pressed at 60ms (after 50ms buffer) → release-order active.
+    // b released first → Hold.
+    assert_eq!(
+        "t:70ms dn:LCtrl t:6ms dn:B t:1ms up:B t:3ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_order_with_require_prior_idle() {
+    // Per-action require-prior-idle short-circuits to tap during typing streak.
+    let result = simulate(
+        "
+(defsrc a d)
+(deflayer base a @d)
+(defalias d (tap-hold-order 200 50 d lctl (require-prior-idle 150)))
+        ",
+        // a pressed 20ms ago → within 150ms idle threshold → tap immediately.
+        "d:a t:10 u:a t:10 d:d t:50 u:d t:50",
+    )
+    .to_ascii();
+    assert_eq!("dn:A t:10ms up:A t:10ms dn:D t:50ms up:D", result);
+}
+
+#[test]
+fn tap_hold_order_no_prior_idle_enters_normal_resolution() {
+    // No recent keypress → require-prior-idle doesn't fire → normal release-order.
+    // Other key released first → Hold.
+    let result = simulate(
+        "
+(defsrc a d)
+(deflayer base a @d)
+(defalias d (tap-hold-order 200 0 d lctl (require-prior-idle 150)))
+        ",
+        "d:d t:10 d:a t:10 u:a t:10 u:d t:50",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:20ms dn:LCtrl t:6ms dn:A t:1ms up:A t:3ms up:LCtrl",
+        result
+    );
+}
