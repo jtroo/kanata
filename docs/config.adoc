@@ -2218,6 +2218,12 @@ It accepts a second list that activates the eager tap
 if the any key listed within is pressed then released;
 as opposed to only on a press.
 
+The keys in the 5th and 6th parameters correspond to the physical input keys,
+or in other words the key that corresponds to `defsrc`.
+This is in contrast to the `fork` and `switch` actions
+which operates on outputted keys, or in other words the outputs
+that are in `deflayer`, `defalias`, etc. for the corresponding `defsrc` key.
+
 .Example:
 [source]
 ----
