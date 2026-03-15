@@ -2627,6 +2627,9 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     {
         let mut k_pressed = PRESSED_KEYS.lock();
         for key_os in k_pressed.clone() {
+            #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+            k.kbd_out.release_key(key_os)?;
+            #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
             k.kbd_out.release_key(key_os.0)?;
         }
         k_pressed.clear();
