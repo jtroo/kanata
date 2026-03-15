@@ -1508,6 +1508,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {
             parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
         }
+        TAP_HOLD_ORDER => parse_tap_hold_order(&ac[1..], s),
         TAP_HOLD_RELEASE | TAP_HOLD_RELEASE_A => {
             parse_tap_hold(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
