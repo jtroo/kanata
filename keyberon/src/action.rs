@@ -61,6 +61,13 @@ pub enum HoldTapConfig<'a> {
     /// not used in the flow of typing, like escape for example. If
     /// you are annoyed by accidental tap, you can try this behavior.
     HoldOnOtherKeyPress,
+    /// Resolves based on release order after both keys are down.
+    /// If the other key releases first (modifier still held) → Hold.
+    /// If the modifier releases first (other key still held) → Tap.
+    /// The buffer field specifies a grace period in ticks (ms) after the
+    /// initial press during which release-order logic is ignored and fast
+    /// typing will resolve as Tap.
+    Order { buffer: u16 },
     /// If there is a press and release of another key, the hold
     /// action is activated.
     ///
@@ -100,6 +107,7 @@ impl Debug for HoldTapConfig<'_> {
         match self {
             HoldTapConfig::Default => f.write_str("Default"),
             HoldTapConfig::HoldOnOtherKeyPress => f.write_str("HoldOnOtherKeyPress"),
+            HoldTapConfig::Order { .. } => f.write_str("Order"),
             HoldTapConfig::PermissiveHold => f.write_str("PermissiveHold"),
             HoldTapConfig::Custom(_) => f.write_str("Custom"),
         }
@@ -113,6 +121,7 @@ impl PartialEq for HoldTapConfig<'_> {
             (HoldTapConfig::Default, HoldTapConfig::Default)
             | (HoldTapConfig::HoldOnOtherKeyPress, HoldTapConfig::HoldOnOtherKeyPress)
             | (HoldTapConfig::PermissiveHold, HoldTapConfig::PermissiveHold) => true,
+            (HoldTapConfig::Order { .. }, HoldTapConfig::Order { .. }) => true,
             _ => false,
         }
     }

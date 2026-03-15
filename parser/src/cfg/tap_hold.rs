@@ -188,6 +188,40 @@ pub(crate) fn parse_tap_hold_timeout(
     }))))
 }
 
+pub(crate) fn parse_tap_hold_order(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    let n_opts = count_trailing_options(ac_params, s);
+    let n_positional = ac_params.len() - n_opts;
+    if n_positional != 4 {
+        bail!(
+            r"tap-hold-order expects 4 items after it, got {}.
+Params in order:
+<tap-repress-timeout> <buffer-ms> <tap-action> <hold-action>",
+            n_positional,
+        )
+    }
+    let tap_repress_timeout = parse_u16(&ac_params[0], s, "tap repress timeout")?;
+    let buffer = parse_u16(&ac_params[1], s, "buffer")?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+    let opts = parse_tap_hold_options(&ac_params[n_positional..], s)?;
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Order { buffer },
+        tap_hold_interval: tap_repress_timeout,
+        timeout: u16::MAX, // Resolution is purely event-driven, not timeout-based.
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *tap_action,
+        on_press_reset_timeout_to: None,
+        require_prior_idle: opts.require_prior_idle,
+    }))))
+}
+
 pub(crate) fn parse_tap_hold_keys(
     ac_params: &[SExpr],
     s: &ParserState,
