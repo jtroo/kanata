@@ -3628,6 +3628,203 @@ the override will activate.
 )
 ----
 
+[[templates]]
+== Templates
+
+The top-level configuration item `deftemplate`
+declares a template that can be expanded multiple times
+via the list item `template-expand`.
+The short form of `template-expand` is `t!`.
+
+The parameters to `deftemplate` in order are:
+
+* Template name
+* List of template variables
+* Template content (any combination of lists / strings)
+
+Within the template content, variable names prefixed with `$`
+will be substituted with the expression passed into `template-expand`.
+
+The list item `template-expand` can be placed as a top-level list
+or within another list.
+Its parameters in order are:
+
+* template name
+* parameters to substitute into the template
+
+NOTE: Template expansion happens after file includes and before any other parsing.
+One consequence of this early parsing is that variables defined in `defvar`
+are **not** substituted when used inside of `template-expand`.
+This has consequences for condtional content, e.g. with `if-equal`.
+This is discussed further in Example 5.
+
+Example 1:
+
+In a simple example, let's say you wanted to set a large group of keys
+to do something different when you're holding alt. Yes, this could also
+be handled with remapping alt to a layer shift, but there are cases where
+you wouldn't want this. Rather than retyping the code with `fork` and
+`unmod` (to release alt) a bunch of times, you could template it like so:
+[source]
+----
+(deftemplate alt-fork (original-action new-action)
+  (fork $original-action (multi (unmod (ralt lalt) nop0) $new-action) (lalt ralt))
+)
+(defsrc 1 2 3)
+(defalias fn1 (template-expand alt-fork 1 f1))
+;; Templates are a simple text substitution, so the above is exactly equivalent to:
+;; (defalias fn1 (fork 1 (multi (unmod (ralt lalt) nop0) f1) (lalt ralt)))
+(defalias fn2 (template-expand alt-fork 2 f2))
+;; You can use t! as a short form of template-expand
+(defalias fn3 (t! alt-fork 3 f3))
+(deflayer default @fn1 @fn2 @fn3)
+----
+
+.Example 2:
+[source]
+----
+(defvar chord-timeout 200)
+(defcfg process-unmapped-keys yes)
+
+;; This template defines a chord group and aliases that use the chord group.
+;; The purpose is to easily define the same chord position behaviour
+;; for multiple layers that have different underlying keys.
+(deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
+  (defalias
+    $alias1 (chord $chordgroupname $k1)
+    $alias2 (chord $chordgroupname $k2)
+    $alias3 (chord $chordgroupname $k3)
+    $alias4 (chord $chordgroupname $k4)
+  )
+  (defchords $chordgroupname $chord-timeout
+    ($k1) $k1
+    ($k2) $k2
+    ($k3) $k3
+    ($k4) $k4
+    ($k1 $k2) lctl
+    ($k3 $k4) lsft
+  )
+)
+
+(template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
+;; t! is short for template-expand
+(t! left-hand-chords dvorak a o e u dva dvo dve dvu)
+
+(defsrc a s d f)
+(deflayer dvorak @dva @dvo @dve @dvu)
+(deflayer qwerty @qwa @qws @qwd @qwf)
+----
+
+.Example 3:
+[source]
+----
+;; This template defines a home row that customizes a single key's behaviour
+(deftemplate home-row (j-behaviour)
+  a s d f g h $j-behaviour k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+       ;; usable even inside defsrc
+  caps (t! home-row j)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+                                 ;; lists can be passed in too!
+  caps (t! home-row (tap-hold 200 200 j lctl))    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+=== if-equal
+
+Within a template you can use the list item `if-equal`
+to have condiditionally-used items within a template.
+
+It accepts a minimum of 2 parameters.
+The first two parameters must be strings and are compared
+against each other.
+If they match, the following parameters are inserted into
+the template in place of the `if-equal` list.
+Otherwise if the strings do not match
+then the whole `if-equal` list is removed from the template.
+
+.Example 4:
+----
+(deftemplate home-row (version)
+  a s d f g h
+  (if-equal $version v1 j)
+  (if-equal $version v2 (tap-hold 200 200 j lctl))
+   k l ; '
+)
+
+(defsrc
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v1)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+
+(deflayer base
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps (template-expand home-row v2)                            ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rmet rctl
+)
+----
+
+Similar to `if-equal` are three more conditional operators for templates:
+
+* `if-not-equal`
+** the content is used if the first two string parameters are not equal
+* `if-in-list`
+** the content is used if the first string parameter exists in
+the second list-of-strings parameter
+* `if-not-in-list`
+** the content is used if the first string parameter does not exist in
+the second list-of-strings parameter
+
+.Example 5:
+----
+;; defvar is parsed AFTER template expansion occurs.
+(defvar a hello)
+
+(deftemplate template1 (var1)
+  a (if-equal hello $var1 b) c
+)
+
+;; Below will expand to: `a c` because the string
+;; $a itself is compared against the string hello
+;; and they are not equal.
+(template-expand template1 $a)
+
+(deftemplate template2 (var1)
+  a (if-equal $a $var1 b) c
+)
+
+;; Below will expand to: `a b c` because the string
+;; $a is compared against the string $a and they are equal.
+;; But note that the variable $a is still not substituted
+;; with its defvar value of: hello.
+(template-expand template2 $a)
+----
+
+[[concat-in-deftemplate]]
+=== concat in deftemplate
+
+Like <<concat-in-defvar,concat in defvar>>,
+a list beginning with `concat` within the content of `deftemplate`
+will be replaced with a single string that consists of
+all the subsequent items in the list concatenated to each other.
+
 == Include other files[[include]]
 
 The `include` optional configuration item
@@ -5781,203 +5978,6 @@ $env:VAR_NAME = "var_value"
 # bash
 VAR_NAME=var_value
 ----
-
-[[templates]]
-=== Templates
-
-The top-level configuration item `deftemplate`
-declares a template that can be expanded multiple times
-via the list item `template-expand`.
-The short form of `template-expand` is `t!`.
-
-The parameters to `deftemplate` in order are:
-
-* Template name
-* List of template variables
-* Template content (any combination of lists / strings)
-
-Within the template content, variable names prefixed with `$`
-will be substituted with the expression passed into `template-expand`.
-
-The list item `template-expand` can be placed as a top-level list
-or within another list.
-Its parameters in order are:
-
-* template name
-* parameters to substitute into the template
-
-NOTE: Template expansion happens after file includes and before any other parsing.
-One consequence of this early parsing is that variables defined in `defvar`
-are **not** substituted when used inside of `template-expand`.
-This has consequences for condtional content, e.g. with `if-equal`.
-This is discussed further in Example 5.
-
-Example 1:
-
-In a simple example, let's say you wanted to set a large group of keys
-to do something different when you're holding alt. Yes, this could also
-be handled with remapping alt to a layer shift, but there are cases where
-you wouldn't want this. Rather than retyping the code with `fork` and
-`unmod` (to release alt) a bunch of times, you could template it like so:
-[source]
-----
-(deftemplate alt-fork (original-action new-action)
-  (fork $original-action (multi (unmod (ralt lalt) nop0) $new-action) (lalt ralt))
-)
-(defsrc 1 2 3)
-(defalias fn1 (template-expand alt-fork 1 f1))
-;; Templates are a simple text substitution, so the above is exactly equivalent to:
-;; (defalias fn1 (fork 1 (multi (unmod (ralt lalt) nop0) f1) (lalt ralt)))
-(defalias fn2 (template-expand alt-fork 2 f2))
-;; You can use t! as a short form of template-expand
-(defalias fn3 (t! alt-fork 3 f3))
-(deflayer default @fn1 @fn2 @fn3)
-----
-
-.Example 2:
-[source]
-----
-(defvar chord-timeout 200)
-(defcfg process-unmapped-keys yes)
-
-;; This template defines a chord group and aliases that use the chord group.
-;; The purpose is to easily define the same chord position behaviour
-;; for multiple layers that have different underlying keys.
-(deftemplate left-hand-chords (chordgroupname k1 k2 k3 k4 alias1 alias2 alias3 alias4)
-  (defalias
-    $alias1 (chord $chordgroupname $k1)
-    $alias2 (chord $chordgroupname $k2)
-    $alias3 (chord $chordgroupname $k3)
-    $alias4 (chord $chordgroupname $k4)
-  )
-  (defchords $chordgroupname $chord-timeout
-    ($k1) $k1
-    ($k2) $k2
-    ($k3) $k3
-    ($k4) $k4
-    ($k1 $k2) lctl
-    ($k3 $k4) lsft
-  )
-)
-
-(template-expand left-hand-chords qwerty a s d f qwa qws qwd qwf)
-;; t! is short for template-expand
-(t! left-hand-chords dvorak a o e u dva dvo dve dvu)
-
-(defsrc a s d f)
-(deflayer dvorak @dva @dvo @dve @dvu)
-(deflayer qwerty @qwa @qws @qwd @qwf)
-----
-
-.Example 3:
-[source]
-----
-;; This template defines a home row that customizes a single key's behaviour
-(deftemplate home-row (j-behaviour)
-  a s d f g h $j-behaviour k l ; '
-)
-
-(defsrc
-  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-       ;; usable even inside defsrc
-  caps (t! home-row j)                            ret
-  lsft z    x    c    v    b    n    m    ,    .    /    rsft
-  lctl lmet lalt           spc            ralt rmet rctl
-)
-
-(deflayer base
-  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-                                 ;; lists can be passed in too!
-  caps (t! home-row (tap-hold 200 200 j lctl))    ret
-  lsft z    x    c    v    b    n    m    ,    .    /    rsft
-  lctl lmet lalt           spc            ralt rmet rctl
-)
-----
-
-==== if-equal
-
-Within a template you can use the list item `if-equal`
-to have condiditionally-used items within a template.
-
-It accepts a minimum of 2 parameters.
-The first two parameters must be strings and are compared
-against each other.
-If they match, the following parameters are inserted into
-the template in place of the `if-equal` list.
-Otherwise if the strings do not match
-then the whole `if-equal` list is removed from the template.
-
-.Example 4:
-----
-(deftemplate home-row (version)
-  a s d f g h
-  (if-equal $version v1 j)
-  (if-equal $version v2 (tap-hold 200 200 j lctl))
-   k l ; '
-)
-
-(defsrc
-  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-  caps (template-expand home-row v1)                            ret
-  lsft z    x    c    v    b    n    m    ,    .    /    rsft
-  lctl lmet lalt           spc            ralt rmet rctl
-)
-
-(deflayer base
-  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
-  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
-  caps (template-expand home-row v2)                            ret
-  lsft z    x    c    v    b    n    m    ,    .    /    rsft
-  lctl lmet lalt           spc            ralt rmet rctl
-)
-----
-
-Similar to `if-equal` are three more conditional operators for templates:
-
-* `if-not-equal`
-** the content is used if the first two string parameters are not equal
-* `if-in-list`
-** the content is used if the first string parameter exists in
-the second list-of-strings parameter
-* `if-not-in-list`
-** the content is used if the first string parameter does not exist in
-the second list-of-strings parameter
-
-.Example 5:
-----
-;; defvar is parsed AFTER template expansion occurs.
-(defvar a hello)
-
-(deftemplate template1 (var1)
-  a (if-equal hello $var1 b) c
-)
-
-;; Below will expand to: `a c` because the string
-;; $a itself is compared against the string hello
-;; and they are not equal.
-(template-expand template1 $a)
-
-(deftemplate template2 (var1)
-  a (if-equal $a $var1 b) c
-)
-
-;; Below will expand to: `a b c` because the string
-;; $a is compared against the string $a and they are equal.
-;; But note that the variable $a is still not substituted
-;; with its defvar value of: hello.
-(template-expand template2 $a)
-----
-
-[[concat-in-deftemplate]]
-==== concat in deftemplate
-
-Like <<concat-in-defvar,concat in defvar>>,
-a list beginning with `concat` within the content of `deftemplate`
-will be replaced with a single string that consists of
-all the subsequent items in the list concatenated to each other.
 
 [[custom-tap-hold-behaviour]]
 === Custom tap-hold behaviour
