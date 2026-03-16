@@ -1224,6 +1224,7 @@ impl Kanata {
                 }
             }
         }
+
         let mut live_reload_requested = false;
         let cur_keys = &mut self.cur_keys;
         cur_keys.extend(layout.keycodes());
@@ -2788,11 +2789,7 @@ where
 mod collect_and_sort_events_tests {
     use super::*;
     use kanata_parser::keys::OsCode;
-    #[cfg(feature = "tcp_server")]
-    use std::sync::mpsc::TryRecvError;
     use std::sync::mpsc::sync_channel;
-    #[cfg(feature = "tcp_server")]
-    use std::time::Duration;
 
     fn make_event(code: OsCode, value: KeyValue) -> KeyEvent {
         KeyEvent { code, value }
@@ -2955,8 +2952,14 @@ mod collect_and_sort_events_tests {
         assert_eq!(result[2].code, OsCode::KEY_LEFTCTRL);
         assert_eq!(result[3].code, OsCode::KEY_LEFTSHIFT);
     }
+}
 
-    #[cfg(feature = "tcp_server")]
+#[cfg(all(test, feature = "tcp_server"))]
+mod tcp_layer_change_tests {
+    use super::*;
+    use std::sync::mpsc::{sync_channel, TryRecvError};
+    use std::time::Duration;
+
     fn collect_layer_changes(rx: &Receiver<ServerMessage>) -> Vec<String> {
         let mut changes = Vec::new();
         loop {
@@ -2970,7 +2973,6 @@ mod collect_and_sort_events_tests {
         changes
     }
 
-    #[cfg(feature = "tcp_server")]
     #[test]
     fn direct_held_layer_press_and_release_emit_layer_changes() {
         let mut k = Kanata::new_from_str(
@@ -3009,7 +3011,6 @@ mod collect_and_sort_events_tests {
         assert_eq!(collect_layer_changes(&rx), vec!["base"]);
     }
 
-    #[cfg(feature = "tcp_server")]
     #[test]
     fn oneshot_held_layer_timeout_emits_both_transitions_within_one_tick_batch() {
         let mut k = Kanata::new_from_str(
@@ -3043,7 +3044,6 @@ mod collect_and_sort_events_tests {
         assert_eq!(collect_layer_changes(&rx), vec!["nav", "base"]);
     }
 
-    #[cfg(feature = "tcp_server")]
     #[test]
     fn oneshot_held_layer_consumed_by_keypress_emits_both_transitions_within_one_tick_batch() {
         let mut k = Kanata::new_from_str(
