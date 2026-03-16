@@ -2957,7 +2957,7 @@ mod collect_and_sort_events_tests {
 #[cfg(all(test, feature = "tcp_server"))]
 mod tcp_layer_change_tests {
     use super::*;
-    use std::sync::mpsc::{sync_channel, TryRecvError};
+    use std::sync::mpsc::{TryRecvError, sync_channel};
     use std::time::Duration;
 
     fn collect_layer_changes(rx: &Receiver<ServerMessage>) -> Vec<String> {
