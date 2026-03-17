@@ -56,7 +56,10 @@ fn collect_and_sort_events(
     }
 }
 
-#[cfg(feature = "passthru_ahk")]
+#[cfg(any(
+    feature = "passthru_ahk",
+    all(feature = "simulated_input", feature = "simulated_output")
+))]
 use std::sync::mpsc::Sender as ASender;
 
 use kanata_keyberon::action::ReleasableState;
@@ -702,7 +705,10 @@ impl Kanata {
         })
     }
 
-    #[cfg(feature = "passthru_ahk")]
+    #[cfg(any(
+        feature = "passthru_ahk",
+        all(feature = "simulated_input", feature = "simulated_output")
+    ))]
     pub fn new_with_output_channel(
         args: &ValidatedArgs,
         tx: Option<ASender<InputEvent>>,
@@ -913,8 +919,6 @@ impl Kanata {
     fn handle_time_ticks(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<u16> {
         let ms_elapsed = self.get_ms_elapsed();
         self.tick_ms(ms_elapsed, tx)?;
-
-        self.check_handle_layer_change(tx);
 
         if self.live_reload_requested
             && ((self.prev_keys.is_empty() && self.cur_keys.is_empty())
@@ -1999,6 +2003,7 @@ impl Kanata {
             _ => {}
         };
 
+        self.check_handle_layer_change(_tx);
         self.check_release_non_physical_shift()?;
         Ok(live_reload_requested)
     }
@@ -2946,5 +2951,141 @@ mod collect_and_sort_events_tests {
         assert_eq!(result[1].code, OsCode::KEY_B);
         assert_eq!(result[2].code, OsCode::KEY_LEFTCTRL);
         assert_eq!(result[3].code, OsCode::KEY_LEFTSHIFT);
+    }
+}
+
+#[cfg(all(test, feature = "tcp_server"))]
+mod tcp_layer_change_tests {
+    use super::*;
+    use std::sync::mpsc::{TryRecvError, sync_channel};
+    use std::time::Duration;
+
+    fn collect_layer_changes(rx: &Receiver<ServerMessage>) -> Vec<String> {
+        let mut changes = Vec::new();
+        loop {
+            match rx.try_recv() {
+                Ok(ServerMessage::LayerChange { new }) => changes.push(new),
+                Ok(_) => {}
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => break,
+            }
+        }
+        changes
+    }
+
+    #[test]
+    fn direct_held_layer_press_and_release_emit_layer_changes() {
+        let mut k = Kanata::new_from_str(
+            r"
+(defsrc a)
+(deflayer base
+  (layer-while-held nav))
+(deflayer nav
+  b)
+            ",
+            Default::default(),
+        )
+        .expect("failed to parse cfg");
+        let (tx, rx) = sync_channel::<ServerMessage>(10);
+        let tx = Some(tx);
+
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Press,
+        })
+        .expect("press should succeed");
+        k.last_tick = web_time::Instant::now() - Duration::from_millis(1);
+        k.handle_time_ticks(&tx).expect("press tick should succeed");
+
+        assert_eq!(collect_layer_changes(&rx), vec!["nav"]);
+
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Release,
+        })
+        .expect("release should succeed");
+        k.last_tick = web_time::Instant::now() - Duration::from_millis(1);
+        k.handle_time_ticks(&tx)
+            .expect("release tick should succeed");
+
+        assert_eq!(collect_layer_changes(&rx), vec!["base"]);
+    }
+
+    #[test]
+    fn oneshot_held_layer_timeout_emits_both_transitions_within_one_tick_batch() {
+        let mut k = Kanata::new_from_str(
+            r"
+(defsrc a)
+(deflayer base
+  (one-shot 2 (layer-while-held nav)))
+(deflayer nav
+  b)
+            ",
+            Default::default(),
+        )
+        .expect("failed to parse cfg");
+        let (tx, rx) = sync_channel::<ServerMessage>(10);
+        let tx = Some(tx);
+
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Press,
+        })
+        .expect("press should succeed");
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Release,
+        })
+        .expect("release should succeed");
+        k.last_tick = web_time::Instant::now() - Duration::from_millis(5);
+        k.handle_time_ticks(&tx)
+            .expect("batched timeout ticks should succeed");
+
+        assert_eq!(collect_layer_changes(&rx), vec!["nav", "base"]);
+    }
+
+    #[test]
+    fn oneshot_held_layer_consumed_by_keypress_emits_both_transitions_within_one_tick_batch() {
+        let mut k = Kanata::new_from_str(
+            r"
+(defsrc a b)
+(deflayer base
+  (one-shot 20 (layer-while-held nav))
+  XX)
+(deflayer nav
+  _
+  (layer-while-held base))
+            ",
+            Default::default(),
+        )
+        .expect("failed to parse cfg");
+        let (tx, rx) = sync_channel::<ServerMessage>(10);
+        let tx = Some(tx);
+
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Press,
+        })
+        .expect("oneshot press should succeed");
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_A,
+            value: KeyValue::Release,
+        })
+        .expect("oneshot release should succeed");
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_B,
+            value: KeyValue::Press,
+        })
+        .expect("consumer press should succeed");
+        k.handle_input_event(&KeyEvent {
+            code: OsCode::KEY_B,
+            value: KeyValue::Release,
+        })
+        .expect("consumer release should succeed");
+        k.last_tick = web_time::Instant::now() - Duration::from_millis(5);
+        k.handle_time_ticks(&tx)
+            .expect("batched consume ticks should succeed");
+
+        assert_eq!(collect_layer_changes(&rx), vec!["nav", "base"]);
     }
 }

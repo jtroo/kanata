@@ -20,10 +20,12 @@ use kanata_parser::keys::*;
 use karabiner_driverkit::*;
 use objc::runtime::Class;
 use objc::{msg_send, sel, sel_impl};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::Error;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -104,28 +106,6 @@ impl KbdIn {
 
         if !device_names.is_empty() || register_device("") {
             if grab() {
-                // Wait for the DriverKit virtual keyboard to become ready.
-                // The pqrs client connects asynchronously; give it time.
-                let mut ready = false;
-                for i in 0..100 {
-                    if is_sink_ready() {
-                        ready = true;
-                        break;
-                    }
-                    if i % 10 == 0 && i > 0 {
-                        log::info!(
-                            "Waiting for DriverKit virtual keyboard... ({:.1}s)",
-                            i as f64 * 0.1
-                        );
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                }
-                if !ready {
-                    log::warn!(
-                        "DriverKit virtual keyboard not ready after 10s. \
-                         Key output may fail until the daemon connects."
-                    );
-                }
                 Ok(Self { grabbed: true })
             } else {
                 Err(anyhow!("grab failed"))
@@ -277,12 +257,16 @@ impl TryFrom<KeyEvent> for InputEvent {
 }
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
-pub struct KbdOut {}
+pub struct KbdOut {
+    output_pressed_since: HashMap<OsCode, Instant>,
+}
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
-        Ok(KbdOut {})
+        Ok(KbdOut {
+            output_pressed_since: HashMap::default(),
+        })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
@@ -298,9 +282,52 @@ impl KbdOut {
         Ok(())
     }
 
+    pub fn output_ready(&self) -> bool {
+        is_sink_ready()
+    }
+
+    pub fn wait_until_ready(&self, timeout: Option<Duration>) -> bool {
+        let start = Instant::now();
+        let mut attempt = 0u32;
+
+        loop {
+            if self.output_ready() {
+                return true;
+            }
+
+            if let Some(timeout) = timeout
+                && start.elapsed() >= timeout
+            {
+                return false;
+            }
+
+            attempt += 1;
+            if attempt % 10 == 0 {
+                if let Some(timeout) = timeout {
+                    log::info!(
+                        "Waiting for DriverKit virtual keyboard... ({:.1}s/{:.1}s)",
+                        start.elapsed().as_secs_f64(),
+                        timeout.as_secs_f64()
+                    );
+                } else {
+                    log::info!(
+                        "Waiting for DriverKit virtual keyboard... ({:.1}s)",
+                        start.elapsed().as_secs_f64()
+                    );
+                }
+            }
+
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
-            self.write(event)
+            let result = self.write(event);
+            if result.is_ok() {
+                self.record_output_transition_after_write(key, value);
+            }
+            result
         } else {
             log::debug!("couldn't write unrecognized {key:?}");
             Err(io::Error::other("OsCode not recognized!"))
@@ -325,6 +352,24 @@ impl KbdOut {
 
     pub fn release_key(&mut self, key: OsCode) -> Result<(), io::Error> {
         self.write_key(key, KeyValue::Release)
+    }
+
+    pub fn release_tracked_output_keys(&mut self, reason: &str) {
+        let tracked_keys: Vec<OsCode> = self.output_pressed_since.keys().copied().collect();
+        if tracked_keys.is_empty() {
+            return;
+        }
+
+        for key in tracked_keys {
+            if let Err(error) = self.write_key(key, KeyValue::Release) {
+                log::warn!(
+                    "failed to release tracked output key during {} recovery: key={key:?} error={error}",
+                    reason
+                );
+            }
+        }
+
+        self.output_pressed_since.clear();
     }
 
     pub fn send_unicode(&mut self, c: char) -> Result<(), io::Error> {
@@ -489,6 +534,20 @@ impl KbdOut {
         let event = CGEvent::new(event_source)
             .map_err(|_| Error::other("failed to create core graphics event"))?;
         Ok(event)
+    }
+
+    fn record_output_transition_after_write(&mut self, key: OsCode, value: KeyValue) {
+        match value {
+            KeyValue::Press | KeyValue::Repeat => {
+                self.output_pressed_since
+                    .entry(key)
+                    .or_insert_with(Instant::now);
+            }
+            KeyValue::Release => {
+                self.output_pressed_since.remove(&key);
+            }
+            KeyValue::Tap | KeyValue::WakeUp => {}
+        }
     }
 
     /// Applies a calculated mouse move to a CGPoint.

@@ -1,11 +1,11 @@
 use super::*;
 use anyhow::{Result, anyhow, bail};
-use karabiner_driverkit::is_sink_ready;
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender as Sender;
+use std::time::Duration;
 
 impl Kanata {
     /// Enter an infinite loop that listens for OS key events and sends them to the processing thread.
@@ -33,14 +33,26 @@ impl Kanata {
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };
 
+        {
+            let kanata = kanata.lock();
+            if !kanata
+                .kbd_out
+                .wait_until_ready(Some(Duration::from_secs(10)))
+            {
+                log::warn!(
+                    "output backend not ready after 10s. Key output may fail until the backend recovers."
+                );
+            }
+        }
+
         info!("keyboard grabbed, entering event processing loop");
 
         loop {
             // --- Event processing loop ---
             let needs_recovery = loop {
                 // Check output health before blocking on input
-                if !is_sink_ready() {
-                    log::warn!("DriverKit output lost — releasing input devices");
+                if !kanata.lock().kbd_out.output_ready() {
+                    log::warn!("output backend unavailable — releasing input devices");
                     break true;
                 }
 
@@ -63,7 +75,7 @@ impl Kanata {
                             Ok(()) => continue,
                             Err(e) if e.kind() == std::io::ErrorKind::NotConnected => {
                                 log::warn!(
-                                    "DriverKit output lost during write — releasing input devices"
+                                    "output backend unavailable during write — releasing input devices"
                                 );
                                 break true;
                             }
@@ -85,7 +97,7 @@ impl Kanata {
                         Ok(()) => continue,
                         Err(e) if e.kind() == std::io::ErrorKind::NotConnected => {
                             log::warn!(
-                                "DriverKit output lost during write — releasing input devices"
+                                "output backend unavailable during write — releasing input devices"
                             );
                             break true;
                         }
@@ -121,23 +133,32 @@ impl Kanata {
 
             info!(
                 "Input devices released. Keyboard is usable (without remapping). \
-                 Waiting for DriverKit output to recover..."
+                 Waiting for the output backend to recover..."
             );
 
-            // --- Wait for the pqrs client to re-establish the connection ---
+            // --- Wait for the output backend to re-establish the connection ---
             loop {
-                std::thread::sleep(std::time::Duration::from_millis(500));
-                if is_sink_ready() {
-                    // Let the pqrs client's callback sequence finish before
-                    // we re-seize input devices. The client fires several
-                    // callbacks in quick succession (connected, driver_connected,
-                    // virtual_hid_keyboard_ready); seizing too early can race
+                if kanata
+                    .lock()
+                    .kbd_out
+                    .wait_until_ready(Some(Duration::from_millis(500)))
+                {
+                    // Let the direct DriverKit backend finish its callback sequence
+                    // before we re-seize input devices. Seizing too early can race
                     // with IOKit enumeration triggered by those callbacks.
-                    std::thread::sleep(std::time::Duration::from_secs(1));
-                    info!("DriverKit output recovered — re-grabbing input devices");
+                    std::thread::sleep(Duration::from_secs(1));
+                    info!("output backend recovered — re-grabbing input devices");
                     break;
                 }
             }
+
+            {
+                let mut kanata = kanata.lock();
+                kanata
+                    .kbd_out
+                    .release_tracked_output_keys("output-backend-recovery");
+            }
+            PRESSED_KEYS.lock().clear();
 
             // Re-seize input devices using regrab_input() which creates a fresh
             // pipe and listener thread without re-initializing the sink client.
