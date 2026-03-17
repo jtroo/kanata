@@ -2056,7 +2056,7 @@ is pressed then released before hold activates.
 
 | `tap-hold-except-keys`
 | The `$tap-keys` parameter is a list of key names.
-Activates $tap-action if a key within $tap-keys is pressed
+Activates `$tap-action` if a key within `$tap-keys` is pressed
 or if the action key is released before hold timeout.
 No key is ever output until the action key is released
 or another key is pressed,
