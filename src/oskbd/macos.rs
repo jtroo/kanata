@@ -79,6 +79,7 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
+        let has_device_filter = include_names.is_some() || exclude_names.is_some();
         let device_names = if let Some(included_names) = include_names {
             validate_and_register_devices(included_names)
         } else if let Some(excluded_names) = exclude_names {
@@ -104,7 +105,10 @@ impl KbdIn {
             vec![]
         };
 
-        if !device_names.is_empty() || register_device("") {
+        // When an include/exclude list is configured but no devices matched,
+        // do NOT fall back to registering all devices. Only use the catch-all
+        // register_device("") when no device filter was specified at all.
+        if !device_names.is_empty() || (!has_device_filter && register_device("")) {
             if grab() {
                 Ok(Self { grabbed: true })
             } else {
