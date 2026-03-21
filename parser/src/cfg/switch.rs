@@ -90,6 +90,7 @@ pub fn parse_switch_case_bool(
             InputHistory,
             Layer,
             BaseLayer,
+            Device,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -116,6 +117,7 @@ pub fn parse_switch_case_bool(
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
+                "device" => Some(AllowedListOps::Device),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -123,7 +125,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer",
+                    | input | input-history | layer | base-layer | device",
                 )
             })?;
 
@@ -266,6 +268,35 @@ pub fn parse_switch_case_bool(
                     AllowedListOps::BaseLayer => OpCode::new_base_layer(layer),
                     _ => unreachable!(),
                 };
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::Device => {
+                if l.len() != 2 {
+                    bail_expr!(op_expr, "device must have 1 parameter: device-id (1-255)");
+                }
+                let id_str = l[1]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be a number (1-255)"))?;
+                let id_num: u8 = id_str
+                    .parse()
+                    .map_err(|_| anyhow_expr!(&l[1], "device ID must be a number (1-255)"))?;
+                let id = std::num::NonZeroU8::new(id_num)
+                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be nonzero (1-255)"))?;
+                if let Some(ref devs) = s.input_devices {
+                    if !devs.iter().any(|(did, _)| *did == id) {
+                        bail_expr!(
+                            &l[1],
+                            "device ID {id_num} is not defined in definputdevices"
+                        );
+                    }
+                } else {
+                    bail_expr!(
+                        &l[1],
+                        "cannot use (device {id_num}) without a definputdevices block"
+                    );
+                }
+                let (op1, op2) = OpCode::new_device(id);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
