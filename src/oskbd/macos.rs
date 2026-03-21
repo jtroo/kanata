@@ -50,6 +50,7 @@ impl From<InputEvent> for DKEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            device_hash: 0,
         }
     }
 }
@@ -123,6 +124,7 @@ impl KbdIn {
             value: 0,
             page: 0,
             code: 0,
+            device_hash: 0,
         };
 
         let got_event = wait_key(&mut event);
