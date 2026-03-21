@@ -135,26 +135,17 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
                     "press" | "↓" | "d" | "down" => {
                         let key_code = str_to_oscode(val)
                             .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
-                        k.handle_input_event(&KeyEvent {
-                            code: key_code,
-                            value: KeyValue::Press,
-                        })?;
+                        k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Press))?;
                     }
                     "release" | "↑" | "u" | "up" => {
                         let key_code = str_to_oscode(val)
                             .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
-                        k.handle_input_event(&KeyEvent {
-                            code: key_code,
-                            value: KeyValue::Release,
-                        })?;
+                        k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Release))?;
                     }
                     "repeat" | "⟳" | "r" => {
                         let key_code = str_to_oscode(val)
                             .ok_or_else(|| anyhow!("line: {l}\nunknown key in {kind}:{val}"))?;
-                        k.handle_input_event(&KeyEvent {
-                            code: key_code,
-                            value: KeyValue::Repeat,
-                        })?;
+                        k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Repeat))?;
                     }
                     // Virtual/fake key activation: vk:name[:action]
                     "vk" | "fakekey" | "virtualkey" | "🎭" => {

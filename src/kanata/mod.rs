@@ -231,6 +231,8 @@ pub struct Kanata {
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
     /// excluded for interception and processing by kanata.
     pub exclude_names: Option<Vec<String>>,
+    /// Device ID mappings from `definputdevices` configuration block.
+    pub input_devices: Option<Vec<(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)>>,
     #[cfg(target_os = "windows")]
     /// Tracks whether Kanata should try to synchronize keystates with the Windows OS.
     /// Has no effect on Interception. Fixes some use cases related to admin window permissions and
@@ -534,6 +536,7 @@ impl Kanata {
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
+            input_devices: cfg.input_devices,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -684,6 +687,7 @@ impl Kanata {
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
             switch_max_key_timing: cfg.switch_max_key_timing,
+            input_devices: cfg.input_devices,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -752,6 +756,10 @@ impl Kanata {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
         self.switch_max_key_timing = cfg.switch_max_key_timing;
+        // Note: input_devices is intentionally not updated on live reload.
+        // The KbdIn device_hash_to_id map is built at startup and not rebuilt.
+        // This matches behavior of other device configs (macos-dev-names-include, etc.).
+        // See: https://github.com/malpern/kanata/issues/13
         self.virtual_keys = cfg.fake_keys;
         #[cfg(target_os = "windows")]
         {
@@ -849,6 +857,7 @@ impl Kanata {
     /// Update keyberon layout state for press/release, handle repeat separately
     pub fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
+        self.layout.bm().current_device_id = event.device_id();
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;
         let kbrn_ev = match event.value {
@@ -2792,7 +2801,7 @@ mod collect_and_sort_events_tests {
     use std::sync::mpsc::sync_channel;
 
     fn make_event(code: OsCode, value: KeyValue) -> KeyEvent {
-        KeyEvent { code, value }
+        KeyEvent::new(code, value)
     }
 
     #[test]
@@ -2989,21 +2998,15 @@ mod tcp_layer_change_tests {
         let (tx, rx) = sync_channel::<ServerMessage>(10);
         let tx = Some(tx);
 
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Press,
-        })
-        .expect("press should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Press))
+            .expect("press should succeed");
         k.last_tick = web_time::Instant::now() - Duration::from_millis(1);
         k.handle_time_ticks(&tx).expect("press tick should succeed");
 
         assert_eq!(collect_layer_changes(&rx), vec!["nav"]);
 
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Release,
-        })
-        .expect("release should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Release))
+            .expect("release should succeed");
         k.last_tick = web_time::Instant::now() - Duration::from_millis(1);
         k.handle_time_ticks(&tx)
             .expect("release tick should succeed");
@@ -3027,16 +3030,10 @@ mod tcp_layer_change_tests {
         let (tx, rx) = sync_channel::<ServerMessage>(10);
         let tx = Some(tx);
 
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Press,
-        })
-        .expect("press should succeed");
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Release,
-        })
-        .expect("release should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Press))
+            .expect("press should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Release))
+            .expect("release should succeed");
         k.last_tick = web_time::Instant::now() - Duration::from_millis(5);
         k.handle_time_ticks(&tx)
             .expect("batched timeout ticks should succeed");
@@ -3062,26 +3059,14 @@ mod tcp_layer_change_tests {
         let (tx, rx) = sync_channel::<ServerMessage>(10);
         let tx = Some(tx);
 
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Press,
-        })
-        .expect("oneshot press should succeed");
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_A,
-            value: KeyValue::Release,
-        })
-        .expect("oneshot release should succeed");
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_B,
-            value: KeyValue::Press,
-        })
-        .expect("consumer press should succeed");
-        k.handle_input_event(&KeyEvent {
-            code: OsCode::KEY_B,
-            value: KeyValue::Release,
-        })
-        .expect("consumer release should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Press))
+            .expect("oneshot press should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_A, KeyValue::Release))
+            .expect("oneshot release should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_B, KeyValue::Press))
+            .expect("consumer press should succeed");
+        k.handle_input_event(&KeyEvent::new(OsCode::KEY_B, KeyValue::Release))
+            .expect("consumer release should succeed");
         k.last_tick = web_time::Instant::now() - Duration::from_millis(5);
         k.handle_time_ticks(&tx)
             .expect("batched consume ticks should succeed");

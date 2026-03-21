@@ -104,11 +104,8 @@ fn simulate_with_file_content<S: AsRef<str>>(
                 }
                 "d" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
-                    k.handle_input_event(&KeyEvent {
-                        code: key_code,
-                        value: KeyValue::Press,
-                    })
-                    .expect("input handles fine");
+                    k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Press))
+                        .expect("input handles fine");
                     #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
                     crate::PRESSED_KEYS.lock().insert(key_code);
                     #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
@@ -118,20 +115,14 @@ fn simulate_with_file_content<S: AsRef<str>>(
                 }
                 "u" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
-                    k.handle_input_event(&KeyEvent {
-                        code: key_code,
-                        value: KeyValue::Release,
-                    })
-                    .expect("input handles fine");
+                    k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Release))
+                        .expect("input handles fine");
                     crate::PRESSED_KEYS.lock().remove(&key_code);
                 }
                 "r" => {
                     let key_code = str_to_oscode(val).expect("valid keycode");
-                    k.handle_input_event(&KeyEvent {
-                        code: key_code,
-                        value: KeyValue::Repeat,
-                    })
-                    .expect("input handles fine");
+                    k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Repeat))
+                        .expect("input handles fine");
                 }
                 // Virtual/fake key activation: vk:name[:action] or fakekey:name[:action]
                 // Supported actions: press (p), release, tap (t), toggle (g)

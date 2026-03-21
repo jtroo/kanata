@@ -792,6 +792,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ((base-layer dvorak)) x break
     ((base-layer qwerty)) y break
 
+    ;; device evaluates to `true` if the event came from a device matching
+    ;; the given device ID defined in definputdevices. Currently macOS only.
+    ;; ((device 1)) x break
+    ;; ((device 2)) y break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break
