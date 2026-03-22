@@ -41,9 +41,19 @@ pub(crate) fn list_devices_macos() {
         return;
     }
 
-    println!(
-        "\nTo address devices with empty names (product key), hash values can be used in the configuration!"
-    );
+    let has_empty_names = kb_list.iter().any(|k| k.product_key.trim().is_empty());
+    if has_empty_names {
+        println!(
+            "\nTo address devices with empty names (product key), hash values can be used in the configuration!"
+        );
+    }
+
+    if kb_list.iter().any(|k| k.product_key.contains("Karabiner")) {
+        println!(
+            "\nNote: Karabiner virtual devices detected. Device hashes may not be stable \
+             because Karabiner virtualizes HID devices. Prefer name-based matching."
+        );
+    }
 
     println!("\nConfiguration example:");
     println!("  (defcfg");
