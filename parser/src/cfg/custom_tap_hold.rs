@@ -125,6 +125,68 @@ pub(crate) fn custom_tap_hold_release_trigger_tap_release(
     )
 }
 
+/// Returns a closure for `tap-hold-keys` with three optional key lists:
+/// - `keys_tap_on_press`: trigger tap immediately on press
+/// - `keys_tap_on_press_release`: trigger tap when pressed then released
+/// - `keys_hold_on_press`: trigger hold immediately on press
+///
+/// For any other key, falls back to PermissiveHold behavior.
+///
+/// Priority when a key appears in multiple lists (checked in order):
+/// tap-on-press > hold-on-press > tap-on-press-release > PermissiveHold
+pub(crate) fn custom_tap_hold_keys(
+    keys_tap_on_press: &[OsCode],
+    keys_tap_on_press_release: &[OsCode],
+    keys_hold_on_press: &[OsCode],
+    a: &Allocations,
+) -> &'static CustomTapHoldFn {
+    let keys_tap_on_press = a.sref_vec(keys_tap_on_press.iter().copied().map(u16::from).collect());
+    let keys_tap_on_press_release = a.sref_vec(
+        keys_tap_on_press_release
+            .iter()
+            .copied()
+            .map(u16::from)
+            .collect(),
+    );
+    let keys_hold_on_press =
+        a.sref_vec(keys_hold_on_press.iter().copied().map(u16::from).collect());
+    a.sref(
+        move |mut queued: QueuedIter, _coord: KCoord| -> (Option<WaitingAction>, bool) {
+            while let Some(q) = queued.next() {
+                if q.event().is_press() {
+                    let (i, j) = q.event().coord();
+                    if i != REAL_KEY_ROW {
+                        continue;
+                    }
+                    // If key is in tap-on-press list, trigger tap immediately.
+                    if keys_tap_on_press.iter().copied().any(|j2| j2 == j) {
+                        return (Some(WaitingAction::Tap), false);
+                    }
+                    // If key is in hold-on-press list, trigger hold immediately.
+                    if keys_hold_on_press.iter().copied().any(|j2| j2 == j) {
+                        return (Some(WaitingAction::Hold), false);
+                    }
+                    // If key is in tap-on-press-release list and has been released,
+                    // trigger tap.
+                    if keys_tap_on_press_release.iter().copied().any(|j2| j2 == j) {
+                        let target = Event::Release(i, j);
+                        if queued.clone().copied().any(|q| q.event() == target) {
+                            return (Some(WaitingAction::Tap), false);
+                        }
+                    }
+                    // Otherwise do the PermissiveHold algorithm:
+                    // if another key was pressed and released, trigger hold.
+                    let target = Event::Release(i, j);
+                    if queued.clone().copied().any(|q| q.event() == target) {
+                        return (Some(WaitingAction::Hold), false);
+                    }
+                }
+            }
+            (None, false)
+        },
+    )
+}
+
 pub(crate) fn custom_tap_hold_except(keys: &[OsCode], a: &Allocations) -> &'static CustomTapHoldFn {
     let keys = a.sref_vec(Vec::from_iter(keys.iter().copied()));
     a.sref(

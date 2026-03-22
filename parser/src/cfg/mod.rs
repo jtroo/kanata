@@ -1519,6 +1519,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
             parse_tap_hold_timeout(&ac[1..], s, HoldTapConfig::PermissiveHold)
         }
         TAP_HOLD_RELEASE_KEYS_TAP_RELEASE => parse_tap_hold_keys_trigger_tap_release(&ac[1..], s),
+        TAP_HOLD_KEYS => parse_tap_hold_keys_named_lists(&ac[1..], s),
         TAP_HOLD_RELEASE_KEYS | TAP_HOLD_RELEASE_KEYS_A => {
             parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_RELEASE_KEYS, custom_tap_hold_release)
         }

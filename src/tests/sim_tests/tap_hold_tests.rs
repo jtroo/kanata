@@ -121,6 +121,155 @@ fn tap_hold_release_tap_keys_release() {
 }
 
 #[test]
+fn tap_hold_keys_hold_on_press() {
+    let cfg = "
+        (defsrc a b c)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y (hold-on-press b))
+         b c
+        )
+    ";
+    // hold-on-press key triggers hold immediately
+    let result = simulate(cfg, "d:a t:20 d:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:Y t:6ms dn:B", result);
+    // non-listed key: PermissiveHold — needs press+release for hold
+    let result = simulate(cfg, "d:a t:20 d:c t:20 u:c t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:C t:1ms up:C", result);
+    // release before timeout with no other key → tap
+    let result = simulate(cfg, "d:a t:50 u:a t:100").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+    // timeout → hold
+    let result = simulate(cfg, "d:a t:150 u:a t:100").to_ascii();
+    assert_eq!("t:100ms dn:Y t:50ms up:Y", result);
+}
+
+#[test]
+fn tap_hold_keys_tap_on_press() {
+    let cfg = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y (tap-on-press b))
+         b
+        )
+    ";
+    // tap-on-press key triggers tap immediately
+    let result = simulate(cfg, "d:a t:20 d:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms dn:B", result);
+}
+
+#[test]
+fn tap_hold_keys_tap_on_press_release() {
+    let cfg = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y (tap-on-press-release b))
+         b
+        )
+    ";
+    // tap-on-press-release key needs press+release to trigger tap
+    let result = simulate(cfg, "d:a t:20 d:b u:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms dn:B t:1ms up:B", result);
+    // tap-on-press-release key pressed but not released: no early tap or hold,
+    // waits for timeout.
+    let result = simulate(cfg, "d:a t:20 d:b t:200").to_ascii();
+    assert_eq!("t:100ms dn:Y t:1ms dn:B", result);
+}
+
+#[test]
+fn tap_hold_keys_all_lists() {
+    let cfg = "
+        (defsrc a b c d e)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y
+           (tap-on-press b)
+           (tap-on-press-release c)
+           (hold-on-press d))
+         b c d e
+        )
+    ";
+    // tap-on-press
+    let result = simulate(cfg, "d:a t:20 d:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms dn:B", result);
+    // tap-on-press-release
+    let result = simulate(cfg, "d:a t:20 d:c u:c t:100").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms dn:C t:1ms up:C", result);
+    // hold-on-press
+    let result = simulate(cfg, "d:a t:20 d:d t:100").to_ascii();
+    assert_eq!("t:20ms dn:Y t:6ms dn:D", result);
+    // unlisted key: PermissiveHold
+    let result = simulate(cfg, "d:a t:20 d:e t:20 u:e t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:E t:1ms up:E", result);
+}
+
+#[test]
+fn tap_hold_keys_with_require_prior_idle() {
+    let cfg = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y
+           (hold-on-press b)
+           (require-prior-idle 200))
+         b
+        )
+    ";
+    // Quick typing should resolve as tap due to require-prior-idle
+    let result = simulate(cfg, "d:b t:10 u:b t:10 d:a t:50 u:a t:100").to_ascii();
+    assert_eq!("dn:B t:10ms up:B t:10ms dn:X t:50ms up:X", result);
+}
+
+#[test]
+fn tap_hold_keys_no_options() {
+    // With no key list options, tap-hold-keys behaves like tap-hold-release (PermissiveHold).
+    let cfg = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y)
+         b
+        )
+    ";
+    // press+release of another key triggers hold
+    let result = simulate(cfg, "d:a t:20 d:b t:20 u:b t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:B t:1ms up:B", result);
+    // release before timeout → tap
+    let result = simulate(cfg, "d:a t:50 u:a t:100").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+    // timeout → hold
+    let result = simulate(cfg, "d:a t:150 u:a t:100").to_ascii();
+    assert_eq!("t:100ms dn:Y t:50ms up:Y", result);
+}
+
+#[test]
+fn tap_hold_keys_priority_order() {
+    // When a key appears in multiple lists, tap-on-press wins over hold-on-press.
+    let cfg = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y
+           (tap-on-press b)
+           (hold-on-press b))
+         b
+        )
+    ";
+    // b is in both lists; tap-on-press should win → triggers tap
+    let result = simulate(cfg, "d:a t:20 d:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:X t:6ms dn:B", result);
+
+    // hold-on-press wins over tap-on-press-release
+    let cfg2 = "
+        (defsrc a b)
+        (deflayer l1
+         (tap-hold-keys 100 100 x y
+           (tap-on-press-release b)
+           (hold-on-press b))
+         b
+        )
+    ";
+    // b is in both lists; hold-on-press should win → triggers hold
+    let result = simulate(cfg2, "d:a t:20 d:b t:100").to_ascii();
+    assert_eq!("t:20ms dn:Y t:6ms dn:B", result);
+}
+
+#[test]
 fn tap_hold_release_keys() {
     let cfg = "
         (defsrc a)

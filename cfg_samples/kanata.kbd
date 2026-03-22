@@ -570,6 +570,17 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; This is useful for home row mods where fast typing should not trigger modifiers.
   utk (tap-hold-tap-keys 200 200 u @msc (a o e))
 
+  ;; tap-hold-keys is a flexible tap-hold with named key list options.
+  ;; tap: u    hold: misc layer
+  ;; (tap-on-press a o e)         — tap immediately if a, o, or e are pressed
+  ;; (tap-on-press-release ' , .) — tap if ', ,, or . are pressed then released
+  ;; (hold-on-press 1 2 3)        — hold immediately if 1, 2, or 3 are pressed
+  ;; All list options are optional. Unlisted keys use PermissiveHold behavior.
+  uthk (tap-hold-keys 200 200 u @msc
+    (tap-on-press a o e)
+    (tap-on-press-release ' , .)
+    (hold-on-press 1 2 3))
+
   ;; tap-hold-order resolves by release order instead of timeout.
   ;; tap: a    hold: lctl    buffer: 50ms (fast typing grace period)
   aor (tap-hold-order 200 50 a lctl)
