@@ -2018,6 +2018,7 @@ results in `$tap-action` activating.
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-tap-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-opposite-hand $timeout $tap-action $hold-action [options...])
+(tap-hold-opposite-hand-release $timeout $tap-action $hold-action [options...])
 (tap-hold-order $tap-repress-timeout $buffer-ms $tap-action $hold-action [options...])
 ----
 
@@ -2074,6 +2075,11 @@ This is useful for home row mods where fast typing should not trigger modifiers.
 | Resolves to `$hold-action` when a key from the opposite hand (per `defhands`) is pressed.
 Requires a `defhands` directive. Supports list-form options for fine-grained control.
 See <<defhands and tap-hold-opposite-hand>> below.
+
+| `tap-hold-opposite-hand-release`
+| Like `tap-hold-opposite-hand` but waits for the interrupting key to be pressed AND released
+before committing. This avoids misfires on fast same-hand rolls where keystrokes briefly overlap.
+Requires a `defhands` directive. Supports the same options as `tap-hold-opposite-hand`.
 
 | `tap-hold-order`
 | Resolves purely by key release order, with no timeout.

@@ -230,3 +230,71 @@ pub(crate) fn custom_tap_hold_opposite_hand(
         },
     )
 }
+
+/// Like `custom_tap_hold_opposite_hand` but waits for the interrupting key's
+/// press+release before committing. This avoids misfires on fast same-hand
+/// rolls where keystrokes briefly overlap.
+pub(crate) fn custom_tap_hold_opposite_hand_release(
+    hand_map: &'static HandMap,
+    same_hand: DecisionBehavior,
+    neutral_behavior: DecisionBehavior,
+    unknown_hand: DecisionBehavior,
+    neutral_keys: &'static [OsCode],
+    a: &Allocations,
+) -> &'static CustomTapHoldFn {
+    a.sref(
+        move |mut queued: QueuedIter, coord: KCoord| -> (Option<WaitingAction>, bool) {
+            let (_row, col) = coord;
+            let waiting_hand = hand_map.get(col);
+
+            while let Some(q) = queued.next() {
+                if !q.event().is_press() {
+                    continue;
+                }
+                let (i, j) = q.event().coord();
+                if i != REAL_KEY_ROW {
+                    continue;
+                }
+
+                // Wait for the interrupting key's release before deciding.
+                let release = Event::Release(i, j);
+                if !queued.clone().copied().any(|q| q.event() == release) {
+                    continue;
+                }
+
+                // Check neutral-keys first (takes precedence over defhands)
+                if let Some(osc) = OsCode::from_u16(j) {
+                    if neutral_keys.contains(&osc) {
+                        match neutral_behavior {
+                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                            DecisionBehavior::Ignore => continue,
+                        }
+                    }
+                }
+
+                let pressed_hand = hand_map.get(j);
+
+                match (waiting_hand, pressed_hand) {
+                    (Hand::Left, Hand::Right) | (Hand::Right, Hand::Left) => {
+                        return (Some(WaitingAction::Hold), false);
+                    }
+                    (Hand::Left, Hand::Left) | (Hand::Right, Hand::Right) => match same_hand {
+                        DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                        DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                        DecisionBehavior::Ignore => continue,
+                    },
+                    _ => {
+                        // At least one key is Neutral (not in defhands)
+                        match unknown_hand {
+                            DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
+                            DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
+                            DecisionBehavior::Ignore => continue,
+                        }
+                    }
+                }
+            }
+            (None, false)
+        },
+    )
+}

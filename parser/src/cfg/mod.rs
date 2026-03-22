@@ -57,7 +57,9 @@ use custom_tap_hold::*;
 mod defcfg;
 pub use defcfg::*;
 mod defhands;
-use defhands::{parse_defhands, parse_tap_hold_opposite_hand};
+use defhands::{
+    parse_defhands, parse_tap_hold_opposite_hand, parse_tap_hold_opposite_hand_release,
+};
 mod deflocalkeys;
 use deflocalkeys::*;
 mod defsrc;
@@ -1529,6 +1531,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
             parse_tap_hold_keys(&ac[1..], s, TAP_HOLD_TAP_KEYS, custom_tap_hold_tap_keys)
         }
         TAP_HOLD_OPPOSITE_HAND => parse_tap_hold_opposite_hand(&ac[1..], s),
+        TAP_HOLD_OPPOSITE_HAND_RELEASE => parse_tap_hold_opposite_hand_release(&ac[1..], s),
         MULTI => parse_multi(&ac[1..], s),
         MACRO => parse_macro(&ac[1..], s, RepeatMacro::No),
         MACRO_REPEAT | MACRO_REPEAT_A => parse_macro(&ac[1..], s, RepeatMacro::Yes),
