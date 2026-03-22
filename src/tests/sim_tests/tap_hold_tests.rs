@@ -135,10 +135,6 @@ fn tap_hold_opposite_hand_release_basic() {
     // Opposite-hand key pressed + released → hold
     let result = simulate(cfg, "d:a t:20 d:j t:20 u:j t:100").to_ascii();
     assert_eq!("t:40ms dn:Y t:6ms dn:J t:1ms up:J", result);
-
-    // Same-hand key pressed + released → tap
-    // Note: 's' is same-hand but not in defsrc, use a key in defsrc.
-    // Actually, 'a' is the tap-hold key itself. Let me use a different config.
 }
 
 #[test]
@@ -248,6 +244,60 @@ fn tap_hold_opposite_hand_release_with_require_prior_idle() {
     // Quick typing should resolve as tap due to require-prior-idle
     let result = simulate(cfg, "d:s t:10 u:s t:10 d:a t:50 u:a t:100").to_ascii();
     assert_eq!("dn:S t:10ms up:S t:10ms dn:X t:50ms up:X", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_hold() {
+    // (same-hand hold) should trigger hold when same-hand key is pressed+released
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand hold) (unknown-hand hold))
+         s j
+        )
+    ";
+    let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:S t:1ms up:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_ignore() {
+    // (same-hand ignore) should skip same-hand keys and wait for timeout
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y
+           (same-hand ignore) (unknown-hand hold) (timeout hold))
+         s j
+        )
+    ";
+    // Same-hand key pressed+released is ignored, timeout fires
+    let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:250").to_ascii();
+    assert_eq!("t:200ms dn:Y t:1ms dn:S t:1ms up:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_neutral_keys() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a spc j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y
+           (same-hand tap) (unknown-hand hold) (neutral-keys spc) (neutral tap))
+         spc j
+        )
+    ";
+    // spc is in neutral-keys with (neutral tap) → tap on press+release
+    let result = simulate(cfg, "d:a t:20 d:spc t:20 u:spc t:100").to_ascii();
+    assert_eq!("t:40ms dn:X t:6ms dn:Space t:1ms up:Space", result);
 }
 
 #[test]
