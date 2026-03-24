@@ -121,6 +121,186 @@ fn tap_hold_release_tap_keys_release() {
 }
 
 #[test]
+fn tap_hold_opposite_hand_release_basic() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a j k)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand tap) (unknown-hand hold))
+         j k
+        )
+    ";
+    // Opposite-hand key pressed + released → hold
+    let result = simulate(cfg, "d:a t:20 d:j t:20 u:j t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:J t:1ms up:J", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_tap() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand tap) (unknown-hand hold))
+         s j
+        )
+    ";
+    // Same-hand key pressed + released → tap
+    let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:100").to_ascii();
+    assert_eq!("t:40ms dn:X t:6ms dn:S t:1ms up:S", result);
+
+    // Same-hand key pressed but NOT released → no decision (waits for release)
+    // Eventually times out → timeout action (tap by default)
+    let result = simulate(cfg, "d:a t:20 d:s t:250").to_ascii();
+    assert_eq!("t:200ms dn:X t:1ms dn:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_no_interrupt() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand tap) (unknown-hand hold))
+         j
+        )
+    ";
+    // Released before timeout, no interrupt → tap
+    let result = simulate(cfg, "d:a t:50 u:a t:100").to_ascii();
+    assert_eq!("t:50ms dn:X t:6ms up:X", result);
+
+    // Timeout, no interrupt → timeout action (tap by default)
+    let result = simulate(cfg, "d:a t:250 u:a t:100").to_ascii();
+    assert_eq!("t:200ms dn:X t:50ms up:X", result);
+
+    // With (timeout hold), timeout → hold
+    let cfg_timeout_hold = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand tap) (unknown-hand hold) (timeout hold))
+         j
+        )
+    ";
+    let result = simulate(cfg_timeout_hold, "d:a t:250 u:a t:100").to_ascii();
+    assert_eq!("t:200ms dn:Y t:50ms up:Y", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_vs_press() {
+    // Compare: press-time (existing) vs release-time (new)
+    // With press-time, opposite-hand key triggers hold immediately on press.
+    // With release-time, it waits for the key's release.
+    let cfg_press = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a j)
+        (deflayer l1
+         (tap-hold-opposite-hand 200 x y (same-hand tap) (unknown-hand hold))
+         j
+        )
+    ";
+    let cfg_release = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand tap) (unknown-hand hold))
+         j
+        )
+    ";
+    // Press-time: hold decides on press (before j is released)
+    let result = simulate(cfg_press, "d:a t:20 d:j t:100").to_ascii();
+    assert_eq!("t:20ms dn:Y t:6ms dn:J", result);
+
+    // Release-time: does NOT decide on press alone — waits for release
+    let result = simulate(cfg_release, "d:a t:20 d:j t:20 u:j t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:J t:1ms up:J", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_with_require_prior_idle() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y
+           (same-hand tap) (unknown-hand hold) (require-prior-idle 200))
+         s j
+        )
+    ";
+    // Quick typing should resolve as tap due to require-prior-idle
+    let result = simulate(cfg, "d:s t:10 u:s t:10 d:a t:50 u:a t:100").to_ascii();
+    assert_eq!("dn:S t:10ms up:S t:10ms dn:X t:50ms up:X", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_hold() {
+    // (same-hand hold) should trigger hold when same-hand key is pressed+released
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y (same-hand hold) (unknown-hand hold))
+         s j
+        )
+    ";
+    let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:100").to_ascii();
+    assert_eq!("t:40ms dn:Y t:6ms dn:S t:1ms up:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_ignore() {
+    // (same-hand ignore) should skip same-hand keys and wait for timeout
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a s j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y
+           (same-hand ignore) (unknown-hand hold) (timeout hold))
+         s j
+        )
+    ";
+    // Same-hand key pressed+released is ignored, timeout fires
+    let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:250").to_ascii();
+    assert_eq!("t:200ms dn:Y t:1ms dn:S t:1ms up:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_neutral_keys() {
+    let cfg = "
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc a spc j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 200 x y
+           (same-hand tap) (unknown-hand hold) (neutral-keys spc) (neutral tap))
+         spc j
+        )
+    ";
+    // spc is in neutral-keys with (neutral tap) → tap on press+release
+    let result = simulate(cfg, "d:a t:20 d:spc t:20 u:spc t:100").to_ascii();
+    assert_eq!("t:40ms dn:X t:6ms dn:Space t:1ms up:Space", result);
+}
+
+#[test]
 fn tap_hold_release_keys() {
     let cfg = "
         (defsrc a)
