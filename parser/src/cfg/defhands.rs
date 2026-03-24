@@ -219,6 +219,154 @@ pub(super) fn parse_tap_hold_opposite_hand(
     }))))
 }
 
+pub(super) fn parse_tap_hold_opposite_hand_release(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    use custom_tap_hold::{DecisionBehavior, custom_tap_hold_opposite_hand_release};
+
+    const ARITY_MSG: &str = "tap-hold-opposite-hand-release expects at least 3 items: \
+            <timeout> <tap> <hold> [options...]";
+    if ac_params.is_empty() {
+        bail!(ARITY_MSG);
+    }
+    if ac_params.len() < 3 {
+        bail_expr!(&ac_params[0], "{}", ARITY_MSG);
+    }
+    let hand_map = s.hand_map.ok_or_else(|| {
+        anyhow_expr!(
+            &ac_params[0],
+            "tap-hold-opposite-hand-release requires defhands to be defined"
+        )
+    })?;
+
+    let hold_timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
+    let tap_action = parse_action(&ac_params[1], s)?;
+    let hold_action = parse_action(&ac_params[2], s)?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail_expr!(
+            &ac_params[1],
+            "tap-hold does not work in the tap-action of tap-hold"
+        );
+    }
+
+    let mut timeout_behavior = DecisionBehavior::Tap;
+    let mut same_hand = DecisionBehavior::Tap;
+    let mut neutral_behavior = DecisionBehavior::Ignore;
+    let mut unknown_hand = DecisionBehavior::Ignore;
+    let mut neutral_keys: Vec<OsCode> = Vec::new();
+    let mut require_prior_idle: Option<u16> = None;
+    let mut seen_options: HashSet<&str> = HashSet::default();
+
+    for option_expr in &ac_params[3..] {
+        let Some(option) = option_expr.list(s.vars()) else {
+            bail_expr!(
+                option_expr,
+                "expected option list, e.g. `(timeout hold)` or `(neutral-keys spc tab)`"
+            );
+        };
+        if option.is_empty() {
+            bail_expr!(option_expr, "option list cannot be empty");
+        }
+        let kw = option[0]
+            .atom(s.vars())
+            .ok_or_else(|| anyhow_expr!(&option[0], "option name must be a string"))?;
+        if !seen_options.insert(kw) {
+            bail_expr!(
+                &option[0],
+                "duplicate option '{}' in tap-hold-opposite-hand-release",
+                kw
+            );
+        }
+        match kw {
+            "timeout" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
+                timeout_behavior = parse_decision_behavior_tap_hold(&option[1], s)?;
+            }
+            "same-hand" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
+                same_hand = parse_decision_behavior(&option[1], s)?;
+            }
+            "neutral" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
+                neutral_behavior = parse_decision_behavior(&option[1], s)?;
+            }
+            "unknown-hand" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "option must contain exactly 2 items: `(name value)`"
+                    );
+                }
+                unknown_hand = parse_decision_behavior(&option[1], s)?;
+            }
+            "neutral-keys" => {
+                if option.len() < 2 {
+                    bail_expr!(
+                        option_expr,
+                        "neutral-keys expects one or more key atoms, e.g. `(neutral-keys spc tab)`"
+                    );
+                }
+                neutral_keys = parse_key_atoms(&option[1..], s, "neutral-keys")?;
+            }
+            "require-prior-idle" => {
+                require_prior_idle = Some(tap_hold::parse_require_prior_idle_option(
+                    option,
+                    option_expr,
+                    s,
+                )?);
+            }
+            _ => bail_expr!(
+                &option[0],
+                "unknown option '{}' for tap-hold-opposite-hand-release. \
+                Valid options: timeout, same-hand, neutral, unknown-hand, neutral-keys, require-prior-idle",
+                kw
+            ),
+        }
+    }
+
+    let timeout_action = match timeout_behavior {
+        DecisionBehavior::Tap => tap_action,
+        DecisionBehavior::Hold => hold_action,
+        DecisionBehavior::Ignore => unreachable!(),
+    };
+
+    let neutral_keys_static = s.a.sref_vec(neutral_keys);
+
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Custom(custom_tap_hold_opposite_hand_release(
+            hand_map,
+            same_hand,
+            neutral_behavior,
+            unknown_hand,
+            neutral_keys_static,
+            &s.a,
+        )),
+        tap_hold_interval: 0,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *timeout_action,
+        on_press_reset_timeout_to: None,
+        require_prior_idle,
+    }))))
+}
+
 fn parse_key_atoms(exprs: &[SExpr], s: &ParserState, label: &str) -> Result<Vec<OsCode>> {
     exprs
         .iter()
