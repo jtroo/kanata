@@ -2019,6 +2019,7 @@ results in `$tap-action` activating.
 (tap-hold-tap-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action [options...])
 (tap-hold-opposite-hand $timeout $tap-action $hold-action [options...])
+(tap-hold-opposite-hand-release $timeout $tap-action $hold-action [options...])
 (tap-hold-order $tap-repress-timeout $buffer-ms $tap-action $hold-action [options...])
 ----
 
@@ -2057,7 +2058,7 @@ is pressed then released before hold activates.
 
 | `tap-hold-except-keys`
 | The `$tap-keys` parameter is a list of key names.
-Activates $tap-action if a key within $tap-keys is pressed
+Activates `$tap-action` if a key within `$tap-keys` is pressed
 or if the action key is released before hold timeout.
 No key is ever output until the action key is released
 or another key is pressed,
@@ -2084,6 +2085,11 @@ All list options are optional.
 | Resolves to `$hold-action` when a key from the opposite hand (per `defhands`) is pressed.
 Requires a `defhands` directive. Supports list-form options for fine-grained control.
 See <<defhands and tap-hold-opposite-hand>> below.
+
+| `tap-hold-opposite-hand-release`
+| Like `tap-hold-opposite-hand` but waits for the interrupting key to be pressed AND released
+before committing. This avoids misfires on fast same-hand rolls where keystrokes briefly overlap.
+Requires a `defhands` directive. Supports the same options as `tap-hold-opposite-hand`.
 
 | `tap-hold-order`
 | Resolves purely by key release order, with no timeout.
