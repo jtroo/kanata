@@ -120,6 +120,10 @@ where
     /// immediately resolve as tap (typing streak detection). 0 = disabled.
     pub tap_hold_require_prior_idle: u16,
     pub chords_v2: Option<ChordsV2<'a, T>>,
+    /// The device ID of the current event being processed. Set by the caller
+    /// immediately before each event is processed. Used by `(device N)` switch
+    /// conditions to match against the originating physical device.
+    pub current_device_id: Option<std::num::NonZeroU8>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
     delegate_to_first_layer: bool,
@@ -1205,6 +1209,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             trans_resolution_behavior_v2: true,
             delegate_to_first_layer: false,
             chords_v2: None,
+            current_device_id: None,
             contextual_execution: ContextualExecution::new(),
             tap_hold_tracker: Default::default(),
         }
@@ -2242,6 +2247,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // Note on truncating cast: I expect default layer to be in range by other
                     // assertions.
                     self.default_layer as u16,
+                    self.current_device_id,
                 ) {
                     action_queue.push_back(Some((coord, 0, ac, layer_stack.collect())));
                 }

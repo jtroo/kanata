@@ -32,6 +32,7 @@ pub struct InputEvent {
     pub value: u64,
     pub page: u32,
     pub code: u32,
+    pub device_hash: u64,
 }
 
 impl InputEvent {
@@ -40,6 +41,7 @@ impl InputEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            device_hash: event.device_hash,
         }
     }
 }
@@ -50,6 +52,7 @@ impl From<InputEvent> for DKEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            // Output events don't originate from a physical device.
             device_hash: 0,
         }
     }
@@ -57,6 +60,7 @@ impl From<InputEvent> for DKEvent {
 
 pub struct KbdIn {
     grabbed: bool,
+    device_hash_to_id: HashMap<u64, std::num::NonZeroU8>,
 }
 
 impl Drop for KbdIn {
@@ -71,6 +75,7 @@ impl KbdIn {
     pub fn new(
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
+        input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
     ) -> Result<Self, anyhow::Error> {
         if !driver_activated() {
             return Err(anyhow!(
@@ -111,7 +116,11 @@ impl KbdIn {
         // register_device("") when no device filter was specified at all.
         if !device_names.is_empty() || (!has_device_filter && register_device("")) {
             if grab() {
-                Ok(Self { grabbed: true })
+                let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                Ok(Self {
+                    grabbed: true,
+                    device_hash_to_id,
+                })
             } else {
                 Err(anyhow!("grab failed"))
             }
@@ -143,6 +152,11 @@ impl KbdIn {
         Ok(InputEvent::new(event))
     }
 
+    /// Look up the device ID for an event's device hash.
+    pub fn device_id_for_hash(&self, hash: u64) -> Option<std::num::NonZeroU8> {
+        self.device_hash_to_id.get(&hash).copied()
+    }
+
     /// Release seized input devices without tearing down the output connection.
     /// After this call, `read()` will return `UnexpectedEof`.
     pub fn release_input(&mut self) {
@@ -167,6 +181,55 @@ impl KbdIn {
     pub fn is_grabbed(&self) -> bool {
         self.grabbed
     }
+}
+
+/// Build a mapping from device hashes to configured device IDs by matching
+/// the connected devices against the `definputdevices` matchers.
+fn build_device_hash_to_id_map(
+    input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+) -> HashMap<u64, std::num::NonZeroU8> {
+    use std::num::NonZeroU8;
+    let mut map: HashMap<u64, NonZeroU8> = HashMap::new();
+    let Some(matchers) = input_devices else {
+        return map;
+    };
+    let kb_list = fetch_devices();
+    for (id, matcher) in matchers.iter() {
+        for kb in &kb_list {
+            let name_matches = matcher
+                .name
+                .as_ref()
+                .is_none_or(|n| kb.product_key.contains(n.as_str()));
+            let hash_matches = matcher.hash.as_ref().is_none_or(|h| {
+                let device_hash = format!("{:x}", kb.hash);
+                device_hash.eq_ignore_ascii_case(h)
+            });
+            let vendor_matches = matcher
+                .vendor_id
+                .is_none_or(|v| u16::try_from(kb.vendor_id) == Ok(v));
+            let product_matches = matcher
+                .product_id
+                .is_none_or(|p| u16::try_from(kb.product_id) == Ok(p));
+            if name_matches && hash_matches && vendor_matches && product_matches {
+                if let Some(existing_id) = map.get(&kb.hash) {
+                    log::warn!(
+                        "definputdevices: device \"{}\" (hash {:x}) also matches ID {id}, \
+                         keeping first match ID {existing_id}",
+                        kb.product_key,
+                        kb.hash
+                    );
+                    continue;
+                }
+                log::info!(
+                    "definputdevices: device ID {id} matched \"{}\" (hash {:x})",
+                    kb.product_key,
+                    kb.hash
+                );
+                map.insert(kb.hash, *id);
+            }
+        }
+    }
+    map
 }
 
 fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
@@ -228,14 +291,14 @@ impl TryFrom<InputEvent> for KeyEvent {
             page: item.page,
             code: item.code,
         }) {
-            Ok(KeyEvent {
-                code: oscode,
-                value: if item.value == 1 {
+            Ok(KeyEvent::new(
+                oscode,
+                if item.value == 1 {
                     KeyValue::Press
                 } else {
                     KeyValue::Release
                 },
-            })
+            ))
         } else {
             Err(())
         }
@@ -255,6 +318,7 @@ impl TryFrom<KeyEvent> for InputEvent {
                 value: val,
                 page: pagecode.page,
                 code: pagecode.code,
+                device_hash: 0,
             })
         } else {
             Err(())
@@ -328,7 +392,7 @@ impl KbdOut {
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
-        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
+        if let Ok(event) = InputEvent::try_from(KeyEvent::new(key, value)) {
             let result = self.write(event);
             if result.is_ok() {
                 self.record_output_transition_after_write(key, value);
@@ -341,10 +405,9 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        if let Ok(event) = InputEvent::try_from(KeyEvent {
-            value,
-            code: OsCode::from_u16(code as u16).unwrap(),
-        }) {
+        if let Ok(event) =
+            InputEvent::try_from(KeyEvent::new(OsCode::from_u16(code as u16).unwrap(), value))
+        {
             self.write(event)
         } else {
             log::debug!("couldn't write unrecognized OsCode {code}");

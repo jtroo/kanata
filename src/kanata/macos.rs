@@ -26,9 +26,10 @@ impl Kanata {
         let allow_hardware_repeat = k.allow_hardware_repeat;
         let include_names = k.include_names.clone();
         let exclude_names = k.exclude_names.clone();
+        let input_devices = k.input_devices.clone();
         drop(k);
 
-        let mut kb = match KbdIn::new(include_names, exclude_names) {
+        let mut kb = match KbdIn::new(include_names, exclude_names, input_devices.as_deref()) {
             Ok(kbd_in) => kbd_in,
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };
@@ -67,7 +68,10 @@ impl Kanata {
                 };
 
                 let mut key_event = match KeyEvent::try_from(event) {
-                    Ok(ev) => ev,
+                    Ok(mut ev) => {
+                        ev.set_device_id(kb.device_id_for_hash(event.device_hash));
+                        ev
+                    }
                     _ => {
                         log::debug!("{event:?} is unrecognized!");
                         let mut kanata = kanata.lock();
