@@ -355,6 +355,7 @@ Followed by optional lists:
     let mut tap_on_press_release: Vec<OsCode> = vec![];
     let mut hold_on_press: Vec<OsCode> = vec![];
     let mut seen_options: HashSet<&str> = HashSet::default();
+    let mut seen_keys: HashSet<OsCode> = HashSet::default();
 
     for option_expr in &ac_params[n_positional..] {
         let Some(option) = option_expr.list(s.vars()) else {
@@ -377,13 +378,16 @@ Followed by optional lists:
                 require_prior_idle = Some(parse_require_prior_idle_option(option, option_expr, s)?);
             }
             "tap-on-press" => {
-                tap_on_press = parse_key_list_from_option(option, option_expr, s, kw)?;
+                tap_on_press =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
             }
             "tap-on-press-release" => {
-                tap_on_press_release = parse_key_list_from_option(option, option_expr, s, kw)?;
+                tap_on_press_release =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
             }
             "hold-on-press" => {
-                hold_on_press = parse_key_list_from_option(option, option_expr, s, kw)?;
+                hold_on_press =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
             }
             _ => bail_expr!(
                 &option[0],
@@ -418,6 +422,7 @@ fn parse_key_list_from_option(
     option_expr: &SExpr,
     s: &ParserState,
     kw: &str,
+    seen_keys: &mut HashSet<OsCode>,
 ) -> Result<Vec<OsCode>> {
     if option.len() < 2 {
         bail_expr!(
@@ -432,10 +437,16 @@ fn parse_key_list_from_option(
         let a = key.atom(s.vars()).ok_or_else(|| {
             anyhow_expr!(key, "string of a known key is expected, found list instead")
         })?;
-        keys.push(
-            str_to_oscode(a)
-                .ok_or_else(|| anyhow_expr!(key, "string of a known key is expected"))?,
-        );
+        let osc = str_to_oscode(a)
+            .ok_or_else(|| anyhow_expr!(key, "string of a known key is expected"))?;
+        if !seen_keys.insert(osc) {
+            bail_expr!(
+                key,
+                "key '{}' is already used in another tap-hold-keys option list",
+                a
+            );
+        }
+        keys.push(osc);
     }
     Ok(keys)
 }

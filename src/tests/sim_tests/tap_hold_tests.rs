@@ -239,8 +239,8 @@ fn tap_hold_keys_no_options() {
 }
 
 #[test]
-fn tap_hold_keys_priority_order() {
-    // When a key appears in multiple lists, tap-on-press wins over hold-on-press.
+fn tap_hold_keys_duplicate_key_across_lists() {
+    // A key appearing in multiple lists should be rejected at parse time.
     let cfg = "
         (defsrc a b)
         (deflayer l1
@@ -250,11 +250,12 @@ fn tap_hold_keys_priority_order() {
          b
         )
     ";
-    // b is in both lists; tap-on-press should win → triggers tap
-    let result = simulate(cfg, "d:a t:20 d:b t:100").to_ascii();
-    assert_eq!("t:20ms dn:X t:6ms dn:B", result);
+    let result = Kanata::new_from_str(cfg, Default::default());
+    assert!(
+        result.is_err(),
+        "expected error for duplicate key across tap-on-press and hold-on-press"
+    );
 
-    // hold-on-press wins over tap-on-press-release
     let cfg2 = "
         (defsrc a b)
         (deflayer l1
@@ -264,9 +265,11 @@ fn tap_hold_keys_priority_order() {
          b
         )
     ";
-    // b is in both lists; hold-on-press should win → triggers hold
-    let result = simulate(cfg2, "d:a t:20 d:b t:100").to_ascii();
-    assert_eq!("t:20ms dn:Y t:6ms dn:B", result);
+    let result = Kanata::new_from_str(cfg2, Default::default());
+    assert!(
+        result.is_err(),
+        "expected error for duplicate key across tap-on-press-release and hold-on-press"
+    );
 }
 
 #[test]
