@@ -69,6 +69,12 @@ pub(crate) fn parse_tap_hold_options(
 }
 
 const TAP_HOLD_OPTION_KEYWORDS: &[&str] = &["require-prior-idle"];
+const TAP_HOLD_KEYS_OPTION_KEYWORDS: &[&str] = &[
+    "require-prior-idle",
+    "tap-on-press",
+    "tap-on-press-release",
+    "hold-on-press",
+];
 
 /// Count how many trailing expressions are tap-hold option lists.
 /// An option list is a list whose first element is a known option keyword.
@@ -301,4 +307,146 @@ Params in order:
         on_press_reset_timeout_to: None,
         require_prior_idle: opts.require_prior_idle,
     }))))
+}
+
+pub(crate) fn parse_tap_hold_keys_named_lists(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    // Count trailing options using the extended keyword set.
+    let n_opts = {
+        let mut count = 0;
+        for expr in ac_params.iter().rev() {
+            if let Some(list) = expr.list(s.vars()) {
+                if let Some(kw) = list.first().and_then(|e| e.atom(s.vars())) {
+                    if TAP_HOLD_KEYS_OPTION_KEYWORDS.contains(&kw) {
+                        count += 1;
+                        continue;
+                    }
+                }
+            }
+            break;
+        }
+        count
+    };
+    let n_positional = ac_params.len() - n_opts;
+    if n_positional != 4 {
+        bail!(
+            r"{} expects 4 items after it, got {}.
+Params in order:
+<tap-repress-timeout> <hold-timeout> <tap-action> <hold-action>
+Followed by optional lists:
+(tap-on-press <keys...>) (tap-on-press-release <keys...>) (hold-on-press <keys...>)
+(require-prior-idle <ms>)",
+            TAP_HOLD_KEYS,
+            n_positional,
+        )
+    }
+    let tap_repress_timeout = parse_u16(&ac_params[0], s, "tap repress timeout")?;
+    let hold_timeout = parse_non_zero_u16(&ac_params[1], s, "hold timeout")?;
+    let tap_action = parse_action(&ac_params[2], s)?;
+    let hold_action = parse_action(&ac_params[3], s)?;
+    if matches!(tap_action, Action::HoldTap { .. }) {
+        bail!("tap-hold does not work in the tap-action of tap-hold")
+    }
+
+    let mut require_prior_idle = None;
+    let mut tap_on_press: Vec<OsCode> = vec![];
+    let mut tap_on_press_release: Vec<OsCode> = vec![];
+    let mut hold_on_press: Vec<OsCode> = vec![];
+    let mut seen_options: HashSet<&str> = HashSet::default();
+    let mut seen_keys: HashSet<OsCode> = HashSet::default();
+
+    for option_expr in &ac_params[n_positional..] {
+        let Some(option) = option_expr.list(s.vars()) else {
+            bail_expr!(
+                option_expr,
+                "expected option list, e.g. `(tap-on-press a b c)`"
+            );
+        };
+        if option.is_empty() {
+            bail_expr!(option_expr, "option list cannot be empty");
+        }
+        let kw = option[0]
+            .atom(s.vars())
+            .ok_or_else(|| anyhow_expr!(&option[0], "option name must be a string"))?;
+        if !seen_options.insert(kw) {
+            bail_expr!(&option[0], "duplicate option '{}'", kw);
+        }
+        match kw {
+            "require-prior-idle" => {
+                require_prior_idle = Some(parse_require_prior_idle_option(option, option_expr, s)?);
+            }
+            "tap-on-press" => {
+                tap_on_press =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
+            }
+            "tap-on-press-release" => {
+                tap_on_press_release =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
+            }
+            "hold-on-press" => {
+                hold_on_press =
+                    parse_key_list_from_option(option, option_expr, s, kw, &mut seen_keys)?;
+            }
+            _ => bail_expr!(
+                &option[0],
+                "unknown tap-hold-keys option '{}'. \
+                Valid options: tap-on-press, tap-on-press-release, hold-on-press, require-prior-idle",
+                kw
+            ),
+        }
+    }
+
+    Ok(s.a.sref(Action::HoldTap(s.a.sref(HoldTapAction {
+        config: HoldTapConfig::Custom(custom_tap_hold_keys(
+            &tap_on_press,
+            &tap_on_press_release,
+            &hold_on_press,
+            &s.a,
+        )),
+        tap_hold_interval: tap_repress_timeout,
+        timeout: hold_timeout,
+        tap: *tap_action,
+        hold: *hold_action,
+        timeout_action: *hold_action,
+        on_press_reset_timeout_to: None,
+        require_prior_idle,
+    }))))
+}
+
+/// Parse keys from a named option list like `(tap-on-press a b c)`.
+/// The first element is the keyword, remaining elements are key names.
+fn parse_key_list_from_option(
+    option: &[SExpr],
+    option_expr: &SExpr,
+    s: &ParserState,
+    kw: &str,
+    seen_keys: &mut HashSet<OsCode>,
+) -> Result<Vec<OsCode>> {
+    if option.len() < 2 {
+        bail_expr!(
+            option_expr,
+            "{} expects at least one key, e.g. `({} a b c)`",
+            kw,
+            kw
+        );
+    }
+    let mut keys = Vec::new();
+    for key in &option[1..] {
+        let a = key.atom(s.vars()).ok_or_else(|| {
+            anyhow_expr!(key, "string of a known key is expected, found list instead")
+        })?;
+        let osc = str_to_oscode(a)
+            .ok_or_else(|| anyhow_expr!(key, "string of a known key is expected"))?;
+        if !seen_keys.insert(osc) {
+            bail_expr!(
+                key,
+                "key '{}' is already used in another tap-hold-keys option list",
+                a
+            );
+        }
+        keys.push(osc);
+    }
+    Ok(keys)
 }

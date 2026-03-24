@@ -21,6 +21,7 @@ pub const TAP_HOLD_EXCEPT_KEYS: &str = "tap-hold-except-keys";
 pub const TAP_HOLD_EXCEPT_KEYS_A: &str = "tap⬓⤫keys";
 pub const TAP_HOLD_TAP_KEYS: &str = "tap-hold-tap-keys";
 pub const TAP_HOLD_TAP_KEYS_A: &str = "tap⬓tapkeys";
+pub const TAP_HOLD_KEYS: &str = "tap-hold-keys";
 pub const MULTI: &str = "multi";
 pub const MACRO: &str = "macro";
 pub const MACRO_REPEAT: &str = "macro-repeat";
@@ -161,6 +162,7 @@ pub fn is_list_action(ac: &str) -> bool {
         TAP_HOLD_EXCEPT_KEYS_A,
         TAP_HOLD_TAP_KEYS,
         TAP_HOLD_TAP_KEYS_A,
+        TAP_HOLD_KEYS,
         MULTI,
         MACRO,
         MACRO_REPEAT,

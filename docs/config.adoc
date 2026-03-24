@@ -2017,6 +2017,7 @@ results in `$tap-action` activating.
 (tap-hold-release-tap-keys-release $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-trigger-keys-on-press $tap-trigger-keys-on-press-then-release)
 (tap-hold-except-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
 (tap-hold-tap-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action $tap-keys)
+(tap-hold-keys $tap-repress-timeout $hold-timeout $tap-action $hold-action [options...])
 (tap-hold-opposite-hand $timeout $tap-action $hold-action [options...])
 (tap-hold-opposite-hand-release $timeout $tap-action $hold-action [options...])
 (tap-hold-order $tap-repress-timeout $buffer-ms $tap-action $hold-action [options...])
@@ -2070,6 +2071,15 @@ Unlike `tap-hold-release-keys`, does NOT activate `$hold-action` early
 when other keys are pressed and released.
 Waits for full `$hold-timeout` before activating `$hold-action`.
 This is useful for home row mods where fast typing should not trigger modifiers.
+
+| `tap-hold-keys`
+| A flexible tap-hold variant with named key list options.
+Options are: `(tap-on-press <keys...>)` activates `$tap-action` early if a listed key is pressed;
+`(tap-on-press-release <keys...>)` activates `$tap-action` early if a listed key is pressed then released;
+`(hold-on-press <keys...>)` activates `$hold-action` early if a listed key is pressed.
+For any other key: if that key is pressed and released while this key is waiting,
+`$hold-action` is triggered early (PermissiveHold behavior).
+All list options are optional.
 
 | `tap-hold-opposite-hand`
 | Resolves to `$hold-action` when a key from the opposite hand (per `defhands`) is pressed.
