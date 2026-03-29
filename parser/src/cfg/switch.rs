@@ -237,8 +237,8 @@ pub fn parse_switch_case_bool(
                         );
                     }
                 };
-                s.switch_max_key_timing
-                    .set(std::cmp::max(s.switch_max_key_timing.get(), ticks_since));
+                s.max_key_timing_check
+                    .set(std::cmp::max(s.max_key_timing_check.get(), ticks_since));
                 Ok(())
             }
             AllowedListOps::Layer | AllowedListOps::BaseLayer => {
