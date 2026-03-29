@@ -111,7 +111,7 @@ fn sim_chord_overlapping_release() {
         "d:a d:b t:100 u:a d:z t:300 u:b t:300",
     )
     .to_ascii();
-    assert_eq!("t:100ms dn:C t:301ms up:C t:100ms dn:Z", result);
+    assert_eq!("t:100ms dn:C t:401ms dn:Z t:3ms up:C", result);
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn sim_presses_for_old_chord_repress_into_new_chord() {
         "d:a d:b t:50 u:a t:50 d:z t:50 u:b t:50 d:a d:b t:50 u:a t:50",
     )
     .to_ascii();
-    assert_eq!("t:50ms dn:C t:101ms up:C t:99ms dn:D t:11ms up:D", result);
+    assert_eq!("t:50ms dn:C t:200ms dn:D t:11ms up:C t:1ms up:D", result);
 }
 
 #[test]

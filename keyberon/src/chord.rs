@@ -339,20 +339,21 @@ impl<'a, T> ChordsV2<'a, T> {
                 true
             }
             Event::Release(_, j) => {
-                // Release the key from active chords.
-                achs.iter_mut().for_each(|ach| {
-                    if !ach.participating_keys.contains(&j) {
-                        return;
-                    }
-                    ach.remaining_keys_to_release.retain(|pk| *pk != j);
-                    if ach.remaining_keys_to_release.is_empty() {
-                        ach.status = match ach.status {
-                            Unread | UnreadReleased => UnreadReleased,
-                            Releasable | Released => Released,
-                        }
-                    }
-                });
                 if presses.is_empty() {
+                    // Release the key from active chords.
+                    achs.iter_mut().for_each(|ach| {
+                        if !ach.participating_keys.contains(&j) {
+                            return;
+                        }
+                        ach.remaining_keys_to_release.retain(|pk| *pk != j);
+                        if ach.remaining_keys_to_release.is_empty() {
+                            ach.status = match ach.status {
+                                Unread | UnreadReleased => UnreadReleased,
+                                Releasable | Released => Released,
+                            }
+                        }
+                    });
+
                     drainq.push_back(*qd);
                     false
                 } else {
