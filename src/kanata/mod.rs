@@ -302,8 +302,8 @@ pub struct Kanata {
     last_pressed_key: KeyCode,
     /// Names of fake keys mapped to their index in the fake keys row
     pub virtual_keys: HashMap<String, usize>,
-    /// The maximum value of switch's key-timing item in the configuration.
-    pub switch_max_key_timing: u16,
+    /// The maximum value of the any time-dependent check in the configuration.
+    pub max_key_timing_check: u16,
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
     #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -533,7 +533,7 @@ impl Kanata {
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
-            switch_max_key_timing: cfg.switch_max_key_timing,
+            max_key_timing_check: cfg.max_key_timing_check,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -683,7 +683,7 @@ impl Kanata {
             unshifted_keys: vec![],
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
-            switch_max_key_timing: cfg.switch_max_key_timing,
+            max_key_timing_check: cfg.max_key_timing_check,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
@@ -751,7 +751,7 @@ impl Kanata {
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
-        self.switch_max_key_timing = cfg.switch_max_key_timing;
+        self.max_key_timing_check = cfg.max_key_timing_check;
         self.virtual_keys = cfg.fake_keys;
         #[cfg(target_os = "windows")]
         {
@@ -2496,13 +2496,13 @@ impl Kanata {
         // NOTE: this check must not be part of `is_idle` because its falsiness
         // does not mean that kanata is in a non-idle state, just that we
         // haven't done enough ticks yet to properly compute key-timing.
-        let passed_max_switch_timing_check = k
+        let passed_max_timing_check = k
             .layout
             .b()
             .historical_keys
             .iter_hevents()
             .next()
-            .map(|he| he.ticks_since_occurrence >= k.switch_max_key_timing)
+            .map(|he| he.ticks_since_occurrence >= k.max_key_timing_check)
             .unwrap_or(true);
         let chordsv2_accepts_chords = k
             .layout
@@ -2514,21 +2514,22 @@ impl Kanata {
         is_idle
             && !counting_idle_ticks
             && !counting_physical_idle_ticks
-            && passed_max_switch_timing_check
+            && passed_max_timing_check
             && chordsv2_accepts_chords
     }
 
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
-        self.layout.b().queue.is_empty()
+        let layout = self.layout.b();
+        layout.queue.is_empty()
             && zippy_is_idle()
-            && self.layout.b().waiting.is_none()
-            && self.layout.b().last_press_tracker.tap_hold_timeout == 0
-            && (self.layout.b().oneshot.timeout == 0 || self.layout.b().oneshot.keys.is_empty())
-            && self.layout.b().active_sequences.is_empty()
-            && self.layout.b().tap_dance_eager.is_none()
-            && self.layout.b().action_queue.is_empty()
+            && layout.waiting.is_none()
+            && layout.last_press_tracker.tap_hold_timeout == 0
+            && (layout.oneshot.timeout == 0 || layout.oneshot.keys.is_empty())
+            && layout.active_sequences.is_empty()
+            && layout.tap_dance_eager.is_none()
+            && layout.action_queue.is_empty()
             && self.sequence_state.is_inactive()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()
@@ -2538,13 +2539,11 @@ impl Kanata {
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
             && self.vkeys_pending_release.is_empty()
-            && !self.layout.b().states.iter().any(|s| {
+            && !layout.states.iter().any(|s| {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
             })
-            && self
-                .layout
-                .b()
+            && layout
                 .chords_v2
                 .as_ref()
                 .map(|cv2| cv2.is_idle_chv2())
