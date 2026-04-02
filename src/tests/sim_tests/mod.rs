@@ -4,6 +4,8 @@
 //! the test fail by comparing the output to an empty string. Run the test then inspect the failure
 //! and see if the real output looks sensible according to what is expected.
 
+use std::num::NonZeroU128;
+
 use crate::tests::*;
 use crate::{
     FAKE_KEY_ROW, FakeKeyAction, Kanata,
@@ -97,9 +99,19 @@ fn simulate_with_file_content<S: AsRef<str>>(
             Some((kind, val)) => match kind {
                 "t" => {
                     let ticks = str::parse::<u128>(val).expect("valid num for tick");
-                    for _ in 0..ticks {
+                    let mut ticks_with_no_processing: Option<NonZeroU128> = None;
+                    for t in 0..ticks {
                         let _ = k.tick_ms(1, &None);
-                        let _ = k.can_block_update_idle_waiting(1);
+                        let can_block = k.can_block_update_idle_waiting(1);
+                        if can_block {
+                            ticks_with_no_processing = NonZeroU128::new(ticks - t);
+                            break;
+                        }
+                    }
+                    if let Some(twnp) = ticks_with_no_processing {
+                        for _ in 1..twnp.into() {
+                            k.kbd_out.tick();
+                        }
                     }
                 }
                 "d" => {

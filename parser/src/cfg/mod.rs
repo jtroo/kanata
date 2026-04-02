@@ -756,6 +756,7 @@ pub fn parse_cfg_raw_string(
         block_unmapped_keys: cfg.block_unmapped_keys,
         lsp_hints: RefCell::new(lsp_hints),
         vars,
+        max_key_timing_check: Cell::new(cfg.rapid_event_delay),
         ..Default::default()
     };
 
