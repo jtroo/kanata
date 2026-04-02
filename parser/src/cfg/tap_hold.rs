@@ -24,7 +24,10 @@ pub(crate) fn parse_require_prior_idle_option(
             `(require-prior-idle <ms>)`"
         );
     }
-    parse_u16(&option[1], s, "require-prior-idle")
+    let prior_idle = parse_u16(&option[1], s, "require-prior-idle")?;
+    s.max_key_timing_check
+        .set(std::cmp::max(prior_idle, s.max_key_timing_check.get()));
+    Ok(prior_idle)
 }
 
 /// Parse trailing `(keyword value)` option lists from tap-hold action parameters.
