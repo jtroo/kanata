@@ -35,11 +35,7 @@ mod cli {
             std::process::exit(0);
         }
 
-        #[cfg(all(
-            target_os = "windows",
-            feature = "interception_driver",
-            not(feature = "gui")
-        ))]
+        #[cfg(all(target_os = "windows", feature = "interception_driver"))]
         if args.list {
             main_lib::list_devices_windows();
             std::process::exit(0);
