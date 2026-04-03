@@ -61,11 +61,7 @@ kanata.kbd in the current working directory and
     #[cfg(any(
         target_os = "macos",
         any(target_os = "linux", target_os = "android"),
-        all(
-            target_os = "windows",
-            feature = "interception_driver",
-            not(feature = "gui")
-        )
+        all(target_os = "windows", feature = "interception_driver")
     ))]
     #[arg(short, long)]
     pub list: bool,
