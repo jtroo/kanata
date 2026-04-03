@@ -69,6 +69,14 @@ fn cli_init() -> Result<ValidatedArgs> {
         }
     };
 
+    #[cfg(feature = "interception_driver")]
+    {
+        if args.list {
+            super::list_devices_windows();
+            std::process::exit(0);
+        }
+    }
+
     let cfg_paths = args.cfg.unwrap_or_else(default_cfg);
 
     let log_lvl = match (args.debug, args.trace) {

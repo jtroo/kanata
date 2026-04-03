@@ -121,22 +121,14 @@ pub(crate) fn list_devices_linux() {
     println!("  )");
 }
 
-#[cfg(all(
-    target_os = "windows",
-    feature = "interception_driver",
-    not(feature = "gui")
-))]
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
 struct WindowsDeviceInfo {
     display_name: String,        // For user display
     raw_wide_bytes: Vec<u8>,     // For kanata configuration (original wide string bytes)
     hardware_id: Option<String>, // Parsed hardware ID (e.g., "HID#VID_046D&PID_C52B")
 }
 
-#[cfg(all(
-    target_os = "windows",
-    feature = "interception_driver",
-    not(feature = "gui")
-))]
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
 fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDeviceInfo> {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
@@ -197,11 +189,7 @@ fn get_device_info(device_handle: winapi::um::winnt::HANDLE) -> Option<WindowsDe
     None
 }
 
-#[cfg(all(
-    target_os = "windows",
-    feature = "interception_driver",
-    not(feature = "gui")
-))]
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
 pub(crate) fn list_devices_windows() {
     use std::ptr::null_mut;
     use winapi::shared::minwindef::{PUINT, UINT};
@@ -302,11 +290,7 @@ pub(crate) fn list_devices_windows() {
     }
 }
 
-#[cfg(all(
-    target_os = "windows",
-    feature = "interception_driver",
-    not(feature = "gui")
-))]
+#[cfg(all(target_os = "windows", feature = "interception_driver"))]
 fn extract_hardware_id(device_name: &str) -> Option<String> {
     // Windows device names typically look like:
     // \\?\HID#VID_046D&PID_C52B&MI_01#7&1234abcd&0&0000#{884b96c3-56ef-11d1-bc8c-00a0c91405dd}
