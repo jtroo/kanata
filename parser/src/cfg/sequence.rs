@@ -28,9 +28,7 @@ pub(crate) fn parse_sequence_start(
     } else {
         s.default_sequence_input_mode
     };
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::SequenceLeader(timeout, input_mode)),
-    ))))
+    custom(CustomAction::SequenceLeader(timeout, input_mode), &s.a)
 }
 
 pub(crate) fn parse_sequence_noerase(
@@ -42,9 +40,7 @@ pub(crate) fn parse_sequence_noerase(
         bail!("{ERR_MSG}\nfound {} items", ac_params.len());
     }
     let count = parse_non_zero_u16(&ac_params[0], s, "noerase-count")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::SequenceNoerase(count))),
-    )))
+    custom(CustomAction::SequenceNoerase(count), &s.a)
 }
 
 pub(crate) fn parse_sequences(exprs: &[&Vec<SExpr>], s: &ParserState) -> Result<KeySeqsToFKeys> {

@@ -113,18 +113,14 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
                 add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
             }
         }
-        Action::Custom(cacs) => {
-            for ac in cacs.iter() {
-                match ac {
-                    CustomAction::Unmodded { keys, .. } | CustomAction::Unshifted { keys } => {
-                        for k in keys.iter() {
-                            add_kc_output(osc_slot, k.into(), outputs, overrides);
-                        }
-                    }
-                    _ => {}
+        Action::Custom(ac) => match ac {
+            CustomAction::Unmodded { keys, .. } | CustomAction::Unshifted { keys } => {
+                for k in keys.iter() {
+                    add_kc_output(osc_slot, k.into(), outputs, overrides);
                 }
             }
-        }
+            _ => {}
+        },
         Action::Src => {
             add_kc_output(osc_slot, osc_slot, outputs, overrides);
         }

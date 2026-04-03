@@ -16,7 +16,5 @@ pub(crate) fn parse_arbitrary_code(
         .map(str::parse::<u16>)
         .and_then(|c| c.ok())
         .ok_or_else(|| anyhow!("{ERR_MSG}: got {:?}", ac_params[0]))?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::SendArbitraryCode(code))),
-    )))
+    custom(CustomAction::SendArbitraryCode(code), &s.a)
 }
