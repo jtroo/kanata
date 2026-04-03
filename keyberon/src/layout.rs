@@ -72,12 +72,16 @@ type PressedQueue = ArrayDeque<KCoord, QUEUE_SIZE>;
 /// activation of multiple switch cases using fallthrough.
 pub const ACTION_QUEUE_LEN: usize = 8;
 
+pub const CUSTOM_EVENT_RELEASE_QUEUE_LEN: usize = 16;
+
 /// The queue is currently only used for chord decomposition when a longer chord does not result in
 /// an action, but splitting it into smaller chords would. The buffer size of 8 should be more than
 /// enough for real world usage, but if one wanted to be extra safe, this should be ChordKeys::BITS
 /// since that should guarantee that all potentially queueable actions can fit.
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
+type CustomEventReleaseQueue<'a, T> =
+    ArrayDeque<&'a T, CUSTOM_EVENT_RELEASE_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type Delay = u16;
 pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>, LayerStack)>;
 
@@ -112,6 +116,7 @@ where
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<SequenceState<'a, T>, 4, arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
+    pub custom_event_release_queue: CustomEventReleaseQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
@@ -346,7 +351,12 @@ impl<'a, T: 'a> State<'a, T> {
         }
     }
     /// Returns None if the key has been released and Some otherwise.
-    pub fn release(&self, c: KCoord, custom: &mut CustomEvent<'a, T>) -> Option<Self> {
+    pub fn release(
+        &self,
+        c: KCoord,
+        custom: &mut CustomEvent<'a, T>,
+        custom_release_queue: &mut CustomEventReleaseQueue<'a, T>,
+    ) -> Option<Self> {
         match *self {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
@@ -357,7 +367,14 @@ impl<'a, T: 'a> State<'a, T> {
                 None
             }
             Custom { value, coord } if coord == c => {
-                custom.update(CustomEvent::Release(value));
+                match custom {
+                    CustomEvent::NoEvent => custom.update(CustomEvent::Release(value)),
+                    _ => {
+                        if custom_release_queue.push_back(value).is_some() {
+                            panic!("overflowed custom action release queue");
+                        }
+                    }
+                }
                 None
             }
             _ => Some(*self),
@@ -1196,6 +1213,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
+            custom_event_release_queue: ArrayDeque::new(),
             rpt_action: None,
             historical_keys: History::new(),
             historical_inputs: History::new(),
@@ -1408,6 +1426,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
     pub fn tick(&mut self) -> CustomEvent<'a, T> {
+        self.tick_layout()
+    }
+
+    fn tick_layout(&mut self) -> CustomEvent<'a, T> {
+        // Eagerly process released queued custom actions
+        // then return; other items will be processed later!
+        if let Some(released_custom_event) = self.custom_event_release_queue.pop_front() {
+            return CustomEvent::Release(released_custom_event);
+        }
+
         let active_layer = self.current_layer() as u16;
         if let Some(chv2) = self.chords_v2.as_mut() {
             self.queue.extend(chv2.tick_chv2(active_layer).drain(0..));
@@ -1643,7 +1671,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let (do_release, overflow_key) = self.oneshot.handle_release((i, j));
                 if do_release {
                     self.states.retain(|s| {
-                        !s.clear_on_next_release() && s.release((i, j), &mut custom).is_some()
+                        !s.clear_on_next_release()
+                            && s.release((i, j), &mut custom, &mut self.custom_event_release_queue)
+                                .is_some()
                     });
                 } else {
                     // Fix #1874:
@@ -1679,14 +1709,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             // as a oneshot key, it should still be released here.
                             _ => {
                                 !s.clear_on_next_release()
-                                    && s.release((i, j), &mut custom).is_some()
+                                    && s.release(
+                                        (i, j),
+                                        &mut custom,
+                                        &mut self.custom_event_release_queue,
+                                    )
+                                    .is_some()
                             }
                         }
                     });
                 }
                 if let Some((i2, j2)) = overflow_key {
-                    self.states
-                        .retain(|s| s.release((i2, j2), &mut custom).is_some());
+                    self.states.retain(|s| {
+                        s.release((i2, j2), &mut custom, &mut self.custom_event_release_queue)
+                            .is_some()
+                    });
                 }
                 custom
             }
