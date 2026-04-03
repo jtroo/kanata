@@ -2316,20 +2316,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 }
                 *custom_activation_count = custom_activation_count.saturating_add(1);
                 self.rpt_action = Some(action);
-                if self.states.push(State::Custom { value, coord }).is_ok() {
-                    return match custom_activation_count {
-                        0 | 1 => CustomEvent::Press(value),
-                        _ => {
-                            self.action_queue.push_back(Some((
-                                coord,
-                                0,
-                                action,
-                                layer_stack.clone().collect(),
-                            )));
-                            CustomEvent::NoEvent
-                        }
-                    };
-                }
+                return match custom_activation_count {
+                    0 | 1 => {
+                        let _ = self.states.push(State::Custom { value, coord });
+                        CustomEvent::Press(value)
+                    }
+                    _ => {
+                        self.action_queue.push_back(Some((
+                            coord,
+                            delay,
+                            action,
+                            layer_stack.clone().collect(),
+                        )));
+                        CustomEvent::NoEvent
+                    }
+                };
             }
             ReleaseState(rs) => {
                 self.states.retain(|s| s.release_state(*rs).is_some());
