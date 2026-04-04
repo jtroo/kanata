@@ -1230,10 +1230,13 @@ impl Kanata {
         cur_keys.extend(layout.keycodes());
         let mut reverse_release_order = false;
 
-        // Deal with unmodded. Unlike other custom actions, this should come before key presses and
-        // releases. I don't quite remember why custom actions come after the key processing, but I
-        // remember that it is intentional. However, since unmodded needs to modify the key lists,
-        // it should come before.
+        // Deal with unmodded and other early custom actions.
+        // Unlike other custom actions, these should come before key presses and releases.
+        // I don't quite remember why custom actions come after the key processing,
+        // but I remember that it is intentional.
+        // However, since unmodded needs to modify the key lists,
+        // and SequenceNoerase may need to be evaluated within multi before a key
+        // that completes the sequence, it should come before.
         match custom_event {
             CustomEvent::Press(custact) => match custact {
                 CustomAction::Unmodded { keys, mods } => {
@@ -1242,6 +1245,12 @@ impl Kanata {
                 }
                 CustomAction::Unshifted { keys } => {
                     self.unshifted_keys.extend(keys.iter());
+                }
+                CustomAction::SequenceNoerase(noerase_count) => {
+                    if let Some(state) = self.sequence_state.get_active() {
+                        log::debug!("adding noerase: {noerase_count}");
+                        add_noerase(state, *noerase_count);
+                    }
                 }
                 _ => {}
             },
@@ -1689,12 +1698,7 @@ impl Kanata {
                             self.sequence_state.activate(*input_mode, *timeout);
                         }
                     }
-                    CustomAction::SequenceNoerase(noerase_count) => {
-                        if let Some(state) = self.sequence_state.get_active() {
-                            log::debug!("pressed cancel sequence key");
-                            add_noerase(state, *noerase_count);
-                        }
-                    }
+                    CustomAction::SequenceNoerase(..) => {}
                     CustomAction::Repeat => {
                         let keycode = self.last_pressed_key;
                         let osc: OsCode = keycode.into();

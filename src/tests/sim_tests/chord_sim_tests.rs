@@ -509,7 +509,7 @@ d:t u:t t:10
     // The key history should unpause, so on pressing `t` again,
     // position 2 is now where bspc is because C was sent.
     assert_eq!(
-        "t:1ms dn:BSpace t:10ms up:BSpace t:10ms dn:C t:1ms up:C t:9ms dn:B t:1ms up:B",
+        "t:1ms dn:BSpace t:10ms up:BSpace t:9ms dn:C t:1ms up:C t:9ms dn:B t:1ms up:B",
         result
     );
 }

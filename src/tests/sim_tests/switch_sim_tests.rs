@@ -67,5 +67,5 @@ fn sim_switch_trans_not_top_layer() {
         "d:b t:20 d:a t:10 u:a t:100 d:a t:10 u:a t:100",
     )
     .to_ascii();
-    assert_eq!("t:21ms dn:B t:9ms up:B t:101ms dn:B t:9ms up:B", result);
+    assert_eq!("t:20ms dn:B t:10ms up:B t:100ms dn:B t:10ms up:B", result);
 }
