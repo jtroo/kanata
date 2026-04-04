@@ -1918,13 +1918,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 // tap-dance action, would one expect the tap-dance to be repeated or the inner
                 // action that was most activated within the tap-dance?
                 //
-                // Currently the answer to these questions is: what is easy/possible to do? E.g.
-                // fork and switch are inconsistent with each other even though the actions are
-                // conceptually very similar. This is because switch can potentially activate
-                // multiple actions (but not always), so uses the action queue, while fork does
-                // not. As another example, tap-dance and tap-hold will repeat the inner action and
-                // not the outer (tap-dance|hold) but multi will repeat the entire outer multi
-                // action.
+                // Currently the answer to these questions is: what is easy/possible to do?
+                // It is not consistent whether it is the outer or inner action.
+                // The actions tap-dance and tap-hold will repeat the inner action and
+                // not the outer (tap-dance|hold),
+                // but multi will repeat the entire outer multi action.
                 if let Some(ac) = self.rpt_action {
                     self.do_action(
                         ac,
@@ -2374,7 +2372,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let historical_keys = self.historical_keys.iter_hevents();
                 let historical_coords = self.historical_inputs.iter_hevents();
                 let layers = self.trans_resolution_layer_order().into_iter();
-                let action_queue = &mut self.action_queue;
+                let mut action_queue: ActionQueue<T> = Default::default();
                 for ac in sw.actions(
                     active_keys,
                     active_coords,
@@ -2385,13 +2383,24 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // assertions.
                     self.default_layer as u16,
                 ) {
-                    action_queue.push_back(Some((coord, 0, ac, layer_stack.collect())));
+                    action_queue.push_back(Some((coord, delay, ac, layer_stack.clone().collect())));
                 }
-                // Switch is not properly repeatable. This has to use the action queue for the
-                // purpose of proper Custom action handling, because a single switch action can
-                // activate multiple inner actions. But because of the use of the action queue,
-                // switch has no way to set `rpt_action` after the queue is depleted. I suppose
-                // that can be fixable, but for now will keep it as-is.
+
+                let mut custom = CustomEvent::NoEvent;
+                while let Some(Some((coord, delay, action, layer_stack))) = action_queue.pop_front()
+                {
+                    custom.update(self.do_action(
+                        dbg!(action),
+                        coord,
+                        delay,
+                        is_oneshot,
+                        &mut layer_stack.into_iter(),
+                        custom_activation_count,
+                    ));
+                }
+
+                self.rpt_action = Some(action);
+                return custom;
             }
         }
         CustomEvent::NoEvent
@@ -5020,9 +5029,6 @@ mod test {
         assert_keys(&[], layout.keycodes());
 
         layout.event(Press(0, 2));
-        // No idea why we have to wait 2 ticks here. Is this a bug in switch?
-        assert_eq!(CustomEvent::NoEvent, layout.tick());
-        assert_keys(&[], layout.keycodes());
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[B], layout.keycodes());
 
