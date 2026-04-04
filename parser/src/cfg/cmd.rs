@@ -81,9 +81,10 @@ pub(crate) fn parse_cmd(
                 bail_expr!(&ac_params[1], "{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
             }
             let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
-            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+            return custom(
                 CustomAction::ClipboardSaveCmdSet(save_id, s.a.sref_vec(cmds)),
-            )))));
+                &s.a,
+            );
         }
 
         const ERR_STR: &str = "cmd expects at least one string";
