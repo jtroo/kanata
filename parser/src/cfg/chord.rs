@@ -237,7 +237,7 @@ impl<'a> ChordTranslation<'a> {
         timeout: &'a SExpr,
         release_behaviour: &'a SExpr,
         disabled_layers: &'a SExpr,
-        first_layer: &[Action<'static, &&[&CustomAction]>],
+        first_layer: &[Action<'static, KanataCustom>],
     ) -> Self {
         let postprocess_map: FxHashMap<String, String> = [
             ("semicolon", ";"),

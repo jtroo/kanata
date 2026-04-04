@@ -9,34 +9,38 @@ pub(crate) fn parse_multi(ac_params: &[SExpr], s: &ParserState) -> Result<&'stat
     s.multi_action_nest_count
         .replace(s.multi_action_nest_count.get().saturating_add(1));
     let mut actions = Vec::new();
-    let mut custom_actions: Vec<&'static CustomAction> = Vec::new();
     for expr in ac_params {
         let ac = parse_action(expr, s)?;
         match ac {
-            Action::Custom(acs) => {
-                for ac in acs.iter() {
-                    custom_actions.push(ac);
-                }
-            }
             // Flatten multi actions
             Action::MultipleActions(acs) => {
                 for ac in acs.iter() {
-                    match ac {
-                        Action::Custom(acs) => {
-                            for ac in acs.iter() {
-                                custom_actions.push(ac);
-                            }
-                        }
-                        _ => actions.push(*ac),
-                    }
+                    actions.push(*ac);
                 }
             }
             _ => actions.push(*ac),
         }
     }
 
-    if !custom_actions.is_empty() {
-        actions.push(Action::Custom(s.a.sref(s.a.sref_vec(custom_actions))));
+    // Transform all but the last Mouse actions into MouseTap.
+    // Need to transform mouse actions to preserve old v<=1.11.0 mouse behaviour where an action like:
+    //     (multi mlft mlft)
+    // should result in an event sequence like:
+    //     click-release-click ... held until key release ... release
+    //
+    // See test `multi_mouse_button_does_multi_click_release_single_hold`.
+    for ca in actions
+        .iter_mut()
+        .rev()
+        .filter(|ac| matches!(ac, Action::Custom(CustomAction::Mouse(..))))
+        .skip(1)
+    {
+        *ca = match ca {
+            Action::Custom(CustomAction::Mouse(btn)) => {
+                Action::Custom(s.a.sref(CustomAction::MouseTap(*btn)))
+            }
+            _ => *ca,
+        };
     }
 
     if actions

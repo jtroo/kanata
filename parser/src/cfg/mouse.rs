@@ -21,14 +21,15 @@ pub(crate) fn parse_mwheel(
     }
     let interval = parse_non_zero_u16(&ac_params[0], s, "interval")?;
     let distance = parse_distance(&ac_params[1], s, "distance")?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::MWheel {
             direction,
             interval,
             distance,
             inertial_scroll_params: None,
         },
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_mwheel_accel(
@@ -48,7 +49,7 @@ pub(crate) fn parse_mwheel_accel(
         parse_f32(&ac_params[2], s, "acceleration multiplier", 1.0, 1000.0)?;
     let deceleration_multiplier =
         parse_f32(&ac_params[3], s, "deceleration multiplier", 0.0, 0.99)?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::MWheel {
             direction,
             interval: 16,
@@ -60,7 +61,8 @@ pub(crate) fn parse_mwheel_accel(
                 deceleration_multiplier,
             })),
         },
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_move_mouse(
@@ -74,13 +76,14 @@ pub(crate) fn parse_move_mouse(
     }
     let interval = parse_non_zero_u16(&ac_params[0], s, "interval")?;
     let distance = parse_distance(&ac_params[1], s, "distance")?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::MoveMouse {
             direction,
             interval,
             distance,
         },
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_move_mouse_accel(
@@ -101,7 +104,7 @@ pub(crate) fn parse_move_mouse_accel(
     if min_distance > max_distance {
         bail!("min distance should be less than max distance")
     }
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::MoveMouseAccel {
             direction,
             interval,
@@ -109,7 +112,8 @@ pub(crate) fn parse_move_mouse_accel(
             min_distance,
             max_distance,
         },
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_move_mouse_speed(
@@ -123,9 +127,7 @@ pub(crate) fn parse_move_mouse_speed(
         );
     }
     let speed = parse_non_zero_u16(&ac_params[0], s, "speed scaling %")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::MoveMouseSpeed { speed })),
-    )))
+    custom(CustomAction::MoveMouseSpeed { speed }, &s.a)
 }
 
 pub(crate) fn parse_set_mouse(
@@ -140,7 +142,5 @@ pub(crate) fn parse_set_mouse(
     }
     let x = parse_u16(&ac_params[0], s, "x")?;
     let y = parse_u16(&ac_params[1], s, "y")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::SetMouse { x, y })),
-    )))
+    custom(CustomAction::SetMouse { x, y }, &s.a)
 }

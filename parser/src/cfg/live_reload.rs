@@ -12,11 +12,9 @@ pub(crate) fn parse_live_reload_num(
         bail!("{LIVE_RELOAD_NUM} {ERR_MSG}, found {}", ac_params.len());
     }
     let num = parse_non_zero_u16(&ac_params[0], s, "config argument position")?;
-    Ok(s.a.sref(Action::Custom(
-        // Note: for user-friendliness (hopefully), begin at 1 for parsing.
-        // But for use as an index when stored as data, subtract 1 for 0-based indexing.
-        s.a.sref(s.a.sref_slice(CustomAction::LiveReloadNum(num - 1))),
-    )))
+    // Note: for user-friendliness (hopefully), begin at 1 for parsing.
+    // But for use as an index when stored as data, subtract 1 for 0-based indexing.
+    custom(CustomAction::LiveReloadNum(num - 1), &s.a)
 }
 
 pub(crate) fn parse_live_reload_file(
@@ -35,7 +33,8 @@ pub(crate) fn parse_live_reload_file(
         }
     };
     let lrld_file_path = spanned_filepath.t.trim_atom_quotes();
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::LiveReloadFile(s.a.sref_str(lrld_file_path.to_string())),
-    )))))
+        &s.a,
+    )
 }

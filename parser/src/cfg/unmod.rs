@@ -81,12 +81,8 @@ pub(crate) fn parse_unmod(
     })?;
     let keys = s.a.sref_vec(keys);
     match unmod_type {
-        UNMOD => Ok(s.a.sref(Action::Custom(
-            s.a.sref(s.a.sref_slice(CustomAction::Unmodded { keys, mods })),
-        ))),
-        UNSHIFT => Ok(s.a.sref(Action::Custom(
-            s.a.sref(s.a.sref_slice(CustomAction::Unshifted { keys })),
-        ))),
+        UNMOD => custom(CustomAction::Unmodded { keys, mods }, &s.a),
+        UNSHIFT => custom(CustomAction::Unshifted { keys }, &s.a),
         _ => panic!("Unknown unmod type {unmod_type}"),
     }
 }

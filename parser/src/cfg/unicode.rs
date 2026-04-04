@@ -30,9 +30,7 @@ pub(crate) fn parse_unicode(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
                     }
                 }
             };
-            Ok(s.a.sref(Action::Custom(
-                s.a.sref(s.a.sref_slice(CustomAction::Unicode(unicode_char))),
-            )))
+            custom(CustomAction::Unicode(unicode_char), &s.a)
         })
         .ok_or_else(|| anyhow_expr!(&ac_params[0], "{ERR_STR}"))?
 }

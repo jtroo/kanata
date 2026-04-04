@@ -20,9 +20,10 @@ pub(crate) fn parse_clipboard_set(
         }
     };
     let clip_string = clip_string.t.trim_atom_quotes();
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::ClipboardSet(s.a.sref_str(clip_string.to_string())),
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_clipboard_save(
@@ -34,9 +35,7 @@ pub(crate) fn parse_clipboard_save(
         bail!("{CLIPBOARD_SAVE} {ERR_MSG}, found {}", ac_params.len());
     }
     let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::ClipboardSave(id))),
-    )))
+    custom(CustomAction::ClipboardSave(id), &s.a)
 }
 
 pub(crate) fn parse_clipboard_restore(
@@ -48,9 +47,7 @@ pub(crate) fn parse_clipboard_restore(
         bail!("{CLIPBOARD_RESTORE} {ERR_MSG}, found {}", ac_params.len());
     }
     let id = parse_u16(&ac_params[0], s, "clipboard save ID")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::ClipboardRestore(id))),
-    )))
+    custom(CustomAction::ClipboardRestore(id), &s.a)
 }
 
 pub(crate) fn parse_clipboard_save_swap(
@@ -64,9 +61,7 @@ pub(crate) fn parse_clipboard_save_swap(
     }
     let id1 = parse_u16(&ac_params[0], s, "clipboard save ID")?;
     let id2 = parse_u16(&ac_params[1], s, "clipboard save ID")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::ClipboardSaveSwap(id1, id2))),
-    )))
+    custom(CustomAction::ClipboardSaveSwap(id1, id2), &s.a)
 }
 
 pub(crate) fn parse_clipboard_save_set(
@@ -81,7 +76,8 @@ pub(crate) fn parse_clipboard_save_set(
     let save_content = ac_params[1]
         .atom(s.vars())
         .ok_or_else(|| anyhow_expr!(&ac_params[1], "save content must be a string"))?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::ClipboardSaveSet(id, s.a.sref_str(save_content.into())),
-    )))))
+        &s.a,
+    )
 }

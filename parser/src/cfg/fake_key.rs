@@ -110,9 +110,7 @@ pub(crate) fn parse_on_press_fake_key_op(
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_PRESS_FAKEKEY)?;
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
-    )))
+    custom(CustomAction::FakeKey { coord, action }, &s.a)
 }
 
 pub(crate) fn parse_on_release_fake_key_op(
@@ -121,9 +119,7 @@ pub(crate) fn parse_on_release_fake_key_op(
 ) -> Result<&'static KanataAction> {
     let (coord, action) = parse_fake_key_op_coord_action(ac_params, s, ON_RELEASE_FAKEKEY)?;
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
-    ))))
+    custom(CustomAction::FakeKeyOnRelease { coord, action }, &s.a)
 }
 
 pub(crate) fn parse_on_idle_fakekey(
@@ -170,13 +166,14 @@ pub(crate) fn parse_on_idle_fakekey(
     let (x, y) = get_fake_key_coords(y);
     let coord = Coord { x, y };
     set_virtual_key_reference_lsp_hint(&ac_params[0], s);
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
             coord,
             action,
             idle_duration,
         }),
-    )))))
+        &s.a,
+    )
 }
 
 fn parse_fake_key_op_coord_action(
@@ -256,11 +253,13 @@ fn parse_delay(
         .map(str::parse::<u16>)
         .ok_or_else(|| anyhow!("{ERR_MSG}"))?
         .map_err(|e| anyhow!("{ERR_MSG}: {e}"))?;
-    Ok(s.a
-        .sref(Action::Custom(s.a.sref(s.a.sref_slice(match is_release {
+    custom(
+        match is_release {
             false => CustomAction::Delay(delay),
             true => CustomAction::DelayOnRelease(delay),
-        })))))
+        },
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_vkey_coord(param: &SExpr, s: &ParserState) -> Result<Coord> {
@@ -309,9 +308,7 @@ pub(crate) fn parse_on_press(
     let action = parse_vkey_action(&ac_params[0], s)?;
     let coord = parse_vkey_coord(&ac_params[1], s)?;
 
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::FakeKey { coord, action })),
-    )))
+    custom(CustomAction::FakeKey { coord, action }, &s.a)
 }
 
 pub(crate) fn parse_on_release(
@@ -325,9 +322,7 @@ pub(crate) fn parse_on_release(
     let action = parse_vkey_action(&ac_params[0], s)?;
     let coord = parse_vkey_coord(&ac_params[1], s)?;
 
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::FakeKeyOnRelease { coord, action }),
-    ))))
+    custom(CustomAction::FakeKeyOnRelease { coord, action }, &s.a)
 }
 
 pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
@@ -339,13 +334,14 @@ pub(crate) fn parse_on_idle(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
     let action = parse_vkey_action(&ac_params[1], s)?;
     let coord = parse_vkey_coord(&ac_params[2], s)?;
 
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::FakeKeyOnIdle(FakeKeyOnIdle {
             coord,
             action,
             idle_duration,
         }),
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_on_physical_idle(
@@ -361,13 +357,14 @@ pub(crate) fn parse_on_physical_idle(
     let action = parse_vkey_action(&ac_params[1], s)?;
     let coord = parse_vkey_coord(&ac_params[2], s)?;
 
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::FakeKeyOnPhysicalIdle(FakeKeyOnIdle {
             coord,
             action,
             idle_duration,
         }),
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_hold_for_duration(
@@ -381,10 +378,11 @@ pub(crate) fn parse_hold_for_duration(
     let hold_duration = parse_non_zero_u16(&ac_params[0], s, "hold-duration")?;
     let coord = parse_vkey_coord(&ac_params[1], s)?;
 
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::FakeKeyHoldForDuration(FakeKeyHoldForDuration {
             coord,
             hold_duration,
         }),
-    )))))
+        &s.a,
+    )
 }

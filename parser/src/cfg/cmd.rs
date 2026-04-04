@@ -46,9 +46,10 @@ pub(crate) fn parse_cmd_log(ac_params: &[SExpr], s: &ParserState) -> Result<&'st
         bail!(ERR_STR);
     }
     let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::CmdLog(log_level, error_log_level, s.a.sref_vec(cmds)),
-    )))))
+        &s.a,
+    )
 }
 
 #[allow(unused_variables)]
@@ -80,9 +81,10 @@ pub(crate) fn parse_cmd(
                 bail_expr!(&ac_params[1], "{CLIPBOARD_SAVE_CMD_SET} {ERR_STR}");
             }
             let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
-            return Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+            return custom(
                 CustomAction::ClipboardSaveCmdSet(save_id, s.a.sref_vec(cmds)),
-            )))));
+                &s.a,
+            );
         }
 
         const ERR_STR: &str = "cmd expects at least one string";
@@ -96,13 +98,15 @@ pub(crate) fn parse_cmd(
         }
         let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
         let cmds = s.a.sref_vec(cmds);
-        Ok(s.a
-            .sref(Action::Custom(s.a.sref(s.a.sref_slice(match cmd_type {
+        custom(
+            match cmd_type {
                 CmdType::Standard => CustomAction::Cmd(cmds),
                 CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmds),
                 CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmds),
                 CmdType::ClipboardSaveSet => unreachable!(),
-            })))))
+            },
+            &s.a,
+        )
     }
 }
 
