@@ -61,6 +61,7 @@ mod chord_sim_tests;
 mod delay_tests;
 mod layer_sim_tests;
 mod macro_sim_tests;
+mod mouse_sim_tests;
 mod oneshot_tests;
 mod output_chord_tests;
 mod override_tests;

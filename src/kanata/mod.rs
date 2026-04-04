@@ -1235,36 +1235,28 @@ impl Kanata {
         // remember that it is intentional. However, since unmodded needs to modify the key lists,
         // it should come before.
         match custom_event {
-            CustomEvent::Press(custacts) => {
-                for custact in custacts.iter() {
-                    match custact {
-                        CustomAction::Unmodded { keys, mods } => {
-                            self.unmodded_keys.extend(keys.iter());
-                            self.unmodded_mods = *mods;
-                        }
-                        CustomAction::Unshifted { keys } => {
-                            self.unshifted_keys.extend(keys.iter());
-                        }
-                        _ => {}
-                    }
+            CustomEvent::Press(custact) => match custact {
+                CustomAction::Unmodded { keys, mods } => {
+                    self.unmodded_keys.extend(keys.iter());
+                    self.unmodded_mods = *mods;
                 }
-            }
-            CustomEvent::Release(custacts) => {
-                for custact in custacts.iter() {
-                    match custact {
-                        CustomAction::Unmodded { keys, mods: _ } => {
-                            self.unmodded_keys.retain(|k| !keys.contains(k));
-                        }
-                        CustomAction::Unshifted { keys } => {
-                            self.unshifted_keys.retain(|k| !keys.contains(k));
-                        }
-                        CustomAction::ReverseReleaseOrder => {
-                            reverse_release_order = true;
-                        }
-                        _ => {}
-                    }
+                CustomAction::Unshifted { keys } => {
+                    self.unshifted_keys.extend(keys.iter());
                 }
-            }
+                _ => {}
+            },
+            CustomEvent::Release(custact) => match custact {
+                CustomAction::Unmodded { keys, mods: _ } => {
+                    self.unmodded_keys.retain(|k| !keys.contains(k));
+                }
+                CustomAction::Unshifted { keys } => {
+                    self.unshifted_keys.retain(|k| !keys.contains(k));
+                }
+                CustomAction::ReverseReleaseOrder => {
+                    reverse_release_order = true;
+                }
+                _ => {}
+            },
             _ => {}
         }
         if !self.unmodded_keys.is_empty() {
@@ -1439,400 +1431,392 @@ impl Kanata {
         // Handle custom events. This used to be in a separate function but lifetime issues cause
         // it to now be here.
         match custom_event {
-            CustomEvent::Press(custacts) => {
+            CustomEvent::Press(custact) => {
                 #[cfg(feature = "cmd")]
                 let mut cmds = vec![];
-                let mut prev_mouse_btn = None;
+
                 let mut reload_action: Option<ReloadAction> = None;
-                for custact in custacts.iter() {
-                    match custact {
-                        // For unicode, only send on the press. No repeat action is supported for this for
-                        // now.
-                        CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
-                        CustomAction::LiveReload => {
-                            reload_action = Some(ReloadAction::Reload);
+                match custact {
+                    // For unicode, only send on the press. No repeat action is supported for this for
+                    // now.
+                    CustomAction::Unicode(c) => self.kbd_out.send_unicode(*c)?,
+                    CustomAction::LiveReload => {
+                        reload_action = Some(ReloadAction::Reload);
+                    }
+                    CustomAction::LiveReloadNext => {
+                        reload_action = Some(ReloadAction::ReloadNext);
+                    }
+                    CustomAction::LiveReloadPrev => {
+                        reload_action = Some(ReloadAction::ReloadPrev);
+                    }
+                    CustomAction::LiveReloadNum(n) => {
+                        reload_action = Some(ReloadAction::ReloadNum(usize::from(*n)));
+                    }
+                    CustomAction::LiveReloadFile(path) => {
+                        reload_action = Some(ReloadAction::ReloadFile(path.to_string()));
+                    }
+                    CustomAction::Mouse(btn) => {
+                        self.kbd_out.click_btn(*btn)?;
+                    }
+                    CustomAction::MouseTap(btn) => {
+                        log::debug!("click     {:?}", btn);
+                        self.kbd_out.click_btn(*btn)?;
+                        log::debug!("unclick   {:?}", btn);
+                        self.kbd_out.release_btn(*btn)?;
+                    }
+                    CustomAction::MWheel {
+                        direction,
+                        interval,
+                        distance,
+                        inertial_scroll_params,
+                    } => match direction {
+                        MWheelDirection::Up | MWheelDirection::Down => {
+                            self.scroll_state = Some(ScrollState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_scroll: 0,
+                                interval: *interval,
+                                scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
+                                    ScrollAccelState {
+                                    deceleration_multiplier: isp.deceleration_multiplier.0,
+                                    acceleration_multiplier: isp.acceleration_multiplier.0,
+                                    max_velocity: isp.maximum_velocity.0,
+                                    current_velocity: isp.initial_velocity.0,
+                                    scroll_released: false,
+                                    }
+                                ),
+                            })
                         }
-                        CustomAction::LiveReloadNext => {
-                            reload_action = Some(ReloadAction::ReloadNext);
+                        MWheelDirection::Left | MWheelDirection::Right => {
+                            self.hscroll_state = Some(ScrollState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_scroll: 0,
+                                interval: *interval,
+                                scroll_accel_state: None,
+                            })
                         }
-                        CustomAction::LiveReloadPrev => {
-                            reload_action = Some(ReloadAction::ReloadPrev);
+                    },
+                    CustomAction::MWheelNotch { direction } => {
+                        self.kbd_out
+                            .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
+                    }
+                    CustomAction::MoveMouse {
+                        direction,
+                        interval,
+                        distance,
+                    } => match direction {
+                        MoveDirection::Up | MoveDirection::Down => {
+                            self.move_mouse_state_vertical = Some(MoveMouseState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_move: 0,
+                                interval: *interval,
+                                move_mouse_accel_state: None,
+                            })
                         }
-                        CustomAction::LiveReloadNum(n) => {
-                            reload_action = Some(ReloadAction::ReloadNum(usize::from(*n)));
+                        MoveDirection::Left | MoveDirection::Right => {
+                            self.move_mouse_state_horizontal = Some(MoveMouseState {
+                                direction: *direction,
+                                distance: *distance,
+                                ticks_until_move: 0,
+                                interval: *interval,
+                                move_mouse_accel_state: None,
+                            })
                         }
-                        CustomAction::LiveReloadFile(path) => {
-                            reload_action = Some(ReloadAction::ReloadFile(path.to_string()));
-                        }
-                        CustomAction::Mouse(btn) => {
-                            log::debug!("click     {:?}", btn);
-                            if let Some(pbtn) = prev_mouse_btn {
-                                log::debug!("unclick   {:?}", pbtn);
-                                self.kbd_out.release_btn(pbtn)?;
+                    },
+                    CustomAction::MoveMouseAccel {
+                        direction,
+                        interval,
+                        accel_time,
+                        min_distance,
+                        max_distance,
+                    } => {
+                        let move_mouse_accel_state = match (
+                            self.movemouse_inherit_accel_state,
+                            &self.move_mouse_state_horizontal,
+                            &self.move_mouse_state_vertical,
+                        ) {
+                            (
+                                true,
+                                Some(MoveMouseState {
+                                    move_mouse_accel_state: Some(s),
+                                    ..
+                                }),
+                                _,
+                            )
+                            | (
+                                true,
+                                _,
+                                Some(MoveMouseState {
+                                    move_mouse_accel_state: Some(s),
+                                    ..
+                                }),
+                            ) => *s,
+                            _ => {
+                                let f_max_distance: f64 = *max_distance as f64;
+                                let f_min_distance: f64 = *min_distance as f64;
+                                let f_accel_time: f64 = *accel_time as f64;
+                                let increment =
+                                    (f_max_distance - f_min_distance) / f_accel_time;
+
+                                MoveMouseAccelState {
+                                    accel_ticks_from_min: 0,
+                                    accel_ticks_until_max: *accel_time,
+                                    accel_increment: increment,
+                                    min_distance: *min_distance,
+                                    max_distance: *max_distance,
+                                }
                             }
-                            self.kbd_out.click_btn(*btn)?;
-                            prev_mouse_btn = Some(*btn);
-                        }
-                        CustomAction::MouseTap(btn) => {
-                            log::debug!("click     {:?}", btn);
-                            self.kbd_out.click_btn(*btn)?;
-                            log::debug!("unclick   {:?}", btn);
-                            self.kbd_out.release_btn(*btn)?;
-                        }
-                        CustomAction::MWheel {
-                            direction,
-                            interval,
-                            distance,
-                            inertial_scroll_params,
-                        } => match direction {
-                            MWheelDirection::Up | MWheelDirection::Down => {
-                                self.scroll_state = Some(ScrollState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_scroll: 0,
-                                    interval: *interval,
-                                    scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
-                                        ScrollAccelState {
-                                        deceleration_multiplier: isp.deceleration_multiplier.0,
-                                        acceleration_multiplier: isp.acceleration_multiplier.0,
-                                        max_velocity: isp.maximum_velocity.0,
-                                        current_velocity: isp.initial_velocity.0,
-                                        scroll_released: false,
-                                        }
-                                    ),
-                                })
-                            }
-                            MWheelDirection::Left | MWheelDirection::Right => {
-                                self.hscroll_state = Some(ScrollState {
-                                    direction: *direction,
-                                    distance: *distance,
-                                    ticks_until_scroll: 0,
-                                    interval: *interval,
-                                    scroll_accel_state: None,
-                                })
-                            }
-                        },
-                        CustomAction::MWheelNotch { direction } => {
-                            self.kbd_out
-                                .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
-                        }
-                        CustomAction::MoveMouse {
-                            direction,
-                            interval,
-                            distance,
-                        } => match direction {
+                        };
+
+                        match direction {
                             MoveDirection::Up | MoveDirection::Down => {
                                 self.move_mouse_state_vertical = Some(MoveMouseState {
                                     direction: *direction,
-                                    distance: *distance,
+                                    distance: *min_distance,
                                     ticks_until_move: 0,
                                     interval: *interval,
-                                    move_mouse_accel_state: None,
+                                    move_mouse_accel_state: Some(move_mouse_accel_state),
                                 })
                             }
                             MoveDirection::Left | MoveDirection::Right => {
                                 self.move_mouse_state_horizontal = Some(MoveMouseState {
                                     direction: *direction,
-                                    distance: *distance,
+                                    distance: *min_distance,
                                     ticks_until_move: 0,
                                     interval: *interval,
-                                    move_mouse_accel_state: None,
+                                    move_mouse_accel_state: Some(move_mouse_accel_state),
                                 })
                             }
-                        },
-                        CustomAction::MoveMouseAccel {
-                            direction,
-                            interval,
-                            accel_time,
-                            min_distance,
-                            max_distance,
-                        } => {
-                            let move_mouse_accel_state = match (
-                                self.movemouse_inherit_accel_state,
-                                &self.move_mouse_state_horizontal,
-                                &self.move_mouse_state_vertical,
-                            ) {
-                                (
-                                    true,
-                                    Some(MoveMouseState {
-                                        move_mouse_accel_state: Some(s),
-                                        ..
-                                    }),
-                                    _,
-                                )
-                                | (
-                                    true,
-                                    _,
-                                    Some(MoveMouseState {
-                                        move_mouse_accel_state: Some(s),
-                                        ..
-                                    }),
-                                ) => *s,
-                                _ => {
-                                    let f_max_distance: f64 = *max_distance as f64;
-                                    let f_min_distance: f64 = *min_distance as f64;
-                                    let f_accel_time: f64 = *accel_time as f64;
-                                    let increment =
-                                        (f_max_distance - f_min_distance) / f_accel_time;
-
-                                    MoveMouseAccelState {
-                                        accel_ticks_from_min: 0,
-                                        accel_ticks_until_max: *accel_time,
-                                        accel_increment: increment,
-                                        min_distance: *min_distance,
-                                        max_distance: *max_distance,
-                                    }
-                                }
-                            };
-
-                            match direction {
-                                MoveDirection::Up | MoveDirection::Down => {
-                                    self.move_mouse_state_vertical = Some(MoveMouseState {
-                                        direction: *direction,
-                                        distance: *min_distance,
-                                        ticks_until_move: 0,
-                                        interval: *interval,
-                                        move_mouse_accel_state: Some(move_mouse_accel_state),
-                                    })
-                                }
-                                MoveDirection::Left | MoveDirection::Right => {
-                                    self.move_mouse_state_horizontal = Some(MoveMouseState {
-                                        direction: *direction,
-                                        distance: *min_distance,
-                                        ticks_until_move: 0,
-                                        interval: *interval,
-                                        move_mouse_accel_state: Some(move_mouse_accel_state),
-                                    })
-                                }
-                            }
                         }
-                        CustomAction::MoveMouseSpeed { speed } => {
-                            self.move_mouse_speed_modifiers.push(*speed);
-                            log::debug!(
-                                "movemousespeed modifiers: {:?}",
-                                self.move_mouse_speed_modifiers
-                            );
-                        }
-                        CustomAction::Cmd(_cmd) => {
-                            #[cfg(feature = "cmd")]
-                            cmds.push((
-                                Some(log::Level::Info),
-                                Some(log::Level::Error),
-                                Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
-                            ));
-                        }
-                        CustomAction::CmdLog(_log_level, _error_log_level, _cmd) => {
-                            #[cfg(feature = "cmd")]
-                            cmds.push((
-                                _log_level.get_level(),
-                                _error_log_level.get_level(),
-                                Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
-                            ));
-                        }
-                        CustomAction::CmdOutputKeys(_cmd) => {
-                            #[cfg(feature = "cmd")]
-                            {
-                                // Maybe improvement in the future:
-                                // A delay here, as in KeyAction::Delay, will pause the entire
-                                // state machine loop. That is _probably_ OK, but ideally this
-                                // would be done in a separate thread or somehow
-                                for key_action in keys_for_cmd_output(_cmd) {
-                                    match key_action {
-                                        KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
-                                        KeyAction::Release(osc) => {
-                                            release_key(&mut self.kbd_out, osc)?
-                                        }
-                                        KeyAction::Delay(delay) => std::thread::sleep(
-                                            std::time::Duration::from_millis(u64::from(delay)),
-                                        ),
-                                    }
-                                }
-                            }
-                        }
-                        CustomAction::PushMessage(_message) => {
-                            log::debug!("Action push-msg");
-                            #[cfg(feature = "tcp_server")]
-                            if let Some(tx) = _tx {
-                                let message = simple_sexpr_to_json_array(_message);
-                                log::debug!("Action push-msg message: {}", message);
-                                match tx.try_send(ServerMessage::MessagePush { message }) {
-                                    Ok(_) => {}
-                                    Err(error) => {
-                                        log::error!(
-                                            "could not send {} event notification: {}",
-                                            PUSH_MESSAGE,
-                                            error
-                                        );
-                                    }
-                                }
-                            }
-                            #[cfg(feature = "tcp_server")]
-                            if self.tcp_server_address.is_none() {
-                                log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
-                            }
-                            #[cfg(not(feature = "tcp_server"))]
-                            log::warn!(
-                                "{} was used, but Kanata was compiled with TCP server disabled.",
-                                PUSH_MESSAGE
-                            );
-                        }
-                        CustomAction::FakeKey { coord, action } => {
-                            let (x, y) = (coord.x, coord.y);
-                            log::debug!(
-                                "fake key on press   {action:?} {:?},{x:?},{y:?} {:?}",
-                                layout.default_layer,
-                                layout.layers[layout.default_layer][x as usize][y as usize]
-                            );
-                            handle_fakekey_action(*action, layout, x, y);
-                        }
-                        CustomAction::Delay(delay) => {
-                            log::debug!("on-press: sleeping for {delay} ms");
-                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
-                        }
-                        CustomAction::SequenceCancel => {
-                            if let Some(state) = self.sequence_state.get_active() {
-                                log::debug!("pressed cancel sequence key");
-                                cancel_sequence(state, &mut self.kbd_out)?;
-                            }
-                        }
-                        CustomAction::SequenceLeader(timeout, input_mode) => {
-                            if self.sequence_state.is_inactive() {
-                                log::debug!("entering sequence mode");
-                                self.sequence_state.activate(*input_mode, *timeout);
-                            } else if *input_mode == SequenceInputMode::HiddenSuppressed {
-                                log::debug!("retriggering sequence mode");
-                                self.sequence_state.activate(*input_mode, *timeout);
-                            }
-                        }
-                        CustomAction::SequenceNoerase(noerase_count) => {
-                            if let Some(state) = self.sequence_state.get_active() {
-                                log::debug!("pressed cancel sequence key");
-                                add_noerase(state, *noerase_count);
-                            }
-                        }
-                        CustomAction::Repeat => {
-                            let keycode = self.last_pressed_key;
-                            let osc: OsCode = keycode.into();
-                            log::debug!("repeating a keypress {osc:?}");
-                            let mut do_caps_word = false;
-                            if !cur_keys.contains(&KeyCode::LShift)
-                                && let Some(ref mut cw) = self.caps_word {
-                                    cur_keys.push(keycode);
-                                    let prev_len = cur_keys.len();
-                                    cw.tick_maybe_add_lsft(cur_keys);
-                                    if cur_keys.len() > prev_len {
-                                        do_caps_word = true;
-                                        press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
-                                    }
-                                }
-                            // Release key in case the most recently pressed key is still pressed.
-                            release_key(&mut self.kbd_out, osc)?;
-                            press_key(&mut self.kbd_out, osc)?;
-                            release_key(&mut self.kbd_out, osc)?;
-                            if do_caps_word {
-                                self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
-                            }
-                        }
-                        CustomAction::DynamicMacroRecord(macro_id) => {
-                            if let Some((macro_id, prev_recorded_macro)) =
-                                begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
-                            {
-                                log::debug!("saving macro {prev_recorded_macro:?}");
-                                self.dynamic_macros.insert(macro_id, prev_recorded_macro);
-                            }
-                        }
-                        CustomAction::DynamicMacroRecordStop(num_actions_to_remove) => {
-                            if let Some((macro_id, prev_recorded_macro)) = stop_macro(
-                                &mut self.dynamic_macro_record_state,
-                                *num_actions_to_remove,
-                            ) {
-                                log::debug!("saving macro {prev_recorded_macro:?}");
-                                self.dynamic_macros.insert(macro_id, prev_recorded_macro);
-                            }
-                        }
-                        CustomAction::DynamicMacroPlay(macro_id) => {
-                            play_macro(
-                                *macro_id,
-                                &mut self.dynamic_macro_replay_state,
-                                &self.dynamic_macros,
-                            );
-                        }
-                        CustomAction::CancelMacroOnNextPress(duration) => {
-                            self.macro_on_press_cancel_duration = *duration;
-                        }
-                        CustomAction::SendArbitraryCode(code) => {
-                            #[cfg(all(not(feature = "simulated_output"), target_os = "windows"))]
-                            {
-                                self.kbd_out.write_code_raw(*code, KeyValue::Press)?;
-                            }
-                            #[cfg(any(feature = "simulated_output", not(target_os = "windows")))]
-                            {
-                                self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
-                            }
-                        }
-                        CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
-                            CapsWordRepressBehaviour::Overwrite => {
-                                log::trace!("caps-word overwrite");
-                                self.caps_word = Some(CapsWordState::new(cfg));
-                            }
-                            CapsWordRepressBehaviour::Toggle => {
-                                log::trace!("caps-word toggle");
-                                self.caps_word = match self.caps_word {
-                                    Some(_) => None,
-                                    None => Some(CapsWordState::new(cfg)),
-                                };
-                            }
-                        },
-                        CustomAction::SetMouse { x, y } => {
-                            self.kbd_out.set_mouse(*x, *y)?;
-                        }
-                        CustomAction::FakeKeyOnIdle(fkd) => {
-                            self.ticks_since_idle = 0;
-                            self.waiting_for_idle.insert(*fkd);
-                        }
-                        CustomAction::FakeKeyOnPhysicalIdle(fkd) => {
-                            self.ticks_since_physical_idle = 0;
-                            self.waiting_for_physical_idle.insert(*fkd);
-                        }
-                        CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
-                            let duration = fk_hfd.hold_duration;
-                            self.vkeys_pending_release.entry(fk_hfd.coord)
-                                .and_modify(|d| *d = duration)
-                                .or_insert_with(|| {
-                                    let Coord { x, y } = fk_hfd.coord;
-                                    layout.event(Event::Press(x, y));
-                                    duration
-                                });
-                        }
-                        CustomAction::ClipboardSet(clipboard_string) => {
-                            clpb_set(clipboard_string);
-                        }
-                        CustomAction::ClipboardCmdSet(cmd_params) => {
-                            clpb_cmd_set(cmd_params);
-                        }
-                        CustomAction::ClipboardSave(id) => {
-                            clpb_save(*id, &mut self.saved_clipboard_content);
-                        }
-                        CustomAction::ClipboardRestore(id) => {
-                            clpb_restore(*id, &self.saved_clipboard_content);
-                        }
-                        CustomAction::ClipboardSaveSet(id, clipboard_string) => {
-                            clpb_save_set(*id, clipboard_string, &mut self.saved_clipboard_content);
-                        }
-                        CustomAction::ClipboardSaveCmdSet(id, cmd_params) => {
-                            clpb_save_cmd_set(*id, cmd_params, &mut self.saved_clipboard_content);
-                        }
-                        CustomAction::ClipboardSaveSwap(id1, id2) => {
-                            clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
-                        }
-                        CustomAction::FakeKeyOnRelease { .. }
-                        | CustomAction::DelayOnRelease(_)
-                        | CustomAction::Unmodded { .. }
-                        | CustomAction::Unshifted { .. }
-                        // Note: ReverseReleaseOrder is already handled earlier on.
-                        | CustomAction::ReverseReleaseOrder
-                        | CustomAction::CancelMacroOnRelease => {}
                     }
+                    CustomAction::MoveMouseSpeed { speed } => {
+                        self.move_mouse_speed_modifiers.push(*speed);
+                        log::debug!(
+                            "movemousespeed modifiers: {:?}",
+                            self.move_mouse_speed_modifiers
+                        );
+                    }
+                    CustomAction::Cmd(_cmd) => {
+                        #[cfg(feature = "cmd")]
+                        cmds.push((
+                            Some(log::Level::Info),
+                            Some(log::Level::Error),
+                            Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
+                        ));
+                    }
+                    CustomAction::CmdLog(_log_level, _error_log_level, _cmd) => {
+                        #[cfg(feature = "cmd")]
+                        cmds.push((
+                            _log_level.get_level(),
+                            _error_log_level.get_level(),
+                            Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
+                        ));
+                    }
+                    CustomAction::CmdOutputKeys(_cmd) => {
+                        #[cfg(feature = "cmd")]
+                        {
+                            // Maybe improvement in the future:
+                            // A delay here, as in KeyAction::Delay, will pause the entire
+                            // state machine loop. That is _probably_ OK, but ideally this
+                            // would be done in a separate thread or somehow
+                            for key_action in keys_for_cmd_output(_cmd) {
+                                match key_action {
+                                    KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
+                                    KeyAction::Release(osc) => {
+                                        release_key(&mut self.kbd_out, osc)?
+                                    }
+                                    KeyAction::Delay(delay) => std::thread::sleep(
+                                        std::time::Duration::from_millis(u64::from(delay)),
+                                    ),
+                                }
+                            }
+                        }
+                    }
+                    CustomAction::PushMessage(_message) => {
+                        log::debug!("Action push-msg");
+                        #[cfg(feature = "tcp_server")]
+                        if let Some(tx) = _tx {
+                            let message = simple_sexpr_to_json_array(_message);
+                            log::debug!("Action push-msg message: {}", message);
+                            match tx.try_send(ServerMessage::MessagePush { message }) {
+                                Ok(_) => {}
+                                Err(error) => {
+                                    log::error!(
+                                        "could not send {} event notification: {}",
+                                        PUSH_MESSAGE,
+                                        error
+                                    );
+                                }
+                            }
+                        }
+                        #[cfg(feature = "tcp_server")]
+                        if self.tcp_server_address.is_none() {
+                            log::warn!("{} was used, but TCP server is not running. did you specify a port?", PUSH_MESSAGE);
+                        }
+                        #[cfg(not(feature = "tcp_server"))]
+                        log::warn!(
+                            "{} was used, but Kanata was compiled with TCP server disabled.",
+                            PUSH_MESSAGE
+                        );
+                    }
+                    CustomAction::FakeKey { coord, action } => {
+                        let (x, y) = (coord.x, coord.y);
+                        log::debug!(
+                            "fake key on press   {action:?} {:?},{x:?},{y:?} {:?}",
+                            layout.default_layer,
+                            layout.layers[layout.default_layer][x as usize][y as usize]
+                        );
+                        handle_fakekey_action(*action, layout, x, y);
+                    }
+                    CustomAction::Delay(delay) => {
+                        log::debug!("on-press: sleeping for {delay} ms");
+                        std::thread::sleep(time::Duration::from_millis((*delay).into()));
+                    }
+                    CustomAction::SequenceCancel => {
+                        if let Some(state) = self.sequence_state.get_active() {
+                            log::debug!("pressed cancel sequence key");
+                            cancel_sequence(state, &mut self.kbd_out)?;
+                        }
+                    }
+                    CustomAction::SequenceLeader(timeout, input_mode) => {
+                        if self.sequence_state.is_inactive() {
+                            log::debug!("entering sequence mode");
+                            self.sequence_state.activate(*input_mode, *timeout);
+                        } else if *input_mode == SequenceInputMode::HiddenSuppressed {
+                            log::debug!("retriggering sequence mode");
+                            self.sequence_state.activate(*input_mode, *timeout);
+                        }
+                    }
+                    CustomAction::SequenceNoerase(noerase_count) => {
+                        if let Some(state) = self.sequence_state.get_active() {
+                            log::debug!("pressed cancel sequence key");
+                            add_noerase(state, *noerase_count);
+                        }
+                    }
+                    CustomAction::Repeat => {
+                        let keycode = self.last_pressed_key;
+                        let osc: OsCode = keycode.into();
+                        log::debug!("repeating a keypress {osc:?}");
+                        let mut do_caps_word = false;
+                        if !cur_keys.contains(&KeyCode::LShift)
+                            && let Some(ref mut cw) = self.caps_word {
+                                cur_keys.push(keycode);
+                                let prev_len = cur_keys.len();
+                                cw.tick_maybe_add_lsft(cur_keys);
+                                if cur_keys.len() > prev_len {
+                                    do_caps_word = true;
+                                    press_key(&mut self.kbd_out, OsCode::KEY_LEFTSHIFT)?;
+                                }
+                            }
+                        // Release key in case the most recently pressed key is still pressed.
+                        release_key(&mut self.kbd_out, osc)?;
+                        press_key(&mut self.kbd_out, osc)?;
+                        release_key(&mut self.kbd_out, osc)?;
+                        if do_caps_word {
+                            self.kbd_out.release_key(OsCode::KEY_LEFTSHIFT)?;
+                        }
+                    }
+                    CustomAction::DynamicMacroRecord(macro_id) => {
+                        if let Some((macro_id, prev_recorded_macro)) =
+                            begin_record_macro(*macro_id, &mut self.dynamic_macro_record_state)
+                        {
+                            log::debug!("saving macro {prev_recorded_macro:?}");
+                            self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                        }
+                    }
+                    CustomAction::DynamicMacroRecordStop(num_actions_to_remove) => {
+                        if let Some((macro_id, prev_recorded_macro)) = stop_macro(
+                            &mut self.dynamic_macro_record_state,
+                            *num_actions_to_remove,
+                        ) {
+                            log::debug!("saving macro {prev_recorded_macro:?}");
+                            self.dynamic_macros.insert(macro_id, prev_recorded_macro);
+                        }
+                    }
+                    CustomAction::DynamicMacroPlay(macro_id) => {
+                        play_macro(
+                            *macro_id,
+                            &mut self.dynamic_macro_replay_state,
+                            &self.dynamic_macros,
+                        );
+                    }
+                    CustomAction::CancelMacroOnNextPress(duration) => {
+                        self.macro_on_press_cancel_duration = *duration;
+                    }
+                    CustomAction::SendArbitraryCode(code) => {
+                        #[cfg(all(not(feature = "simulated_output"), target_os = "windows"))]
+                        {
+                            self.kbd_out.write_code_raw(*code, KeyValue::Press)?;
+                        }
+                        #[cfg(any(feature = "simulated_output", not(target_os = "windows")))]
+                        {
+                            self.kbd_out.write_code(*code as u32, KeyValue::Press)?;
+                        }
+                    }
+                    CustomAction::CapsWord(cfg) => match cfg.repress_behaviour {
+                        CapsWordRepressBehaviour::Overwrite => {
+                            log::trace!("caps-word overwrite");
+                            self.caps_word = Some(CapsWordState::new(cfg));
+                        }
+                        CapsWordRepressBehaviour::Toggle => {
+                            log::trace!("caps-word toggle");
+                            self.caps_word = match self.caps_word {
+                                Some(_) => None,
+                                None => Some(CapsWordState::new(cfg)),
+                            };
+                        }
+                    },
+                    CustomAction::SetMouse { x, y } => {
+                        self.kbd_out.set_mouse(*x, *y)?;
+                    }
+                    CustomAction::FakeKeyOnIdle(fkd) => {
+                        self.ticks_since_idle = 0;
+                        self.waiting_for_idle.insert(*fkd);
+                    }
+                    CustomAction::FakeKeyOnPhysicalIdle(fkd) => {
+                        self.ticks_since_physical_idle = 0;
+                        self.waiting_for_physical_idle.insert(*fkd);
+                    }
+                    CustomAction::FakeKeyHoldForDuration(fk_hfd) => {
+                        let duration = fk_hfd.hold_duration;
+                        self.vkeys_pending_release.entry(fk_hfd.coord)
+                            .and_modify(|d| *d = duration)
+                            .or_insert_with(|| {
+                                let Coord { x, y } = fk_hfd.coord;
+                                layout.event(Event::Press(x, y));
+                                duration
+                            });
+                    }
+                    CustomAction::ClipboardSet(clipboard_string) => {
+                        clpb_set(clipboard_string);
+                    }
+                    CustomAction::ClipboardCmdSet(cmd_params) => {
+                        clpb_cmd_set(cmd_params);
+                    }
+                    CustomAction::ClipboardSave(id) => {
+                        clpb_save(*id, &mut self.saved_clipboard_content);
+                    }
+                    CustomAction::ClipboardRestore(id) => {
+                        clpb_restore(*id, &self.saved_clipboard_content);
+                    }
+                    CustomAction::ClipboardSaveSet(id, clipboard_string) => {
+                        clpb_save_set(*id, clipboard_string, &mut self.saved_clipboard_content);
+                    }
+                    CustomAction::ClipboardSaveCmdSet(id, cmd_params) => {
+                        clpb_save_cmd_set(*id, cmd_params, &mut self.saved_clipboard_content);
+                    }
+                    CustomAction::ClipboardSaveSwap(id1, id2) => {
+                        clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
+                    }
+                    CustomAction::FakeKeyOnRelease { .. }
+                    | CustomAction::DelayOnRelease(_)
+                    | CustomAction::Unmodded { .. }
+                    | CustomAction::Unshifted { .. }
+                    // Note: ReverseReleaseOrder is already handled earlier on.
+                    | CustomAction::ReverseReleaseOrder
+                    | CustomAction::CancelMacroOnRelease => {}
                 }
                 #[cfg(feature = "cmd")]
                 run_multi_cmd(cmds);
@@ -1876,131 +1860,102 @@ impl Kanata {
                 }
             }
 
-            CustomEvent::Release(custacts) => {
-                // Unclick only the last mouse button
-                if let Some(Err(e)) = custacts
-                    .iter()
-                    .fold(None, |pbtn, ac| match ac {
-                        CustomAction::Mouse(btn) => Some(btn),
-                        CustomAction::MWheel { direction, .. } => {
-                            match direction {
-                                MWheelDirection::Up | MWheelDirection::Down => {
-                                    if let Some(ss) = &mut self.scroll_state
-                                        && ss.direction == *direction
-                                    {
-                                        ss.distance = 0;
-                                        if let Some(acs) = &mut ss.scroll_accel_state {
-                                            acs.scroll_released = true
-                                        }
-                                    }
-                                }
-                                MWheelDirection::Left | MWheelDirection::Right => {
-                                    if let Some(ss) = &mut self.hscroll_state
-                                        && ss.direction == *direction
-                                    {
-                                        ss.distance = 0;
-                                        if let Some(acs) = &mut ss.scroll_accel_state {
-                                            acs.scroll_released = true
-                                        }
-                                    }
-                                }
-                            }
-                            pbtn
-                        }
-                        CustomAction::MoveMouse { direction, .. }
-                        | CustomAction::MoveMouseAccel { direction, .. } => {
-                            match direction {
-                                MoveDirection::Up | MoveDirection::Down => {
-                                    if let Some(move_mouse_state_vertical) =
-                                        &self.move_mouse_state_vertical
-                                        && move_mouse_state_vertical.direction == *direction
-                                    {
-                                        self.move_mouse_state_vertical = None;
-                                    }
-                                }
-                                MoveDirection::Left | MoveDirection::Right => {
-                                    if let Some(move_mouse_state_horizontal) =
-                                        &self.move_mouse_state_horizontal
-                                        && move_mouse_state_horizontal.direction == *direction
-                                    {
-                                        self.move_mouse_state_horizontal = None;
-                                    }
-                                }
-                            }
-                            if self.movemouse_smooth_diagonals {
-                                self.movemouse_buffer = None
-                            }
-                            pbtn
-                        }
-                        CustomAction::MoveMouseSpeed { speed, .. } => {
-                            if let Some(idx) = self
-                                .move_mouse_speed_modifiers
-                                .iter()
-                                .position(|s| *s == *speed)
-                            {
-                                self.move_mouse_speed_modifiers.remove(idx);
-                            }
-                            log::debug!(
-                                "movemousespeed modifiers: {:?}",
-                                self.move_mouse_speed_modifiers
-                            );
-                            pbtn
-                        }
-                        CustomAction::DelayOnRelease(delay) => {
-                            log::debug!("on-release: sleeping for {delay} ms");
-                            std::thread::sleep(time::Duration::from_millis((*delay).into()));
-                            pbtn
-                        }
-                        CustomAction::FakeKeyOnRelease { coord, action } => {
-                            let (x, y) = (coord.x, coord.y);
-                            log::debug!("fake key on release {action:?} {x:?},{y:?}");
-                            handle_fakekey_action(*action, layout, x, y);
-                            pbtn
-                        }
-                        CustomAction::CancelMacroOnRelease => {
-                            log::debug!("cancelling all macros: releasable macro");
-                            layout.active_sequences.clear();
-                            self.macro_on_press_cancel_duration = 0;
-                            layout.states.retain(|s| {
-                                !matches!(
-                                    s,
-                                    State::FakeKey { .. } | State::RepeatingSequence { .. }
-                                )
-                            });
-                            pbtn
-                        }
-                        CustomAction::SendArbitraryCode(code) => {
-                            if let Err(e) = {
-                                #[cfg(all(
-                                    not(feature = "simulated_output"),
-                                    target_os = "windows"
-                                ))]
-                                {
-                                    self.kbd_out.write_code_raw(*code, KeyValue::Release)
-                                }
-                                #[cfg(any(
-                                    feature = "simulated_output",
-                                    not(target_os = "windows")
-                                ))]
-                                {
-                                    self.kbd_out.write_code(*code as u32, KeyValue::Release)
-                                }
-                            } {
-                                log::error!("failed to release arbitrary code {e:?}");
-                            }
-                            pbtn
-                        }
-                        _ => pbtn,
-                    })
-                    .map(|btn| {
-                        log::debug!("unclick   {:?}", btn);
-                        self.kbd_out.release_btn(*btn)
-                    })
-                {
-                    bail!(e);
+            CustomEvent::Release(custact) => match custact {
+                CustomAction::Mouse(btn) => {
+                    self.kbd_out.release_btn(*btn)?;
                 }
-            }
-            _ => {}
+                CustomAction::MWheel { direction, .. } => match direction {
+                    MWheelDirection::Up | MWheelDirection::Down => {
+                        if let Some(ss) = &mut self.scroll_state
+                            && ss.direction == *direction
+                        {
+                            ss.distance = 0;
+                            if let Some(acs) = &mut ss.scroll_accel_state {
+                                acs.scroll_released = true
+                            }
+                        }
+                    }
+                    MWheelDirection::Left | MWheelDirection::Right => {
+                        if let Some(ss) = &mut self.hscroll_state
+                            && ss.direction == *direction
+                        {
+                            ss.distance = 0;
+                            if let Some(acs) = &mut ss.scroll_accel_state {
+                                acs.scroll_released = true
+                            }
+                        }
+                    }
+                },
+                CustomAction::MoveMouse { direction, .. }
+                | CustomAction::MoveMouseAccel { direction, .. } => {
+                    match direction {
+                        MoveDirection::Up | MoveDirection::Down => {
+                            if let Some(move_mouse_state_vertical) = &self.move_mouse_state_vertical
+                                && move_mouse_state_vertical.direction == *direction
+                            {
+                                self.move_mouse_state_vertical = None;
+                            }
+                        }
+                        MoveDirection::Left | MoveDirection::Right => {
+                            if let Some(move_mouse_state_horizontal) =
+                                &self.move_mouse_state_horizontal
+                                && move_mouse_state_horizontal.direction == *direction
+                            {
+                                self.move_mouse_state_horizontal = None;
+                            }
+                        }
+                    }
+                    if self.movemouse_smooth_diagonals {
+                        self.movemouse_buffer = None
+                    }
+                }
+                CustomAction::MoveMouseSpeed { speed, .. } => {
+                    if let Some(idx) = self
+                        .move_mouse_speed_modifiers
+                        .iter()
+                        .position(|s| *s == *speed)
+                    {
+                        self.move_mouse_speed_modifiers.remove(idx);
+                    }
+                    log::debug!(
+                        "movemousespeed modifiers: {:?}",
+                        self.move_mouse_speed_modifiers
+                    );
+                }
+                CustomAction::DelayOnRelease(delay) => {
+                    log::debug!("on-release: sleeping for {delay} ms");
+                    std::thread::sleep(time::Duration::from_millis((*delay).into()));
+                }
+                CustomAction::FakeKeyOnRelease { coord, action } => {
+                    let (x, y) = (coord.x, coord.y);
+                    log::debug!("fake key on release {action:?} {x:?},{y:?}");
+                    handle_fakekey_action(*action, layout, x, y);
+                }
+                CustomAction::CancelMacroOnRelease => {
+                    log::debug!("cancelling all macros: releasable macro");
+                    layout.active_sequences.clear();
+                    self.macro_on_press_cancel_duration = 0;
+                    layout.states.retain(|s| {
+                        !matches!(s, State::FakeKey { .. } | State::RepeatingSequence { .. })
+                    });
+                }
+                CustomAction::SendArbitraryCode(code) => {
+                    if let Err(e) = {
+                        #[cfg(all(not(feature = "simulated_output"), target_os = "windows"))]
+                        {
+                            self.kbd_out.write_code_raw(*code, KeyValue::Release)
+                        }
+                        #[cfg(any(feature = "simulated_output", not(target_os = "windows")))]
+                        {
+                            self.kbd_out.write_code(*code as u32, KeyValue::Release)
+                        }
+                    } {
+                        log::error!("failed to release arbitrary code {e:?}");
+                    }
+                }
+                _ => {}
+            },
+            CustomEvent::NoEvent => {}
         };
 
         self.check_handle_layer_change(_tx);
@@ -2530,6 +2485,7 @@ impl Kanata {
             && layout.active_sequences.is_empty()
             && layout.tap_dance_eager.is_none()
             && layout.action_queue.is_empty()
+            && layout.custom_event_release_queue.is_empty()
             && self.sequence_state.is_inactive()
             && self.scroll_state.is_none()
             && self.hscroll_state.is_none()

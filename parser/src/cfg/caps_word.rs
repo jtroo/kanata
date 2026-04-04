@@ -12,7 +12,7 @@ pub(crate) fn parse_caps_word(
         bail!("{ERR_STR}\nFound {} params instead of 1", ac_params.len());
     }
     let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(s.a.sref_slice(
+    custom(
         CustomAction::CapsWord(CapsWordCfg {
             repress_behaviour,
             keys_to_capitalize: &[
@@ -74,7 +74,8 @@ pub(crate) fn parse_caps_word(
             ],
             timeout,
         }),
-    )))))
+        &s.a,
+    )
 }
 
 pub(crate) fn parse_caps_word_custom(
@@ -87,24 +88,23 @@ pub(crate) fn parse_caps_word_custom(
         bail!("{ERR_STR}\nFound {} params instead of 3", ac_params.len());
     }
     let timeout = parse_non_zero_u16(&ac_params[0], s, "timeout")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(
-            s.a.sref_slice(CustomAction::CapsWord(CapsWordCfg {
-                repress_behaviour,
-                keys_to_capitalize: s.a.sref_vec(
-                    parse_key_list(&ac_params[1], s, "keys-to-capitalize")?
-                        .into_iter()
-                        .map(KeyCode::from)
-                        .collect(),
-                ),
-                keys_nonterminal: s.a.sref_vec(
-                    parse_key_list(&ac_params[2], s, "extra-non-terminal-keys")?
-                        .into_iter()
-                        .map(KeyCode::from)
-                        .collect(),
-                ),
-                timeout,
-            })),
-        ),
-    )))
+    custom(
+        CustomAction::CapsWord(CapsWordCfg {
+            repress_behaviour,
+            keys_to_capitalize: s.a.sref_vec(
+                parse_key_list(&ac_params[1], s, "keys-to-capitalize")?
+                    .into_iter()
+                    .map(KeyCode::from)
+                    .collect(),
+            ),
+            keys_nonterminal: s.a.sref_vec(
+                parse_key_list(&ac_params[2], s, "extra-non-terminal-keys")?
+                    .into_iter()
+                    .map(KeyCode::from)
+                    .collect(),
+            ),
+            timeout,
+        }),
+        &s.a,
+    )
 }

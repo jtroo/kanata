@@ -52,32 +52,32 @@ fn macro_release_cancel_and_cancel_on_press() {
 fn test_release_and_on_press(cfg: &str) {
     // Cancellation should happen for press.
     let result = simulate(cfg, "d:a t:50 d:c t:100").to_ascii();
-    assert_eq!("t:1ms dn:Z t:1ms up:Z t:48ms dn:C", result);
+    assert_eq!("t:2ms dn:Z t:1ms up:Z t:47ms dn:C", result);
     // Cancellation should happen for release
     let result = simulate(cfg, "d:a u:a t:150 d:c t:100").to_ascii();
-    assert_eq!("t:1ms dn:Z t:1ms up:Z t:148ms dn:C", result);
+    assert_eq!("t:2ms dn:Z t:1ms up:Z t:147ms dn:C", result);
     // Macro should complete if allowed to.
     let result = simulate(cfg, "d:a t:150 d:c t:100").to_ascii();
     assert_eq!(
-        "t:1ms dn:Z t:1ms up:Z t:101ms dn:Y t:1ms up:Y t:46ms dn:C",
+        "t:2ms dn:Z t:1ms up:Z t:101ms dn:Y t:1ms up:Y t:45ms dn:C",
         result
     );
     // The window for macro cancellation should not persist to a new macro that is not cancellable.
     let result = simulate(cfg, "d:a t:120 d:b t:20 d:c t:100").to_ascii();
     assert_eq!(
-        "t:1ms dn:Z t:1ms up:Z t:101ms dn:Y t:1ms up:Y \
-                t:17ms dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
+        "t:2ms dn:Z t:1ms up:Z t:101ms dn:Y t:1ms up:Y \
+                t:16ms dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
     let result = simulate(cfg, "d:a t:10 d:c u:c t:10 d:b t:20 d:c t:100").to_ascii();
     assert_eq!(
-        "t:1ms dn:Z t:1ms up:Z t:8ms dn:C t:1ms up:C t:10ms \
+        "t:2ms dn:Z t:1ms up:Z t:7ms dn:C t:1ms up:C t:10ms \
                 dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
     let result = simulate(cfg, "d:a u:a t:10 t:10 d:b u:b t:20 d:c t:100").to_ascii();
     assert_eq!(
-        "t:1ms dn:Z t:1ms up:Z t:19ms \
+        "t:2ms dn:Z t:1ms up:Z t:18ms \
          dn:X t:1ms up:X t:18ms dn:C t:83ms dn:W t:1ms up:W",
         result
     );
@@ -109,7 +109,7 @@ fn macro_repeat() {
     );
     let result = simulate(cfg, "d:d t:125 u:d").to_ascii();
     assert_eq!(
-        "t:1ms dn:Kb1 t:1ms up:Kb1 t:52ms dn:Kb1 t:1ms up:Kb1 t:52ms dn:Kb1 t:1ms up:Kb1",
+        "t:2ms dn:Kb1 t:1ms up:Kb1 t:52ms dn:Kb1 t:1ms up:Kb1 t:52ms dn:Kb1 t:1ms up:Kb1",
         result
     );
 }

@@ -72,12 +72,16 @@ type PressedQueue = ArrayDeque<KCoord, QUEUE_SIZE>;
 /// activation of multiple switch cases using fallthrough.
 pub const ACTION_QUEUE_LEN: usize = 8;
 
+pub const CUSTOM_EVENT_RELEASE_QUEUE_LEN: usize = 16;
+
 /// The queue is currently only used for chord decomposition when a longer chord does not result in
 /// an action, but splitting it into smaller chords would. The buffer size of 8 should be more than
 /// enough for real world usage, but if one wanted to be extra safe, this should be ChordKeys::BITS
 /// since that should guarantee that all potentially queueable actions can fit.
 type ActionQueue<'a, T> =
     ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
+type CustomEventReleaseQueue<'a, T> =
+    ArrayDeque<&'a T, CUSTOM_EVENT_RELEASE_QUEUE_LEN, arraydeque::behavior::Wrapping>;
 type Delay = u16;
 pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>, LayerStack)>;
 
@@ -112,6 +116,7 @@ where
     pub last_press_tracker: LastPressTracker,
     pub active_sequences: ArrayDeque<SequenceState<'a, T>, 4, arraydeque::behavior::Wrapping>,
     pub action_queue: ActionQueue<'a, T>,
+    pub custom_event_release_queue: CustomEventReleaseQueue<'a, T>,
     pub rpt_action: Option<&'a Action<'a, T>>,
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
@@ -346,7 +351,12 @@ impl<'a, T: 'a> State<'a, T> {
         }
     }
     /// Returns None if the key has been released and Some otherwise.
-    pub fn release(&self, c: KCoord, custom: &mut CustomEvent<'a, T>) -> Option<Self> {
+    pub fn release(
+        &self,
+        c: KCoord,
+        custom: &mut CustomEvent<'a, T>,
+        custom_release_queue: &mut CustomEventReleaseQueue<'a, T>,
+    ) -> Option<Self> {
         match *self {
             NormalKey { coord, .. }
             | LayerModifier { coord, .. }
@@ -357,7 +367,14 @@ impl<'a, T: 'a> State<'a, T> {
                 None
             }
             Custom { value, coord } if coord == c => {
-                custom.update(CustomEvent::Release(value));
+                match custom {
+                    CustomEvent::NoEvent => custom.update(CustomEvent::Release(value)),
+                    _ => {
+                        if custom_release_queue.push_back(value).is_some() {
+                            panic!("overflowed custom action release queue");
+                        }
+                    }
+                }
                 None
             }
             _ => Some(*self),
@@ -1196,6 +1213,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
             action_queue: ArrayDeque::new(),
+            custom_event_release_queue: ArrayDeque::new(),
             rpt_action: None,
             historical_keys: History::new(),
             historical_inputs: History::new(),
@@ -1257,7 +1275,15 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             // the rapidity of the release can cause issues. See pause_input_processing_delay
             // comments for more detail.
             self.oneshot.pause_input_processing_ticks = self.oneshot.pause_input_processing_delay;
-            self.do_action(hold, coord, delay, false, &mut layer_stack.into_iter())
+            let mut custom_activation_count = 0;
+            self.do_action(
+                hold,
+                coord,
+                delay,
+                false,
+                &mut layer_stack.into_iter(),
+                &mut custom_activation_count,
+            )
         } else {
             CustomEvent::NoEvent
         }
@@ -1282,15 +1308,18 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             } else {
                 self.extra_waiting.remove(idx as usize);
             }
+            let mut custom_activation_count = 0;
             let ret = self.do_action(
                 tap,
                 coord,
                 delay,
                 false,
                 &mut layer_stack.clone().into_iter(),
+                &mut custom_activation_count,
             );
 
             if let Some(pq) = pq {
+                let mut custom_activation_count = 0;
                 self.contextual_execution.pause_historical_keys_updates = true;
                 match tap {
                     Action::KeyCode(_)
@@ -1309,6 +1338,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                 delay,
                                 false,
                                 &mut layer_stack.clone().into_iter(),
+                                &mut custom_activation_count,
                             );
                         }
                     }
@@ -1329,6 +1359,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                         delay,
                                         false,
                                         &mut layer_stack.clone().into_iter(),
+                                        &mut custom_activation_count,
                                     );
                                 }
                             }
@@ -1371,12 +1402,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             if coord == self.last_press_tracker.coord {
                 self.last_press_tracker.tap_hold_timeout = 0;
             }
+            let mut custom_activation_count = 0;
             self.do_action(
                 timeout_action,
                 coord,
                 delay,
                 false,
                 &mut layer_stack.into_iter(),
+                &mut custom_activation_count,
             )
         } else {
             CustomEvent::NoEvent
@@ -1393,6 +1426,16 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     /// Returns the corresponding `CustomEvent`, allowing to manage
     /// custom actions thanks to the `Action::Custom` variant.
     pub fn tick(&mut self) -> CustomEvent<'a, T> {
+        self.tick_layout()
+    }
+
+    fn tick_layout(&mut self) -> CustomEvent<'a, T> {
+        // Eagerly process released queued custom actions
+        // then return; other items will be processed later!
+        if let Some(released_custom_event) = self.custom_event_release_queue.pop_front() {
+            return CustomEvent::Release(released_custom_event);
+        }
+
         let active_layer = self.current_layer() as u16;
         if let Some(chv2) = self.chords_v2.as_mut() {
             self.queue.extend(chv2.tick_chv2(active_layer).drain(0..));
@@ -1406,7 +1449,15 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if let Some(Some((coord, delay, action, layer_stack))) = self.action_queue.pop_front() {
             // If there's anything in the action queue, don't process anything else yet - execute
             // everything. Otherwise an action may never be released.
-            return self.do_action(action, coord, delay, false, &mut layer_stack.into_iter());
+            let mut custom_activation_count = 0;
+            return self.do_action(
+                action,
+                coord,
+                delay,
+                false,
+                &mut layer_stack.into_iter(),
+                &mut custom_activation_count,
+            );
         }
         self.queue.iter_mut().for_each(Queued::tick_qd);
         self.last_press_tracker.tick_lpt();
@@ -1620,7 +1671,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let (do_release, overflow_key) = self.oneshot.handle_release((i, j));
                 if do_release {
                     self.states.retain(|s| {
-                        !s.clear_on_next_release() && s.release((i, j), &mut custom).is_some()
+                        !s.clear_on_next_release()
+                            && s.release((i, j), &mut custom, &mut self.custom_event_release_queue)
+                                .is_some()
                     });
                 } else {
                     // Fix #1874:
@@ -1656,20 +1709,28 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             // as a oneshot key, it should still be released here.
                             _ => {
                                 !s.clear_on_next_release()
-                                    && s.release((i, j), &mut custom).is_some()
+                                    && s.release(
+                                        (i, j),
+                                        &mut custom,
+                                        &mut self.custom_event_release_queue,
+                                    )
+                                    .is_some()
                             }
                         }
                     });
                 }
                 if let Some((i2, j2)) = overflow_key {
-                    self.states
-                        .retain(|s| s.release((i2, j2), &mut custom).is_some());
+                    self.states.retain(|s| {
+                        s.release((i2, j2), &mut custom, &mut self.custom_event_release_queue)
+                            .is_some()
+                    });
                 }
                 custom
             }
 
             Press(i, j) => {
                 let mut layer_stack = self.trans_resolution_layer_order().into_iter();
+                let mut custom_activation_count = 0;
                 if let Some(tde) = &mut self.tap_dance_eager {
                     if (i, j) == self.last_press_tracker.coord && !tde.is_expired() {
                         let tde_action = tde.actions[usize::from(tde.num_taps)];
@@ -1680,6 +1741,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             queue.since,
                             false,
                             &mut layer_stack.skip(1),
+                            &mut custom_activation_count,
                         );
                         custom
                     } else {
@@ -1688,10 +1750,24 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         if i == REAL_KEY_ROW {
                             tde.set_expired();
                         }
-                        self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
+                        self.do_action(
+                            &Action::Trans,
+                            (i, j),
+                            queue.since,
+                            false,
+                            &mut layer_stack,
+                            &mut custom_activation_count,
+                        )
                     }
                 } else {
-                    self.do_action(&Action::Trans, (i, j), queue.since, false, &mut layer_stack)
+                    self.do_action(
+                        &Action::Trans,
+                        (i, j),
+                        queue.since,
+                        false,
+                        &mut layer_stack,
+                        &mut custom_activation_count,
+                    )
                 }
             }
         }
@@ -1756,6 +1832,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         delay: u16,
         is_oneshot: bool,
         layer_stack: &mut (impl Iterator<Item = u16> + Clone), // used to resolve Trans action
+        custom_activation_count: &mut u8,
     ) -> CustomEvent<'a, T> {
         let mut action = action;
         if let Trans = action {
@@ -1819,7 +1896,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 // Risk: infinite recursive resulting in stack overflow.
                 // In practice this is not expected to happen.
                 // The `src_keys` actions are all expected to be `KeyCode` or `NoOp` actions.
-                self.do_action(action, coord, delay, is_oneshot, &mut std::iter::empty());
+                self.do_action(
+                    action,
+                    coord,
+                    delay,
+                    is_oneshot,
+                    &mut std::iter::empty(),
+                    custom_activation_count,
+                );
             }
             Trans => {
                 // Transparent action should be resolved to non-transparent one near the top
@@ -1842,7 +1926,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 // not the outer (tap-dance|hold) but multi will repeat the entire outer multi
                 // action.
                 if let Some(ac) = self.rpt_action {
-                    self.do_action(ac, coord, delay, is_oneshot, &mut std::iter::empty());
+                    self.do_action(
+                        ac,
+                        coord,
+                        delay,
+                        is_oneshot,
+                        &mut std::iter::empty(),
+                        custom_activation_count,
+                    );
                 }
             }
             HoldTap(HoldTapAction {
@@ -1866,7 +1957,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         .find(|prior| prior.event.0 == REAL_KEY_ROW && prior.event != coord)
                         .is_some_and(|prior| prior.ticks_since_occurrence <= idle_threshold);
                     if prior_idle_tap {
-                        let custom = self.do_action(tap, coord, delay, is_oneshot, layer_stack);
+                        let custom = self.do_action(
+                            tap,
+                            coord,
+                            delay,
+                            is_oneshot,
+                            layer_stack,
+                            custom_activation_count,
+                        );
                         self.last_press_tracker.update_coord(coord);
                         return custom;
                     }
@@ -1902,7 +2000,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.last_press_tracker.tap_hold_timeout = *tap_hold_interval;
                 } else {
                     self.last_press_tracker.tap_hold_timeout = 0;
-                    custom.update(self.do_action(tap, coord, delay, is_oneshot, layer_stack));
+                    custom.update(self.do_action(
+                        tap,
+                        coord,
+                        delay,
+                        is_oneshot,
+                        layer_stack,
+                        custom_activation_count,
+                    ));
                 }
                 // Need to set tap_hold_tracker coord AFTER the checks.
                 self.last_press_tracker.update_coord(coord);
@@ -1910,8 +2015,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             }
             &OneShot(oneshot) => {
                 self.last_press_tracker.update_coord(coord);
-                let custom =
-                    self.do_action(oneshot.action, coord, delay, true, &mut std::iter::empty());
+                let custom = self.do_action(
+                    oneshot.action,
+                    coord,
+                    delay,
+                    true,
+                    &mut std::iter::empty(),
+                    custom_activation_count,
+                );
                 // Note - set rpt_action after doing the inner oneshot action. This means that the
                 // whole oneshot will be repeated by rpt-any rather than only the inner action.
                 self.rpt_action = Some(action);
@@ -1974,7 +2085,14 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                 }
                             }
                         };
-                        return self.do_action(td.actions[0], coord, delay, false, layer_stack);
+                        return self.do_action(
+                            td.actions[0],
+                            coord,
+                            delay,
+                            false,
+                            layer_stack,
+                            custom_activation_count,
+                        );
                     }
                 }
             }
@@ -2113,6 +2231,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         delay,
                         is_oneshot,
                         &mut layer_stack.clone(),
+                        custom_activation_count,
                     ));
                 }
                 // Save the whole multi action instead of the final action in multi so that Repeat
@@ -2195,10 +2314,23 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
                 }
+                *custom_activation_count = custom_activation_count.saturating_add(1);
                 self.rpt_action = Some(action);
-                if self.states.push(State::Custom { value, coord }).is_ok() {
-                    return CustomEvent::Press(value);
-                }
+                return match custom_activation_count {
+                    0 | 1 => {
+                        let _ = self.states.push(State::Custom { value, coord });
+                        CustomEvent::Press(value)
+                    }
+                    _ => {
+                        self.action_queue.push_back(Some((
+                            coord,
+                            delay,
+                            action,
+                            layer_stack.clone().collect(),
+                        )));
+                        CustomEvent::NoEvent
+                    }
+                };
             }
             ReleaseState(rs) => {
                 self.states.retain(|s| s.release_state(*rs).is_some());
@@ -2215,12 +2347,22 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     }
                     _ => false,
                 }) {
-                    false => {
-                        self.do_action(&fcfg.left, coord, delay, false, &mut layer_stack.clone())
-                    }
-                    true => {
-                        self.do_action(&fcfg.right, coord, delay, false, &mut layer_stack.clone())
-                    }
+                    false => self.do_action(
+                        &fcfg.left,
+                        coord,
+                        delay,
+                        false,
+                        &mut layer_stack.clone(),
+                        custom_activation_count,
+                    ),
+                    true => self.do_action(
+                        &fcfg.right,
+                        coord,
+                        delay,
+                        false,
+                        &mut layer_stack.clone(),
+                        custom_activation_count,
+                    ),
                 };
                 // Repeat the fork rather than the terminal action.
                 self.rpt_action = Some(action);

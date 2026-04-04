@@ -232,7 +232,7 @@ pub(crate) fn find_chords_coords(
 }
 
 pub(crate) fn fill_chords(
-    chord_groups: &[&'static ChordsGroup<&&[&CustomAction]>],
+    chord_groups: &[&'static ChordsGroup<KanataCustom>],
     action: &KanataAction,
     s: &ParserState,
 ) -> Option<KanataAction> {

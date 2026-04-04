@@ -247,13 +247,12 @@ impl<'a> FileContentProvider<'a> {
     }
 }
 
-pub type KanataCustom = &'static &'static [&'static CustomAction];
 pub type KanataAction = Action<'static, KanataCustom>;
 type KLayout = Layout<'static, KEYS_IN_ROW, 2, KanataCustom>;
 
 type TapHoldCustomFunc = fn(&[OsCode], &Allocations) -> &'static custom_tap_hold::CustomTapHoldFn;
 
-pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a &'a [&'a CustomAction]>;
+pub type BorrowedKLayout<'a> = Layout<'a, KEYS_IN_ROW, 2, &'a CustomAction>;
 pub type KeySeqsToFKeys = Trie<(u8, u16)>;
 
 pub struct KanataLayout {
@@ -1336,7 +1335,7 @@ fn parse_action(expr: &SExpr, s: &ParserState) -> Result<&'static KanataAction> 
 
 /// Returns a single custom action in the proper wrapped type.
 fn custom(ca: CustomAction, a: &Allocations) -> Result<&'static KanataAction> {
-    Ok(a.sref(Action::Custom(a.sref(a.sref_slice(ca)))))
+    Ok(a.sref(Action::Custom(a.sref(ca))))
 }
 
 /// Parse a `kanata_keyberon::action::Action` from a string.

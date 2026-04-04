@@ -53,3 +53,16 @@ fn unicode_pulus() {
     .no_time();
     assert_eq!("outU:🚆 outU:🚆", result);
 }
+
+#[test]
+fn unicode_multi() {
+    let result = simulate(
+        "
+        (defsrc a)
+        (deflayer l (multi (unicode a) (fork (unicode b) XX ())))
+        ",
+        "d:KeyA t:5 u:KeyA t:5",
+    )
+    .to_ascii();
+    assert_eq!("outU:a t:1ms outU:b", result);
+}

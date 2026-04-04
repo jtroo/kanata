@@ -54,7 +54,7 @@ pub(crate) fn parse_macro_release_cancel(
     let macro_action = parse_macro(ac_params, s, repeat)?;
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
         *macro_action,
-        Action::Custom(s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnRelease))),
+        Action::Custom(s.a.sref(CustomAction::CancelMacroOnRelease)),
     ])))))
 }
 
@@ -72,9 +72,7 @@ pub(crate) fn parse_macro_cancel_on_next_press(
     };
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
         *macro_action,
-        Action::Custom(
-            s.a.sref(s.a.sref_slice(CustomAction::CancelMacroOnNextPress(macro_duration))),
-        ),
+        Action::Custom(s.a.sref(CustomAction::CancelMacroOnNextPress(macro_duration))),
     ])))))
 }
 
@@ -92,10 +90,8 @@ pub(crate) fn parse_macro_cancel_on_next_press_cancel_on_release(
     };
     Ok(s.a.sref(Action::MultipleActions(s.a.sref(s.a.sref_vec(vec![
         *macro_action,
-        Action::Custom(s.a.sref(s.a.sref_vec(vec![
-            &CustomAction::CancelMacroOnRelease,
-            s.a.sref(CustomAction::CancelMacroOnNextPress(macro_duration)),
-        ]))),
+        Action::Custom(s.a.sref(CustomAction::CancelMacroOnRelease)),
+        Action::Custom(s.a.sref(CustomAction::CancelMacroOnNextPress(macro_duration))),
     ])))))
 }
 
@@ -118,9 +114,7 @@ pub(crate) fn parse_macro_record_stop_truncate(
         bail!("{ERR_STR}\nFound {} params instead of 1", ac_params.len());
     }
     let num_to_truncate = parse_u16(&ac_params[0], s, "num-keys-to-truncate")?;
-    Ok(s.a.sref(Action::Custom(s.a.sref(
-        s.a.sref_slice(CustomAction::DynamicMacroRecordStop(num_to_truncate)),
-    ))))
+    custom(CustomAction::DynamicMacroRecordStop(num_to_truncate), &s.a)
 }
 
 #[derive(PartialEq)]
@@ -133,10 +127,7 @@ pub(crate) enum MacroNumberParseMode {
 pub(crate) fn parse_macro_item<'a>(
     acs: &'a [SExpr],
     s: &ParserState,
-) -> Result<(
-    Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
-    &'a [SExpr],
-)> {
+) -> Result<(Vec<SequenceEvent<'static, KanataCustom>>, &'a [SExpr])> {
     parse_macro_item_impl(acs, s, MacroNumberParseMode::Delay)
 }
 
@@ -145,10 +136,7 @@ pub(crate) fn parse_macro_item_impl<'a>(
     acs: &'a [SExpr],
     s: &ParserState,
     num_parse_mode: MacroNumberParseMode,
-) -> Result<(
-    Vec<SequenceEvent<'static, &'static &'static [&'static CustomAction]>>,
-    &'a [SExpr],
-)> {
+) -> Result<(Vec<SequenceEvent<'static, KanataCustom>>, &'a [SExpr])> {
     if num_parse_mode == MacroNumberParseMode::Delay {
         if let Some(a) = acs[0].atom(s.vars()) {
             match parse_non_zero_u16(&acs[0], s, "delay") {
@@ -280,9 +268,7 @@ pub(crate) fn parse_dynamic_macro_record(
         bail!("{ERR_MSG}, found {}", ac_params.len());
     }
     let key = parse_u16(&ac_params[0], s, "macro ID")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroRecord(key))),
-    )))
+    custom(CustomAction::DynamicMacroRecord(key), &s.a)
 }
 
 pub(crate) fn parse_dynamic_macro_play(
@@ -294,7 +280,5 @@ pub(crate) fn parse_dynamic_macro_play(
         bail!("{ERR_MSG}, found {}", ac_params.len());
     }
     let key = parse_u16(&ac_params[0], s, "macro ID")?;
-    Ok(s.a.sref(Action::Custom(
-        s.a.sref(s.a.sref_slice(CustomAction::DynamicMacroPlay(key))),
-    )))
+    custom(CustomAction::DynamicMacroPlay(key), &s.a)
 }
