@@ -89,4 +89,3 @@ and explicitly map keys in `defsrc` instead
 == MacOS
 
 * Mouse input processing requires Accessibility or Input Monitoring permission in System Settings > Privacy & Security
-* Mouse wheel input is not yet supported in `defsrc`

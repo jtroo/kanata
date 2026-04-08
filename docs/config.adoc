@@ -1475,8 +1475,7 @@ to remap scroll events as if they were keys,
 corresponding to up, down, left, right respectively:
 `mwu`, `mwd`, `mwl`, `mwr`.
 
-The remapping of mouse button events is effective on Linux, Windows, and macOS.
-Mouse wheel remapping is currently only effective on Linux and Windows.
+The remapping of mouse button and wheel events is effective on Linux, Windows, and macOS.
 
 NOTE:
 On Windows and macOS, the Kanata process must be restarted

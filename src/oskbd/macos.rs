@@ -640,6 +640,34 @@ impl TryFrom<(CGEventType, i64)> for KeyEvent {
     }
 }
 
+/// Decode a `ScrollWheel` `CGEvent` into a kanata `KeyEvent`. A scroll event
+/// may carry both axes simultaneously (diagonal scroll on a trackpad); we
+/// pick the dominant axis with vertical winning ties, matching how Linux
+/// processes one `REL_WHEEL`/`REL_HWHEEL` at a time. The axis/sign convention
+/// mirrors `OsKbdOut::scroll`.
+fn scroll_event_to_key_event(event: &CGEvent) -> Option<KeyEvent> {
+    use OsCode::*;
+    let dy = event.get_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1);
+    let dx = event.get_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2);
+    let code = if dy.abs() >= dx.abs() {
+        match dy.signum() {
+            1 => MouseWheelDown,
+            -1 => MouseWheelUp,
+            _ => return None,
+        }
+    } else {
+        match dx.signum() {
+            1 => MouseWheelLeft,
+            -1 => MouseWheelRight,
+            _ => return None,
+        }
+    };
+    Some(KeyEvent {
+        code,
+        value: KeyValue::Tap,
+    })
+}
+
 /// Start a CGEventTap on a background thread to intercept mouse button events.
 /// macOS equivalent of the Windows mouse hook in `windows/llhook.rs`.
 ///
@@ -653,7 +681,17 @@ pub fn start_mouse_listener(
     mapped_keys: &MappedKeys,
 ) -> Option<std::thread::JoinHandle<()>> {
     use OsCode::*;
-    let mouse_oscodes = [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
+    let mouse_oscodes = [
+        BTN_LEFT,
+        BTN_RIGHT,
+        BTN_MIDDLE,
+        BTN_SIDE,
+        BTN_EXTRA,
+        MouseWheelUp,
+        MouseWheelDown,
+        MouseWheelLeft,
+        MouseWheelRight,
+    ];
     // Copy only the mouse-relevant mapped keys for the callback closure.
     let mapped: MappedKeys = mapped_keys
         .iter()
@@ -661,7 +699,7 @@ pub fn start_mouse_listener(
         .filter(|k| mouse_oscodes.contains(k))
         .collect();
     if mapped.is_empty() {
-        log::info!("No mouse buttons in defsrc. Not installing mouse event tap.");
+        log::info!("No mouse buttons or wheel in defsrc. Not installing mouse event tap.");
         return None;
     }
 
@@ -675,6 +713,7 @@ pub fn start_mouse_listener(
                 CGEventType::RightMouseUp,
                 CGEventType::OtherMouseDown,
                 CGEventType::OtherMouseUp,
+                CGEventType::ScrollWheel,
             ];
 
             let tap = match CGEventTap::new(
@@ -685,6 +724,21 @@ pub fn start_mouse_listener(
                 // Callback receives &CGEvent; return Some(clone) to pass through,
                 // None to suppress the event.
                 move |_proxy, event_type, event| {
+                    if matches!(event_type, CGEventType::ScrollWheel) {
+                        let Some(key_event) = scroll_event_to_key_event(event) else {
+                            return Some(event.clone());
+                        };
+                        if !mapped.contains(&key_event.code) {
+                            return Some(event.clone());
+                        }
+                        log::debug!("mouse tap (wheel): {key_event:?}");
+                        if let Err(e) = tx.try_send(key_event) {
+                            log::warn!("mouse tap: failed to send wheel event: {e}");
+                            return Some(event.clone());
+                        }
+                        return None;
+                    }
+
                     let button_number =
                         event.get_integer_value_field(EventField::MOUSE_EVENT_BUTTON_NUMBER);
                     let mut key_event = match KeyEvent::try_from((event_type, button_number)) {
