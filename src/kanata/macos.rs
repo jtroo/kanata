@@ -47,6 +47,15 @@ impl Kanata {
 
         info!("keyboard grabbed, entering event processing loop");
 
+        // Start the mouse event tap on a background thread if any mouse buttons
+        // are mapped in the config. Similar to the Windows mouse hook.
+        // The braces scope-drop the MAPPED_KEYS lock before entering the event loop;
+        // the JoinHandle is dropped because the run loop runs for the process lifetime.
+        {
+            let mapped = MAPPED_KEYS.lock();
+            let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped);
+        }
+
         loop {
             // --- Event processing loop ---
             let needs_recovery = loop {

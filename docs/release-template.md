@@ -110,7 +110,7 @@ Explanation of items in the binary variant:
 
 The supported Karabiner driver version in this release is `v6.2.0`.
 
-**WARNING**: macOS does not support mouse as input. The `mbck` and `mfwd` mouse button actions are also not operational.
+**NOTE**: macOS mouse button input requires Accessibility or Input Monitoring permission in System Settings > Privacy & Security.
 
 ### Binary variants
 

@@ -69,6 +69,7 @@ core-graphics = "0.24.0"
 open = { version = "5", optional = true }
 libc = "0.2"
 os_pipe = "1.2.1"
+core-foundation = "0.10.1"
 
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 evdev = "0.13.0"

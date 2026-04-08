@@ -11,10 +11,15 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
+use core_foundation::runloop::{CFRunLoop, kCFRunLoopCommonModes};
 use core_graphics::base::CGFloat;
 use core_graphics::display::{CGDisplay, CGPoint};
-use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType, CGMouseButton, EventField};
+use core_graphics::event::{
+    CGEvent, CGEventTap, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventType,
+    CGMouseButton, EventField,
+};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+use kanata_parser::cfg::MappedKeys;
 use kanata_parser::custom_action::*;
 use kanata_parser::keys::*;
 use karabiner_driverkit::*;
@@ -25,6 +30,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::Error;
+use std::sync::mpsc::SyncSender as Sender;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -416,15 +422,29 @@ impl KbdOut {
         event.post(CGEventTapLocation::HID);
         Ok(())
     }
+    /// Synthesize a mouse button press or release via CGEvent.
+    ///
+    /// Side buttons (Backward/Forward) use OtherMouseDown/Up with
+    /// CGMouseButton::Center as a placeholder, then override the
+    /// MOUSE_EVENT_BUTTON_NUMBER field to the real index (3=Back, 4=Forward).
+    /// The Rust CGMouseButton enum only has 3 variants but the underlying
+    /// Apple API supports up to 32 buttons via this field.
+    ///
+    /// Ref: [init(mouseEventSource:mouseType:mouseCursorPosition:mouseButton:)][1], [setIntegerValueField][2]
+    ///
+    /// [1]: https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)
+    /// [2]: https://developer.apple.com/documentation/coregraphics/cgevent/setintegervaluefield(_:value:)
     fn button_action(&mut self, _btn: Btn, is_click: bool) -> Result<(), io::Error> {
-        let (event_type, button) = match _btn {
+        // (event_type, placeholder_button, real_button_number_override)
+        let (event_type, button, button_number) = match _btn {
             Btn::Left => (
                 if is_click {
                     CGEventType::LeftMouseDown
                 } else {
                     CGEventType::LeftMouseUp
                 },
-                Some(CGMouseButton::Left),
+                CGMouseButton::Left,
+                None,
             ),
             Btn::Right => (
                 if is_click {
@@ -432,7 +452,8 @@ impl KbdOut {
                 } else {
                     CGEventType::RightMouseUp
                 },
-                Some(CGMouseButton::Right),
+                CGMouseButton::Right,
+                None,
             ),
             Btn::Mid => (
                 if is_click {
@@ -440,23 +461,40 @@ impl KbdOut {
                 } else {
                     CGEventType::OtherMouseUp
                 },
-                Some(CGMouseButton::Center),
+                CGMouseButton::Center,
+                None,
             ),
-            // It's unclear to me which event type to use here, hence unsupported for now
-            Btn::Forward => (CGEventType::Null, None),
-            Btn::Backward => (CGEventType::Null, None),
+            // Side buttons use OtherMouseDown/Up (same event type as middle click)
+            // with the button number overridden after event creation.
+            Btn::Backward => (
+                if is_click {
+                    CGEventType::OtherMouseDown
+                } else {
+                    CGEventType::OtherMouseUp
+                },
+                CGMouseButton::Center,
+                Some(3), // USB HID button 4 -> CGEvent button 3 (0-indexed)
+            ),
+            Btn::Forward => (
+                if is_click {
+                    CGEventType::OtherMouseDown
+                } else {
+                    CGEventType::OtherMouseUp
+                },
+                CGMouseButton::Center,
+                Some(4), // USB HID button 5 -> CGEvent button 4 (0-indexed)
+            ),
         };
-        // CGEventType doesn't implement Eq, therefore the casting to u8
-        if event_type as u8 == CGEventType::Null as u8 {
-            panic!("mouse buttons other than left, right, and middle aren't currently supported")
-        }
 
         let event_source = Self::make_event_source()?;
         let event = Self::make_event()?;
         let mouse_position = event.location();
-        let event =
-            CGEvent::new_mouse_event(event_source, event_type, mouse_position, button.unwrap())
-                .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
+        let event = CGEvent::new_mouse_event(event_source, event_type, mouse_position, button)
+            .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
+
+        if let Some(num) = button_number {
+            event.set_integer_value_field(EventField::MOUSE_EVENT_BUTTON_NUMBER, num);
+        }
 
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
@@ -567,4 +605,149 @@ impl KbdOut {
             MoveDirection::Right => mouse_position.x += _mv.distance as CGFloat,
         }
     }
+}
+
+/// Convert a `(CGEventType, button_number)` pair from a CGEventTap into a
+/// kanata `KeyEvent`. The button number field is only meaningful for
+/// `OtherMouseDown`/`OtherMouseUp` (2=Middle, 3=Back, 4=Forward); Left/Right
+/// are determined entirely by the event type.
+impl TryFrom<(CGEventType, i64)> for KeyEvent {
+    type Error = ();
+    fn try_from((event_type, button_number): (CGEventType, i64)) -> Result<Self, ()> {
+        use OsCode::*;
+        let (code, value) = match event_type {
+            CGEventType::LeftMouseDown => (BTN_LEFT, KeyValue::Press),
+            CGEventType::LeftMouseUp => (BTN_LEFT, KeyValue::Release),
+            CGEventType::RightMouseDown => (BTN_RIGHT, KeyValue::Press),
+            CGEventType::RightMouseUp => (BTN_RIGHT, KeyValue::Release),
+            CGEventType::OtherMouseDown | CGEventType::OtherMouseUp => {
+                let code = match button_number {
+                    2 => BTN_MIDDLE,
+                    3 => BTN_SIDE,
+                    4 => BTN_EXTRA,
+                    _ => return Err(()),
+                };
+                let value = if matches!(event_type, CGEventType::OtherMouseDown) {
+                    KeyValue::Press
+                } else {
+                    KeyValue::Release
+                };
+                (code, value)
+            }
+            _ => return Err(()),
+        };
+        Ok(KeyEvent { code, value })
+    }
+}
+
+/// Start a CGEventTap on a background thread to intercept mouse button events.
+/// macOS equivalent of the Windows mouse hook in `windows/llhook.rs`.
+///
+/// Mapped buttons are suppressed and forwarded to the processing channel;
+/// unmapped buttons pass through. Only installed if the config has mouse
+/// buttons in defsrc.
+///
+/// Requires Accessibility or Input Monitoring permission.
+pub fn start_mouse_listener(
+    tx: Sender<KeyEvent>,
+    mapped_keys: &MappedKeys,
+) -> Option<std::thread::JoinHandle<()>> {
+    use OsCode::*;
+    let mouse_oscodes = [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
+    // Copy only the mouse-relevant mapped keys for the callback closure.
+    let mapped: MappedKeys = mapped_keys
+        .iter()
+        .copied()
+        .filter(|k| mouse_oscodes.contains(k))
+        .collect();
+    if mapped.is_empty() {
+        log::info!("No mouse buttons in defsrc. Not installing mouse event tap.");
+        return None;
+    }
+
+    let handle = std::thread::Builder::new()
+        .name("mouse-event-tap".into())
+        .spawn(move || {
+            let events_of_interest = vec![
+                CGEventType::LeftMouseDown,
+                CGEventType::LeftMouseUp,
+                CGEventType::RightMouseDown,
+                CGEventType::RightMouseUp,
+                CGEventType::OtherMouseDown,
+                CGEventType::OtherMouseUp,
+            ];
+
+            let tap = match CGEventTap::new(
+                CGEventTapLocation::HID,
+                CGEventTapPlacement::HeadInsertEventTap,
+                CGEventTapOptions::Default,
+                events_of_interest,
+                // Callback receives &CGEvent; return Some(clone) to pass through,
+                // None to suppress the event.
+                move |_proxy, event_type, event| {
+                    let button_number =
+                        event.get_integer_value_field(EventField::MOUSE_EVENT_BUTTON_NUMBER);
+                    let mut key_event = match KeyEvent::try_from((event_type, button_number)) {
+                        Ok(ev) => ev,
+                        Err(()) => return Some(event.clone()),
+                    };
+
+                    if !mapped.contains(&key_event.code) {
+                        return Some(event.clone());
+                    }
+
+                    // Track pressed state to convert duplicate presses into repeats,
+                    // matching the keyboard event loop behavior.
+                    match key_event.value {
+                        KeyValue::Release => {
+                            crate::kanata::PRESSED_KEYS.lock().remove(&key_event.code);
+                        }
+                        KeyValue::Press => {
+                            let mut pressed_keys = crate::kanata::PRESSED_KEYS.lock();
+                            if pressed_keys.contains(&key_event.code) {
+                                key_event.value = KeyValue::Repeat;
+                            } else {
+                                pressed_keys.insert(key_event.code);
+                            }
+                        }
+                        _ => {}
+                    }
+
+                    log::debug!("mouse tap: {key_event:?}");
+
+                    if let Err(e) = tx.try_send(key_event) {
+                        log::warn!("mouse tap: failed to send event: {e}");
+                        return Some(event.clone());
+                    }
+
+                    // Suppress the original event so it doesn't reach the system.
+                    None
+                },
+            ) {
+                Ok(tap) => tap,
+                Err(()) => {
+                    log::error!(
+                        "Failed to create mouse event tap. \
+                         Ensure kanata has Accessibility or Input Monitoring permission \
+                         in System Settings > Privacy & Security."
+                    );
+                    return;
+                }
+            };
+
+            let loop_source = tap
+                .mach_port
+                .create_runloop_source(0)
+                .expect("failed to create CFRunLoop source for mouse event tap");
+            // Safety: kCFRunLoopCommonModes is an extern static from CoreFoundation.
+            // Accessing it requires unsafe but is always valid in a running process.
+            let mode = unsafe { kCFRunLoopCommonModes };
+            CFRunLoop::get_current().add_source(&loop_source, mode);
+            tap.enable();
+            log::info!("Mouse event tap installed and active.");
+            CFRunLoop::run_current();
+        })
+        .expect("failed to spawn mouse event tap thread");
+
+    Some(handle)
 }
