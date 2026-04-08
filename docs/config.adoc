@@ -4529,7 +4529,7 @@ the swapped "i" and "o" keys.
 ----
 
 [[mouse-movement-key]]
-=== Linux or Windows-interception only: mouse-movement-key
+=== Linux, macOS, or Windows-interception only: mouse-movement-key
 
 Accepts a single key name.
 When configured, whenever a mouse cursor movement is received,
@@ -4552,10 +4552,14 @@ The `mvmt` key name is specially intended for this purpose.  It has no
 output key mapping and cannot be supplied as an action; however, any
 key may be used.
 
-Supports live reload on Linux, but with Windows-interception, this
+Supports live reload on Linux and macOS. With Windows-interception, this
 option must be present on startup to enable mouse movement event
 collection, so restart is required to enable it. Changing the key name
 is always supported, however.
+
+On macOS, this feature uses the same CGEventTap as the existing mouse
+button input support, and so requires the same Accessibility or Input
+Monitoring permission in System Settings > Privacy & Security.
 
 .Example:
 [source]

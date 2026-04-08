@@ -2098,3 +2098,31 @@ fn parse_clipboard_actions() {
 ";
     parse_cfg(source).map(|_| ()).expect("success");
 }
+
+/// `mouse-movement-key` parses on every platform that supports the feature
+/// (Linux, Android, macOS, Windows-interception, unknown). Regression guard
+/// for the macOS cfg gate previously omitting `target_os = "macos"`, which
+/// caused the option to fail with "Unknown defcfg option" on macOS.
+#[cfg(any(
+    all(target_os = "windows", feature = "interception_driver"),
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    target_os = "unknown"
+))]
+#[test]
+fn parse_mouse_movement_key() {
+    let source = "
+(defcfg
+  process-unmapped-keys yes
+  mouse-movement-key mvmt
+)
+(defsrc a mvmt)
+(deflayer base a _)
+";
+    let icfg = parse_cfg(source).expect("parses");
+    assert_eq!(
+        icfg.options.mouse_movement_key,
+        Some(crate::keys::OsCode::KEY_766),
+    );
+}
