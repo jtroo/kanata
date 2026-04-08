@@ -1408,7 +1408,7 @@ The mouse button actions are:
 * `mbck`: backward mouse button
 
 The mouse button will be held while the key mapped to it is held.
-Only on Linux and Windows,
+On Linux, Windows, and macOS,
 the above actions are also usable in `defsrc`
 to enable remapping specified mouse actions in your layers,
 like you would with keyboard keys.
@@ -1475,14 +1475,17 @@ to remap scroll events as if they were keys,
 corresponding to up, down, left, right respectively:
 `mwu`, `mwd`, `mwl`, `mwr`.
 
-The remapping of mouse events is only effective on Linux and Windows.
+The remapping of mouse button events is effective on Linux, Windows, and macOS.
+Mouse wheel remapping is currently only effective on Linux and Windows.
 
 NOTE:
-On Windows, the Kanata process must be restarted
+On Windows and macOS, the Kanata process must be restarted
 for it to begin or to stop handling mouse events;
 changing defsrc then live-reloading will not
 begin handling mouse events
 if defsrc previously did not have any mouse events in defsrc.
+On macOS, mouse button input requires Accessibility or Input Monitoring
+permission in System Settings > Privacy & Security.
 
 **Description**
 
