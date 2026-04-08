@@ -380,7 +380,7 @@ pub struct MoveMouseAccelState {
 
 use once_cell::sync::Lazy;
 
-static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
+pub(crate) static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
     Lazy::new(|| Mutex::new(cfg::MappedKeys::default()));
 
 const LINUX_PERMISSIONS_ERROR: &str = "Failed to open the output uinput device. Make sure you added the user executing kanata to the 'uinput' group and that the 'uinput' group is configured correctly.\nSee for more detail: https://github.com/jtroo/kanata/blob/main/docs/setup-linux.md";
@@ -778,6 +778,8 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
+        #[cfg(target_os = "macos")]
+        crate::oskbd::ensure_mouse_listener_installed_after_reload();
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {

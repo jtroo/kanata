@@ -30,8 +30,36 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::Error;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::SyncSender as Sender;
 use std::time::{Duration, Instant};
+
+/// Mouse `OsCode`s that, when present in `MAPPED_KEYS`, justify installing the
+/// CGEventTap. Used both as the startup/reload install gate and as the set of
+/// codes the tap can produce.
+const MOUSE_OSCODES: [OsCode; 9] = [
+    OsCode::BTN_LEFT,
+    OsCode::BTN_RIGHT,
+    OsCode::BTN_MIDDLE,
+    OsCode::BTN_SIDE,
+    OsCode::BTN_EXTRA,
+    OsCode::MouseWheelUp,
+    OsCode::MouseWheelDown,
+    OsCode::MouseWheelLeft,
+    OsCode::MouseWheelRight,
+];
+
+/// Sender stashed by the first `start_mouse_listener` call so that
+/// `ensure_mouse_listener_installed_after_reload` can install the tap on a
+/// later live reload without needing the original `event_loop` context.
+static MOUSE_TAP_TX: OnceLock<Sender<KeyEvent>> = OnceLock::new();
+
+/// Tracks whether the CGEventTap thread is currently running. Claimed via
+/// `compare_exchange` to make installation idempotent across concurrent
+/// reloads. Reset to `false` if `CGEventTap::new` fails so a future reload
+/// (e.g. after the user grants Accessibility permission) can retry.
+static MOUSE_TAP_INSTALLED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -680,26 +708,24 @@ pub fn start_mouse_listener(
     tx: Sender<KeyEvent>,
     mapped_keys: &MappedKeys,
 ) -> Option<std::thread::JoinHandle<()>> {
-    use OsCode::*;
-    let mouse_oscodes = [
-        BTN_LEFT,
-        BTN_RIGHT,
-        BTN_MIDDLE,
-        BTN_SIDE,
-        BTN_EXTRA,
-        MouseWheelUp,
-        MouseWheelDown,
-        MouseWheelLeft,
-        MouseWheelRight,
-    ];
-    // Copy only the mouse-relevant mapped keys for the callback closure.
-    let mapped: MappedKeys = mapped_keys
-        .iter()
-        .copied()
-        .filter(|k| mouse_oscodes.contains(k))
-        .collect();
-    if mapped.is_empty() {
+    // Stash the tx unconditionally so a later live reload that introduces
+    // mouse keys can install the tap via
+    // `ensure_mouse_listener_installed_after_reload` without needing the
+    // original `event_loop` context.
+    let _ = MOUSE_TAP_TX.set(tx.clone());
+
+    if !MOUSE_OSCODES.iter().any(|c| mapped_keys.contains(c)) {
         log::info!("No mouse buttons or wheel in defsrc. Not installing mouse event tap.");
+        return None;
+    }
+
+    // Claim the install slot. If another thread already installed the tap,
+    // bail out — the existing tap reads `MAPPED_KEYS` live so it already
+    // covers any newly mapped mouse keys.
+    if MOUSE_TAP_INSTALLED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
         return None;
     }
 
@@ -728,7 +754,7 @@ pub fn start_mouse_listener(
                         let Some(key_event) = scroll_event_to_key_event(event) else {
                             return Some(event.clone());
                         };
-                        if !mapped.contains(&key_event.code) {
+                        if !crate::kanata::MAPPED_KEYS.lock().contains(&key_event.code) {
                             return Some(event.clone());
                         }
                         log::debug!("mouse tap (wheel): {key_event:?}");
@@ -746,7 +772,7 @@ pub fn start_mouse_listener(
                         Err(()) => return Some(event.clone()),
                     };
 
-                    if !mapped.contains(&key_event.code) {
+                    if !crate::kanata::MAPPED_KEYS.lock().contains(&key_event.code) {
                         return Some(event.clone());
                     }
 
@@ -785,6 +811,9 @@ pub fn start_mouse_listener(
                          Ensure kanata has Accessibility or Input Monitoring permission \
                          in System Settings > Privacy & Security."
                     );
+                    // Release the install claim so a future live reload can
+                    // retry once the user grants permission.
+                    MOUSE_TAP_INSTALLED.store(false, Ordering::Release);
                     return;
                 }
             };
@@ -804,4 +833,24 @@ pub fn start_mouse_listener(
         .expect("failed to spawn mouse event tap thread");
 
     Some(handle)
+}
+
+/// Install the mouse event tap if a live reload introduced mouse keys to
+/// `MAPPED_KEYS` and the tap isn't already running. Idempotent: if the tap is
+/// already running, the existing callback reads `MAPPED_KEYS` live so newly
+/// mapped mouse keys take effect without reinstall.
+///
+/// Has no effect if the initial `start_mouse_listener` call hasn't run yet
+/// (which would mean `event_loop` hasn't started — shouldn't happen, but
+/// defended against).
+pub fn ensure_mouse_listener_installed_after_reload() {
+    if MOUSE_TAP_INSTALLED.load(Ordering::Acquire) {
+        return;
+    }
+    let Some(tx) = MOUSE_TAP_TX.get().cloned() else {
+        log::debug!("mouse tap reload hook: no tx stashed yet, skipping");
+        return;
+    };
+    let mapped = crate::kanata::MAPPED_KEYS.lock();
+    let _ = start_mouse_listener(tx, &mapped);
 }

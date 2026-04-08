@@ -51,6 +51,12 @@ impl Kanata {
         // are mapped in the config. Similar to the Windows mouse hook.
         // The braces scope-drop the MAPPED_KEYS lock before entering the event loop;
         // the JoinHandle is dropped because the run loop runs for the process lifetime.
+        // Subsequent live reloads that introduce mouse keys to a previously
+        // mouse-key-free defsrc install the tap lazily via
+        // `ensure_mouse_listener_installed_after_reload` (called from
+        // `do_live_reload`). The tap callback re-reads `MAPPED_KEYS` per event,
+        // so reloads that change *which* mouse keys are mapped also take
+        // effect without restart.
         {
             let mapped = MAPPED_KEYS.lock();
             let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped);
