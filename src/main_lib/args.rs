@@ -113,6 +113,15 @@ kanata.kbd in the current working directory and
     /// treat emergency exit as a failure and restart.
     #[arg(long, default_value = "0", verbatim_doc_comment)]
     pub emergency_exit_code: i32,
+
+    /// Release the keyboard grab while the screen is locked or another user
+    /// holds the console (fast user switching), and re-grab once kanata's
+    /// session is back. Useful on shared Macs so the lock screen and other
+    /// users get an unmodified keyboard. Off by default to preserve the
+    /// historical always-grab behavior.
+    #[cfg(target_os = "macos")]
+    #[arg(long, verbatim_doc_comment)]
+    pub release_grab_on_lock: bool,
 }
 
 #[cfg(test)]
@@ -149,6 +158,20 @@ mod tests {
     fn emergency_exit_code_custom() {
         let args = Args::try_parse_from(["kanata", "--emergency-exit-code", "42"]).unwrap();
         assert_eq!(args.emergency_exit_code, 42);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn release_grab_on_lock_default_false() {
+        let args = Args::try_parse_from(["kanata"]).unwrap();
+        assert!(!args.release_grab_on_lock);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn release_grab_on_lock_enabled() {
+        let args = Args::try_parse_from(["kanata", "--release-grab-on-lock"]).unwrap();
+        assert!(args.release_grab_on_lock);
     }
 
     #[test]
