@@ -301,6 +301,28 @@ pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
 }
 
+/// Treat a sink-disconnect from the processing thread as a non-fatal drop.
+///
+/// The macOS event loop (`src/kanata/macos.rs`) coordinates recovery when the
+/// DriverKit sink goes away (e.g. on wake-from-sleep) by polling
+/// `output_ready()` and re-grabbing input. The processing thread runs in
+/// parallel and can race ahead, attempting a write before the event loop
+/// notices. Without this, that write would propagate `NotConnected` up to
+/// `handle_keys` and panic the processing loop.
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn drop_if_sink_disconnected(
+    err: io::Error,
+    key: OsCode,
+    value: KeyValue,
+) -> Result<(), io::Error> {
+    if err.kind() == io::ErrorKind::NotConnected {
+        log::warn!("dropping {key:?} {value:?}: output backend unavailable (will recover)");
+        Ok(())
+    } else {
+        Err(err)
+    }
+}
+
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
@@ -363,11 +385,13 @@ impl KbdOut {
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
         if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
-            let result = self.write(event);
-            if result.is_ok() {
-                self.record_output_transition_after_write(key, value);
+            match self.write(event) {
+                Ok(()) => {
+                    self.record_output_transition_after_write(key, value);
+                    Ok(())
+                }
+                Err(e) => drop_if_sink_disconnected(e, key, value),
             }
-            result
         } else {
             log::debug!("couldn't write unrecognized {key:?}");
             Err(io::Error::other("OsCode not recognized!"))
@@ -375,11 +399,12 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        if let Ok(event) = InputEvent::try_from(KeyEvent {
-            value,
-            code: OsCode::from_u16(code as u16).unwrap(),
-        }) {
-            self.write(event)
+        let key = OsCode::from_u16(code as u16).unwrap();
+        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
+            match self.write(event) {
+                Ok(()) => Ok(()),
+                Err(e) => drop_if_sink_disconnected(e, key, value),
+            }
         } else {
             log::debug!("couldn't write unrecognized OsCode {code}");
             Err(io::Error::other("OsCode not recognized!"))
