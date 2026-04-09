@@ -45,6 +45,13 @@ impl Kanata {
             }
         }
 
+        // Startup is done. Stop decorating future `SIGABRT`s with the
+        // Karabiner setup hint — any abort from here on is almost
+        // certainly a dispatcher/CoreFoundation teardown race (e.g. the
+        // `mutex lock failed` one on kill-chord exit), for which the
+        // Karabiner hint would be actively misleading.
+        crate::oskbd::mark_karabiner_startup_complete();
+
         info!("keyboard grabbed, entering event processing loop");
 
         // Start the mouse event tap on a background thread if any mouse buttons
