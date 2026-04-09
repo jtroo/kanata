@@ -1478,12 +1478,15 @@ corresponding to up, down, left, right respectively:
 The remapping of mouse button and wheel events is effective on Linux, Windows, and macOS.
 
 NOTE:
-On Windows and macOS, the Kanata process must be restarted
+On Windows, the Kanata process must be restarted
 for it to begin or to stop handling mouse events;
 changing defsrc then live-reloading will not
 begin handling mouse events
 if defsrc previously did not have any mouse events in defsrc.
-On macOS, mouse button input requires Accessibility or Input Monitoring
+On macOS, live-reload can install the mouse event tap on the fly
+when a new config introduces mouse keys, but stopping the tap
+once installed still requires a restart.
+Mouse input on macOS requires Accessibility or Input Monitoring
 permission in System Settings > Privacy & Security.
 
 **Description**
