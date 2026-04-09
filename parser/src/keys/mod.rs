@@ -123,10 +123,13 @@ pub fn replace_custom_str_oscode_mapping(mapping: &HashMap<String, OsCode>) {
     local_mapping.shrink_to_fit();
 }
 
-/// Clears the stateful custom `String` to `OsCode` mapping in this module.
+/// Clears the stateful custom `String` to `OsCode` mapping in this module, restoring only the
+/// default mappings. Defaults are restored under the same lock as the clear so that concurrent
+/// `str_to_oscode` callers never observe a window in which the default mappings are absent.
 pub fn clear_custom_str_oscode_mapping() {
     let mut local_mapping = CUSTOM_STRS_TO_OSCODES.lock();
     local_mapping.clear();
+    add_default_str_osc_mappings(&mut local_mapping);
     local_mapping.shrink_to_fit();
 }
 
