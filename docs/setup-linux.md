@@ -137,7 +137,7 @@ Edit new file `/etc/init.d/kanata` as root, replacing \<username\> as appropriat
 #!/sbin/openrc-run
 
 command="/home/<username>/.cargo/bin/kanata"
-#command_args="--config=/home/<username>/.config/kanata/kanata.kbd"
+#command_args="--cfg=/home/<username>/.config/kanata/kanata.kbd"
 
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
