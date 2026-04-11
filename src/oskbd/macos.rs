@@ -77,6 +77,139 @@ static MOUSE_TAP_INSTALLED: AtomicBool = AtomicBool::new(false);
 static MOUSE_MOVEMENT_KEY: OnceLock<std::sync::Arc<parking_lot::Mutex<Option<OsCode>>>> =
     OnceLock::new();
 
+// --- Karabiner startup-abort diagnostics ---
+//
+// On macOS, kanata grabs keyboards via the
+// Karabiner-DriverKit-VirtualHIDDevice C++ library (the
+// `karabiner-driverkit` crate). That library spawns its own dispatcher
+// threads which talk to the `Karabiner-VirtualHIDDevice-Daemon` over
+// root-owned IPC files under
+// `/Library/Application Support/org.pqrs/tmp/rootonly/`. That directory
+// is mode 700 owned by root, so *the kanata process itself must run as
+// root* (via `sudo` or a launchd daemon) to reach the sockets inside.
+//
+// When that invariant is violated — the #1 real-world cause being
+// "forgot to `sudo`", followed by "driver not installed / system
+// extension not approved" — the C++ dispatcher threads hit an uncaught
+// `std::filesystem_error` on a `posix_stat` of the rootonly directory.
+// The exception bubbles up on a background thread that has no
+// try/catch wrapper, libc++abi calls `std::terminate`, and the process
+// aborts via `SIGABRT` with the cryptic message:
+//
+//     libc++abi: terminating due to uncaught exception of type
+//     std::__1::__fs::filesystem::filesystem_error: ...
+//
+// To turn that into something actionable, we install a `SIGABRT`
+// handler that — *after* libc++abi has printed its own message —
+// writes a static hint to stderr enumerating the likely causes in
+// order (not running as root, driver not approved, exclusive grabber),
+// then restores the default handler and re-raises so the abort still
+// propagates with the usual exit code / coredump behavior.
+//
+// The hint is gated on `KARABINER_STARTUP_PHASE`: it is only emitted
+// from handler-install time until `mark_karabiner_startup_complete()`
+// fires (right after `wait_until_ready` returns on the happy path).
+// Any `SIGABRT` after that is almost certainly an unrelated
+// dispatcher/CoreFoundation teardown race — for which the Karabiner
+// hint would be actively misleading — so the handler silently
+// re-raises in that phase. The kill-chord exit path avoids tripping
+// the teardown race at all by using `libc::_exit` instead of
+// `std::process::exit` (see `check_for_exit` in `src/kanata/mod.rs`).
+//
+// The handler body uses only async-signal-safe calls
+// (`AtomicBool::load`, `write(2)`, `signal`, `raise`).
+
+/// True while kanata is still in the Karabiner startup path — i.e. from
+/// the first call to `install_karabiner_abort_handler` until
+/// `mark_karabiner_startup_complete()` is called. The `SIGABRT` handler
+/// reads this to decide whether to emit the Karabiner hint: during
+/// startup, an uncaught exception is almost always a Karabiner setup
+/// issue and the hint is actionable; after startup (running normally or
+/// tearing down), it's typically a dispatcher/CoreFoundation teardown
+/// race and the hint would be misleading.
+static KARABINER_STARTUP_PHASE: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Signal that kanata has finished talking to the Karabiner daemon during
+/// startup and is running normally. After this, the `SIGABRT` handler will
+/// stop emitting the Karabiner hint. Idempotent.
+pub fn mark_karabiner_startup_complete() {
+    KARABINER_STARTUP_PHASE.store(false, std::sync::atomic::Ordering::Release);
+}
+
+extern "C" fn karabiner_sigabrt_handler(_sig: libc::c_int) {
+    // Only emit the hint during startup — see `KARABINER_STARTUP_PHASE`.
+    // `AtomicBool::load` compiles to an async-signal-safe plain load.
+    if !KARABINER_STARTUP_PHASE.load(std::sync::atomic::Ordering::Acquire) {
+        // Not in startup — restore default handler and re-raise without
+        // printing anything extra. The underlying libc++abi message
+        // (if any) has already been written to stderr by the time we
+        // get here.
+        unsafe {
+            libc::signal(libc::SIGABRT, libc::SIG_DFL);
+            libc::raise(libc::SIGABRT);
+        }
+        return;
+    }
+    // Async-signal-safe: only `write(2)` and `signal/raise`. Keep the
+    // message as a single static byte string — no formatting, no
+    // allocations.
+    const HINT: &[u8] = b"\n\
+        kanata: aborted while talking to the Karabiner virtual HID daemon.\n\
+        The most likely causes, in order:\n\
+          1) kanata is not running as root. The Karabiner virtual HID daemon\n\
+             exposes its IPC under `/Library/Application Support/org.pqrs/\n\
+             tmp/rootonly/`, which only root can access. Re-run kanata with\n\
+             `sudo`, or install it as a launchd daemon that runs as root.\n\
+          2) Karabiner-DriverKit-VirtualHIDDevice is not installed or its\n\
+             system extension has not been approved. Run\n\
+             `sudo /Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager forceActivate`,\n\
+             approve the driver in System Settings -> General -> Login Items\n\
+             & Extensions -> Driver Extensions if prompted, then re-run\n\
+             kanata. A reboot may be required after a prior `deactivate`.\n\
+          3) Another process is already grabbing your keyboard exclusively.\n\
+        \n";
+    // SAFETY: write(2) is async-signal-safe and takes a raw fd + buffer.
+    unsafe {
+        libc::write(
+            libc::STDERR_FILENO,
+            HINT.as_ptr() as *const libc::c_void,
+            HINT.len(),
+        );
+        // Restore default handler and re-raise so the abort propagates as
+        // usual (preserves exit code / coredump behavior).
+        libc::signal(libc::SIGABRT, libc::SIG_DFL);
+        libc::raise(libc::SIGABRT);
+    }
+}
+
+/// Install a `SIGABRT` handler that adds an actionable hint about
+/// Karabiner setup issues *after* libc++abi prints its own
+/// uncaught-exception message, and enter the "Karabiner startup phase"
+/// during which that hint is active. Idempotent and process-global; safe
+/// to call multiple times. See the module-level comment for the full
+/// rationale.
+fn install_karabiner_abort_handler() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static INSTALLED: AtomicBool = AtomicBool::new(false);
+    // Enter the startup phase unconditionally — even on a repeat call we
+    // want the hint active until `mark_karabiner_startup_complete` runs.
+    KARABINER_STARTUP_PHASE.store(true, Ordering::Release);
+    if INSTALLED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+    // SAFETY: signal(2) takes an fn pointer with the C ABI; the handler
+    // body only calls async-signal-safe functions. The two-step cast goes
+    // through `*const ()` to satisfy the `function_casts_as_integer` lint.
+    let handler_ptr = karabiner_sigabrt_handler as *const () as libc::sighandler_t;
+    unsafe {
+        libc::signal(libc::SIGABRT, handler_ptr);
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
     pub value: u64,
@@ -122,6 +255,15 @@ impl KbdIn {
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
     ) -> Result<Self, anyhow::Error> {
+        // Install the SIGABRT hint handler before touching the
+        // karabiner-driverkit C++ code, so any uncaught
+        // `std::filesystem_error` from the C++ dispatcher threads gets
+        // decorated with an actionable Karabiner-setup message after
+        // libc++abi's output. See the module-level comment block for the
+        // full rationale (tl;dr: most commonly "kanata is not running as
+        // root").
+        install_karabiner_abort_handler();
+
         if !driver_activated() {
             return Err(anyhow!(
                 "Karabiner-VirtualHIDDevice driver is not activated."
