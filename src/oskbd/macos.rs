@@ -210,6 +210,168 @@ fn install_karabiner_abort_handler() {
     }
 }
 
+// --- Console session lock / user-switch detection ---
+//
+// kanata on macOS must run as root, so its keyboard grab is global —
+// it stays active at the lock screen and during fast user switching.
+// That's hostile to anyone else at the keyboard, who is stuck with
+// the kanata user's remap (any layout swap, home-row mods, etc.)
+// when trying to type their own password or use their own session.
+// Flagged in issue #1743.
+//
+// Fix: poll `CGSessionCopyCurrentDictionary` from a small background
+// thread (~200ms) and toggle `SCREEN_GRAB_PAUSED` when either:
+//   - the screen is locked (`CGSSessionScreenIsLocked` boolean —
+//     undocumented but stable for many years; empirically the key
+//     is *absent* from the dict while unlocked and present-and-true
+//     while locked, so missing is treated as unlocked), OR
+//   - kanata's session is no longer on the console
+//     (`kCGSSessionOnConsoleKey` boolean is false; this one *is*
+//     documented in `<CoreGraphics/CGSession.h>`), i.e. another
+//     user has taken the console via fast user switching.
+//
+// Per `<CoreGraphics/CGSession.h>`, `CGSessionCopyCurrentDictionary`
+// returns the *caller's* session (not the active console session) or
+// NULL if the caller has no Quartz GUI session at all (e.g. root
+// LaunchDaemon started at boot before any login). That last case
+// matters: NULL must NOT pause, otherwise launchd-daemon installs
+// would never grab the keyboard. NULL therefore falls back to "do
+// not pause", preserving the historical behavior on that path.
+//
+// Caveat: `wait_key()` is a blocking `read(2)` on the pqrs pipe, so
+// the poller can't wake kanata mid-read. The new user's first
+// keystroke after a lock is still seized by IOKit and arrives through
+// the pipe; the event loop drops it (see `src/kanata/macos.rs`)
+// instead of running it through the layer. Net effect: one lost
+// keystroke, never a remapped one.
+//
+// We do *not* call `release_input_only` from the poller thread to
+// wake the read sooner. The C++ side joins the listener thread and
+// closes raw FDs without poisoning them, so racing a poller-side
+// release against the event-loop's release/regrab could close FDs
+// that another kanata thread has reused.
+
+use core_foundation::base::{CFType, TCFType};
+use core_foundation::boolean::CFBoolean;
+use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
+use core_foundation::string::CFString;
+
+// Not exposed by `core-graphics`. Symbol lives in `CoreGraphics.framework`
+// (re-exported from SkyLight) which `core-graphics` already links.
+// Returns a +1-retained dictionary or NULL.
+unsafe extern "C" {
+    fn CGSessionCopyCurrentDictionary() -> CFDictionaryRef;
+}
+
+fn copy_session_dict() -> Option<CFDictionary<CFString, CFType>> {
+    // SAFETY: CGSessionCopyCurrentDictionary returns NULL or a +1 retained
+    // CFDictionaryRef; wrap_under_create_rule takes ownership of that retain.
+    unsafe {
+        let raw = CGSessionCopyCurrentDictionary();
+        if raw.is_null() {
+            None
+        } else {
+            Some(CFDictionary::wrap_under_create_rule(raw))
+        }
+    }
+}
+
+/// True while kanata's keyboard grab should be paused — currently set
+/// when kanata's CGSession reports either `CGSSessionScreenIsLocked`
+/// or `kCGSSessionOnConsoleKey == false`.
+static SCREEN_GRAB_PAUSED: AtomicBool = AtomicBool::new(false);
+
+/// Opt-in flag, set from `--release-grab-on-lock`. When false (the
+/// default), `start_screen_lock_poller` is a no-op and
+/// `is_screen_grab_paused` always returns false, preserving the
+/// historical always-grab behavior for users who run kanata on a
+/// single-user Mac and want the remap active even at the lock screen.
+static RELEASE_GRAB_ON_LOCK_ENABLED: AtomicBool = AtomicBool::new(false);
+
+pub fn set_release_grab_on_lock(enabled: bool) {
+    RELEASE_GRAB_ON_LOCK_ENABLED.store(enabled, Ordering::Release);
+}
+
+pub fn is_screen_grab_paused() -> bool {
+    SCREEN_GRAB_PAUSED.load(Ordering::Acquire)
+}
+
+/// Look up a `CFBoolean`-valued key on the given session dictionary.
+/// Returns `None` if the key is missing or the value is the wrong type.
+fn dict_bool(dict: &CFDictionary<CFString, CFType>, key: &'static str) -> Option<bool> {
+    let key = CFString::from_static_string(key);
+    let value = dict.find(&key)?;
+    value.downcast::<CFBoolean>().map(bool::from)
+}
+
+/// Decide whether the keyboard grab should currently be paused, based
+/// on the live CGSession state for kanata's own session.
+fn should_pause_for_session() -> bool {
+    // No GUI session (launchd root daemon at boot) — preserve the
+    // historical "always grab" behavior. See module-level notes.
+    let Some(dict) = copy_session_dict() else {
+        return false;
+    };
+    if dict_bool(&dict, "CGSSessionScreenIsLocked").unwrap_or(false) {
+        return true;
+    }
+    // Missing OnConsole key (early-boot / loginwindow) → treat as
+    // still-on-console to avoid false pauses.
+    !dict_bool(&dict, "kCGSSessionOnConsoleKey").unwrap_or(true)
+}
+
+/// Spawn the screen-lock / user-switch poller thread once. The thread
+/// runs for the process lifetime, polling every 200ms. Idempotent.
+/// No-op unless `--release-grab-on-lock` was passed on the CLI.
+pub fn start_screen_lock_poller() {
+    if !RELEASE_GRAB_ON_LOCK_ENABLED.load(Ordering::Acquire) {
+        return;
+    }
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    if STARTED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+
+    // Seed the flag synchronously before any read happens, so a
+    // kanata started while the screen is already locked won't get a
+    // free 200ms grab window before the first poll iteration.
+    let initial_paused = should_pause_for_session();
+    SCREEN_GRAB_PAUSED.store(initial_paused, Ordering::Release);
+    log::info!(
+        "screen-lock poller: starting (initial state: {})",
+        if initial_paused { "paused" } else { "active" },
+    );
+
+    if let Err(e) = std::thread::Builder::new()
+        .name("screen-lock-poller".into())
+        .spawn(move || {
+            let mut last_paused = initial_paused;
+            loop {
+                let now_paused = should_pause_for_session();
+                if now_paused != last_paused {
+                    SCREEN_GRAB_PAUSED.store(now_paused, Ordering::Release);
+                    if now_paused {
+                        log::info!(
+                            "screen lock or user-switch detected — keyboard grab will pause on next event"
+                        );
+                    } else {
+                        log::info!(
+                            "console session restored — keyboard grab will resume"
+                        );
+                    }
+                    last_paused = now_paused;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(200));
+            }
+        })
+    {
+        log::warn!("failed to spawn screen-lock poller thread: {e}");
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
     pub value: u64,

@@ -74,12 +74,23 @@ impl Kanata {
             let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped, mmk);
         }
 
+        // Toggles `is_screen_grab_paused()` on lock / fast-user-switch.
+        // See `oskbd::start_screen_lock_poller` for the design notes.
+        crate::oskbd::start_screen_lock_poller();
+
         loop {
             // --- Event processing loop ---
             let needs_recovery = loop {
                 // Check output health before blocking on input
                 if !kanata.lock().kbd_out.output_ready() {
                     log::warn!("output backend unavailable — releasing input devices");
+                    break true;
+                }
+
+                if crate::oskbd::is_screen_grab_paused() {
+                    log::info!(
+                        "console session paused (lock/user-switch) — releasing input devices"
+                    );
                     break true;
                 }
 
@@ -92,6 +103,18 @@ impl Kanata {
                     }
                     Err(e) => return Err(anyhow!("failed read: {}", e)),
                 };
+
+                // Re-check after the blocking read: the lock may have
+                // landed while we were inside `wait_key`, in which case
+                // this event is the first keystroke from the new user
+                // and must be dropped, not remapped. See the caveat in
+                // `oskbd::macos`.
+                if crate::oskbd::is_screen_grab_paused() {
+                    log::info!(
+                        "console session paused (lock/user-switch) — dropping read event and releasing input devices"
+                    );
+                    break true;
+                }
 
                 let mut key_event = match KeyEvent::try_from(event) {
                     Ok(ev) => ev,
@@ -160,22 +183,28 @@ impl Kanata {
 
             info!(
                 "Input devices released. Keyboard is usable (without remapping). \
-                 Waiting for the output backend to recover..."
+                 Waiting for the output backend and console session to recover..."
             );
 
-            // --- Wait for the output backend to re-establish the connection ---
+            // Re-grab once both the sink is healthy and the session is
+            // unpaused. Sleep explicitly when only the sink is ready,
+            // since `wait_until_ready` returns instantly in that case.
             loop {
-                if kanata
+                let sink_ready = kanata
                     .lock()
                     .kbd_out
-                    .wait_until_ready(Some(Duration::from_millis(500)))
-                {
+                    .wait_until_ready(Some(Duration::from_millis(500)));
+                let session_ready = !crate::oskbd::is_screen_grab_paused();
+                if sink_ready && session_ready {
                     // Let the direct DriverKit backend finish its callback sequence
                     // before we re-seize input devices. Seizing too early can race
                     // with IOKit enumeration triggered by those callbacks.
                     std::thread::sleep(Duration::from_secs(1));
-                    info!("output backend recovered — re-grabbing input devices");
+                    info!("output backend and console session ready — re-grabbing input devices");
                     break;
+                }
+                if sink_ready && !session_ready {
+                    std::thread::sleep(Duration::from_millis(500));
                 }
             }
 

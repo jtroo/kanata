@@ -5467,6 +5467,24 @@ in case this is an issue impacting you.
 List keyboard names that can be used
 within defcfg and then exit.
 
+[[args-macos-release-grab-on-lock]]
+=== macOS only - Release grab on lock / user switch: `--release-grab-on-lock`
+
+By default, kanata's keyboard grab on macOS stays active even when
+the screen is locked or another user takes the console via fast user
+switching. This means anyone else at the keyboard (including you on
+the lock-screen prompt) types through your remap.
+
+Pass `--release-grab-on-lock` to make kanata poll its CGSession state
+and release the grab whenever the screen is locked
+(`CGSSessionScreenIsLocked`) or kanata's session loses the console
+(`kCGSSessionOnConsoleKey == false`). The grab is re-acquired once
+kanata's session is back on the console with the screen unlocked.
+
+This is useful on shared Macs where another user's lock-screen
+password or session should not be remapped. Off by default to
+preserve the historical always-grab behavior for single-user setups.
+
 == Advanced features[[advanced-features]]
 [[virtual-keys]]
 === Virtual keys
