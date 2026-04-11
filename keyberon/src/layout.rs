@@ -1258,6 +1258,20 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             .filter_map(State::keycode)
             .filter(move |kc| !keys_to_suppress_for_one_cycle.contains(kc))
     }
+
+    fn exclude_hold_or_timeout_from_history(coord: KCoord, history: &mut History<KCoord>) {
+        if let Some((i, _)) = history
+            .events
+            .iter()
+            .copied()
+            .enumerate()
+            .find(|(_i, ev)| *ev == coord)
+        {
+            history.ticks_since_occurrences.remove(i);
+            history.events.remove(i);
+        }
+    }
+
     fn waiting_into_hold(&mut self, idx: i8) -> CustomEvent<'a, T> {
         let waiting = if idx < 0 {
             self.waiting.as_ref()
@@ -1268,30 +1282,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             let hold = w.hold;
             let coord = w.coord;
 
-            let mut found_coord_in_history = false;
-            let mut idx_of_found_coord = 0;
-            self.historical_inputs_sans_holds_or_timeouts
-                .events
-                .retain(|input| {
-                    if found_coord_in_history {
-                        return true;
-                    }
-                    match *input == coord {
-                        false => {
-                            idx_of_found_coord += 1;
-                            true
-                        }
-                        true => {
-                            found_coord_in_history = true;
-                            false
-                        }
-                    }
-                });
-            if found_coord_in_history {
-                self.historical_inputs_sans_holds_or_timeouts
-                    .ticks_since_occurrences
-                    .remove(idx_of_found_coord);
-            }
+            Self::exclude_hold_or_timeout_from_history(
+                coord,
+                &mut self.historical_inputs_sans_holds_or_timeouts,
+            );
 
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
@@ -1425,30 +1419,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             let timeout_action = w.timeout_action;
             let coord = w.coord;
 
-            let mut found_coord_in_history = false;
-            let mut idx_of_found_coord = 0;
-            self.historical_inputs_sans_holds_or_timeouts
-                .events
-                .retain(|input| {
-                    if found_coord_in_history {
-                        return true;
-                    }
-                    match *input == coord {
-                        false => {
-                            idx_of_found_coord += 1;
-                            true
-                        }
-                        true => {
-                            found_coord_in_history = true;
-                            false
-                        }
-                    }
-                });
-            if found_coord_in_history {
-                self.historical_inputs_sans_holds_or_timeouts
-                    .ticks_since_occurrences
-                    .remove(idx_of_found_coord);
-            }
+            Self::exclude_hold_or_timeout_from_history(
+                coord,
+                &mut self.historical_inputs_sans_holds_or_timeouts,
+            );
 
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
