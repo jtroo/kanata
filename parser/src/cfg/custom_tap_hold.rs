@@ -294,8 +294,14 @@ pub(crate) fn custom_tap_hold_opposite_hand(
 }
 
 /// Like `custom_tap_hold_opposite_hand` but waits for the interrupting key's
-/// press+release before committing. This avoids misfires on fast same-hand
-/// rolls where keystrokes briefly overlap.
+/// press+release before committing to Hold. This avoids misfires on fast
+/// cross-hand overlaps where keystrokes briefly overlap.
+///
+/// The `-release` requirement only applies to opposite-hand and unknown-hand
+/// keys. Same-hand keys resolve immediately on press (no release needed),
+/// because requiring release would cause same-hand keys to be skipped when
+/// still held, allowing a later opposite-hand key+release to incorrectly
+/// trigger Hold.
 pub(crate) fn custom_tap_hold_opposite_hand_release(
     hand_map: &'static HandMap,
     same_hand: DecisionBehavior,
@@ -318,15 +324,14 @@ pub(crate) fn custom_tap_hold_opposite_hand_release(
                     continue;
                 }
 
-                // Wait for the interrupting key's release before deciding.
-                let release = Event::Release(i, j);
-                if !queued.clone().copied().any(|q| q.event() == release) {
-                    continue;
-                }
-
                 // Check neutral-keys first (takes precedence over defhands)
                 if let Some(osc) = OsCode::from_u16(j) {
                     if neutral_keys.contains(&osc) {
+                        // Neutral keys require release before deciding
+                        let release = Event::Release(i, j);
+                        if !queued.clone().copied().any(|q| q.event() == release) {
+                            continue;
+                        }
                         match neutral_behavior {
                             DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
                             DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
@@ -338,16 +343,29 @@ pub(crate) fn custom_tap_hold_opposite_hand_release(
                 let pressed_hand = hand_map.get(j);
 
                 match (waiting_hand, pressed_hand) {
-                    (Hand::Left, Hand::Right) | (Hand::Right, Hand::Left) => {
-                        return (Some(WaitingAction::Hold), false);
-                    }
+                    // Same hand: resolve immediately on press (no release needed).
+                    // This prevents same-hand keys from being skipped while held,
+                    // which would let a later opposite-hand release trigger Hold.
                     (Hand::Left, Hand::Left) | (Hand::Right, Hand::Right) => match same_hand {
                         DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
                         DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),
                         DecisionBehavior::Ignore => continue,
                     },
+                    // Opposite hand: require release before committing to Hold
+                    (Hand::Left, Hand::Right) | (Hand::Right, Hand::Left) => {
+                        let release = Event::Release(i, j);
+                        if !queued.clone().copied().any(|q| q.event() == release) {
+                            continue;
+                        }
+                        return (Some(WaitingAction::Hold), false);
+                    }
                     _ => {
-                        // At least one key is Neutral (not in defhands)
+                        // At least one key is Neutral (not in defhands):
+                        // require release before deciding
+                        let release = Event::Release(i, j);
+                        if !queued.clone().copied().any(|q| q.event() == release) {
+                            continue;
+                        }
                         match unknown_hand {
                             DecisionBehavior::Tap => return (Some(WaitingAction::Tap), false),
                             DecisionBehavior::Hold => return (Some(WaitingAction::Hold), false),

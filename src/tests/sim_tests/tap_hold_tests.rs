@@ -301,14 +301,14 @@ fn tap_hold_opposite_hand_release_same_hand_tap() {
          s j
         )
     ";
-    // Same-hand key pressed + released → tap
+    // Same-hand key pressed + released → tap (resolves on press, not release)
     let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:100").to_ascii();
-    assert_eq!("t:40ms dn:X t:6ms dn:S t:1ms up:S", result);
+    assert_eq!("t:20ms dn:X t:6ms dn:S t:14ms up:S", result);
 
-    // Same-hand key pressed but NOT released → no decision (waits for release)
-    // Eventually times out → timeout action (tap by default)
+    // Same-hand key pressed but NOT released → tap immediately on press
+    // (same-hand doesn't require release, only opposite-hand does)
     let result = simulate(cfg, "d:a t:20 d:s t:250").to_ascii();
-    assert_eq!("t:200ms dn:X t:1ms dn:S", result);
+    assert_eq!("t:20ms dn:X t:6ms dn:S", result);
 }
 
 #[test]
@@ -400,7 +400,7 @@ fn tap_hold_opposite_hand_release_with_require_prior_idle() {
 
 #[test]
 fn tap_hold_opposite_hand_release_same_hand_hold() {
-    // (same-hand hold) should trigger hold when same-hand key is pressed+released
+    // (same-hand hold) should trigger hold immediately on press (no release needed)
     let cfg = "
         (defhands
           (left  a s d f)
@@ -412,7 +412,33 @@ fn tap_hold_opposite_hand_release_same_hand_hold() {
         )
     ";
     let result = simulate(cfg, "d:a t:20 d:s t:20 u:s t:100").to_ascii();
-    assert_eq!("t:40ms dn:Y t:6ms dn:S t:1ms up:S", result);
+    assert_eq!("t:20ms dn:Y t:6ms dn:S t:14ms up:S", result);
+}
+
+#[test]
+fn tap_hold_opposite_hand_release_same_hand_then_opposite() {
+    // Regression test: pressing two same-hand HRM keys together then an
+    // opposite-hand key should resolve the first as tap (via same-hand),
+    // not as hold (via opposite-hand release).
+    // Bug: the -release variant required ALL keys to have press+release before
+    // considering them, so same-hand keys were skipped if still held, and the
+    // opposite-hand key's release incorrectly triggered Hold.
+    let cfg = "
+        (defcfg concurrent-tap-hold yes process-unmapped-keys yes)
+        (defhands
+          (left  a s d f)
+          (right j k l ;))
+        (defsrc d f j)
+        (deflayer l1
+         (tap-hold-opposite-hand-release 500 d lsft (same-hand tap) (timeout tap))
+         (tap-hold-opposite-hand-release 500 f lctl (same-hand tap) (timeout tap))
+         j
+        )
+    ";
+    // f↓ d↓ j↓ j↑ → f sees d (same-hand) → tap immediately; d sees j (opposite+release) → hold
+    // Result: f (tap) at t=5, then lsft+j when j is released at t=45
+    let result = simulate(cfg, "d:f t:5 d:d t:20 d:j t:20 u:j t:100").to_ascii();
+    assert_eq!("t:5ms dn:F t:40ms dn:LShift t:6ms dn:J t:1ms up:J", result);
 }
 
 #[test]
