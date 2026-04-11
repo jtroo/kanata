@@ -364,13 +364,24 @@ impl<'a, T> ChordsV2<'a, T> {
     }
 
     fn process_presses(&mut self, active_layer: u16) {
+        #[derive(Copy, Clone, Debug)]
+        struct PressWithTime {
+            key: u16,
+            since: u16,
+        }
+
         let mut presses = HVec::<u16, SMOL_Q_LEN>::new();
+        let mut presses_with_time = HVec::<PressWithTime, SMOL_Q_LEN>::new();
         let mut relevant_release_found = false;
         for qd in self.queue.iter() {
             match qd.event {
                 Event::Press(_, j) => {
                     let overflowed = presses.push(j);
                     debug_assert!(overflowed.is_ok(), "too many presses in queue");
+                    let _ = presses_with_time.push(PressWithTime {
+                        key: j,
+                        since: qd.since,
+                    });
                 }
                 Event::Release(_, j) => {
                     if presses.contains(&j) {
@@ -397,24 +408,25 @@ impl<'a, T> ChordsV2<'a, T> {
         // Prioritization of chord activation:
         // 1. Timed out chord
         // 2. Longer chord
-        let mut accumulated_presses = HVec::<u16, SMOL_Q_LEN>::new();
+        let mut accumulated_presses = HVec::<PressWithTime, SMOL_Q_LEN>::new();
         let mut chord_candidates = HVec::<&ChordV2<'a, T>, SMOL_Q_LEN>::new();
         let mut prev_count = usize::MAX;
         let mut min_timeout;
 
-        assert!(!presses.is_empty());
+        assert!(!presses_with_time.is_empty());
         let since = self.queue.iter().next().unwrap().since;
 
-        for press in presses.iter().copied() {
+        for press in presses_with_time.iter().copied() {
             min_timeout = u16::MAX;
-            accumulated_presses
-                .push(press)
-                .expect("accpresses same len as presses");
+            let _ = accumulated_presses.push(press);
 
             let count_possible = if prev_count == chord_candidates.len() {
                 // optimization: no longer need to check the whole list.
                 // chord_candidates will keep getting shrunk.
-                chord_candidates.retain(|chc| chc.participating_keys.contains(&press));
+                chord_candidates.retain(|chc| {
+                    chc.participating_keys.contains(&press.key)
+                        && accumulated_presses[0].since - press.since <= chc.pending_duration
+                });
                 for chc in chord_candidates.iter() {
                     if chc.pending_duration > since {
                         min_timeout = std::cmp::min(min_timeout, chc.pending_duration);
@@ -430,7 +442,8 @@ impl<'a, T> ChordsV2<'a, T> {
                     .filter(|pch| {
                         if accumulated_presses
                             .iter()
-                            .all(|acp| pch.participating_keys.contains(acp))
+                            .all(|acp| pch.participating_keys.contains(&acp.key))
+                            && accumulated_presses[0].since - press.since <= pch.pending_duration
                         {
                             // If full, can't run the optimization above, but not fatal.
                             // Can ignore the overflow.
@@ -455,7 +468,7 @@ impl<'a, T> ChordsV2<'a, T> {
                     if cch
                         .participating_keys
                         .iter()
-                        .all(|pk| accumulated_presses.contains(pk))
+                        .all(|pk| accumulated_presses.iter().any(|ap| ap.key == *pk))
                     {
                         let ach = get_active_chord(cch, since, coord, relevant_release_found);
                         let overflow = self.active_chords.push(ach);
@@ -480,11 +493,10 @@ impl<'a, T> ChordsV2<'a, T> {
                             |pch| {
                                 accumulated_presses
                                     .iter()
-                                    .all(|acp| pch.participating_keys.contains(acp))
-                                    && pch
-                                        .participating_keys
-                                        .iter()
-                                        .all(|pk| accumulated_presses.contains(pk))
+                                    .all(|acp| pch.participating_keys.contains(&acp.key))
+                                    && pch.participating_keys.iter().all(|pk| {
+                                        accumulated_presses.iter().any(|ap| ap.key == *pk)
+                                    })
                             },
                         );
                     match completed_chord {
@@ -509,40 +521,39 @@ impl<'a, T> ChordsV2<'a, T> {
         if self.ticks_until_next_state_change == 0 || relevant_release_found {
             // Find a chord that matches exactly and activate that,
             // otherwise clear the input queue.
-            let completed_chord = if chord_candidates.is_full() {
-                possible_chords
-                    .chords
-                    .iter()
-                    .filter(|pch| !pch.disabled_layers.contains(&active_layer))
-                    .find(
-                        // Ensure the two lists have the same set of keys
-                        |pch| {
-                            accumulated_presses
-                                .iter()
-                                .all(|acp| pch.participating_keys.contains(acp))
-                                && pch
-                                    .participating_keys
+            let completed_chord =
+                if chord_candidates.is_full() {
+                    possible_chords
+                        .chords
+                        .iter()
+                        .filter(|pch| !pch.disabled_layers.contains(&active_layer))
+                        .find(
+                            // Ensure the two lists have the same set of keys
+                            |pch| {
+                                accumulated_presses
                                     .iter()
-                                    .all(|pk| accumulated_presses.contains(pk))
-                        },
-                    )
-            } else {
-                chord_candidates
-                    .iter()
-                    .filter(|pch| !pch.disabled_layers.contains(&active_layer))
-                    .find(
-                        // Ensure the two lists have the same set of keys
-                        |pch| {
-                            accumulated_presses
-                                .iter()
-                                .all(|acp| pch.participating_keys.contains(acp))
-                                && pch
-                                    .participating_keys
+                                    .all(|acp| pch.participating_keys.contains(&acp.key))
+                                    && pch.participating_keys.iter().all(|pk| {
+                                        accumulated_presses.iter().any(|ap| ap.key == *pk)
+                                    })
+                            },
+                        )
+                } else {
+                    chord_candidates
+                        .iter()
+                        .filter(|pch| !pch.disabled_layers.contains(&active_layer))
+                        .find(
+                            // Ensure the two lists have the same set of keys
+                            |pch| {
+                                accumulated_presses
                                     .iter()
-                                    .all(|pk| accumulated_presses.contains(pk))
-                        },
-                    )
-            };
+                                    .all(|acp| pch.participating_keys.contains(&acp.key))
+                                    && pch.participating_keys.iter().all(|pk| {
+                                        accumulated_presses.iter().any(|ap| ap.key == *pk)
+                                    })
+                            },
+                        )
+                };
             match completed_chord {
                 Some(cch) => {
                     let ach =
@@ -559,7 +570,7 @@ impl<'a, T> ChordsV2<'a, T> {
         // Clear presses from the queue if they were consumed by a chord.
         if self.active_chords.len() > prev_active_chords_len {
             self.queue.retain(|qd| match qd.event {
-                Event::Press(_, j) => !accumulated_presses.contains(&j),
+                Event::Press(_, j) => !accumulated_presses.iter().any(|ap| ap.key == j),
                 _ => true,
             });
         }

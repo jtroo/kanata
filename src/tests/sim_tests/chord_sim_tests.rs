@@ -105,6 +105,25 @@ fn sim_chord_overlapping_timeout_v2() {
 }
 
 #[test]
+fn sim_chord_pending_can_still_evaluate_to_individual() {
+    let result = simulate(
+        "
+(defcfg process-unmapped-keys yes
+ concurrent-tap-hold yes)
+(defsrc e f j)
+(deflayermap (layer1))
+(defchordsv2
+ (e f) lctl 5 all-released ()
+ (e f j) lsft 10 all-released ()
+)
+        ",
+        "d:e t:7 d:f t:15",
+    )
+    .to_ascii();
+    assert_eq!("t:11ms dn:E t:1ms dn:F", result);
+}
+
+#[test]
 fn sim_chord_overlapping_release() {
     let result = simulate(
         SIMPLE_OVERLAPPING_CHORD_CFG,
