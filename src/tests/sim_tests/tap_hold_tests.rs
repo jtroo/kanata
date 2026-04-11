@@ -218,6 +218,43 @@ fn tap_hold_keys_with_require_prior_idle() {
 }
 
 #[test]
+fn tap_hold_keys_with_multiple_mods_require_prior_idle() {
+    let cfg = "
+        (defsrc)
+        (deflayermap (base)
+         a (tap-hold-keys 100 100 a b
+           (require-prior-idle 200))
+         b (tap-hold-keys 100 100 m n
+           (require-prior-idle 200))
+         c (tap-hold-keys 100 100 x y
+           (require-prior-idle 200))
+        )
+    ";
+    // Quick typing should resolve as tap due to require-prior-idle
+    let result = simulate(cfg, "d:a t:10 d:b t:10 d:c t:310").to_ascii();
+    assert_eq!("t:100ms dn:B t:101ms dn:N t:101ms dn:Y", result);
+}
+
+#[test]
+fn tap_hold_keys_with_multiple_mods_require_prior_idle_concerrent() {
+    let cfg = "
+        (defcfg concurrent-tap-hold yes)
+        (defsrc)
+        (deflayermap (base)
+         a (tap-hold-keys 100 100 a b
+           (require-prior-idle 200))
+         b (tap-hold-keys 100 100 m n
+           (require-prior-idle 200))
+         c (tap-hold-keys 100 100 x y
+           (require-prior-idle 200))
+        )
+    ";
+    // Quick typing should resolve as tap due to require-prior-idle
+    let result = simulate(cfg, "d:a t:10 d:b t:10 d:c t:130").to_ascii();
+    assert_eq!("t:99ms dn:B t:10ms dn:N t:10ms dn:Y", result);
+}
+
+#[test]
 fn tap_hold_keys_no_options() {
     // With no key list options, tap-hold-keys behaves like tap-hold-release (PermissiveHold).
     let cfg = "

@@ -120,6 +120,14 @@ where
     pub rpt_action: Option<&'a Action<'a, T>>,
     pub historical_keys: History<KeyCode>,
     pub historical_inputs: History<KCoord>,
+    /// Historical inputs where tap-holds that resolve to a hold or timeout are deleted.
+    /// Used for prior-idle calculations.
+    /// Ideally whether timeout behaviour is excluded would be configurable such that
+    /// timeout activations are only excluded when the timeout would resolve
+    /// to the same action as hold.
+    /// For now avoid that complexity, such behaviour can be added later via a flag on the
+    /// TapHoldConfiguration without much concern if it is desired.
+    pub historical_inputs_sans_holds_or_timeouts: History<KCoord>,
     pub quick_tap_hold_timeout: bool,
     /// If a different key was pressed within this many ticks before a HoldTap key,
     /// immediately resolve as tap (typing streak detection). 0 = disabled.
@@ -137,12 +145,13 @@ where
 
 pub use crate::tap_hold_tracker::{HoldActivatedInfo, TapActivatedInfo};
 
+#[derive(Debug)]
 pub struct History<T> {
     events: ArrayDeque<T, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
     ticks_since_occurrences: ArrayDeque<u16, HISTORICAL_EVENT_LEN, arraydeque::behavior::Wrapping>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct HistoricalEvent<T> {
     pub event: T,
     pub ticks_since_occurrence: u16,
@@ -1217,6 +1226,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             rpt_action: None,
             historical_keys: History::new(),
             historical_inputs: History::new(),
+            historical_inputs_sans_holds_or_timeouts: History::new(),
             rpt_multikey_key_buffer: unsafe { MultiKeyBuffer::new() },
             quick_tap_hold_timeout: false,
             tap_hold_require_prior_idle: 0,
@@ -1257,6 +1267,32 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if let Some(w) = waiting {
             let hold = w.hold;
             let coord = w.coord;
+
+            let mut found_coord_in_history = false;
+            let mut idx_of_found_coord = 0;
+            self.historical_inputs_sans_holds_or_timeouts
+                .events
+                .retain(|input| {
+                    if found_coord_in_history {
+                        return true;
+                    }
+                    match *input == coord {
+                        false => {
+                            idx_of_found_coord += 1;
+                            true
+                        }
+                        true => {
+                            found_coord_in_history = true;
+                            false
+                        }
+                    }
+                });
+            if found_coord_in_history {
+                self.historical_inputs_sans_holds_or_timeouts
+                    .ticks_since_occurrences
+                    .remove(idx_of_found_coord);
+            }
+
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
@@ -1388,6 +1424,32 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         if let Some(w) = waiting {
             let timeout_action = w.timeout_action;
             let coord = w.coord;
+
+            let mut found_coord_in_history = false;
+            let mut idx_of_found_coord = 0;
+            self.historical_inputs_sans_holds_or_timeouts
+                .events
+                .retain(|input| {
+                    if found_coord_in_history {
+                        return true;
+                    }
+                    match *input == coord {
+                        false => {
+                            idx_of_found_coord += 1;
+                            true
+                        }
+                        true => {
+                            found_coord_in_history = true;
+                            false
+                        }
+                    }
+                });
+            if found_coord_in_history {
+                self.historical_inputs_sans_holds_or_timeouts
+                    .ticks_since_occurrences
+                    .remove(idx_of_found_coord);
+            }
+
             let delay = match w.config {
                 WaitingConfig::HoldTap(..) | WaitingConfig::Chord(_) => w.delay + w.ticks,
                 WaitingConfig::TapDance(_) => 0,
@@ -1471,6 +1533,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
         self.historical_keys.tick_hist();
         self.historical_inputs.tick_hist();
+        self.historical_inputs_sans_holds_or_timeouts.tick_hist();
 
         let mut custom = CustomEvent::NoEvent;
         if let Some(released_keys) = self.oneshot.tick_osh() {
@@ -1776,6 +1839,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     pub fn event(&mut self, event: Event) {
         if let Event::Press(x, y) = event {
             self.historical_inputs.push_front((x, y));
+            self.historical_inputs_sans_holds_or_timeouts
+                .push_front((x, y));
         }
         if let Some(overflow) = if let Some(ch) = self.chords_v2.as_mut() {
             ch.push_back_chv2(event.into())
@@ -1794,6 +1859,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
     pub fn event_to_front(&mut self, event: Event) {
         if let Event::Press(x, y) = event {
             self.historical_inputs.push_front((x, y));
+            self.historical_inputs_sans_holds_or_timeouts
+                .push_front((x, y));
         }
         if let Some(overflow) = self.queue.push_front(event.into()) {
             for i in -1..(EXTRA_WAITING_LEN as i8) {
@@ -1950,9 +2017,22 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let idle_threshold = require_prior_idle.unwrap_or(self.tap_hold_require_prior_idle);
                 if idle_threshold > 0 {
                     let prior_idle_tap = self
-                        .historical_inputs
+                        .historical_inputs_sans_holds_or_timeouts
                         .iter_hevents()
-                        .find(|prior| prior.event.0 == REAL_KEY_ROW && prior.event != coord)
+                        .find(|prior| {
+                            prior.event.0 == REAL_KEY_ROW
+                              // Disregard this same press event
+                              && prior.event != coord
+                              // Disregard any presses that are actually still in the queue and
+                              // unresolved.
+                              && !self.queue.iter().any(|q| {
+                                  q.since == prior.ticks_since_occurrence
+                                  && match q.event {
+                                      Event::Press(0, j) => j == prior.event.1,
+                                      _ => false
+                                  }
+                              })
+                        })
                         .is_some_and(|prior| prior.ticks_since_occurrence <= idle_threshold);
                     if prior_idle_tap {
                         let custom = self.do_action(
@@ -2390,7 +2470,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 while let Some(Some((coord, delay, action, layer_stack))) = action_queue.pop_front()
                 {
                     custom.update(self.do_action(
-                        dbg!(action),
+                        action,
                         coord,
                         delay,
                         is_oneshot,
