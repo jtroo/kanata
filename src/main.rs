@@ -138,6 +138,9 @@ mod cli {
             std::sync::atomic::Ordering::SeqCst,
         );
 
+        #[cfg(target_os = "macos")]
+        oskbd::set_release_grab_on_lock(args.release_grab_on_lock);
+
         Ok((
             ValidatedArgs {
                 paths: cfg_paths,
