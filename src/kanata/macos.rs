@@ -57,9 +57,14 @@ impl Kanata {
         // `do_live_reload`). The tap callback re-reads `MAPPED_KEYS` per event,
         // so reloads that change *which* mouse keys are mapped also take
         // effect without restart.
+        //
+        // Clone the mouse_movement_key Arc *before* locking MAPPED_KEYS to keep
+        // the project-wide lock order `kanata -> MAPPED_KEYS`. Reversing it here
+        // would create a new ordering edge with the rest of this file.
         {
+            let mmk = kanata.lock().mouse_movement_key.clone();
             let mapped = MAPPED_KEYS.lock();
-            let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped);
+            let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped, mmk);
         }
 
         loop {

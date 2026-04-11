@@ -160,6 +160,7 @@ pub struct CfgOptions {
         all(target_os = "windows", feature = "interception_driver"),
         target_os = "linux",
         target_os = "android",
+        target_os = "macos",
         target_os = "unknown"
     ))]
     pub mouse_movement_key: Option<OsCode>,
@@ -207,6 +208,7 @@ impl Default for CfgOptions {
                 all(target_os = "windows", feature = "interception_driver"),
                 target_os = "linux",
                 target_os = "android",
+                target_os = "macos",
                 target_os = "unknown"
             ))]
             mouse_movement_key: None,
@@ -906,6 +908,7 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             all(target_os = "windows", feature = "interception_driver"),
                             target_os = "linux",
                             target_os = "android",
+                            target_os = "macos",
                             target_os = "unknown"
                         ))]
                         {

@@ -320,9 +320,10 @@ pub struct Kanata {
         all(target_os = "windows", feature = "interception_driver"),
         target_os = "linux",
         target_os = "android",
+        target_os = "macos",
         target_os = "unknown"
     ))]
-    mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    pub(crate) mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
     /// Time when kanata started (for uptime tracking)
     #[cfg(feature = "tcp_server")]
     start_time: web_time::Instant,
@@ -544,6 +545,7 @@ impl Kanata {
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
                 any(target_os = "linux", target_os = "android"),
+                target_os = "macos",
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
@@ -695,6 +697,7 @@ impl Kanata {
                 all(target_os = "windows", feature = "interception_driver"),
                 target_os = "linux",
                 target_os = "android",
+                target_os = "macos",
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
@@ -778,8 +781,9 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
-        #[cfg(target_os = "macos")]
-        crate::oskbd::ensure_mouse_listener_installed_after_reload();
+        // The macOS mouse-tap reload hook is invoked further down, *after* the
+        // `mouse_movement_key` mutate, so its install gate sees fresh state
+        // for both `MAPPED_KEYS` and `mouse_movement_key`.
         log::info!("Live reload successful");
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
@@ -808,6 +812,7 @@ impl Kanata {
             all(target_os = "windows", feature = "interception_driver"),
             target_os = "linux",
             target_os = "android",
+            target_os = "macos",
             target_os = "unknown"
         ))]
         {
@@ -823,6 +828,9 @@ impl Kanata {
             }
 
             *self.mouse_movement_key.lock() = cfg.options.mouse_movement_key;
+
+            #[cfg(target_os = "macos")]
+            crate::oskbd::ensure_mouse_listener_installed_after_reload();
         }
 
         PRESSED_KEYS.lock().clear();

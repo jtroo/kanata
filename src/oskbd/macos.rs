@@ -55,11 +55,27 @@ const MOUSE_OSCODES: [OsCode; 9] = [
 /// later live reload without needing the original `event_loop` context.
 static MOUSE_TAP_TX: OnceLock<Sender<KeyEvent>> = OnceLock::new();
 
-/// Tracks whether the CGEventTap thread is currently running. Claimed via
-/// `compare_exchange` to make installation idempotent across concurrent
-/// reloads. Reset to `false` if `CGEventTap::new` fails so a future reload
-/// (e.g. after the user grants Accessibility permission) can retry.
+/// Tracks whether `start_mouse_listener` has *claimed* the install slot —
+/// i.e. promised to spawn a thread that will create and enable a CGEventTap.
+/// Claimed via `compare_exchange` *before* `thread::spawn` so a concurrent
+/// live reload cannot race in and install a second tap during the brief
+/// window before the spawned thread reaches `tap.enable()`. Reset to `false`
+/// if `CGEventTap::new` fails, so a future reload (e.g. after the user grants
+/// Accessibility permission) can retry.
+///
+/// Note that "claimed" is slightly stronger than "currently capturing
+/// events": there is a sub-millisecond gap between the claim and
+/// `tap.enable()` during which no events flow yet. Reload callers
+/// short-circuit in that gap, which is correct because the spawned thread
+/// will deliver the working tap regardless.
 static MOUSE_TAP_INSTALLED: AtomicBool = AtomicBool::new(false);
+
+/// Stashed by the first `start_mouse_listener` call so the CGEventTap callback
+/// can read the live `mouse-movement-key` setting on every cursor movement
+/// event. The Arc points to the same `parking_lot::Mutex` that the live-reload
+/// path updates, so changes take effect with no extra plumbing.
+static MOUSE_MOVEMENT_KEY: OnceLock<std::sync::Arc<parking_lot::Mutex<Option<OsCode>>>> =
+    OnceLock::new();
 
 #[derive(Debug, Clone, Copy)]
 pub struct InputEvent {
@@ -721,32 +737,61 @@ fn scroll_event_to_key_event(event: &CGEvent) -> Option<KeyEvent> {
     })
 }
 
-/// Start a CGEventTap on a background thread to intercept mouse button events.
-/// macOS equivalent of the Windows mouse hook in `windows/llhook.rs`.
+/// Start a CGEventTap on a background thread to intercept mouse button events
+/// and (optionally) cursor movement events. macOS equivalent of the Windows
+/// mouse hook in `windows/llhook.rs` plus the cursor-movement branch of the
+/// Linux event loop.
 ///
 /// Mapped buttons are suppressed and forwarded to the processing channel;
-/// unmapped buttons pass through. Only installed if the config has mouse
-/// buttons in defsrc.
+/// unmapped buttons pass through. If `mouse_movement_key` is `Some`, every
+/// cursor movement (including drags) sends a synthetic `Tap` of the configured
+/// `OsCode` on the channel without suppressing the underlying movement event.
+///
+/// Only installed if the config has mouse buttons in defsrc OR
+/// `mouse-movement-key` is configured.
 ///
 /// Requires Accessibility or Input Monitoring permission.
 pub fn start_mouse_listener(
     tx: Sender<KeyEvent>,
     mapped_keys: &MappedKeys,
+    mouse_movement_key: std::sync::Arc<parking_lot::Mutex<Option<OsCode>>>,
 ) -> Option<std::thread::JoinHandle<()>> {
-    // Stash the tx unconditionally so a later live reload that introduces
-    // mouse keys can install the tap via
-    // `ensure_mouse_listener_installed_after_reload` without needing the
-    // original `event_loop` context.
-    let _ = MOUSE_TAP_TX.set(tx.clone());
+    // Stash both unconditionally so the reload helper always has them, even
+    // if this initial call bails on the install gate. `OnceLock::set` is a
+    // no-op on subsequent calls — we rely on the single-process,
+    // single-Kanata assumption: the inner `parking_lot::Mutex` is shared with
+    // `do_live_reload`, so reloads mutate the *value*, never replace the
+    // Arc. The `debug_assert!` surfaces accidental violations in test builds.
+    let tx_was_unset = MOUSE_TAP_TX.set(tx.clone()).is_ok();
+    let _ = MOUSE_MOVEMENT_KEY.set(mouse_movement_key.clone());
+    debug_assert!(
+        tx_was_unset
+            || std::sync::Arc::ptr_eq(
+                MOUSE_MOVEMENT_KEY
+                    .get()
+                    .expect("set above or already present"),
+                &mouse_movement_key,
+            ),
+        "start_mouse_listener called twice with a different mouse_movement_key Arc — \
+         the previously stashed Arc would be silently kept"
+    );
 
-    if !MOUSE_OSCODES.iter().any(|c| mapped_keys.contains(c)) {
-        log::info!("No mouse buttons or wheel in defsrc. Not installing mouse event tap.");
+    let has_mouse_keys = MOUSE_OSCODES.iter().any(|c| mapped_keys.contains(c));
+    let has_movement_key = mouse_movement_key.lock().is_some();
+    if !has_mouse_keys && !has_movement_key {
+        log::info!(
+            "No mouse buttons/wheel in defsrc and no mouse-movement-key configured. \
+             Not installing mouse event tap."
+        );
         return None;
     }
 
-    // Claim the install slot. If another thread already installed the tap,
-    // bail out — the existing tap reads `MAPPED_KEYS` live so it already
-    // covers any newly mapped mouse keys.
+    // Claim the install slot atomically *before* spawning. Closes the race
+    // where a live reload could observe `MOUSE_TAP_INSTALLED == false` between
+    // the spawn here and the spawned thread's `tap.enable()`, and try to
+    // install a second tap. If the claim fails, an installation is already in
+    // progress (or completed) — the running tap reads both globals live, so
+    // this caller has nothing to do.
     if MOUSE_TAP_INSTALLED
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
         .is_err()
@@ -765,6 +810,10 @@ pub fn start_mouse_listener(
                 CGEventType::OtherMouseDown,
                 CGEventType::OtherMouseUp,
                 CGEventType::ScrollWheel,
+                CGEventType::MouseMoved,
+                CGEventType::LeftMouseDragged,
+                CGEventType::RightMouseDragged,
+                CGEventType::OtherMouseDragged,
             ];
 
             let tap = match CGEventTap::new(
@@ -775,6 +824,38 @@ pub fn start_mouse_listener(
                 // Callback receives &CGEvent; return Some(clone) to pass through,
                 // None to suppress the event.
                 move |_proxy, event_type, event| {
+                    // Cursor movement (incl. drags while a button is held).
+                    // Always pass through — never suppress, or the cursor freezes.
+                    if matches!(
+                        event_type,
+                        CGEventType::MouseMoved
+                            | CGEventType::LeftMouseDragged
+                            | CGEventType::RightMouseDragged
+                            | CGEventType::OtherMouseDragged
+                    ) {
+                        // The Arc is stashed before this tap is created, so
+                        // `get()` is `Some` in practice. Fall back to a plain
+                        // pass-through if not, rather than panicking on the
+                        // hot path.
+                        let mmk_slot = match MOUSE_MOVEMENT_KEY.get() {
+                            Some(slot) => slot,
+                            None => return Some(event.clone()),
+                        };
+                        if let Some(code) = *mmk_slot.lock() {
+                            let fake = KeyEvent {
+                                code,
+                                value: KeyValue::Tap,
+                            };
+                            if let Err(e) = tx.try_send(fake) {
+                                // Drops are expected under high movement rates;
+                                // the user only needs one tap to refresh their
+                                // hold timer, so this is not user-visible.
+                                log::trace!("mouse tap (movement): drop synthetic tap: {e}");
+                            }
+                        }
+                        return Some(event.clone());
+                    }
+
                     if matches!(event_type, CGEventType::ScrollWheel) {
                         let Some(key_event) = scroll_event_to_key_event(event) else {
                             return Some(event.clone());
@@ -852,6 +933,8 @@ pub fn start_mouse_listener(
             let mode = unsafe { kCFRunLoopCommonModes };
             CFRunLoop::get_current().add_source(&loop_source, mode);
             tap.enable();
+            // MOUSE_TAP_INSTALLED was already set by the caller via
+            // compare_exchange before this thread was spawned.
             log::info!("Mouse event tap installed and active.");
             CFRunLoop::run_current();
         })
@@ -860,22 +943,25 @@ pub fn start_mouse_listener(
     Some(handle)
 }
 
-/// Install the mouse event tap if a live reload introduced mouse keys to
-/// `MAPPED_KEYS` and the tap isn't already running. Idempotent: if the tap is
-/// already running, the existing callback reads `MAPPED_KEYS` live so newly
-/// mapped mouse keys take effect without reinstall.
-///
-/// Has no effect if the initial `start_mouse_listener` call hasn't run yet
-/// (which would mean `event_loop` hasn't started — shouldn't happen, but
-/// defended against).
+/// Re-attempt installing the mouse event tap after a live reload. The running
+/// tap callback already reads `MAPPED_KEYS` and `MOUSE_MOVEMENT_KEY` live, so
+/// if the tap is already up there is nothing to do — but if a reload introduces
+/// the first mouse key in defsrc or the first `mouse-movement-key` value, the
+/// startup-time install gate may have skipped installation, and we need to
+/// install now.
 pub fn ensure_mouse_listener_installed_after_reload() {
     if MOUSE_TAP_INSTALLED.load(Ordering::Acquire) {
+        // Existing tap reads both MAPPED_KEYS and MOUSE_MOVEMENT_KEY live.
         return;
     }
     let Some(tx) = MOUSE_TAP_TX.get().cloned() else {
         log::debug!("mouse tap reload hook: no tx stashed yet, skipping");
         return;
     };
+    let Some(mmk) = MOUSE_MOVEMENT_KEY.get().cloned() else {
+        log::debug!("mouse tap reload hook: no mouse_movement_key stashed yet, skipping");
+        return;
+    };
     let mapped = crate::kanata::MAPPED_KEYS.lock();
-    let _ = start_mouse_listener(tx, &mapped);
+    let _ = start_mouse_listener(tx, &mapped, mmk);
 }
