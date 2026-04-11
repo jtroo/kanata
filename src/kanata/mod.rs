@@ -2639,11 +2639,30 @@ fn check_for_exit(_event: &KeyEvent) {
                 // from a thread that has no access to the main one, so
                 // can't stop main thread's dispatch
             }
-            // macOS: Direct exit (no special signal handling)
+            // macOS: use `libc::_exit` instead of `std::process::exit` to
+            // skip C++ static destructors. The underlying pqrs shared
+            // dispatcher (used by the karabiner-driverkit crate) has a
+            // teardown race where its destructor kills its own worker
+            // threads while they still hold a `std::mutex`, which then
+            // throws `std::system_error: mutex lock failed` on
+            // `pthread_mutex_destroy`. That exception is uncaught and
+            // aborts the process with a cryptic libc++abi message right
+            // after the user's kill chord. `_exit` bypasses the whole
+            // mess by jumping straight to the kernel exit syscall.
+            //
+            // Flush stdio first so any buffered log output (including the
+            // "exiting" line we just emitted) actually reaches the user.
             #[cfg(target_os = "macos")]
             {
+                use std::io::Write;
+                let _ = std::io::stderr().flush();
+                let _ = std::io::stdout().flush();
                 let code = EMERGENCY_EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst);
-                std::process::exit(code);
+                // SAFETY: `_exit` has no preconditions; it terminates the
+                // process immediately without running user destructors.
+                unsafe {
+                    libc::_exit(code);
+                }
             }
             // Linux/Android: Use SIGTERM to trigger signal handler for cleanup
             #[cfg(any(target_os = "linux", target_os = "android"))]
