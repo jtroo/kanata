@@ -33,7 +33,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Check fmt
       run: cargo fmt --all --check
 
@@ -47,7 +47,7 @@ jobs:
             target: aarch64-linux-android
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
@@ -67,7 +67,7 @@ jobs:
             target: x86_64-unknown-linux-musl
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
@@ -109,7 +109,7 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
@@ -161,7 +161,7 @@ jobs:
             target: x86_64-apple-darwin
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job"
