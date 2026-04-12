@@ -91,7 +91,7 @@ wasm_pack output_dir:
 wasm-build output_dir:
   cd wasm; echo "*" > pkg/.gitignore
   cd wasm; cargo build --lib --release --target wasm32-unknown-unknown
-  cd wasm; wasm-bindgen target/wasm32-unknown-unknown/release/kanata_wasm.wasm --out-dir pkg --typescript --target web
+  cd wasm; wasm-bindgen ../target/wasm32-unknown-unknown/release/kanata_wasm.wasm --out-dir pkg --typescript --target web
   wasm-opt wasm/pkg/kanata_wasm_bg.wasm -o wasm/pkg/kanata_wasm.wasm-opt.wasm -Oz
   rm wasm/pkg/kanata_wasm_bg.wasm
   mv wasm/pkg/kanata_wasm.wasm-opt.wasm wasm/pkg/kanata_wasm_bg.wasm
