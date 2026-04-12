@@ -12,7 +12,7 @@ jobs:
   build-macos-arm64:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -28,7 +28,7 @@ jobs:
           mv target/aarch64-apple-darwin/release/kanata artifacts-arm64/kanata_macos_arm64
           cargo build --release --features cmd --target aarch64-apple-darwin
           mv target/aarch64-apple-darwin/release/kanata artifacts-arm64/kanata_macos_cmd_allowed_arm64
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-binaries-arm64
           path: |
@@ -39,7 +39,7 @@ jobs:
     runs-on: macos-15-intel
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "persist-cross-job-macos-x64"
@@ -51,7 +51,7 @@ jobs:
         mv target/release/kanata artifacts/kanata_macos_x64
         cargo build --release --features cmd
         mv target/release/kanata artifacts/kanata_macos_cmd_allowed_x64
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: macos-binaries-x64
         path: |
