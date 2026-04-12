@@ -107,7 +107,25 @@ fn simulate_impl(cfg: &str, sim: &str) -> Result<String> {
     let (cfg, files) = split_cfg_and_sim_files(cfg);
     let mut k = Kanata::new_from_str(&cfg, files)?;
     let mut accumulated_ticks = 0;
+    let mut count_of_headers = 0;
     for l in sim.lines() {
+        // Parse header lines like:
+        //
+        // --- this section does a one-shot and expects X
+        // --- this section holds and expects Y
+        //
+        // then add the lines to the simulation output directly.
+        if l.starts_with("---") {
+            if count_of_headers >= 1 {
+                // Push an empty string as an empty line in final output,
+                // for visual separation/clarity of header sections.
+                k.kbd_out.outputs.events.push("".into());
+            }
+            count_of_headers += 1;
+            k.kbd_out.outputs.events.push(l.into());
+            continue;
+        }
+
         for pair in l.split_whitespace() {
             match pair.split_once(':') {
                 Some((kind, val)) => match kind {
