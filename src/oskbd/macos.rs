@@ -1036,8 +1036,8 @@ impl KbdOut {
 
         let event = Self::make_event()?;
         event.set_type(CGEventType::ScrollWheel);
-        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1, vertical);
-        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2, horizontal);
+        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1, -vertical);
+        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2, -horizontal);
         event.post(CGEventTapLocation::HID);
         Ok(())
     }
