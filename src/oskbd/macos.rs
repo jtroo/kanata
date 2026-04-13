@@ -1112,7 +1112,7 @@ pub fn start_mouse_listener(
         return None;
     }
 
-    let handle = std::thread::Builder::new()
+    let spawn_result = std::thread::Builder::new()
         .name("mouse-event-tap".into())
         .spawn(move || {
             let events_of_interest = vec![
@@ -1237,10 +1237,11 @@ pub fn start_mouse_listener(
                 }
             };
 
-            let loop_source = tap
-                .mach_port
-                .create_runloop_source(0)
-                .expect("failed to create CFRunLoop source for mouse event tap");
+            let Ok(loop_source) = tap.mach_port.create_runloop_source(0) else {
+                log::error!("failed to create CFRunLoop source for mouse event tap");
+                MOUSE_TAP_INSTALLED.store(false, Ordering::Release);
+                return;
+            };
             // Safety: kCFRunLoopCommonModes is an extern static from CoreFoundation.
             // Accessing it requires unsafe but is always valid in a running process.
             let mode = unsafe { kCFRunLoopCommonModes };
@@ -1250,10 +1251,16 @@ pub fn start_mouse_listener(
             // compare_exchange before this thread was spawned.
             log::info!("Mouse event tap installed and active.");
             CFRunLoop::run_current();
-        })
-        .expect("failed to spawn mouse event tap thread");
+        });
 
-    Some(handle)
+    match spawn_result {
+        Ok(handle) => Some(handle),
+        Err(e) => {
+            log::error!("failed to spawn mouse event tap thread: {e}");
+            MOUSE_TAP_INSTALLED.store(false, Ordering::Release);
+            None
+        }
+    }
 }
 
 /// Re-attempt installing the mouse event tap after a live reload. The running
