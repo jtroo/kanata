@@ -561,16 +561,22 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use kanata_keyberon::key_code::KeyCode;
-        let ke = KeyEvent::try_from(*self).unwrap();
-        let direction = match ke.value {
-            KeyValue::Press => "↓",
-            KeyValue::Release => "↑",
-            KeyValue::Repeat => "⟳",
-            KeyValue::Tap => "↕",
-            KeyValue::WakeUp => "!",
-        };
-        let key_name = KeyCode::from(ke.code);
-        write!(f, "{direction}{key_name:?}")
+        match KeyEvent::try_from(*self) {
+            Ok(ke) => {
+                let direction = match ke.value {
+                    KeyValue::Press => "↓",
+                    KeyValue::Release => "↑",
+                    KeyValue::Repeat => "⟳",
+                    KeyValue::Tap => "↕",
+                    KeyValue::WakeUp => "!",
+                };
+                let key_name = KeyCode::from(ke.code);
+                write!(f, "{direction}{key_name:?}")
+            }
+            Err(()) => {
+                write!(f, "?unknown(page=0x{:02X},code=0x{:02X})", self.page, self.code)
+            }
+        }
     }
 }
 
