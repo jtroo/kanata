@@ -574,7 +574,11 @@ impl fmt::Display for InputEvent {
                 write!(f, "{direction}{key_name:?}")
             }
             Err(()) => {
-                write!(f, "?unknown(page=0x{:02X},code=0x{:02X})", self.page, self.code)
+                write!(
+                    f,
+                    "?unknown(page=0x{:02X},code=0x{:02X})",
+                    self.page, self.code
+                )
             }
         }
     }
