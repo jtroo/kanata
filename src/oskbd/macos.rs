@@ -377,6 +377,7 @@ pub struct InputEvent {
     pub value: u64,
     pub page: u32,
     pub code: u32,
+    pub device_hash: u64,
 }
 
 impl InputEvent {
@@ -385,6 +386,7 @@ impl InputEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            device_hash: event.device_hash,
         }
     }
 }
@@ -395,7 +397,7 @@ impl From<InputEvent> for DKEvent {
             value: event.value,
             page: event.page,
             code: event.code,
-            device_hash: 0,
+            device_hash: event.device_hash,
         }
     }
 }
@@ -405,6 +407,80 @@ enum RawPointerEvent {
     Button { button: Btn, is_press: bool },
     Move { dx: i64, dy: i64 },
     Scroll { vertical: i64, horizontal: i64 },
+}
+
+enum RawPointerWriteResult {
+    EventWritten,
+    Unhandled,
+}
+
+// Temporary workaround for composite Bluetooth touchpads replayed via CGEvent.
+// The Cube Pocket Keyboard reports and/or replays vertical motion noticeably
+// slower than horizontal motion, so scale Y only within the raw pointer path.
+const RAW_POINTER_VERTICAL_MULTIPLIER: i64 = 2;
+
+#[derive(Debug, Clone, Copy)]
+struct PendingRawPointerMove {
+    device_hash: u64,
+    dx: i64,
+    dy: i64,
+    saw_x: bool,
+    saw_y: bool,
+}
+
+impl PendingRawPointerMove {
+    fn from_event(event: InputEvent) -> Option<Self> {
+        match event.code {
+            0x30 => Some(Self {
+                device_hash: event.device_hash,
+                dx: event.value as i64,
+                dy: 0,
+                saw_x: true,
+                saw_y: false,
+            }),
+            0x31 => Some(Self {
+                device_hash: event.device_hash,
+                dx: 0,
+                dy: event.value as i64,
+                saw_x: false,
+                saw_y: true,
+            }),
+            _ => None,
+        }
+    }
+
+    fn absorb(&mut self, event: InputEvent) {
+        match event.code {
+            0x30 => {
+                self.dx = event.value as i64;
+                self.saw_x = true;
+            }
+            0x31 => {
+                self.dy = event.value as i64;
+                self.saw_y = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn has_axis(&self, code: u32) -> bool {
+        match code {
+            0x30 => self.saw_x,
+            0x31 => self.saw_y,
+            _ => false,
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        self.saw_x && self.saw_y
+    }
+
+    fn scaled_deltas(&self) -> (i64, i64) {
+        (
+            self.dx,
+            self.dy.saturating_mul(RAW_POINTER_VERTICAL_MULTIPLIER),
+        )
+    }
 }
 
 fn decode_raw_pointer_event(event: InputEvent) -> Option<RawPointerEvent> {
@@ -662,6 +738,7 @@ impl TryFrom<KeyEvent> for InputEvent {
                 value: val,
                 page: pagecode.page,
                 code: pagecode.code,
+                device_hash: 0,
             })
         } else {
             Err(())
@@ -672,7 +749,7 @@ impl TryFrom<KeyEvent> for InputEvent {
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
-    last_mouse_position: Option<CGPoint>,
+    pending_raw_pointer_move: Option<PendingRawPointerMove>,
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -702,13 +779,14 @@ impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
-            last_mouse_position: None,
+            pending_raw_pointer_move: None,
         })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
-        if self.write_raw_pointer_event(event)? {
-            return Ok(());
+        match self.write_raw_pointer_event(event)? {
+            RawPointerWriteResult::EventWritten => return Ok(()),
+            RawPointerWriteResult::Unhandled => self.flush_pending_raw_pointer_move()?,
         }
         let mut devent = event.into();
         log::debug!("Attempting to write {event:?} {devent:?}");
@@ -722,31 +800,77 @@ impl KbdOut {
         Ok(())
     }
 
-    fn write_raw_pointer_event(&mut self, event: InputEvent) -> Result<bool, io::Error> {
+    fn write_raw_pointer_event(
+        &mut self,
+        event: InputEvent,
+    ) -> Result<RawPointerWriteResult, io::Error> {
         let Some(pointer_event) = decode_raw_pointer_event(event) else {
-            return Ok(false);
+            return Ok(RawPointerWriteResult::Unhandled);
         };
 
         match pointer_event {
             RawPointerEvent::Button { button, is_press } => {
+                self.flush_pending_raw_pointer_move()?;
                 if is_press {
                     self.click_btn(button)?;
                 } else {
                     self.release_btn(button)?;
                 }
             }
-            RawPointerEvent::Move { dx, dy } => {
-                self.move_mouse_relative(dx, dy)?;
+            RawPointerEvent::Move { .. } => {
+                self.queue_raw_pointer_move(event)?;
             }
             RawPointerEvent::Scroll {
                 vertical,
                 horizontal,
             } => {
+                self.flush_pending_raw_pointer_move()?;
                 self.scroll_raw(vertical, horizontal)?;
             }
         }
 
-        Ok(true)
+        Ok(RawPointerWriteResult::EventWritten)
+    }
+
+    fn queue_raw_pointer_move(&mut self, event: InputEvent) -> Result<(), io::Error> {
+        let Some(next_pending) = PendingRawPointerMove::from_event(event) else {
+            return Ok(());
+        };
+
+        if let Some(mut pending) = self.pending_raw_pointer_move.take() {
+            let same_device = pending.device_hash == event.device_hash;
+            let same_axis = pending.has_axis(event.code);
+            if same_device && !same_axis {
+                pending.absorb(event);
+                if pending.is_complete() {
+                    let (dx, dy) = pending.scaled_deltas();
+                    self.move_mouse_relative(dx, dy)?;
+                } else {
+                    self.pending_raw_pointer_move = Some(pending);
+                }
+                return Ok(());
+            }
+
+            let (dx, dy) = pending.scaled_deltas();
+            self.move_mouse_relative(dx, dy)?;
+        }
+
+        if next_pending.is_complete() {
+            let (dx, dy) = next_pending.scaled_deltas();
+            self.move_mouse_relative(dx, dy)?;
+        } else {
+            self.pending_raw_pointer_move = Some(next_pending);
+        }
+
+        Ok(())
+    }
+
+    fn flush_pending_raw_pointer_move(&mut self) -> Result<(), io::Error> {
+        if let Some(pending) = self.pending_raw_pointer_move.take() {
+            let (dx, dy) = pending.scaled_deltas();
+            self.move_mouse_relative(dx, dy)?;
+        }
+        Ok(())
     }
 
     pub fn output_ready(&self) -> bool {
@@ -825,6 +949,12 @@ impl KbdOut {
     }
 
     pub fn release_tracked_output_keys(&mut self, reason: &str) {
+        if let Err(error) = self.flush_pending_raw_pointer_move() {
+            log::warn!(
+                "failed to flush pending raw pointer move during {reason} recovery: {error}"
+            );
+        }
+
         let tracked_keys: Vec<OsCode> = self.output_pressed_since.keys().copied().collect();
         if tracked_keys.is_empty() {
             return;
@@ -980,7 +1110,8 @@ impl KbdOut {
             CGEventType::MouseMoved
         };
 
-        let mut mouse_position = self.current_mouse_position()?;
+        let event = Self::make_event()?;
+        let mut mouse_position = event.location();
         Self::apply_calculated_move(&_mv, &mut mouse_position);
         if let Ok(event) = CGEvent::new_mouse_event(
             Self::make_event_source()?,
@@ -989,7 +1120,6 @@ impl KbdOut {
             CGMouseButton::Left,
         ) {
             event.post(CGEventTapLocation::HID);
-            self.last_mouse_position = Some(mouse_position);
         }
         Ok(())
     }
@@ -1010,7 +1140,8 @@ impl KbdOut {
             CGEventType::MouseMoved
         };
 
-        let mouse_position = self.current_mouse_position()?;
+        let event = Self::make_event()?;
+        let mouse_position = event.location();
         let next_position = CGPoint::new(
             mouse_position.x + dx as CGFloat,
             mouse_position.y + dy as CGFloat,
@@ -1025,7 +1156,6 @@ impl KbdOut {
         event.set_integer_value_field(EventField::MOUSE_EVENT_DELTA_X, dx);
         event.set_integer_value_field(EventField::MOUSE_EVENT_DELTA_Y, dy);
         event.post(CGEventTapLocation::HID);
-        self.last_mouse_position = Some(next_position);
         Ok(())
     }
 
@@ -1051,7 +1181,8 @@ impl KbdOut {
     }
 
     pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
-        let mut mouse_position = self.current_mouse_position()?;
+        let event = Self::make_event()?;
+        let mut mouse_position = event.location();
         let display = CGDisplay::main();
         for current_move in _moves.iter() {
             Self::apply_calculated_move(current_move, &mut mouse_position);
@@ -1059,7 +1190,6 @@ impl KbdOut {
         display
             .move_cursor_to_point(mouse_position)
             .map_err(|_| io::Error::other("failed to move mouse"))?;
-        self.last_mouse_position = Some(mouse_position);
         Ok(())
     }
 
@@ -1069,16 +1199,7 @@ impl KbdOut {
         display
             .move_cursor_to_point(point)
             .map_err(|_| io::Error::other("failed to move cursor to point"))?;
-        self.last_mouse_position = Some(point);
         Ok(())
-    }
-
-    fn current_mouse_position(&self) -> Result<CGPoint, io::Error> {
-        if let Some(point) = self.last_mouse_position {
-            Ok(point)
-        } else {
-            Ok(Self::make_event()?.location())
-        }
     }
 
     fn make_event_source() -> Result<CGEventSource, Error> {
@@ -1426,6 +1547,7 @@ mod tests {
                 value: 5,
                 page: 0x01,
                 code: 0x30,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Move { dx: 5, dy: 0 })
         );
@@ -1434,6 +1556,7 @@ mod tests {
                 value: (-7_i64) as u64,
                 page: 0x01,
                 code: 0x31,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Move { dx: 0, dy: -7 })
         );
@@ -1442,6 +1565,7 @@ mod tests {
                 value: 1,
                 page: 0x09,
                 code: 0x01,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Button {
                 button: Btn::Left,
@@ -1453,6 +1577,7 @@ mod tests {
                 value: 0,
                 page: 0x09,
                 code: 0x01,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Button {
                 button: Btn::Left,
@@ -1468,6 +1593,7 @@ mod tests {
                 value: (-3_i64) as u64,
                 page: 0x01,
                 code: 0x38,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Scroll {
                 vertical: -3,
@@ -1479,6 +1605,7 @@ mod tests {
                 value: 4,
                 page: 0x0C,
                 code: 0x238,
+                device_hash: 0,
             }),
             Some(RawPointerEvent::Scroll {
                 vertical: 0,
