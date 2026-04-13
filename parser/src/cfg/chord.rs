@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use kanata_keyberon::chord::{ChordV2, ChordsForKey, ChordsForKeys, ReleaseBehaviour};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -48,7 +47,7 @@ pub(crate) fn parse_defchordv2(
                     let chunk = chord_translation.translate_chord(chord_def);
                     parse_single_chord(&chunk, s, &mut all_participating_key_sets)
                 });
-                Ok::<_, ParseError>(processed.collect_vec())
+                Ok::<_, ParseError>(processed.collect::<Vec<_>>())
             }
             _ => Ok(vec![parse_single_chord(
                 chunk,
@@ -66,7 +65,10 @@ pub(crate) fn parse_defchordv2(
         return Err((*e).clone());
     }
 
-    let successful = all_chords.into_iter().filter_map(Result::ok).collect_vec();
+    let successful = all_chords
+        .into_iter()
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
     for chord in successful {
         for pkey in chord.participating_keys.iter().copied() {
             //log::trace!("chord for key:{pkey:?} > {chord:?}");
@@ -308,7 +310,7 @@ impl<'a> ChordTranslation<'a> {
         let mut action_strings = action
             .chars()
             .map(|c| self.post_process(&c.to_string()))
-            .collect_vec();
+            .collect::<Vec<_>>();
         // Wait 50ms for one-shot Shift to release
         // TODO: This would be better handled by a (multi (release-key lsft)(release-key rsft))
         // but I haven't gotten that to work yet.
