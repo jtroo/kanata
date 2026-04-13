@@ -951,8 +951,8 @@ impl KbdOut {
             .map_err(|_| Error::other("failed to create core graphics event source"))
     }
     /// Creates a core graphics event.
-    /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
-    /// I have not verified that this is the correct parameter.
+    /// `CombinedSessionState` merges state from all event sources in the
+    /// current login session, which is what a remapper needs.
     /// Note that the CFRelease function mentioned in the docs is automatically called when the
     /// event is dropped, therefore we don't need to care about this ourselves.
     fn make_event() -> Result<CGEvent, Error> {
