@@ -400,6 +400,59 @@ impl From<InputEvent> for DKEvent {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RawPointerEvent {
+    Button { button: Btn, is_press: bool },
+    Move { dx: i64, dy: i64 },
+    Scroll { vertical: i64, horizontal: i64 },
+}
+
+fn decode_raw_pointer_event(event: InputEvent) -> Option<RawPointerEvent> {
+    let signed_value = event.value as i64;
+    match (event.page, event.code) {
+        // HID Usage Tables, Generic Desktop page.
+        (0x01, 0x30) => Some(RawPointerEvent::Move {
+            dx: signed_value,
+            dy: 0,
+        }),
+        (0x01, 0x31) => Some(RawPointerEvent::Move {
+            dx: 0,
+            dy: signed_value,
+        }),
+        (0x01, 0x38) => Some(RawPointerEvent::Scroll {
+            vertical: signed_value,
+            horizontal: 0,
+        }),
+        // Consumer page horizontal pan (often emitted by touchpads during two-finger scroll).
+        (0x0C, 0x238) => Some(RawPointerEvent::Scroll {
+            vertical: 0,
+            horizontal: signed_value,
+        }),
+        // HID Usage Tables, Button page.
+        (0x09, 0x01) => Some(RawPointerEvent::Button {
+            button: Btn::Left,
+            is_press: event.value != 0,
+        }),
+        (0x09, 0x02) => Some(RawPointerEvent::Button {
+            button: Btn::Right,
+            is_press: event.value != 0,
+        }),
+        (0x09, 0x03) => Some(RawPointerEvent::Button {
+            button: Btn::Mid,
+            is_press: event.value != 0,
+        }),
+        (0x09, 0x04) => Some(RawPointerEvent::Button {
+            button: Btn::Backward,
+            is_press: event.value != 0,
+        }),
+        (0x09, 0x05) => Some(RawPointerEvent::Button {
+            button: Btn::Forward,
+            is_press: event.value != 0,
+        }),
+        _ => None,
+    }
+}
+
 pub struct KbdIn {
     grabbed: bool,
 }
@@ -619,6 +672,7 @@ impl TryFrom<KeyEvent> for InputEvent {
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
+    last_mouse_position: Option<CGPoint>,
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -648,10 +702,14 @@ impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
+            last_mouse_position: None,
         })
     }
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
+        if self.write_raw_pointer_event(event)? {
+            return Ok(());
+        }
         let mut devent = event.into();
         log::debug!("Attempting to write {event:?} {devent:?}");
         let rc = send_key(&mut devent);
@@ -662,6 +720,33 @@ impl KbdOut {
             ));
         }
         Ok(())
+    }
+
+    fn write_raw_pointer_event(&mut self, event: InputEvent) -> Result<bool, io::Error> {
+        let Some(pointer_event) = decode_raw_pointer_event(event) else {
+            return Ok(false);
+        };
+
+        match pointer_event {
+            RawPointerEvent::Button { button, is_press } => {
+                if is_press {
+                    self.click_btn(button)?;
+                } else {
+                    self.release_btn(button)?;
+                }
+            }
+            RawPointerEvent::Move { dx, dy } => {
+                self.move_mouse_relative(dx, dy)?;
+            }
+            RawPointerEvent::Scroll {
+                vertical,
+                horizontal,
+            } => {
+                self.scroll_raw(vertical, horizontal)?;
+            }
+        }
+
+        Ok(true)
     }
 
     pub fn output_ready(&self) -> bool {
@@ -889,12 +974,13 @@ impl KbdOut {
             CGEventType::LeftMouseDragged
         } else if pressed & 2 > 0 {
             CGEventType::RightMouseDragged
+        } else if pressed > 0 {
+            CGEventType::OtherMouseDragged
         } else {
             CGEventType::MouseMoved
         };
 
-        let event = Self::make_event()?;
-        let mut mouse_position = event.location();
+        let mut mouse_position = self.current_mouse_position()?;
         Self::apply_calculated_move(&_mv, &mut mouse_position);
         if let Ok(event) = CGEvent::new_mouse_event(
             Self::make_event_source()?,
@@ -903,7 +989,56 @@ impl KbdOut {
             CGMouseButton::Left,
         ) {
             event.post(CGEventTapLocation::HID);
+            self.last_mouse_position = Some(mouse_position);
         }
+        Ok(())
+    }
+
+    fn move_mouse_relative(&mut self, dx: i64, dy: i64) -> Result<(), io::Error> {
+        if dx == 0 && dy == 0 {
+            return Ok(());
+        }
+
+        let pressed = Self::pressed_buttons();
+        let event_type = if pressed & 1 > 0 {
+            CGEventType::LeftMouseDragged
+        } else if pressed & 2 > 0 {
+            CGEventType::RightMouseDragged
+        } else if pressed > 0 {
+            CGEventType::OtherMouseDragged
+        } else {
+            CGEventType::MouseMoved
+        };
+
+        let mouse_position = self.current_mouse_position()?;
+        let next_position = CGPoint::new(
+            mouse_position.x + dx as CGFloat,
+            mouse_position.y + dy as CGFloat,
+        );
+        let event = CGEvent::new_mouse_event(
+            Self::make_event_source()?,
+            event_type,
+            next_position,
+            CGMouseButton::Left,
+        )
+        .map_err(|_| io::Error::other("failed to create relative mouse event"))?;
+        event.set_integer_value_field(EventField::MOUSE_EVENT_DELTA_X, dx);
+        event.set_integer_value_field(EventField::MOUSE_EVENT_DELTA_Y, dy);
+        event.post(CGEventTapLocation::HID);
+        self.last_mouse_position = Some(next_position);
+        Ok(())
+    }
+
+    fn scroll_raw(&mut self, vertical: i64, horizontal: i64) -> Result<(), io::Error> {
+        if vertical == 0 && horizontal == 0 {
+            return Ok(());
+        }
+
+        let event = Self::make_event()?;
+        event.set_type(CGEventType::ScrollWheel);
+        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1, vertical);
+        event.set_integer_value_field(EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2, horizontal);
+        event.post(CGEventTapLocation::HID);
         Ok(())
     }
 
@@ -916,8 +1051,7 @@ impl KbdOut {
     }
 
     pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
-        let event = Self::make_event()?;
-        let mut mouse_position = event.location();
+        let mut mouse_position = self.current_mouse_position()?;
         let display = CGDisplay::main();
         for current_move in _moves.iter() {
             Self::apply_calculated_move(current_move, &mut mouse_position);
@@ -925,6 +1059,7 @@ impl KbdOut {
         display
             .move_cursor_to_point(mouse_position)
             .map_err(|_| io::Error::other("failed to move mouse"))?;
+        self.last_mouse_position = Some(mouse_position);
         Ok(())
     }
 
@@ -934,7 +1069,16 @@ impl KbdOut {
         display
             .move_cursor_to_point(point)
             .map_err(|_| io::Error::other("failed to move cursor to point"))?;
+        self.last_mouse_position = Some(point);
         Ok(())
+    }
+
+    fn current_mouse_position(&self) -> Result<CGPoint, io::Error> {
+        if let Some(point) = self.last_mouse_position {
+            Ok(point)
+        } else {
+            Ok(Self::make_event()?.location())
+        }
     }
 
     fn make_event_source() -> Result<CGEventSource, Error> {
@@ -1268,4 +1412,78 @@ pub fn ensure_mouse_listener_installed_after_reload() {
     };
     let mapped = crate::kanata::MAPPED_KEYS.lock();
     let _ = start_mouse_listener(tx, &mapped, mmk);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InputEvent, RawPointerEvent, decode_raw_pointer_event};
+    use kanata_parser::custom_action::Btn;
+
+    #[test]
+    fn decodes_pointer_axes_and_buttons() {
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: 5,
+                page: 0x01,
+                code: 0x30,
+            }),
+            Some(RawPointerEvent::Move { dx: 5, dy: 0 })
+        );
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: (-7_i64) as u64,
+                page: 0x01,
+                code: 0x31,
+            }),
+            Some(RawPointerEvent::Move { dx: 0, dy: -7 })
+        );
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: 1,
+                page: 0x09,
+                code: 0x01,
+            }),
+            Some(RawPointerEvent::Button {
+                button: Btn::Left,
+                is_press: true,
+            })
+        );
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: 0,
+                page: 0x09,
+                code: 0x01,
+            }),
+            Some(RawPointerEvent::Button {
+                button: Btn::Left,
+                is_press: false,
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_touchpad_scroll_usages() {
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: (-3_i64) as u64,
+                page: 0x01,
+                code: 0x38,
+            }),
+            Some(RawPointerEvent::Scroll {
+                vertical: -3,
+                horizontal: 0,
+            })
+        );
+        assert_eq!(
+            decode_raw_pointer_event(InputEvent {
+                value: 4,
+                page: 0x0C,
+                code: 0x238,
+            }),
+            Some(RawPointerEvent::Scroll {
+                vertical: 0,
+                horizontal: 4,
+            })
+        );
+    }
 }
