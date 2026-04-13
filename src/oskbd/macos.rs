@@ -719,7 +719,10 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let key = OsCode::from_u16(code as u16).unwrap();
+        let Some(key) = OsCode::from_u16(code as u16) else {
+            log::debug!("couldn't write unrecognized OsCode {code}");
+            return Err(io::Error::other("OsCode not recognized!"));
+        };
         if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
             match self.write(event) {
                 Ok(()) => Ok(()),
