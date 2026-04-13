@@ -222,14 +222,12 @@ impl std::fmt::Debug for SExpr {
         match self {
             SExpr::Atom(a) => write!(f, "{}", &a.t),
             SExpr::List(l) => {
-                write!(f, "(")?;
-                for i in 0..l.t.len() - 1 {
-                    write!(f, "{:?} ", &l.t[i])?;
-                }
-                if let Some(last) = &l.t.last() {
-                    write!(f, "{last:?}")?;
-                }
-                write!(f, ")")?;
+                let inner =
+                    l.t.iter()
+                        .map(|x| format!("{x:?}"))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                write!(f, "({inner})")?;
                 Ok(())
             }
         }
