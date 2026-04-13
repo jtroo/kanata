@@ -454,7 +454,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            // register the remeining devices
+            // register the remaining devices
             validate_and_register_devices(devices_to_include)
         } else {
             vec![]
@@ -770,25 +770,25 @@ impl KbdOut {
         event.post(CGEventTapLocation::AnnotatedSession);
         Ok(())
     }
-    pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         event.set_type(CGEventType::ScrollWheel);
-        match _direction {
+        match direction {
             MWheelDirection::Down => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                _distance as i64,
+                distance as i64,
             ),
             MWheelDirection::Up => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                -(_distance as i64),
+                -(distance as i64),
             ),
             MWheelDirection::Left => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                _distance as i64,
+                distance as i64,
             ),
             MWheelDirection::Right => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                -(_distance as i64),
+                -(distance as i64),
             ),
         }
         // Mouse control only seems to work with CGEventTapLocation::HID.
@@ -807,9 +807,9 @@ impl KbdOut {
     ///
     /// [1]: https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)
     /// [2]: https://developer.apple.com/documentation/coregraphics/cgevent/setintegervaluefield(_:value:)
-    fn button_action(&mut self, _btn: Btn, is_click: bool) -> Result<(), io::Error> {
+    fn button_action(&mut self, btn: Btn, is_click: bool) -> Result<(), io::Error> {
         // (event_type, placeholder_button, real_button_number_override)
-        let (event_type, button, button_number) = match _btn {
+        let (event_type, button, button_number) = match btn {
             Btn::Left => (
                 if is_click {
                     CGEventType::LeftMouseDown
@@ -874,15 +874,15 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, _btn, true)
+    pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        Self::button_action(self, btn, true)
     }
 
-    pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, _btn, false)
+    pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        Self::button_action(self, btn, false)
     }
 
-    pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
         let pressed = Self::pressed_buttons();
 
         let event_type = if pressed & 1 > 0 {
@@ -895,7 +895,7 @@ impl KbdOut {
 
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
-        Self::apply_calculated_move(&_mv, &mut mouse_position);
+        Self::apply_calculated_move(&mv, &mut mouse_position);
         if let Ok(event) = CGEvent::new_mouse_event(
             Self::make_event_source()?,
             event_type,
@@ -915,11 +915,11 @@ impl KbdOut {
         }
     }
 
-    pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
         let display = CGDisplay::main();
-        for current_move in _moves.iter() {
+        for current_move in moves.iter() {
             Self::apply_calculated_move(current_move, &mut mouse_position);
         }
         display
@@ -928,9 +928,9 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
+    pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         let display = CGDisplay::main();
-        let point = CGPoint::new(_x as CGFloat, _y as CGFloat);
+        let point = CGPoint::new(x as CGFloat, y as CGFloat);
         display
             .move_cursor_to_point(point)
             .map_err(|_| io::Error::other("failed to move cursor to point"))?;
@@ -970,12 +970,12 @@ impl KbdOut {
     /// Applies a calculated mouse move to a CGPoint.
     ///
     /// This does _not_ move the mouse, it just mutates the point.
-    fn apply_calculated_move(_mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
-        match _mv.direction {
-            MoveDirection::Up => mouse_position.y -= _mv.distance as CGFloat,
-            MoveDirection::Down => mouse_position.y += _mv.distance as CGFloat,
-            MoveDirection::Left => mouse_position.x -= _mv.distance as CGFloat,
-            MoveDirection::Right => mouse_position.x += _mv.distance as CGFloat,
+    fn apply_calculated_move(mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
+        match mv.direction {
+            MoveDirection::Up => mouse_position.y -= mv.distance as CGFloat,
+            MoveDirection::Down => mouse_position.y += mv.distance as CGFloat,
+            MoveDirection::Left => mouse_position.x -= mv.distance as CGFloat,
+            MoveDirection::Right => mouse_position.x += mv.distance as CGFloat,
         }
     }
 }
