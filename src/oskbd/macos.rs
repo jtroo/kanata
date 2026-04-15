@@ -454,7 +454,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            // register the remeining devices
+            // register the remaining devices
             validate_and_register_devices(devices_to_include)
         } else {
             vec![]
@@ -561,16 +561,26 @@ fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
 impl fmt::Display for InputEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use kanata_keyberon::key_code::KeyCode;
-        let ke = KeyEvent::try_from(*self).unwrap();
-        let direction = match ke.value {
-            KeyValue::Press => "↓",
-            KeyValue::Release => "↑",
-            KeyValue::Repeat => "⟳",
-            KeyValue::Tap => "↕",
-            KeyValue::WakeUp => "!",
-        };
-        let key_name = KeyCode::from(ke.code);
-        write!(f, "{direction}{key_name:?}")
+        match KeyEvent::try_from(*self) {
+            Ok(ke) => {
+                let direction = match ke.value {
+                    KeyValue::Press => "↓",
+                    KeyValue::Release => "↑",
+                    KeyValue::Repeat => "⟳",
+                    KeyValue::Tap => "↕",
+                    KeyValue::WakeUp => "!",
+                };
+                let key_name = KeyCode::from(ke.code);
+                write!(f, "{direction}{key_name:?}")
+            }
+            Err(()) => {
+                write!(
+                    f,
+                    "?unknown(page=0x{:02X},code=0x{:02X})",
+                    self.page, self.code
+                )
+            }
+        }
     }
 }
 
@@ -719,7 +729,10 @@ impl KbdOut {
     }
 
     pub fn write_code(&mut self, code: u32, value: KeyValue) -> Result<(), io::Error> {
-        let key = OsCode::from_u16(code as u16).unwrap();
+        let Some(key) = OsCode::from_u16(code as u16) else {
+            log::debug!("couldn't write unrecognized OsCode {code}");
+            return Err(io::Error::other("OsCode not recognized!"));
+        };
         if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
             match self.write(event) {
                 Ok(()) => Ok(()),
@@ -770,25 +783,25 @@ impl KbdOut {
         event.post(CGEventTapLocation::AnnotatedSession);
         Ok(())
     }
-    pub fn scroll(&mut self, _direction: MWheelDirection, _distance: u16) -> Result<(), io::Error> {
+    pub fn scroll(&mut self, direction: MWheelDirection, distance: u16) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         event.set_type(CGEventType::ScrollWheel);
-        match _direction {
+        match direction {
             MWheelDirection::Down => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                _distance as i64,
+                distance as i64,
             ),
             MWheelDirection::Up => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_1,
-                -(_distance as i64),
+                -(distance as i64),
             ),
             MWheelDirection::Left => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                _distance as i64,
+                distance as i64,
             ),
             MWheelDirection::Right => event.set_integer_value_field(
                 EventField::SCROLL_WHEEL_EVENT_DELTA_AXIS_2,
-                -(_distance as i64),
+                -(distance as i64),
             ),
         }
         // Mouse control only seems to work with CGEventTapLocation::HID.
@@ -807,9 +820,9 @@ impl KbdOut {
     ///
     /// [1]: https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)
     /// [2]: https://developer.apple.com/documentation/coregraphics/cgevent/setintegervaluefield(_:value:)
-    fn button_action(&mut self, _btn: Btn, is_click: bool) -> Result<(), io::Error> {
+    fn button_action(&mut self, btn: Btn, is_click: bool) -> Result<(), io::Error> {
         // (event_type, placeholder_button, real_button_number_override)
-        let (event_type, button, button_number) = match _btn {
+        let (event_type, button, button_number) = match btn {
             Btn::Left => (
                 if is_click {
                     CGEventType::LeftMouseDown
@@ -874,15 +887,15 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn click_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, _btn, true)
+    pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        Self::button_action(self, btn, true)
     }
 
-    pub fn release_btn(&mut self, _btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, _btn, false)
+    pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
+        Self::button_action(self, btn, false)
     }
 
-    pub fn move_mouse(&mut self, _mv: CalculatedMouseMove) -> Result<(), io::Error> {
+    pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
         let pressed = Self::pressed_buttons();
 
         let event_type = if pressed & 1 > 0 {
@@ -895,7 +908,7 @@ impl KbdOut {
 
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
-        Self::apply_calculated_move(&_mv, &mut mouse_position);
+        Self::apply_calculated_move(&mv, &mut mouse_position);
         if let Ok(event) = CGEvent::new_mouse_event(
             Self::make_event_source()?,
             event_type,
@@ -915,11 +928,11 @@ impl KbdOut {
         }
     }
 
-    pub fn move_mouse_many(&mut self, _moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
+    pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
         let event = Self::make_event()?;
         let mut mouse_position = event.location();
         let display = CGDisplay::main();
-        for current_move in _moves.iter() {
+        for current_move in moves.iter() {
             Self::apply_calculated_move(current_move, &mut mouse_position);
         }
         display
@@ -928,9 +941,9 @@ impl KbdOut {
         Ok(())
     }
 
-    pub fn set_mouse(&mut self, _x: u16, _y: u16) -> Result<(), io::Error> {
+    pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         let display = CGDisplay::main();
-        let point = CGPoint::new(_x as CGFloat, _y as CGFloat);
+        let point = CGPoint::new(x as CGFloat, y as CGFloat);
         display
             .move_cursor_to_point(point)
             .map_err(|_| io::Error::other("failed to move cursor to point"))?;
@@ -942,8 +955,8 @@ impl KbdOut {
             .map_err(|_| Error::other("failed to create core graphics event source"))
     }
     /// Creates a core graphics event.
-    /// The CGEventSourceStateID is a guess at this point - all functionality works using this but
-    /// I have not verified that this is the correct parameter.
+    /// `CombinedSessionState` merges state from all event sources in the
+    /// current login session, which is what a remapper needs.
     /// Note that the CFRelease function mentioned in the docs is automatically called when the
     /// event is dropped, therefore we don't need to care about this ourselves.
     fn make_event() -> Result<CGEvent, Error> {
@@ -970,12 +983,12 @@ impl KbdOut {
     /// Applies a calculated mouse move to a CGPoint.
     ///
     /// This does _not_ move the mouse, it just mutates the point.
-    fn apply_calculated_move(_mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
-        match _mv.direction {
-            MoveDirection::Up => mouse_position.y -= _mv.distance as CGFloat,
-            MoveDirection::Down => mouse_position.y += _mv.distance as CGFloat,
-            MoveDirection::Left => mouse_position.x -= _mv.distance as CGFloat,
-            MoveDirection::Right => mouse_position.x += _mv.distance as CGFloat,
+    fn apply_calculated_move(mv: &CalculatedMouseMove, mouse_position: &mut CGPoint) {
+        match mv.direction {
+            MoveDirection::Up => mouse_position.y -= mv.distance as CGFloat,
+            MoveDirection::Down => mouse_position.y += mv.distance as CGFloat,
+            MoveDirection::Left => mouse_position.x -= mv.distance as CGFloat,
+            MoveDirection::Right => mouse_position.x += mv.distance as CGFloat,
         }
     }
 }
@@ -1103,7 +1116,7 @@ pub fn start_mouse_listener(
         return None;
     }
 
-    let handle = std::thread::Builder::new()
+    let spawn_result = std::thread::Builder::new()
         .name("mouse-event-tap".into())
         .spawn(move || {
             let events_of_interest = vec![
@@ -1228,10 +1241,11 @@ pub fn start_mouse_listener(
                 }
             };
 
-            let loop_source = tap
-                .mach_port
-                .create_runloop_source(0)
-                .expect("failed to create CFRunLoop source for mouse event tap");
+            let Ok(loop_source) = tap.mach_port.create_runloop_source(0) else {
+                log::error!("failed to create CFRunLoop source for mouse event tap");
+                MOUSE_TAP_INSTALLED.store(false, Ordering::Release);
+                return;
+            };
             // Safety: kCFRunLoopCommonModes is an extern static from CoreFoundation.
             // Accessing it requires unsafe but is always valid in a running process.
             let mode = unsafe { kCFRunLoopCommonModes };
@@ -1241,10 +1255,16 @@ pub fn start_mouse_listener(
             // compare_exchange before this thread was spawned.
             log::info!("Mouse event tap installed and active.");
             CFRunLoop::run_current();
-        })
-        .expect("failed to spawn mouse event tap thread");
+        });
 
-    Some(handle)
+    match spawn_result {
+        Ok(handle) => Some(handle),
+        Err(e) => {
+            log::error!("failed to spawn mouse event tap thread: {e}");
+            MOUSE_TAP_INSTALLED.store(false, Ordering::Release);
+            None
+        }
+    }
 }
 
 /// Re-attempt installing the mouse event tap after a live reload. The running
