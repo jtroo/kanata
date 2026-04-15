@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample LaunchDaemon for kanata on macOS.
+
+  This is a LaunchDaemon (runs as root at boot), not a LaunchAgent.
+  Kanata needs root because the Karabiner-DriverKit-VirtualHIDDevice
+  daemon exposes its IPC under
+  `/Library/Application Support/org.pqrs/tmp/rootonly/`, which is
+  mode 700 owned by root. See `src/oskbd/macos.rs` for the full
+  rationale.
+
+  Customize the two paths in `ProgramArguments` below for your install:
+    - kanata binary: e.g. `/usr/local/bin/kanata`,
+      `/opt/homebrew/bin/kanata`, or wherever you placed it
+    - config file: e.g. `/etc/kanata/kanata.kbd` or any root-readable
+      path
+
+  Install:
+    sudo cp cfg_samples/kanata.plist /Library/LaunchDaemons/dev.kanata.kanata.plist
+    sudo chown root:wheel /Library/LaunchDaemons/dev.kanata.kanata.plist
+    sudo launchctl bootstrap system /Library/LaunchDaemons/dev.kanata.kanata.plist
+
+  Reload after editing your kanata config (or this plist):
+    sudo launchctl kickstart -k system/dev.kanata.kanata
+
+  Uninstall:
+    sudo launchctl bootout system/dev.kanata.kanata
+    sudo rm /Library/LaunchDaemons/dev.kanata.kanata.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.kanata.kanata</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/kanata</string>
+        <string>-c</string>
+        <string>/etc/kanata/kanata.kbd</string>
+    </array>
+
+    <key>UserName</key>
+    <string>root</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/kanata.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/kanata.log</string>
+</dict>
+</plist>
