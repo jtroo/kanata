@@ -183,6 +183,83 @@ extern "C" fn karabiner_sigabrt_handler(_sig: libc::c_int) {
     }
 }
 
+// --- Input Monitoring (TCC) pre-flight ---
+//
+// On macOS, observing raw keyboard events requires the "Input
+// Monitoring" TCC permission (System Settings -> Privacy & Security
+// -> Input Monitoring). Without it, startup fails deep inside the
+// Karabiner DriverKit stack with an error that doesn't mention TCC at
+// all, leaving users guessing. Checking up front turns that into a
+// single actionable message, and on a first run asks macOS to
+// register kanata under Input Monitoring so the user has something to
+// toggle on. Flagged in issue #1743.
+
+// IOKit framework bindings for the Input Monitoring TCC gate.
+// `IOHIDCheckAccess` reports the current decision; `IOHIDRequestAccess`
+// registers the binary under System Settings and (if possible) prompts
+// the user. Both take an `IOHIDRequestType` and return an
+// `IOHIDAccessType` / `bool`.
+#[link(name = "IOKit", kind = "framework")]
+unsafe extern "C" {
+    fn IOHIDCheckAccess(request: u32) -> u32;
+    fn IOHIDRequestAccess(request: u32) -> bool;
+}
+
+/// `IOHIDRequestType::kIOHIDRequestTypeListenEvent` from
+/// `<IOKit/hid/IOHIDLib.h>`: the request type that maps to the Input
+/// Monitoring TCC service.
+const K_IOHID_REQUEST_TYPE_LISTEN_EVENT: u32 = 1;
+/// `IOHIDAccessType` values from `<IOKit/hid/IOHIDLib.h>`.
+const K_IOHID_ACCESS_TYPE_GRANTED: u32 = 0;
+const K_IOHID_ACCESS_TYPE_DENIED: u32 = 1;
+const K_IOHID_ACCESS_TYPE_UNKNOWN: u32 = 2;
+
+/// Pre-flight check for Input Monitoring permission. Returns `Ok(())`
+/// if kanata is allowed to observe events; otherwise returns an
+/// `anyhow::Error` that surfaces as the startup failure reason,
+/// pointing the user at the exact setting to flip.
+///
+/// On the "unknown" (first-run) branch we call `IOHIDRequestAccess`,
+/// which adds kanata to System Settings -> Privacy & Security -> Input
+/// Monitoring. For a root/LaunchDaemon context that call cannot
+/// display a UI prompt and will return false; the returned error
+/// message then tells the user where to grant it manually.
+fn ensure_input_monitoring_permission() -> Result<(), anyhow::Error> {
+    const HINT: &str = "Enable kanata in System Settings -> Privacy & Security -> \
+         Input Monitoring, then re-run kanata.";
+    // SAFETY: plain FFI call with a scalar arg; the symbol is present
+    // on every macOS version kanata supports (10.15+).
+    let status = unsafe { IOHIDCheckAccess(K_IOHID_REQUEST_TYPE_LISTEN_EVENT) };
+    match status {
+        K_IOHID_ACCESS_TYPE_GRANTED => Ok(()),
+        K_IOHID_ACCESS_TYPE_UNKNOWN => {
+            log::info!(
+                "macOS Input Monitoring permission not yet decided; \
+                 asking IOKit to register kanata under System Settings"
+            );
+            // SAFETY: plain FFI call.
+            let granted = unsafe { IOHIDRequestAccess(K_IOHID_REQUEST_TYPE_LISTEN_EVENT) };
+            if granted {
+                Ok(())
+            } else {
+                Err(anyhow!(
+                    "kanata needs macOS Input Monitoring permission. {HINT}"
+                ))
+            }
+        }
+        K_IOHID_ACCESS_TYPE_DENIED => Err(anyhow!(
+            "macOS Input Monitoring permission is denied for kanata. {HINT}"
+        )),
+        other => {
+            log::warn!(
+                "IOHIDCheckAccess returned unexpected status {other}; \
+                 continuing and letting the driver layer report any failure"
+            );
+            Ok(())
+        }
+    }
+}
+
 /// Install a `SIGABRT` handler that adds an actionable hint about
 /// Karabiner setup issues *after* libc++abi prints its own
 /// uncaught-exception message, and enter the "Karabiner startup phase"
@@ -417,6 +494,14 @@ impl KbdIn {
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
     ) -> Result<Self, anyhow::Error> {
+        // Pre-flight the Input Monitoring TCC gate before touching the
+        // Karabiner stack. A denied permission here produces a clean,
+        // actionable error pointing the user at the exact System
+        // Settings pane, instead of a confusing libc++abi abort from
+        // the driverkit dispatcher threads. See the "Input Monitoring
+        // (TCC) pre-flight" block above for the full rationale.
+        ensure_input_monitoring_permission()?;
+
         // Install the SIGABRT hint handler before touching the
         // karabiner-driverkit C++ code, so any uncaught
         // `std::filesystem_error` from the C++ dispatcher threads gets

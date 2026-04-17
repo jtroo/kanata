@@ -88,7 +88,11 @@ and explicitly map keys in `defsrc` instead
 
 == MacOS
 
-* Mouse input processing requires Accessibility or Input Monitoring permission in System Settings > Privacy & Security
+* Keyboard and mouse input processing requires the Input Monitoring permission in
+  System Settings > Privacy & Security. On first startup kanata asks macOS to
+  register itself under that pane so there is something to toggle on; if the
+  permission has already been denied, kanata exits early with a message pointing
+  you to the same setting instead of failing deeper in the driver stack.
 * Once the mouse event tap is installed (on startup or via live-reload), it
   continues running for the lifetime of the process. Removing all mouse keys
   from `defsrc` then live-reloading does not stop the tap thread, though it
