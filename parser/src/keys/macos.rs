@@ -199,7 +199,15 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x07,
                 code: 0x31,
             }),
-            // KeyboardNonUSPound                => 0x0732, todo
+            // Keyboard Non-US # and ~ (ISO layouts, key left of Enter labelled "#").
+            // Linux evdev folds this onto KEY_BACKSLASH (43); macOS exposes it as a
+            // distinct HID usage, so we reuse the otherwise-unused KEY_NUMERIC_POUND
+            // OsCode. Users who want a symmetric name across platforms can pair this
+            // with `deflocalkeys-linux` mapping 43 to the same name. See #1915.
+            OsCode::KEY_NUMERIC_POUND => Ok(PageCode {
+                page: 0x07,
+                code: 0x32,
+            }),
             OsCode::KEY_SEMICOLON => Ok(PageCode {
                 page: 0x07,
                 code: 0x33,
@@ -882,6 +890,11 @@ impl TryFrom<PageCode> for OsCode {
                 page: 0x07,
                 code: 0x31,
             } => Ok(OsCode::KEY_BACKSLASH),
+            // Keyboard Non-US # and ~. See the forward mapping above for rationale.
+            PageCode {
+                page: 0x07,
+                code: 0x32,
+            } => Ok(OsCode::KEY_NUMERIC_POUND),
             PageCode {
                 page: 0x07,
                 code: 0x33,
