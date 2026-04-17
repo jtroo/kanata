@@ -390,6 +390,14 @@ or Interception when using key names according to the browser `event.code`.
 The default `kanata.exe` does not do mappings according to the browser `event.code`
 key names.
 
+NOTE: On macOS, the ISO "#" key to the left of Enter reports
+`event.code` as `Backslash` in the browser, but the operating system
+delivers it to kanata as a distinct HID usage that the regular
+`\`/`Backslash` name does not match. Use the name `non_us_pound`
+(aliases: `NonUSPound`, `nuhs`) for that physical key on macOS. If
+you want the same config to work on Linux as well, pair this with
+`deflocalkeys-linux` to map evdev code 43 to the same name.
+
 [[deflocalkeys]]
 === deflocalkeys
 

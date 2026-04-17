@@ -254,6 +254,11 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "ssrq" | "sys" => OsCode::KEY_SYSRQ,
         // Typically the Non-US backslash, near the left shift key
         "IntlBackslash" | "102d" | "lsgt" | "nubs" | "nonusbslash" | "﹨" | "<" => OsCode::KEY_102ND,
+        // ISO "#" key to the left of Enter (USB HID page 7 usage 0x32, "Non-US # and ~").
+        // Distinct HID usage on macOS; folded onto Backslash by Linux evdev, so the name
+        // is gated to platforms where the physical key can actually produce it. See #1915.
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "NonUSPound" | "non_us_pound" | "nuhs" => OsCode::KEY_NUMERIC_POUND,
         "ScrollLock" | "scrlck" | "slck" | "⇳🔒" => OsCode::KEY_SCROLLLOCK,
         "Pause" | "pause" | "break" | "brk" => OsCode::KEY_PAUSE,
         "WakeUp" | "wkup" => OsCode::KEY_WAKEUP,
