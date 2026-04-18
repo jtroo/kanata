@@ -205,6 +205,20 @@ unsafe extern "C" {
     fn IOHIDRequestAccess(request: u32) -> bool;
 }
 
+// ApplicationServices binding for the Accessibility TCC gate.
+// `AXIsProcessTrusted` reports whether the current process is trusted
+// for Accessibility without showing any system prompt — exactly what
+// we want for a pre-flight diagnostic. The symbol lives in the
+// HIServices subframework of ApplicationServices and is available on
+// every macOS version kanata supports. core-graphics (already a
+// dependency) links CoreGraphics, which transitively loads
+// ApplicationServices, but declare the framework link explicitly so
+// this does not silently break if that transitive link ever changes.
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
 /// `IOHIDRequestType::kIOHIDRequestTypeListenEvent` from
 /// `<IOKit/hid/IOHIDLib.h>`: the request type that maps to the Input
 /// Monitoring TCC service.
@@ -257,6 +271,39 @@ fn ensure_input_monitoring_permission() -> Result<(), anyhow::Error> {
             );
             Ok(())
         }
+    }
+}
+
+/// Pre-flight check for Accessibility permission. Even after Input
+/// Monitoring is granted, grabbing keyboards through the Karabiner
+/// DriverKit stack can fail with `IOHIDDeviceOpen error: (iokit/common)
+/// not permitted` / `kIOReturnNotPermitted` when the Accessibility TCC
+/// service is not granted — issue #1211 and many duplicates. Checking
+/// up front turns that into a single actionable message pointing at
+/// the exact setting, instead of the generic "grab failed" users see
+/// otherwise.
+///
+/// We deliberately call `AXIsProcessTrusted` (no options) rather than
+/// `AXIsProcessTrustedWithOptions` with `kAXTrustedCheckOptionPrompt`:
+/// a root LaunchDaemon context cannot display a UI prompt, and for a
+/// plain `sudo` invocation the prompt would race kanata's own startup
+/// output. The returned error message already tells the user where to
+/// grant it manually, mirroring the Input Monitoring branch.
+fn ensure_accessibility_permission() -> Result<(), anyhow::Error> {
+    // SAFETY: plain FFI call with no args; the symbol is present on
+    // every macOS version kanata supports (10.15+).
+    if unsafe { AXIsProcessTrusted() } {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "kanata needs macOS Accessibility permission. Enable kanata in \
+             System Settings -> Privacy & Security -> Accessibility, then \
+             re-run kanata. Note: if you moved, renamed, or upgraded the \
+             kanata binary, macOS pins the old path and you must remove the \
+             stale entry and re-add the current binary. This is the \
+             commonly-missed second permission behind the `IOHIDDeviceOpen \
+             error: (iokit/common) not permitted` failure (issue #1211)."
+        ))
     }
 }
 
@@ -502,6 +549,15 @@ impl KbdIn {
         // (TCC) pre-flight" block above for the full rationale.
         ensure_input_monitoring_permission()?;
 
+        // Pre-flight the Accessibility TCC gate too. Even with Input
+        // Monitoring granted, `IOHIDDeviceOpen` inside the Karabiner
+        // stack returns `kIOReturnNotPermitted` ("(iokit/common) not
+        // permitted") when Accessibility is missing — issue #1211 and
+        // its many duplicates. Catching that here gives the user one
+        // clean error pointing at the right pane instead of a cryptic
+        // `grab failed` after a noisy IOKit log line.
+        ensure_accessibility_permission()?;
+
         // Install the SIGABRT hint handler before touching the
         // karabiner-driverkit C++ code, so any uncaught
         // `std::filesystem_error` from the C++ dispatcher threads gets
@@ -552,7 +608,26 @@ impl KbdIn {
             if grab() {
                 Ok(Self { grabbed: true })
             } else {
-                Err(anyhow!("grab failed"))
+                // We have already pre-flighted Input Monitoring and
+                // Accessibility, so by this point the most common
+                // remaining cause of a `grab failed` is a stale TCC
+                // entry that still points at an older copy of the
+                // kanata binary — macOS pins the granted path, and
+                // after a move/rename/upgrade the new binary is not
+                // actually trusted even though the UI shows an entry.
+                // See issue #1211.
+                Err(anyhow!(
+                    "grab failed. kanata could not open the keyboard device \
+                     despite Input Monitoring and Accessibility being \
+                     reported as granted. If you recently moved, renamed, \
+                     or upgraded the kanata binary, remove kanata from \
+                     System Settings -> Privacy & Security -> Input \
+                     Monitoring *and* Accessibility, then re-add the \
+                     current binary (macOS pins TCC grants to the original \
+                     path). Also verify kanata is running as root (via \
+                     sudo or a LaunchDaemon) and that no other process is \
+                     exclusively grabbing the keyboard."
+                ))
             }
         } else {
             Err(anyhow!(
