@@ -519,17 +519,22 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
-        let has_device_filter = include_names.is_some() || exclude_names.is_some();
         let device_names = if let Some(included_names) = include_names {
             validate_and_register_devices(included_names)
-        } else if let Some(excluded_names) = exclude_names {
-            // get all devices
+        } else {
+            // No include list: enumerate every device the driverkit iterator
+            // sees, drop any that are known-problematic (empty names, Sidecar
+            // virtual keyboards, etc., see `is_skipped_virtual_device`), then
+            // apply the user's exclude list on top. This replaces the former
+            // `register_device("")` catch-all, which silently seized Sidecar's
+            // virtual HID device and could abort the process during grab
+            // (issue #1342).
+            let excluded = exclude_names.unwrap_or_default();
             let kb_list = fetch_devices();
-
-            // filter out excluded devices
             let devices_to_include = kb_list
                 .iter()
-                .filter(|k| !excluded_names.iter().any(|n| *k == n.as_str()))
+                .filter(|k| !excluded.iter().any(|n| *k == n.as_str()))
+                .filter(|k| !is_skipped_virtual_device(&k.product_key))
                 .map(|k| {
                     if k.product_key.trim().is_empty() {
                         format!("{:x}", k.hash)
@@ -539,16 +544,10 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            // register the remaining devices
             validate_and_register_devices(devices_to_include)
-        } else {
-            vec![]
         };
 
-        // When an include/exclude list is configured but no devices matched,
-        // do NOT fall back to registering all devices. Only use the catch-all
-        // register_device("") when no device filter was specified at all.
-        if !device_names.is_empty() || (!has_device_filter && register_device("")) {
+        if !device_names.is_empty() {
             if grab() {
                 Ok(Self { grabbed: true })
             } else {
@@ -557,7 +556,8 @@ impl KbdIn {
         } else {
             Err(anyhow!(
                 "Couldn't register any device. Use 'kanata --list' to see available devices. \
-                 Note: devices with empty names are automatically skipped to prevent crashes."
+                 Note: devices with empty names and known virtual devices (e.g. Sidecar) are \
+                 automatically skipped to prevent crashes."
             ))
         }
     }
@@ -606,6 +606,32 @@ impl KbdIn {
     pub fn is_grabbed(&self) -> bool {
         self.grabbed
     }
+}
+
+/// Device product-name patterns to skip in the default (no explicit
+/// include list) enumeration path. These are virtual HID devices that
+/// appear in the keyboard iterator but cannot or must not be seized:
+/// seizing them either aborts the process (Sidecar, see issue #1342)
+/// or is simply noise the user cannot have intended.
+///
+/// Matched case-insensitively against the device's product name. Users
+/// who need to keep one of these can add it to `macos-dev-names-include`
+/// explicitly; that path bypasses this filter.
+const SKIPPED_VIRTUAL_DEVICE_SUBSTRINGS: &[&str] = &[
+    // Apple Sidecar: iPad-as-display exposes a virtual HID keyboard.
+    // Seizing it has aborted kanata during grab() on multiple reporters.
+    "sidecar",
+    // Karabiner's own virtual keyboard. The driverkit layer already
+    // refuses to seize it, but skipping it earlier avoids a misleading
+    // "couldn't register" warning in the common list.
+    "karabiner",
+];
+
+fn is_skipped_virtual_device(product_key: &str) -> bool {
+    let lower = product_key.to_lowercase();
+    SKIPPED_VIRTUAL_DEVICE_SUBSTRINGS
+        .iter()
+        .any(|needle| lower.contains(needle))
 }
 
 fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
