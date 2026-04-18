@@ -1218,8 +1218,18 @@ pub fn start_mouse_listener(
                 CGEventType::OtherMouseDragged,
             ];
 
+            // Tap at the *session* location, not HID. HID taps sit upstream of
+            // the window server and coalesce with raw HID delivery; on some
+            // Bluetooth mice this either freezes the cursor entirely
+            // (issue #739) or pins it to the screen edges because relative
+            // movement deltas race with the tap thread (issue #1636, Logitech
+            // M720 and friends). Session taps sit downstream of the window
+            // server and see post-acceleration button/wheel/movement events,
+            // which is everything kanata actually needs and does not interfere
+            // with cursor delivery. Note: *posting* synthetic mouse events
+            // still uses the HID location; that's unrelated and intentional.
             let tap = match CGEventTap::new(
-                CGEventTapLocation::HID,
+                CGEventTapLocation::Session,
                 CGEventTapPlacement::HeadInsertEventTap,
                 CGEventTapOptions::Default,
                 events_of_interest,
