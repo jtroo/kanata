@@ -15,7 +15,7 @@ mod sim_tests;
 ))]
 mod passthru_macos_tests;
 
-static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
+pub(crate) static CFG_PARSE_LOCK: Mutex<()> = Mutex::new(());
 
 fn init_log() {
     use simplelog::*;
