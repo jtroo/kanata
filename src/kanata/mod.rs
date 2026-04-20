@@ -1,5 +1,7 @@
 //! Implements the glue between OS input/output and keyberon state management.
 
+mod input_source;
+
 #[cfg(all(target_os = "windows", feature = "gui"))]
 use crate::gui::win::*;
 use anyhow::{Result, bail};
@@ -386,15 +388,20 @@ pub(crate) static MAPPED_KEYS: Lazy<Mutex<cfg::MappedKeys>> =
 
 const LINUX_PERMISSIONS_ERROR: &str = "Failed to open the output uinput device. Make sure you added the user executing kanata to the 'uinput' group and that the 'uinput' group is configured correctly.\nSee for more detail: https://github.com/jtroo/kanata/blob/main/docs/setup-linux.md";
 
+fn install_runtime_condition_evaluators(layout: &mut cfg::KanataLayout) {
+    layout.set_custom_condition_evaluator(input_source::evaluate_custom_condition);
+}
+
 impl Kanata {
     pub fn new(args: &ValidatedArgs) -> Result<Self> {
-        let cfg = match cfg::new_from_file(&args.paths[0]) {
+        let mut cfg = match cfg::new_from_file(&args.paths[0]) {
             Ok(c) => c,
             Err(e) => {
                 log::error!("{e:?}");
                 bail!("failed to parse file");
             }
         };
+        install_runtime_condition_evaluators(&mut cfg.layout);
 
         let kbd_out = match KbdOut::new(
             #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -562,12 +569,13 @@ impl Kanata {
     }
 
     pub fn new_from_str(cfg: &str, file_content: HashMap<String, String>) -> Result<Self> {
-        let cfg = match cfg::new_from_str(cfg, file_content) {
+        let mut cfg = match cfg::new_from_str(cfg, file_content) {
             Ok(c) => c,
             Err(e) => {
                 bail!("{e:?}");
             }
         };
+        install_runtime_condition_evaluators(&mut cfg.layout);
 
         let kbd_out = match KbdOut::new(
             #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -722,7 +730,7 @@ impl Kanata {
     }
 
     fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
-        let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
+        let mut cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
                 log::error!("{e:?}");
@@ -733,6 +741,7 @@ impl Kanata {
                 bail!("failed to parse config file");
             }
         };
+        install_runtime_condition_evaluators(&mut cfg.layout);
         update_kbd_out(&cfg.options, &self.kbd_out)?;
         #[cfg(target_os = "windows")]
         set_win_altgr_behaviour(cfg.options.windows_opts.windows_altgr);
@@ -1824,10 +1833,16 @@ impl Kanata {
                     CustomAction::ClipboardSaveSwap(id1, id2) => {
                         clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
                     }
+                    CustomAction::SetInputSource(id) => {
+                        if let Err(e) = input_source::set_current_input_source_by_id(id) {
+                            log::error!("failed to set macOS input source {id:?}: {e}");
+                        }
+                    }
                     CustomAction::FakeKeyOnRelease { .. }
                     | CustomAction::DelayOnRelease(_)
                     | CustomAction::Unmodded { .. }
                     | CustomAction::Unshifted { .. }
+                    | CustomAction::InputSourceIs(_)
                     // Note: ReverseReleaseOrder is already handled earlier on.
                     | CustomAction::ReverseReleaseOrder
                     | CustomAction::CancelMacroOnRelease => {}

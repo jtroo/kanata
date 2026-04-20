@@ -958,6 +958,35 @@ When activated, the underlying `defsrc` key will be the output action.
   _ _ d @src)
 ----
 
+[[set-input-source]]
+=== set-input-source
+
+**Reference**
+
+[cols="1,6"]
+|===
+| `(set-input-source $input-source-id)`
+| macOS-only action that switches to the exact keyboard input source ID.
+|===
+
+**Description**
+
+This action uses native macOS Text Input Source Services to select an installed
+keyboard input source by its exact ID.
+
+On macOS, input-source actions are executed through the
+`kanata-input-source-helper` process. Install it as the per-user LaunchAgent
+documented in `docs/setup-macos.md` when using this action.
+
+.Example:
+[source]
+----
+(defalias us (set-input-source "com.apple.keylayout.US"))
+----
+
+This is only supported on macOS. Other platforms reject this action during
+configuration validation.
+
 [[no-op]]
 === No-op
 
@@ -2915,6 +2944,7 @@ if any of the items evaluates to true.
 (input-history $input-type $key-name $input-recency)
 (layer      $layer-name)
 (base-layer $layer-name)
+(input-source-is $input-source-id)
 ----
 
 [cols="1,4"]
@@ -2958,6 +2988,10 @@ The max recency is 8.
 | `base-layer`
 | Evaluates to true if the most-recently-switched-to layer
 from a `layer-switch` action matches `$layer-name`.
+
+| `input-source-is`
+| macOS-only. Evaluates to true if the current keyboard input source ID exactly
+matches `$input-source-id`, for example `com.apple.keylayout.US`.
 |===
 
 **Description**
@@ -3219,6 +3253,25 @@ if `layer-switch` has never been activated.
                  () z break
   )
 )
+----
+
+==== input-source-is
+
+The `input-source-is` list item is macOS-only and checks the current keyboard
+input source ID using native macOS APIs.
+
+On macOS, this check is executed through the `kanata-input-source-helper`
+process so it observes the logged-in user's input-source session. Install the
+per-user LaunchAgent documented in `docs/setup-macos.md` when using this
+condition.
+
+.Example:
+[source]
+----
+(defalias russian-if-active
+  (switch
+    ((input-source-is "com.apple.keylayout.RussianWin")) r break
+                                              ()         _ break))
 ----
 
 

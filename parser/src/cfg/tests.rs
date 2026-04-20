@@ -856,9 +856,68 @@ fn parse_switch() {
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
-            ]
+            ],
+            custom_conditions: &[],
         })
     );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn parse_macos_input_source_support() {
+    let source = r#"
+(defsrc a b)
+(deflayer base
+  (set-input-source "com.apple.keylayout.US")
+  (switch
+    ((input-source-is "com.apple.keylayout.RussianWin")) b break
+  )
+)
+"#;
+    let res = parse_cfg(source).expect("parses");
+    let (op1, op2) = OpCode::new_custom_condition(0);
+    let (klayers, _) = res.klayers.get();
+    assert_eq!(
+        klayers[0][0][OsCode::KEY_A.as_u16() as usize],
+        Action::Custom(&CustomAction::SetInputSource("com.apple.keylayout.US"))
+    );
+    assert_eq!(
+        klayers[0][0][OsCode::KEY_B.as_u16() as usize],
+        Action::Switch(&Switch {
+            cases: &[(
+                &[op1, op2],
+                &Action::KeyCode(KeyCode::B),
+                BreakOrFallthrough::Break
+            )],
+            custom_conditions: &[&CustomAction::InputSourceIs(
+                "com.apple.keylayout.RussianWin"
+            )],
+        })
+    );
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn parse_macos_input_source_support_rejected_on_other_platforms() {
+    let action_source = r#"
+(defsrc a)
+(deflayer base
+  (set-input-source "com.apple.keylayout.US")
+)
+"#;
+    let err = parse_cfg(action_source).unwrap_err();
+    assert!(format!("{err:?}").contains("only supported on macOS"));
+
+    let condition_source = r#"
+(defsrc a)
+(deflayer base
+  (switch
+    ((input-source-is "com.apple.keylayout.US")) a break
+  )
+)
+"#;
+    let err = parse_cfg(condition_source).unwrap_err();
+    assert!(format!("{err:?}").contains("only supported on macOS"));
 }
 
 #[test]

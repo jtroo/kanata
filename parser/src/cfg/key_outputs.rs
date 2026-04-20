@@ -108,7 +108,7 @@ pub(crate) fn add_key_output_from_action_to_key_pos(
                 add_key_output_from_action_to_key_pos(osc_slot, ac, outputs, overrides);
             }
         }
-        Action::Switch(Switch { cases }) => {
+        Action::Switch(Switch { cases, .. }) => {
             for case in cases.iter() {
                 add_key_output_from_action_to_key_pos(osc_slot, case.1, outputs, overrides);
             }

@@ -75,6 +75,8 @@ use fake_key::*;
 mod fork;
 pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
 use fork::*;
+mod input_source;
+use input_source::*;
 mod is_a_button;
 use is_a_button::*;
 mod live_reload;
@@ -278,6 +280,10 @@ impl KanataLayout {
     pub fn b(&self) -> &BorrowedKLayout<'_> {
         // shrink the lifetime
         unsafe { std::mem::transmute(&self.layout) }
+    }
+
+    pub fn set_custom_condition_evaluator(&mut self, evaluator: fn(&KanataCustom) -> bool) {
+        self.layout.set_custom_condition_evaluator(evaluator);
     }
 }
 
@@ -1651,6 +1657,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CLIPBOARD_SAVE_SET => parse_clipboard_save_set(&ac[1..], s),
         CLIPBOARD_SAVE_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSaveSet),
         CLIPBOARD_SAVE_SWAP => parse_clipboard_save_swap(&ac[1..], s),
+        SET_INPUT_SOURCE => parse_set_input_source(&ac[1..], s),
         _ => unreachable!(),
     }
 }
