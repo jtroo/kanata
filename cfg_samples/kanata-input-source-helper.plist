@@ -17,7 +17,7 @@
     chmod 644 ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
 
-  Reload after editing this plist:
+  Reload after editing this plist or replacing the helper binary:
     launchctl kickstart -k gui/$(id -u)/dev.kanata.input-source-helper
 
   Uninstall:

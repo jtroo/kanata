@@ -167,7 +167,7 @@ launchctl print gui/$(id -u)/dev.kanata.input-source-helper
 
 Logs are written to `/tmp/kanata-input-source-helper.log`.
 
-After editing the helper plist, reload with:
+After editing the helper plist or replacing the helper binary, reload with:
 
 ```sh
 launchctl kickstart -k gui/$(id -u)/dev.kanata.input-source-helper

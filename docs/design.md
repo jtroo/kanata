@@ -43,3 +43,10 @@
 
 Most of the OS specific code is in `oskbd/` and `keys/`. There's a bit of it in
 `kanata/` since the event loops to receive OS events are different.
+
+macOS input-source switching is intentionally split out into
+`kanata-input-source-helper`, a per-user LaunchAgent. Kanata can run as root for
+keyboard grabbing, but macOS Text Input Source Services state belongs to the
+logged-in Aqua user session. The main Kanata process sends small local IPC
+requests to the helper for getting or setting the current input source; the
+helper performs the native TIS calls in the user's session.
