@@ -130,7 +130,56 @@ After editing your kanata config (or the plist itself), reload with:
 sudo launchctl kickstart -k system/dev.kanata.kanata
 ```
 
-### 7. Uninstall
+### 7. (Optional) Install the input-source helper as a LaunchAgent
+
+If your config uses `(set-input-source "...")` or `(input-source-is "...")`,
+install the macOS input-source helper as a per-user LaunchAgent. The helper
+must run as the logged-in Aqua console user so macOS Text Input Source Services
+sees the same enabled input sources as the menu bar and real typing behavior.
+
+First install the helper binary somewhere stable:
+
+```sh
+cargo build --release --bin kanata-input-source-helper
+sudo mkdir -p /opt/homebrew/bin
+sudo cp target/release/kanata-input-source-helper /opt/homebrew/bin/kanata-input-source-helper
+sudo chmod 755 /opt/homebrew/bin/kanata-input-source-helper
+```
+
+If you install the helper somewhere else, edit `ProgramArguments` in
+[`cfg_samples/kanata-input-source-helper.plist`](../cfg_samples/kanata-input-source-helper.plist)
+before loading it.
+
+Install and start the LaunchAgent:
+
+```sh
+mkdir -p ~/Library/LaunchAgents
+cp cfg_samples/kanata-input-source-helper.plist ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+chmod 644 ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+```
+
+Verify it is running:
+
+```sh
+launchctl print gui/$(id -u)/dev.kanata.input-source-helper
+```
+
+Logs are written to `/tmp/kanata-input-source-helper.log`.
+
+After editing the helper plist, reload with:
+
+```sh
+launchctl kickstart -k gui/$(id -u)/dev.kanata.input-source-helper
+```
+
+This is intentionally a LaunchAgent, not a LaunchDaemon. Kanata itself may run
+as root for keyboard grabbing, but input-source selection is user-session
+state. Running the helper as a root LaunchDaemon can make TIS report layouts as
+installed but disabled even though the active user's macOS UI shows them as
+enabled.
+
+### 8. Uninstall
 
 Remove the LaunchDaemon (if you installed it):
 
@@ -139,10 +188,19 @@ sudo launchctl bootout system/dev.kanata.kanata
 sudo rm /Library/LaunchDaemons/dev.kanata.kanata.plist
 ```
 
+Remove the input-source LaunchAgent (if you installed it):
+
+```sh
+launchctl bootout gui/$(id -u)/dev.kanata.input-source-helper
+rm ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+rm -f /tmp/kanata-input-source-helper.log
+```
+
 Remove the kanata binary:
 
 ```sh
 sudo rm /usr/local/bin/kanata
+sudo rm /opt/homebrew/bin/kanata-input-source-helper
 ```
 
 If you are also fully removing the Karabiner driver:

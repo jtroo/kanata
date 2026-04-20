@@ -137,6 +137,7 @@ pub const CLIPBOARD_RESTORE: &str = "clipboard-restore";
 pub const CLIPBOARD_SAVE_SET: &str = "clipboard-save-set";
 pub const CLIPBOARD_SAVE_CMD_SET: &str = "clipboard-save-cmd-set";
 pub const CLIPBOARD_SAVE_SWAP: &str = "clipboard-save-swap";
+pub const SET_INPUT_SOURCE: &str = "set-input-source";
 pub const TAP_HOLD_ORDER: &str = "tap-hold-order";
 pub const TAP_HOLD_OPPOSITE_HAND: &str = "tap-hold-opposite-hand";
 pub const TAP_HOLD_OPPOSITE_HAND_RELEASE: &str = "tap-hold-opposite-hand-release";
@@ -276,6 +277,7 @@ pub fn is_list_action(ac: &str) -> bool {
         CLIPBOARD_SAVE_SET,
         CLIPBOARD_SAVE_CMD_SET,
         CLIPBOARD_SAVE_SWAP,
+        SET_INPUT_SOURCE,
         TAP_HOLD_ORDER,
         TAP_HOLD_OPPOSITE_HAND,
         TAP_HOLD_OPPOSITE_HAND_RELEASE,

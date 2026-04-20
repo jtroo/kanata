@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample per-user LaunchAgent for kanata-input-source-helper on macOS.
+
+  Install this in the logged-in user's LaunchAgents directory, not in
+  /Library/LaunchDaemons. The input-source helper must run in the user's
+  Aqua session so macOS Text Input Source Services sees the same enabled
+  keyboard layouts as the menu bar and real typing behavior.
+
+  Customize the helper binary path in ProgramArguments below if needed:
+    - default: /opt/homebrew/bin/kanata-input-source-helper
+    - Intel/Homebrew or manual installs might use /usr/local/bin/kanata-input-source-helper
+
+  Install:
+    mkdir -p ~/Library/LaunchAgents
+    cp cfg_samples/kanata-input-source-helper.plist ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+    chmod 644 ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+
+  Reload after editing this plist:
+    launchctl kickstart -k gui/$(id -u)/dev.kanata.input-source-helper
+
+  Uninstall:
+    launchctl bootout gui/$(id -u)/dev.kanata.input-source-helper
+    rm ~/Library/LaunchAgents/dev.kanata.input-source-helper.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.kanata.input-source-helper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/kanata-input-source-helper</string>
+    </array>
+
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/kanata-input-source-helper.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/kanata-input-source-helper.log</string>
+</dict>
+</plist>
