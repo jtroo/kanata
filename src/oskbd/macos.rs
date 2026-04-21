@@ -11,7 +11,11 @@ use super::*;
 use crate::kanata::CalculatedMouseMove;
 use crate::oskbd::KeyEvent;
 use anyhow::anyhow;
+use core_foundation::base::{CFType, TCFType};
+use core_foundation::boolean::CFBoolean;
+use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopCommonModes};
+use core_foundation::string::{CFString, CFStringRef};
 use core_graphics::base::CGFloat;
 use core_graphics::display::{CGDisplay, CGPoint};
 use core_graphics::event::{
@@ -205,18 +209,23 @@ unsafe extern "C" {
     fn IOHIDRequestAccess(request: u32) -> bool;
 }
 
-// ApplicationServices binding for the Accessibility TCC gate.
+// ApplicationServices bindings for the Accessibility TCC gate.
 // `AXIsProcessTrusted` reports whether the current process is trusted
-// for Accessibility without showing any system prompt — exactly what
-// we want for a pre-flight diagnostic. The symbol lives in the
-// HIServices subframework of ApplicationServices and is available on
-// every macOS version kanata supports. core-graphics (already a
-// dependency) links CoreGraphics, which transitively loads
+// for Accessibility without showing any system prompt. If it is not
+// trusted, `AXIsProcessTrustedWithOptions` with
+// `kAXTrustedCheckOptionPrompt = true` asks macOS to register/prompt
+// kanata so the user can flip the Accessibility toggle. The symbols
+// live in the HIServices subframework of ApplicationServices and are
+// available on every macOS version kanata supports. core-graphics
+// (already a dependency) links CoreGraphics, which transitively loads
 // ApplicationServices, but declare the framework link explicitly so
 // this does not silently break if that transitive link ever changes.
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {
+    static kAXTrustedCheckOptionPrompt: CFStringRef;
+
     fn AXIsProcessTrusted() -> bool;
+    fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
 }
 
 /// `IOHIDRequestType::kIOHIDRequestTypeListenEvent` from
@@ -227,6 +236,12 @@ const K_IOHID_REQUEST_TYPE_LISTEN_EVENT: u32 = 1;
 const K_IOHID_ACCESS_TYPE_GRANTED: u32 = 0;
 const K_IOHID_ACCESS_TYPE_DENIED: u32 = 1;
 const K_IOHID_ACCESS_TYPE_UNKNOWN: u32 = 2;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum AccessibilityPermissionStatus {
+    Trusted,
+    Requested,
+}
 
 /// Pre-flight check for Input Monitoring permission. Returns `Ok(())`
 /// if kanata is allowed to observe events; otherwise returns an
@@ -283,27 +298,72 @@ fn ensure_input_monitoring_permission() -> Result<(), anyhow::Error> {
 /// the exact setting, instead of the generic "grab failed" users see
 /// otherwise.
 ///
-/// We deliberately call `AXIsProcessTrusted` (no options) rather than
-/// `AXIsProcessTrustedWithOptions` with `kAXTrustedCheckOptionPrompt`:
-/// a root LaunchDaemon context cannot display a UI prompt, and for a
-/// plain `sudo` invocation the prompt would race kanata's own startup
-/// output. The returned error message already tells the user where to
-/// grant it manually, mirroring the Input Monitoring branch.
-fn ensure_accessibility_permission() -> Result<(), anyhow::Error> {
-    // SAFETY: plain FFI call with no args; the symbol is present on
-    // every macOS version kanata supports (10.15+).
-    if unsafe { AXIsProcessTrusted() } {
-        Ok(())
+/// If the permission has not been granted yet, ask ApplicationServices
+/// to register/prompt kanata by calling `AXIsProcessTrustedWithOptions`
+/// with `kAXTrustedCheckOptionPrompt = true`. In root/LaunchDaemon
+/// contexts macOS may be unable to show UI, but the call still gives
+/// TCC a chance to create the System Settings entry for the current
+/// binary path.
+pub fn request_accessibility_permission() -> Result<AccessibilityPermissionStatus, anyhow::Error> {
+    // Important CLI UX caveat: Apple's public AX trust APIs only answer
+    // whether "the current process" is trusted; they do not let us ask
+    // about, or register, an arbitrary executable path. For a command-line
+    // tool launched from Terminal, macOS may attribute trust to Terminal (the
+    // responsible process), so this status must not be presented as proof
+    // that the kanata binary itself appears as a separate Accessibility item.
+    if unsafe {
+        // SAFETY: plain FFI call with no args; the symbol is present on
+        // every macOS version kanata supports (10.15+).
+        AXIsProcessTrusted()
+    } {
+        return Ok(AccessibilityPermissionStatus::Trusted);
+    }
+
+    log::info!(
+        "macOS Accessibility permission not yet granted; \
+         asking ApplicationServices to register/prompt kanata under System Settings"
+    );
+
+    let prompt_key = unsafe {
+        if kAXTrustedCheckOptionPrompt.is_null() {
+            return Err(anyhow!(
+                "macOS Accessibility permission request failed: \
+                 kAXTrustedCheckOptionPrompt was not available"
+            ));
+        }
+
+        // SAFETY: kAXTrustedCheckOptionPrompt is a process-global CFString
+        // owned by ApplicationServices. wrap_under_get_rule retains it for
+        // the temporary dictionary below.
+        CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt)
+    };
+    let prompt_value = CFBoolean::true_value();
+    let options = CFDictionary::from_CFType_pairs(&[(prompt_key, prompt_value)]);
+
+    if unsafe {
+        // SAFETY: options is a valid CFDictionary containing the documented
+        // kAXTrustedCheckOptionPrompt -> true pair.
+        AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef())
+    } {
+        Ok(AccessibilityPermissionStatus::Trusted)
     } else {
-        Err(anyhow!(
-            "kanata needs macOS Accessibility permission. Enable kanata in \
-             System Settings -> Privacy & Security -> Accessibility, then \
-             re-run kanata. Note: if you moved, renamed, or upgraded the \
+        Ok(AccessibilityPermissionStatus::Requested)
+    }
+}
+
+fn ensure_accessibility_permission() -> Result<(), anyhow::Error> {
+    const HINT: &str = "kanata needs macOS Accessibility permission. Enable kanata in \
+         System Settings -> Privacy & Security -> Accessibility, then restart kanata.";
+
+    match request_accessibility_permission()? {
+        AccessibilityPermissionStatus::Trusted => Ok(()),
+        AccessibilityPermissionStatus::Requested => Err(anyhow!(
+            "{HINT} Note: if you moved, renamed, or upgraded the \
              kanata binary, macOS pins the old path and you must remove the \
              stale entry and re-add the current binary. This is the \
              commonly-missed second permission behind the `IOHIDDeviceOpen \
              error: (iokit/common) not permitted` failure (issue #1211)."
-        ))
+        )),
     }
 }
 
@@ -374,11 +434,6 @@ fn install_karabiner_abort_handler() {
 // closes raw FDs without poisoning them, so racing a poller-side
 // release against the event-loop's release/regrab could close FDs
 // that another kanata thread has reused.
-
-use core_foundation::base::{CFType, TCFType};
-use core_foundation::boolean::CFBoolean;
-use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
-use core_foundation::string::CFString;
 
 // Not exposed by `core-graphics`. Symbol lives in `CoreGraphics.framework`
 // (re-exported from SkyLight) which `core-graphics` already links.

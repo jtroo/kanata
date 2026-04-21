@@ -122,6 +122,12 @@ kanata.kbd in the current working directory and
     #[cfg(target_os = "macos")]
     #[arg(long, verbatim_doc_comment)]
     pub release_grab_on_lock: bool,
+
+    /// Request/register macOS Accessibility permission and exit.
+    /// This does not read a config file, open keyboard devices, or start remapping.
+    #[cfg(target_os = "macos")]
+    #[arg(long, verbatim_doc_comment)]
+    pub macos_request_permissions: bool,
 }
 
 #[cfg(test)]
@@ -172,6 +178,22 @@ mod tests {
     fn release_grab_on_lock_enabled() {
         let args = Args::try_parse_from(["kanata", "--release-grab-on-lock"]).unwrap();
         assert!(args.release_grab_on_lock);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_request_permissions_enabled() {
+        let args = Args::try_parse_from(["kanata", "--macos-request-permissions"]).unwrap();
+        assert!(args.macos_request_permissions);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn help_mentions_macos_request_permissions() {
+        use clap::CommandFactory;
+
+        let help = Args::command().render_long_help().to_string();
+        assert!(help.contains("--macos-request-permissions"));
     }
 
     #[test]
