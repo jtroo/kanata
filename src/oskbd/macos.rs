@@ -352,13 +352,12 @@ pub fn request_accessibility_permission() -> Result<AccessibilityPermissionStatu
 }
 
 fn ensure_accessibility_permission() -> Result<(), anyhow::Error> {
-    const HINT: &str = "kanata needs macOS Accessibility permission. Enable kanata in \
-         System Settings -> Privacy & Security -> Accessibility, then restart kanata.";
-
     match request_accessibility_permission()? {
         AccessibilityPermissionStatus::Trusted => Ok(()),
         AccessibilityPermissionStatus::Requested => Err(anyhow!(
-            "{HINT} Note: if you moved, renamed, or upgraded the \
+            "kanata needs macOS Accessibility permission. Enable kanata in \
+             System Settings -> Privacy & Security -> Accessibility, then \
+             restart kanata. Note: if you moved, renamed, or upgraded the \
              kanata binary, macOS pins the old path and you must remove the \
              stale entry and re-add the current binary. This is the \
              commonly-missed second permission behind the `IOHIDDeviceOpen \
