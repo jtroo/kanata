@@ -235,7 +235,7 @@ mod cli {
     fn macos_current_executable_hint() -> String {
         std::env::current_exe()
             .map(|path| path.display().to_string())
-            .unwrap_or_else(|_| "/opt/homebrew/bin/kanata".to_string())
+            .unwrap_or_else(|_| "kanata".to_string())
     }
 }
 
