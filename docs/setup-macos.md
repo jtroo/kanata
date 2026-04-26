@@ -64,16 +64,27 @@ cargo build --release
 sudo cp target/release/kanata /usr/local/bin/kanata
 ```
 
-### 4. Grant Input Monitoring permission
+### 4. Grant macOS privacy permissions
 
 kanata needs Input Monitoring permission in
-`System Settings > Privacy & Security > Input Monitoring`. The first time you
-run kanata as root, macOS will prompt you to add the binary; you can also
-pre-add `/usr/local/bin/kanata` (or wherever you installed it) by clicking the
-`+` button and selecting the binary.
+`System Settings > Privacy & Security > Input Monitoring` to read keyboard
+devices. The first time you run kanata as root, macOS will prompt you to add
+the binary; you can also pre-add `/usr/local/bin/kanata` (or wherever you
+installed it) by clicking the `+` button and selecting the binary.
 
-Mouse-button input additionally needs Accessibility or Input Monitoring
-permission for the same binary.
+kanata also needs Accessibility permission in
+`System Settings > Privacy & Security > Accessibility`. Installers can ask
+macOS to register/show the Accessibility prompt without starting the remap
+loop:
+
+```sh
+/usr/local/bin/kanata --macos-request-permissions || true
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+```
+
+When launched from Terminal, macOS can report the Terminal/responsible process
+as trusted. If kanata does not appear as its own item in Accessibility, add the
+installed kanata binary manually with the `+` button.
 
 ### 5. Smoke test from terminal
 
