@@ -41,21 +41,6 @@ mod cli {
             std::process::exit(0);
         }
 
-        let config_string = if args.cfg_stdin {
-            use std::io::Read;
-            let mut buf = String::new();
-            std::io::stdin().read_to_string(&mut buf)?;
-            Some(buf)
-        } else {
-            None
-        };
-
-        let cfg_paths = if config_string.is_none() {
-            args.cfg.unwrap_or_else(default_cfg)
-        } else {
-            vec![]
-        };
-
         let log_lvl = match (args.debug, args.trace, args.quiet) {
             (_, true, false) => LevelFilter::Trace,
             (true, false, false) => LevelFilter::Debug,
@@ -84,6 +69,41 @@ mod cli {
         log::info!("using LLHOOK+SendInput for keyboard IO");
         #[cfg(all(feature = "interception_driver", target_os = "windows"))]
         log::info!("using the Interception driver for keyboard IO");
+
+        #[cfg(target_os = "macos")]
+        if args.macos_request_permissions {
+            match oskbd::request_accessibility_permission() {
+                Ok(oskbd::AccessibilityPermissionStatus::Trusted) => {
+                    println!(
+                        "macOS reported this process as trusted, but kanata may still not appear as a separate item when launched from Terminal. Add {} manually if it is not listed.",
+                        macos_current_executable_hint()
+                    );
+                    std::process::exit(0);
+                }
+                Ok(oskbd::AccessibilityPermissionStatus::Requested) => {
+                    println!(
+                        "kanata has requested macOS Accessibility permission. Enable kanata in System Settings -> Privacy & Security -> Accessibility, then restart kanata."
+                    );
+                }
+                Err(e) => eprintln!("failed to request macOS Accessibility permission: {e}"),
+            }
+            std::process::exit(1);
+        }
+
+        let config_string = if args.cfg_stdin {
+            use std::io::Read;
+            let mut buf = String::new();
+            std::io::stdin().read_to_string(&mut buf)?;
+            Some(buf)
+        } else {
+            None
+        };
+
+        let cfg_paths = if config_string.is_none() {
+            args.cfg.unwrap_or_else(default_cfg)
+        } else {
+            vec![]
+        };
 
         if config_string.is_none() {
             if let Some(config_file) = cfg_paths.first() {
@@ -209,6 +229,13 @@ mod cli {
         sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 
         Kanata::event_loop(kanata_arc, tx)
+    }
+
+    #[cfg(target_os = "macos")]
+    fn macos_current_executable_hint() -> String {
+        std::env::current_exe()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|_| "kanata".to_string())
     }
 }
 
