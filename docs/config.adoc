@@ -2915,7 +2915,7 @@ if any of the items evaluates to true.
 (input-history $input-type $key-name $input-recency)
 (layer      $layer-name)
 (base-layer $layer-name)
-(device     $device-id)
+(device-history $device-id $device-recency)
 ----
 
 [cols="1,4"]
@@ -2960,10 +2960,11 @@ The max recency is 8.
 | Evaluates to true if the most-recently-switched-to layer
 from a `layer-switch` action matches `$layer-name`.
 
-| `device`
-| Evaluates to true if the event came from the physical device
-with the given `$device-id`. Device IDs are defined via
-<<definputdevices,`definputdevices`>>.
+| `device-history`
+| Evaluates to true if the device in the `$device-recency` slot
+matches `$device-id`. A recency of 1 is the most recent device
+that sent an event. The max recency is 8.
+Device IDs are defined via <<definputdevices,`definputdevices`>>.
 Currently supported on macOS only.
 |===
 
@@ -4109,7 +4110,7 @@ See a sample below that showcases a reusable template.
 
 The optional `definputdevices` block maps user-chosen numeric device IDs
 to physical input devices, enabling per-device key mappings via the
-<<switch,`switch`>> action's `(device $id)` condition.
+<<switch,`switch`>> action's `(device-history $id $recency)` condition.
 
 .Syntax:
 [source]
@@ -4153,8 +4154,8 @@ Use `kanata --list` to see device hashes.
 (defsrc a)
 (deflayer base
   (switch
-    ((device 1)) x break
-    ((device 2)) y break
+    ((device-history 1 1)) x break
+    ((device-history 2 1)) y break
     () a break))
 ----
 

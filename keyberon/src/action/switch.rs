@@ -50,7 +50,7 @@ const INPUT_VAL: u16 = 851;
 const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
 const BASE_LAYER_VAL: u16 = 854;
-const DEVICE_VAL: u16 = 855;
+const HISTORICAL_DEVICE_VAL: u16 = 855;
 
 // Binary values:
 // 0b0100 ...
@@ -89,7 +89,7 @@ enum OpCodeType {
     TicksSinceGreaterThan(TicksSinceNthKey),
     Layer(u16),
     BaseLayer(u16),
-    Device(NonZeroU8),
+    HistoricalDevice(HistoricalDevice),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -116,6 +116,12 @@ struct HistoricalInput {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct HistoricalDevice {
+    device_id: NonZeroU8,
+    how_far_back: u8,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct TicksSinceNthKey {
     nth_key: u8,
     ticks_since: u16,
@@ -135,7 +141,7 @@ impl<'a, T> Switch<'a, T> {
     ///
     /// The `historical_keys` parameter should iterate in the order of most-recent-first.
     #[allow(clippy::too_many_arguments)]
-    pub fn actions<A1, A2, H1, H2, L>(
+    pub fn actions<A1, A2, H1, H2, L, D>(
         &self,
         active_keys: A1,
         active_positions: A2,
@@ -143,14 +149,15 @@ impl<'a, T> Switch<'a, T> {
         historical_positions: H2,
         layers: L,
         default_layer: u16,
-        device_id: Option<NonZeroU8>,
-    ) -> SwitchActions<'a, T, A1, A2, H1, H2, L>
+        device_history: D,
+    ) -> SwitchActions<'a, T, A1, A2, H1, H2, L, D>
     where
         A1: Iterator<Item = KeyCode> + Clone,
         A2: Iterator<Item = KCoord> + Clone,
         H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
         H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
         L: Iterator<Item = u16> + Clone,
+        D: Iterator<Item = NonZeroU8> + Clone,
     {
         SwitchActions {
             cases: self.cases,
@@ -160,7 +167,7 @@ impl<'a, T> Switch<'a, T> {
             historical_positions,
             layers,
             default_layer,
-            device_id,
+            device_history,
             case_index: 0,
         }
     }
@@ -168,13 +175,14 @@ impl<'a, T> Switch<'a, T> {
 
 #[derive(Debug, Clone)]
 /// Iterator returned by `Switch::actions`.
-pub struct SwitchActions<'a, T, A1, A2, H1, H2, L>
+pub struct SwitchActions<'a, T, A1, A2, H1, H2, L, D>
 where
     A1: Iterator<Item = KeyCode> + Clone,
     A2: Iterator<Item = KCoord> + Clone,
     H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     L: Iterator<Item = u16> + Clone,
+    D: Iterator<Item = NonZeroU8> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
     active_keys: A1,
@@ -183,17 +191,18 @@ where
     historical_positions: H2,
     layers: L,
     default_layer: u16,
-    device_id: Option<NonZeroU8>,
+    device_history: D,
     case_index: usize,
 }
 
-impl<'a, T, A1, A2, H1, H2, L> Iterator for SwitchActions<'a, T, A1, A2, H1, H2, L>
+impl<'a, T, A1, A2, H1, H2, L, D> Iterator for SwitchActions<'a, T, A1, A2, H1, H2, L, D>
 where
     A1: Iterator<Item = KeyCode> + Clone,
     A2: Iterator<Item = KCoord> + Clone,
     H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     L: Iterator<Item = u16> + Clone,
+    D: Iterator<Item = NonZeroU8> + Clone,
 {
     type Item = &'a Action<'a, T>;
 
@@ -208,7 +217,7 @@ where
                 self.historical_positions.clone(),
                 self.layers.clone(),
                 self.default_layer,
-                self.device_id,
+                self.device_history.clone(),
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -323,9 +332,13 @@ impl OpCode {
         (Self(BASE_LAYER_VAL), Self(base_layer))
     }
 
-    /// Return OpCodes specifying a device ID check.
-    pub fn new_device(id: NonZeroU8) -> (Self, Self) {
-        (Self(DEVICE_VAL), Self(id.get() as u16))
+    /// Return OpCodes specifying a device history check.
+    pub fn new_device_history(id: NonZeroU8, how_far_back: u8) -> (Self, Self) {
+        assert!(how_far_back <= MAX_KEY_RECENCY);
+        (
+            Self(HISTORICAL_DEVICE_VAL),
+            Self(id.get() as u16 | ((how_far_back as u16) << 8)),
+        )
     }
 
     /// Return the interpretation of this `OpCode`.
@@ -342,9 +355,11 @@ impl OpCode {
                 }),
                 LAYER_VAL => OpCodeType::Layer(op2.0),
                 BASE_LAYER_VAL => OpCodeType::BaseLayer(op2.0),
-                DEVICE_VAL => OpCodeType::Device(
-                    NonZeroU8::new(op2.0 as u8).expect("device ID must be nonzero"),
-                ),
+                HISTORICAL_DEVICE_VAL => OpCodeType::HistoricalDevice(HistoricalDevice {
+                    device_id: NonZeroU8::new((op2.0 & 0xFF) as u8)
+                        .expect("device ID must be nonzero"),
+                    how_far_back: ((op2.0 >> 8) & 0x7) as u8,
+                }),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -391,7 +406,7 @@ fn evaluate_boolean(
     historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
-    device_id: Option<NonZeroU8>,
+    device_history: impl Iterator<Item = NonZeroU8> + Clone,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -483,10 +498,14 @@ fn evaluate_boolean(
                 current_index += 1;
                 ret = default_layer == base_layer;
             }
-            OpCodeType::Device(id) => {
+            OpCodeType::HistoricalDevice(hd) => {
                 // opcode has size 2
                 current_index += 1;
-                ret = device_id == Some(id);
+                ret = device_history
+                    .clone()
+                    .nth(hd.how_far_back as usize)
+                    .map(|d| d == hd.device_id)
+                    .unwrap_or(false);
             }
         };
         if current_op == Not {
@@ -516,7 +535,7 @@ fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     )
 }
 
@@ -776,7 +795,7 @@ fn switch_fallthrough() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
@@ -798,7 +817,7 @@ fn switch_break() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
@@ -827,18 +846,18 @@ fn switch_no_actions() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     );
     assert_eq!(actions.next(), None);
 }
 
 #[test]
-fn switch_device_match() {
+fn switch_device_history_match() {
     let id1 = NonZeroU8::new(1).unwrap();
     let id2 = NonZeroU8::new(2).unwrap();
-    let (op1, op2) = OpCode::new_device(id1);
+    let (op1, op2) = OpCode::new_device_history(id1, 0);
     let opcodes = [op1, op2];
-    // Matching device ID
+    // Matching device ID (most recent)
     assert!(evaluate_boolean(
         &opcodes,
         [].iter().copied(),
@@ -847,7 +866,7 @@ fn switch_device_match() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        Some(id1),
+        [id1].iter().copied(),
     ));
     // Non-matching device ID
     assert!(!evaluate_boolean(
@@ -858,9 +877,9 @@ fn switch_device_match() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        Some(id2),
+        [id2].iter().copied(),
     ));
-    // No device ID (None)
+    // Empty device history
     assert!(!evaluate_boolean(
         &opcodes,
         [].iter().copied(),
@@ -869,17 +888,64 @@ fn switch_device_match() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     ));
 }
 
 #[test]
-fn switch_device_opcode_roundtrip() {
+fn switch_device_history_recency() {
+    let id1 = NonZeroU8::new(1).unwrap();
+    let id2 = NonZeroU8::new(2).unwrap();
+    let id3 = NonZeroU8::new(3).unwrap();
+    let history = [id3, id2, id1]; // most recent first: 3, 2, 1
+    // Check most recent (recency 1 → how_far_back 0) is id3
+    let (op1, op2) = OpCode::new_device_history(id3, 0);
+    assert!(evaluate_boolean(
+        &[op1, op2],
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        history.iter().copied(),
+    ));
+    // Check second most recent (recency 2 → how_far_back 1) is id2
+    let (op1, op2) = OpCode::new_device_history(id2, 1);
+    assert!(evaluate_boolean(
+        &[op1, op2],
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        history.iter().copied(),
+    ));
+    // Wrong device at recency 1
+    let (op1, op2) = OpCode::new_device_history(id1, 0);
+    assert!(!evaluate_boolean(
+        &[op1, op2],
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        history.iter().copied(),
+    ));
+}
+
+#[test]
+fn switch_device_history_opcode_roundtrip() {
     let id = NonZeroU8::new(42).unwrap();
-    let (op1, op2) = OpCode::new_device(id);
+    let (op1, op2) = OpCode::new_device_history(id, 3);
     match op1.opcode_type(Some(op2)) {
-        OpCodeType::Device(decoded_id) => assert_eq!(decoded_id, id),
-        other => panic!("expected Device, got {other:?}"),
+        OpCodeType::HistoricalDevice(hd) => {
+            assert_eq!(hd.device_id, id);
+            assert_eq!(hd.how_far_back, 3);
+        }
+        other => panic!("expected HistoricalDevice, got {other:?}"),
     }
 }
 
@@ -939,7 +1005,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
@@ -949,7 +1015,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
@@ -959,7 +1025,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
@@ -969,7 +1035,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        None,
+        core::iter::empty(),
     ));
 }
 
@@ -1055,7 +1121,7 @@ fn switch_historical_bools() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
-                None,
+                core::iter::empty(),
             ),
             expectation
         );
@@ -1172,7 +1238,7 @@ fn switch_historical_ticks_since() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
-                None,
+                core::iter::empty(),
             ),
             expectation
         );
@@ -1407,7 +1473,7 @@ fn switch_inputs() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
-                None,
+                core::iter::empty(),
             ),
             expectation
         );
@@ -1476,7 +1542,7 @@ fn switch_historical_inputs() {
                 historical_inputs.iter().copied(),
                 [].iter().copied(),
                 0,
-                None,
+                core::iter::empty(),
             ),
             expectation
         );

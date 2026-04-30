@@ -90,7 +90,7 @@ pub fn parse_switch_case_bool(
             InputHistory,
             Layer,
             BaseLayer,
-            Device,
+            DeviceHistory,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -117,7 +117,7 @@ pub fn parse_switch_case_bool(
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
-                "device" => Some(AllowedListOps::Device),
+                "device-history" => Some(AllowedListOps::DeviceHistory),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -125,7 +125,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer | device",
+                    | input | input-history | layer | base-layer | device-history",
                 )
             })?;
 
@@ -271,9 +271,12 @@ pub fn parse_switch_case_bool(
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
-            AllowedListOps::Device => {
-                if l.len() != 2 {
-                    bail_expr!(op_expr, "device must have 1 parameter: device-id (1-255)");
+            AllowedListOps::DeviceHistory => {
+                if l.len() != 3 {
+                    bail_expr!(
+                        op_expr,
+                        "device-history must have 2 parameters: device-id, device-recency"
+                    );
                 }
                 let id_str = l[1]
                     .atom(s.vars())
@@ -293,10 +296,12 @@ pub fn parse_switch_case_bool(
                 } else {
                     bail_expr!(
                         &l[1],
-                        "cannot use (device {id_num}) without a definputdevices block"
+                        "cannot use (device-history {id_num} ...) without a definputdevices block"
                     );
                 }
-                let (op1, op2) = OpCode::new_device(id);
+                let device_recency =
+                    parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
+                let (op1, op2) = OpCode::new_device_history(id, device_recency);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
