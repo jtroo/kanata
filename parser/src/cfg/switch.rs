@@ -299,8 +299,7 @@ pub fn parse_switch_case_bool(
                         "cannot use (device-history {id_num} ...) without a definputdevices block"
                     );
                 }
-                let device_recency =
-                    parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
+                let device_recency = parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
                 let (op1, op2) = OpCode::new_device_history(id, device_recency);
                 ops.extend(&[op1, op2]);
                 Ok(())
