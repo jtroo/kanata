@@ -2196,6 +2196,26 @@ impl Kanata {
     ) {
         info!("entering the processing loop");
         std::thread::spawn(move || {
+            // Elevate the processing thread to the highest QoS class so that
+            // CPU-intensive background work (compilation, indexing, etc.) does
+            // not starve the 1 ms tick loop. Without this, delayed key-release
+            // processing causes the OS to autorepeat keys that the user has
+            // already released physically. Windows does the equivalent with
+            // REALTIME_PRIORITY_CLASS (see new() above).
+            #[cfg(target_os = "macos")]
+            {
+                let rc = unsafe {
+                    libc::pthread_set_qos_class_self_np(
+                        libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE,
+                        0,
+                    )
+                };
+                if rc == 0 {
+                    info!("macOS: processing thread QoS set to USER_INTERACTIVE");
+                } else {
+                    log::warn!("macOS: failed to set processing thread QoS (rc={rc})");
+                }
+            }
             if !nodelay {
                 info!("Init: catching only releases and sending immediately");
                 for _ in 0..500 {
