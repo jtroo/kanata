@@ -2915,6 +2915,7 @@ if any of the items evaluates to true.
 (input-history $input-type $key-name $input-recency)
 (layer      $layer-name)
 (base-layer $layer-name)
+(device-history $device-id $device-recency)
 ----
 
 [cols="1,4"]
@@ -2958,6 +2959,13 @@ The max recency is 8.
 | `base-layer`
 | Evaluates to true if the most-recently-switched-to layer
 from a `layer-switch` action matches `$layer-name`.
+
+| `device-history`
+| Evaluates to true if the device in the `$device-recency` slot
+matches `$device-id`. A recency of 1 is the most recent device
+that sent an event. The max recency is 8.
+Device IDs are defined via <<definputdevices,`definputdevices`>>.
+Currently supported on macOS only.
 |===
 
 **Description**
@@ -4094,6 +4102,71 @@ See a sample below that showcases a reusable template.
   (s d) @v-del 75 first-release ()
 )
 ----
+
+[[definputdevices]]
+== definputdevices
+
+**Reference**
+
+The optional `definputdevices` block maps user-chosen numeric device IDs
+to physical input devices, enabling per-device key mappings via the
+<<switch,`switch`>> action's `(device-history $id $recency)` condition.
+
+.Syntax:
+[source]
+----
+(definputdevices
+  $id1 ($matcher1a $matcher1b ...)
+  $id2 ($matcher2a ...)
+  ...
+)
+----
+
+Each entry is a pair of a device ID (1-255) and a list of matchers.
+All matchers within an entry must match for a device to be assigned that ID
+(AND semantics).
+
+.Available matchers:
+[cols="1,4"]
+|===
+| `(name "...")`
+| Matches devices whose product name contains the given string.
+
+| `(hash "...")`
+| Matches devices whose hex hash equals the given string.
+Use `kanata --list` to see device hashes.
+
+| `(vendor_id N)`
+| Matches devices with the given USB vendor ID (0-65535, hex with `0x` prefix allowed).
+
+| `(product_id N)`
+| Matches devices with the given USB product ID (0-65535, hex with `0x` prefix allowed).
+|===
+
+.Example:
+[source]
+----
+(definputdevices
+  1 ((name "Apple Internal Keyboard"))
+  2 ((name "Go60") (vendor_id 0x1D50) (product_id 0x615E))
+)
+
+(defsrc a)
+(deflayer base
+  (switch
+    ((device-history 1 1)) x break
+    ((device-history 2 1)) y break
+    () a break))
+----
+
+In this example, pressing `a` on the internal keyboard outputs `x`,
+pressing `a` on the Go60 outputs `y`, and pressing `a` on any other
+device outputs `a`.
+
+NOTE: Device IDs are matched at startup. Devices plugged in after kanata
+starts will not be recognized. Live reload does not re-read device mappings.
+
+NOTE: Currently supported on macOS only. Linux support is planned.
 
 [[optional-defcfg-options]]
 == defcfg options
