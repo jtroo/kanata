@@ -45,6 +45,24 @@ impl Kanata {
             }
         }
 
+        // Clear any stale key state left on the virtual HID by a previous
+        // kanata process. The Karabiner driver retains the keyboard report
+        // across client reconnections, so keys that were pressed when the old
+        // process died remain "held" until explicitly released. Posting a
+        // release for a no-op key forces an async_post_report with the new
+        // process's empty keyboard.keys set, clearing all stale keys.
+        {
+            let mut kanata = kanata.lock();
+            if kanata.kbd_out.output_ready() {
+                use kanata_parser::keys::OsCode;
+                if let Err(e) = kanata.kbd_out.release_key(OsCode::KEY_F24) {
+                    log::warn!("failed to clear stale virtual HID state: {e}");
+                } else {
+                    info!("cleared stale virtual HID keyboard state");
+                }
+            }
+        }
+
         // Startup is done. Stop decorating future `SIGABRT`s with the
         // Karabiner setup hint — any abort from here on is almost
         // certainly a dispatcher/CoreFoundation teardown race (e.g. the
@@ -171,7 +189,12 @@ impl Kanata {
                     }
                     _ => {}
                 }
-                tx.try_send(key_event)?;
+                if let Err(std::sync::mpsc::TrySendError::Full(ke)) = tx.try_send(key_event) {
+                    log::warn!("channel full, blocking until processing thread drains");
+                    if let Err(e) = tx.send(ke) {
+                        bail!("failed to send key event: channel disconnected: {e}");
+                    }
+                }
             };
 
             if !needs_recovery {
