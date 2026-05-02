@@ -19,7 +19,7 @@ miette = { version = "5.7.0", features = ["fancy"] }
 once_cell = "1"
 ordered-float = "5.1.0"
 parking_lot = "0.12"
-patricia_tree = "0.8"
+patricia_tree = "0.9"
 rustc-hash = "1.1.0"
 thiserror = "1.0.38"
 
