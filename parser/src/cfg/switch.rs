@@ -8,10 +8,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
     let mut cases = vec![];
 
     let mut params = ac_params.iter();
-    loop {
-        let Some(key_match) = params.next() else {
-            break;
-        };
+    while let Some(key_match) = params.next() {
         let Some(action) = params.next() else {
             bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triple");
         };

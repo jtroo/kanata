@@ -1602,12 +1602,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                             self.oneshot.handle_release((0, 0));
                             self.states.retain(|s| s.seq_release(keycode).is_some());
                         }
-                        Some(SequenceEvent::Delay { duration }) => {
+                        Some(SequenceEvent::Delay { duration }) if duration > 0 => {
                             // Setup a delay that will be decremented once per tick until 0
-                            if duration > 0 {
-                                // -1 to start since this tick counts
-                                seq.delay = duration - 1;
-                            }
+                            // -1 to start since this tick counts
+                            seq.delay = duration - 1;
                         }
                         Some(SequenceEvent::Custom(custom)) => {
                             let _ = self.states.push(State::SeqCustomPending(custom));
