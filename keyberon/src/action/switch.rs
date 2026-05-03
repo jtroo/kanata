@@ -33,6 +33,7 @@ pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 /// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
     pub cases: &'a [Case<'a, T>],
+    pub custom_conditions: &'a [T],
 }
 
 // NOTE: have exhausted our opcodes for u16!
@@ -49,6 +50,7 @@ const INPUT_VAL: u16 = 851;
 const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
 const BASE_LAYER_VAL: u16 = 854;
+const CUSTOM_CONDITION_VAL: u16 = 855;
 
 // Binary values:
 // 0b0100 ...
@@ -87,6 +89,7 @@ enum OpCodeType {
     TicksSinceGreaterThan(TicksSinceNthKey),
     Layer(u16),
     BaseLayer(u16),
+    CustomCondition(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -139,6 +142,7 @@ impl<'a, T> Switch<'a, T> {
         historical_positions: H2,
         layers: L,
         default_layer: u16,
+        custom_condition_evaluator: fn(&T) -> bool,
     ) -> SwitchActions<'a, T, A1, A2, H1, H2, L>
     where
         A1: Iterator<Item = KeyCode> + Clone,
@@ -149,12 +153,14 @@ impl<'a, T> Switch<'a, T> {
     {
         SwitchActions {
             cases: self.cases,
+            custom_conditions: self.custom_conditions,
             active_keys,
             active_positions,
             historical_keys,
             historical_positions,
             layers,
             default_layer,
+            custom_condition_evaluator,
             case_index: 0,
         }
     }
@@ -171,12 +177,14 @@ where
     L: Iterator<Item = u16> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
+    custom_conditions: &'a [T],
     active_keys: A1,
     active_positions: A2,
     historical_keys: H1,
     historical_positions: H2,
     layers: L,
     default_layer: u16,
+    custom_condition_evaluator: fn(&T) -> bool,
     case_index: usize,
 }
 
@@ -201,6 +209,8 @@ where
                 self.historical_positions.clone(),
                 self.layers.clone(),
                 self.default_layer,
+                self.custom_conditions,
+                self.custom_condition_evaluator,
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -315,6 +325,11 @@ impl OpCode {
         (Self(BASE_LAYER_VAL), Self(base_layer))
     }
 
+    /// Return OpCodes specifying a custom condition check.
+    pub fn new_custom_condition(condition_index: u16) -> (Self, Self) {
+        (Self(CUSTOM_CONDITION_VAL), Self(condition_index))
+    }
+
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
         if self.0 < KEY_MAX {
@@ -329,6 +344,7 @@ impl OpCode {
                 }),
                 LAYER_VAL => OpCodeType::Layer(op2.0),
                 BASE_LAYER_VAL => OpCodeType::BaseLayer(op2.0),
+                CUSTOM_CONDITION_VAL => OpCodeType::CustomCondition(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -366,7 +382,7 @@ impl From<u16> for OperatorAndEndIndex {
 }
 
 /// Evaluate the return value of an expression evaluated on the given key codes.
-fn evaluate_boolean(
+fn evaluate_boolean<T>(
     bool_expr: &[OpCode],
     key_codes: impl Iterator<Item = KeyCode> + Clone,
     inputs: impl Iterator<Item = KCoord> + Clone,
@@ -374,6 +390,8 @@ fn evaluate_boolean(
     historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
+    custom_conditions: &[T],
+    custom_condition_evaluator: fn(&T) -> bool,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -465,6 +483,14 @@ fn evaluate_boolean(
                 current_index += 1;
                 ret = default_layer == base_layer;
             }
+            OpCodeType::CustomCondition(condition_index) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = custom_conditions
+                    .get(usize::from(condition_index))
+                    .map(custom_condition_evaluator)
+                    .unwrap_or(false);
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -484,6 +510,11 @@ fn evaluate_boolean(
 }
 
 #[cfg(test)]
+fn no_custom_condition(_: &()) -> bool {
+    false
+}
+
+#[cfg(test)]
 fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode> + Clone) -> bool {
     evaluate_boolean(
         opcodes,
@@ -493,6 +524,8 @@ fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode
         [].iter().copied(),
         [].iter().copied(),
         0,
+        &[] as &[()],
+        no_custom_condition,
     )
 }
 
@@ -744,6 +777,7 @@ fn switch_fallthrough() {
             (&[], &Action::<()>::KeyCode(KeyCode::A), Fallthrough),
             (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
         ],
+        custom_conditions: &[],
     };
     let mut actions = sw.actions(
         [].iter().copied(),
@@ -752,6 +786,7 @@ fn switch_fallthrough() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        |_| false,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
@@ -765,6 +800,7 @@ fn switch_break() {
             (&[], &Action::<()>::KeyCode(KeyCode::A), Break),
             (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
         ],
+        custom_conditions: &[],
     };
     let mut actions = sw.actions(
         [].iter().copied(),
@@ -773,6 +809,7 @@ fn switch_break() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        |_| false,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
@@ -793,6 +830,7 @@ fn switch_no_actions() {
                 Break,
             ),
         ],
+        custom_conditions: &[],
     };
     let mut actions = sw.actions(
         [].iter().copied(),
@@ -801,7 +839,28 @@ fn switch_no_actions() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        |_| false,
     );
+    assert_eq!(actions.next(), None);
+}
+
+#[test]
+fn switch_custom_condition() {
+    let (op1, op2) = OpCode::new_custom_condition(0);
+    let sw = Switch {
+        cases: &[(&[op1, op2], &Action::<bool>::KeyCode(KeyCode::A), Break)],
+        custom_conditions: &[true],
+    };
+    let mut actions = sw.actions(
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        |condition| *condition,
+    );
+    assert_eq!(actions.next(), Some(&Action::<bool>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
 }
 
@@ -861,6 +920,8 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        &[] as &[()],
+        no_custom_condition,
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
@@ -870,6 +931,8 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        &[] as &[()],
+        no_custom_condition,
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
@@ -879,6 +942,8 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        &[] as &[()],
+        no_custom_condition,
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
@@ -888,6 +953,8 @@ fn switch_historical_1() {
         [].iter().copied(),
         [].iter().copied(),
         0,
+        &[] as &[()],
+        no_custom_condition,
     ));
 }
 
@@ -973,6 +1040,8 @@ fn switch_historical_bools() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                &[] as &[()],
+                no_custom_condition,
             ),
             expectation
         );
@@ -1089,6 +1158,8 @@ fn switch_historical_ticks_since() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                &[] as &[()],
+                no_custom_condition,
             ),
             expectation
         );
@@ -1323,6 +1394,8 @@ fn switch_inputs() {
                 [].iter().copied(),
                 [].iter().copied(),
                 0,
+                &[] as &[()],
+                no_custom_condition,
             ),
             expectation
         );
@@ -1391,6 +1464,8 @@ fn switch_historical_inputs() {
                 historical_inputs.iter().copied(),
                 [].iter().copied(),
                 0,
+                &[] as &[()],
+                no_custom_condition,
             ),
             expectation
         );

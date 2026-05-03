@@ -6,6 +6,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
     let mut cases = vec![];
+    let mut custom_conditions = vec![];
 
     let mut params = ac_params.iter();
     loop {
@@ -24,7 +25,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         };
         let mut ops = vec![];
         for op in key_match.iter() {
-            parse_switch_case_bool(1, op, &mut ops, s)?;
+            parse_switch_case_bool(1, op, &mut ops, &mut custom_conditions, s)?;
         }
 
         let action = parse_action(action, s)?;
@@ -47,6 +48,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
     }
     Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
         cases: s.a.sref_vec(cases),
+        custom_conditions: s.a.sref_vec(custom_conditions),
     }))))
 }
 
@@ -54,6 +56,7 @@ pub fn parse_switch_case_bool(
     depth: u8,
     op_expr: &SExpr,
     ops: &mut Vec<OpCode>,
+    custom_conditions: &mut Vec<KanataCustom>,
     s: &ParserState,
 ) -> Result<()> {
     if ops.len() > MAX_OPCODE_LEN as usize {
@@ -90,6 +93,7 @@ pub fn parse_switch_case_bool(
             InputHistory,
             Layer,
             BaseLayer,
+            InputSourceIs,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -116,6 +120,7 @@ pub fn parse_switch_case_bool(
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
+                "input-source-is" => Some(AllowedListOps::InputSourceIs),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -123,7 +128,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer",
+                    | input | input-history | layer | base-layer | input-source-is",
                 )
             })?;
 
@@ -269,6 +274,20 @@ pub fn parse_switch_case_bool(
                 ops.extend(&[op1, op2]);
                 Ok(())
             }
+            AllowedListOps::InputSourceIs => {
+                let custom_condition = parse_input_source_is(&l[1..], s)?;
+                let condition_index = custom_conditions.len();
+                if condition_index > u16::MAX as usize {
+                    bail_expr!(
+                        op_expr,
+                        "maximum number of custom switch conditions exceeded"
+                    );
+                }
+                custom_conditions.push(custom_condition);
+                let (op1, op2) = OpCode::new_custom_condition(condition_index as u16);
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
             AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
                 let op = match op {
                     AllowedListOps::Or => BooleanOperator::Or,
@@ -280,7 +299,7 @@ pub fn parse_switch_case_bool(
                 let placeholder_index = ops.len() as u16;
                 ops.push(OpCode::new_bool(op, placeholder_index));
                 for op in l.iter().skip(1) {
-                    parse_switch_case_bool(depth + 1, op, ops, s)?;
+                    parse_switch_case_bool(depth + 1, op, ops, custom_conditions, s)?;
                 }
                 if ops.len() > usize::from(MAX_OPCODE_LEN) {
                     bail_expr!(op_expr, "switch logic length has been exceeded");
