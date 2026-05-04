@@ -5705,9 +5705,17 @@ precisely, the action triggered is:
 There are 10 special keys with names `nop0-nop9` which kanata treats specially.
 Kanata will never send OS events for these keys
 but they can still participate in sequences.
+See an example of using the nop keys below.
 
-See an example of using the nop keys
-alongside templates to define sequences below.
+Additionally useful to note in thi sexample is use of a template
+to define a sequence and its virtual key in one template expansion,
+with template parameters:
+
+- virtual key name
+- activating key sequence
+- action triggered by sequence activation
+
+This template may be useful to you to use for your convenience.
 
 .Example:
 [source]
