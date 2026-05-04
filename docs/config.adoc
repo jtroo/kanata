@@ -5707,7 +5707,7 @@ Kanata will never send OS events for these keys
 but they can still participate in sequences.
 See an example of using the nop keys below.
 
-Additionally useful to note in thi sexample is use of a template
+Additionally useful to note in this example is the use of a template
 to define a sequence and its virtual key in one template expansion,
 with template parameters:
 
@@ -5715,7 +5715,7 @@ with template parameters:
 - activating key sequence
 - action triggered by sequence activation
 
-This template may be useful to you to use for your convenience.
+This template may be useful to you within your own configuration.
 
 .Example:
 [source]
