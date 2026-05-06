@@ -4942,7 +4942,7 @@ You can use one of the listed values to change what kanata does with the key:
 Without these workarounds,
 within <<process-unmapped-keys,`defcfg`>> you should use
 `process-unmapped-keys (all-except lctl ralt))` or `process-unmapped-keys no`
-**AND** also omit both `ralt` and `lctl` from `defsrc`
+**and** also omit both `ralt` and `lctl` from `defsrc`
 and any <<deflayermap,`deflayermap`>> `$input` position.
 
 .Example:
@@ -4959,6 +4959,13 @@ NOTE: Even with these workarounds, putting `+lctl+` and `+ralt+` in your defsrc 
 work properly with other applications that also use keyboard interception.
 Known application with issues: GWSL/VcXsrv.
 In this case it is recommended to ensure the keys are omitted from processing.
+
+NOTE: Even if a workaround is applied in Kanata,
+if you use other LLHOOK-using programs such as
+PowerToys Keyboard Manager or AutoHotKey (AHK),
+you can still experience issues.
+PowerToys has no workaround while with AHK
+you may be able to script your own workaround.
 
 === Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 
