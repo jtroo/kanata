@@ -49,8 +49,13 @@ impl Kanata {
             // needs to differentiate between initial press and repeat press.
             log::debug!("event loop: {:?}", key_event);
             match key_event.value {
-                KeyValue::Release => {
-                    PRESSED_KEYS.lock().remove(&key_event.code);
+                KeyValue::Release if PRESSED_KEYS.lock().remove(&key_event.code).is_none() => {
+                    log::debug!("forwarding release of never-seen press {:?}", key_event);
+                    // If we never saw the initial press for this release,
+                    // we should not pass it along to the processing loop.
+                    // There is likely a pressed key in Windows that Kanata never knew about.
+                    // Consuming the release here will mean Windows gets a stuck press.
+                    return false;
                 }
                 KeyValue::Press => {
                     let mut pressed_keys = PRESSED_KEYS.lock();
@@ -188,11 +193,11 @@ impl Kanata {
         use kanata_keyberon::layout::*;
         use winapi::um::winuser::*;
 
-        if !self.windows_sync_keystates {
-            return;
-        }
-
-        log::debug!("synchronizing win keystates");
+        // Note: this procedure (1) used to be also gated behind the config flag.
+        // Revisiting it later, it should be reasonably safe to always run this,
+        // because releasing a Kanata state should not interfere with other programs
+        // in contrast to releasing Windows VK codes which could.
+        log::debug!("synchronizing kanata keystates with windows");
         for pvk in self.prev_keys.iter() {
             // Check 1 : each pvk is expected to be pressed.
             let osc: OsCode = pvk.into();
@@ -208,7 +213,7 @@ impl Kanata {
             }
 
             log::error!(
-                "Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk}"
+                "Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: {pvk:?}"
             );
             // Need to clear internal state about this key.
             // find coordinate(s) in keyberon associated with pvk
@@ -243,6 +248,11 @@ impl Kanata {
             drop(pressed_keys);
         }
 
+        if !self.windows_sync_keystates {
+            return;
+        }
+
+        log::debug!("releasing windows keystates with kanata");
         let mapped_keys = MAPPED_KEYS.lock();
         for mapped_osc in mapped_keys.iter().copied() {
             // Check 2: each active win vk mapped in Kanata should have a value in pvk

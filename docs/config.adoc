@@ -4923,6 +4923,7 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
   )
 )
 ----
+
 [[windows-only-windows-altgr]]
 === Windows only: windows-altgr
 
