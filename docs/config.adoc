@@ -329,6 +329,16 @@ e.g. in the example above, these affect keys other than `caps`.
 
 If a key is not mapped explicitly or through these wildcards, it will be implicitly mapped to a <<transparent-key,transparent key>>.
 
+**Key processing**
+
+The `$input` keys in all `deflayermap` sections will be processed by kanata, even if:
+
+* the layer is inactive
+* the key is omitted from `defsrc`
+* the `process-unmapped-keys` configuration is omitted, set to `no`, or the key is within `(all-except ...)`
+
+This is particularly relevant for the issue described in <<windows-only-windows-altgr>>.
+
 [[review-of-required-configuration-entries]]
 === Review of required configuration entries
 
@@ -4916,9 +4926,12 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
 [[windows-only-windows-altgr]]
 === Windows only: windows-altgr
 
-There is an option for Windows to mitigate the strange behaviour of AltGr (ralt)
-if you're using `process-unmapped-keys yes` or have the key in your defsrc.
-This is applicable for many non-US layouts.
+There is an option for Windows to mitigate the strange behaviour of AltGr
+(key names: `ralt | altgr`) if you're using `process-unmapped-keys yes`
+or have the AltGr key or the Left Control key
+in your `defsrc` or in any `deflayermap` `$input` position.
+This is applicable for many non-US layouts
+that use AltGr for adding modifier accents to characters.
 You can use one of the listed values to change what kanata does with the key:
 
 * `cancel-lctl-press`
@@ -4927,9 +4940,10 @@ You can use one of the listed values to change what kanata does with the key:
 ** This adds an `lctl` release when `ralt` is released
 
 Without these workarounds,
-you should use `process-unmapped-keys (all-except lctl ralt))`,
-or use `process-unmapped-keys no`
-**and** also omit both `ralt` and `lctl` from `defsrc`.
+within <<process-unmapped-keys,`defcfg`>> you should use
+`process-unmapped-keys (all-except lctl ralt))` or `process-unmapped-keys no`
+**AND** also omit both `ralt` and `lctl` from `defsrc`
+and any <<deflayermap,`deflayermap`>> `$input` position.
 
 .Example:
 [source]
@@ -4943,7 +4957,8 @@ For more context, see: https://github.com/jtroo/kanata/issues/55.
 
 NOTE: Even with these workarounds, putting `+lctl+` and `+ralt+` in your defsrc may not
 work properly with other applications that also use keyboard interception.
-Known application with issues: GWSL/VcXsrv
+Known application with issues: GWSL/VcXsrv.
+In this case it is recommended to ensure the keys are omitted from processing.
 
 === Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 
