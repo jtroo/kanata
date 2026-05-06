@@ -1585,16 +1585,13 @@ pub mod system_tray_ui {
                                 SystemTray::exit(&evt_ui);
                             } else if handle == evt_ui.tt_notice {
                                 SystemTray::update_tooltip_pos(&evt_ui);}
-                        E::OnWindowClose =>
-                            if handle == evt_ui.window {SystemTray::exit  (&evt_ui);}
-                        E::OnMousePress(MousePressEvent::MousePressLeftUp) =>
-                            if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
-                        E::OnContextMenu/*🖰›*/ =>
-                            if handle == evt_ui.tray {SystemTray::show_menu(&evt_ui);}
+                        E::OnWindowClose if handle == evt_ui.window => {SystemTray::exit  (&evt_ui);}
+                        E::OnMousePress(MousePressEvent::MousePressLeftUp) if handle == evt_ui.tray => {SystemTray::show_menu(&evt_ui);}
+                        E::OnContextMenu/*🖰›*/ if handle == evt_ui.tray => {SystemTray::show_menu(&evt_ui);}
                         E::OnTimerStop/*🕐*/ => {SystemTray::hide_tooltip(&evt_ui);}
-                        E::OnMenuHover =>
-                            if        handle == evt_ui.tray_1cfg_m {
-                                SystemTray::check_active(&evt_ui);}
+                        E::OnMenuHover if handle == evt_ui.tray_1cfg_m => {
+                                SystemTray::check_active(&evt_ui);
+                        }
                         E::OnMenuItemSelected =>
                             if        handle == evt_ui.tray_2reload   {
                             let _ = SystemTray::reload_cfg(&evt_ui,None);
