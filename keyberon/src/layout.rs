@@ -137,6 +137,7 @@ where
     trans_resolution_behavior_v2: bool,
     delegate_to_first_layer: bool,
     contextual_execution: ContextualExecution,
+    custom_condition_evaluator: fn(&T) -> bool,
     /// Tracks tap-hold activation events (hold/tap resolved).
     /// Only stores data when the `tap_hold_tracker` feature is enabled;
     /// otherwise this is a zero-sized no-op.
@@ -1234,6 +1235,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             delegate_to_first_layer: false,
             chords_v2: None,
             contextual_execution: ContextualExecution::new(),
+            custom_condition_evaluator: |_| false,
             tap_hold_tracker: Default::default(),
         }
     }
@@ -1248,6 +1250,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
         new.trans_resolution_behavior_v2 = trans_resolution_behavior_v2;
         new.delegate_to_first_layer = delegate_to_first_layer;
         new
+    }
+
+    pub fn set_custom_condition_evaluator(&mut self, evaluator: fn(&T) -> bool) {
+        self.custom_condition_evaluator = evaluator;
     }
 
     /// Iterates on the key codes of the current state.
@@ -2434,6 +2440,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // Note on truncating cast: I expect default layer to be in range by other
                     // assertions.
                     self.default_layer as u16,
+                    self.custom_condition_evaluator,
                 ) {
                     action_queue.push_back(Some((coord, delay, ac, layer_stack.clone().collect())));
                 }
@@ -5067,6 +5074,7 @@ mod test {
                 NoOp,
                 Switch(&switch::Switch {
                     cases: &[(&[], &Trans, BreakOrFallthrough::Break)],
+                    custom_conditions: &[],
                 }),
             ]],
         ];

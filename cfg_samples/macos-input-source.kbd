@@ -1,0 +1,19 @@
+(defcfg
+  process-unmapped-keys yes
+)
+
+(defsrc
+  ralt
+)
+
+(defalias
+  us (set-input-source "com.apple.keylayout.US")
+  ru (set-input-source "com.apple.keylayout.RussianWin")
+  toggle-ru-us (switch
+    ((input-source-is "com.apple.keylayout.US")) @ru break
+                                          ()     @us break)
+)
+
+(deflayer base
+  @toggle-ru-us
+)

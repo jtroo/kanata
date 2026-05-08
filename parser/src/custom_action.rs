@@ -98,6 +98,8 @@ pub enum CustomAction {
     ClipboardSaveSet(u16, &'static str),
     ClipboardSaveCmdSet(u16, &'static [&'static str]),
     ClipboardSaveSwap(u16, u16),
+    SetInputSource(&'static str),
+    InputSourceIs(&'static str),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
