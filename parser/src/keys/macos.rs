@@ -1101,6 +1101,10 @@ impl TryFrom<PageCode> for OsCode {
             } => Ok(OsCode::KEY_102ND),
             PageCode {
                 page: 0x07,
+                code: 0x65,
+            } => Ok(OsCode::KEY_COMPOSE),
+            PageCode {
+                page: 0x07,
                 code: 0x66,
             } => Ok(OsCode::KEY_POWER),
             PageCode {
