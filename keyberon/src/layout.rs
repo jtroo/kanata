@@ -135,7 +135,7 @@ where
     pub chords_v2: Option<ChordsV2<'a, T>>,
     /// History of device IDs that sent events, most-recent-first.
     /// Used by `(device-history N recency)` switch conditions.
-    pub device_history: ArrayDeque<std::num::NonZeroU8, 8, arraydeque::behavior::Wrapping>,
+    pub device_history: ArrayDeque<Option<std::num::NonZeroU8>, 8, arraydeque::behavior::Wrapping>,
     rpt_multikey_key_buffer: MultiKeyBuffer<'a, T>,
     trans_resolution_behavior_v2: bool,
     delegate_to_first_layer: bool,

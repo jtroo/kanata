@@ -4122,9 +4122,14 @@ to physical input devices, enabling per-device key mappings via the
 )
 ----
 
-Each entry is a pair of a device ID (1-255) and a list of matchers.
-All matchers within an entry must match for a device to be assigned that ID
-(AND semantics).
+[cols="1,4"]
+|===
+| `$id`
+| An integer from 1-255 used to reference this device in `(device-history $id $recency)` conditions. The value is arbitrary; use `defvar` to give IDs meaningful names.
+
+| `($matcher ...)`
+| A list of matcher expressions. All matchers within an entry must match for a device to be assigned that ID (AND semantics).
+|===
 
 .Available matchers:
 [cols="1,4"]
@@ -4137,25 +4142,44 @@ All matchers within an entry must match for a device to be assigned that ID
 Use `kanata --list` to see device hashes.
 
 | `(vendor_id N)`
-| Matches devices with the given USB vendor ID (0-65535, hex with `0x` prefix allowed).
+| Matches devices with the given USB vendor ID. Valid values: decimal 0-65535, or hex `0x0-0xFFFF`.
 
 | `(product_id N)`
-| Matches devices with the given USB product ID (0-65535, hex with `0x` prefix allowed).
+| Matches devices with the given USB product ID. Valid values: decimal 0-65535, or hex `0x0-0xFFFF`.
 |===
+
+**Description**
+
+`definputdevices` is useful when you have multiple keyboards with different
+physical layouts and want to unify their behavior — for example, to remap
+swapped modifier key positions between Ctrl, Meta, and Alt across devices.
+
+The kanata-defined IDs are arbitrary numbers whose only purpose is referencing
+within the `switch` action's `(device-history $id $recency)` condition.
+Using `defvar` to name them is recommended for readability.
+
+Device history only records press events (not release or repeat).
+If a key is pressed on a device not listed in `definputdevices`, the history
+slot will be recorded as "unknown" and will not match any device ID.
 
 .Example:
 [source]
 ----
+(defvar
+  id-AppleInternal 1
+  id-Go60          2
+)
+
 (definputdevices
-  1 ((name "Apple Internal Keyboard"))
-  2 ((name "Go60") (vendor_id 0x1D50) (product_id 0x615E))
+  $id-AppleInternal ((name "Apple Internal Keyboard"))
+  $id-Go60 ((name "Go60") (vendor_id 0x1D50) (product_id 0x615E))
 )
 
 (defsrc a)
 (deflayer base
   (switch
-    ((device-history 1 1)) x break
-    ((device-history 2 1)) y break
+    ((device-history $id-AppleInternal  1)) x break
+    ((device-history $id-Go60           1)) y break
     () a break))
 ----
 

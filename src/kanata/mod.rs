@@ -867,8 +867,8 @@ impl Kanata {
     /// Update keyberon layout state for press/release, handle repeat separately
     pub fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
-        if let Some(did) = event.device_id() {
-            self.layout.bm().device_history.push_front(did);
+        if event.value == KeyValue::Press {
+            self.layout.bm().device_history.push_front(event.device_id());
         }
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;

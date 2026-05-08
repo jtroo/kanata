@@ -157,7 +157,7 @@ impl<'a, T> Switch<'a, T> {
         H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
         H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
         L: Iterator<Item = u16> + Clone,
-        D: Iterator<Item = NonZeroU8> + Clone,
+        D: Iterator<Item = Option<NonZeroU8>> + Clone,
     {
         SwitchActions {
             cases: self.cases,
@@ -182,7 +182,7 @@ where
     H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     L: Iterator<Item = u16> + Clone,
-    D: Iterator<Item = NonZeroU8> + Clone,
+    D: Iterator<Item = Option<NonZeroU8>> + Clone,
 {
     cases: &'a [(&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough)],
     active_keys: A1,
@@ -202,7 +202,7 @@ where
     H1: Iterator<Item = HistoricalEvent<KeyCode>> + Clone,
     H2: Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     L: Iterator<Item = u16> + Clone,
-    D: Iterator<Item = NonZeroU8> + Clone,
+    D: Iterator<Item = Option<NonZeroU8>> + Clone,
 {
     type Item = &'a Action<'a, T>;
 
@@ -406,7 +406,7 @@ fn evaluate_boolean(
     historical_inputs: impl Iterator<Item = HistoricalEvent<KCoord>> + Clone,
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
-    device_history: impl Iterator<Item = NonZeroU8> + Clone,
+    device_history: impl Iterator<Item = Option<NonZeroU8>> + Clone,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -504,7 +504,7 @@ fn evaluate_boolean(
                 ret = device_history
                     .clone()
                     .nth(hd.how_far_back as usize)
-                    .map(|d| d == hd.device_id)
+                    .and_then(|d| d.map(|d| d == hd.device_id))
                     .unwrap_or(false);
             }
         };
@@ -866,7 +866,7 @@ fn switch_device_history_match() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        [id1].iter().copied(),
+        [Some(id1)].iter().copied(),
     ));
     // Non-matching device ID
     assert!(!evaluate_boolean(
@@ -877,7 +877,7 @@ fn switch_device_history_match() {
         [].iter().copied(),
         [].iter().copied(),
         0,
-        [id2].iter().copied(),
+        [Some(id2)].iter().copied(),
     ));
     // Empty device history
     assert!(!evaluate_boolean(
@@ -897,7 +897,7 @@ fn switch_device_history_recency() {
     let id1 = NonZeroU8::new(1).unwrap();
     let id2 = NonZeroU8::new(2).unwrap();
     let id3 = NonZeroU8::new(3).unwrap();
-    let history = [id3, id2, id1]; // most recent first: 3, 2, 1
+    let history = [Some(id3), Some(id2), Some(id1)]; // most recent first: 3, 2, 1
     // Check most recent (recency 1 → how_far_back 0) is id3
     let (op1, op2) = OpCode::new_device_history(id3, 0);
     assert!(evaluate_boolean(
@@ -947,6 +947,36 @@ fn switch_device_history_opcode_roundtrip() {
         }
         other => panic!("expected HistoricalDevice, got {other:?}"),
     }
+}
+
+#[test]
+fn switch_device_history_unknown_device() {
+    let id1 = NonZeroU8::new(1).unwrap();
+    let history = [Some(id1), None, Some(id1)]; // unknown device at position 1
+    // Looking for id1 at position 0 should match
+    let (op1, op2) = OpCode::new_device_history(id1, 0);
+    assert!(evaluate_boolean(
+        &[op1, op2],
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        history.iter().copied(),
+    ));
+    // Looking for id1 at position 1 (where None is) should NOT match
+    let (op1, op2) = OpCode::new_device_history(id1, 1);
+    assert!(!evaluate_boolean(
+        &[op1, op2],
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        history.iter().copied(),
+    ));
 }
 
 #[test]
