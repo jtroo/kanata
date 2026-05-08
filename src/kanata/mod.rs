@@ -868,7 +868,10 @@ impl Kanata {
     pub fn handle_input_event(&mut self, event: &KeyEvent) -> Result<()> {
         log::debug!("process recv ev {event:?}");
         if event.value == KeyValue::Press {
-            self.layout.bm().device_history.push_front(event.device_id());
+            self.layout
+                .bm()
+                .device_history
+                .push_front(event.device_id());
         }
         let evc: u16 = event.code.into();
         self.ticks_since_idle = 0;

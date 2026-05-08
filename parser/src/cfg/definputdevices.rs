@@ -14,10 +14,7 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
     let mut exprs = check_first_expr(expr.iter(), "definputdevices")?;
     let mut seen_ids = HashSet::default();
     let mut devices = vec![];
-    loop {
-        let Some(id_expr) = exprs.next() else {
-            break;
-        };
+    while let Some(id_expr) = exprs.next() {
         let Some(matchers_expr) = exprs.next() else {
             bail_expr!(
                 id_expr,
