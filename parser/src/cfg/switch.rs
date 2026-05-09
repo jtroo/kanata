@@ -87,6 +87,7 @@ pub fn parse_switch_case_bool(
             InputHistory,
             Layer,
             BaseLayer,
+            DeviceHistory,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -113,6 +114,7 @@ pub fn parse_switch_case_bool(
                 "input-history" => Some(AllowedListOps::InputHistory),
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
+                "device-history" => Some(AllowedListOps::DeviceHistory),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -120,7 +122,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer",
+                    | input | input-history | layer | base-layer | device-history",
                 )
             })?;
 
@@ -263,6 +265,39 @@ pub fn parse_switch_case_bool(
                     AllowedListOps::BaseLayer => OpCode::new_base_layer(layer),
                     _ => unreachable!(),
                 };
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::DeviceHistory => {
+                if l.len() != 3 {
+                    bail_expr!(
+                        op_expr,
+                        "device-history must have 2 parameters: device-id, device-recency"
+                    );
+                }
+                let id_str = l[1]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be a number (1-255)"))?;
+                let id_num: u8 = id_str
+                    .parse()
+                    .map_err(|_| anyhow_expr!(&l[1], "device ID must be a number (1-255)"))?;
+                let id = std::num::NonZeroU8::new(id_num)
+                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be nonzero (1-255)"))?;
+                if let Some(ref devs) = s.input_devices {
+                    if !devs.iter().any(|(did, _)| *did == id) {
+                        bail_expr!(
+                            &l[1],
+                            "device ID {id_num} is not defined in definputdevices"
+                        );
+                    }
+                } else {
+                    bail_expr!(
+                        &l[1],
+                        "cannot use (device-history {id_num} ...) without a definputdevices block"
+                    );
+                }
+                let device_recency = parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
+                let (op1, op2) = OpCode::new_device_history(id, device_recency);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }

@@ -555,6 +555,7 @@ pub struct InputEvent {
     pub value: u64,
     pub page: u32,
     pub code: u32,
+    pub device_hash: u64,
 }
 
 impl InputEvent {
@@ -563,6 +564,7 @@ impl InputEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            device_hash: event.device_hash,
         }
     }
 }
@@ -573,6 +575,7 @@ impl From<InputEvent> for DKEvent {
             value: event.value,
             page: event.page,
             code: event.code,
+            // Output events don't originate from a physical device.
             device_hash: 0,
         }
     }
@@ -580,6 +583,7 @@ impl From<InputEvent> for DKEvent {
 
 pub struct KbdIn {
     grabbed: bool,
+    device_hash_to_id: HashMap<u64, std::num::NonZeroU8>,
 }
 
 impl Drop for KbdIn {
@@ -594,6 +598,7 @@ impl KbdIn {
     pub fn new(
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
+        input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
     ) -> Result<Self, anyhow::Error> {
         // Pre-flight the Input Monitoring TCC gate before touching the
         // Karabiner stack. A denied permission here produces a clean,
@@ -659,7 +664,11 @@ impl KbdIn {
 
         if !device_names.is_empty() {
             if grab() {
-                Ok(Self { grabbed: true })
+                let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                Ok(Self {
+                    grabbed: true,
+                    device_hash_to_id,
+                })
             } else {
                 // We have already pre-flighted Input Monitoring and
                 // Accessibility, so by this point the most common
@@ -709,6 +718,11 @@ impl KbdIn {
         }
 
         Ok(InputEvent::new(event))
+    }
+
+    /// Look up the device ID for an event's device hash.
+    pub fn device_id_for_hash(&self, hash: u64) -> Option<std::num::NonZeroU8> {
+        self.device_hash_to_id.get(&hash).copied()
     }
 
     /// Release seized input devices without tearing down the output connection.
@@ -761,6 +775,55 @@ fn is_skipped_virtual_device(product_key: &str) -> bool {
     SKIPPED_VIRTUAL_DEVICE_SUBSTRINGS
         .iter()
         .any(|needle| lower.contains(needle))
+}
+
+/// Build a mapping from device hashes to configured device IDs by matching
+/// the connected devices against the `definputdevices` matchers.
+fn build_device_hash_to_id_map(
+    input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+) -> HashMap<u64, std::num::NonZeroU8> {
+    use std::num::NonZeroU8;
+    let mut map: HashMap<u64, NonZeroU8> = HashMap::new();
+    let Some(matchers) = input_devices else {
+        return map;
+    };
+    let kb_list = fetch_devices();
+    for (id, matcher) in matchers.iter() {
+        for kb in &kb_list {
+            let name_matches = matcher
+                .name
+                .as_ref()
+                .is_none_or(|n| kb.product_key.contains(n.as_str()));
+            let hash_matches = matcher.hash.as_ref().is_none_or(|h| {
+                let device_hash = format!("{:x}", kb.hash);
+                device_hash.eq_ignore_ascii_case(h)
+            });
+            let vendor_matches = matcher
+                .vendor_id
+                .is_none_or(|v| u16::try_from(kb.vendor_id) == Ok(v));
+            let product_matches = matcher
+                .product_id
+                .is_none_or(|p| u16::try_from(kb.product_id) == Ok(p));
+            if name_matches && hash_matches && vendor_matches && product_matches {
+                if let Some(existing_id) = map.get(&kb.hash) {
+                    log::warn!(
+                        "definputdevices: device \"{}\" (hash {:x}) also matches ID {id}, \
+                         keeping first match ID {existing_id}",
+                        kb.product_key,
+                        kb.hash
+                    );
+                    continue;
+                }
+                log::info!(
+                    "definputdevices: device ID {id} matched \"{}\" (hash {:x})",
+                    kb.product_key,
+                    kb.hash
+                );
+                map.insert(kb.hash, *id);
+            }
+        }
+    }
+    map
 }
 
 fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
@@ -832,14 +895,14 @@ impl TryFrom<InputEvent> for KeyEvent {
             page: item.page,
             code: item.code,
         }) {
-            Ok(KeyEvent {
-                code: oscode,
-                value: if item.value == 1 {
+            Ok(KeyEvent::new(
+                oscode,
+                if item.value == 1 {
                     KeyValue::Press
                 } else {
                     KeyValue::Release
                 },
-            })
+            ))
         } else {
             Err(())
         }
@@ -859,6 +922,7 @@ impl TryFrom<KeyEvent> for InputEvent {
                 value: val,
                 page: pagecode.page,
                 code: pagecode.code,
+                device_hash: 0,
             })
         } else {
             Err(())
@@ -954,7 +1018,7 @@ impl KbdOut {
     }
 
     pub fn write_key(&mut self, key: OsCode, value: KeyValue) -> Result<(), io::Error> {
-        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
+        if let Ok(event) = InputEvent::try_from(KeyEvent::new(key, value)) {
             match self.write(event) {
                 Ok(()) => {
                     self.record_output_transition_after_write(key, value);
@@ -973,7 +1037,7 @@ impl KbdOut {
             log::debug!("couldn't write unrecognized OsCode {code}");
             return Err(io::Error::other("OsCode not recognized!"));
         };
-        if let Ok(event) = InputEvent::try_from(KeyEvent { value, code: key }) {
+        if let Ok(event) = InputEvent::try_from(KeyEvent::new(key, value)) {
             match self.write(event) {
                 Ok(()) => Ok(()),
                 Err(e) => drop_if_sink_disconnected(e, key, value),
@@ -1262,7 +1326,7 @@ impl TryFrom<(CGEventType, i64)> for KeyEvent {
             }
             _ => return Err(()),
         };
-        Ok(KeyEvent { code, value })
+        Ok(KeyEvent::new(code, value))
     }
 }
 
@@ -1288,10 +1352,7 @@ fn scroll_event_to_key_event(event: &CGEvent) -> Option<KeyEvent> {
             _ => return None,
         }
     };
-    Some(KeyEvent {
-        code,
-        value: KeyValue::Tap,
-    })
+    Some(KeyEvent::new(code, KeyValue::Tap))
 }
 
 /// Start a CGEventTap on a background thread to intercept mouse button events
@@ -1409,10 +1470,7 @@ pub fn start_mouse_listener(
                             None => return Some(event.clone()),
                         };
                         if let Some(code) = *mmk_slot.lock() {
-                            let fake = KeyEvent {
-                                code,
-                                value: KeyValue::Tap,
-                            };
+                            let fake = KeyEvent::new(code, KeyValue::Tap);
                             if let Err(e) = tx.try_send(fake) {
                                 // Drops are expected under high movement rates;
                                 // the user only needs one tap to refresh their

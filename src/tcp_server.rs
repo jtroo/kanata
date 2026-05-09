@@ -435,10 +435,10 @@ impl TcpServer {
                                         }
                                         use kanata_parser::keys::*;
                                         wakeup_channel
-                                            .send(KeyEvent {
-                                                code: OsCode::KEY_RESERVED,
-                                                value: KeyValue::WakeUp,
-                                            })
+                                            .send(KeyEvent::new(
+                                                OsCode::KEY_RESERVED,
+                                                KeyValue::WakeUp,
+                                            ))
                                             .expect("write key event");
                                     }
                                     Err(e) => {
