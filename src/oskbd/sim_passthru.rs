@@ -172,13 +172,13 @@ impl InputEvent {
 impl TryFrom<InputEvent> for KeyEvent {
     type Error = ();
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
-        Ok(Self {
-            code: OsCode::from_u16(item.code as u16).ok_or(())?,
-            value: match item.up {
+        Ok(Self::new(
+            OsCode::from_u16(item.code as u16).ok_or(())?,
+            match item.up {
                 true => KeyValue::Release,
                 false => KeyValue::Press,
             },
-        })
+        ))
     }
 }
 

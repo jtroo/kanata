@@ -105,12 +105,41 @@ use kanata_parser::keys::OsCode;
 pub struct KeyEvent {
     pub code: OsCode,
     pub value: KeyValue,
+    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+    device_id: Option<std::num::NonZeroU8>,
 }
 
 #[allow(dead_code, unused)]
 impl KeyEvent {
     pub fn new(code: OsCode, value: KeyValue) -> Self {
-        Self { code, value }
+        Self {
+            code,
+            value,
+            #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+            device_id: None,
+        }
+    }
+
+    /// Returns the device ID that produced this event, if known.
+    /// Always returns `None` on Windows LLHOOK (which cannot distinguish devices).
+    pub fn device_id(&self) -> Option<std::num::NonZeroU8> {
+        #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+        {
+            self.device_id
+        }
+        #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+        {
+            None
+        }
+    }
+
+    /// Sets the device ID for this event.
+    /// No-op on Windows LLHOOK.
+    pub fn set_device_id(&mut self, id: Option<std::num::NonZeroU8>) {
+        #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+        {
+            self.device_id = id;
+        }
     }
 }
 

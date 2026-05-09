@@ -2925,6 +2925,7 @@ if any of the items evaluates to true.
 (input-history $input-type $key-name $input-recency)
 (layer      $layer-name)
 (base-layer $layer-name)
+(device-history $device-id $device-recency)
 ----
 
 [cols="1,4"]
@@ -2968,6 +2969,13 @@ The max recency is 8.
 | `base-layer`
 | Evaluates to true if the most-recently-switched-to layer
 from a `layer-switch` action matches `$layer-name`.
+
+| `device-history`
+| Evaluates to true if the device in the `$device-recency` slot
+matches `$device-id`. A recency of 1 is the most recent device
+that sent an event. The max recency is 8.
+Device IDs are defined via <<definputdevices,`definputdevices`>>.
+Currently supported on macOS only.
 |===
 
 **Description**
@@ -4104,6 +4112,95 @@ See a sample below that showcases a reusable template.
   (s d) @v-del 75 first-release ()
 )
 ----
+
+[[definputdevices]]
+== definputdevices
+
+**Reference**
+
+The optional `definputdevices` block maps user-chosen numeric device IDs
+to physical input devices, enabling per-device key mappings via the
+<<switch,`switch`>> action's `(device-history $id $recency)` condition.
+
+.Syntax:
+[source]
+----
+(definputdevices
+  $id1 ($matcher1a $matcher1b ...)
+  $id2 ($matcher2a ...)
+  ...
+)
+----
+
+[cols="1,4"]
+|===
+| `$id`
+| An integer from 1-255 used to reference this device in `(device-history $id $recency)` conditions. The value is arbitrary; use `defvar` to give IDs meaningful names.
+
+| `($matcher ...)`
+| A list of matcher expressions. All matchers within an entry must match for a device to be assigned that ID (AND semantics).
+|===
+
+.Available matchers:
+[cols="1,4"]
+|===
+| `(name "...")`
+| Matches devices whose product name contains the given string.
+
+| `(hash "...")`
+| Matches devices whose hex hash equals the given string.
+Use `kanata --list` to see device hashes.
+
+| `(vendor_id N)`
+| Matches devices with the given USB vendor ID. Valid values: decimal 0-65535, or hex `0x0-0xFFFF`.
+
+| `(product_id N)`
+| Matches devices with the given USB product ID. Valid values: decimal 0-65535, or hex `0x0-0xFFFF`.
+|===
+
+**Description**
+
+`definputdevices` is useful when you have multiple keyboards with different
+physical layouts and want to unify their behavior — for example, to remap
+swapped modifier key positions between Ctrl, Meta, and Alt across devices.
+
+The kanata-defined IDs are arbitrary numbers whose only purpose is referencing
+within the `switch` action's `(device-history $id $recency)` condition.
+Using `defvar` to name them is recommended for readability.
+
+Device history only records press events (not release or repeat).
+If a key is pressed on a device not listed in `definputdevices`, the history
+slot will be recorded as "unknown" and will not match any device ID.
+
+.Example:
+[source]
+----
+(defvar
+  id-AppleInternal 1
+  id-Go60          2
+)
+
+(definputdevices
+  $id-AppleInternal ((name "Apple Internal Keyboard"))
+  $id-Go60 ((name "Go60") (vendor_id 0x1D50) (product_id 0x615E))
+)
+
+(defsrc a)
+(deflayer base
+  (switch
+    ((device-history $id-AppleInternal  1)) x break
+    ((device-history $id-Go60           1)) y break
+    () a break))
+----
+
+In this example, pressing `a` on the internal keyboard outputs `x`,
+pressing `a` on the Go60 outputs `y`, and pressing `a` on any other
+device outputs `a`.
+
+NOTE: Device IDs are matched at startup. Devices plugged in after kanata
+starts will not be recognized. Live reload does not re-read device mappings.
+
+NOTE: Currently supported on macOS only. Linux support is planned.
 
 [[optional-defcfg-options]]
 == defcfg options

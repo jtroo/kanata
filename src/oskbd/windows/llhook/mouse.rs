@@ -393,7 +393,7 @@ impl TryFrom<MouseEventType> for KeyEvent {
                     MouseButton::X2(..) => BTN_EXTRA,
                     MouseButton::UnkownX(..) | MouseButton::Other(..) => return Err(()),
                 };
-                Ok(KeyEvent { code, value })
+                Ok(KeyEvent::new(code, value))
             }
             Wheel(MouseWheelEvent { wheel, direction }) => {
                 use MouseWheel::*;
@@ -410,10 +410,7 @@ impl TryFrom<MouseEventType> for KeyEvent {
                         return Err(());
                     }
                 };
-                Ok(KeyEvent {
-                    code,
-                    value: KeyValue::Tap,
-                })
+                Ok(KeyEvent::new(code, KeyValue::Tap))
             }
         }
     }

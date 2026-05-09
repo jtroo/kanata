@@ -275,28 +275,19 @@ fn main_impl() -> Result<()> {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyDown, Some(key_code), None);
-                            k.handle_input_event(&KeyEvent {
-                                code: key_code,
-                                value: KeyValue::Press,
-                            })?;
+                            k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Press))?;
                         }
                         "release" | "↑" | "u" | "up" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
-                            k.handle_input_event(&KeyEvent {
-                                code: key_code,
-                                value: KeyValue::Release,
-                            })?;
+                            k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Release))?;
                         }
                         "repeat" | "⟳" | "r" => {
                             let key_code =
                                 str_to_oscode(val).ok_or_else(|| anyhow!("unknown key: {val}"))?;
                             kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyRep, Some(key_code), None);
-                            k.handle_input_event(&KeyEvent {
-                                code: key_code,
-                                value: KeyValue::Repeat,
-                            })?;
+                            k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Repeat))?;
                         }
                         // Virtual/fake key activation: fakekey:name[:action] or vk:name[:action]
                         // Supported actions: press, release, tap, toggle
@@ -331,19 +322,13 @@ fn main_impl() -> Result<()> {
                                     Some(key_code),
                                     None,
                                 );
-                                k.handle_input_event(&KeyEvent {
-                                    code: key_code,
-                                    value: KeyValue::Press,
-                                })?;
+                                k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Press))?;
                             }
                             "↑" => {
                                 let key_code = str_to_oscode(val)
                                     .ok_or_else(|| anyhow!("unknown key: {val}"))?;
                                 kbd_out_log(&mut k.kbd_out, LogFmtT::InKeyUp, Some(key_code), None);
-                                k.handle_input_event(&KeyEvent {
-                                    code: key_code,
-                                    value: KeyValue::Release,
-                                })?;
+                                k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Release))?;
                             }
                             "⟳" => {
                                 let key_code = str_to_oscode(val)
@@ -354,10 +339,7 @@ fn main_impl() -> Result<()> {
                                     Some(key_code),
                                     None,
                                 );
-                                k.handle_input_event(&KeyEvent {
-                                    code: key_code,
-                                    value: KeyValue::Repeat,
-                                })?;
+                                k.handle_input_event(&KeyEvent::new(key_code, KeyValue::Repeat))?;
                             }
                             "🎭" => {
                                 // Virtual key activation with emoji prefix (defaults to press)

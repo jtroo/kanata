@@ -810,6 +810,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
     ((base-layer dvorak)) x break
     ((base-layer qwerty)) y break
 
+    ;; device-history evaluates to `true` if the Nth most recent device
+    ;; matches the given device ID defined in definputdevices. Currently macOS only.
+    ;; ((device-history 1 1)) x break
+    ;; ((device-history 2 1)) y break
+
     ;; default case, empty list always evaluates to true.
     ;; break vs. fallthrough doesn't matter here
     () c break

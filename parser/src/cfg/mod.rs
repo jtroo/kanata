@@ -56,6 +56,8 @@ mod custom_tap_hold;
 use custom_tap_hold::*;
 mod defcfg;
 pub use defcfg::*;
+mod definputdevices;
+pub use definputdevices::*;
 mod defhands;
 use defhands::{
     parse_defhands, parse_tap_hold_opposite_hand, parse_tap_hold_opposite_hand_release,
@@ -305,6 +307,8 @@ pub struct Cfg {
     pub max_key_timing_check: u16,
     /// Zipchord-like configuration.
     pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
+    /// Input device ID mappings from `definputdevices`.
+    pub input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
 }
 
 /// Parse a new configuration from a file.
@@ -393,6 +397,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
         fake_keys,
         max_key_timing_check,
         zippy: icfg.zippy,
+        input_devices: s.input_devices,
     }
 }
 
@@ -642,6 +647,22 @@ pub fn parse_cfg_raw_string(
         });
     }
 
+    let input_devices = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("definputdevices"))
+        .map(|expr| parse_definputdevices(expr))
+        .transpose()?;
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .filter(gen_first_atom_filter_spanned("definputdevices"))
+        .nth(1)
+    {
+        bail_span!(
+            spanned,
+            "Only one definputdevices is allowed, found more. Delete the extras."
+        )
+    }
+
     let var_exprs = root_exprs
         .iter()
         .filter(gen_first_atom_filter("defvar"))
@@ -756,6 +777,7 @@ pub fn parse_cfg_raw_string(
         lsp_hints: RefCell::new(lsp_hints),
         vars,
         max_key_timing_check: Cell::new(cfg.rapid_event_delay),
+        input_devices,
         ..Default::default()
     };
 
@@ -1018,7 +1040,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defzippy"
                 | "defzippy-experimental"
                 | "defseq"
-                | "defhands" => Ok(()),
+                | "defhands"
+                | "definputdevices" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
@@ -1143,6 +1166,7 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     max_key_timing_check: Cell<u16>,
     multi_action_nest_count: Cell<u16>,
+    input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
     pctx: ParserContext,
     pub lsp_hints: RefCell<LspHints>,
     hand_map: Option<&'static custom_tap_hold::HandMap>,
@@ -1175,6 +1199,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             max_key_timing_check: Cell::new(0),
             multi_action_nest_count: Cell::new(0),
+            input_devices: None,
             lsp_hints: Default::default(),
             hand_map: None,
             a: unsafe { Allocations::new() },

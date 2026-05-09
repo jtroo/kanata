@@ -325,10 +325,10 @@ impl TryFrom<InputEvent> for KeyEvent {
     fn try_from(item: InputEvent) -> Result<Self, Self::Error> {
         use OsCode::*;
         match item.destructure() {
-            evdev::EventSummary::Key(_, k, _) => Ok(Self {
-                code: OsCode::from_u16(k.0).ok_or(())?,
-                value: KeyValue::from(item.value()),
-            }),
+            evdev::EventSummary::Key(_, k, _) => Ok(Self::new(
+                OsCode::from_u16(k.0).ok_or(())?,
+                KeyValue::from(item.value()),
+            )),
             evdev::EventSummary::RelativeAxis(_, axis_type, _) => {
                 let dist = item.value();
                 let code: OsCode = match axis_type {
@@ -348,10 +348,7 @@ impl TryFrom<InputEvent> for KeyEvent {
                     }
                     _ => return Err(()),
                 };
-                Ok(KeyEvent {
-                    code,
-                    value: KeyValue::Tap,
-                })
+                Ok(KeyEvent::new(code, KeyValue::Tap))
             }
             _ => Err(()),
         }
