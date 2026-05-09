@@ -36,14 +36,44 @@ Open `System Settings > General > Login Items & Extensions > Driver Extensions`
 and toggle on the entry for `org.pqrs.Karabiner-DriverKit-VirtualHIDDevice`.
 A reboot may be required if you previously ran `deactivate`.
 
-Verify the daemon is running:
+Verify the system extension is activated:
 
 ```sh
 sudo launchctl list | grep org.pqrs
 ```
 
-You should see `org.pqrs.service.daemon.Karabiner-VirtualHIDDevice-Daemon`
-listed.
+If you have **Karabiner-Elements** installed, you should see
+`org.pqrs.service.daemon.Karabiner-VirtualHIDDevice-Daemon` listed — KE
+manages the daemon automatically and you can skip ahead to Step 3.
+
+If you installed **only** the standalone DriverKit package (no
+Karabiner-Elements), the daemon will not start on its own. You need to
+launch it manually or install a LaunchDaemon so it starts at boot.
+
+**Quick test (won't survive reboot):**
+
+```sh
+sudo "/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice/Applications/Karabiner-VirtualHIDDevice-Daemon.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Daemon" &
+```
+
+**Persistent (LaunchDaemon):** use the included plist to run the daemon at boot:
+
+```sh
+sudo cp cfg_samples/karabiner-vhid-daemon.plist \
+  /Library/LaunchDaemons/org.pqrs.Karabiner-VirtualHIDDevice-Daemon.plist
+sudo chown root:wheel \
+  /Library/LaunchDaemons/org.pqrs.Karabiner-VirtualHIDDevice-Daemon.plist
+sudo launchctl bootstrap system \
+  /Library/LaunchDaemons/org.pqrs.Karabiner-VirtualHIDDevice-Daemon.plist
+```
+
+Verify it started:
+
+```sh
+sudo launchctl list | grep org.pqrs
+```
+
+You should now see the daemon listed.
 
 ### 3. Install the kanata binary
 
@@ -150,6 +180,13 @@ sudo launchctl bootout system/dev.kanata.kanata
 sudo rm /Library/LaunchDaemons/dev.kanata.kanata.plist
 ```
 
+If you installed the VHID daemon plist (standalone DriverKit only):
+
+```sh
+sudo launchctl bootout system/org.pqrs.Karabiner-VirtualHIDDevice-Daemon
+sudo rm /Library/LaunchDaemons/org.pqrs.Karabiner-VirtualHIDDevice-Daemon.plist
+```
+
 Remove the kanata binary:
 
 ```sh
@@ -173,6 +210,10 @@ You may then delete the `Karabiner-VirtualHIDDevice-Manager.app` from
   is not approved, (3) another process is already grabbing the keyboard
   exclusively. The kanata process prints this same hint to stderr right before
   it aborts.
+- **`connect_failed asio.system:2` in a loop**: the Karabiner VirtualHIDDevice
+  daemon is not running. This happens when using the standalone DriverKit
+  package without Karabiner-Elements. See Step 2 above for how to start the
+  daemon manually or install it as a LaunchDaemon.
 - **A remapped key fires but nothing types**: confirm the kanata binary has
   Input Monitoring permission in `System Settings > Privacy & Security`. If
   you reinstalled the binary in place, macOS sometimes invalidates the
