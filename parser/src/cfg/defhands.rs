@@ -108,6 +108,7 @@ pub(super) fn parse_tap_hold_opposite_hand(
     let mut unknown_hand = DecisionBehavior::Ignore;
     let mut neutral_keys: Vec<OsCode> = Vec::new();
     let mut require_prior_idle: Option<u16> = None;
+    let mut tap_repress_timeout: u16 = 0;
     let mut seen_options: HashSet<&str> = HashSet::default();
 
     for option_expr in &ac_params[3..] {
@@ -183,10 +184,21 @@ pub(super) fn parse_tap_hold_opposite_hand(
                     s,
                 )?);
             }
+            "tap-repress-timeout" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "tap-repress-timeout option expects exactly 2 items: \
+                        `(tap-repress-timeout <ms>)`"
+                    );
+                }
+                tap_repress_timeout = parse_u16(&option[1], s, "tap-repress-timeout")?;
+            }
             _ => bail_expr!(
                 &option[0],
                 "unknown option '{}' for tap-hold-opposite-hand. \
-                Valid options: timeout, same-hand, neutral, unknown-hand, neutral-keys, require-prior-idle",
+                Valid options: timeout, same-hand, neutral, unknown-hand, neutral-keys, \
+                require-prior-idle, tap-repress-timeout",
                 kw
             ),
         }
@@ -209,7 +221,7 @@ pub(super) fn parse_tap_hold_opposite_hand(
             neutral_keys_static,
             &s.a,
         )),
-        tap_hold_interval: 0,
+        tap_hold_interval: tap_repress_timeout,
         timeout: hold_timeout,
         tap: *tap_action,
         hold: *hold_action,
@@ -256,6 +268,7 @@ pub(super) fn parse_tap_hold_opposite_hand_release(
     let mut unknown_hand = DecisionBehavior::Ignore;
     let mut neutral_keys: Vec<OsCode> = Vec::new();
     let mut require_prior_idle: Option<u16> = None;
+    let mut tap_repress_timeout: u16 = 0;
     let mut seen_options: HashSet<&str> = HashSet::default();
 
     for option_expr in &ac_params[3..] {
@@ -331,10 +344,21 @@ pub(super) fn parse_tap_hold_opposite_hand_release(
                     s,
                 )?);
             }
+            "tap-repress-timeout" => {
+                if option.len() != 2 {
+                    bail_expr!(
+                        option_expr,
+                        "tap-repress-timeout option expects exactly 2 items: \
+                        `(tap-repress-timeout <ms>)`"
+                    );
+                }
+                tap_repress_timeout = parse_u16(&option[1], s, "tap-repress-timeout")?;
+            }
             _ => bail_expr!(
                 &option[0],
                 "unknown option '{}' for tap-hold-opposite-hand-release. \
-                Valid options: timeout, same-hand, neutral, unknown-hand, neutral-keys, require-prior-idle",
+                Valid options: timeout, same-hand, neutral, unknown-hand, neutral-keys, \
+                require-prior-idle, tap-repress-timeout",
                 kw
             ),
         }
@@ -357,7 +381,7 @@ pub(super) fn parse_tap_hold_opposite_hand_release(
             neutral_keys_static,
             &s.a,
         )),
-        tap_hold_interval: 0,
+        tap_hold_interval: tap_repress_timeout,
         timeout: hold_timeout,
         tap: *tap_action,
         hold: *hold_action,
