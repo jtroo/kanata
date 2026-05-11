@@ -588,9 +588,7 @@ pub struct KbdIn {
 
 impl Drop for KbdIn {
     fn drop(&mut self) {
-        if self.grabbed {
-            release();
-        }
+        release();
     }
 }
 
@@ -772,8 +770,17 @@ impl KbdIn {
         deferred_names: Vec<String>,
         input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
     ) -> Result<Self, anyhow::Error> {
+        let mut poll_count: u32 = 0;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(2));
+            poll_count += 1;
+            if poll_count % 15 == 0 {
+                log::info!(
+                    "Still waiting for device(s): {:?} ({}s elapsed)",
+                    deferred_names,
+                    poll_count * 2
+                );
+            }
             let mut any_registered = false;
             for name in &deferred_names {
                 if device_matches(name) && register_device(name) {

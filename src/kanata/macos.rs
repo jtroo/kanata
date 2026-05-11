@@ -269,11 +269,13 @@ impl Kanata {
 
             // Re-seize input devices using regrab_input() which creates a fresh
             // pipe and listener thread without re-initializing the sink client.
-            if !kb.regrab_input() {
+            if kb.regrab_input() {
+                info!("keyboard grabbed, entering event processing loop");
+            } else if continue_if_no_devices {
+                info!("no devices grabbed after recovery, waiting for device connection...");
+            } else {
                 bail!("failed to re-grab keyboard devices after DriverKit recovery");
             }
-
-            info!("keyboard grabbed, entering event processing loop");
 
             // Back to the event processing loop.
         }
