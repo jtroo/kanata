@@ -69,6 +69,7 @@ pub enum LinuxCfgOutputBusType {
 pub struct CfgMacosOptions {
     pub macos_dev_names_include: Option<Vec<String>>,
     pub macos_dev_names_exclude: Option<Vec<String>>,
+    pub macos_continue_if_no_devs_found: bool,
 }
 
 #[cfg(any(
@@ -679,6 +680,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                                 log::warn!("macos-dev-names-exclude is empty");
                             }
                             cfg.macos_opts.macos_dev_names_exclude = Some(dev_names);
+                        }
+                    }
+                    "macos-continue-if-no-devs-found" => {
+                        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+                        {
+                            cfg.macos_opts.macos_continue_if_no_devs_found =
+                                parse_defcfg_val_bool(val, label)?
                         }
                     }
                     "tray-icon" => {

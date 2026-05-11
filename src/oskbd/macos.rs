@@ -609,6 +609,7 @@ impl KbdIn {
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
         input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+        continue_if_no_devices: bool,
     ) -> Result<Self, anyhow::Error> {
         // Pre-flight the Input Monitoring TCC gate before touching the
         // Karabiner stack. A denied permission here produces a clean,
@@ -644,8 +645,12 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
-        let device_names = if let Some(included_names) = include_names {
-            validate_and_register_devices(included_names)
+        let (device_names, deferred_names) = if let Some(included_names) = include_names {
+            if continue_if_no_devices {
+                register_devices_with_deferred(included_names)
+            } else {
+                (validate_and_register_devices(included_names), vec![])
+            }
         } else {
             // No include list: enumerate every device the driverkit iterator
             // sees, drop any that are known-problematic (empty names, Sidecar
@@ -669,7 +674,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            validate_and_register_devices(devices_to_include)
+            (validate_and_register_devices(devices_to_include), vec![])
         };
 
         if !device_names.is_empty() {
@@ -700,6 +705,21 @@ impl KbdIn {
                      sudo or a LaunchDaemon) and that no other process is \
                      exclusively grabbing the keyboard."
                 ))
+            }
+        } else if continue_if_no_devices {
+            if grab() {
+                log::info!(
+                    "No devices currently connected but listener started. \
+                     Waiting for device connection via callback..."
+                );
+                let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                Ok(Self {
+                    grabbed: false,
+                    device_hash_to_id,
+                })
+            } else {
+                log::info!("No devices registered yet. Polling for device connection...");
+                Self::poll_for_devices(deferred_names, input_devices)
             }
         } else {
             Err(anyhow!(
@@ -738,10 +758,8 @@ impl KbdIn {
     /// Release seized input devices without tearing down the output connection.
     /// After this call, `read()` will return `UnexpectedEof`.
     pub fn release_input(&mut self) {
-        if self.grabbed {
-            release_input_only();
-            self.grabbed = false;
-        }
+        release_input_only();
+        self.grabbed = false;
     }
 
     /// Re-seize input devices after a previous `release_input()`.
@@ -759,6 +777,46 @@ impl KbdIn {
     pub fn is_grabbed(&self) -> bool {
         self.grabbed
     }
+
+    fn poll_for_devices(
+        deferred_names: Vec<String>,
+        input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+    ) -> Result<Self, anyhow::Error> {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let mut any_registered = false;
+            for name in &deferred_names {
+                if device_matches(name) && register_device(name) {
+                    log::info!("Device '{name}' appeared and was registered");
+                    any_registered = true;
+                }
+            }
+            if any_registered {
+                if grab() {
+                    let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                    return Ok(Self {
+                        grabbed: true,
+                        device_hash_to_id,
+                    });
+                }
+                log::warn!("Device appeared but grab failed, continuing to poll...");
+            }
+        }
+    }
+}
+
+fn register_devices_with_deferred(names: Vec<String>) -> (Vec<String>, Vec<String>) {
+    let mut registered = Vec::new();
+    let mut deferred = Vec::new();
+    for name in names {
+        if register_device(&name) {
+            registered.push(name);
+        } else {
+            log::info!("Device '{name}' not currently connected, deferring");
+            deferred.push(name);
+        }
+    }
+    (registered, deferred)
 }
 
 /// Device product-name patterns to skip in the default (no explicit
