@@ -41,9 +41,15 @@ impl Kanata {
         let include_names = k.include_names.clone();
         let exclude_names = k.exclude_names.clone();
         let input_devices = k.input_devices.clone();
+        let continue_if_no_devices = k.continue_if_no_devices;
         drop(k);
 
-        let mut kb = match KbdIn::new(include_names, exclude_names, input_devices.as_deref()) {
+        let mut kb = match KbdIn::new(
+            include_names,
+            exclude_names,
+            input_devices.as_deref(),
+            continue_if_no_devices,
+        ) {
             Ok(kbd_in) => kbd_in,
             Err(e) => bail!("failed to open keyboard device(s): {}", e),
         };
@@ -85,7 +91,11 @@ impl Kanata {
         // Karabiner hint would be actively misleading.
         crate::oskbd::mark_karabiner_startup_complete();
 
-        info!("keyboard grabbed, entering event processing loop");
+        if kb.is_grabbed() {
+            info!("keyboard grabbed, entering event processing loop");
+        } else {
+            info!("no devices grabbed yet, waiting for device connection...");
+        }
 
         // Start the mouse event tap on a background thread if any mouse buttons
         // are mapped in the config. Similar to the Windows mouse hook.
