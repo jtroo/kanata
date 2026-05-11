@@ -774,7 +774,7 @@ impl KbdIn {
         loop {
             std::thread::sleep(std::time::Duration::from_secs(2));
             poll_count += 1;
-            if poll_count % 15 == 0 {
+            if poll_count.is_multiple_of(15) {
                 log::info!(
                     "Still waiting for device(s): {:?} ({}s elapsed)",
                     deferred_names,
