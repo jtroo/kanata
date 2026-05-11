@@ -185,14 +185,8 @@ pub(super) fn parse_tap_hold_opposite_hand(
                 )?);
             }
             "tap-repress-timeout" => {
-                if option.len() != 2 {
-                    bail_expr!(
-                        option_expr,
-                        "tap-repress-timeout option expects exactly 2 items: \
-                        `(tap-repress-timeout <ms>)`"
-                    );
-                }
-                tap_repress_timeout = parse_u16(&option[1], s, "tap-repress-timeout")?;
+                tap_repress_timeout =
+                    tap_hold::parse_tap_repress_timeout_option(option, option_expr, s)?;
             }
             _ => bail_expr!(
                 &option[0],
@@ -345,14 +339,8 @@ pub(super) fn parse_tap_hold_opposite_hand_release(
                 )?);
             }
             "tap-repress-timeout" => {
-                if option.len() != 2 {
-                    bail_expr!(
-                        option_expr,
-                        "tap-repress-timeout option expects exactly 2 items: \
-                        `(tap-repress-timeout <ms>)`"
-                    );
-                }
-                tap_repress_timeout = parse_u16(&option[1], s, "tap-repress-timeout")?;
+                tap_repress_timeout =
+                    tap_hold::parse_tap_repress_timeout_option(option, option_expr, s)?;
             }
             _ => bail_expr!(
                 &option[0],
