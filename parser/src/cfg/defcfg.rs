@@ -847,16 +847,12 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     "allow-hardware-repeat" => {
                         cfg.allow_hardware_repeat = parse_defcfg_val_bool(val, label)?
                     }
-                    "managed-repeat" => {
-                        cfg.managed_repeat = parse_defcfg_val_bool(val, label)?
-                    }
+                    "managed-repeat" => cfg.managed_repeat = parse_defcfg_val_bool(val, label)?,
                     "managed-repeat-delay" => {
-                        cfg.managed_repeat_delay =
-                            parse_cfg_val_u16(val, label, true)?
+                        cfg.managed_repeat_delay = parse_cfg_val_u16(val, label, true)?
                     }
                     "managed-repeat-interval" => {
-                        cfg.managed_repeat_interval =
-                            parse_cfg_val_u16(val, label, true)?
+                        cfg.managed_repeat_interval = parse_cfg_val_u16(val, label, true)?
                     }
                     "alias-to-trigger-on-load" => {
                         cfg.start_alias = parse_defcfg_val_string(val, label)?
@@ -1142,8 +1138,8 @@ pub struct ManagedRepeatOverride {
 
 pub fn parse_defrepeat(expr: &[SExpr]) -> Result<Vec<ManagedRepeatOverride>> {
     let mut overrides = Vec::new();
-    let mut exprs = check_first_expr(expr.iter(), "defrepeat")?;
-    while let Some(item) = exprs.next() {
+    let exprs = check_first_expr(expr.iter(), "defrepeat")?;
+    for item in exprs {
         match item {
             SExpr::List(list) => {
                 let items = &list.t;
@@ -1164,10 +1160,17 @@ pub fn parse_defrepeat(expr: &[SExpr]) -> Result<Vec<ManagedRepeatOverride>> {
                 }
                 let delay = parse_cfg_val_u16(&items[1], "delay", true)?;
                 let interval = parse_cfg_val_u16(&items[2], "interval", true)?;
-                overrides.push(ManagedRepeatOverride { key, delay, interval });
+                overrides.push(ManagedRepeatOverride {
+                    key,
+                    delay,
+                    interval,
+                });
             }
             SExpr::Atom(_) => {
-                bail_expr!(item, "defrepeat entries must be lists: (key delay interval)");
+                bail_expr!(
+                    item,
+                    "defrepeat entries must be lists: (key delay interval)"
+                );
             }
         }
     }
