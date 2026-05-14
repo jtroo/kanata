@@ -1647,6 +1647,30 @@ impl Kanata {
                             Vec::from_iter(_cmd.iter().map(|s| s.to_string())),
                         ));
                     }
+                    CustomAction::CmdFork {
+                        cmd: _cmd,
+                        coord_true: _coord_true,
+                        coord_false: _coord_false,
+                    } => {
+                        #[cfg(feature = "cmd")]
+                        {
+                            let success = run_cmd_fork_check(_cmd);
+                            let coord =
+                                if success { _coord_true } else { _coord_false };
+                            log::debug!(
+                                "cmd-fork: exit {} -> vkey ({},{})",
+                                if success { "0" } else { "nonzero" },
+                                coord.x,
+                                coord.y
+                            );
+                            handle_fakekey_action(
+                                FakeKeyAction::Press,
+                                layout,
+                                coord.x,
+                                coord.y,
+                            );
+                        }
+                    }
                     CustomAction::CmdOutputKeys(_cmd) => {
                         #[cfg(feature = "cmd")]
                         {
@@ -1979,6 +2003,28 @@ impl Kanata {
                         }
                     } {
                         log::error!("failed to release arbitrary code {e:?}");
+                    }
+                }
+                CustomAction::CmdFork {
+                    coord_true: _coord_true,
+                    coord_false: _coord_false,
+                    ..
+                } => {
+                    #[cfg(feature = "cmd")]
+                    {
+                        log::debug!("cmd-fork: releasing vkeys");
+                        handle_fakekey_action(
+                            FakeKeyAction::Release,
+                            layout,
+                            _coord_true.x,
+                            _coord_true.y,
+                        );
+                        handle_fakekey_action(
+                            FakeKeyAction::Release,
+                            layout,
+                            _coord_false.x,
+                            _coord_false.y,
+                        );
                     }
                 }
                 _ => {}

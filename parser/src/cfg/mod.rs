@@ -77,6 +77,8 @@ use fake_key::*;
 mod fork;
 pub use fake_key::{FAKE_KEY_ROW, NORMAL_KEY_ROW};
 use fork::*;
+mod cmd_fork;
+use cmd_fork::*;
 mod is_a_button;
 use is_a_button::*;
 mod live_reload;
@@ -1156,6 +1158,7 @@ pub struct ParserState {
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
     virtual_keys: HashMap<String, (usize, &'static KanataAction)>,
+    cmd_fork_vkeys: RefCell<Vec<(usize, &'static KanataAction)>>,
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     vars: HashMap<String, SExpr>,
@@ -1190,6 +1193,7 @@ impl Default for ParserState {
             mapping_order: Default::default(),
             defsrc_layer: [KanataAction::NoOp; KEYS_IN_ROW],
             virtual_keys: Default::default(),
+            cmd_fork_vkeys: RefCell::new(Vec::new()),
             chord_groups: Default::default(),
             vars: Default::default(),
             is_cmd_enabled: default_cfg.enable_cmd,
@@ -1649,6 +1653,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD_LOG => parse_cmd_log(&ac[1..], s),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
+        CMD_FORK => parse_cmd_fork(&ac[1..], s),
         CAPS_WORD | CAPS_WORD_A => {
             parse_caps_word(&ac[1..], CapsWordRepressBehaviour::Overwrite, s)
         }

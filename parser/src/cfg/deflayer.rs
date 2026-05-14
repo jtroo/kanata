@@ -240,6 +240,10 @@ pub(crate) fn parse_layers(
             let (x, y) = get_fake_key_coords(*y);
             layers_cfg[layer_level][x as usize][y as usize] = **action;
         }
+        for (idx, action) in s.cmd_fork_vkeys.borrow().iter() {
+            let (x, y) = get_fake_key_coords(*idx);
+            layers_cfg[layer_level][x as usize][y as usize] = **action;
+        }
 
         // If the user has configured delegation to the first (default) layer for transparent keys,
         // (as opposed to delegation to defsrc), replace the defsrc actions with the actions from

@@ -3365,6 +3365,78 @@ chorded lists are supported. Other actions are not supported.
 )
 ----
 
+[[cmd-fork]]
+=== cmd-fork
+
+WARNING: This action does not work unless you use the appropriate binary
+or - if compiling yourself - the appropriate feature flag.
+Additionally you must add the <<danger-enable-cmd>> `defcfg` option.
+
+**Reference**
+
+The `cmd-fork` action runs an external command synchronously and activates one
+of two sub-actions based on the exit code. If the command exits with 0
+(success), the first sub-action is activated. If it exits with any nonzero code
+(failure), the second sub-action is activated.
+
+Sub-actions can be any valid kanata action, including `tap-hold`,
+`layer-while-held`, `multi`, macros, etc.
+
+.Syntax:
+[source]
+----
+(cmd-fork $action-if-0 $action-if-nonzero $cmd [$args...])
+----
+
+[cols="1,3"]
+|===
+| `$action-if-0`
+| Action to activate when the command exits with code 0 (success).
+
+| `$action-if-nonzero`
+| Action to activate when the command exits with a nonzero code (failure),
+or when the command fails to launch.
+
+| `$cmd`
+| Executable binary to run.
+
+| `$args`
+| Arguments passed into the binary.
+|===
+
+**Description**
+
+This action is useful for application-aware key behavior. For example, you can
+run a script that checks the active window, then choose between different
+actions depending on the result.
+
+The command runs synchronously and blocks keyboard processing for its duration.
+Keep commands fast (e.g. `pgrep`, `xdotool`). Long-running commands will cause
+input lag.
+
+The exit code convention follows POSIX: exit 0 means success/true, nonzero
+means failure/false. If the command cannot be launched (e.g. not found or
+permission denied), it is treated as nonzero (the second sub-action activates).
+
+Command arguments follow the same rules as <<cmd>>: commands are executed
+directly (not via a shell), and lists can be used for reuse via `defvar`.
+
+.Example:
+[source]
+----
+(defalias
+  ;; Use tap-hold-a if Firefox is running, tap-hold-b otherwise
+  app-aware (cmd-fork
+    (tap-hold 200 200 a lctl)
+    (tap-hold 200 200 b lalt)
+    bash -c "pgrep -x Firefox > /dev/null"
+  )
+
+  ;; Simple key swap based on a script
+  swap (cmd-fork x y bash -c "test -f /tmp/swap-enabled")
+)
+----
+
 [[push-msg]]
 === push-msg
 
