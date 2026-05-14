@@ -207,6 +207,14 @@ extern "C" fn karabiner_sigabrt_handler(_sig: libc::c_int) {
 unsafe extern "C" {
     fn IOHIDCheckAccess(request: u32) -> u32;
     fn IOHIDRequestAccess(request: u32) -> bool;
+    fn IOHIDGetModifierLockState(handle: u32, selector: i32, state: *mut bool) -> i32;
+    fn IOHIDSetModifierLockState(handle: u32, selector: i32, state: bool) -> i32;
+    fn IOServiceMatching(name: *const libc::c_char) -> *mut libc::c_void;
+    fn IOServiceGetMatchingService(main_port: u32, matching: *mut libc::c_void) -> u32;
+    fn IOServiceOpen(service: u32, owning_task: u32, type_: u32, connect: *mut u32) -> i32;
+    fn IOObjectRelease(object: u32) -> i32;
+
+    static mach_task_self_: u32;
 }
 
 // ApplicationServices bindings for the Accessibility TCC gate.
@@ -236,6 +244,8 @@ const K_IOHID_REQUEST_TYPE_LISTEN_EVENT: u32 = 1;
 const K_IOHID_ACCESS_TYPE_GRANTED: u32 = 0;
 const K_IOHID_ACCESS_TYPE_DENIED: u32 = 1;
 const K_IOHID_ACCESS_TYPE_UNKNOWN: u32 = 2;
+const K_IOHID_PARAM_CONNECT_TYPE: u32 = 1;
+const K_IOHID_CAPS_LOCK_STATE: i32 = 1;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AccessibilityPermissionStatus {
@@ -931,8 +941,97 @@ impl TryFrom<KeyEvent> for InputEvent {
 }
 
 #[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn hid_system_param_connect() -> Option<u32> {
+    static CONNECT: OnceLock<Option<u32>> = OnceLock::new();
+
+    *CONNECT.get_or_init(|| {
+        let service_name = c"IOHIDSystem";
+        let matching = unsafe {
+            // SAFETY: IOServiceMatching expects a null-terminated service name
+            // and returns a retained matching dictionary consumed by
+            // IOServiceGetMatchingService below.
+            IOServiceMatching(service_name.as_ptr())
+        };
+        if matching.is_null() {
+            log::warn!("failed to create IOHIDSystem matching dictionary");
+            return None;
+        }
+
+        let service = unsafe {
+            // SAFETY: kIOMainPortDefault is 0. IOServiceGetMatchingService
+            // consumes the retained matching dictionary returned above.
+            IOServiceGetMatchingService(0, matching)
+        };
+        if service == 0 {
+            log::warn!("failed to find IOHIDSystem service for Caps Lock LED sync");
+            return None;
+        }
+
+        let mut connect = 0u32;
+        let rc = unsafe {
+            // SAFETY: service is a live IOService handle. mach_task_self_ is
+            // the process task port exported by libSystem.
+            IOServiceOpen(
+                service,
+                mach_task_self_,
+                K_IOHID_PARAM_CONNECT_TYPE,
+                &mut connect,
+            )
+        };
+        unsafe {
+            // SAFETY: service was returned by IOServiceGetMatchingService and
+            // must be released after IOServiceOpen.
+            IOObjectRelease(service);
+        }
+
+        if rc == 0 && connect != 0 {
+            Some(connect)
+        } else {
+            log::warn!("failed to open IOHIDSystem parameter connection: rc={rc}");
+            None
+        }
+    })
+}
+
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn get_hid_caps_lock_state() -> Option<bool> {
+    let connect = hid_system_param_connect()?;
+    let mut state = false;
+    let rc = unsafe {
+        // SAFETY: connect is an IOHIDSystem parameter connection cached above;
+        // state points to valid writable memory for the duration of the call.
+        IOHIDGetModifierLockState(connect, K_IOHID_CAPS_LOCK_STATE, &mut state)
+    };
+    if rc == 0 {
+        Some(state)
+    } else {
+        log::warn!("failed to read IOHID Caps Lock state: rc={rc}");
+        None
+    }
+}
+
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn set_hid_caps_lock_state(state: bool) -> io::Result<()> {
+    let connect = hid_system_param_connect()
+        .ok_or_else(|| io::Error::other("IOHIDSystem parameter connection unavailable"))?;
+    let rc = unsafe {
+        // SAFETY: connect is an IOHIDSystem parameter connection cached above.
+        // kIOHIDCapsLockState is the documented selector for this API.
+        IOHIDSetModifierLockState(connect, K_IOHID_CAPS_LOCK_STATE, state)
+    };
+    if rc == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!(
+            "failed to set IOHID Caps Lock state: rc={rc}"
+        )))
+    }
+}
+
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
+    caps_lock_state: Option<bool>,
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -962,10 +1061,35 @@ impl KbdOut {
     pub fn new() -> Result<Self, io::Error> {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
+            caps_lock_state: get_hid_caps_lock_state(),
         })
     }
 
+    fn write_caps_lock(&mut self, value: u64) -> Result<(), io::Error> {
+        if value != KeyValue::Press as u64 {
+            return Ok(());
+        }
+
+        let next_state = self.caps_lock_state.unwrap_or_else(|| {
+            get_hid_caps_lock_state().unwrap_or_else(|| {
+                log::warn!(
+                    "could not read current Caps Lock state before toggle; assuming it is off"
+                );
+                false
+            })
+        }) ^ true;
+
+        set_hid_caps_lock_state(next_state)?;
+        self.caps_lock_state = Some(next_state);
+        Ok(())
+    }
+
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
+        if event.page == 0x07 && event.code == 0x39 {
+            log::debug!("Attempting to set Caps Lock state from {event:?}");
+            return self.write_caps_lock(event.value);
+        }
+
         let mut devent = event.into();
         log::debug!("Attempting to write {event:?} {devent:?}");
         let rc = send_key(&mut devent);
