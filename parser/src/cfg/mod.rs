@@ -991,6 +991,28 @@ pub fn parse_cfg_raw_string(
             .extend(refs.0.drain());
     });
 
+    let defrepeat_exprs = root_exprs
+        .iter()
+        .filter(gen_first_atom_filter("defrepeat"))
+        .collect::<Vec<_>>();
+    match defrepeat_exprs.len() {
+        0 => {}
+        1 => {
+            cfg.managed_repeat_overrides = defcfg::parse_defrepeat(defrepeat_exprs[0])?;
+        }
+        _ => {
+            let spanned = spanned_root_exprs
+                .iter()
+                .filter(gen_first_atom_filter_spanned("defrepeat"))
+                .nth(1)
+                .expect(">= 2 defrepeat");
+            bail_span!(
+                spanned,
+                "Only one defrepeat allowed, found more. Delete the extras."
+            )
+        }
+    };
+
     let klayers = unsafe { KanataLayers::new(layers, s.a.clone()) };
     Ok(IntermediateCfg {
         options: cfg,
@@ -1041,7 +1063,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defzippy-experimental"
                 | "defseq"
                 | "defhands"
-                | "definputdevices" => Ok(()),
+                | "definputdevices"
+                | "defrepeat" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
