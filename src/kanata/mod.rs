@@ -2587,7 +2587,7 @@ impl Kanata {
             && self
                 .managed_repeat_state
                 .as_ref()
-                .map_or(true, |s| s.is_idle())
+                .is_none_or(|s| s.is_idle())
             && !layout.states.iter().any(|s| {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
