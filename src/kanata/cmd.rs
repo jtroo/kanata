@@ -232,7 +232,9 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item =
 #[cfg(not(feature = "simulated_output"))]
 pub(super) fn run_cmd_fork_check(cmd_and_args: &[&str]) -> bool {
     let mut args = cmd_and_args.iter();
-    let executable = args.next().expect("parsing should have forbidden empty cmd");
+    let executable = args
+        .next()
+        .expect("parsing should have forbidden empty cmd");
     let mut cmd = std::process::Command::new(executable);
     for arg in args {
         cmd.arg(arg);

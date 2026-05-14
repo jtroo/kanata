@@ -16,8 +16,7 @@ pub(crate) fn parse_cmd_fork(
     }
     #[cfg(feature = "cmd")]
     {
-        const ERR_STR: &str =
-            "cmd-fork expects at least 3 params: \
+        const ERR_STR: &str = "cmd-fork expects at least 3 params: \
              (cmd-fork <action-if-0> <action-if-nonzero> <cmd> [args...])";
         if !s.is_cmd_enabled {
             bail!("To use cmd-fork you must put in defcfg: danger-enable-cmd yes.");
@@ -65,9 +64,7 @@ fn allocate_cmd_fork_vk(
     let mut vkeys = s.cmd_fork_vkeys.borrow_mut();
     let idx = base + vkeys.len();
     if idx >= KEYS_IN_ROW {
-        bail!(
-            "Maximum number of virtual keys ({KEYS_IN_ROW}) exceeded by cmd-fork"
-        );
+        bail!("Maximum number of virtual keys ({KEYS_IN_ROW}) exceeded by cmd-fork");
     }
     vkeys.push((idx, action));
     let (x, y) = get_fake_key_coords(idx);
