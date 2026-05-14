@@ -13,8 +13,14 @@ fn managed_repeat_basic() {
     let events: Vec<&str> = result.split('\n').collect();
     let b_downs = events.iter().filter(|e| **e == "out:↓B").count();
     let b_ups = events.iter().filter(|e| **e == "out:↑B").count();
-    assert!(b_downs >= 4, "expected at least 4 B presses, got {b_downs}: {result}");
-    assert!(b_ups >= 4, "expected at least 4 B releases, got {b_ups}: {result}");
+    assert!(
+        b_downs >= 4,
+        "expected at least 4 B presses, got {b_downs}: {result}"
+    );
+    assert!(
+        b_ups >= 4,
+        "expected at least 4 B releases, got {b_ups}: {result}"
+    );
 }
 
 #[test]
@@ -85,7 +91,10 @@ fn managed_repeat_per_key_override() {
     );
     let events: Vec<&str> = result.split('\n').collect();
     let a_downs = events.iter().filter(|e| **e == "out:↓A").count();
-    assert!(a_downs >= 3, "expected at least 3 A presses, got {a_downs}: {result}");
+    assert!(
+        a_downs >= 3,
+        "expected at least 3 A presses, got {a_downs}: {result}"
+    );
 }
 
 #[test]
