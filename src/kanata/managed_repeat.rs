@@ -1,11 +1,24 @@
 use super::*;
 
+const RELEASE_AFTER_MS: u16 = 5;
+
+#[derive(Debug, PartialEq)]
+enum RepeatPhase {
+    /// Key was just pressed. Wait a few ms then release it from the HID
+    /// report to prevent macOS OS-level repeat from firing.
+    HeldBeforeRelease { ticks_remaining: u16 },
+    /// Key released from HID report. Wait until managed repeat delay elapses.
+    ReleasedWaiting { ticks_remaining: u16 },
+    /// Actively repeating via release+re-press cycles.
+    Repeating { ticks_remaining: u16 },
+}
+
 #[derive(Debug)]
 struct RepeatTimer {
     osc: OsCode,
-    ticks_remaining: u16,
+    delay: u16,
     interval: u16,
-    repeating: bool,
+    phase: RepeatPhase,
 }
 
 #[derive(Debug)]
@@ -49,16 +62,13 @@ impl Kanata {
             None => return Ok(()),
         };
 
-        // Remove timers for keys no longer in cur_keys (just released).
+        // Remove timers for keys no longer in cur_keys (physically released).
         state.timers.retain(|_osc, timer| {
             let kc: KeyCode = timer.osc.into();
             self.cur_keys.contains(&kc)
         });
 
         // Start timers for newly pressed non-modifier keys.
-        // We check if a timer already exists rather than comparing prev_keys,
-        // because handle_keystate_changes pushes new keys into prev_keys before
-        // this function runs.
         for k in self.cur_keys.iter() {
             let osc: OsCode = (*k).into();
             if osc.is_modifier() {
@@ -72,28 +82,60 @@ impl Kanata {
                 osc,
                 RepeatTimer {
                     osc,
-                    ticks_remaining: delay,
+                    delay,
                     interval,
-                    repeating: false,
+                    phase: RepeatPhase::HeldBeforeRelease {
+                        ticks_remaining: RELEASE_AFTER_MS,
+                    },
                 },
             );
         }
 
-        // Tick all timers and collect keys that need a repeat event.
-        let mut repeats = Vec::new();
+        // Tick all timers and collect actions.
+        let mut releases = Vec::new();
+        let mut presses = Vec::new();
+
         for timer in state.timers.values_mut() {
-            timer.ticks_remaining = timer.ticks_remaining.saturating_sub(1);
-            if timer.ticks_remaining == 0 {
-                repeats.push(timer.osc);
-                timer.ticks_remaining = timer.interval;
-                timer.repeating = true;
+            match &mut timer.phase {
+                RepeatPhase::HeldBeforeRelease { ticks_remaining } => {
+                    *ticks_remaining = ticks_remaining.saturating_sub(1);
+                    if *ticks_remaining == 0 {
+                        releases.push(timer.osc);
+                        let wait = timer.delay.saturating_sub(RELEASE_AFTER_MS);
+                        timer.phase = RepeatPhase::ReleasedWaiting {
+                            ticks_remaining: wait,
+                        };
+                    }
+                }
+                RepeatPhase::ReleasedWaiting { ticks_remaining } => {
+                    *ticks_remaining = ticks_remaining.saturating_sub(1);
+                    if *ticks_remaining == 0 {
+                        presses.push(timer.osc);
+                        timer.phase = RepeatPhase::Repeating {
+                            ticks_remaining: timer.interval,
+                        };
+                    }
+                }
+                RepeatPhase::Repeating { ticks_remaining } => {
+                    *ticks_remaining = ticks_remaining.saturating_sub(1);
+                    if *ticks_remaining == 0 {
+                        releases.push(timer.osc);
+                        presses.push(timer.osc);
+                        *ticks_remaining = timer.interval;
+                    }
+                }
             }
         }
 
-        for osc in repeats {
-            log::info!("managed repeat {:?}", KeyCode::from(osc));
-            if let Err(e) = write_key(&mut self.kbd_out, osc, KeyValue::Repeat) {
-                bail!("managed repeat failed: {e:?}");
+        for osc in &releases {
+            if let Err(e) = release_key(&mut self.kbd_out, *osc) {
+                bail!("managed repeat release failed: {e:?}");
+            }
+        }
+        for osc in &presses {
+            log::info!("managed repeat {:?}", KeyCode::from(*osc));
+            if let Err(e) = press_key(&mut self.kbd_out, *osc) {
+                bail!("managed repeat press failed: {e:?}");
             }
         }
 

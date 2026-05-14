@@ -9,10 +9,10 @@
 (deflayer base a s d f bspc del left right up down)
 
 (defrepeat
-  (bspc 300 20)
-  (del  300 20)
-  (left  250 25)
-  (right 250 25)
-  (up    250 25)
-  (down  250 25)
+  (bspc 210 20)
+  (del  210 20)
+  (left  150 20)
+  (right 150 20)
+  (up    150 20)
+  (down  150 20)
 )
