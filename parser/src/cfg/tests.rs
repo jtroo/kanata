@@ -1560,6 +1560,109 @@ fn parse_cmd_log() {
 }
 
 #[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a b c)
+(deflayer base
+    (cmd-fork
+        (tap-hold 200 200 a lctl)
+        (tap-hold 200 200 b lalt)
+        bash -c "pgrep -x Firefox > /dev/null"
+    )
+    (cmd-fork a b bash -c "true")
+    (cmd-fork (multi a b) c echo test)
+)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork_no_enable() {
+    let source = r#"
+(defsrc a)
+(deflayer base
+    (cmd-fork a b bash -c "true")
+)
+"#;
+    parse_cfg(source).expect_err("should fail without danger-enable-cmd");
+}
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork_too_few_params() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(deflayer base
+    (cmd-fork a b)
+)
+"#;
+    parse_cfg(source).expect_err("should fail with too few params");
+}
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork_in_defalias() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(defalias
+    app-aware (cmd-fork
+        (tap-hold 200 200 a lctl)
+        (tap-hold 200 200 b lalt)
+        bash -c "pgrep -x Firefox > /dev/null"
+    )
+)
+(deflayer base @app-aware)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork_nested() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(deflayer base
+    (cmd-fork
+        (cmd-fork x y echo inner-true)
+        z
+        echo outer
+    )
+)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
+#[cfg(feature = "cmd")]
+fn parse_cmd_fork_with_defvar() {
+    let source = r#"
+(defcfg danger-enable-cmd yes)
+(defsrc a)
+(defvar
+    my-cmd (bash -c "true")
+)
+(deflayer base
+    (cmd-fork a b $my-cmd)
+)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
 fn parse_defvar_concat() {
     let _lk = lock(&CFG_PARSE_LOCK);
     let source = r#"

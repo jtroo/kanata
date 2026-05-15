@@ -229,10 +229,47 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item =
     }
 }
 
+#[cfg(not(feature = "simulated_output"))]
+pub(super) fn run_cmd_fork_check(cmd_and_args: &[&str]) -> bool {
+    let mut args = cmd_and_args.iter();
+    let executable = args
+        .next()
+        .expect("parsing should have forbidden empty cmd");
+    let mut cmd = std::process::Command::new(executable);
+    for arg in args {
+        cmd.arg(arg);
+    }
+    log::debug!("{LP} cmd-fork running: {executable}");
+    match cmd.output() {
+        Ok(output) => {
+            let success = output.status.success();
+            log::debug!(
+                "{LP} cmd-fork exit status: {}, stdout: {}, stderr: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout).trim(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+            success
+        }
+        Err(e) => {
+            log::error!("{LP} cmd-fork failed to execute: {e}");
+            false
+        }
+    }
+}
+
 #[cfg(feature = "simulated_output")]
 pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item = Item> {
     println!("cmd-keys:{cmd_and_args:?}");
     [].iter().copied()
+}
+
+#[cfg(feature = "simulated_output")]
+pub(super) fn run_cmd_fork_check(cmd_and_args: &[&str]) -> bool {
+    // Always takes the true (exit-0) branch in simulation.
+    // The false branch exercises the same VK press/release path.
+    println!("cmd-fork:{cmd_and_args:?}");
+    true
 }
 
 #[cfg(feature = "simulated_output")]
