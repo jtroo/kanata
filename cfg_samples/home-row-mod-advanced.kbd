@@ -2,7 +2,7 @@
 ;; Some of the changes from the basic example:
 ;; - when a home row mod activates tap, the home row mods are disabled
 ;;   while continuing to type rapidly
-;; - tap-hold-release helps make the hold action more responsive
+;; - tap-hold-release-keys helps make the hold action more responsive
 ;; - pressing another key on the same half of the keyboard
 ;;   as the home row mod will activate an early tap action
 ;;
