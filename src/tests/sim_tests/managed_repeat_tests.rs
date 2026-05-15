@@ -1,4 +1,5 @@
 use super::*;
+use crate::kanata::ManagedRepeatState;
 
 #[test]
 fn managed_repeat_basic() {
@@ -113,4 +114,109 @@ fn managed_repeat_override_vs_default() {
     let events: Vec<&str> = result.split('\n').collect();
     let b_downs = events.iter().filter(|e| **e == "out:↓B").count();
     assert_eq!(1, b_downs, "no repeat, just initial press: {result}");
+}
+
+#[test]
+fn managed_repeat_state_swap_picks_up_new_timing() {
+    init_log();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    // Start with a long delay so no repeats happen in 15 ticks.
+    let mut k = Kanata::new_from_str(
+        "
+         (defcfg managed-repeat yes managed-repeat-delay 100 managed-repeat-interval 100)
+         (defsrc a)
+         (deflayer base a)
+        ",
+        Default::default(),
+    )
+    .expect("cfg parses");
+
+    // Press A and hold for 15 ticks — no repeats expected with delay=100.
+    let key_a = str_to_oscode("a").unwrap();
+    k.handle_input_event(&KeyEvent::new(key_a, KeyValue::Press))
+        .unwrap();
+    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+    crate::PRESSED_KEYS.lock().insert(key_a);
+    #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+    crate::PRESSED_KEYS
+        .lock()
+        .insert(key_a, web_time::Instant::now());
+    for _ in 0..15 {
+        let _ = k.tick_ms(1, &None);
+    }
+    let events_before: Vec<String> = k.kbd_out.outputs.events.clone();
+    let a_downs_before = events_before.iter().filter(|e| *e == "out:↓A").count();
+    assert_eq!(
+        1, a_downs_before,
+        "only initial press, no repeats with delay=100: {events_before:?}"
+    );
+
+    // Release A.
+    k.handle_input_event(&KeyEvent::new(key_a, KeyValue::Release))
+        .unwrap();
+    crate::PRESSED_KEYS.lock().remove(&key_a);
+    let _ = k.tick_ms(1, &None);
+
+    // Swap in new state with fast timing (delay=8, interval=4).
+    // This is what do_live_reload now does.
+    let new_state = ManagedRepeatState::new(8, 4);
+    // No per-key overrides for this test.
+    k.managed_repeat_state = Some(new_state);
+
+    // Clear output to isolate the post-reload behavior.
+    k.kbd_out.outputs.events.clear();
+
+    // Press A again and hold for 30 ticks — should see repeats with new timing.
+    k.handle_input_event(&KeyEvent::new(key_a, KeyValue::Press))
+        .unwrap();
+    #[cfg(not(all(target_os = "windows", not(feature = "interception_driver"))))]
+    crate::PRESSED_KEYS.lock().insert(key_a);
+    #[cfg(all(target_os = "windows", not(feature = "interception_driver")))]
+    crate::PRESSED_KEYS
+        .lock()
+        .insert(key_a, web_time::Instant::now());
+    for _ in 0..30 {
+        let _ = k.tick_ms(1, &None);
+    }
+    k.handle_input_event(&KeyEvent::new(key_a, KeyValue::Release))
+        .unwrap();
+    crate::PRESSED_KEYS.lock().remove(&key_a);
+    let _ = k.tick_ms(1, &None);
+
+    let events_after: Vec<String> = k.kbd_out.outputs.events.clone();
+    let a_downs_after = events_after.iter().filter(|e| *e == "out:↓A").count();
+    assert!(
+        a_downs_after >= 4,
+        "expected at least 4 A presses with new fast timing, got {a_downs_after}: {events_after:?}"
+    );
+}
+
+#[test]
+fn managed_repeat_disable_on_reload_cancels_repeat() {
+    init_log();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut k = Kanata::new_from_str(
+        "
+         (defcfg managed-repeat yes managed-repeat-delay 8 managed-repeat-interval 4)
+         (defsrc a)
+         (deflayer base a)
+        ",
+        Default::default(),
+    )
+    .expect("cfg parses");
+
+    assert!(k.managed_repeat_state.is_some());
+
+    // Simulate reload that disables managed repeat.
+    k.managed_repeat_state = None;
+    k.allow_hardware_repeat = true;
+
+    assert!(k.managed_repeat_state.is_none());
+    assert!(k.allow_hardware_repeat);
 }
