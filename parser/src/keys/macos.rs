@@ -536,9 +536,25 @@ impl TryFrom<OsCode> for PageCode {
                 page: 0x07,
                 code: 0x87,
             }),
+            OsCode::KEY_KATAKANAHIRAGANA => Ok(PageCode {
+                page: 0x07,
+                code: 0x88,
+            }),
             OsCode::KEY_YEN => Ok(PageCode {
                 page: 0x07,
                 code: 0x89,
+            }),
+            OsCode::KEY_HENKAN => Ok(PageCode {
+                page: 0x07,
+                code: 0x8A,
+            }),
+            OsCode::KEY_MUHENKAN => Ok(PageCode {
+                page: 0x07,
+                code: 0x8B,
+            }),
+            OsCode::KEY_KPJPCOMMA => Ok(PageCode {
+                page: 0x07,
+                code: 0x8C,
             }),
             OsCode::KEY_HANGEUL => Ok(PageCode {
                 page: 0x07,
@@ -547,6 +563,18 @@ impl TryFrom<OsCode> for PageCode {
             OsCode::KEY_HANJA => Ok(PageCode {
                 page: 0x07,
                 code: 0x91,
+            }),
+            OsCode::KEY_KATAKANA => Ok(PageCode {
+                page: 0x07,
+                code: 0x92,
+            }),
+            OsCode::KEY_HIRAGANA => Ok(PageCode {
+                page: 0x07,
+                code: 0x93,
+            }),
+            OsCode::KEY_ZENKAKUHANKAKU => Ok(PageCode {
+                page: 0x07,
+                code: 0x94,
             }),
             OsCode::KEY_ALTERASE => Ok(PageCode {
                 page: 0x07,
@@ -1225,8 +1253,24 @@ impl TryFrom<PageCode> for OsCode {
             } => Ok(OsCode::KEY_RO),
             PageCode {
                 page: 0x07,
+                code: 0x88,
+            } => Ok(OsCode::KEY_KATAKANAHIRAGANA),
+            PageCode {
+                page: 0x07,
                 code: 0x89,
             } => Ok(OsCode::KEY_YEN),
+            PageCode {
+                page: 0x07,
+                code: 0x8A,
+            } => Ok(OsCode::KEY_HENKAN),
+            PageCode {
+                page: 0x07,
+                code: 0x8B,
+            } => Ok(OsCode::KEY_MUHENKAN),
+            PageCode {
+                page: 0x07,
+                code: 0x8C,
+            } => Ok(OsCode::KEY_KPJPCOMMA),
             PageCode {
                 page: 0x07,
                 code: 0x90,
@@ -1235,6 +1279,18 @@ impl TryFrom<PageCode> for OsCode {
                 page: 0x07,
                 code: 0x91,
             } => Ok(OsCode::KEY_HANJA),
+            PageCode {
+                page: 0x07,
+                code: 0x92,
+            } => Ok(OsCode::KEY_KATAKANA),
+            PageCode {
+                page: 0x07,
+                code: 0x93,
+            } => Ok(OsCode::KEY_HIRAGANA),
+            PageCode {
+                page: 0x07,
+                code: 0x94,
+            } => Ok(OsCode::KEY_ZENKAKUHANKAKU),
             PageCode {
                 page: 0x07,
                 code: 0x99,
