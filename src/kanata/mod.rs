@@ -826,6 +826,24 @@ impl Kanata {
             zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
 
+        self.managed_repeat_state = if cfg.options.managed_repeat {
+            let mut state = ManagedRepeatState::new(
+                cfg.options.managed_repeat_delay,
+                cfg.options.managed_repeat_interval,
+            );
+            for ovr in &cfg.options.managed_repeat_overrides {
+                state.add_override(ovr.key, ovr.delay, ovr.interval);
+            }
+            Some(state)
+        } else {
+            None
+        };
+        self.allow_hardware_repeat = if cfg.options.managed_repeat {
+            false
+        } else {
+            cfg.options.allow_hardware_repeat
+        };
+
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
