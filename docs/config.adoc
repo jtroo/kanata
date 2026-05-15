@@ -5021,6 +5021,31 @@ Use `kanata -l` or `kanata --list` to list the available keyboards.
 )
 ----
 
+[[macos-only-macos-continue-if-no-devs-found]]
+=== macOS only: macos-continue-if-no-devs-found
+
+By default, kanata will exit with an error if no input devices matching
+the configured include list are found at startup. Setting
+`macos-continue-if-no-devs-found` changes this: kanata keeps running and
+waits for matching devices to connect, then grabs them automatically.
+
+This is useful for Bluetooth or USB keyboards that may not be connected
+at boot time. When the device later appears (e.g. Bluetooth pairs, USB
+plugged in), kanata captures it and begins remapping.
+
+Works with `macos-dev-names-include` and `definputdevices`. Has no
+effect when no device filter is configured (the default enumeration
+always finds the internal keyboard).
+
+.Example:
+[source]
+----
+(defcfg
+  macos-dev-names-include ("My BT Keyboard")
+  macos-continue-if-no-devs-found yes
+)
+----
+
 [[windows-only-windows-altgr]]
 === Windows only: windows-altgr
 
