@@ -1070,15 +1070,14 @@ impl KbdOut {
             return Ok(());
         }
 
-        let next_state = self.caps_lock_state.unwrap_or_else(|| {
-            get_hid_caps_lock_state().unwrap_or_else(|| {
-                log::warn!(
-                    "could not read current Caps Lock state before toggle; assuming it is off"
-                );
-                false
-            })
-        }) ^ true;
+        let next_state = !self.caps_lock_state.unwrap_or(false);
 
+        // Use IOHIDSetModifierLockState instead of the VirtualHID path for caps
+        // lock. macOS sends LED output reports to the originating HID device;
+        // the DriverKit virtual keyboard has no physical LED, so the physical
+        // keyboard LED would never update. IOHIDSetModifierLockState sets both
+        // the system modifier state (so apps see correct case) and drives the
+        // LED on the physical keyboard.
         set_hid_caps_lock_state(next_state)?;
         self.caps_lock_state = Some(next_state);
         Ok(())
@@ -1086,7 +1085,7 @@ impl KbdOut {
 
     pub fn write(&mut self, event: InputEvent) -> Result<(), io::Error> {
         if event.page == 0x07 && event.code == 0x39 {
-            log::debug!("Attempting to set Caps Lock state from {event:?}");
+            log::debug!("Caps Lock output: using IOHIDSetModifierLockState path for {event:?}");
             return self.write_caps_lock(event.value);
         }
 
