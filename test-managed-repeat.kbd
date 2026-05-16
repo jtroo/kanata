@@ -1,0 +1,18 @@
+(defcfg
+  managed-repeat yes
+  managed-repeat-delay 500
+  managed-repeat-interval 30
+  process-unmapped-keys yes
+)
+
+(defsrc a s d f bspc del left right up down)
+(deflayer base a s d f bspc del left right up down)
+
+(defrepeat
+  (bspc 210 20)
+  (del  210 20)
+  (left  150 20)
+  (right 150 20)
+  (up    150 20)
+  (down  150 20)
+)

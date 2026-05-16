@@ -69,6 +69,7 @@ pub enum LinuxCfgOutputBusType {
 pub struct CfgMacosOptions {
     pub macos_dev_names_include: Option<Vec<String>>,
     pub macos_dev_names_exclude: Option<Vec<String>>,
+    pub macos_continue_if_no_devs_found: bool,
 }
 
 #[cfg(any(
@@ -138,6 +139,10 @@ pub struct CfgOptions {
     pub process_unmapped_keys_exceptions: Option<Vec<(OsCode, SExpr)>>,
     pub block_unmapped_keys: bool,
     pub allow_hardware_repeat: bool,
+    pub managed_repeat: bool,
+    pub managed_repeat_delay: u16,
+    pub managed_repeat_interval: u16,
+    pub managed_repeat_overrides: Vec<ManagedRepeatOverride>,
     pub start_alias: Option<String>,
     pub enable_cmd: bool,
     pub sequence_timeout: u16,
@@ -186,6 +191,10 @@ impl Default for CfgOptions {
             process_unmapped_keys_exceptions: None,
             block_unmapped_keys: false,
             allow_hardware_repeat: true,
+            managed_repeat: false,
+            managed_repeat_delay: 600,
+            managed_repeat_interval: 33,
+            managed_repeat_overrides: Vec::new(),
             start_alias: None,
             enable_cmd: false,
             sequence_timeout: 1000,
@@ -681,6 +690,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             cfg.macos_opts.macos_dev_names_exclude = Some(dev_names);
                         }
                     }
+                    "macos-continue-if-no-devs-found" => {
+                        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+                        {
+                            cfg.macos_opts.macos_continue_if_no_devs_found =
+                                parse_defcfg_val_bool(val, label)?
+                        }
+                    }
                     "tray-icon" => {
                         #[cfg(all(
                             any(target_os = "windows", target_os = "unknown"),
@@ -830,6 +846,13 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "allow-hardware-repeat" => {
                         cfg.allow_hardware_repeat = parse_defcfg_val_bool(val, label)?
+                    }
+                    "managed-repeat" => cfg.managed_repeat = parse_defcfg_val_bool(val, label)?,
+                    "managed-repeat-delay" => {
+                        cfg.managed_repeat_delay = parse_cfg_val_u16(val, label, true)?
+                    }
+                    "managed-repeat-interval" => {
+                        cfg.managed_repeat_interval = parse_cfg_val_u16(val, label, true)?
                     }
                     "alias-to-trigger-on-load" => {
                         cfg.start_alias = parse_defcfg_val_string(val, label)?
@@ -1104,6 +1127,54 @@ fn sexpr_to_hwids_vec(
     }
     parsed_hwids.shrink_to_fit();
     Ok(parsed_hwids)
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ManagedRepeatOverride {
+    pub key: OsCode,
+    pub delay: u16,
+    pub interval: u16,
+}
+
+pub fn parse_defrepeat(expr: &[SExpr]) -> Result<Vec<ManagedRepeatOverride>> {
+    let mut overrides = Vec::new();
+    let exprs = check_first_expr(expr.iter(), "defrepeat")?;
+    for item in exprs {
+        match item {
+            SExpr::List(list) => {
+                let items = &list.t;
+                if items.len() != 3 {
+                    bail_expr!(
+                        item,
+                        "defrepeat entries must have exactly 3 items: (key delay interval)"
+                    );
+                }
+                let key_name = items[0]
+                    .atom(None)
+                    .ok_or_else(|| anyhow_expr!(&items[0], "expected a key name"))?;
+                let key = str_to_oscode(key_name)
+                    .ok_or_else(|| anyhow_expr!(&items[0], "unknown key: {key_name}"))?;
+                if key.is_modifier() {
+                    log::warn!("defrepeat: modifier key {key_name} will never repeat — ignoring");
+                    continue;
+                }
+                let delay = parse_cfg_val_u16(&items[1], "delay", true)?;
+                let interval = parse_cfg_val_u16(&items[2], "interval", true)?;
+                overrides.push(ManagedRepeatOverride {
+                    key,
+                    delay,
+                    interval,
+                });
+            }
+            SExpr::Atom(_) => {
+                bail_expr!(
+                    item,
+                    "defrepeat entries must be lists: (key delay interval)"
+                );
+            }
+        }
+    }
+    Ok(overrides)
 }
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
