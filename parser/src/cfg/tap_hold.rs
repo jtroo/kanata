@@ -10,6 +10,22 @@ pub(crate) struct TapHoldOptions {
     pub(crate) require_prior_idle: Option<u16>,
 }
 
+/// Parse the value of a `(tap-repress-timeout <ms>)` option list.
+pub(crate) fn parse_tap_repress_timeout_option(
+    option: &[SExpr],
+    option_expr: &SExpr,
+    s: &ParserState,
+) -> Result<u16> {
+    if option.len() != 2 {
+        bail_expr!(
+            option_expr,
+            "tap-repress-timeout option expects exactly 2 items: \
+            `(tap-repress-timeout <ms>)`"
+        );
+    }
+    parse_u16(&option[1], s, "tap-repress-timeout")
+}
+
 /// Parse the value of a `(require-prior-idle <ms>)` option list.
 /// Validates that the list has exactly 2 items and the value is a u16.
 pub(crate) fn parse_require_prior_idle_option(

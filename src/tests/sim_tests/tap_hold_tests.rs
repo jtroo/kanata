@@ -938,6 +938,51 @@ fn tap_hold_require_prior_idle_with_opposite_hand() {
 }
 
 #[test]
+fn tap_repress_timeout_opposite_hand() {
+    let cfg = "
+(defhands (left a s d f) (right j k l ;))
+(defsrc f j)
+(deflayer base @f j)
+(defalias f (tap-hold-opposite-hand 200 f lctl (tap-repress-timeout 100)))
+    ";
+    // Re-press within tap-repress-timeout → immediate tap (no hold decision)
+    let result = simulate(cfg, "d:f t:30 u:f t:30 d:f t:300 u:f t:50").to_ascii();
+    assert_eq!("t:30ms dn:F t:6ms up:F t:24ms dn:F t:300ms up:F", result);
+    // Re-press after tap-repress-timeout expires → enters hold decision, timeout → tap
+    let result = simulate(cfg, "d:f t:30 u:f t:200 d:f t:300 u:f t:50").to_ascii();
+    assert_eq!("t:30ms dn:F t:6ms up:F t:394ms dn:F t:100ms up:F", result);
+}
+
+#[test]
+fn tap_repress_timeout_opposite_hand_release() {
+    let cfg = "
+(defhands (left a s d f) (right j k l ;))
+(defsrc f j)
+(deflayer base @f j)
+(defalias f (tap-hold-opposite-hand-release 200 f lctl (tap-repress-timeout 100)))
+    ";
+    // Re-press within tap-repress-timeout → immediate tap
+    let result = simulate(cfg, "d:f t:30 u:f t:30 d:f t:300 u:f t:50").to_ascii();
+    assert_eq!("t:30ms dn:F t:6ms up:F t:24ms dn:F t:300ms up:F", result);
+    // Re-press after tap-repress-timeout expires → enters hold decision, timeout → tap
+    let result = simulate(cfg, "d:f t:30 u:f t:200 d:f t:300 u:f t:50").to_ascii();
+    assert_eq!("t:30ms dn:F t:6ms up:F t:394ms dn:F t:100ms up:F", result);
+}
+
+#[test]
+fn tap_repress_timeout_opposite_hand_zero_disables() {
+    let cfg = "
+(defhands (left a s d f) (right j k l ;))
+(defsrc f j)
+(deflayer base @f j)
+(defalias f (tap-hold-opposite-hand 200 f lctl (tap-repress-timeout 0)))
+    ";
+    // tap-repress-timeout 0 → every press enters hold decision (same as no option)
+    let result = simulate(cfg, "d:f t:30 u:f t:30 d:f t:300 u:f t:50").to_ascii();
+    assert_eq!("t:30ms dn:F t:6ms up:F t:224ms dn:F t:100ms up:F", result);
+}
+
+#[test]
 fn tap_hold_require_prior_idle_with_tap_hold_interval() {
     // tap-hold-require-prior-idle check runs before tap-hold-interval (quick re-press).
     // Both should work together: typing streak → tap immediately,

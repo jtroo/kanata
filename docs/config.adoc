@@ -2366,6 +2366,8 @@ Internally it uses the same `HoldTapConfig::Custom` machinery as `tap-hold-relea
 | `(neutral-keys key ...)` | one or more key names | (empty) | Keys treated as neutral, overriding their `defhands` assignment.
 | `(neutral <value>)` | `tap`, `hold`, `ignore` | `ignore` | Action when a `neutral-keys` key is pressed.
 | `(unknown-hand <value>)` | `tap`, `hold`, `ignore` | `ignore` | Action when a key not in `defhands` is pressed.
+| `(require-prior-idle <ms>)` | `0`–`65535` | (disabled) | If a key was pressed within this many ms before the tap-hold key, resolve as tap immediately. Useful for avoiding accidental holds during fast typing.
+| `(tap-repress-timeout <ms>)` | `0`–`65535` | `0` | If the same key is re-pressed within this many ms after a tap, immediately tap again instead of entering the hold decision. `0` disables (every press enters the hold decision). See <<tap-hold,tap repress timeout>> for details.
 |===
 
 When a value is `ignore`, that key press is skipped and the action
