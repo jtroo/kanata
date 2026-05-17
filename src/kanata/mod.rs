@@ -91,6 +91,9 @@ use dynamic_macro::*;
 
 mod key_repeat;
 
+mod managed_repeat;
+pub use managed_repeat::ManagedRepeatState;
+
 mod millisecond_counting;
 pub use millisecond_counting::*;
 
@@ -220,8 +223,8 @@ pub struct Kanata {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     /// Linux input paths in the user configuration.
     pub kbd_in_paths: Vec<String>,
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    /// Tracks the Linux user configuration to continue or abort if no devices are found.
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
+    /// Tracks the user configuration to continue or abort if no devices are found.
     continue_if_no_devices: bool,
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     /// Tracks the Linux/Macos user configuration for device names (instead of paths) that should be
@@ -312,6 +315,7 @@ pub struct Kanata {
     /// Various GUI-related options.
     pub gui_opts: CfgOptionsGui,
     pub allow_hardware_repeat: bool,
+    pub managed_repeat_state: Option<ManagedRepeatState>,
     /// When > 0, it means macros should be cancelled on the next press.
     /// Upon cancelling this should be set to 0.
     pub macro_on_press_cancel_duration: u32,
@@ -481,6 +485,8 @@ impl Kanata {
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
+            #[cfg(target_os = "macos")]
+            continue_if_no_devices: cfg.options.macos_opts.macos_continue_if_no_devs_found,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -542,7 +548,23 @@ impl Kanata {
             tcp_server_address: args.tcp_server_address.clone(),
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
-            allow_hardware_repeat: cfg.options.allow_hardware_repeat,
+            allow_hardware_repeat: if cfg.options.managed_repeat {
+                false
+            } else {
+                cfg.options.allow_hardware_repeat
+            },
+            managed_repeat_state: if cfg.options.managed_repeat {
+                let mut state = ManagedRepeatState::new(
+                    cfg.options.managed_repeat_delay,
+                    cfg.options.managed_repeat_interval,
+                );
+                for ovr in &cfg.options.managed_repeat_overrides {
+                    state.add_override(ovr.key, ovr.delay, ovr.interval);
+                }
+                Some(state)
+            } else {
+                None
+            },
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
             #[cfg(any(
@@ -633,6 +655,8 @@ impl Kanata {
             kbd_in_paths: cfg.options.linux_opts.linux_dev,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             continue_if_no_devices: cfg.options.linux_opts.linux_continue_if_no_devs_found,
+            #[cfg(target_os = "macos")]
+            continue_if_no_devices: cfg.options.macos_opts.macos_continue_if_no_devs_found,
             #[cfg(any(target_os = "linux", target_os = "android"))]
             include_names: cfg.options.linux_opts.linux_dev_names_include,
             #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -694,7 +718,23 @@ impl Kanata {
             tcp_server_address: None,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
-            allow_hardware_repeat: cfg.options.allow_hardware_repeat,
+            allow_hardware_repeat: if cfg.options.managed_repeat {
+                false
+            } else {
+                cfg.options.allow_hardware_repeat
+            },
+            managed_repeat_state: if cfg.options.managed_repeat {
+                let mut state = ManagedRepeatState::new(
+                    cfg.options.managed_repeat_delay,
+                    cfg.options.managed_repeat_interval,
+                );
+                for ovr in &cfg.options.managed_repeat_overrides {
+                    state.add_override(ovr.key, ovr.delay, ovr.interval);
+                }
+                Some(state)
+            } else {
+                None
+            },
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
             #[cfg(any(
@@ -785,6 +825,24 @@ impl Kanata {
         {
             zch().zch_configure(cfg.zippy.unwrap_or_default());
         }
+
+        self.managed_repeat_state = if cfg.options.managed_repeat {
+            let mut state = ManagedRepeatState::new(
+                cfg.options.managed_repeat_delay,
+                cfg.options.managed_repeat_interval,
+            );
+            for ovr in &cfg.options.managed_repeat_overrides {
+                state.add_override(ovr.key, ovr.delay, ovr.interval);
+            }
+            Some(state)
+        } else {
+            None
+        };
+        self.allow_hardware_repeat = if cfg.options.managed_repeat {
+            false
+        } else {
+            cfg.options.allow_hardware_repeat
+        };
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -1018,6 +1076,7 @@ impl Kanata {
 
     fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
+        self.tick_managed_repeat()?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
         self.tick_sequence_state()?;
@@ -2543,6 +2602,10 @@ impl Kanata {
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
             && self.vkeys_pending_release.is_empty()
+            && self
+                .managed_repeat_state
+                .as_ref()
+                .is_none_or(|s| s.is_idle())
             && !layout.states.iter().any(|s| {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
