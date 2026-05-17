@@ -2976,6 +2976,10 @@ matches `$device-id`. A recency of 1 is the most recent device
 that sent an event. The max recency is 8.
 Device IDs are defined via <<definputdevices,`definputdevices`>>.
 Currently supported on macOS only.
+
+| `last-cmd-status`
+| Evaluates to true if the last cmd returned given `status-code`.
+Currently works only with `cmd-output-keys` and doesn't work with `cmd` and `cmd-log`.
 |===
 
 **Description**

@@ -1654,7 +1654,10 @@ impl Kanata {
                             // A delay here, as in KeyAction::Delay, will pause the entire
                             // state machine loop. That is _probably_ OK, but ideally this
                             // would be done in a separate thread or somehow
-                            for key_action in keys_for_cmd_output(_cmd) {
+                            let (key_actions, status_code) = keys_for_cmd_output(_cmd);
+                            log::debug!("status_code: {status_code}");
+                            layout.last_cmd_status = Some(status_code);
+                            for key_action in key_actions {
                                 match key_action {
                                     KeyAction::Press(osc) => press_key(&mut self.kbd_out, osc)?,
                                     KeyAction::Release(osc) => {

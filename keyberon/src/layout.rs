@@ -144,6 +144,7 @@ where
     /// Only stores data when the `tap_hold_tracker` feature is enabled;
     /// otherwise this is a zero-sized no-op.
     pub tap_hold_tracker: crate::tap_hold_tracker::TapHoldTracker,
+    pub last_cmd_status: Option<i32>,
 }
 
 pub use crate::tap_hold_tracker::{HoldActivatedInfo, TapActivatedInfo};
@@ -269,13 +270,11 @@ pub enum CustomEvent<'a, T: 'a> {
 impl<T> CustomEvent<'_, T> {
     /// Update an event according to a new event.
     ///
-    ///The event can only be modified in the order `NoEvent < Press <
-    /// Release`
+    /// The event can only be updated in the following direction: `NoEvent -> Press -> Release`
     fn update(&mut self, e: Self) {
         use CustomEvent::*;
         match (&e, &self) {
-            (Release(_), NoEvent) | (Release(_), Press(_)) => *self = e,
-            (Press(_), NoEvent) => *self = e,
+            (Release(_), NoEvent) | (Release(_), Press(_)) | (Press(_), NoEvent) => *self = e,
             _ => (),
         }
     }
@@ -1239,6 +1238,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             device_history: ArrayDeque::new(),
             contextual_execution: ContextualExecution::new(),
             tap_hold_tracker: Default::default(),
+            last_cmd_status: Default::default(),
         }
     }
     pub fn new_with_trans_action_settings(
@@ -2429,6 +2429,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let historical_coords = self.historical_inputs.iter_hevents();
                 let layers = self.trans_resolution_layer_order().into_iter();
                 let mut action_queue: ActionQueue<T> = Default::default();
+
                 for ac in sw.actions(
                     active_keys,
                     active_coords,
@@ -2439,6 +2440,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                     // assertions.
                     self.default_layer as u16,
                     self.device_history.iter().copied(),
+                    self.last_cmd_status,
                 ) {
                     action_queue.push_back(Some((coord, delay, ac, layer_stack.clone().collect())));
                 }

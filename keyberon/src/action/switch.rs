@@ -46,11 +46,13 @@ const OR_VAL: u16 = 0x1000;
 const AND_VAL: u16 = 0x2000;
 const NOT_VAL: u16 = 0x3000;
 
+// Values above KEY_MAX
 const INPUT_VAL: u16 = 851;
 const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
 const BASE_LAYER_VAL: u16 = 854;
 const HISTORICAL_DEVICE_VAL: u16 = 855;
+const LAST_CMD_STATUS: u16 = 856;
 
 // Binary values:
 // 0b0100 ...
@@ -90,6 +92,7 @@ enum OpCodeType {
     Layer(u16),
     BaseLayer(u16),
     HistoricalDevice(HistoricalDevice),
+    LastCmdStatus(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -150,6 +153,7 @@ impl<'a, T> Switch<'a, T> {
         layers: L,
         default_layer: u16,
         device_history: D,
+        last_cmd_status: Option<i32>,
     ) -> SwitchActions<'a, T, A1, A2, H1, H2, L, D>
     where
         A1: Iterator<Item = KeyCode> + Clone,
@@ -169,11 +173,12 @@ impl<'a, T> Switch<'a, T> {
             default_layer,
             device_history,
             case_index: 0,
+            last_cmd_status,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Iterator returned by `Switch::actions`.
 pub struct SwitchActions<'a, T, A1, A2, H1, H2, L, D>
 where
@@ -193,6 +198,7 @@ where
     default_layer: u16,
     device_history: D,
     case_index: usize,
+    last_cmd_status: Option<i32>,
 }
 
 impl<'a, T, A1, A2, H1, H2, L, D> Iterator for SwitchActions<'a, T, A1, A2, H1, H2, L, D>
@@ -218,6 +224,7 @@ where
                 self.layers.clone(),
                 self.default_layer,
                 self.device_history.clone(),
+                self.last_cmd_status,
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -341,6 +348,11 @@ impl OpCode {
         )
     }
 
+    /// Return OpCodes specifying last-cmd-status check.
+    pub fn new_last_cmd_status(status_code: u16) -> (Self, Self) {
+        (Self(LAST_CMD_STATUS), Self(status_code))
+    }
+
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
         if self.0 < KEY_MAX {
@@ -360,6 +372,7 @@ impl OpCode {
                         .expect("device ID must be nonzero"),
                     how_far_back: ((op2.0 >> 8) & 0x7) as u8,
                 }),
+                LAST_CMD_STATUS => OpCodeType::LastCmdStatus(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -407,6 +420,7 @@ fn evaluate_boolean(
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
     device_history: impl Iterator<Item = Option<NonZeroU8>> + Clone,
+    last_cmd_status: Option<i32>,
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -507,6 +521,19 @@ fn evaluate_boolean(
                     .and_then(|d| d.map(|d| d == hd.device_id))
                     .unwrap_or(false);
             }
+            OpCodeType::LastCmdStatus(status) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = match last_cmd_status {
+                    Some(last_status_i32) => {
+                        match std::convert::TryInto::<u16>::try_into(last_status_i32) {
+                            Ok(last_status_u16) => last_status_u16 == status,
+                            Err(_) => false,
+                        }
+                    }
+                    None => false,
+                }
+            }
         };
         if current_op == Not {
             ret = !ret;
@@ -536,6 +563,7 @@ fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     )
 }
 
@@ -796,6 +824,7 @@ fn switch_fallthrough() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
@@ -818,6 +847,7 @@ fn switch_break() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     );
     assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
     assert_eq!(actions.next(), None);
@@ -847,6 +877,7 @@ fn switch_no_actions() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     );
     assert_eq!(actions.next(), None);
 }
@@ -867,6 +898,7 @@ fn switch_device_history_match() {
         [].iter().copied(),
         0,
         [Some(id1)].iter().copied(),
+        None,
     ));
     // Non-matching device ID
     assert!(!evaluate_boolean(
@@ -878,6 +910,7 @@ fn switch_device_history_match() {
         [].iter().copied(),
         0,
         [Some(id2)].iter().copied(),
+        None,
     ));
     // Empty device history
     assert!(!evaluate_boolean(
@@ -889,6 +922,7 @@ fn switch_device_history_match() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     ));
 }
 
@@ -909,6 +943,7 @@ fn switch_device_history_recency() {
         [].iter().copied(),
         0,
         history.iter().copied(),
+        None,
     ));
     // Check second most recent (recency 2 → how_far_back 1) is id2
     let (op1, op2) = OpCode::new_device_history(id2, 1);
@@ -921,6 +956,7 @@ fn switch_device_history_recency() {
         [].iter().copied(),
         0,
         history.iter().copied(),
+        None,
     ));
     // Wrong device at recency 1
     let (op1, op2) = OpCode::new_device_history(id1, 0);
@@ -933,6 +969,7 @@ fn switch_device_history_recency() {
         [].iter().copied(),
         0,
         history.iter().copied(),
+        None,
     ));
 }
 
@@ -964,6 +1001,7 @@ fn switch_device_history_unknown_device() {
         [].iter().copied(),
         0,
         history.iter().copied(),
+        None,
     ));
     // Looking for id1 at position 1 (where None is) should NOT match
     let (op1, op2) = OpCode::new_device_history(id1, 1);
@@ -976,6 +1014,7 @@ fn switch_device_history_unknown_device() {
         [].iter().copied(),
         0,
         history.iter().copied(),
+        None,
     ));
 }
 
@@ -1036,6 +1075,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     ));
     assert!(evaluate_boolean(
         opcode_true2.as_slice(),
@@ -1046,6 +1086,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     ));
     assert!(!evaluate_boolean(
         opcode_false.as_slice(),
@@ -1056,6 +1097,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     ));
     assert!(!evaluate_boolean(
         opcode_false2.as_slice(),
@@ -1066,6 +1108,7 @@ fn switch_historical_1() {
         [].iter().copied(),
         0,
         core::iter::empty(),
+        None,
     ));
 }
 
@@ -1152,6 +1195,7 @@ fn switch_historical_bools() {
                 [].iter().copied(),
                 0,
                 core::iter::empty(),
+                None,
             ),
             expectation
         );
@@ -1269,6 +1313,7 @@ fn switch_historical_ticks_since() {
                 [].iter().copied(),
                 0,
                 core::iter::empty(),
+                None,
             ),
             expectation
         );
@@ -1504,6 +1549,7 @@ fn switch_inputs() {
                 [].iter().copied(),
                 0,
                 core::iter::empty(),
+                None,
             ),
             expectation
         );
@@ -1573,6 +1619,7 @@ fn switch_historical_inputs() {
                 [].iter().copied(),
                 0,
                 core::iter::empty(),
+                None,
             ),
             expectation
         );
@@ -1583,4 +1630,46 @@ fn switch_historical_inputs() {
     test(&opcodes_false_or, false);
     test(&opcodes_true_or1, true);
     test(&opcodes_true_or2, true);
+}
+
+#[test]
+fn switch_last_cmd_status() {
+    let (op1, op2) = OpCode::new_last_cmd_status(1);
+    let opcodes = [op1, op2];
+    // matching
+    assert!(evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        core::iter::empty(),
+        Some(1),
+    ));
+    // not matching
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        core::iter::empty(),
+        Some(3),
+    ));
+    // 2nd not matching
+    assert!(!evaluate_boolean(
+        &opcodes,
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        [].iter().copied(),
+        0,
+        core::iter::empty(),
+        Some(0),
+    ));
 }

@@ -88,6 +88,7 @@ pub fn parse_switch_case_bool(
             Layer,
             BaseLayer,
             DeviceHistory,
+            LastCmdStatus,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -115,6 +116,7 @@ pub fn parse_switch_case_bool(
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
                 "device-history" => Some(AllowedListOps::DeviceHistory),
+                "last-cmd-status" => Some(AllowedListOps::LastCmdStatus),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -122,7 +124,7 @@ pub fn parse_switch_case_bool(
                     op_expr,
                     "lists inside switch logic must begin with one of:\n\
                     or | and | not | key-history | key-timing\n\
-                    | input | input-history | layer | base-layer | device-history",
+                    | input | input-history | layer | base-layer | device-history | last-cmd-status",
                 )
             })?;
 
@@ -298,6 +300,18 @@ pub fn parse_switch_case_bool(
                 }
                 let device_recency = parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
                 let (op1, op2) = OpCode::new_device_history(id, device_recency);
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::LastCmdStatus => {
+                if l.len() != 2 {
+                    bail_expr!(
+                        op_expr,
+                        "last-cmd-status must have 1 parameter: status-code"
+                    );
+                }
+                let status_code = parse_u16(&l[1], s, "status-code")?;
+                let (op1, op2) = OpCode::new_last_cmd_status(status_code);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }

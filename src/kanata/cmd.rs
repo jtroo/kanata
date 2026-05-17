@@ -187,7 +187,7 @@ fn try_parse_chorded_list<'a>(
 }
 
 #[cfg(not(feature = "simulated_output"))]
-pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item = Item> {
+pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> (impl Iterator<Item = Item>, i32) {
     let mut args = cmd_and_args.iter();
     let mut cmd = std::process::Command::new(
         args.next()
@@ -200,12 +200,12 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item =
         Ok(o) => o,
         Err(e) => {
             log::error!("Failed to execute cmd: {e}");
-            return empty();
+            return (empty(), -1);
         }
     };
     log::debug!("{LP} stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    match parse(&stdout, "cmd") {
+    let out_keys = match parse(&stdout, "cmd") {
         Ok(lists) => match lists.len() {
             0 => {
                 log::warn!("{LP} got zero top-level S-expression from cmd, expected 1:\n{stdout}");
@@ -226,13 +226,17 @@ pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item =
             );
             empty()
         }
-    }
+    };
+    (out_keys, output.status.code().unwrap_or(-1))
 }
 
 #[cfg(feature = "simulated_output")]
-pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> impl Iterator<Item = Item> {
+pub(super) fn keys_for_cmd_output(cmd_and_args: &[&str]) -> (impl Iterator<Item = Item>, i32) {
     println!("cmd-keys:{cmd_and_args:?}");
-    [].iter().copied()
+    match cmd_and_args.first() {
+        Some(&"true") => ([].iter().copied(), 0),
+        _ => ([].iter().copied(), 1),
+    }
 }
 
 #[cfg(feature = "simulated_output")]

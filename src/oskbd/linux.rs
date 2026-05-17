@@ -690,9 +690,8 @@ pub fn discover_devices(
             )
         })
         .filter(|pd| {
-            let is_input = is_input_device(&pd.0, device_detect_mode);
             (match include_names {
-                None => is_input,
+                None => is_input_device(&pd.0, device_detect_mode),
                 Some(include_names) => {
                     let name = pd.0.name().unwrap_or("");
                     if include_names.iter().any(|include| name == include) {
