@@ -201,6 +201,7 @@ pub(crate) fn find_chords_coords(
         | Action::CancelSequences
         | Action::ReleaseState(_)
         | Action::OneShotIgnoreEventsTicks(_)
+        | Action::CmdBlocking(_)
         | Action::Custom(_) => {}
         Action::HoldTap(HoldTapAction { tap, hold, .. }) => {
             find_chords_coords(chord_groups, coord, tap);
@@ -257,6 +258,7 @@ pub(crate) fn fill_chords(
         | Action::CancelSequences
         | Action::ReleaseState(_)
         | Action::OneShotIgnoreEventsTicks(_)
+        | Action::CmdBlocking(_)
         | Action::Custom(_) => None,
         Action::HoldTap(&hta @ HoldTapAction { tap, hold, .. }) => {
             let new_tap = fill_chords(chord_groups, &tap, s);

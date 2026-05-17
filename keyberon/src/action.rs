@@ -413,6 +413,8 @@ where
     /// Disregard the entire layer stack, i.e. the current base layer and any while-held layers,
     /// and select the action from `Layout.src_keys`.
     Src,
+    /// Keyberon version of cmd.
+    CmdBlocking(&'a [&'a str]),
 }
 
 impl<T> Action<'_, T> {

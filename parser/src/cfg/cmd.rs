@@ -14,6 +14,8 @@ pub(crate) enum CmdType {
     /// Execute command and set clipboard save id to output.
     /// Clipboard save id content is passed as stdin to the command.
     ClipboardSaveSet,
+    // In-keyberon blocking cmd.
+    KeyberonBlocking,
 }
 
 // Parse cmd, but there are 2 arguments before specifying normal log and error log
@@ -98,15 +100,13 @@ pub(crate) fn parse_cmd(
         }
         let cmds = cmd.into_iter().map(|v| s.a.sref_str(v)).collect();
         let cmds = s.a.sref_vec(cmds);
-        custom(
-            match cmd_type {
-                CmdType::Standard => CustomAction::Cmd(cmds),
-                CmdType::OutputKeys => CustomAction::CmdOutputKeys(cmds),
-                CmdType::ClipboardSet => CustomAction::ClipboardCmdSet(cmds),
-                CmdType::ClipboardSaveSet => unreachable!(),
-            },
-            &s.a,
-        )
+        match cmd_type {
+            CmdType::Standard => custom(CustomAction::Cmd(cmds), &s.a),
+            CmdType::OutputKeys => custom(CustomAction::CmdOutputKeys(cmds), &s.a),
+            CmdType::KeyberonBlocking => Ok(s.a.sref(Action::CmdBlocking(s.a.sref(cmds)))),
+            CmdType::ClipboardSet => custom(CustomAction::ClipboardCmdSet(cmds), &s.a),
+            CmdType::ClipboardSaveSet => unreachable!(),
+        }
     }
 }
 

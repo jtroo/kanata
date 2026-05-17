@@ -28,6 +28,7 @@ use contextual_execution::*;
 use std::num::NonZeroU16;
 
 use crate::chord::*;
+use crate::cmd::cmd_run_and_check_status;
 use crate::key_code::KeyCode;
 use crate::{action::*, multikey_buffer::MultiKeyBuffer};
 use arraydeque::ArrayDeque;
@@ -2460,6 +2461,11 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
 
                 self.rpt_action = Some(action);
                 return custom;
+            }
+            CmdBlocking(cmd_with_args) => {
+                let status_code = cmd_run_and_check_status(cmd_with_args);
+                // log::debug!("status_code: {status_code}");
+                self.last_cmd_status = Some(status_code);
             }
         }
         CustomEvent::NoEvent

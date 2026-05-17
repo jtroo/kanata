@@ -105,6 +105,7 @@ pub const CMD: &str = "cmd";
 pub const CMD_LOG: &str = "cmd-log";
 pub const PUSH_MESSAGE: &str = "push-msg";
 pub const CMD_OUTPUT_KEYS: &str = "cmd-output-keys";
+pub const CMD_BLOCKING: &str = "cmd-blocking";
 pub const FORK: &str = "fork";
 pub const CAPS_WORD: &str = "caps-word";
 pub const CAPS_WORD_A: &str = "word⇪";
@@ -238,6 +239,7 @@ pub fn is_list_action(ac: &str) -> bool {
         CMD,
         CMD_OUTPUT_KEYS,
         CMD_LOG,
+        CMD_BLOCKING,
         PUSH_MESSAGE,
         FORK,
         CAPS_WORD,

@@ -3,6 +3,7 @@
 
 pub mod action;
 pub mod chord;
+pub mod cmd;
 pub mod key_code;
 pub mod layout;
 mod multikey_buffer;

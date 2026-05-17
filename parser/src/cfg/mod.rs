@@ -1647,6 +1647,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CMD => parse_cmd(&ac[1..], s, CmdType::Standard),
         CMD_OUTPUT_KEYS => parse_cmd(&ac[1..], s, CmdType::OutputKeys),
         CMD_LOG => parse_cmd_log(&ac[1..], s),
+        CMD_BLOCKING => parse_cmd(&ac[1..], s, CmdType::KeyberonBlocking),
         PUSH_MESSAGE => parse_push_message(&ac[1..], s),
         FORK => parse_fork(&ac[1..], s),
         CAPS_WORD | CAPS_WORD_A => {
