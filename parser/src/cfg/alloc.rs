@@ -66,9 +66,6 @@ impl Allocations {
     /// Returns a `&'static T` by leaking a newly created Box of `v`.
     pub(crate) fn sref<T>(&self, v: T) -> &'static T {
         let p = Box::into_raw(Box::new(v));
-        if (p as usize) < 16 {
-            panic!("sref bad ptr");
-        }
         log::debug!(
             "sref type: {}, ptr:{p:?} sz:{}",
             std::any::type_name::<T>(),

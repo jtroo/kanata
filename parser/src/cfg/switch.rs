@@ -1,6 +1,28 @@
 use super::*;
 use crate::{anyhow_expr, bail, bail_expr};
 
+/// The function stored inside `Switch.init_callback`.
+pub(crate) type InitFn = dyn Fn() + Send + Sync;
+pub(crate) type CallbackFn = dyn Fn() -> bool + Send + Sync;
+
+pub(crate) mod cmd {
+    //! Global cmd results for switch processing.
+    //! This should not impact runtime which is single threaded in the kanata/keyberon execution
+    //! but this impacts possible future testability for parallel unit tests.
+    //! In practice at the time of writing the cmd actions are not simulation-tested today.
+
+    use std::sync::LazyLock;
+    use std::sync::Mutex;
+    use std::sync::atomic::AtomicI32;
+
+    pub(crate) static LATEST_EXIT_CODE: AtomicI32 = AtomicI32::new(0);
+
+    pub(crate) static LATEST_STDOUT: LazyLock<Mutex<String>> =
+        LazyLock::new(|| Mutex::new(String::new()));
+
+    pub(crate) static LATEST_STDERR: LazyLock<Mutex<String>> =
+        LazyLock::new(|| Mutex::new(String::new()));
+}
 pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
@@ -42,8 +64,52 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         };
         cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
     }
+
+    struct CmdState {
+        binary: &'static str,
+        args: &'static [&'static str],
+    }
+
+    // TODO:
+    // - parse from config
+    // - gate parse/execution on cmd feature
+    // - split into new functions for cleanliness
+    let init_fn: Option<&'static InitFn> = Option::Some(s.a.sref(|| {
+        let cmd_cfg = CmdState {
+            // parse these from config
+            binary: "bash",
+            args: &["-c", "echo hello world"],
+        };
+        let mut cmd = std::process::Command::new(cmd_cfg.binary);
+        for arg in cmd_cfg.args {
+            cmd.arg(arg);
+        }
+        match cmd.output() {
+            Ok(output) => {
+                let exit_code = output.status.code().unwrap_or(1);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                cmd::LATEST_EXIT_CODE.store(exit_code, std::sync::atomic::Ordering::Release);
+                *cmd::LATEST_STDOUT.lock().expect("unpoisoned") = stdout.into();
+                *cmd::LATEST_STDERR.lock().expect("unpoisoned") = stderr.into();
+            }
+            Err(e) => {
+                log::error!("Failed to execute program {:?}: {}", cmd.get_program(), e);
+                cmd::LATEST_EXIT_CODE.store(1, std::sync::atomic::Ordering::Release);
+                cmd::LATEST_STDOUT.lock().expect("unpoisoned").clear();
+                cmd::LATEST_STDERR.lock().expect("unpoisoned").clear();
+            }
+        };
+    }));
+    let callbacks: &'static [&'static CallbackFn] =
+        s.a.sref_vec(vec![s.a.sref(|| {
+            cmd::LATEST_EXIT_CODE.load(std::sync::atomic::Ordering::Acquire) == 0
+        })]);
+
     Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
         cases: s.a.sref_vec(cases),
+        init_fn,
+        callbacks,
     }))))
 }
 
@@ -88,6 +154,7 @@ pub fn parse_switch_case_bool(
             Layer,
             BaseLayer,
             DeviceHistory,
+            CmdExit,
         }
         #[derive(Copy, Clone)]
         enum InputType {
@@ -115,6 +182,7 @@ pub fn parse_switch_case_bool(
                 "layer" => Some(AllowedListOps::Layer),
                 "base-layer" => Some(AllowedListOps::BaseLayer),
                 "device-history" => Some(AllowedListOps::DeviceHistory),
+                "cmd-exit" => Some(AllowedListOps::CmdExit),
                 _ => None,
             })
             .ok_or_else(|| {
@@ -298,6 +366,24 @@ pub fn parse_switch_case_bool(
                 }
                 let device_recency = parse_u8_with_range(&l[2], s, "device-recency", 1, 8)? - 1;
                 let (op1, op2) = OpCode::new_device_history(id, device_recency);
+                ops.extend(&[op1, op2]);
+                Ok(())
+            }
+            AllowedListOps::CmdExit => {
+                // TODO:
+                // - gate parse/execution on cmd feature
+                if l.len() != 2 {
+                    bail_expr!(op_expr, "cmd-exit must have 1 parameter: exit-code");
+                }
+                let id_str = l[1]
+                    .atom(s.vars())
+                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be a 32 bit integer"))?;
+                // TODO: this isn't used yet, callback is hardcoded to use 0.
+                let _id_num: i32 = id_str
+                    .parse()
+                    .map_err(|_| anyhow_expr!(&l[1], "device ID must be a 32 bit integer"))?;
+                // TODO: 0 shouldn't be hard-coded.
+                let (op1, op2) = OpCode::new_callback_index(0);
                 ops.extend(&[op1, op2]);
                 Ok(())
             }

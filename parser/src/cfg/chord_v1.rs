@@ -223,7 +223,7 @@ pub(crate) fn find_chords_coords(
             find_chords_coords(chord_groups, coord, left);
             find_chords_coords(chord_groups, coord, right);
         }
-        Action::Switch(Switch { cases }) => {
+        Action::Switch(Switch { cases, .. }) => {
             for case in cases.iter() {
                 find_chords_coords(chord_groups, coord, case.1);
             }
@@ -327,7 +327,11 @@ pub(crate) fn fill_chords(
                 None
             }
         }
-        Action::Switch(Switch { cases }) => {
+        Action::Switch(Switch {
+            cases,
+            init_fn,
+            callbacks,
+        }) => {
             let mut new_cases = vec![];
             for case in cases.iter() {
                 new_cases.push((
@@ -340,6 +344,8 @@ pub(crate) fn fill_chords(
             }
             Some(Action::Switch(s.a.sref(Switch {
                 cases: s.a.sref_vec(new_cases),
+                init_fn: *init_fn,
+                callbacks,
             })))
         }
     }

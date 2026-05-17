@@ -26,14 +26,35 @@ pub const MAX_KEY_RECENCY: u8 = 7;
 
 pub type Case<'a, T> = (&'a [OpCode], &'a Action<'a, T>, BreakOrFallthrough);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 /// Behaviour of a switch action. Each case is a 3-tuple of:
 ///
 /// - the boolean expression (array of opcodes)
 /// - the action to evaluate if the expression evaluates to true
 /// - whether to break or fallthrough to the next case if the expression evaluates to true
 pub struct Switch<'a, T: 'a> {
+    // A callback to optionally initialize some state for this switch.
+    pub init_fn: Option<&'a (dyn Fn() + Send + Sync)>,
     pub cases: &'a [Case<'a, T>],
+    // Extra callbacks that can be indexed into to evaluate functions,
+    // e.g. based on state updated by init_fn.
+    pub callbacks: &'a [&'a (dyn Fn() -> bool + Send + Sync)],
+}
+
+impl<'a, T: 'a + PartialEq> PartialEq for Switch<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cases == other.cases
+    }
+}
+
+impl<'a, T: 'a + Debug> Debug for Switch<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Switch")
+            .field("cases", &self.cases)
+            .field("init_is_some", &self.init_fn.is_some())
+            .field("callbacks_len", &self.callbacks.len())
+            .finish()
+    }
 }
 
 // NOTE: have exhausted our opcodes for u16!
@@ -51,6 +72,7 @@ const HISTORICAL_INPUT_VAL: u16 = 852;
 const LAYER_VAL: u16 = 853;
 const BASE_LAYER_VAL: u16 = 854;
 const HISTORICAL_DEVICE_VAL: u16 = 855;
+const CALLBACK_INDEX_VAL: u16 = 856;
 
 // Binary values:
 // 0b0100 ...
@@ -90,6 +112,7 @@ enum OpCodeType {
     Layer(u16),
     BaseLayer(u16),
     HistoricalDevice(HistoricalDevice),
+    CallbackIndex(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -169,11 +192,12 @@ impl<'a, T> Switch<'a, T> {
             default_layer,
             device_history,
             case_index: 0,
+            callbacks: self.callbacks,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 /// Iterator returned by `Switch::actions`.
 pub struct SwitchActions<'a, T, A1, A2, H1, H2, L, D>
 where
@@ -193,6 +217,7 @@ where
     default_layer: u16,
     device_history: D,
     case_index: usize,
+    callbacks: &'a [&'a (dyn Fn() -> bool + Send + Sync)],
 }
 
 impl<'a, T, A1, A2, H1, H2, L, D> Iterator for SwitchActions<'a, T, A1, A2, H1, H2, L, D>
@@ -218,6 +243,7 @@ where
                 self.layers.clone(),
                 self.default_layer,
                 self.device_history.clone(),
+                self.callbacks,
             ) {
                 let ret_ac = case.1;
                 match case.2 {
@@ -341,6 +367,11 @@ impl OpCode {
         )
     }
 
+    /// Retiurns OpCodes specifying a callback, referenced by index.
+    pub fn new_callback_index(index: u16) -> (Self, Self) {
+        (Self(CALLBACK_INDEX_VAL), Self(index))
+    }
+
     /// Return the interpretation of this `OpCode`.
     fn opcode_type(self, next: Option<OpCode>) -> OpCodeType {
         if self.0 < KEY_MAX {
@@ -360,6 +391,7 @@ impl OpCode {
                         .expect("device ID must be nonzero"),
                     how_far_back: ((op2.0 >> 8) & 0x7) as u8,
                 }),
+                CALLBACK_INDEX_VAL => OpCodeType::CallbackIndex(op2.0),
                 _ => unreachable!("unexpected opcode {self:?}"),
             }
         } else {
@@ -407,6 +439,7 @@ fn evaluate_boolean(
     layers: impl Iterator<Item = u16> + Clone,
     default_layer: u16,
     device_history: impl Iterator<Item = Option<NonZeroU8>> + Clone,
+    callbacks: &[&(dyn Fn() -> bool + Send + Sync)],
 ) -> bool {
     let mut ret = true;
     let mut current_index = 0;
@@ -506,6 +539,11 @@ fn evaluate_boolean(
                     .nth(hd.how_far_back as usize)
                     .and_then(|d| d.map(|d| d == hd.device_id))
                     .unwrap_or(false);
+            }
+            OpCodeType::CallbackIndex(callback_index) => {
+                // opcode has size 2
+                current_index += 1;
+                ret = callbacks[usize::from(callback_index)]();
             }
         };
         if current_op == Not {
