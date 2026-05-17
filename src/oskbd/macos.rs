@@ -633,12 +633,8 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
-        let (device_names, deferred_names) = if let Some(included_names) = include_names {
-            if continue_if_no_devices {
-                register_devices_with_deferred(included_names)
-            } else {
-                (validate_and_register_devices(included_names), vec![])
-            }
+        let device_names = if let Some(ref included_names) = include_names {
+            validate_and_register_devices(included_names)
         } else {
             // No include list: enumerate every device the driverkit iterator
             // sees, drop any that are known-problematic (empty names, Sidecar
@@ -662,7 +658,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            (validate_and_register_devices(devices_to_include), vec![])
+            validate_and_register_devices(&devices_to_include)
         };
 
         if !device_names.is_empty() {
@@ -695,6 +691,7 @@ impl KbdIn {
                 ))
             }
         } else if continue_if_no_devices {
+            let names = include_names.unwrap_or_default();
             if grab() {
                 log::info!(
                     "No devices currently connected but listener started. \
@@ -707,7 +704,7 @@ impl KbdIn {
                 })
             } else {
                 log::info!("No devices registered yet. Polling for device connection...");
-                Self::poll_for_devices(deferred_names, input_devices)
+                Self::poll_for_devices(&names, input_devices)
             }
         } else {
             Err(anyhow!(
@@ -767,7 +764,7 @@ impl KbdIn {
     }
 
     fn poll_for_devices(
-        deferred_names: Vec<String>,
+        names: &[String],
         input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
     ) -> Result<Self, anyhow::Error> {
         let mut poll_count: u32 = 0;
@@ -777,12 +774,12 @@ impl KbdIn {
             if poll_count.is_multiple_of(15) {
                 log::info!(
                     "Still waiting for device(s): {:?} ({}s elapsed)",
-                    deferred_names,
+                    names,
                     poll_count * 2
                 );
             }
             let mut any_registered = false;
-            for name in &deferred_names {
+            for name in names {
                 if device_matches(name) && register_device(name) {
                     log::info!("Device '{name}' appeared and was registered");
                     any_registered = true;
@@ -800,20 +797,6 @@ impl KbdIn {
             }
         }
     }
-}
-
-fn register_devices_with_deferred(names: Vec<String>) -> (Vec<String>, Vec<String>) {
-    let mut registered = Vec::new();
-    let mut deferred = Vec::new();
-    for name in names {
-        if register_device(&name) {
-            registered.push(name);
-        } else {
-            log::info!("Device '{name}' not currently connected, deferring");
-            deferred.push(name);
-        }
-    }
-    (registered, deferred)
 }
 
 /// Device product-name patterns to skip in the default (no explicit
@@ -891,7 +874,7 @@ fn build_device_hash_to_id_map(
     map
 }
 
-fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
+fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
     include_names
         .iter()
         .filter_map(|dev| {
