@@ -598,9 +598,7 @@ pub struct KbdIn {
 
 impl Drop for KbdIn {
     fn drop(&mut self) {
-        if self.grabbed {
-            release();
-        }
+        release();
     }
 }
 
@@ -609,6 +607,7 @@ impl KbdIn {
         include_names: Option<Vec<String>>,
         exclude_names: Option<Vec<String>>,
         input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+        continue_if_no_devices: bool,
     ) -> Result<Self, anyhow::Error> {
         // Pre-flight the Input Monitoring TCC gate before touching the
         // Karabiner stack. A denied permission here produces a clean,
@@ -644,7 +643,7 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
-        let device_names = if let Some(included_names) = include_names {
+        let device_names = if let Some(ref included_names) = include_names {
             validate_and_register_devices(included_names)
         } else {
             // No include list: enumerate every device the driverkit iterator
@@ -669,7 +668,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            validate_and_register_devices(devices_to_include)
+            validate_and_register_devices(&devices_to_include)
         };
 
         if !device_names.is_empty() {
@@ -700,6 +699,22 @@ impl KbdIn {
                      sudo or a LaunchDaemon) and that no other process is \
                      exclusively grabbing the keyboard."
                 ))
+            }
+        } else if continue_if_no_devices {
+            let names = include_names.unwrap_or_default();
+            if grab() {
+                log::info!(
+                    "No devices currently connected but listener started. \
+                     Waiting for device connection via callback..."
+                );
+                let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                Ok(Self {
+                    grabbed: false,
+                    device_hash_to_id,
+                })
+            } else {
+                log::info!("No devices registered yet. Polling for device connection...");
+                Self::poll_for_devices(&names, input_devices)
             }
         } else {
             Err(anyhow!(
@@ -738,10 +753,8 @@ impl KbdIn {
     /// Release seized input devices without tearing down the output connection.
     /// After this call, `read()` will return `UnexpectedEof`.
     pub fn release_input(&mut self) {
-        if self.grabbed {
-            release_input_only();
-            self.grabbed = false;
-        }
+        release_input_only();
+        self.grabbed = false;
     }
 
     /// Re-seize input devices after a previous `release_input()`.
@@ -758,6 +771,41 @@ impl KbdIn {
 
     pub fn is_grabbed(&self) -> bool {
         self.grabbed
+    }
+
+    fn poll_for_devices(
+        names: &[String],
+        input_devices: Option<&[(std::num::NonZeroU8, kanata_parser::cfg::InputDeviceMatcher)]>,
+    ) -> Result<Self, anyhow::Error> {
+        let mut poll_count: u32 = 0;
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            poll_count += 1;
+            if poll_count.is_multiple_of(15) {
+                log::info!(
+                    "Still waiting for device(s): {:?} ({}s elapsed)",
+                    names,
+                    poll_count * 2
+                );
+            }
+            let mut any_registered = false;
+            for name in names {
+                if device_matches(name) && register_device(name) {
+                    log::info!("Device '{name}' appeared and was registered");
+                    any_registered = true;
+                }
+            }
+            if any_registered {
+                if grab() {
+                    let device_hash_to_id = build_device_hash_to_id_map(input_devices);
+                    return Ok(Self {
+                        grabbed: true,
+                        device_hash_to_id,
+                    });
+                }
+                log::warn!("Device appeared but grab failed, continuing to poll...");
+            }
+        }
     }
 }
 
@@ -836,7 +884,7 @@ fn build_device_hash_to_id_map(
     map
 }
 
-fn validate_and_register_devices(include_names: Vec<String>) -> Vec<String> {
+fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
     include_names
         .iter()
         .filter_map(|dev| {
