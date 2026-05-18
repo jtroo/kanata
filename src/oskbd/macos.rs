@@ -643,21 +643,17 @@ impl KbdIn {
 
         // Based on the definition of include and exclude names, they should never be used together.
         // Kanata config parser should probably enforce this.
+        let has_device_filter = include_names.is_some() || exclude_names.is_some();
         let device_names = if let Some(ref included_names) = include_names {
             validate_and_register_devices(included_names)
-        } else {
-            // No include list: enumerate every device the driverkit iterator
-            // sees, drop any that are known-problematic (empty names, Sidecar
-            // virtual keyboards, etc., see `is_skipped_virtual_device`), then
-            // apply the user's exclude list on top. This replaces the former
-            // `register_device("")` catch-all, which silently seized Sidecar's
-            // virtual HID device and could abort the process during grab
-            // (issue #1342).
-            let excluded = exclude_names.unwrap_or_default();
+        } else if let Some(ref excluded_names) = exclude_names {
+            // Exclude list: enumerate devices, filter out excluded and
+            // known-problematic virtual devices (Sidecar, etc.), then
+            // register the remainder individually.
             let kb_list = fetch_devices();
             let devices_to_include = kb_list
                 .iter()
-                .filter(|k| !excluded.iter().any(|n| *k == n.as_str()))
+                .filter(|k| !excluded_names.iter().any(|n| *k == n.as_str()))
                 .filter(|k| !is_skipped_virtual_device(&k.product_key))
                 .map(|k| {
                     if k.product_key.trim().is_empty() {
@@ -669,9 +665,11 @@ impl KbdIn {
                 .collect::<Vec<String>>();
 
             validate_and_register_devices(&devices_to_include)
+        } else {
+            vec![]
         };
 
-        if !device_names.is_empty() {
+        if !device_names.is_empty() || (!has_device_filter && register_device("")) {
             if grab() {
                 let device_hash_to_id = build_device_hash_to_id_map(input_devices);
                 Ok(Self {
