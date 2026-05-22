@@ -1270,6 +1270,8 @@ impl Kanata {
     ///
     /// Returns whether live reload was requested.
     fn handle_keystate_changes(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<bool> {
+        #[cfg(feature = "tcp_server")]
+        let layer_info = &self.layer_info;
         let layout = self.layout.bm();
         let custom_event = layout.tick();
 
@@ -1300,6 +1302,50 @@ impl Kanata {
                 Ok(_) => {}
                 Err(error) => {
                     log::error!("could not send TapActivated event: {}", error);
+                }
+            }
+        }
+        #[cfg(feature = "tcp_server")]
+        if let Some(chord_info) = layout.chord_tap_dance_tracker.take_chord_resolved()
+            && let Some(tx) = _tx
+        {
+            let keys = chord_info
+                .keys
+                .iter()
+                .filter(|c| c.0 == NORMAL_KEY_ROW)
+                .map(|c| OsCode::from(c.1).to_string().to_lowercase())
+                .collect::<Vec<_>>()
+                .join("+");
+            let action = resolve_action_desc(chord_info.action.as_str(), layer_info);
+            let t = self.start_time.elapsed().as_millis() as u64;
+            log::debug!("ChordResolved: keys={keys} action={action}");
+            match tx.try_send(ServerMessage::ChordResolved { keys, action, t }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send ChordResolved event: {}", error);
+                }
+            }
+        }
+        #[cfg(feature = "tcp_server")]
+        if let Some(td_info) = layout.chord_tap_dance_tracker.take_tap_dance_resolved()
+            && td_info.coord.0 == NORMAL_KEY_ROW
+            && let Some(tx) = _tx
+        {
+            let osc = OsCode::from(td_info.coord.1);
+            let key = osc.to_string().to_lowercase();
+            let tap_count = td_info.num_taps;
+            let action = resolve_action_desc(td_info.action.as_str(), layer_info);
+            let t = self.start_time.elapsed().as_millis() as u64;
+            log::debug!("TapDanceResolved: key={key} tap_count={tap_count} action={action}");
+            match tx.try_send(ServerMessage::TapDanceResolved {
+                key,
+                tap_count,
+                action,
+                t,
+            }) {
+                Ok(_) => {}
+                Err(error) => {
+                    log::error!("could not send TapDanceResolved event: {}", error);
                 }
             }
         }
@@ -2816,6 +2862,18 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
             };
         }
     };
+}
+
+#[cfg(feature = "tcp_server")]
+fn resolve_action_desc(desc: &str, layer_info: &[LayerInfo]) -> String {
+    if let Some(rest) = desc.strip_prefix("@layer-").or_else(|| desc.strip_prefix("@deflayer-")) {
+        if let Ok(n) = rest.parse::<usize>() {
+            if let Some(info) = layer_info.get(n) {
+                return format!("@{}", info.name);
+            }
+        }
+    }
+    desc.to_lowercase()
 }
 
 fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {

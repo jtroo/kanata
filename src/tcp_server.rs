@@ -318,6 +318,8 @@ impl TcpServer {
                                                     "layer-change".to_string(),
                                                     "hold-activated".to_string(),
                                                     "tap-activated".to_string(),
+                                                    "chord-resolved".to_string(),
+                                                    "tap-dance-resolved".to_string(),
                                                     "current-layer-name".to_string(),
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),

@@ -144,9 +144,43 @@ where
     /// Only stores data when the `tap_hold_tracker` feature is enabled;
     /// otherwise this is a zero-sized no-op.
     pub tap_hold_tracker: crate::tap_hold_tracker::TapHoldTracker,
+    pub chord_tap_dance_tracker: crate::chord_tap_dance_tracker::ChordTapDanceTracker,
 }
 
 pub use crate::tap_hold_tracker::{HoldActivatedInfo, TapActivatedInfo};
+pub use crate::chord_tap_dance_tracker::{ChordResolvedInfo, TapDanceResolvedInfo};
+
+struct ActionDesc<'b, 'a, T: core::fmt::Debug>(&'b Action<'a, T>);
+
+impl<T: core::fmt::Debug> core::fmt::Display for ActionDesc<'_, '_, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self.0 {
+            Action::KeyCode(kc) => write!(f, "{kc:?}"),
+            Action::MultipleKeyCodes(kcs) => {
+                for (i, kc) in kcs.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, "+")?;
+                    }
+                    write!(f, "{kc:?}")?;
+                }
+                Ok(())
+            }
+            Action::MultipleActions(actions) => {
+                for (i, a) in actions.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, "+")?;
+                    }
+                    write!(f, "{}", ActionDesc(a))?;
+                }
+                Ok(())
+            }
+            Action::Layer(n) => write!(f, "@layer-{n}"),
+            Action::DefaultLayer(n) => write!(f, "@deflayer-{n}"),
+            Action::NoOp | Action::Trans => write!(f, "nop"),
+            _ => write!(f, "action"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct History<T> {
@@ -1239,6 +1273,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             device_history: ArrayDeque::new(),
             contextual_execution: ContextualExecution::new(),
             tap_hold_tracker: Default::default(),
+            chord_tap_dance_tracker: Default::default(),
         }
     }
     pub fn new_with_trans_action_settings(
@@ -1337,6 +1372,25 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             };
             let layer_stack = w.layer_stack.clone();
             self.tap_hold_tracker.set_tap_activated(coord, &w.config);
+            match &w.config {
+                WaitingConfig::Chord(_) => {
+                    let mut keys =
+                        crate::chord_tap_dance_tracker::ChordKeyArray::new();
+                    let _ = keys.push_back(coord);
+                    if let Some(ref pq) = pq {
+                        for &c in pq.iter() {
+                            let _ = keys.push_back(c);
+                        }
+                    }
+                    self.chord_tap_dance_tracker
+                        .set_chord_resolved(keys, &ActionDesc(tap));
+                }
+                WaitingConfig::TapDance(tds) => {
+                    self.chord_tap_dance_tracker
+                        .set_tap_dance_resolved(coord, tds.num_taps, &ActionDesc(tap));
+                }
+                WaitingConfig::HoldTap(..) => {}
+            }
             if idx < 0 {
                 self.waiting = None;
             } else {
