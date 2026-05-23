@@ -5,6 +5,26 @@ use crate::{anyhow_expr, bail, bail_expr};
 pub(crate) type InitFn = dyn Fn() + Send + Sync;
 pub(crate) type CallbackFn = dyn Fn() -> bool + Send + Sync;
 
+struct CmdState {
+    // First item is the binary; the remaining (i.e. `&[1..]`) are arguments.
+    binary_then_args: &'static [&'static str],
+}
+
+impl CmdState {
+    fn binary(&self) -> &str {
+        self.binary_then_args[0]
+    }
+    fn args(&self) -> &[&str] {
+        &self.binary_then_args[1..]
+    }
+}
+
+#[derive(Default)]
+struct OptionalSwitchArgs {
+    #[cfg(feature = "cmd")]
+    init_cmd: Option<Box<InitFn>>,
+}
+
 pub(crate) mod cmd {
     //! Global cmd results for switch processing.
     //! This should not impact runtime which is single threaded in the kanata/keyberon execution
@@ -23,13 +43,68 @@ pub(crate) mod cmd {
     pub(crate) static LATEST_STDERR: LazyLock<Mutex<String>> =
         LazyLock::new(|| Mutex::new(String::new()));
 }
+
+fn parse_optional_arguments<'a>(
+    params: &'a [SExpr],
+    s: &ParserState,
+) -> Result<(OptionalSwitchArgs, &'a [SExpr])> {
+    if params.is_empty() {
+        return Ok((OptionalSwitchArgs::default(), params));
+    }
+    #[allow(unused)]
+    let Some((first_atom, params_after_first)) = parse_list_with_first_atom(params, s) else {
+        return Ok((OptionalSwitchArgs::default(), params));
+    };
+    match first_atom {
+        "init-cmd" => {
+            #[cfg(not(feature = "cmd"))]
+            {
+                bail_expr!(
+                    &params[0],
+                    "cmd is not enabled for this kanata executable. \
+                     Use a cmd_allowed prebuilt executable or compile with the feature: cmd."
+                );
+            }
+            #[cfg(feature = "cmd")]
+            {
+                if !s.is_cmd_enabled {
+                    bail_expr!(
+                        &params[0],
+                        "cmd is not enabled for this kanata executable. \
+                         Use a cmd_allowed prebuilt executable or compile with the feature: cmd."
+                    );
+                }
+                let mut binary_then_args = vec![];
+                collect_strings(params_after_first, &mut binary_then_args, s);
+                if binary_then_args.is_empty() {
+                    bail_expr!(
+                        &params[0],
+                        "cmd must have at least one atom for the binary to execute: <binary> [...args]"
+                    );
+                }
+                let binary_then_args = binary_then_args
+                    .into_iter()
+                    .map(|v| s.a.sref_str(v))
+                    .collect();
+                let binary_then_args = s.a.sref_vec(binary_then_args);
+                Ok(Some(OptionalSwitchArgs { binary_then_args }))
+            }
+        }
+        _ => Ok((OptionalSwitchArgs::default(), params)),
+    }
+}
+
 pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static KanataAction> {
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
-    let mut cases = vec![];
+    // Peek for optional arguments. Possibilties (1 for now):
+    // - (init-cmd ...)
+    let (opts, remaining_params) = parse_optional_arguments(ac_params, s)?;
 
-    let mut params = ac_params.iter();
+    let mut cases = vec![];
+    let mut params = remaining_params.iter();
+
     while let Some(key_match) = params.next() {
         let Some(action) = params.next() else {
             bail!("{ERR_STR}\nMissing <action> and <break|fallthrough> for the final triple");
@@ -65,11 +140,6 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
     }
 
-    struct CmdState {
-        binary: &'static str,
-        args: &'static [&'static str],
-    }
-
     // TODO:
     // - parse from config
     // - gate parse/execution on cmd feature
@@ -77,11 +147,10 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
     let init_fn: Option<&'static InitFn> = Option::Some(s.a.sref(|| {
         let cmd_cfg = CmdState {
             // parse these from config
-            binary: "bash",
-            args: &["-c", "echo hello world"],
+            binary_then_args: &["bash", "-c", "echo hello world"],
         };
-        let mut cmd = std::process::Command::new(cmd_cfg.binary);
-        for arg in cmd_cfg.args {
+        let mut cmd = std::process::Command::new(cmd_cfg.binary());
+        for arg in cmd_cfg.args() {
             cmd.arg(arg);
         }
         match cmd.output() {
@@ -101,6 +170,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
             }
         };
     }));
+
     let callbacks: &'static [&'static CallbackFn] =
         s.a.sref_vec(vec![s.a.sref(|| {
             cmd::LATEST_EXIT_CODE.load(std::sync::atomic::Ordering::Acquire) == 0

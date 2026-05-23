@@ -1860,3 +1860,19 @@ pub fn parse_mod_prefix(mods: &str) -> Result<(Vec<KeyCode>, &str)> {
     }
     Ok((key_stack, rem))
 }
+
+/// Parses a list where the first item is expected to be an atom.
+/// Returns the first atom and the remaining parameters
+/// if parsing succeeds, otherwise returns None.
+pub(crate) fn parse_list_with_first_atom<'a>(
+    params: &'a [SExpr],
+    s: &'a ParserState,
+) -> Option<(&'a str, &'a [SExpr])> {
+    if params.is_empty() {
+        return None;
+    }
+    params[0]
+        .list(s.vars())
+        .and_then(|list| list.first().and_then(|first| first.atom(s.vars())))
+        .map(|first_atom| (first_atom, &params[1..]))
+}
