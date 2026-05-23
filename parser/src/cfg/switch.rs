@@ -1,9 +1,10 @@
 use super::*;
 use crate::{anyhow_expr, bail, bail_expr};
 
-
+#[allow(unused)]
 /// The function stored inside `Switch.init_callback`.
 pub(crate) type InitFn = dyn Fn() + Send + Sync;
+#[allow(unused)]
 /// The function type stored inside `Switch.callbacks`.
 pub(crate) type CallbackFn = dyn Fn() -> bool + Send + Sync;
 
@@ -47,7 +48,10 @@ pub(crate) mod cmd {
 
     /// Invariant: binary_then_args must not be empty.
     /// Turn the cmd configuration into a callback used by keyberon.
-    pub(crate) fn create_init_fn(binary_then_args: Vec<String>, s: &ParserState) -> &'static InitFn {
+    pub(crate) fn create_init_fn(
+        binary_then_args: Vec<String>,
+        s: &ParserState,
+    ) -> &'static InitFn {
         assert!(!binary_then_args.is_empty());
         let binary_then_args = binary_then_args
             .into_iter()
@@ -79,6 +83,12 @@ pub(crate) mod cmd {
             };
         })
     }
+
+    pub(crate) fn create_exitcode_callback(exitcode: i32, s: &ParserState) -> &'static CallbackFn {
+        s.a.sref(move || {
+            cmd::LATEST_EXIT_CODE.load(std::sync::atomic::Ordering::Acquire) == exitcode
+        })
+    }
 }
 
 fn parse_optional_arguments<'a>(
@@ -107,8 +117,7 @@ fn parse_optional_arguments<'a>(
                 if !s.is_cmd_enabled {
                     bail_expr!(
                         &params[0],
-                        "cmd is not enabled for this kanata executable. \
-                         Use a cmd_allowed prebuilt executable or compile with the feature: cmd."
+                        "To use cmd you must put in defcfg: danger-enable-cmd yes."
                     );
                 }
                 let mut binary_then_args = vec![];
@@ -178,11 +187,6 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
         cases.push((s.a.sref_vec(ops), action, break_or_fallthrough));
     }
 
-    // let callbacks: &'static [&'static CallbackFn] =
-    //     s.a.sref_vec(vec![s.a.sref(|| {
-    //         cmd::LATEST_EXIT_CODE.load(std::sync::atomic::Ordering::Acquire) == 0
-    //     })]);
-
     let init_fn = {
         #[cfg(not(feature = "cmd"))]
         {
@@ -198,7 +202,7 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
     Ok(s.a.sref(Action::Switch(s.a.sref(Switch {
         cases: s.a.sref_vec(cases),
         init_fn,
-        callbacks: &[],
+        callbacks: s.a.sref_vec(callbacks),
     }))))
 }
 
@@ -206,7 +210,7 @@ pub fn parse_switch_case_bool(
     depth: u8,
     op_expr: &SExpr,
     ops: &mut Vec<OpCode>,
-    callbacks: &mut Vec<cmd::CallbackFn>,
+    callbacks: &mut Vec<&'static CallbackFn>,
     s: &ParserState,
 ) -> Result<()> {
     if ops.len() > MAX_OPCODE_LEN as usize {
@@ -460,22 +464,48 @@ pub fn parse_switch_case_bool(
                 Ok(())
             }
             AllowedListOps::CmdExit => {
-                // TODO:
-                // - gate parse/execution on cmd feature
-                if l.len() != 2 {
-                    bail_expr!(op_expr, "cmd-exit must have 1 parameter: exit-code");
+                #[cfg(not(feature = "cmd"))]
+                {
+                    let _ = callbacks; // suppress unused
+                    bail_expr!(
+                        op_expr,
+                        "cmd is not enabled for this kanata executable. \
+                     Use a cmd_allowed prebuilt executable or compile with the feature: cmd."
+                    );
                 }
-                let id_str = l[1]
-                    .atom(s.vars())
-                    .ok_or_else(|| anyhow_expr!(&l[1], "device ID must be a 32 bit integer"))?;
-                // TODO: this isn't used yet, callback is hardcoded to use 0.
-                let _id_num: i32 = id_str
-                    .parse()
-                    .map_err(|_| anyhow_expr!(&l[1], "device ID must be a 32 bit integer"))?;
-                // TODO: 0 shouldn't be hard-coded.
-                let (op1, op2) = OpCode::new_callback_index(0);
-                ops.extend(&[op1, op2]);
-                Ok(())
+                #[cfg(feature = "cmd")]
+                {
+                    if !s.is_cmd_enabled {
+                        bail_expr!(
+                            &op_expr,
+                            "To use cmd you must put in defcfg: danger-enable-cmd yes."
+                        );
+                    }
+                    if l.len() != 2 {
+                        bail_expr!(op_expr, "cmd-exit must have 1 parameter: exit-code");
+                    }
+                    let exit_code = l[1]
+                        .atom(s.vars())
+                        .ok_or_else(|| anyhow_expr!(&l[1], "exit code must be a 32 bit integer"))?;
+                    let exit_code: i32 = exit_code
+                        .parse()
+                        .map_err(|_| anyhow_expr!(&l[1], "exit code must be a 32 bit integer"))?;
+
+                    let index = callbacks.len();
+                    if index > 60000 {
+                        bail_expr!(
+                            op_expr,
+                            "Exceeded limit of 60000 callback-based switch items"
+                        );
+                    }
+                    let index = u16::try_from(index).expect("checked <=60000 earlier");
+                    let callback = cmd::create_exitcode_callback(exit_code, s);
+                    callbacks.push(callback);
+
+                    let (op1, op2) = OpCode::new_callback_index(index);
+                    ops.extend(&[op1, op2]);
+                    Ok(())
+                }
             }
             AllowedListOps::Or | AllowedListOps::And | AllowedListOps::Not => {
                 let op = match op {
@@ -488,7 +518,7 @@ pub fn parse_switch_case_bool(
                 let placeholder_index = ops.len() as u16;
                 ops.push(OpCode::new_bool(op, placeholder_index));
                 for op in l.iter().skip(1) {
-                    parse_switch_case_bool(depth + 1, op, ops, s)?;
+                    parse_switch_case_bool(depth + 1, op, ops, callbacks, s)?;
                 }
                 if ops.len() > usize::from(MAX_OPCODE_LEN) {
                     bail_expr!(op_expr, "switch logic length has been exceeded");
