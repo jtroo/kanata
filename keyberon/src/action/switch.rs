@@ -564,1061 +564,976 @@ fn evaluate_boolean(
 }
 
 #[cfg(test)]
-fn evaluate_bool_test(opcodes: &[OpCode], keycodes: impl Iterator<Item = KeyCode> + Clone) -> bool {
-    evaluate_boolean(
-        opcodes,
-        keycodes,
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    )
-}
+mod test {
+    use super::*;
 
-#[test]
-fn bool_evaluation_test_0() {
-    let opcodes = [
-        OpCode::new_bool(And, 9),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-        OpCode::new_bool(Or, 6),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_key(KeyCode::D),
-        OpCode::new_bool(Or, 9),
-        OpCode::new_key(KeyCode::E),
-        OpCode::new_key(KeyCode::F),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_1() {
-    let opcodes = [
-        OpCode::new_bool(And, 9),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-        OpCode::new_bool(Or, 6),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_key(KeyCode::D),
-        OpCode::new_bool(Or, 9),
-        OpCode::new_key(KeyCode::E),
-        OpCode::new_key(KeyCode::F),
-    ];
-    let keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::C,
-        KeyCode::D,
-        KeyCode::E,
-        KeyCode::F,
-    ];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_2() {
-    let opcodes = [
-        OpCode(0x2009),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(0x1006),
-        OpCode(KeyCode::C as u16),
-        OpCode(KeyCode::D as u16),
-        OpCode(0x1009),
-        OpCode(KeyCode::E as u16),
-        OpCode(KeyCode::F as u16),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::E, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_3() {
-    let opcodes = [
-        OpCode(0x2009),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(0x1006),
-        OpCode(KeyCode::C as u16),
-        OpCode(KeyCode::D as u16),
-        OpCode(0x1009),
-        OpCode(KeyCode::E as u16),
-        OpCode(KeyCode::F as u16),
-    ];
-    let keycodes = [KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_4() {
-    let opcodes = [];
-    let keycodes = [];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_5() {
-    let opcodes = [];
-    let keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::C,
-        KeyCode::D,
-        KeyCode::E,
-        KeyCode::F,
-    ];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_6() {
-    let opcodes = [OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
-    let keycodes = [
-        KeyCode::A,
-        KeyCode::B,
-        KeyCode::C,
-        KeyCode::D,
-        KeyCode::E,
-        KeyCode::F,
-    ];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_7() {
-    let opcodes = [OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
-    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_9() {
-    let opcodes = [
-        OpCode(0x2003),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(KeyCode::C as u16),
-    ];
-    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_10() {
-    let opcodes = [
-        OpCode(0x2004),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(KeyCode::C as u16),
-    ];
-    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_11() {
-    let opcodes = [
-        OpCode(0x1003),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-    ];
-    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_12() {
-    let opcodes = [
-        OpCode(0x1005),
-        OpCode(0x2004),
-        OpCode(KeyCode::A as u16),
-        OpCode(KeyCode::B as u16),
-        OpCode(KeyCode::C as u16),
-    ];
-    let keycodes = [KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_max_depth_does_not_panic() {
-    let opcodes = [
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-        OpCode(0x1008),
-    ];
-    let keycodes = [];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-#[should_panic]
-fn bool_evaluation_test_more_than_max_depth_panics() {
-    let opcodes = [
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-        OpCode(0x1009),
-    ];
-    let keycodes = [];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn switch_fallthrough() {
-    let sw = Switch {
-        cases: &[
-            (&[], &Action::<()>::KeyCode(KeyCode::A), Fallthrough),
-            (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
-        ],
-    };
-    let mut actions = sw.actions(
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    );
-    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
-    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
-    assert_eq!(actions.next(), None);
-}
-
-#[test]
-fn switch_break() {
-    let sw = Switch {
-        cases: &[
-            (&[], &Action::<()>::KeyCode(KeyCode::A), Break),
-            (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
-        ],
-    };
-    let mut actions = sw.actions(
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    );
-    assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
-    assert_eq!(actions.next(), None);
-}
-
-#[test]
-fn switch_no_actions() {
-    let sw = Switch {
-        cases: &[
-            (
-                &[OpCode::new_key(KeyCode::A)],
-                &Action::<()>::KeyCode(KeyCode::A),
-                Break,
-            ),
-            (
-                &[OpCode::new_key(KeyCode::A)],
-                &Action::<()>::KeyCode(KeyCode::B),
-                Break,
-            ),
-        ],
-    };
-    let mut actions = sw.actions(
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    );
-    assert_eq!(actions.next(), None);
-}
-
-#[test]
-fn switch_device_history_match() {
-    let id1 = NonZeroU8::new(1).unwrap();
-    let id2 = NonZeroU8::new(2).unwrap();
-    let (op1, op2) = OpCode::new_device_history(id1, 0);
-    let opcodes = [op1, op2];
-    // Matching device ID (most recent)
-    assert!(evaluate_boolean(
-        &opcodes,
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        [Some(id1)].iter().copied(),
-    ));
-    // Non-matching device ID
-    assert!(!evaluate_boolean(
-        &opcodes,
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        [Some(id2)].iter().copied(),
-    ));
-    // Empty device history
-    assert!(!evaluate_boolean(
-        &opcodes,
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    ));
-}
-
-#[test]
-fn switch_device_history_recency() {
-    let id1 = NonZeroU8::new(1).unwrap();
-    let id2 = NonZeroU8::new(2).unwrap();
-    let id3 = NonZeroU8::new(3).unwrap();
-    let history = [Some(id3), Some(id2), Some(id1)]; // most recent first: 3, 2, 1
-    // Check most recent (recency 1 → how_far_back 0) is id3
-    let (op1, op2) = OpCode::new_device_history(id3, 0);
-    assert!(evaluate_boolean(
-        &[op1, op2],
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        history.iter().copied(),
-    ));
-    // Check second most recent (recency 2 → how_far_back 1) is id2
-    let (op1, op2) = OpCode::new_device_history(id2, 1);
-    assert!(evaluate_boolean(
-        &[op1, op2],
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        history.iter().copied(),
-    ));
-    // Wrong device at recency 1
-    let (op1, op2) = OpCode::new_device_history(id1, 0);
-    assert!(!evaluate_boolean(
-        &[op1, op2],
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        history.iter().copied(),
-    ));
-}
-
-#[test]
-fn switch_device_history_opcode_roundtrip() {
-    let id = NonZeroU8::new(42).unwrap();
-    let (op1, op2) = OpCode::new_device_history(id, 3);
-    match op1.opcode_type(Some(op2)) {
-        OpCodeType::HistoricalDevice(hd) => {
-            assert_eq!(hd.device_id, id);
-            assert_eq!(hd.how_far_back, 3);
-        }
-        other => panic!("expected HistoricalDevice, got {other:?}"),
+    fn svec<T>(s: &[T]) -> Vec<T>
+    where
+        T: Clone,
+    {
+        s.iter().cloned().collect()
     }
-}
 
-#[test]
-fn switch_device_history_unknown_device() {
-    let id1 = NonZeroU8::new(1).unwrap();
-    let history = [Some(id1), None, Some(id1)]; // unknown device at position 1
-    // Looking for id1 at position 0 should match
-    let (op1, op2) = OpCode::new_device_history(id1, 0);
-    assert!(evaluate_boolean(
-        &[op1, op2],
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        history.iter().copied(),
-    ));
-    // Looking for id1 at position 1 (where None is) should NOT match
-    let (op1, op2) = OpCode::new_device_history(id1, 1);
-    assert!(!evaluate_boolean(
-        &[op1, op2],
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        history.iter().copied(),
-    ));
-}
+    // Do not use anymore.
+    // Superceded by test_evaluate with SwitchTestCfg.
+    fn evaluate_bool_test(opcodes: &[OpCode], key_codes: &[KeyCode]) -> bool {
+        let opcodes = svec(opcodes);
+        let key_codes = svec(key_codes);
 
-#[test]
-fn switch_historical_1() {
-    let opcode_true = [OpCode(0x8000 | KeyCode::A as u16)];
-    let opcode_true2 = [OpCode(0xF000 | KeyCode::H as u16)];
-    let opcode_false = [OpCode(0x9000 | KeyCode::A as u16)];
-    let opcode_false2 = [OpCode(0xE000 | KeyCode::H as u16)];
-    assert_eq!(
-        OpCode::new_key_history(KeyCode::A, 0),
-        OpCode(0x8000 | KeyCode::A as u16)
-    );
-    assert_eq!(
-        OpCode::new_key_history(KeyCode::H, 7),
-        OpCode(0xF000 | KeyCode::H as u16)
-    );
-    let hist_keycodes = [
-        HistoricalEvent {
-            event: KeyCode::A,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::B,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::C,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::D,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::E,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::F,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::G,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::H,
-            ticks_since_occurrence: 0,
-        },
-    ];
-    assert!(evaluate_boolean(
-        opcode_true.as_slice(),
-        [].iter().copied(),
-        [].iter().copied(),
-        hist_keycodes.iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    ));
-    assert!(evaluate_boolean(
-        opcode_true2.as_slice(),
-        [].iter().copied(),
-        [].iter().copied(),
-        hist_keycodes.iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    ));
-    assert!(!evaluate_boolean(
-        opcode_false.as_slice(),
-        [].iter().copied(),
-        [].iter().copied(),
-        hist_keycodes.iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    ));
-    assert!(!evaluate_boolean(
-        opcode_false2.as_slice(),
-        [].iter().copied(),
-        [].iter().copied(),
-        hist_keycodes.iter().copied(),
-        [].iter().copied(),
-        [].iter().copied(),
-        0,
-        core::iter::empty(),
-    ));
-}
+        let testcfg = SwitchTestCfg {
+            opcodes,
+            key_codes,
+            ..Default::default()
+        };
+        testcfg.evaluate()
+    }
 
-#[test]
-fn switch_historical_bools() {
-    let opcodes_true_and = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_key_history(KeyCode::A, 0),
-        OpCode::new_key_history(KeyCode::B, 1),
-    ];
-    let opcodes_false_and1 = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_key_history(KeyCode::A, 0),
-        OpCode::new_key_history(KeyCode::B, 2),
-    ];
-    let opcodes_false_and2 = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_key_history(KeyCode::B, 2),
-        OpCode::new_key_history(KeyCode::A, 0),
-    ];
-    let opcodes_true_or1 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_key_history(KeyCode::A, 0),
-        OpCode::new_key_history(KeyCode::B, 1),
-    ];
-    let opcodes_true_or2 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_key_history(KeyCode::A, 0),
-        OpCode::new_key_history(KeyCode::B, 2),
-    ];
-    let opcodes_true_or3 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_key_history(KeyCode::B, 2),
-        OpCode::new_key_history(KeyCode::A, 0),
-    ];
-    let opcodes_false_or = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_key_history(KeyCode::A, 1),
-        OpCode::new_key_history(KeyCode::B, 2),
-    ];
-    let hist_keycodes = [
-        HistoricalEvent {
-            event: KeyCode::A,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::B,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::C,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::D,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::E,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::F,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::G,
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: KeyCode::H,
-            ticks_since_occurrence: 0,
-        },
-    ];
+    struct SwitchTestCfg {
+        opcodes: Vec<OpCode>,
+        key_codes: Vec<KeyCode>,
+        inputs: Vec<KCoord>,
+        historical_keys: Vec<HistoricalEvent<KeyCode>>,
+        historical_inputs: Vec<HistoricalEvent<KCoord>>,
+        layers: Vec<u16>,
+        default_layer: u16,
+        device_history: Vec<Option<NonZeroU8>>,
+        callbacks: Vec<&'static (dyn Fn() -> bool + Send + Sync)>,
+    }
 
-    let test = |opcodes: &[OpCode], expectation: bool| {
-        assert_eq!(
+    impl Default for SwitchTestCfg {
+        fn default() -> Self {
+            Self {
+                opcodes: vec![],
+                key_codes: vec![],
+                inputs: vec![],
+                historical_keys: vec![],
+                historical_inputs: vec![],
+                layers: vec![],
+                default_layer: 0,
+                device_history: vec![],
+                callbacks: vec![],
+            }
+        }
+    }
+
+    impl SwitchTestCfg {
+        fn new() -> Self {
+            Self::default()
+        }
+
+        fn evaluate(&self) -> bool {
             evaluate_boolean(
-                opcodes,
-                [].iter().copied(),
-                [].iter().copied(),
-                hist_keycodes.iter().copied(),
-                [].iter().copied(),
-                [].iter().copied(),
-                0,
-                core::iter::empty(),
-            ),
-            expectation
+                self.opcodes.as_slice(),
+                self.key_codes.iter().copied(),
+                self.inputs.iter().copied(),
+                self.historical_keys.iter().copied(),
+                self.historical_inputs.iter().copied(),
+                self.layers.iter().copied(),
+                self.default_layer,
+                self.device_history.iter().copied(),
+                self.callbacks.as_slice(),
+            )
+        }
+
+        fn opcodes(mut self, opcodes: &[OpCode]) -> Self {
+            self.opcodes = svec(opcodes);
+            self
+        }
+
+        fn inputs(mut self, inputs: &[KCoord]) -> Self {
+            self.inputs = svec(inputs);
+            self
+        }
+
+        fn historical_keys(mut self, historical_keys: &[HistoricalEvent<KeyCode>]) -> Self {
+            self.historical_keys = svec(historical_keys);
+            self
+        }
+
+        fn historical_inputs(mut self, historical_inputs: &[HistoricalEvent<KCoord>]) -> Self {
+            self.historical_inputs = svec(historical_inputs);
+            self
+        }
+
+        fn device_history(mut self, device_history: &[Option<NonZeroU8>]) -> Self {
+            self.device_history = svec(device_history);
+            self
+        }
+    }
+
+    #[test]
+    fn bool_evaluation_test_0() {
+        let opcodes = &[
+            OpCode::new_bool(And, 9),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::B),
+            OpCode::new_bool(Or, 6),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_key(KeyCode::D),
+            OpCode::new_bool(Or, 9),
+            OpCode::new_key(KeyCode::E),
+            OpCode::new_key(KeyCode::F),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_1() {
+        let opcodes = &[
+            OpCode::new_bool(And, 9),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::B),
+            OpCode::new_bool(Or, 6),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_key(KeyCode::D),
+            OpCode::new_bool(Or, 9),
+            OpCode::new_key(KeyCode::E),
+            OpCode::new_key(KeyCode::F),
+        ];
+        let keycodes = &[
+            KeyCode::A,
+            KeyCode::B,
+            KeyCode::C,
+            KeyCode::D,
+            KeyCode::E,
+            KeyCode::F,
+        ];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_2() {
+        let opcodes = &[
+            OpCode(0x2009),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+            OpCode(0x1006),
+            OpCode(KeyCode::C as u16),
+            OpCode(KeyCode::D as u16),
+            OpCode(0x1009),
+            OpCode(KeyCode::E as u16),
+            OpCode(KeyCode::F as u16),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::E, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_3() {
+        let opcodes = &[
+            OpCode(0x2009),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+            OpCode(0x1006),
+            OpCode(KeyCode::C as u16),
+            OpCode(KeyCode::D as u16),
+            OpCode(0x1009),
+            OpCode(KeyCode::E as u16),
+            OpCode(KeyCode::F as u16),
+        ];
+        let keycodes = &[KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_4() {
+        let opcodes = &[];
+        let keycodes = &[];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_5() {
+        let opcodes = &[];
+        let keycodes = &[
+            KeyCode::A,
+            KeyCode::B,
+            KeyCode::C,
+            KeyCode::D,
+            KeyCode::E,
+            KeyCode::F,
+        ];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_6() {
+        let opcodes = &[OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
+        let keycodes = &[
+            KeyCode::A,
+            KeyCode::B,
+            KeyCode::C,
+            KeyCode::D,
+            KeyCode::E,
+            KeyCode::F,
+        ];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_7() {
+        let opcodes = &[OpCode(KeyCode::A as u16), OpCode(KeyCode::B as u16)];
+        let keycodes = &[KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_9() {
+        let opcodes = &[
+            OpCode(0x2003),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+            OpCode(KeyCode::C as u16),
+        ];
+        let keycodes = &[KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_10() {
+        let opcodes = &[
+            OpCode(0x2004),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+            OpCode(KeyCode::C as u16),
+        ];
+        let keycodes = &[KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_11() {
+        let opcodes = &[
+            OpCode(0x1003),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+        ];
+        let keycodes = &[KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_12() {
+        let opcodes = &[
+            OpCode(0x1005),
+            OpCode(0x2004),
+            OpCode(KeyCode::A as u16),
+            OpCode(KeyCode::B as u16),
+            OpCode(KeyCode::C as u16),
+        ];
+        let keycodes = &[KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_max_depth_does_not_panic() {
+        let opcodes = &[
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+            OpCode(0x1008),
+        ];
+        let keycodes = &[];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    #[should_panic]
+    fn bool_evaluation_test_more_than_max_depth_panics() {
+        let opcodes = &[
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+            OpCode(0x1009),
+        ];
+        let keycodes = &[];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn switch_fallthrough() {
+        let sw = Switch {
+            cases: &[
+                (&[], &Action::<()>::KeyCode(KeyCode::A), Fallthrough),
+                (&[], &Action::<()>::KeyCode(KeyCode::B), Fallthrough),
+            ],
+            init_fn: None,
+            callbacks: &[],
+        };
+        let mut actions = sw.actions(
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            0,
+            core::iter::empty(),
         );
-    };
-    test(&opcodes_true_and, true);
-    test(&opcodes_true_or1, true);
-    test(&opcodes_true_or2, true);
-    test(&opcodes_true_or3, true);
-    test(&opcodes_false_and1, false);
-    test(&opcodes_false_and2, false);
-    test(&opcodes_false_or, false);
-}
+        assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
+        assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::B)));
+        assert_eq!(actions.next(), None);
+    }
 
-#[test]
-fn switch_historical_ticks_since() {
-    let opcodes_true_and = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_ticks_since_gt(0, 99),
-        OpCode::new_ticks_since_lt(0, 101),
-    ];
-    let opcodes_false_and1 = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_ticks_since_gt(1, 200),
-        OpCode::new_ticks_since_lt(1, 240),
-    ];
-    let opcodes_false_and2 = [
-        OpCode::new_bool(And, 3),
-        OpCode::new_ticks_since_gt(2, 300),
-        OpCode::new_ticks_since_lt(2, 300),
-    ];
-    let opcodes_true_or1 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(3, 500),
-        OpCode::new_ticks_since_lt(3, 510),
-    ];
-    let opcodes_true_or2 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(4, 500),
-        OpCode::new_ticks_since_lt(4, 511),
-    ];
-    let opcodes_true_or3 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(5, 980),
-        OpCode::new_ticks_since_lt(5, 999),
-    ];
-    let opcodes_false_or1 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(6, 40200),
-        OpCode::new_ticks_since_lt(6, 39999),
-    ];
-    let opcodes_false_or2 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(5, 1030),
-        OpCode::new_ticks_since_lt(5, 999),
-    ];
-    let opcodes_false_or3 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(4, 520),
-        OpCode::new_ticks_since_lt(4, 511),
-    ];
-    let opcodes_false_or4 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(3, 520),
-        OpCode::new_ticks_since_lt(3, 510),
-    ];
-    let opcodes_false_or5 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(2, 265),
-        OpCode::new_ticks_since_lt(2, 255),
-    ];
-    let opcodes_false_or6 = [
-        OpCode::new_bool(Or, 3),
-        OpCode::new_ticks_since_gt(1, 256),
-        OpCode::new_ticks_since_lt(1, 254),
-    ];
-    let hist_keycodes = [
-        HistoricalEvent {
-            event: KeyCode::A,
-            ticks_since_occurrence: 100,
-        },
-        HistoricalEvent {
-            event: KeyCode::B,
-            ticks_since_occurrence: 255,
-        },
-        HistoricalEvent {
-            event: KeyCode::C,
-            ticks_since_occurrence: 256,
-        },
-        HistoricalEvent {
-            event: KeyCode::D,
-            ticks_since_occurrence: 511,
-        },
-        HistoricalEvent {
-            event: KeyCode::E,
-            ticks_since_occurrence: 512,
-        },
-        HistoricalEvent {
-            event: KeyCode::F,
-            ticks_since_occurrence: 1000,
-        },
-        HistoricalEvent {
-            event: KeyCode::G,
-            ticks_since_occurrence: 40000,
-        },
-    ];
+    #[test]
+    fn switch_break() {
+        let sw = Switch {
+            cases: &[
+                (&[], &Action::<()>::KeyCode(KeyCode::A), Break),
+                (&[], &Action::<()>::KeyCode(KeyCode::B), Break),
+            ],
+            init_fn: None,
+            callbacks: &[],
+        };
+        let mut actions = sw.actions(
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            0,
+            core::iter::empty(),
+        );
+        assert_eq!(actions.next(), Some(&Action::<()>::KeyCode(KeyCode::A)));
+        assert_eq!(actions.next(), None);
+    }
 
-    let test = |opcodes: &[OpCode], expectation: bool| {
+    #[test]
+    fn switch_no_actions() {
+        let sw = Switch {
+            cases: &[
+                (
+                    &[OpCode::new_key(KeyCode::A)],
+                    &Action::<()>::KeyCode(KeyCode::A),
+                    Break,
+                ),
+                (
+                    &[OpCode::new_key(KeyCode::A)],
+                    &Action::<()>::KeyCode(KeyCode::B),
+                    Break,
+                ),
+            ],
+            init_fn: None,
+            callbacks: &[],
+        };
+        let mut actions = sw.actions(
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            [].iter().copied(),
+            0,
+            core::iter::empty(),
+        );
+        assert_eq!(actions.next(), None);
+    }
+
+    #[test]
+    fn switch_device_history_match() {
+        let id1 = NonZeroU8::new(1).unwrap();
+        let id2 = NonZeroU8::new(2).unwrap();
+        let (op1, op2) = OpCode::new_device_history(id1, 0);
+        let opcodes = &[op1, op2];
+
+        // Matching device ID (most recent)
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(opcodes)
+            .device_history(&[Some(id1)]);
+        assert_eq!(true, testcfg.evaluate());
+
+        // Non-matching device ID
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(opcodes)
+            .device_history(&[Some(id2)]);
+        assert_eq!(false, testcfg.evaluate());
+
+        // Empty device history
+        let testcfg = SwitchTestCfg::new().opcodes(opcodes);
+        assert_eq!(false, testcfg.evaluate());
+    }
+
+    #[test]
+    fn switch_device_history_recency() {
+        let id1 = NonZeroU8::new(1).unwrap();
+        let id2 = NonZeroU8::new(2).unwrap();
+        let id3 = NonZeroU8::new(3).unwrap();
+        let history = [Some(id3), Some(id2), Some(id1)]; // most recent first: 3, 2, 1
+        //
+        // Check most recent (recency 1 → how_far_back 0) is id3
+        let (op1, op2) = OpCode::new_device_history(id3, 0);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&[op1, op2])
+            .device_history(&history);
+        assert_eq!(true, testcfg.evaluate());
+
+        // Check second most recent (recency 2 → how_far_back 1) is id2
+        let (op1, op2) = OpCode::new_device_history(id2, 1);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&[op1, op2])
+            .device_history(&history);
+        assert_eq!(true, testcfg.evaluate());
+
+        // Wrong device at recency 1
+        let (op1, op2) = OpCode::new_device_history(id1, 0);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&[op1, op2])
+            .device_history(&history);
+        assert_eq!(false, testcfg.evaluate());
+    }
+
+    #[test]
+    fn switch_device_history_opcode_roundtrip() {
+        let id = NonZeroU8::new(42).unwrap();
+        let (op1, op2) = OpCode::new_device_history(id, 3);
+        match op1.opcode_type(Some(op2)) {
+            OpCodeType::HistoricalDevice(hd) => {
+                assert_eq!(hd.device_id, id);
+                assert_eq!(hd.how_far_back, 3);
+            }
+            other => panic!("expected HistoricalDevice, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn switch_device_history_unknown_device() {
+        let id1 = NonZeroU8::new(1).unwrap();
+        let history = [Some(id1), None, Some(id1)]; // unknown device at position 1
+        //
+        // Looking for id1 at position 0 should match
+        let (op1, op2) = OpCode::new_device_history(id1, 0);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&[op1, op2])
+            .device_history(&history);
+        assert_eq!(true, testcfg.evaluate());
+
+        // Looking for id1 at position 1 (where None is) should NOT match
+        let (op1, op2) = OpCode::new_device_history(id1, 1);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&[op1, op2])
+            .device_history(&history);
+        assert_eq!(false, testcfg.evaluate());
+    }
+
+    #[test]
+    fn switch_historical_1() {
+        let opcode_true = [OpCode(0x8000 | KeyCode::A as u16)];
+        let opcode_true2 = [OpCode(0xF000 | KeyCode::H as u16)];
+        let opcode_false = [OpCode(0x9000 | KeyCode::A as u16)];
+        let opcode_false2 = [OpCode(0xE000 | KeyCode::H as u16)];
         assert_eq!(
-            evaluate_boolean(
-                opcodes,
-                [].iter().copied(),
-                [].iter().copied(),
-                hist_keycodes.iter().copied(),
-                [].iter().copied(),
-                [].iter().copied(),
-                0,
-                core::iter::empty(),
-            ),
-            expectation
+            OpCode::new_key_history(KeyCode::A, 0),
+            OpCode(0x8000 | KeyCode::A as u16)
         );
-    };
-    test(&opcodes_true_and, true);
-    test(&opcodes_true_or1, true);
-    test(&opcodes_true_or2, true);
-    test(&opcodes_true_or3, true);
-    test(&opcodes_false_and1, false);
-    test(&opcodes_false_and2, false);
-    test(&opcodes_false_or1, false);
-    test(&opcodes_false_or2, false);
-    test(&opcodes_false_or3, false);
-    test(&opcodes_false_or4, false);
-    test(&opcodes_false_or5, false);
-    test(&opcodes_false_or6, false);
-}
-
-#[test]
-fn bool_evaluation_test_not_0() {
-    // Full inverse of a previous test
-    let opcodes = [
-        OpCode::new_bool(Not, 10),
-        OpCode::new_bool(And, 10),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-        OpCode::new_bool(Or, 7),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_key(KeyCode::D),
-        OpCode::new_bool(Or, 10),
-        OpCode::new_key(KeyCode::E),
-        OpCode::new_key(KeyCode::F),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_1() {
-    // Both A and B exist, should be false
-    let opcodes = [
-        OpCode::new_bool(Not, 3),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_2() {
-    // Neither X nor Y exist, should be false
-    let opcodes = [
-        OpCode::new_bool(Not, 3),
-        OpCode::new_key(KeyCode::X),
-        OpCode::new_key(KeyCode::Y),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_3() {
-    let opcodes = [
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_bool(Not, 3),
-        OpCode::new_key(KeyCode::D),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_4() {
-    let opcodes = [
-        OpCode::new_bool(And, 10),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::B),
-        OpCode::new_bool(Or, 7),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_bool(Not, 7),
-        OpCode::new_key(KeyCode::D),
-        OpCode::new_bool(Or, 10),
-        OpCode::new_key(KeyCode::E),
-        OpCode::new_key(KeyCode::F),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_5() {
-    let opcodes = [
-        OpCode::new_bool(Not, 4),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_bool(Not, 4),
-        OpCode::new_key(KeyCode::D),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_6() {
-    // C does not exist, D does. Ensure C nonexistence does not short-circuit
-    // and existence of D is checked.
-    let opcodes = [
-        OpCode::new_bool(Not, 3),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_key(KeyCode::D),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_or_equivalency_not_6() {
-    let opcodes = [
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Or, 4),
-        OpCode::new_key(KeyCode::C),
-        OpCode::new_key(KeyCode::D),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_7() {
-    // A exists, make sure this short-circuits, and E nonexistence does not override the return.
-    let opcodes = [
-        OpCode::new_bool(Not, 3),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::E),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_or_equivalency_not_7() {
-    let opcodes = [
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Or, 4),
-        OpCode::new_key(KeyCode::A),
-        OpCode::new_key(KeyCode::E),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_8() {
-    let opcodes = [
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Not, 4),
-        OpCode::new_key(KeyCode::A),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(!evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn bool_evaluation_test_not_9() {
-    let opcodes = [
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Not, 4),
-        OpCode::new_bool(Not, 4),
-        OpCode::new_key(KeyCode::C),
-    ];
-    let keycodes = [KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
-    assert!(evaluate_bool_test(
-        opcodes.as_slice(),
-        keycodes.iter().copied(),
-    ));
-}
-
-#[test]
-fn switch_inputs() {
-    let (op1, op2) = OpCode::new_active_input((0, 1));
-    let (op3, op4) = OpCode::new_active_input((1, 2));
-    let (op5, op6) = OpCode::new_active_input((1, 3));
-    let (op7, op8) = OpCode::new_active_input((3, 3));
-    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
-    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
-    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
-    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
-    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
-    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
-    let active_inputs = [(0, 1), (1, 2), (2, 3), (3, 4)];
-    let test = |opcodes: &[OpCode], expectation: bool| {
         assert_eq!(
-            evaluate_boolean(
-                opcodes,
-                [].iter().copied(),
-                active_inputs.iter().copied(),
-                [].iter().copied(),
-                [].iter().copied(),
-                [].iter().copied(),
-                0,
-                core::iter::empty(),
-            ),
-            expectation
+            OpCode::new_key_history(KeyCode::H, 7),
+            OpCode(0xF000 | KeyCode::H as u16)
         );
-    };
-    test(&opcodes_true_and, true);
-    test(&opcodes_false_and1, false);
-    test(&opcodes_false_and2, false);
-    test(&opcodes_false_or, false);
-    test(&opcodes_true_or1, true);
-    test(&opcodes_true_or2, true);
-}
+        let hist_keycodes = [
+            HistoricalEvent {
+                event: KeyCode::A,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::B,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::C,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::D,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::E,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::F,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::G,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::H,
+                ticks_since_occurrence: 0,
+            },
+        ];
 
-#[test]
-fn switch_historical_inputs() {
-    let (op1, op2) = OpCode::new_historical_input((0, 0), 0);
-    let (op3, op4) = OpCode::new_historical_input((3, 750), 7);
-    let (op5, op6) = OpCode::new_historical_input((1, 3), 0);
-    let (op7, op8) = OpCode::new_historical_input((3, 3), 7);
-    let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
-    let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
-    let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
-    let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
-    let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
-    let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
-    let historical_inputs = [
-        HistoricalEvent {
-            event: (0, 0),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (1, 750),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (2, 1),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (3, 749),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (0, 1),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (1, 2),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (2, 3),
-            ticks_since_occurrence: 0,
-        },
-        HistoricalEvent {
-            event: (3, 750),
-            ticks_since_occurrence: 0,
-        },
-    ];
-    let test = |opcodes: &[OpCode], expectation: bool| {
-        assert_eq!(
-            evaluate_boolean(
-                opcodes,
-                [].iter().copied(),
-                [].iter().copied(),
-                [].iter().copied(),
-                historical_inputs.iter().copied(),
-                [].iter().copied(),
-                0,
-                core::iter::empty(),
-            ),
-            expectation
-        );
-    };
-    test(&opcodes_true_and, true);
-    test(&opcodes_false_and1, false);
-    test(&opcodes_false_and2, false);
-    test(&opcodes_false_or, false);
-    test(&opcodes_true_or1, true);
-    test(&opcodes_true_or2, true);
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&opcode_true)
+            .historical_keys(&hist_keycodes);
+        assert_eq!(true, testcfg.evaluate());
+
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&opcode_true2)
+            .historical_keys(&hist_keycodes);
+        assert_eq!(true, testcfg.evaluate());
+
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&opcode_false)
+            .historical_keys(&hist_keycodes);
+        assert_eq!(false, testcfg.evaluate());
+
+        let testcfg = SwitchTestCfg::new()
+            .opcodes(&opcode_false2)
+            .historical_keys(&hist_keycodes);
+        assert_eq!(false, testcfg.evaluate());
+    }
+
+    #[test]
+    fn switch_historical_bools() {
+        let opcodes_true_and = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_key_history(KeyCode::A, 0),
+            OpCode::new_key_history(KeyCode::B, 1),
+        ];
+        let opcodes_false_and1 = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_key_history(KeyCode::A, 0),
+            OpCode::new_key_history(KeyCode::B, 2),
+        ];
+        let opcodes_false_and2 = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_key_history(KeyCode::B, 2),
+            OpCode::new_key_history(KeyCode::A, 0),
+        ];
+        let opcodes_true_or1 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_key_history(KeyCode::A, 0),
+            OpCode::new_key_history(KeyCode::B, 1),
+        ];
+        let opcodes_true_or2 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_key_history(KeyCode::A, 0),
+            OpCode::new_key_history(KeyCode::B, 2),
+        ];
+        let opcodes_true_or3 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_key_history(KeyCode::B, 2),
+            OpCode::new_key_history(KeyCode::A, 0),
+        ];
+        let opcodes_false_or = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_key_history(KeyCode::A, 1),
+            OpCode::new_key_history(KeyCode::B, 2),
+        ];
+        let hist_keycodes = [
+            HistoricalEvent {
+                event: KeyCode::A,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::B,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::C,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::D,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::E,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::F,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::G,
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: KeyCode::H,
+                ticks_since_occurrence: 0,
+            },
+        ];
+
+        let test = |opcodes: &[OpCode], expectation: bool| {
+            let testcfg = SwitchTestCfg::new()
+                .opcodes(opcodes)
+                .historical_keys(&hist_keycodes);
+            assert_eq!(expectation, testcfg.evaluate())
+        };
+        test(&opcodes_true_and, true);
+        test(&opcodes_true_or1, true);
+        test(&opcodes_true_or2, true);
+        test(&opcodes_true_or3, true);
+        test(&opcodes_false_and1, false);
+        test(&opcodes_false_and2, false);
+        test(&opcodes_false_or, false);
+    }
+
+    #[test]
+    fn switch_historical_ticks_since() {
+        let opcodes_true_and = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_ticks_since_gt(0, 99),
+            OpCode::new_ticks_since_lt(0, 101),
+        ];
+        let opcodes_false_and1 = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_ticks_since_gt(1, 200),
+            OpCode::new_ticks_since_lt(1, 240),
+        ];
+        let opcodes_false_and2 = [
+            OpCode::new_bool(And, 3),
+            OpCode::new_ticks_since_gt(2, 300),
+            OpCode::new_ticks_since_lt(2, 300),
+        ];
+        let opcodes_true_or1 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(3, 500),
+            OpCode::new_ticks_since_lt(3, 510),
+        ];
+        let opcodes_true_or2 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(4, 500),
+            OpCode::new_ticks_since_lt(4, 511),
+        ];
+        let opcodes_true_or3 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(5, 980),
+            OpCode::new_ticks_since_lt(5, 999),
+        ];
+        let opcodes_false_or1 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(6, 40200),
+            OpCode::new_ticks_since_lt(6, 39999),
+        ];
+        let opcodes_false_or2 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(5, 1030),
+            OpCode::new_ticks_since_lt(5, 999),
+        ];
+        let opcodes_false_or3 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(4, 520),
+            OpCode::new_ticks_since_lt(4, 511),
+        ];
+        let opcodes_false_or4 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(3, 520),
+            OpCode::new_ticks_since_lt(3, 510),
+        ];
+        let opcodes_false_or5 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(2, 265),
+            OpCode::new_ticks_since_lt(2, 255),
+        ];
+        let opcodes_false_or6 = [
+            OpCode::new_bool(Or, 3),
+            OpCode::new_ticks_since_gt(1, 256),
+            OpCode::new_ticks_since_lt(1, 254),
+        ];
+        let hist_keycodes = [
+            HistoricalEvent {
+                event: KeyCode::A,
+                ticks_since_occurrence: 100,
+            },
+            HistoricalEvent {
+                event: KeyCode::B,
+                ticks_since_occurrence: 255,
+            },
+            HistoricalEvent {
+                event: KeyCode::C,
+                ticks_since_occurrence: 256,
+            },
+            HistoricalEvent {
+                event: KeyCode::D,
+                ticks_since_occurrence: 511,
+            },
+            HistoricalEvent {
+                event: KeyCode::E,
+                ticks_since_occurrence: 512,
+            },
+            HistoricalEvent {
+                event: KeyCode::F,
+                ticks_since_occurrence: 1000,
+            },
+            HistoricalEvent {
+                event: KeyCode::G,
+                ticks_since_occurrence: 40000,
+            },
+        ];
+
+        let test = |opcodes: &[OpCode], expectation: bool| {
+            let testcfg = SwitchTestCfg::new()
+                .opcodes(opcodes)
+                .historical_keys(&hist_keycodes);
+            assert_eq!(expectation, testcfg.evaluate())
+        };
+        test(&opcodes_true_and, true);
+        test(&opcodes_true_or1, true);
+        test(&opcodes_true_or2, true);
+        test(&opcodes_true_or3, true);
+        test(&opcodes_false_and1, false);
+        test(&opcodes_false_and2, false);
+        test(&opcodes_false_or1, false);
+        test(&opcodes_false_or2, false);
+        test(&opcodes_false_or3, false);
+        test(&opcodes_false_or4, false);
+        test(&opcodes_false_or5, false);
+        test(&opcodes_false_or6, false);
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_0() {
+        // Full inverse of a previous test
+        let opcodes = &[
+            OpCode::new_bool(Not, 10),
+            OpCode::new_bool(And, 10),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::B),
+            OpCode::new_bool(Or, 7),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_key(KeyCode::D),
+            OpCode::new_bool(Or, 10),
+            OpCode::new_key(KeyCode::E),
+            OpCode::new_key(KeyCode::F),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_1() {
+        // Both A and B exist, should be false
+        let opcodes = &[
+            OpCode::new_bool(Not, 3),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::B),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_2() {
+        // Neither X nor Y exist, should be false
+        let opcodes = &[
+            OpCode::new_bool(Not, 3),
+            OpCode::new_key(KeyCode::X),
+            OpCode::new_key(KeyCode::Y),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_3() {
+        let opcodes = &[
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_bool(Not, 3),
+            OpCode::new_key(KeyCode::D),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_4() {
+        let opcodes = &[
+            OpCode::new_bool(And, 10),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::B),
+            OpCode::new_bool(Or, 7),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_bool(Not, 7),
+            OpCode::new_key(KeyCode::D),
+            OpCode::new_bool(Or, 10),
+            OpCode::new_key(KeyCode::E),
+            OpCode::new_key(KeyCode::F),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_5() {
+        let opcodes = &[
+            OpCode::new_bool(Not, 4),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_bool(Not, 4),
+            OpCode::new_key(KeyCode::D),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_6() {
+        // C does not exist, D does. Ensure C nonexistence does not short-circuit
+        // and existence of D is checked.
+        let opcodes = &[
+            OpCode::new_bool(Not, 3),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_key(KeyCode::D),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_or_equivalency_not_6() {
+        let opcodes = &[
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Or, 4),
+            OpCode::new_key(KeyCode::C),
+            OpCode::new_key(KeyCode::D),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_7() {
+        // A exists, make sure this short-circuits, and E nonexistence does not override the return.
+        let opcodes = &[
+            OpCode::new_bool(Not, 3),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::E),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_or_equivalency_not_7() {
+        let opcodes = &[
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Or, 4),
+            OpCode::new_key(KeyCode::A),
+            OpCode::new_key(KeyCode::E),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_8() {
+        let opcodes = &[
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Not, 4),
+            OpCode::new_key(KeyCode::A),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(!evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn bool_evaluation_test_not_9() {
+        let opcodes = &[
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Not, 4),
+            OpCode::new_bool(Not, 4),
+            OpCode::new_key(KeyCode::C),
+        ];
+        let keycodes = &[KeyCode::A, KeyCode::B, KeyCode::D, KeyCode::F];
+        assert!(evaluate_bool_test(opcodes, keycodes,));
+    }
+
+    #[test]
+    fn switch_inputs() {
+        let (op1, op2) = OpCode::new_active_input((0, 1));
+        let (op3, op4) = OpCode::new_active_input((1, 2));
+        let (op5, op6) = OpCode::new_active_input((1, 3));
+        let (op7, op8) = OpCode::new_active_input((3, 3));
+        let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+        let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+        let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+        let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+        let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+        let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
+        let active_inputs = [(0, 1), (1, 2), (2, 3), (3, 4)];
+        let test = |opcodes: &[OpCode], expectation: bool| {
+            let testcfg = SwitchTestCfg::new().opcodes(opcodes).inputs(&active_inputs);
+            assert_eq!(expectation, testcfg.evaluate())
+        };
+        test(&opcodes_true_and, true);
+        test(&opcodes_false_and1, false);
+        test(&opcodes_false_and2, false);
+        test(&opcodes_false_or, false);
+        test(&opcodes_true_or1, true);
+        test(&opcodes_true_or2, true);
+    }
+
+    #[test]
+    fn switch_historical_inputs() {
+        let (op1, op2) = OpCode::new_historical_input((0, 0), 0);
+        let (op3, op4) = OpCode::new_historical_input((3, 750), 7);
+        let (op5, op6) = OpCode::new_historical_input((1, 3), 0);
+        let (op7, op8) = OpCode::new_historical_input((3, 3), 7);
+        let opcodes_true_and = [OpCode::new_bool(And, 5), op1, op2, op3, op4];
+        let opcodes_false_and1 = [OpCode::new_bool(And, 5), op1, op2, op5, op6];
+        let opcodes_false_and2 = [OpCode::new_bool(And, 5), op5, op6, op1, op2];
+        let opcodes_false_or = [OpCode::new_bool(Or, 5), op7, op8, op5, op6];
+        let opcodes_true_or1 = [OpCode::new_bool(Or, 5), op1, op2, op5, op6];
+        let opcodes_true_or2 = [OpCode::new_bool(Or, 5), op7, op8, op3, op4];
+        let historical_inputs = [
+            HistoricalEvent {
+                event: (0, 0),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (1, 750),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (2, 1),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (3, 749),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (0, 1),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (1, 2),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (2, 3),
+                ticks_since_occurrence: 0,
+            },
+            HistoricalEvent {
+                event: (3, 750),
+                ticks_since_occurrence: 0,
+            },
+        ];
+
+        let test = |opcodes: &[OpCode], expectation: bool| {
+            let testcfg = SwitchTestCfg::new()
+                .opcodes(opcodes)
+                .historical_inputs(&historical_inputs);
+            assert_eq!(expectation, testcfg.evaluate())
+        };
+
+        test(&opcodes_true_and, true);
+        test(&opcodes_false_and1, false);
+        test(&opcodes_false_and2, false);
+        test(&opcodes_false_or, false);
+        test(&opcodes_true_or1, true);
+        test(&opcodes_true_or2, true);
+    }
 }

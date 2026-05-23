@@ -5075,6 +5075,8 @@ mod test {
                 NoOp,
                 Switch(&switch::Switch {
                     cases: &[(&[], &Trans, BreakOrFallthrough::Break)],
+                    init_fn: None,
+                    callbacks: &[],
                 }),
             ]],
         ];

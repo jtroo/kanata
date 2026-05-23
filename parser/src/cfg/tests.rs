@@ -856,7 +856,9 @@ fn parse_switch() {
                     &Action::KeyCode(KeyCode::A),
                     BreakOrFallthrough::Break
                 ),
-            ]
+            ],
+            init_fn: None,
+            callbacks: &[],
         })
     );
 }
