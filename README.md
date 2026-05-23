@@ -313,7 +313,6 @@ Other similar projects:
 - [keyberon](https://github.com/TeXitoi/keyberon): Rust `#[no_std]` library intended for keyboard firmware
 - [ktrl](https://github.com/ItayGarin/ktrl): Linux-only keyboard customizer with layers, a TCP server, and audio support
 - [kbremap](https://github.com/timokroeger/kbremap): Windows-only keyboard customizer with layers and unicode
-- [xcape](https://github.com/alols/xcape): Linux-only tap-hold modifiers
 - [karabiner-elements](https://karabiner-elements.pqrs.org/): Mac-only keyboard customizer
 - [capsicain](https://github.com/cajhin/capsicain): Windows-only key remapper with driver-level key interception
 - [keyd](https://github.com/rvaiya/keyd): Linux-only key remapper very similar to QMK, kmonad, and kanata
