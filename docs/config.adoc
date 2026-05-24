@@ -3794,7 +3794,7 @@ you wouldn't want this. Rather than retyping the code with `fork` and
 === if-equal
 
 Within a template you can use the list item `if-equal`
-to have condiditionally-used items within a template.
+to have conditionally-used items within a template.
 
 It accepts a minimum of 2 parameters.
 The first two parameters must be strings and are compared
