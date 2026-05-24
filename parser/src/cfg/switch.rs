@@ -58,6 +58,7 @@ pub(crate) mod cmd {
             .map(|v| s.a.sref_str(v))
             .collect();
         let binary_then_args = s.a.sref_vec(binary_then_args);
+        dbg!(&binary_then_args);
 
         s.a.sref(|| {
             let cmd_cfg = cmd::CmdState { binary_then_args };
@@ -98,14 +99,14 @@ fn parse_optional_arguments<'a>(
     if params.is_empty() {
         return Ok((OptionalSwitchArgs::default(), params));
     }
-    let Some((first_atom, params_after_first)) = parse_list_with_first_atom(params, s) else {
+    let Some((first_atom, params_after_first)) = parse_list_with_first_atom(&params[0], s) else {
         return Ok((OptionalSwitchArgs::default(), params));
     };
     match first_atom {
         "init-cmd" => {
             #[cfg(not(feature = "cmd"))]
             {
-                let _ = params_after_first; // suppres unused
+                let _ = params_after_first; // suppress unused
                 bail_expr!(
                     &params[0],
                     "cmd is not enabled for this kanata executable. \
