@@ -367,7 +367,7 @@ impl OpCode {
         )
     }
 
-    /// Retiurns OpCodes specifying a callback, referenced by index.
+    /// Returns OpCodes specifying a callback, referenced by index.
     pub fn new_callback_index(index: u16) -> (Self, Self) {
         (Self(CALLBACK_INDEX_VAL), Self(index))
     }

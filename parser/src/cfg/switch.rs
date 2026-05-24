@@ -58,7 +58,6 @@ pub(crate) mod cmd {
             .map(|v| s.a.sref_str(v))
             .collect();
         let binary_then_args = s.a.sref_vec(binary_then_args);
-        dbg!(&binary_then_args);
 
         s.a.sref(|| {
             let cmd_cfg = cmd::CmdState { binary_then_args };
@@ -145,8 +144,6 @@ pub fn parse_switch(ac_params: &[SExpr], s: &ParserState) -> Result<&'static Kan
     const ERR_STR: &str =
         "switch expects triples of params: <key match> <action> <break|fallthrough>";
 
-    // Peek for optional arguments. Possibilties (1 for now):
-    // - (init-cmd ...)
     let (opts, remaining_params) = parse_optional_arguments(ac_params, s)?;
 
     let mut cases = vec![];
