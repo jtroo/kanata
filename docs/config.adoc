@@ -2928,6 +2928,7 @@ if any of the items evaluates to true.
 (layer      $layer-name)
 (base-layer $layer-name)
 (device-history $device-id $device-recency)
+(cmd-exit   $exit-code)
 ----
 
 [cols="1,4"]
@@ -2978,7 +2979,20 @@ matches `$device-id`. A recency of 1 is the most recent device
 that sent an event. The max recency is 8.
 Device IDs are defined via <<definputdevices,`definputdevices`>>.
 Currently supported on macOS only.
+
+| `cmd-exit`
+| Requires a binary compiled with `cmd` enabled.
+| Evaluates to true if the process exit code of the most recent `init-cmd` matches `$exit-code`.
+  The `$exit-code` parameter must be a 32 bit signed integer.
 |===
+
+.Syntax of optional `switch` argument `init-cmd`:
+[source]
+----
+(switch
+  (init-cmd $binary $arg1 $arg2 ... $argN)
+  $logic-check1 $action1 $post-activate1 ...)
+----
 
 **Description**
 
@@ -3239,6 +3253,28 @@ if `layer-switch` has never been activated.
                  () z break
   )
 )
+----
+
+==== `init-cmd` and `cmd-exit`
+
+With a <<cmd,cmd-enabled>> Kanata variant
+you have access to the `init-cmd` optional switch parameter
+which goes before the normal switch syntax.
+This will execute a program synchronously,
+blocking the rest of Kanata's execution until it completes.
+What this enables is later use of `cmd-exit` logic item
+which can output different actions based on which exit code is returned by the command.
+
+.Example:
+[source]
+----
+(defalias
+  my-switch-with-cmd (switch
+    (init-cmd powershell.exe -c "if (-not (Test-Path 'myfile')) { exit 1 }")
+    ((cmd-exit 0)) a break
+    ((cmd-exit 1)) b break
+    () c break
+  ))
 ----
 
 
