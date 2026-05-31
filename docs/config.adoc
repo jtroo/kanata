@@ -2004,7 +2004,7 @@ Example:
 **Reference**
 
 The `tap-hold` action lets you activate different actions
-depending it a key is tapped or held.
+depending if a key is tapped or held.
 
 .Syntax:
 [source]
