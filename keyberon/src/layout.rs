@@ -2429,6 +2429,9 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let historical_coords = self.historical_inputs.iter_hevents();
                 let layers = self.trans_resolution_layer_order().into_iter();
                 let mut action_queue: ActionQueue<T> = Default::default();
+                if let Some(f) = sw.init_fn {
+                    f();
+                }
                 for ac in sw.actions(
                     active_keys,
                     active_coords,
@@ -5072,6 +5075,8 @@ mod test {
                 NoOp,
                 Switch(&switch::Switch {
                     cases: &[(&[], &Trans, BreakOrFallthrough::Break)],
+                    init_fn: None,
+                    callbacks: &[],
                 }),
             ]],
         ];
