@@ -5614,6 +5614,9 @@ By default, Kanata adds a delay before reading keyboard inputs.
 This helps protect against stale states
 when started from a terminal.
 
+Without this delay, Kanata may interpret any keys you're still holding down when it starts
+as being stuck.
+
 However, this may be undesirable
 when running as a background service.
 
