@@ -463,7 +463,7 @@ fn evaluate_boolean(
                 || current_index >= current_end_index
             {
                 if current_op == Not {
-                    ret = false;
+                    ret = !ret;
                 }
                 current_index = current_end_index;
                 continue;

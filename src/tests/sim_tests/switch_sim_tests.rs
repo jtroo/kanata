@@ -69,3 +69,31 @@ fn sim_switch_trans_not_top_layer() {
     .to_ascii();
     assert_eq!("t:20ms dn:B t:10ms up:B t:100ms dn:B t:10ms up:B", result);
 }
+
+#[test]
+fn sim_switch_not_logic() {
+    let result = simulate(
+        "
+        (defsrc a)
+        (deflayer base
+          (switch
+            ((or (not (or b)) b)) x break
+            () y break))
+        ",
+        "d:a t:10 u:a t:10",
+    )
+    .to_ascii();
+    assert_eq!("dn:X t:10ms up:X", result);
+    let result = simulate(
+        "
+        (defsrc a)
+        (deflayer base
+          (switch
+            ((or (not b) b)) x break
+            () y break))
+        ",
+        "d:a t:10 u:a t:10",
+    )
+    .to_ascii();
+    assert_eq!("dn:X t:10ms up:X", result);
+}
