@@ -168,6 +168,10 @@ impl ZchDynamicState {
         self.zchd_is_altgr_active = false;
         self.zchd_last_press = ZchLastPressClassification::IsChord;
         self.zchd_enabled_state = ZchEnabledState::Enabled;
+        // A full reset must clear all dynamic activation state; this counter is
+        // otherwise only reset on a clean all-keys-released, so without this a
+        // reset mid-activation leaves it stale (it gates the common-prefix logic).
+        self.zchd_same_hold_activation_count = 0;
     }
 
     fn zchd_soft_reset(&mut self) {
@@ -391,7 +395,15 @@ impl ZchState {
                         kb.press_key(OsCode::KEY_BACKSPACE)?;
                         kb.release_key(OsCode::KEY_BACKSPACE)?;
                     }
-                    self.zchd.zchd_characters_to_delete_on_next_activation = 0;
+                    // The common-prefix optimization left `common_prefix_len`
+                    // characters of this activation's output on screen (they were
+                    // not re-typed). They are still part of the visible output and
+                    // must be counted for deletion by the next activation; the
+                    // typing loop below only re-accumulates the freshly typed
+                    // (skipped-past-prefix) characters, so seed the counter with
+                    // the kept prefix length instead of zeroing it.
+                    self.zchd.zchd_characters_to_delete_on_next_activation =
+                        common_prefix_len_from_past_activation;
                     self.zchd.zchd_prior_activation_output_count =
                         ZchOutput::display_len(&a.zch_output);
                 } else {
@@ -501,6 +513,21 @@ impl ZchState {
                     self.zchd.zchd_prior_activation_output_count += 1;
                     self.zchd.zchd_characters_to_delete_on_next_activation += 1;
 
+                    // The participating space of a leading-space chord (e.g. " n"
+                    // -> "no") is typed eagerly as a Space press and left held. If
+                    // it is still held when the smart space is added, the output
+                    // would contain two Space-downs with no Space-up between them;
+                    // a real OS coalesces those into one held key and — since the
+                    // eager space's character was already backspaced — the trailing
+                    // smart space is silently dropped (user sees "no" not "no ").
+                    // Release the held participating space first. Releasing a space
+                    // that isn't held (chord activated letter-first) is a harmless
+                    // OS no-op, the same pattern type_osc already relies on. The
+                    // smart space itself stays a clean tap so holding the physical
+                    // space does not auto-repeat it.
+                    if self.zchd.zchd_input_keys.zchik_contains(OsCode::KEY_SPACE) {
+                        kb.release_key(OsCode::KEY_SPACE)?;
+                    }
                     kb.press_key(OsCode::KEY_SPACE)?;
                     kb.release_key(OsCode::KEY_SPACE)?;
                 }
