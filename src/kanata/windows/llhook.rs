@@ -201,11 +201,23 @@ impl Kanata {
         for pvk in self.prev_keys.iter() {
             // Check 1 : each pvk is expected to be pressed.
             let osc: OsCode = pvk.into();
-            let vk = i32::from(osc);
+
+            let vk = match osc {
+                OsCode::KEY_KPENTER => {
+                    // Special case:
+                    // From scancode info we can differentiate KP Enter vs. Enter
+                    // but we cannot from Windows VK states.
+                    // Check against VK_RETURN
+                    VK_RETURN
+                }
+                _ => i32::from(osc),
+            };
+
             if vk > 254 {
                 // 254 should be highest valid VK number in Windows OS.
                 continue;
             }
+
             let vk_state = unsafe { GetAsyncKeyState(vk) } as u32;
             let is_pressed_in_windows = vk_state >= 0b1000000;
             if is_pressed_in_windows {
