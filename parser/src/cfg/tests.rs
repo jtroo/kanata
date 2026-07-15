@@ -336,6 +336,22 @@ fn parse_zippychord_file() {
 }
 
 #[test]
+#[cfg(feature = "zippychord")]
+fn reject_invalid_zippy_output_mapping_arity() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let zippy_file: HashMap<String, String> = [("zippy.txt".to_owned(), "ab\tab".to_owned())]
+        .into_iter()
+        .collect();
+
+    for mapping in ["(no-erase)", "(no-erase a b)", "(single-output)"] {
+        let cfg = format!(
+            "(defsrc)\n(deflayer base)\n(defzippy zippy.txt output-character-mappings (a {mapping}))"
+        );
+        assert!(new_from_str(&cfg, zippy_file.clone()).is_err());
+    }
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))

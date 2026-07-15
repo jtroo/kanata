@@ -457,7 +457,7 @@ mod inner {
                                     ZchIoMappingType::NoErase => {
                                         const ERR: &str = "expects a single key or output chord.";
                                         if output_list.len() != 2 {
-                                            anyhow_expr!(&output_list[1], "{NO_ERASE} {ERR}");
+                                            bail_expr!(&mapping_pair[1], "{NO_ERASE} {ERR}");
                                         }
                                         let output =
                                             output_list[1].atom(s.vars()).ok_or_else(|| {
@@ -471,8 +471,8 @@ mod inner {
                                     }
                                     ZchIoMappingType::SingleOutput => {
                                         if output_list.len() < 2 {
-                                            anyhow_expr!(
-                                                &output_list[1],
+                                            bail_expr!(
+                                                &mapping_pair[1],
                                                 "{SINGLE_OUTPUT_MULTI_KEY} expects one or more keys or output chords."
                                             );
                                         }
