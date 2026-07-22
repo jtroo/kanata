@@ -532,3 +532,33 @@ d:t u:t t:10
         result
     );
 }
+
+#[test]
+fn prior_idle_chord_participants() {
+    // Tests a past bug where chordv2->tap-hold singles would not be evaluated correctly for
+    // tap-hold require-prior-idle.
+    let result = simulate(
+        "
+        (defcfg
+          process-unmapped-keys yes
+          concurrent-tap-hold yes
+          tap-hold-require-prior-idle 150
+        )
+        (defsrc)
+        (defchordsv2
+          (j c) M-c 75 first-release ()
+        )
+        (deflayermap (main)
+          j (tap-hold 200 300 j rmet)
+          k (tap-hold 200 300 k rsft)
+        )
+        ",
+        "d:j t:40 d:k t:320 d:spc t:40 u:spc t:40 u:k t:20 u:j t:200",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:298ms dn:RGui t:40ms dn:RShift t:23ms dn:Space \
+         t:39ms up:Space t:40ms up:RShift t:20ms up:RGui",
+        result
+    );
+}
