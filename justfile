@@ -61,6 +61,10 @@ change_subcrate_versions version:
   sed -i 's/^version = ".*"$/version = "{{version}}"/' parser/Cargo.toml tcp_protocol/Cargo.toml keyberon/Cargo.toml
   sed -i 's/^\(#\? \?kanata-\(keyberon\|parser\|tcp-protocol\).*version\) = "[0-9.]*"/\1 = "{{version}}"/' Cargo.toml parser/Cargo.toml
 
+change_subcrate_versions_pwsh version:
+  $files = "parser/Cargo.toml", "tcp_protocol/Cargo.toml", "keyberon/Cargo.toml"; foreach ($f in $files) { (Get-Content $f) -replace '^version = ".*"$', 'version = "{{version}}"' | Set-Content $f }
+  $files = "Cargo.toml", "parser/Cargo.toml"; $pattern = '^(#?\s?kanata-(keyberon|parser|tcp-protocol).*version) = "[0-9.]*"'; $replacement = '$1 = "{{version}}"'; foreach ($f in $files) { (Get-Content $f) -replace $pattern, $replacement | Set-Content $f }
+
 cov:
   cargo llvm-cov clean --workspace
   cargo llvm-cov --no-report --workspace --no-default-features
