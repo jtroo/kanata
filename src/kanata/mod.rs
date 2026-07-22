@@ -1515,11 +1515,11 @@ impl Kanata {
                                 interval: *interval,
                                 scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
                                     ScrollAccelState {
-                                    deceleration_multiplier: isp.deceleration_multiplier.0,
-                                    acceleration_multiplier: isp.acceleration_multiplier.0,
-                                    max_velocity: isp.maximum_velocity.0,
-                                    current_velocity: isp.initial_velocity.0,
-                                    scroll_released: false,
+                                        deceleration_multiplier: isp.deceleration_multiplier.0,
+                                        acceleration_multiplier: isp.acceleration_multiplier.0,
+                                        max_velocity: isp.maximum_velocity.0,
+                                        current_velocity: isp.initial_velocity.0,
+                                        scroll_released: false,
                                     }
                                 ),
                             })
@@ -1530,7 +1530,15 @@ impl Kanata {
                                 distance: *distance,
                                 ticks_until_scroll: 0,
                                 interval: *interval,
-                                scroll_accel_state: None,
+                                scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
+                                    ScrollAccelState {
+                                        deceleration_multiplier: isp.deceleration_multiplier.0,
+                                        acceleration_multiplier: isp.acceleration_multiplier.0,
+                                        max_velocity: isp.maximum_velocity.0,
+                                        current_velocity: isp.initial_velocity.0,
+                                        scroll_released: false,
+                                    }
+                                ),
                             })
                         }
                     },
