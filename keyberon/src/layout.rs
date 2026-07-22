@@ -748,13 +748,12 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         let res = match active {
             Ok(active) => {
                 // Chording mode still active, only trigger action if it's unambiguous
-                if let Some(action) = config.get_chord_if_unambiguous(active) {
+                {
+                    let action = config.get_chord_if_unambiguous(active)?;
                     if let Some(coord) = released_coord {
                         self.coord = coord;
                     }
                     (WaitingAction::Tap, action)
-                } else {
-                    return None; // nothing to do yet, we'll check back later
                 }
             }
             Err(active) => {

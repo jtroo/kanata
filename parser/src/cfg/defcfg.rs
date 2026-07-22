@@ -983,13 +983,7 @@ fn parse_cfg_val_u16(expr: &SExpr, label: &str, exclude_zero: bool) -> Result<u1
     match &expr {
         SExpr::Atom(v) => Ok(str::parse::<u16>(v.t.trim_atom_quotes())
             .ok()
-            .and_then(|u| {
-                if exclude_zero && u == 0 {
-                    None
-                } else {
-                    Some(u)
-                }
-            })
+            .filter(|&u| !(exclude_zero && u == 0))
             .ok_or_else(|| anyhow_expr!(expr, "{label} must be {start}-65535"))?),
         SExpr::List(_) => {
             bail_expr!(

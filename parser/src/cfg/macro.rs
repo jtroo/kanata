@@ -195,7 +195,7 @@ pub(crate) fn parse_macro_item_impl<'a>(
             let (held_mods, unparsed_str) =
                 parse_mods_held_for_submacro(&acs[0], s).map_err(|mut err| {
                     if err.msg == MACRO_ERR {
-                        err.msg = format!("{}\n{MACRO_ERR}", &e.msg);
+                        err.msg = format!("{}\n{MACRO_ERR}", e.msg);
                     }
                     err
                 })?;
