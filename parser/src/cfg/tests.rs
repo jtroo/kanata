@@ -70,6 +70,35 @@ fn parse_cfg(cfg: &str) -> Result<IntermediateCfg> {
 }
 
 #[test]
+fn definputdevices_trims_quoted_matcher_values() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    // Quoted names must lose syntax quotes; the hash case also verifies quoted
+    // hex parsing.
+    let cfg = new_from_str(
+        r#"(defcfg)
+            (defsrc a)
+            (deflayer base a)
+            (definputdevices
+              1 ((name "Apple Internal Keyboard / Trackpad"))
+              2 ((name "silakka54") (vendor_id 0xFEED) (product_id 0x1212))
+              3 ((hash "E328037D977386DE")))"#,
+        HashMap::default(),
+    )
+    .expect("quoted device matchers should parse");
+    let devices = cfg
+        .input_devices
+        .expect("definputdevices should be retained");
+    assert_eq!(
+        devices[0].1.name.as_deref(),
+        Some("Apple Internal Keyboard / Trackpad")
+    );
+    assert_eq!(devices[1].1.name.as_deref(), Some("silakka54"));
+    assert_eq!(devices[1].1.vendor_id, Some(0xFEED));
+    assert_eq!(devices[1].1.product_id, Some(0x1212));
+    assert_eq!(devices[2].1.hash.as_deref(), Some("e328037d977386de"));
+}
+
+#[test]
 fn sizeof_action_is_two_usizes() {
     assert_eq!(
         std::mem::size_of::<KanataAction>(),
