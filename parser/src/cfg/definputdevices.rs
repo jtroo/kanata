@@ -60,6 +60,9 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
             let prop_val = props[1]
                 .atom(None)
                 .ok_or_else(|| anyhow_expr!(&props[1], "matcher value must be an atom"))?;
+            // Matcher values are commonly written as quoted strings in definputdevices.
+            // Strip those syntax quotes before name matching or numeric/hash parsing.
+            let prop_val = prop_val.trim_atom_quotes();
             match prop_name {
                 "name" => {
                     if matcher.name.is_some() {
