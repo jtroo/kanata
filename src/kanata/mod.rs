@@ -237,7 +237,7 @@ pub struct Kanata {
     /// Tracks whether Kanata should try to synchronize keystates with the Windows OS.
     /// Has no effect on Interception. Fixes some use cases related to admin window permissions and
     /// potentially locking via Win+L.
-    pub windows_sync_keystates: bool,
+    pub windows_sync_keystates: WinSyncKeystateBehaviour,
     #[cfg(all(feature = "interception_driver", target_os = "windows"))]
     /// Used to know which input device to treat as a mouse for intercepting and processing inputs
     /// by kanata.
@@ -488,7 +488,7 @@ impl Kanata {
             #[cfg(any(target_os = "linux", target_os = "android"))]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
-            windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
+            windows_sync_keystates: cfg.options.windows_opts.windows_sync_keystates,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -642,7 +642,7 @@ impl Kanata {
             #[cfg(any(target_os = "linux", target_os = "android"))]
             exclude_names: cfg.options.linux_opts.linux_dev_names_exclude,
             #[cfg(target_os = "windows")]
-            windows_sync_keystates: cfg.options.windows_opts.sync_keystates,
+            windows_sync_keystates: cfg.options.windows_opts.windows_sync_keystates,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
             intercept_mouse_hwids: cfg.options.wintercept_opts.windows_interception_mouse_hwids,
             #[cfg(all(feature = "interception_driver", target_os = "windows"))]
@@ -770,7 +770,7 @@ impl Kanata {
         self.virtual_keys = cfg.fake_keys;
         #[cfg(target_os = "windows")]
         {
-            self.windows_sync_keystates = cfg.options.windows_opts.sync_keystates;
+            self.windows_sync_keystates = cfg.options.windows_opts.windows_sync_keystates;
         }
         #[cfg(all(target_os = "windows", feature = "gui"))]
         {

@@ -5114,6 +5114,34 @@ and any <<deflayermap,`deflayermap`>> `$input` position.
 )
 ----
 
+[[windows-only-windows-sync-keystates]]
+=== Windows only: windows-sync-keystates
+
+By default Kanata on Windows without Interception
+has behaviour to check against the Windows operating system
+and try to synchronize known keys where they differ
+between the OS and Kanata.
+This is because of limitations in the Windows keyboard APIs
+where Kanata is not guaranteed to see all events.
+However, likewise due to limitations in the APIs,
+even this sync mechanism is not perfect.
+If the sync behaviour is causing issues, set it to `none`.
+The default is `clear-kanata-states`.
+
+Options:
+
+* `none`
+* `clear-kanata-states`
+* `clear-kanata-and-os-states`
+
+.Example:
+[source]
+----
+(defcfg
+  windows-sync-keystates none
+)
+----
+
 For more context, see: https://github.com/jtroo/kanata/issues/55.
 
 NOTE: Even with these workarounds, putting `+lctl+` and `+ralt+` in your defsrc may not
