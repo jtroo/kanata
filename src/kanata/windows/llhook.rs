@@ -1,3 +1,4 @@
+use kanata_parser::cfg::WinSyncKeystateBehaviour;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -193,6 +194,13 @@ impl Kanata {
         use kanata_keyberon::layout::*;
         use winapi::um::winuser::*;
 
+        if matches!(
+            self.windows_sync_keystates,
+            WinSyncKeystateBehaviour::WinSyncDoNothing
+        ) {
+            return;
+        }
+
         // Note: this procedure (1) used to be also gated behind the config flag.
         // Revisiting it later, it should be reasonably safe to always run this,
         // because releasing a Kanata state should not interfere with other programs
@@ -260,7 +268,10 @@ impl Kanata {
             drop(pressed_keys);
         }
 
-        if !self.windows_sync_keystates {
+        if matches!(
+            self.windows_sync_keystates,
+            WinSyncKeystateBehaviour::WinSyncClearKanataStates
+        ) {
             return;
         }
 
