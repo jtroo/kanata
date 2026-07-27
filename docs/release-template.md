@@ -108,7 +108,9 @@ Explanation of items in the binary variant:
 <details>
 <summary>Instructions</summary>
 
-The supported Karabiner driver version in this release is `v6.2.0`.
+The supported Karabiner driver version in this release is `v8.0.0`. This
+release uses driver protocol 7 and is not compatible with protocol-5
+VirtualHIDDevice releases such as v6.2.0.
 
 **NOTE**: macOS mouse button input requires Accessibility or Input Monitoring permission in System Settings > Privacy & Security.
 
@@ -123,7 +125,10 @@ Explanation of items in the binary variant:
 
 ### Instructions for macOS 11 and newer
 
-You must use the Karabiner driver version `v6.2.0`.
+You must use the Karabiner driver version `v8.0.0`.
+
+Follow the current [macOS setup instructions](https://github.com/jtroo/kanata/blob/main/docs/setup-macos.md)
+to install and activate the driver.
 
 Please read through this issue comment:
 
