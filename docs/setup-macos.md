@@ -19,11 +19,11 @@ xcode-select --install
 
 ### 2. Install Karabiner-DriverKit-VirtualHIDDevice
 
-The supported driver version is `v6.2.0`. Kanata's bundled
-`karabiner-driverkit` crate is built against that release's IPC, and pqrs
-ships protocol changes between minor versions, so newer driver releases
-are not guaranteed to work. Download the `.pkg` from the
-[v6.2.0 release page](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/releases/tag/v6.2.0)
+The supported driver version is `v8.0.0`. Kanata's `karabiner-driverkit`
+v0.4.0 client uses protocol 7 and is not compatible with older protocol-5
+daemons such as VirtualHIDDevice v6.2.0. Upgrade the driver and kanata
+together. Download the `.pkg` from the
+[v8.0.0 release page](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/releases/tag/v8.0.0)
 and run the installer.
 
 Then activate the driver and approve its system extension:
