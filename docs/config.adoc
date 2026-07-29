@@ -554,10 +554,14 @@ This might be useful
 if you are only mapping a few keys in defsrc
 instead of most of the keys on your keyboard.
 
-By default, keys excluded from `defsrc` will not work in various scenarios.
+By default, keys excluded from `defsrc`
+and that aren't found in any `deflayermap` input position
+will not work in various scenarios.
 Some examples:
 
-- The early hold for prior `+tap-hold-press+` actions will not
+- The early hold for prior `+tap-hold-press+` actions will not activate early
+- Unprocessed keys will be sent
+  before a tap-hold key finishes evaluating tap vs. hold
 - Prior `+one-shot+` actions will not be released
 - `fork` and `switch` logic will not see the key
 
