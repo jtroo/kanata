@@ -26,7 +26,7 @@ together. Download the `.pkg` from the
 [v8.0.0 release page](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/releases/tag/v8.0.0)
 and run the installer.
 
-If you are still running a version of kanata prior to v1.13.0, please download version 6.2.0 of the Karabiner driver.
+If you are still running a version of kanata prior to v1.13.0, you should continue to use `v6.2.0` of the Karabiner driver which you can download from [its release page](https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice/releases/tag/v6.2.0).
 
 Then activate the driver and approve its system extension:
 
