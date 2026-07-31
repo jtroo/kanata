@@ -35,8 +35,7 @@ pub struct KbdIn {
     poll: Poll,
     events: Events,
     token_counter: usize,
-    /// stored to prevent dropping
-    _inotify: Inotify,
+    inotify: Inotify,
     include_names: Option<Vec<String>>,
     exclude_names: Option<Vec<String>>,
     device_detect_mode: DeviceDetectMode,
@@ -85,12 +84,12 @@ impl KbdIn {
                 ));
             }
         }
-        let _inotify = watch_devinput().map_err(|e| {
+        let inotify = watch_devinput().map_err(|e| {
             log::error!("failed to watch files: {e:?}");
             e
         })?;
         poll.registry().register(
-            &mut SourceFd(&_inotify.as_raw_fd()),
+            &mut SourceFd(&inotify.as_raw_fd()),
             INOTIFY_TOKEN,
             Interest::READABLE,
         )?;
@@ -98,7 +97,7 @@ impl KbdIn {
         let mut kbdin = Self {
             poll,
             missing_device_paths,
-            _inotify,
+            inotify,
             events: Events::with_capacity(32),
             devices: HashMap::default(),
             token_counter: INOTIFY_TOKEN_VALUE + 1,
@@ -159,12 +158,16 @@ impl KbdIn {
                             .for_each(|ev| input_events.push(ev))
                     }) {
                         // Currently the kind() is uncategorized... not helpful, need to match
-                        // on os error. code 19 is ENODEV, "no such device".
+                        // on os error.
                         match e.raw_os_error() {
-                            Some(19) => {
-                                self.poll
+                            Some(nix::libc::ENODEV) => {
+                                if let Err(e) = self
+                                    .poll
                                     .registry()
-                                    .deregister(&mut SourceFd(&device.as_raw_fd()))?;
+                                    .deregister(&mut SourceFd(&device.as_raw_fd()))
+                                {
+                                    log::warn!("failed to deregister removed device: {e:?}");
+                                }
                                 if let Some((_, path)) = self.devices.remove(&event.token()) {
                                     log::warn!("removing kbd device: {path}");
                                     if let Some(ref mut missing) = self.missing_device_paths {
@@ -179,6 +182,11 @@ impl KbdIn {
                         };
                     }
                 } else if event.token() == INOTIFY_TOKEN {
+                    // Must drain the queue: the inotify fd is polled edge-triggered, and the
+                    // kernel coalesces an event identical to the unread tail of the queue
+                    // (e.g. repeated creations of the same eventN node), so leaving events
+                    // unread means readiness is never signaled again.
+                    drain_inotify_events(&mut self.inotify);
                     do_rediscover = true;
                 } else {
                     panic!("encountered unexpected epoll event {event:?}");
@@ -195,6 +203,7 @@ impl KbdIn {
     }
 
     fn rediscover_devices(&mut self) -> Result<(), io::Error> {
+        self.remove_stale_devices();
         // This function is kinda ugly but the borrow checker doesn't like all this mutation.
         let mut paths_registered = vec![];
         if let Some(ref mut missing) = self.missing_device_paths {
@@ -231,25 +240,56 @@ impl KbdIn {
             std::thread::sleep(std::time::Duration::from_millis(
                 WAIT_DEVICE_MS.load(Ordering::SeqCst),
             ));
-            discover_devices(
+            for (dev, path) in discover_devices(
                 self.include_names.as_deref(),
                 self.exclude_names.as_deref(),
                 self.device_detect_mode,
-            )
-            .into_iter()
-            .try_for_each(|(dev, path)| {
-                if !self
+            ) {
+                if self
                     .devices
                     .values()
                     .any(|(_, registered_path)| &path == registered_path)
                 {
-                    self.register_device(dev, path)
-                } else {
-                    Ok(())
+                    continue;
                 }
-            })?;
+                // Don't propagate errors; a device that vanished mid-registration must not
+                // kill the event loop and must not prevent registering the other devices.
+                if let Err(e) = self.register_device(dev, path.clone()) {
+                    log::warn!("found device {path} but could not register it {e:?}");
+                }
+            }
         }
         Ok(())
+    }
+
+    /// Drop registered devices whose fd reports ENODEV, so that a reconnected device reusing
+    /// the same path is not mistaken for the still-registered dead one. Needed when the
+    /// inotify CREATE for the new node is processed before the old fd reports ENODEV.
+    fn remove_stale_devices(&mut self) {
+        let stale_tokens = self
+            .devices
+            .iter()
+            .filter(|(_, (dev, _))| {
+                // Only ENODEV means the device is gone; on any other error keep the device.
+                matches!(dev.get_key_state(), Err(ref e) if e.raw_os_error() == Some(nix::libc::ENODEV))
+            })
+            .map(|(token, _)| *token)
+            .collect::<Vec<_>>();
+        for token in stale_tokens {
+            if let Some((device, path)) = self.devices.remove(&token) {
+                log::warn!("removing stale kbd device: {path}");
+                if let Err(e) = self
+                    .poll
+                    .registry()
+                    .deregister(&mut SourceFd(&device.as_raw_fd()))
+                {
+                    log::warn!("failed to deregister stale device: {e:?}");
+                }
+                if let Some(ref mut missing) = self.missing_device_paths {
+                    missing.push(path);
+                }
+            }
+        }
     }
 }
 
@@ -726,6 +766,22 @@ fn watch_devinput() -> Result<Inotify, io::Error> {
     Ok(inotify)
 }
 
+fn drain_inotify_events(inotify: &mut Inotify) {
+    let mut buf = [0u8; 1024];
+    loop {
+        match inotify.read_events(&mut buf) {
+            Ok(_) => {}
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+            Err(e) => {
+                // Don't propagate; failing to drain must not kill the event loop.
+                log::error!("failed to drain inotify events: {e:?}");
+                break;
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Symlink {
     dest: PathBuf,
@@ -832,5 +888,53 @@ impl Drop for Symlink {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.dest);
         log::info!("Deleted symlink {:#?}", self.dest);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Repeated creations of the same file name must each wake the poll. The inotify fd is
+    /// polled edge-triggered, and without draining the queue the kernel coalesces an event
+    /// identical to the unread tail of the queue, so readiness would never be signaled again.
+    #[test]
+    fn inotify_drain_allows_repeated_wakeups_for_same_file_name() {
+        let dir = std::env::temp_dir().join(format!("kanata-inotify-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+
+        let mut inotify = Inotify::init().unwrap();
+        inotify.watches().add(&dir, WatchMask::CREATE).unwrap();
+
+        let mut poll = Poll::new().unwrap();
+        const TOKEN: Token = Token(0);
+        poll.registry()
+            .register(
+                &mut SourceFd(&inotify.as_raw_fd()),
+                TOKEN,
+                Interest::READABLE,
+            )
+            .unwrap();
+        let mut events = Events::with_capacity(4);
+
+        let file = dir.join("event17");
+        for round in 0..3 {
+            fs::File::create(&file).unwrap();
+            fs::remove_file(&file).unwrap();
+
+            let mut woke = false;
+            for _ in 0..50 {
+                poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
+                    .unwrap();
+                if events.iter().any(|e| e.token() == TOKEN) {
+                    woke = true;
+                    break;
+                }
+            }
+            assert!(woke, "poll did not wake for CREATE on round {round}");
+            drain_inotify_events(&mut inotify);
+        }
+
+        fs::remove_dir_all(&dir).unwrap();
     }
 }
