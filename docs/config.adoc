@@ -5555,7 +5555,13 @@ When `wait` is `true`, the server blocks until the reload completes or times out
 
 | `{"Hello":{}}`
 | Request server version and capabilities. Server responds with `HelloOk`.
+
+| `{"SubscribePhysicalKeyEvents":{"enabled":true}}`
+| Enable physical key event notifications for this TCP connection. Set `enabled` to `false` to stop them. The server responds with `{"status":"Ok"}`.
 |===
+
+Physical key notifications are disabled for each new connection until it subscribes. This avoids
+exposing high-volume, privacy-sensitive typing data to TCP clients that do not need it.
 
 ==== Server Messages
 
@@ -5586,7 +5592,15 @@ These are sent automatically when events occur:
 
 | `{"TapActivated":{"key":"a"}}`
 | Sent when a tap-hold key triggers its tap action. The `key` field is the physical key name.
+
+| `{"PhysicalKey":{"key":"w","code":17,"state":"press"}}`
+| Sent before remapping for a subscribed connection. `key` is the physical key name, `code` is Kanata's platform-specific numeric OS code, and `state` is `press`, `release`, `repeat`, or `tap`.
 |===
+
+`PhysicalKey` reports configured physical input in Kanata's processing order, including modifier
+reordering. It does not report fake keys, macros, or generated output. Internal wake-up events are
+also excluded. Because this stream can reveal everything typed, bind the TCP server only to a
+trusted interface and subscribe only trusted clients.
 
 ===== Query Responses
 
@@ -5609,7 +5623,7 @@ These are sent in response to client queries:
 | Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
 
 | `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
-| Response to `Hello`. Contains server version, protocol version, and supported capabilities. Includes `hold-activated` and `tap-activated`.
+| Response to `Hello`. Contains server version, protocol version, and supported capabilities. Includes `hold-activated`, `tap-activated`, and `physical-key-events`.
 
 | `{"ReloadResult":{"ok":true}}`
 | Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.
