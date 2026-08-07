@@ -1705,6 +1705,99 @@ The coordinate system is platform-specific:
 
 Experimentation will be needed to find the correct values for your setup.
 
+[[macos-window]]
+==== macOS window management
+
+The `macos-window` action moves and resizes the focused macOS window.
+It requires macOS Accessibility permission.
+On other platforms the action still parses, but triggering it only logs a warning.
+
+This action sets the window's Accessibility position and size directly. It does
+not invoke macOS native window tiling, so the system's tiled-window margins and
+tiling groups do not apply.
+
+.Syntax:
+[source]
+----
+(macos-window $layout ...)
+----
+
+Each `$layout` can be a preset or a custom frame.
+When multiple layouts are provided, repeated activations within a short time
+cycle through the layouts. The cycle restarts after its timeout, when a
+different `macos-window` action is used, or when the window has moved since the
+previous activation. Changing the focused window also restarts the cycle.
+
+Preset layouts:
+
+* `maximize` or `max`
+* `almost-maximize`, `almost-max`, or `almost`
+* `left-half` or `left`
+* `right-half` or `right`
+* `top-half` or `top`
+* `bottom-half` or `bottom`
+* `center` or `centered`
+* `first-third` or `left-third`
+* `center-third` or `middle-horizontal-third`
+* `last-third` or `right-third`
+* `left-two-thirds` or `first-two-thirds`
+* `center-two-thirds` or `middle-two-thirds`
+* `right-two-thirds` or `last-two-thirds`
+* `first-three-fourths`, `left-three-fourths`, `first-three-quarters`, or `left-three-quarters`
+* `center-three-fourths`, `middle-three-fourths`, `center-three-quarters`, or `middle-three-quarters`
+* `last-three-fourths`, `right-three-fourths`, `last-three-quarters`, or `right-three-quarters`
+* `top-third`
+* `middle-third`, `vertical-middle-third`, or `center-vertical-third`
+* `bottom-third`
+* `top-two-thirds`
+* `bottom-two-thirds`
+* `top-center-two-thirds` or `top-middle-two-thirds`
+* `bottom-center-two-thirds` or `bottom-middle-two-thirds`
+* `top-first-fourth` or `top-first-quarter`
+* `top-second-fourth` or `top-second-quarter`
+* `top-third-fourth` or `top-third-quarter`
+* `top-last-fourth` or `top-last-quarter`
+* `top-three-fourths` or `top-three-quarters`
+* `bottom-three-fourths` or `bottom-three-quarters`
+* `first-fourth`, `left-fourth`, `first-quarter`, or `left-quarter`
+* `second-fourth` or `second-quarter`
+* `third-fourth` or `third-quarter`
+* `last-fourth`, `right-fourth`, `last-quarter`, or `right-quarter`
+* `top-left-quarter` or `top-left-fourth`
+* `top-right-quarter` or `top-right-fourth`
+* `bottom-left-quarter` or `bottom-left-fourth`
+* `bottom-right-quarter` or `bottom-right-fourth`
+* `top-left-sixth`
+* `top-center-sixth` or `top-middle-sixth`
+* `top-right-sixth`
+* `bottom-left-sixth`
+* `bottom-center-sixth` or `bottom-middle-sixth`
+* `bottom-right-sixth`
+* `move-left`
+* `move-right`
+* `move-top` or `move-up`
+* `move-bottom` or `move-down`
+
+Custom frames use basis points relative to the visible work area of the
+window's current display:
+`(x y width height)`, where `10000` means 100%.
+All four values are signed integers; `width` and `height` must be positive.
+Negative positions and positions beyond `10000` are allowed.
+The visible work area excludes the menu bar, Dock, and camera housing.
+The `center` and `move-*` presets preserve the current window size unless it is
+larger than the work area.
+
+.Example:
+[source]
+----
+(defalias
+  wl (macos-window left-half right-two-thirds maximize)
+  wr (macos-window right-half left-two-thirds maximize)
+  wc (macos-window center)
+  wt (macos-window (0 0 5000 10000) (5000 0 5000 10000))
+)
+----
+
 [[mouse-speed]]
 ==== Modify the speed of mouse movements
 
