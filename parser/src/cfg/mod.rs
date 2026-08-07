@@ -91,6 +91,8 @@ pub mod list_actions;
 use list_actions::*;
 mod r#macro;
 use r#macro::*;
+mod macos_window;
+use macos_window::*;
 mod mouse;
 use mouse::*;
 mod multi;
@@ -1641,6 +1643,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         }
         MOVEMOUSE_SPEED | MOVEMOUSE_SPEED_A => parse_move_mouse_speed(&ac[1..], s),
         SETMOUSE | SETMOUSE_A => parse_set_mouse(&ac[1..], s),
+        MACOS_WINDOW => parse_macos_window(&ac[1..], s),
         DYNAMIC_MACRO_RECORD => parse_dynamic_macro_record(&ac[1..], s),
         DYNAMIC_MACRO_PLAY => parse_dynamic_macro_play(&ac[1..], s),
         ARBITRARY_CODE => parse_arbitrary_code(&ac[1..], s),
