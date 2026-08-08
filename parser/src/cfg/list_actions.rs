@@ -98,6 +98,7 @@ pub const MOVEMOUSE_ACCEL_RIGHT_A: &str = "🖱accel→";
 pub const MOVEMOUSE_SPEED_A: &str = "🖱speed";
 pub const SETMOUSE: &str = "setmouse";
 pub const SETMOUSE_A: &str = "set🖱";
+pub const MACOS_WINDOW: &str = "macos-window";
 pub const DYNAMIC_MACRO_RECORD: &str = "dynamic-macro-record";
 pub const DYNAMIC_MACRO_PLAY: &str = "dynamic-macro-play";
 pub const ARBITRARY_CODE: &str = "arbitrary-code";
@@ -232,6 +233,7 @@ pub fn is_list_action(ac: &str) -> bool {
         MOVEMOUSE_SPEED_A,
         SETMOUSE,
         SETMOUSE_A,
+        MACOS_WINDOW,
         DYNAMIC_MACRO_RECORD,
         DYNAMIC_MACRO_PLAY,
         ARBITRARY_CODE,

@@ -55,6 +55,7 @@ pub enum CustomAction {
     MoveMouseSpeed {
         speed: u16,
     },
+    MacosWindow(&'static [MacosWindowLayout]),
     SequenceCancel,
     SequenceLeader(u16, SequenceInputMode),
     /// Purpose:
@@ -98,6 +99,71 @@ pub enum CustomAction {
     ClipboardSaveSet(u16, &'static str),
     ClipboardSaveCmdSet(u16, &'static [&'static str]),
     ClipboardSaveSwap(u16, u16),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacosWindowLayout {
+    Frame(MacosWindowFrame),
+    Preset(MacosWindowPreset),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacosWindowFrame {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacosWindowPreset {
+    Maximize,
+    AlmostMaximize,
+    LeftHalf,
+    RightHalf,
+    TopHalf,
+    BottomHalf,
+    Center,
+    FirstThird,
+    CenterThird,
+    LastThird,
+    LeftTwoThirds,
+    CenterTwoThirds,
+    RightTwoThirds,
+    FirstThreeFourths,
+    CenterThreeFourths,
+    LastThreeFourths,
+    TopThird,
+    MiddleThird,
+    BottomThird,
+    TopTwoThirds,
+    BottomTwoThirds,
+    TopCenterTwoThirds,
+    BottomCenterTwoThirds,
+    TopFirstFourth,
+    TopSecondFourth,
+    TopThirdFourth,
+    TopLastFourth,
+    TopThreeFourths,
+    BottomThreeFourths,
+    FirstFourth,
+    SecondFourth,
+    ThirdFourth,
+    LastFourth,
+    TopLeftQuarter,
+    TopRightQuarter,
+    BottomLeftQuarter,
+    BottomRightQuarter,
+    TopLeftSixth,
+    TopCenterSixth,
+    TopRightSixth,
+    BottomLeftSixth,
+    BottomCenterSixth,
+    BottomRightSixth,
+    MoveLeft,
+    MoveRight,
+    MoveTop,
+    MoveBottom,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
