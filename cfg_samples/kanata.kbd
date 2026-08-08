@@ -392,6 +392,11 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ì 13
 )
 
+;; macOS Spotlight/Launchpad/Mission Control keys: the short names sls, lpad,
+;; mctl already carry HID translation and work today. The longer aliases
+;; spotlight, launchpad, missionctrl also parse, but their HID translation is
+;; pending (see https://github.com/jtroo/kanata/issues/761).
+
 ;; Only one defsrc is allowed.
 ;;
 ;; defsrc defines the keys that will be intercepted by kanata. The order of the

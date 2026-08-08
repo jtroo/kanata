@@ -408,6 +408,16 @@ delivers it to kanata as a distinct HID usage that the regular
 you want the same config to work on Linux as well, pair this with
 `deflocalkeys-linux` to map evdev code 43 to the same name.
 
+NOTE: On macOS, the Spotlight, Launchpad, and Mission Control keys are already
+handled by the existing short names `sls`, `lpad`, and `mctl`, which carry HID
+translation. The longer aliases `spotlight`, `launchpad`, and `missionctrl` are
+also accepted in `defsrc`/`deflayer`/`defalias` on macOS, but they target
+different OsCodes whose HID translation is not wired up yet, so they parse
+without yet intercepting the physical keys at runtime. These names are macOS-only
+and are not recognized on Linux or Windows. Wiring up their runtime recognition
+is tracked in https://github.com/jtroo/kanata/issues/761[#761]; use
+`sls`/`lpad`/`mctl` in the meantime.
+
 [[deflocalkeys]]
 === deflocalkeys
 
