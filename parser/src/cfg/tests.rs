@@ -2173,3 +2173,86 @@ fn parse_mouse_movement_key() {
         Some(crate::keys::OsCode::KEY_766),
     );
 }
+
+/// Regression guard for the hwid length fencepost in `sexpr_to_hwids_vec`.
+///
+/// Bytes parsed from a hwid are packed into a fixed `[u8; HWID_ARR_SZ]` array.
+/// The bounds check must reject an over-long hwid with a clean "too long" error
+/// instead of indexing out of bounds and panicking. Valid indices are
+/// `0..HWID_ARR_SZ`, so the guard compares `i >= HWID_ARR_SZ` (not `>`): the
+/// first index equal to the array length is already out of bounds and must be
+/// rejected *before* the `hwid[i] = b` assignment.
+#[cfg(any(
+    all(target_os = "windows", feature = "interception_driver"),
+    target_os = "unknown"
+))]
+#[test]
+fn wintercept_hwids_reject_overlong_cleanly() {
+    use crate::cfg::sexpr::{SExpr, Span, Spanned};
+
+    fn hwids_expr(hwid: String) -> SExpr {
+        SExpr::List(Spanned::new(
+            vec![SExpr::Atom(Spanned::new(hwid, Span::default()))],
+            Span::default(),
+        ))
+    }
+
+    let label = "windows-interception-mouse-hwids";
+    let entry_label = "entry in windows-interception-mouse-hwids";
+
+    // Exactly HWID_ARR_SZ bytes fit (indices 0..HWID_ARR_SZ).
+    let exact = vec!["0"; HWID_ARR_SZ].join(",");
+    super::defcfg::sexpr_to_hwids_vec(&hwids_expr(exact), label, entry_label)
+        .expect("hwid of exactly HWID_ARR_SZ bytes should parse");
+
+    // A short hwid parses fine.
+    super::defcfg::sexpr_to_hwids_vec(&hwids_expr("1, 2, 3".to_string()), label, entry_label)
+        .expect("short hwid should parse");
+
+    // One byte past the limit must be a clean error, not an index-out-of-bounds panic.
+    let overlong = vec!["0"; HWID_ARR_SZ + 1].join(",");
+    let err = super::defcfg::sexpr_to_hwids_vec(&hwids_expr(overlong), label, entry_label)
+        .expect_err("over-long hwid should be rejected");
+    assert!(
+        err.msg.contains("too long"),
+        "expected a 'too long' error, got: {}",
+        err.msg
+    );
+}
+
+/// Regression guard for the singular `windows-interception-mouse-hwid` path, whose
+/// inline array-bounds check shares the same fencepost as `sexpr_to_hwids_vec`.
+#[cfg(any(
+    all(target_os = "windows", feature = "interception_driver"),
+    target_os = "unknown"
+))]
+#[test]
+fn parse_defcfg_wintercept_mouse_hwid_rejects_overlong() {
+    // One byte past the limit must be a clean error, not an index-out-of-bounds panic.
+    let overlong = vec!["0"; HWID_ARR_SZ + 1].join(",");
+    let source = format!(
+        "
+(defcfg
+  windows-interception-mouse-hwid \"{overlong}\"
+)
+(defsrc a)
+(deflayer base a)
+"
+    );
+    let err = parse_cfg(&source).expect_err("over-long hwid should be rejected");
+    assert!(
+        err.msg.contains("too long"),
+        "expected a 'too long' error, got: {}",
+        err.msg
+    );
+
+    // A short hwid still parses.
+    let source = "
+(defcfg
+  windows-interception-mouse-hwid \"70, 0, 60, 0\"
+)
+(defsrc a)
+(deflayer base a)
+";
+    parse_cfg(source).expect("short hwid should parse");
+}
