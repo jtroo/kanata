@@ -537,7 +537,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                             let hwid_slice = hwid_vec.iter().copied().enumerate()
                                 .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
                                     let (i, b) = idx_byte;
-                                    if i > HWID_ARR_SZ {
+                                    // Valid indices are 0..HWID_ARR_SZ, so the first index equal
+                                    // to the length is already out of bounds; reject with `>=`
+                                    // (not `>`) to avoid indexing past the array and panicking.
+                                    if i >= HWID_ARR_SZ {
                                         bail_expr!(val, "{label} is too long; it should be up to {HWID_ARR_SZ} numbers [0,255]")
                                     }
                                     hwid[i] = b;
@@ -1092,7 +1095,7 @@ fn sexpr_to_list_or_err<'a>(expr: &'a SExpr, label: &str) -> Result<&'a [SExpr]>
     all(feature = "interception_driver", target_os = "windows"),
     target_os = "unknown"
 ))]
-fn sexpr_to_hwids_vec(
+pub(crate) fn sexpr_to_hwids_vec(
     val: &SExpr,
     label: &str,
     entry_label: &str,
@@ -1113,7 +1116,10 @@ fn sexpr_to_hwids_vec(
         let hwid_slice = hwid_vec.iter().copied().enumerate()
             .try_fold([0u8; HWID_ARR_SZ], |mut hwid, idx_byte| {
                 let (i, b) = idx_byte;
-                if i > HWID_ARR_SZ {
+                // Valid indices are 0..HWID_ARR_SZ, so the first index equal to the
+                // length is already out of bounds; reject with `>=` (not `>`) to
+                // avoid indexing past the array and panicking.
+                if i >= HWID_ARR_SZ {
                     bail_expr!(hwid_expr, "entry in {label} is too long; it should be up to {HWID_ARR_SZ} 8-bit unsigned integers")
                 }
                 hwid[i] = b;
