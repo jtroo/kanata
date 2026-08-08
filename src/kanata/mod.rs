@@ -81,7 +81,44 @@ use kanata_parser::cfg::list_actions::*;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
+#[cfg(feature = "tcp_server")]
+use kanata_tcp_protocol::PhysicalKeyState;
 use kanata_tcp_protocol::ServerMessage;
+
+#[cfg(feature = "tcp_server")]
+fn physical_key_message(event: &KeyEvent) -> Option<ServerMessage> {
+    let state = match event.value {
+        KeyValue::Press => PhysicalKeyState::Press,
+        KeyValue::Release => PhysicalKeyState::Release,
+        KeyValue::Repeat => PhysicalKeyState::Repeat,
+        KeyValue::Tap => PhysicalKeyState::Tap,
+        KeyValue::WakeUp => return None,
+    };
+    Some(ServerMessage::PhysicalKey {
+        key: event.code.to_string().to_lowercase(),
+        code: event.code.as_u16(),
+        state,
+    })
+}
+
+#[cfg(feature = "tcp_server")]
+fn send_physical_key_event(tx: &Option<Sender<ServerMessage>>, event: &KeyEvent) {
+    let Some(tx) = tx else { return };
+    let Some(message) = physical_key_message(event) else {
+        return;
+    };
+    if let Err(error) = tx.try_send(message) {
+        log::debug!("could not send physical key event notification: {error}");
+    }
+}
+
+#[cfg(not(feature = "tcp_server"))]
+fn send_physical_key_event(_tx: &Option<Sender<ServerMessage>>, _event: &KeyEvent) {}
+
+#[cfg(feature = "tcp_server")]
+fn client_accepts_notification(event: &ServerMessage, physical_key_events: bool) -> bool {
+    physical_key_events || !matches!(event, ServerMessage::PhysicalKey { .. })
+}
 
 mod clipboard;
 use clipboard::*;
@@ -2182,7 +2219,10 @@ impl Kanata {
                         let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
-                            match client.write_all(&notification) {
+                            if !client_accepts_notification(&event, client.physical_key_events) {
+                                continue;
+                            }
+                            match client.stream.write_all(&notification) {
                                 Ok(_) => {
                                     log::debug!("layer change notification sent");
                                 }
@@ -2322,6 +2362,7 @@ impl Kanata {
 
                             let mut event_error = None;
                             for ev in &events {
+                                send_physical_key_event(&tx, ev);
                                 if let Err(e) = k.handle_input_event(ev) {
                                     event_error = Some(e);
                                     break;
@@ -2391,6 +2432,7 @@ impl Kanata {
 
                             let mut event_error = None;
                             for ev in &events {
+                                send_physical_key_event(&tx, ev);
                                 if let Err(e) = k.handle_input_event(ev) {
                                     event_error = Some(e);
                                     break;
@@ -3109,5 +3151,60 @@ mod tcp_layer_change_tests {
             .expect("batched consume ticks should succeed");
 
         assert_eq!(collect_layer_changes(&rx), vec!["nav", "base"]);
+    }
+}
+
+#[cfg(all(test, feature = "tcp_server"))]
+mod physical_key_event_tests {
+    use super::*;
+
+    #[test]
+    fn converts_all_physical_states() {
+        let cases = [
+            (KeyValue::Press, PhysicalKeyState::Press),
+            (KeyValue::Release, PhysicalKeyState::Release),
+            (KeyValue::Repeat, PhysicalKeyState::Repeat),
+            (KeyValue::Tap, PhysicalKeyState::Tap),
+        ];
+        for (value, expected_state) in cases {
+            let message = physical_key_message(&KeyEvent::new(OsCode::KEY_W, value));
+            assert!(matches!(
+                message,
+                Some(ServerMessage::PhysicalKey {
+                    key,
+                    code,
+                    state,
+                }) if key == "w" && code == OsCode::KEY_W.as_u16() && state == expected_state
+            ));
+        }
+    }
+
+    #[test]
+    fn filters_internal_wakeup_events() {
+        assert!(
+            physical_key_message(&KeyEvent::new(OsCode::KEY_RESERVED, KeyValue::WakeUp)).is_none()
+        );
+    }
+
+    #[test]
+    fn full_notification_channel_does_not_panic() {
+        let (tx, _rx) = std::sync::mpsc::sync_channel(0);
+        send_physical_key_event(&Some(tx), &KeyEvent::new(OsCode::KEY_A, KeyValue::Press));
+    }
+
+    #[test]
+    fn physical_events_require_subscription_without_filtering_other_events() {
+        let physical = ServerMessage::PhysicalKey {
+            key: "a".to_string(),
+            code: OsCode::KEY_A.as_u16(),
+            state: PhysicalKeyState::Press,
+        };
+        let layer = ServerMessage::LayerChange {
+            new: "base".to_string(),
+        };
+
+        assert!(!client_accepts_notification(&physical, false));
+        assert!(client_accepts_notification(&physical, true));
+        assert!(client_accepts_notification(&layer, false));
     }
 }
