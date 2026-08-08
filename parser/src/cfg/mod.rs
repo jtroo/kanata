@@ -638,14 +638,7 @@ pub fn parse_cfg_raw_string(
             "Exactly one defsrc is allowed, found more. Delete the extras."
         )
     }
-    let (mut mapped_keys, mapping_order, _mouse_in_defsrc) = parse_defsrc(src_expr, &cfg)?;
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
-    if cfg.linux_opts.linux_device_detect_mode.is_none() {
-        cfg.linux_opts.linux_device_detect_mode = Some(match _mouse_in_defsrc {
-            MouseInDefsrc::MouseUsed => DeviceDetectMode::Any,
-            MouseInDefsrc::NoMouse => DeviceDetectMode::KeyboardMice,
-        });
-    }
+    let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
     let input_devices = root_exprs
         .iter()
@@ -843,6 +836,20 @@ pub fn parse_cfg_raw_string(
     }
 
     let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
+
+    // Auto-derive the Linux device-detect mode AFTER parse_layers, because deflayermap pairs
+    // (not only defsrc) can introduce mouse OsCodes into mapped_keys (issue #2096). Deriving
+    // from the final mapped_keys set ensures mouse devices are grabbed whenever any mouse key
+    // is mapped, regardless of whether it was named in defsrc or deflayermap.
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "unknown"))]
+    if cfg.linux_opts.linux_device_detect_mode.is_none() {
+        cfg.linux_opts.linux_device_detect_mode =
+            Some(if mapped_keys.iter().any(|k| k.is_mouse_code()) {
+                DeviceDetectMode::Any
+            } else {
+                DeviceDetectMode::KeyboardMice
+            });
+    }
 
     resolve_chord_groups(&mut klayers, s)?;
     let layers = s.a.bref_slice(klayers);
@@ -1120,12 +1127,6 @@ fn check_first_expr<'a>(
         bail!("Passed non-{expected_first} expression to {expected_first}: {first_atom}");
     }
     Ok(exprs)
-}
-
-#[derive(Debug, Copy, Clone)]
-enum MouseInDefsrc {
-    MouseUsed,
-    NoMouse,
 }
 
 type Aliases = HashMap<String, &'static KanataAction>;
