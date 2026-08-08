@@ -373,6 +373,17 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         "sls" | "SpotLightSearch" => OsCode::KEY_249,
         "dtn" | "Dictation" => OsCode::KEY_250,
         "dnd" | "DoNotDisturb" => OsCode::KEY_251,
+        // macOS system keys: Spotlight / Launchpad / Mission Control. The OsCodes already
+        // exist (KEY_633/634/635) and round-trip through the macOS u16 table; these names
+        // let users reference the physical keys in defsrc/deflayer. macOS-only because the
+        // underlying HID usages are Apple-specific. See #761. (HID PageCode translation is
+        // a separate follow-up — the exact usage codes need real-hardware confirmation.)
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "spotlight" => OsCode::KEY_633,
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "launchpad" => OsCode::KEY_634,
+        #[cfg(any(target_os = "macos", target_os = "unknown"))]
+        "missionctrl" => OsCode::KEY_635,
         "mctl" | "MissionControl" => OsCode::KEY_252,
         "lpad" | "LaunchPad" => OsCode::KEY_253,
 
@@ -1214,6 +1225,32 @@ impl fmt::Display for OsCode {
 #[test]
 fn parser_key_max_lt_keyberon_key_max() {
     assert!(u16::from(OsCode::KEY_MAX) < KEY_MAX);
+}
+
+#[cfg(test)]
+#[cfg(any(target_os = "macos", target_os = "unknown"))]
+mod macos_system_key_names {
+    use super::{OsCode, str_to_oscode};
+
+    #[test]
+    fn spotlight_launchpad_missionctrl_resolve() {
+        assert_eq!(str_to_oscode("spotlight"), Some(OsCode::KEY_633));
+        assert_eq!(str_to_oscode("launchpad"), Some(OsCode::KEY_634));
+        assert_eq!(str_to_oscode("missionctrl"), Some(OsCode::KEY_635));
+    }
+
+    #[test]
+    fn names_round_trip_in_a_parsed_config() {
+        // A minimal .kbd that references all three names in defsrc must parse cleanly.
+        // new_from_str is the public parser entry point used throughout parser/src/cfg/tests.rs.
+        let cfg = "(defsrc spotlight launchpad missionctrl)\n(deflayer base _ _ _)\n";
+        let parsed = crate::cfg::new_from_str(cfg, Default::default());
+        assert!(
+            parsed.is_ok(),
+            "config with new macos key names failed to parse: {:?}",
+            parsed.as_ref().err()
+        );
+    }
 }
 
 impl TryFrom<usize> for OsCode {
