@@ -9,11 +9,10 @@ use crate::bail_expr;
 pub(crate) fn parse_defsrc(
     expr: &[SExpr],
     defcfg: &CfgOptions,
-) -> Result<(MappedKeys, Vec<usize>, MouseInDefsrc)> {
+) -> Result<(MappedKeys, Vec<usize>)> {
     let exprs = check_first_expr(expr.iter(), "defsrc")?;
     let mut mkeys = MappedKeys::default();
     let mut ordered_codes = Vec::new();
-    let mut is_mouse_used = MouseInDefsrc::NoMouse;
     for expr in exprs {
         let s = match expr {
             SExpr::Atom(a) => &a.t,
@@ -21,21 +20,6 @@ pub(crate) fn parse_defsrc(
         };
         let oscode = str_to_oscode(s)
             .ok_or_else(|| anyhow_expr!(expr, "Unknown key in defsrc: \"{}\"", s))?;
-        is_mouse_used = match (is_mouse_used, oscode) {
-            (
-                MouseInDefsrc::NoMouse,
-                OsCode::BTN_LEFT
-                | OsCode::BTN_RIGHT
-                | OsCode::BTN_MIDDLE
-                | OsCode::BTN_SIDE
-                | OsCode::BTN_EXTRA
-                | OsCode::MouseWheelUp
-                | OsCode::MouseWheelDown
-                | OsCode::MouseWheelLeft
-                | OsCode::MouseWheelRight,
-            ) => MouseInDefsrc::MouseUsed,
-            _ => is_mouse_used,
-        };
 
         if mkeys.contains(&oscode) {
             bail_expr!(expr, "Repeat declaration of key in defsrc: \"{}\"", s)
@@ -89,7 +73,7 @@ pub(crate) fn parse_defsrc(
     }
 
     mkeys.shrink_to_fit();
-    Ok((mkeys, ordered_codes, is_mouse_used))
+    Ok((mkeys, ordered_codes))
 }
 
 pub(crate) fn create_defsrc_layer() -> [KanataAction; KEYS_IN_ROW] {
