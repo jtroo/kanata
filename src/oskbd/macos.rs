@@ -656,10 +656,11 @@ impl KbdIn {
                 .filter(|k| !excluded_names.iter().any(|n| *k == n.as_str()))
                 .filter(|k| !is_skipped_virtual_device(&k.product_key))
                 .map(|k| {
-                    if k.product_key.trim().is_empty() {
+                    let name = sanitize_device_name(&k.product_key);
+                    if name.trim().is_empty() {
                         format!("{:x}", k.hash)
                     } else {
-                        k.product_key.clone()
+                        name.to_string()
                     }
                 })
                 .collect::<Vec<String>>();
@@ -788,6 +789,10 @@ impl KbdIn {
             }
             let mut any_registered = false;
             for name in names {
+                let name = sanitize_device_name(name);
+                if name.trim().is_empty() {
+                    continue;
+                }
                 if device_matches(name) && register_device(name) {
                     log::info!("Device '{name}' appeared and was registered");
                     any_registered = true;
@@ -831,6 +836,15 @@ fn is_skipped_virtual_device(product_key: &str) -> bool {
     SKIPPED_VIRTUAL_DEVICE_SUBSTRINGS
         .iter()
         .any(|needle| lower.contains(needle))
+}
+
+/// Return the portion of a device name that can safely cross a C string boundary.
+///
+/// HID product names may contain embedded NULs. `karabiner-driverkit` converts
+/// these strings with `CString::new`, which rejects embedded NULs, so ignore the
+/// unusable suffix before calling into the driver.
+fn sanitize_device_name(name: &str) -> &str {
+    name.split_once('\0').map_or(name, |(prefix, _)| prefix)
 }
 
 /// Build a mapping from device hashes to configured device IDs by matching
@@ -886,6 +900,8 @@ fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
     include_names
         .iter()
         .filter_map(|dev| {
+            let dev = sanitize_device_name(dev);
+
             // Defensive check: skip empty device names that could cause crashes
             if dev.trim().is_empty() {
                 log::warn!("Skipping empty device name (likely old keyboard without proper identification)");
@@ -915,6 +931,40 @@ fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod device_name_tests {
+    use super::sanitize_device_name;
+
+    #[test]
+    fn valid_device_name_is_unchanged() {
+        assert_eq!(
+            sanitize_device_name("Apple Internal Keyboard"),
+            "Apple Internal Keyboard"
+        );
+    }
+
+    #[test]
+    fn device_name_is_truncated_at_first_nul() {
+        assert_eq!(
+            sanitize_device_name("Keyboard\0ignored\0suffix"),
+            "Keyboard"
+        );
+    }
+
+    #[test]
+    fn device_name_can_become_empty() {
+        assert_eq!(sanitize_device_name("\0invalid"), "");
+    }
+
+    #[test]
+    fn unicode_replacement_character_is_preserved() {
+        assert_eq!(
+            sanitize_device_name("Keyboard \u{fffd}"),
+            "Keyboard \u{fffd}"
+        );
+    }
 }
 
 impl fmt::Display for InputEvent {
