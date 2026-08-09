@@ -2133,6 +2133,35 @@ fn reverse_release_order_must_be_within_multi() {
 }
 
 #[test]
+fn bare_sym_prefix_errors_without_panic() {
+    // A bare 🔣 atom (SYM prefix with no character following) must yield a
+    // graceful parse error rather than panicking inside the unisym handling
+    // (the old code did `unisym.chars().next().expect("1 char")`).
+    let source = "
+(defsrc a)
+(deflayer base 🔣)
+";
+    let err = parse_cfg(source).expect_err("bare 🔣 must be a parse error, not a panic");
+    assert!(
+        err.msg.contains('🔣'),
+        "unexpected error message: {}",
+        err.msg
+    );
+}
+
+#[test]
+fn inline_sym_prefix_unicode_parses() {
+    // The inline `🔣X` atom form should still parse to a unicode action.
+    let source = "
+(defsrc a)
+(deflayer base 🔣a)
+";
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("🔣a should parse as a unicode action");
+}
+
+#[test]
 fn parse_clipboard_actions() {
     let source = "
 (defsrc)

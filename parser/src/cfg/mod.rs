@@ -1493,10 +1493,17 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     }
     if let Some(unisym) = ac.strip_prefix('🔣') {
         // TODO: when unicode accepts multiple chars, change this to feed the whole string, not just the first char
-        return custom(
-            CustomAction::Unicode(unisym.chars().next().expect("1 char")),
-            &s.a,
-        );
+        let unicode_char = match unisym.chars().next() {
+            Some(c) => c,
+            // A bare 🔣 atom (SYM prefix with no character following) is normally
+            // caught earlier by the `is_list_action` guard; this defends against a
+            // latent panic if that guard ever stops covering the bare prefix.
+            None => bail_span!(
+                ac_span,
+                "🔣 expects exactly one unicode character to follow it, but none was given. Example: 🔣a"
+            ),
+        };
+        return custom(CustomAction::Unicode(unicode_char), &s.a);
     }
     // Parse a sequence like `C-S-v` or `C-A-del`
     let (mut keys, unparsed_str) = parse_mod_prefix(ac)?;
