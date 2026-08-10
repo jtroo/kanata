@@ -97,3 +97,24 @@ fn sim_switch_not_logic() {
     .to_ascii();
     assert_eq!("dn:X t:10ms up:X", result);
 }
+
+/// The configuration guide recommends naming device IDs with `defvar`, so `definputdevices` has
+/// to resolve variables the same way `device-history` does.
+#[test]
+fn definputdevices_accepts_variables() {
+    let result = simulate(
+        r#"(defvar
+             id-internal 1
+             kbd-name "Apple Internal Keyboard"
+           )
+           (definputdevices
+             $id-internal ((name $kbd-name))
+           )
+           (defsrc a)
+           (deflayer base
+             (switch ((device-history $id-internal 1)) x break () a break))"#,
+        "d:a t:10 u:a t:10",
+    )
+    .to_ascii();
+    assert_eq!("dn:A t:10ms up:A", result);
+}
