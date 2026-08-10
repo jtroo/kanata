@@ -445,6 +445,57 @@ fn unknown_defcfg_item_fails() {
 }
 
 #[test]
+fn parse_distance_rejects_out_of_range() {
+    // Regression: the 1..=30000 range promised by the error message must be
+    // enforced for movemouse/mwheel distances. A clippy cleanup (f3488c4)
+    // previously dropped the range guard while keeping the message, so 0 and
+    // 30001..=65535 were silently accepted.
+    for distance in ["0", "30001", "65535"] {
+        let source = format!(
+            r#"(defsrc a)
+(deflayer base (movemouse-up 1 {distance}))
+"#
+        );
+        let err = parse_cfg(&source).expect_err("out-of-range distance should be rejected");
+        assert!(
+            err.msg.contains("distance must be 1-30000"),
+            "distance {distance}: real e: {}",
+            err.msg
+        );
+    }
+
+    // mwheel shares parse_distance.
+    let source = r#"(defsrc a)
+(deflayer base (mwheel-up 1 0))
+"#;
+    let err = parse_cfg(source).expect_err("zero mwheel distance should be rejected");
+    assert!(
+        err.msg.contains("distance must be 1-30000"),
+        "real e: {}",
+        err.msg
+    );
+
+    // movemouse-accel min/max distances flow through parse_distance too.
+    let source = r#"(defsrc a)
+(deflayer base (movemouse-accel-up 1 1 0 5))
+"#;
+    let err = parse_cfg(source).expect_err("zero min distance should be rejected");
+    assert!(err.msg.contains("min distance must be 1-30000"));
+
+    // Boundary values 1 and 30000 are valid.
+    for distance in ["1", "30000"] {
+        let source = format!(
+            r#"(defsrc a)
+(deflayer base (movemouse-up 1 {distance}))
+"#
+        );
+        parse_cfg(&source)
+            .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+            .expect("in-range distance should parse");
+    }
+}
+
+#[test]
 fn recursive_multi_is_flattened() {
     macro_rules! atom {
         ($e:expr) => {
