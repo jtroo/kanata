@@ -66,6 +66,14 @@ pub(crate) fn parse_deflocalkeys(
         // use a dummy OsCode to keep the "same name" validation
         // while avoiding the u16->OsCode conversion attempt.
         if !deflocalkeys_variant_applies_to_current_os(def_local_keys_variant) {
+            // The value still has to be consumed so the next loop iteration
+            // reads the real key, not this key's value; otherwise a value that
+            // collides with a later key name trips a spurious "Duplicate" error
+            // and a config that is valid on its target OS fails to parse
+            // everywhere else.
+            if exprs.next().is_none() {
+                bail_expr!(key_expr, "Key without a number in {def_local_keys_variant}");
+            }
             localkeys.insert(key.to_owned(), OsCode::KEY_RESERVED);
             continue;
         }
