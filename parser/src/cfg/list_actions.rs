@@ -5,6 +5,7 @@
 pub const LAYER_SWITCH: &str = "layer-switch";
 pub const LAYER_TOGGLE: &str = "layer-toggle";
 pub const LAYER_WHILE_HELD: &str = "layer-while-held";
+pub const LAYER_LOCK_TOGGLE: &str = "layer-lock-toggle";
 pub const TAP_HOLD: &str = "tap-hold";
 pub const TAP_HOLD_PRESS: &str = "tap-hold-press";
 pub const TAP_HOLD_PRESS_A: &str = "tap⬓↓";
@@ -146,6 +147,7 @@ pub fn is_list_action(ac: &str) -> bool {
         LAYER_SWITCH,
         LAYER_TOGGLE,
         LAYER_WHILE_HELD,
+        LAYER_LOCK_TOGGLE,
         TAP_HOLD,
         TAP_HOLD_PRESS,
         TAP_HOLD_PRESS_A,

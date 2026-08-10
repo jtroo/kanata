@@ -1157,6 +1157,8 @@ pub struct ParserState {
     layer_idxs: LayerIndexes,
     mapping_order: Vec<usize>,
     virtual_keys: HashMap<String, (usize, &'static KanataAction)>,
+    /// Layers used by `layer-lock-toggle`, mapped to their reserved virtual key slot.
+    layer_lock_slots: RefCell<HashMap<usize, usize>>,
     chord_groups: HashMap<String, ChordGroup>,
     defsrc_layer: [KanataAction; KEYS_IN_ROW],
     vars: HashMap<String, SExpr>,
@@ -1191,6 +1193,7 @@ impl Default for ParserState {
             mapping_order: Default::default(),
             defsrc_layer: [KanataAction::NoOp; KEYS_IN_ROW],
             virtual_keys: Default::default(),
+            layer_lock_slots: Default::default(),
             chord_groups: Default::default(),
             vars: Default::default(),
             is_cmd_enabled: default_cfg.enable_cmd,
@@ -1542,6 +1545,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
     match ac_type.as_str() {
         LAYER_SWITCH => parse_layer_base(&ac[1..], s),
         LAYER_TOGGLE | LAYER_WHILE_HELD => parse_layer_toggle(&ac[1..], s),
+        LAYER_LOCK_TOGGLE => parse_layer_lock_toggle(&ac[1..], s),
         TAP_HOLD => parse_tap_hold(&ac[1..], s, HoldTapConfig::Default),
         TAP_HOLD_PRESS | TAP_HOLD_PRESS_A => {
             parse_tap_hold(&ac[1..], s, HoldTapConfig::HoldOnOtherKeyPress)
