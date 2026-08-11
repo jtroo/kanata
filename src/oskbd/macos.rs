@@ -1482,6 +1482,18 @@ impl KbdOut {
             flag.store(is_click, Ordering::Release);
             self.button_path[index] = is_click.then_some(ButtonPath::Hid);
             if is_click {
+                // Advance the fallback click bookkeeping here too, even though
+                // the HID event carries no CGEvent clickState (macOS counts the
+                // real HID clicks itself). Keeping this state path-independent
+                // means a later CGEvent-fallback click continues from the actual
+                // previous click instead of reviving a stale count left over
+                // from before the path switched. Best-effort: if the cursor
+                // position is unavailable, skip the update rather than fail the
+                // press. Reuses the same-button / interval / slop rule as the
+                // CGEvent path.
+                if let Ok(event) = Self::make_event() {
+                    self.click_state[index] = self.next_click_state(index, event.location());
+                }
                 DRAG_ORIGIN_CAPTURED[index].store(false, Ordering::Release);
                 DRAG_CANCELLED[index].store(false, Ordering::Release);
             }
