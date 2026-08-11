@@ -1145,10 +1145,12 @@ fn set_hid_caps_lock_state(state: bool) -> io::Result<()> {
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
     caps_lock_state: Option<bool>,
-    /// Last left-click down timestamp + running clickCount, used to populate
-    /// `kCGMouseEventClickState` so WindowServer recognizes double/triple clicks.
-    /// Tracked per-button.
-    last_click: HashMap<Btn, (Instant, i64)>,
+    /// Press that the next same-button press is compared against, to decide
+    /// whether it continues a multi-click sequence.
+    last_click: Option<(usize, Instant, CGPoint)>,
+    /// Click count in flight per button index, so a release stamps the same
+    /// count its press used.
+    click_state: [i64; BUTTON_INDEX_COUNT],
     /// Output path latched at press time per button index, so a release always
     /// goes out the mechanism its press used even if the pointing sink's
     /// readiness changed while the button was held.
@@ -1157,6 +1159,18 @@ pub struct KbdOut {
 
 /// Number of distinct mouse buttons kanata can synthesize.
 const BUTTON_INDEX_COUNT: usize = 5;
+
+/// Movement allowed between two presses that still count as a multi-click.
+///
+/// Deliberately looser than macOS itself: measured against a physical mouse,
+/// WindowServer stops counting a second click somewhere around 1.5 px. Clicks
+/// synthesized here are keyboard-driven, so a hand resting on the mouse can
+/// drift the cursor without the user meaning to end the sequence, and being
+/// stricter than needed loses double-clicks that were intended.
+const MULTI_CLICK_SLOP_PX: CGFloat = 5.0;
+
+/// Fallback for `NSEvent::doubleClickInterval`, matching the macOS default.
+const DEFAULT_DOUBLE_CLICK_INTERVAL: f64 = 0.5;
 
 /// Which output mechanism a mouse button press used. Latched per button at
 /// press time so the matching release is emitted the same way — mixing the two
@@ -1197,7 +1211,8 @@ impl KbdOut {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
             caps_lock_state: get_hid_caps_lock_state(),
-            last_click: HashMap::default(),
+            last_click: None,
+            click_state: [1; BUTTON_INDEX_COUNT],
             button_path: [None; BUTTON_INDEX_COUNT],
         })
     }
@@ -1505,24 +1520,17 @@ impl KbdOut {
             event.set_integer_value_field(EventField::MOUSE_EVENT_BUTTON_NUMBER, num);
         }
 
-        // Compute and stamp clickCount so WindowServer recognizes
-        // double/triple clicks. Only updated on down; up reuses the count.
-        // Threshold matches NSEvent.doubleClickInterval default (~500ms).
-        let click_count = if is_click {
-            const DBL_CLICK_WINDOW: Duration = Duration::from_millis(500);
-            let now = Instant::now();
-            let entry = self.last_click.entry(btn).or_insert((now, 0));
-            let count = if now.duration_since(entry.0) <= DBL_CLICK_WINDOW {
-                entry.1 + 1
-            } else {
-                1
-            };
-            *entry = (now, count);
-            count
-        } else {
-            self.last_click.get(&btn).map(|(_, c)| *c).unwrap_or(1)
-        };
-        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, click_count);
+        // Stamp clickCount so WindowServer recognizes double/triple clicks.
+        // Only recomputed on down; a release reuses the count its press set so
+        // the pair carries the same value. The count continues only when the
+        // press lands on the same button, soon enough *and* close enough — a
+        // time-only window runs away, stamping clickState 4, 5, 6… onto taps
+        // hundreds of pixels apart, which the drag-assist rewrite would then
+        // paint onto physical drags.
+        if is_click {
+            self.click_state[index] = self.next_click_state(index, mouse_position);
+        }
+        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, self.click_state[index]);
 
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
@@ -1542,13 +1550,40 @@ impl KbdOut {
         if let Some(f) = flag {
             f.store(is_click, Ordering::Release);
             if is_click {
-                DRAG_CLICK_STATE.store(click_count, Ordering::Release);
+                DRAG_CLICK_STATE.store(self.click_state[index], Ordering::Release);
             }
         }
         log::debug!(
-            "drag-assist: button_action btn={btn:?} is_click={is_click} click_count={click_count}"
+            "drag-assist: button_action btn={btn:?} is_click={is_click} click_count={}",
+            self.click_state[index]
         );
         Ok(())
+    }
+
+    /// Click count for a press: continues the previous sequence when it lands
+    /// on the same button, soon enough and close enough, otherwise restarts.
+    fn next_click_state(&mut self, index: usize, position: CGPoint) -> i64 {
+        let now = Instant::now();
+        let continues = self
+            .last_click
+            .is_some_and(|(prev_index, prev_time, prev_position)| {
+                prev_index == index
+                    && now.duration_since(prev_time).as_secs_f64() <= Self::double_click_interval()
+                    && (prev_position.x - position.x).abs() <= MULTI_CLICK_SLOP_PX
+                    && (prev_position.y - position.y).abs() <= MULTI_CLICK_SLOP_PX
+            });
+        self.last_click = Some((index, now, position));
+        if continues {
+            self.click_state[index].saturating_add(1)
+        } else {
+            1
+        }
+    }
+
+    fn double_click_interval() -> f64 {
+        Class::get("NSEvent")
+            .map(|ns_event| unsafe { msg_send![ns_event, doubleClickInterval] })
+            .unwrap_or(DEFAULT_DOUBLE_CLICK_INTERVAL)
     }
 
     fn button_index(btn: Btn) -> usize {
