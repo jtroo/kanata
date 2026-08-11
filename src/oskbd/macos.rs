@@ -39,6 +39,23 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::SyncSender as Sender;
 use std::time::{Duration, Instant};
 
+/// Drag-assist state: set true while the synthesized mouse button is held by
+/// kanata output. The mouse-event-tap reads these on every physical
+/// MouseMoved and synthesizes a matching MouseDragged so that drag gestures
+/// (kanata-down + physical-trackpad-move) compose correctly. Side buttons
+/// (Backward = HID#4, Forward = HID#5) ride on OtherMouseDragged with the
+/// MOUSE_EVENT_BUTTON_NUMBER field overridden, mirroring the synthesis
+/// path in `button_action`.
+static DRAG_LEFT_HELD: AtomicBool = AtomicBool::new(false);
+static DRAG_RIGHT_HELD: AtomicBool = AtomicBool::new(false);
+static DRAG_MID_HELD: AtomicBool = AtomicBool::new(false);
+static DRAG_BACKWARD_HELD: AtomicBool = AtomicBool::new(false);
+static DRAG_FORWARD_HELD: AtomicBool = AtomicBool::new(false);
+/// Last clickState stamped on a kanata-synthesized button down, reused on
+/// every drag-assist Dragged event so WindowServer keeps the gesture in the
+/// same click sequence (single drag, double-click drag, …).
+static DRAG_CLICK_STATE: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(1);
+
 /// Mouse `OsCode`s that, when present in `MAPPED_KEYS`, justify installing the
 /// CGEventTap. Used both as the startup/reload install gate and as the set of
 /// codes the tap can produce.
@@ -1128,6 +1145,10 @@ fn set_hid_caps_lock_state(state: bool) -> io::Result<()> {
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
     caps_lock_state: Option<bool>,
+    /// Last left-click down timestamp + running clickCount, used to populate
+    /// `kCGMouseEventClickState` so WindowServer recognizes double/triple clicks.
+    /// Tracked per-button.
+    last_click: HashMap<Btn, (Instant, i64)>,
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -1158,6 +1179,7 @@ impl KbdOut {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
             caps_lock_state: get_hid_caps_lock_state(),
+            last_click: HashMap::default(),
         })
     }
 
@@ -1395,7 +1417,9 @@ impl KbdOut {
             ),
         };
 
-        let event_source = Self::make_event_source()?;
+        // Use the HID-system source so BTT (and similar) treat this
+        // synthesized button as a real hardware click / drag start.
+        let event_source = Self::make_event_source_hid()?;
         let event = Self::make_event()?;
         let mouse_position = event.location();
         let event = CGEvent::new_mouse_event(event_source, event_type, mouse_position, button)
@@ -1405,8 +1429,47 @@ impl KbdOut {
             event.set_integer_value_field(EventField::MOUSE_EVENT_BUTTON_NUMBER, num);
         }
 
+        // Compute and stamp clickCount so WindowServer recognizes
+        // double/triple clicks. Only updated on down; up reuses the count.
+        // Threshold matches NSEvent.doubleClickInterval default (~500ms).
+        let click_count = if is_click {
+            const DBL_CLICK_WINDOW: Duration = Duration::from_millis(500);
+            let now = Instant::now();
+            let entry = self.last_click.entry(btn).or_insert((now, 0));
+            let count = if now.duration_since(entry.0) <= DBL_CLICK_WINDOW {
+                entry.1 + 1
+            } else {
+                1
+            };
+            *entry = (now, count);
+            count
+        } else {
+            self.last_click.get(&btn).map(|(_, c)| *c).unwrap_or(1)
+        };
+        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, click_count);
+
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
+
+        // Drag-assist (Plan G): keep a flag so the mouse-event-tap can
+        // synthesize Dragged events on physical trackpad movement while
+        // a kanata-driven button is held.
+        let flag = match btn {
+            Btn::Left => Some(&DRAG_LEFT_HELD),
+            Btn::Right => Some(&DRAG_RIGHT_HELD),
+            Btn::Mid => Some(&DRAG_MID_HELD),
+            Btn::Backward => Some(&DRAG_BACKWARD_HELD),
+            Btn::Forward => Some(&DRAG_FORWARD_HELD),
+        };
+        if let Some(f) = flag {
+            f.store(is_click, Ordering::Release);
+            if is_click {
+                DRAG_CLICK_STATE.store(click_count, Ordering::Release);
+            }
+        }
+        log::debug!(
+            "drag-assist: button_action btn={btn:?} is_click={is_click} click_count={click_count}"
+        );
         Ok(())
     }
 
@@ -1475,6 +1538,20 @@ impl KbdOut {
 
     fn make_event_source() -> Result<CGEventSource, Error> {
         CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
+            .map_err(|_| Error::other("failed to create core graphics event source"))
+    }
+
+    /// Like `make_event_source` but reports `HIDSystemState` as the event's
+    /// source state — the same state real hardware events carry. Some apps
+    /// distinguish "real" from "synthetic" input by this field: notably
+    /// BetterTouchTool's window-snap detection only arms when a mouse-down
+    /// looks like a genuine hardware drag gesture. A `CombinedSessionState`
+    /// (ID 0) source marks the event as synthetic and BTT never treats it as
+    /// a drag start; `HIDSystemState` (ID 1) makes the synthesized button
+    /// indistinguishable from a physical click for those consumers. Used only
+    /// for mouse buttons — keyboard events keep the combined-session source.
+    fn make_event_source_hid() -> Result<CGEventSource, Error> {
+        CGEventSource::new(CGEventSourceStateID::HIDSystemState)
             .map_err(|_| Error::other("failed to create core graphics event source"))
     }
     /// Creates a core graphics event.
@@ -1680,6 +1757,67 @@ pub fn start_mouse_listener(
                             | CGEventType::RightMouseDragged
                             | CGEventType::OtherMouseDragged
                     ) {
+                        // Drag-assist: if a kanata-driven button is held,
+                        // rewrite this physical MouseMoved *in place* into the
+                        // matching Dragged event, then pass that single event
+                        // through.
+                        //
+                        // The earlier approach posted a *separate* synthesized
+                        // Dragged and still forwarded the bare MouseMoved. That
+                        // works in native AppKit (its drag loop only consumes
+                        // Dragged/Up and ignores the stray Moved) but breaks in
+                        // Chromium/Electron: blink translates each NSEvent
+                        // independently, so an interleaved no-button MouseMoved
+                        // between Dragged events reads as the button bouncing
+                        // up→down and shatters a fine drag into repeated clicks
+                        // (the "連続発火" symptom). Emitting exactly one event
+                        // per physical move, already typed as Dragged, gives
+                        // both stacks the clean Dragged-only stream a drag
+                        // expects.
+                        //
+                        // Rewriting in place (vs new_mouse_event) also preserves
+                        // the physical event's deltaX/deltaY, pressure, etc. — a
+                        // freshly synthesized event carries no deltas, which some
+                        // drag handlers rely on. WindowServer does not
+                        // auto-promote MouseMoved → Dragged across event sources,
+                        // so we do the promotion ourselves.
+                        if matches!(event_type, CGEventType::MouseMoved) {
+                            // (Dragged type, MOUSE_EVENT_BUTTON_NUMBER override).
+                            // CGEvent button numbers are 0-indexed: Left=0,
+                            // Right=1, Mid=2, Backward=3, Forward=4. Side buttons
+                            // ride on OtherMouseDragged with the number
+                            // overridden, mirroring the path in `button_action`.
+                            let drag_target = if DRAG_LEFT_HELD.load(Ordering::Acquire) {
+                                Some((CGEventType::LeftMouseDragged, 0i64))
+                            } else if DRAG_RIGHT_HELD.load(Ordering::Acquire) {
+                                Some((CGEventType::RightMouseDragged, 1i64))
+                            } else if DRAG_MID_HELD.load(Ordering::Acquire) {
+                                Some((CGEventType::OtherMouseDragged, 2i64))
+                            } else if DRAG_BACKWARD_HELD.load(Ordering::Acquire) {
+                                Some((CGEventType::OtherMouseDragged, 3i64))
+                            } else if DRAG_FORWARD_HELD.load(Ordering::Acquire) {
+                                Some((CGEventType::OtherMouseDragged, 4i64))
+                            } else {
+                                None
+                            };
+                            if let Some((dtype, dnumber)) = drag_target {
+                                event.set_type(dtype);
+                                event.set_integer_value_field(
+                                    EventField::MOUSE_EVENT_BUTTON_NUMBER,
+                                    dnumber,
+                                );
+                                event.set_integer_value_field(
+                                    EventField::MOUSE_EVENT_CLICK_STATE,
+                                    DRAG_CLICK_STATE.load(Ordering::Acquire),
+                                );
+                                log::trace!(
+                                    "drag-assist: rewrite MouseMoved -> Dragged button={dnumber} pos=({:.0},{:.0})",
+                                    event.location().x,
+                                    event.location().y
+                                );
+                            }
+                        }
+
                         // The Arc is stashed before this tap is created, so
                         // `get()` is `Some` in practice. Fall back to a plain
                         // pass-through if not, rather than panicking on the
