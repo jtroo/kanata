@@ -35,7 +35,7 @@ use std::fmt;
 use std::io;
 use std::io::Error;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::mpsc::SyncSender as Sender;
 use std::time::{Duration, Instant};
 
@@ -51,10 +51,39 @@ static DRAG_RIGHT_HELD: AtomicBool = AtomicBool::new(false);
 static DRAG_MID_HELD: AtomicBool = AtomicBool::new(false);
 static DRAG_BACKWARD_HELD: AtomicBool = AtomicBool::new(false);
 static DRAG_FORWARD_HELD: AtomicBool = AtomicBool::new(false);
-/// Last clickState stamped on a kanata-synthesized button down, reused on
-/// every drag-assist Dragged event so WindowServer keeps the gesture in the
-/// same click sequence (single drag, double-click drag, …).
-static DRAG_CLICK_STATE: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(1);
+/// Per-button click count stamped on a kanata-synthesized button down, reused
+/// on every drag-assist Dragged event so WindowServer keeps the gesture in the
+/// same click sequence (single drag, double-click drag, …) until the drag
+/// travels far enough to cancel the click (see `DRAG_ORIGIN_*`). Indexed by
+/// button so simultaneously-held buttons do not share state.
+static DRAG_CLICK_STATE: [AtomicI64; BUTTON_INDEX_COUNT] =
+    [const { AtomicI64::new(1) }; BUTTON_INDEX_COUNT];
+/// Per-button cursor position captured at the start of a fallback drag gesture.
+/// The mouse-event-tap measures travel from here and drops the synthesized
+/// clickState to 0 once it exceeds `DRAG_CLICK_CANCEL_PX`, mirroring macOS's
+/// own click-cancellation on the HID path (measured to fire after ~8 px).
+/// Without this a fallback drag keeps clickState ≥ 1 forever, so apps that
+/// separate a click from a drag by clickCount see a click — the bug #2061
+/// opens with.
+static DRAG_ORIGIN_X: [AtomicI64; BUTTON_INDEX_COUNT] =
+    [const { AtomicI64::new(0) }; BUTTON_INDEX_COUNT];
+static DRAG_ORIGIN_Y: [AtomicI64; BUTTON_INDEX_COUNT] =
+    [const { AtomicI64::new(0) }; BUTTON_INDEX_COUNT];
+/// Per-button flag, false until `DRAG_ORIGIN_*` has been captured for the
+/// current gesture. Reset on every button press so each gesture measures from
+/// its own start.
+static DRAG_ORIGIN_CAPTURED: [AtomicBool; BUTTON_INDEX_COUNT] =
+    [const { AtomicBool::new(false) }; BUTTON_INDEX_COUNT];
+/// Per-button flag, set by the tap once a drag passes `DRAG_CLICK_CANCEL_PX`,
+/// so the fallback MouseUp in `button_action` also reports clickState 0 — the
+/// HID path cancels the click on both the drag *and* the release, and reading
+/// clickCount on mouse-up is how some apps classify a click vs a drag. Reset on
+/// press.
+static DRAG_CANCELLED: [AtomicBool; BUTTON_INDEX_COUNT] =
+    [const { AtomicBool::new(false) }; BUTTON_INDEX_COUNT];
+/// Pointer travel (px, per axis) after which a fallback drag stops carrying
+/// the press's click count. Matches the ~8 px HID cancellation window.
+const DRAG_CLICK_CANCEL_PX: f64 = 8.0;
 
 /// Mouse `OsCode`s that, when present in `MAPPED_KEYS`, justify installing the
 /// CGEventTap. Used both as the startup/reload install gate and as the set of
@@ -1452,6 +1481,10 @@ impl KbdOut {
             };
             flag.store(is_click, Ordering::Release);
             self.button_path[index] = is_click.then_some(ButtonPath::Hid);
+            if is_click {
+                DRAG_ORIGIN_CAPTURED[index].store(false, Ordering::Release);
+                DRAG_CANCELLED[index].store(false, Ordering::Release);
+            }
             log::debug!("pointing button: btn={btn:?} hid_button={hid_button} is_click={is_click}");
             return Ok(());
         }
@@ -1530,7 +1563,16 @@ impl KbdOut {
         if is_click {
             self.click_state[index] = self.next_click_state(index, mouse_position);
         }
-        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, self.click_state[index]);
+        // On release, if the drag traveled past the cancel threshold, report
+        // clickState 0 to match the HID path (whose MouseUp also cancels the
+        // click after ~8 px); a normal click / multi-click release keeps its
+        // press count so double/triple clicks still register on mouse-up.
+        let click_state = if !is_click && DRAG_CANCELLED[index].load(Ordering::Acquire) {
+            0
+        } else {
+            self.click_state[index]
+        };
+        event.set_integer_value_field(EventField::MOUSE_EVENT_CLICK_STATE, click_state);
 
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
@@ -1550,7 +1592,11 @@ impl KbdOut {
         if let Some(f) = flag {
             f.store(is_click, Ordering::Release);
             if is_click {
-                DRAG_CLICK_STATE.store(self.click_state[index], Ordering::Release);
+                DRAG_CLICK_STATE[index].store(self.click_state[index], Ordering::Release);
+                // Start measuring drag travel from this press for click
+                // cancellation in the tap (see DRAG_ORIGIN_*).
+                DRAG_ORIGIN_CAPTURED[index].store(false, Ordering::Release);
+                DRAG_CANCELLED[index].store(false, Ordering::Release);
             }
         }
         log::debug!(
@@ -1932,14 +1978,40 @@ pub fn start_mouse_listener(
                                     EventField::MOUSE_EVENT_BUTTON_NUMBER,
                                     dnumber,
                                 );
+                                // Cancel the click once the drag has traveled
+                                // far enough, mirroring the HID path where macOS
+                                // drops clickState to 0 after ~8 px. Until then
+                                // the press's count rides along so a barely-moved
+                                // (multi-)click still registers. Without the
+                                // zeroing, a fallback drag keeps clickState ≥ 1
+                                // for its whole length and an app that separates
+                                // a click from a drag by clickCount sees a click.
+                                // Latch DRAG_CANCELLED so the matching MouseUp
+                                // (emitted from button_action) also reports 0.
+                                let bi = dnumber as usize;
+                                let loc = event.location();
+                                if !DRAG_ORIGIN_CAPTURED[bi].swap(true, Ordering::AcqRel) {
+                                    DRAG_ORIGIN_X[bi].store(loc.x as i64, Ordering::Release);
+                                    DRAG_ORIGIN_Y[bi].store(loc.y as i64, Ordering::Release);
+                                }
+                                let dx = loc.x - DRAG_ORIGIN_X[bi].load(Ordering::Acquire) as f64;
+                                let dy = loc.y - DRAG_ORIGIN_Y[bi].load(Ordering::Acquire) as f64;
+                                let click_state = if dx.abs() > DRAG_CLICK_CANCEL_PX
+                                    || dy.abs() > DRAG_CLICK_CANCEL_PX
+                                {
+                                    DRAG_CANCELLED[bi].store(true, Ordering::Release);
+                                    0
+                                } else {
+                                    DRAG_CLICK_STATE[bi].load(Ordering::Acquire)
+                                };
                                 event.set_integer_value_field(
                                     EventField::MOUSE_EVENT_CLICK_STATE,
-                                    DRAG_CLICK_STATE.load(Ordering::Acquire),
+                                    click_state,
                                 );
                                 log::trace!(
-                                    "drag-assist: rewrite MouseMoved -> Dragged button={dnumber} pos=({:.0},{:.0})",
-                                    event.location().x,
-                                    event.location().y
+                                    "drag-assist: rewrite MouseMoved -> Dragged button={dnumber} click_state={click_state} pos=({:.0},{:.0})",
+                                    loc.x,
+                                    loc.y
                                 );
                             }
                         }
