@@ -1149,6 +1149,24 @@ pub struct KbdOut {
     /// `kCGMouseEventClickState` so WindowServer recognizes double/triple clicks.
     /// Tracked per-button.
     last_click: HashMap<Btn, (Instant, i64)>,
+    /// Output path latched at press time per button index, so a release always
+    /// goes out the mechanism its press used even if the pointing sink's
+    /// readiness changed while the button was held.
+    button_path: [Option<ButtonPath>; BUTTON_INDEX_COUNT],
+}
+
+/// Number of distinct mouse buttons kanata can synthesize.
+const BUTTON_INDEX_COUNT: usize = 5;
+
+/// Which output mechanism a mouse button press used. Latched per button at
+/// press time so the matching release is emitted the same way — mixing the two
+/// strands the button (a HID button never released, or a CGEvent up for a
+/// button the virtual device never pressed).
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+#[derive(Clone, Copy)]
+enum ButtonPath {
+    Hid,
+    CgEvent,
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -1180,6 +1198,7 @@ impl KbdOut {
             output_pressed_since: HashMap::default(),
             caps_lock_state: get_hid_caps_lock_state(),
             last_click: HashMap::default(),
+            button_path: [None; BUTTON_INDEX_COUNT],
         })
     }
 
@@ -1366,6 +1385,22 @@ impl KbdOut {
     /// [1]: https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)
     /// [2]: https://developer.apple.com/documentation/coregraphics/cgevent/setintegervaluefield(_:value:)
     fn button_action(&mut self, btn: Btn, is_click: bool) -> Result<(), io::Error> {
+        let index = Self::button_index(btn);
+
+        // Latch the output path at press time so a release always leaves the
+        // same way its press did. `is_pointing_ready()` is read per event, so
+        // without this a press taken on one path and a release taken on the
+        // other (the sink dropping — or coming back — mid-hold) strands the
+        // button: a HID button that never gets released, or a CGEvent up for a
+        // button the virtual device never pressed. A release with no recorded
+        // press falls back to current readiness rather than guessing.
+        let use_hid = if is_click {
+            is_pointing_ready()
+        } else {
+            self.button_path[index]
+                .map_or_else(is_pointing_ready, |path| matches!(path, ButtonPath::Hid))
+        };
+
         // Preferred path: inject the button through the Karabiner
         // VirtualHIDDevice pointing device so it is a *real* HID event.
         // CGEvent-synthesized buttons — even with an HID-system source state —
@@ -1379,7 +1414,7 @@ impl KbdOut {
         // We still keep the DRAG_*_HELD flags in sync (below) so the CGEvent
         // drag-assist path remains a fallback if WindowServer ever delivers a
         // bare MouseMoved instead of a Dragged while the button is held.
-        if is_pointing_ready() {
+        if use_hid {
             // HID button numbers are 1-indexed: 1=L, 2=R, 3=Mid, 4=Back, 5=Fwd.
             let hid_button: u8 = match btn {
                 Btn::Left => 1,
@@ -1401,6 +1436,7 @@ impl KbdOut {
                 Btn::Forward => &DRAG_FORWARD_HELD,
             };
             flag.store(is_click, Ordering::Release);
+            self.button_path[index] = is_click.then_some(ButtonPath::Hid);
             log::debug!("pointing button: btn={btn:?} hid_button={hid_button} is_click={is_click}");
             return Ok(());
         }
@@ -1491,6 +1527,8 @@ impl KbdOut {
         // Mouse control only seems to work with CGEventTapLocation::HID.
         event.post(CGEventTapLocation::HID);
 
+        self.button_path[index] = is_click.then_some(ButtonPath::CgEvent);
+
         // Drag-assist (Plan G): keep a flag so the mouse-event-tap can
         // synthesize Dragged events on physical trackpad movement while
         // a kanata-driven button is held.
@@ -1511,6 +1549,16 @@ impl KbdOut {
             "drag-assist: button_action btn={btn:?} is_click={is_click} click_count={click_count}"
         );
         Ok(())
+    }
+
+    fn button_index(btn: Btn) -> usize {
+        match btn {
+            Btn::Left => 0,
+            Btn::Right => 1,
+            Btn::Mid => 2,
+            Btn::Backward => 3,
+            Btn::Forward => 4,
+        }
     }
 
     pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
