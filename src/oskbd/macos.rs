@@ -1366,6 +1366,46 @@ impl KbdOut {
     /// [1]: https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)
     /// [2]: https://developer.apple.com/documentation/coregraphics/cgevent/setintegervaluefield(_:value:)
     fn button_action(&mut self, btn: Btn, is_click: bool) -> Result<(), io::Error> {
+        // Preferred path: inject the button through the Karabiner
+        // VirtualHIDDevice pointing device so it is a *real* HID event.
+        // CGEvent-synthesized buttons — even with an HID-system source state —
+        // are invisible to consumers that read below the CGEvent layer, notably
+        // BetterTouchTool's window-snap detection, which only arms for genuine
+        // HID pointing input (confirmed: a physical mouse/trackpad triggers it,
+        // a CGEvent-synthesized click does not). A real HID button held during
+        // physical trackpad motion makes WindowServer emit a true drag, so this
+        // is what lets BTT snap areas react to kanata drags.
+        //
+        // We still keep the DRAG_*_HELD flags in sync (below) so the CGEvent
+        // drag-assist path remains a fallback if WindowServer ever delivers a
+        // bare MouseMoved instead of a Dragged while the button is held.
+        if is_pointing_ready() {
+            // HID button numbers are 1-indexed: 1=L, 2=R, 3=Mid, 4=Back, 5=Fwd.
+            let hid_button: u8 = match btn {
+                Btn::Left => 1,
+                Btn::Right => 2,
+                Btn::Mid => 3,
+                Btn::Backward => 4,
+                Btn::Forward => 5,
+            };
+            if is_click {
+                pointing_button_press(hid_button);
+            } else {
+                pointing_button_release(hid_button);
+            }
+            let flag = match btn {
+                Btn::Left => &DRAG_LEFT_HELD,
+                Btn::Right => &DRAG_RIGHT_HELD,
+                Btn::Mid => &DRAG_MID_HELD,
+                Btn::Backward => &DRAG_BACKWARD_HELD,
+                Btn::Forward => &DRAG_FORWARD_HELD,
+            };
+            flag.store(is_click, Ordering::Release);
+            log::debug!("pointing button: btn={btn:?} hid_button={hid_button} is_click={is_click}");
+            return Ok(());
+        }
+
+        // Fallback: pointing sink not ready — synthesize via CGEvent.
         // (event_type, placeholder_button, real_button_number_override)
         let (event_type, button, button_number) = match btn {
             Btn::Left => (
