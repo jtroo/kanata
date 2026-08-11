@@ -1730,15 +1730,18 @@ pub fn start_mouse_listener(
          the previously stashed Arc would be silently kept"
     );
 
+    // Always install the tap. Upstream gates installation on whether
+    // defsrc maps mouse keys (or a mouse-movement-key is configured),
+    // but this fork also uses the tap to translate physical MouseMoved
+    // into MouseDragged while a kanata-synthesized button is held —
+    // that path needs the tap regardless of input-side mapping. We
+    // still compute the upstream conditions so the install reason is
+    // visible in logs.
     let has_mouse_keys = MOUSE_OSCODES.iter().any(|c| mapped_keys.contains(c));
     let has_movement_key = mouse_movement_key.lock().is_some();
-    if !has_mouse_keys && !has_movement_key {
-        log::info!(
-            "No mouse buttons/wheel in defsrc and no mouse-movement-key configured. \
-             Not installing mouse event tap."
-        );
-        return None;
-    }
+    log::info!(
+        "Installing mouse event tap (mouse_keys={has_mouse_keys}, movement_key={has_movement_key}, drag_assist=always)"
+    );
 
     // Claim the install slot atomically *before* spawning. Closes the race
     // where a live reload could observe `MOUSE_TAP_INSTALLED == false` between
