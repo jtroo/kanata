@@ -107,6 +107,68 @@ fn sizeof_action_is_two_usizes() {
 }
 
 #[test]
+fn emits_mouse_buttons_detects_in_layer_actions() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    // A mouse button output (`mlft`/`mrgt`/… and `-tap` forms) should flip the
+    // flag, plain or nested inside another action, including inside a macro
+    // (stored as a Sequence, which the flag catches at parse time).
+    for (name, action) in [
+        ("plain", "mlft"),
+        ("tap-variant", "mltp"),
+        ("multi", "(multi a mlft)"),
+        ("tap-hold", "(tap-hold 200 200 a mlft)"),
+        ("fork", "(fork a mmid (lctl))"),
+        ("macro", "(macro mlft)"),
+    ] {
+        let src = format!("(defsrc a)\n(deflayer base {action})");
+        let cfg = new_from_str(&src, HashMap::default())
+            .unwrap_or_else(|e| panic!("{name} config should parse: {e:?}"));
+        assert!(
+            cfg.emits_mouse_buttons,
+            "{name}: expected emits_mouse_buttons = true"
+        );
+    }
+}
+
+#[test]
+fn emits_mouse_buttons_detects_outside_layers() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    // The mouse button lives only in a virtual key, not on any layer key.
+    let vkey = "(defsrc a)\n(deflayer base (on-press-fakekey mymouse press))\n\
+                (defvirtualkeys mymouse mlft)";
+    // The mouse button lives only in an alias used solely as the on-load action.
+    let on_load = "(defcfg alias-to-trigger-on-load startmouse)\n(defsrc a)\n\
+                   (deflayer base a)\n(defalias startmouse mlft)";
+    for (name, src) in [("virtual-key", vkey), ("on-load-alias", on_load)] {
+        let cfg = new_from_str(src, HashMap::default())
+            .unwrap_or_else(|e| panic!("{name} config should parse: {e:?}"));
+        assert!(
+            cfg.emits_mouse_buttons,
+            "{name}: expected emits_mouse_buttons = true"
+        );
+    }
+}
+
+#[test]
+fn emits_mouse_buttons_false_without_mouse_button_output() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    // Plain keys, mouse *wheel* and mouse *movement* are not mouse buttons.
+    for (name, action) in [
+        ("plain-key", "b"),
+        ("mwheel", "(mwheel-up 50 120)"),
+        ("movemouse", "(movemouse-up 1 1)"),
+    ] {
+        let src = format!("(defsrc a)\n(deflayer base {action})");
+        let cfg = new_from_str(&src, HashMap::default())
+            .unwrap_or_else(|e| panic!("{name} config should parse: {e:?}"));
+        assert!(
+            !cfg.emits_mouse_buttons,
+            "{name}: expected emits_mouse_buttons = false"
+        );
+    }
+}
+
+#[test]
 fn test_span_absolute_ranges() {
     let s = "(hello world my oyster)\n(row two)";
     let tlevel = parse(s, "test").unwrap();

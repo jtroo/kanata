@@ -122,6 +122,12 @@ static MOUSE_TAP_INSTALLED: AtomicBool = AtomicBool::new(false);
 /// path updates, so changes take effect with no extra plumbing.
 static MOUSE_MOVEMENT_KEY: OnceLock<std::sync::Arc<parking_lot::Mutex<Option<OsCode>>>> =
     OnceLock::new();
+/// Whether the loaded config outputs mouse buttons. Part of the tap install
+/// gate: drag-assist needs the tap whenever a config *emits* mouse buttons,
+/// even with no mouse input mapped. Stashed here (like `MOUSE_MOVEMENT_KEY`) so
+/// the reload hook can re-gate, and read live so a reload that starts emitting
+/// mouse buttons installs the tap.
+static MOUSE_EMITS_BUTTONS: OnceLock<std::sync::Arc<parking_lot::Mutex<bool>>> = OnceLock::new();
 
 // --- Karabiner startup-abort diagnostics ---
 //
@@ -1853,15 +1859,17 @@ pub fn start_mouse_listener(
     tx: Sender<KeyEvent>,
     mapped_keys: &MappedKeys,
     mouse_movement_key: std::sync::Arc<parking_lot::Mutex<Option<OsCode>>>,
+    emits_mouse_buttons: std::sync::Arc<parking_lot::Mutex<bool>>,
 ) -> Option<std::thread::JoinHandle<()>> {
-    // Stash both unconditionally so the reload helper always has them, even
+    // Stash all three unconditionally so the reload helper always has them, even
     // if this initial call bails on the install gate. `OnceLock::set` is a
     // no-op on subsequent calls — we rely on the single-process,
-    // single-Kanata assumption: the inner `parking_lot::Mutex` is shared with
+    // single-Kanata assumption: the inner `parking_lot::Mutex`es are shared with
     // `do_live_reload`, so reloads mutate the *value*, never replace the
     // Arc. The `debug_assert!` surfaces accidental violations in test builds.
     let tx_was_unset = MOUSE_TAP_TX.set(tx.clone()).is_ok();
     let _ = MOUSE_MOVEMENT_KEY.set(mouse_movement_key.clone());
+    let _ = MOUSE_EMITS_BUTTONS.set(emits_mouse_buttons.clone());
     debug_assert!(
         tx_was_unset
             || std::sync::Arc::ptr_eq(
@@ -1874,17 +1882,25 @@ pub fn start_mouse_listener(
          the previously stashed Arc would be silently kept"
     );
 
-    // Always install the tap. Upstream gates installation on whether
-    // defsrc maps mouse keys (or a mouse-movement-key is configured),
-    // but this fork also uses the tap to translate physical MouseMoved
-    // into MouseDragged while a kanata-synthesized button is held —
-    // that path needs the tap regardless of input-side mapping. We
-    // still compute the upstream conditions so the install reason is
-    // visible in logs.
+    // Install the tap when the config uses the mouse in any way the tap serves:
+    //   - mouse keys mapped in defsrc, or a mouse-movement-key   (upstream gate)
+    //   - the config *outputs* mouse buttons                     (drag-assist)
+    // The drag-assist path rewrites physical MouseMoved into MouseDragged while
+    // a kanata-synthesized button is held, so it needs the tap even when no
+    // mouse input is mapped. A config that uses none of these never creates the
+    // tap, so it never triggers the Accessibility / Input Monitoring prompt —
+    // requesting the permission only when the feature is actually used.
     let has_mouse_keys = MOUSE_OSCODES.iter().any(|c| mapped_keys.contains(c));
     let has_movement_key = mouse_movement_key.lock().is_some();
+    let emits_buttons = *emits_mouse_buttons.lock();
+    if !(has_mouse_keys || has_movement_key || emits_buttons) {
+        log::info!(
+            "not installing mouse event tap (mouse_keys=false, movement_key=false, emits_buttons=false)"
+        );
+        return None;
+    }
     log::info!(
-        "Installing mouse event tap (mouse_keys={has_mouse_keys}, movement_key={has_movement_key}, drag_assist=always)"
+        "Installing mouse event tap (mouse_keys={has_mouse_keys}, movement_key={has_movement_key}, emits_buttons={emits_buttons})"
     );
 
     // Claim the install slot atomically *before* spawning. Closes the race
@@ -2154,14 +2170,15 @@ pub fn start_mouse_listener(
 }
 
 /// Re-attempt installing the mouse event tap after a live reload. The running
-/// tap callback already reads `MAPPED_KEYS` and `MOUSE_MOVEMENT_KEY` live, so
-/// if the tap is already up there is nothing to do — but if a reload introduces
-/// the first mouse key in defsrc or the first `mouse-movement-key` value, the
-/// startup-time install gate may have skipped installation, and we need to
-/// install now.
+/// tap callback already reads `MAPPED_KEYS`, `MOUSE_MOVEMENT_KEY` and
+/// `MOUSE_EMITS_BUTTONS` live, so if the tap is already up there is nothing to
+/// do — but if a reload introduces the first mouse key in defsrc, the first
+/// `mouse-movement-key`, or the first mouse-button *output*, the startup-time
+/// install gate may have skipped installation, and we need to install now.
 pub fn ensure_mouse_listener_installed_after_reload() {
     if MOUSE_TAP_INSTALLED.load(Ordering::Acquire) {
-        // Existing tap reads both MAPPED_KEYS and MOUSE_MOVEMENT_KEY live.
+        // Existing tap reads MAPPED_KEYS, MOUSE_MOVEMENT_KEY and
+        // MOUSE_EMITS_BUTTONS live.
         return;
     }
     let Some(tx) = MOUSE_TAP_TX.get().cloned() else {
@@ -2172,6 +2189,10 @@ pub fn ensure_mouse_listener_installed_after_reload() {
         log::debug!("mouse tap reload hook: no mouse_movement_key stashed yet, skipping");
         return;
     };
+    let Some(emb) = MOUSE_EMITS_BUTTONS.get().cloned() else {
+        log::debug!("mouse tap reload hook: no emits_mouse_buttons stashed yet, skipping");
+        return;
+    };
     let mapped = crate::kanata::MAPPED_KEYS.lock();
-    let _ = start_mouse_listener(tx, &mapped, mmk);
+    let _ = start_mouse_listener(tx, &mapped, mmk, emb);
 }
