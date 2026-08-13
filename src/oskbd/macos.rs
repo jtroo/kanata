@@ -58,22 +58,18 @@ static DRAG_FORWARD_HELD: AtomicBool = AtomicBool::new(false);
 /// button so simultaneously-held buttons do not share state.
 static DRAG_CLICK_STATE: [AtomicI64; BUTTON_INDEX_COUNT] =
     [const { AtomicI64::new(1) }; BUTTON_INDEX_COUNT];
-/// Per-button cursor position captured at the start of a fallback drag gesture.
+/// Per-button cursor position captured at button press in `button_action`.
 /// The mouse-event-tap measures travel from here and drops the synthesized
 /// clickState to 0 once it exceeds `DRAG_CLICK_CANCEL_PX`, mirroring macOS's
 /// own click-cancellation on the HID path (measured to fire after ~8 px).
 /// Without this a fallback drag keeps clickState ≥ 1 forever, so apps that
 /// separate a click from a drag by clickCount see a click — the bug #2061
-/// opens with.
+/// opens with. Capturing at the press (rather than the first `MouseMoved`)
+/// counts the first delta, so a fast flick does not understate its own travel.
 static DRAG_ORIGIN_X: [AtomicI64; BUTTON_INDEX_COUNT] =
     [const { AtomicI64::new(0) }; BUTTON_INDEX_COUNT];
 static DRAG_ORIGIN_Y: [AtomicI64; BUTTON_INDEX_COUNT] =
     [const { AtomicI64::new(0) }; BUTTON_INDEX_COUNT];
-/// Per-button flag, false until `DRAG_ORIGIN_*` has been captured for the
-/// current gesture. Reset on every button press so each gesture measures from
-/// its own start.
-static DRAG_ORIGIN_CAPTURED: [AtomicBool; BUTTON_INDEX_COUNT] =
-    [const { AtomicBool::new(false) }; BUTTON_INDEX_COUNT];
 /// Per-button flag, set by the tap once a drag passes `DRAG_CLICK_CANCEL_PX`,
 /// so the fallback MouseUp in `button_action` also reports clickState 0 — the
 /// HID path cancels the click on both the drag *and* the release, and reading
@@ -1492,9 +1488,15 @@ impl KbdOut {
                 // press. Reuses the same-button / interval / slop rule as the
                 // CGEvent path.
                 if let Ok(event) = Self::make_event() {
-                    self.click_state[index] = self.next_click_state(index, event.location());
+                    let pos = event.location();
+                    self.click_state[index] = self.next_click_state(index, pos);
+                    // Measure drag travel from this press for click cancellation
+                    // in the tap (see DRAG_ORIGIN_*). Best-effort on this path:
+                    // if the position is unavailable the origin keeps its prior
+                    // value, same as the click-state update above.
+                    DRAG_ORIGIN_X[index].store(pos.x as i64, Ordering::Release);
+                    DRAG_ORIGIN_Y[index].store(pos.y as i64, Ordering::Release);
                 }
-                DRAG_ORIGIN_CAPTURED[index].store(false, Ordering::Release);
                 DRAG_CANCELLED[index].store(false, Ordering::Release);
             }
             log::debug!("pointing button: btn={btn:?} hid_button={hid_button} is_click={is_click}");
@@ -1605,9 +1607,10 @@ impl KbdOut {
             f.store(is_click, Ordering::Release);
             if is_click {
                 DRAG_CLICK_STATE[index].store(self.click_state[index], Ordering::Release);
-                // Start measuring drag travel from this press for click
+                // Measure drag travel from this press position for click
                 // cancellation in the tap (see DRAG_ORIGIN_*).
-                DRAG_ORIGIN_CAPTURED[index].store(false, Ordering::Release);
+                DRAG_ORIGIN_X[index].store(mouse_position.x as i64, Ordering::Release);
+                DRAG_ORIGIN_Y[index].store(mouse_position.y as i64, Ordering::Release);
                 DRAG_CANCELLED[index].store(false, Ordering::Release);
             }
         }
@@ -2000,15 +2003,23 @@ pub fn start_mouse_listener(
                                 // a click from a drag by clickCount sees a click.
                                 // Latch DRAG_CANCELLED so the matching MouseUp
                                 // (emitted from button_action) also reports 0.
+                                //
+                                // Travel is absolute displacement from the press
+                                // origin, which is not monotonic: a drag that
+                                // wanders back toward its start measures short
+                                // again. Read the latch first so cancellation is
+                                // one-way for the rest of the gesture — real
+                                // hardware never revives a click count mid-drag,
+                                // and an app that already classified the gesture
+                                // as a drag must not see it turn back into a
+                                // click.
                                 let bi = dnumber as usize;
                                 let loc = event.location();
-                                if !DRAG_ORIGIN_CAPTURED[bi].swap(true, Ordering::AcqRel) {
-                                    DRAG_ORIGIN_X[bi].store(loc.x as i64, Ordering::Release);
-                                    DRAG_ORIGIN_Y[bi].store(loc.y as i64, Ordering::Release);
-                                }
                                 let dx = loc.x - DRAG_ORIGIN_X[bi].load(Ordering::Acquire) as f64;
                                 let dy = loc.y - DRAG_ORIGIN_Y[bi].load(Ordering::Acquire) as f64;
-                                let click_state = if dx.abs() > DRAG_CLICK_CANCEL_PX
+                                let click_state = if DRAG_CANCELLED[bi].load(Ordering::Acquire) {
+                                    0
+                                } else if dx.abs() > DRAG_CLICK_CANCEL_PX
                                     || dy.abs() > DRAG_CLICK_CANCEL_PX
                                 {
                                     DRAG_CANCELLED[bi].store(true, Ordering::Release);
