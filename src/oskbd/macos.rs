@@ -1894,8 +1894,10 @@ pub fn start_mouse_listener(
     let has_movement_key = mouse_movement_key.lock().is_some();
     let emits_buttons = *emits_mouse_buttons.lock();
     if !(has_mouse_keys || has_movement_key || emits_buttons) {
+        // Interpolate the same variables as the install branch below (all false
+        // here) so the line cannot go stale if the gate condition grows.
         log::info!(
-            "not installing mouse event tap (mouse_keys=false, movement_key=false, emits_buttons=false)"
+            "not installing mouse event tap (mouse_keys={has_mouse_keys}, movement_key={has_movement_key}, emits_buttons={emits_buttons})"
         );
         return None;
     }
