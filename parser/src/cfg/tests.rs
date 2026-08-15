@@ -1342,6 +1342,37 @@ new 316
 }
 
 #[test]
+fn deflocalkeys_non_applicable_variant_consumes_value() {
+    // Regression: a non-applicable deflocalkeys-* variant must still consume
+    // each key's paired value. Previously the non-applicable branch did
+    // `insert` + `continue` without advancing the iterator, so a value that
+    // collided with a later key name was read back as a key and tripped a
+    // spurious "Duplicate" error — a config valid on its target OS failed to
+    // parse on every other OS.
+    let non_applicable = DEFLOCALKEYS_VARIANTS
+        .iter()
+        .copied()
+        .find(|v| !deflocalkeys_variant_applies_to_current_os(v))
+        .expect("there are multiple variants, so at least one is non-applicable");
+
+    // The value `2` for key `1` collides with the next declared key `2`.
+    // On the variant's target OS this maps 1->2, 2->3 and parses fine; on
+    // every other OS it must parse fine too, not error with "Duplicate 2".
+    let source = format!(
+        r#"({non_applicable}
+  1 2
+  2 3
+)
+(defsrc 1 2)
+(deflayer base a b)
+"#
+    );
+    parse_cfg(&source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("non-applicable deflocalkeys variant must not spuriously reject");
+}
+
+#[test]
 fn use_default_overridable_mappings() {
     let source = r#"
 (defsrc + [  ]  a  b  /  ;  `  =  -  '  ,  .  9  yen ¥  )
