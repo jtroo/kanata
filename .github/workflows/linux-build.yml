@@ -2,7 +2,6 @@ name: linux-build
 
 on:
   workflow_dispatch:
-    branches: [ "main" ]
   workflow_call:
 
 env:

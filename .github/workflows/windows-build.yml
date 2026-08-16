@@ -2,7 +2,6 @@ name: windows-build
 
 on:
   workflow_dispatch:
-    branches: [ "main" ]
   workflow_call:
 
 env:
