@@ -127,7 +127,7 @@ pub(crate) fn collect_strings(params: &[SExpr], strings: &mut Vec<String>, s: &P
 
 #[test]
 pub(crate) fn test_collect_strings() {
-    let params = r#"(gah (squish "squash" (splish splosh) "bah mah") dah)"#;
+    let params = r##"(gah (squish "squash" (splish r#"splosh"#) "bah mah") dah)"##;
     let params = sexpr::parse(params, "noexist").unwrap();
     let mut strings = vec![];
     collect_strings(&params[0].t, &mut strings, &ParserState::default());
