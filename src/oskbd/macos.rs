@@ -17,7 +17,7 @@ use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopCommonModes};
 use core_foundation::string::{CFString, CFStringRef};
 use core_graphics::base::CGFloat;
-use core_graphics::display::{CGDisplay, CGPoint};
+use core_graphics::display::{CGDisplay, CGPoint, CGRect};
 use core_graphics::event::{
     CGEvent, CGEventTap, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventType,
     CGMouseButton, EventField,
@@ -37,7 +37,7 @@ use std::io::Error;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::SyncSender as Sender;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Mouse `OsCode`s that, when present in `MAPPED_KEYS`, justify installing the
 /// CGEventTap. Used both as the startup/reload install gate and as the set of
@@ -1128,6 +1128,43 @@ fn set_hid_caps_lock_state(state: bool) -> io::Result<()> {
 pub struct KbdOut {
     output_pressed_since: HashMap<OsCode, Instant>,
     caps_lock_state: Option<bool>,
+    /// Where the last synthesized mouse event drove the cursor, and when.
+    ///
+    /// `CGEvent::location` reports where the OS cursor *currently is*, which
+    /// lags behind the move events kanata has already posted. Deriving every
+    /// move from it recomputes nearly the same target and drops the distance
+    /// in between (#2133), so while kanata is driving the cursor the position
+    /// it last posted is kept as the origin of the next move instead.
+    driven_mouse_position: Option<(CGPoint, SystemTime)>,
+}
+
+/// How long the position last posted by kanata stays the origin of new
+/// synthesized mouse events. Move actions post at millisecond intervals, so
+/// an entry this fresh means kanata is still driving the cursor; anything
+/// older falls back to the OS cursor, so physical mouse movement during a
+/// pause is never overwritten. Measured on the wall clock, because Rust's
+/// `Instant` does not advance while macOS is asleep — an entry recorded just
+/// before a sleep must not still count as fresh after waking up to a
+/// possibly different display layout.
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+const MOUSE_RESYNC_AFTER: Duration = Duration::from_millis(50);
+
+/// The last kanata-driven cursor position, if kanata moved the cursor
+/// recently enough that the OS position may not have caught up yet. A wall
+/// clock that jumped backwards (an NTP step) counts as stale, which only
+/// costs one extra OS cursor read.
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn fresh_driven_position(driven: &Option<(CGPoint, SystemTime)>) -> Option<CGPoint> {
+    driven
+        .filter(|&(_, at)| matches!(at.elapsed(), Ok(age) if age < MOUSE_RESYNC_AFTER))
+        .map(|(position, _)| position)
+}
+
+/// Squared euclidean distance between two points, for nearest-display
+/// comparisons without a square root.
+#[cfg(all(not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+fn distance_squared(a: CGPoint, b: CGPoint) -> CGFloat {
+    (a.x - b.x).powi(2) + (a.y - b.y).powi(2)
 }
 
 /// Treat a sink-disconnect from the processing thread as a non-fatal drop.
@@ -1158,6 +1195,7 @@ impl KbdOut {
         Ok(KbdOut {
             output_pressed_since: HashMap::default(),
             caps_lock_state: get_hid_caps_lock_state(),
+            driven_mouse_position: None,
         })
     }
 
@@ -1396,8 +1434,7 @@ impl KbdOut {
         };
 
         let event_source = Self::make_event_source()?;
-        let event = Self::make_event()?;
-        let mouse_position = event.location();
+        let mouse_position = self.mouse_origin()?;
         let event = CGEvent::new_mouse_event(event_source, event_type, mouse_position, button)
             .map_err(|_| std::io::Error::other("Failed to create mouse event"))?;
 
@@ -1429,9 +1466,8 @@ impl KbdOut {
             CGEventType::MouseMoved
         };
 
-        let event = Self::make_event()?;
-        let mut mouse_position = event.location();
-        Self::apply_calculated_move(&mv, &mut mouse_position);
+        let origin = self.mouse_origin()?;
+        let mouse_position = Self::moved_position(origin, &mv, &Self::display_bounds());
         if let Ok(event) = CGEvent::new_mouse_event(
             Self::make_event_source()?,
             event_type,
@@ -1439,6 +1475,7 @@ impl KbdOut {
             CGMouseButton::Left,
         ) {
             event.post(CGEventTapLocation::HID);
+            self.record_mouse_position(mouse_position);
         }
         Ok(())
     }
@@ -1452,25 +1489,160 @@ impl KbdOut {
     }
 
     pub fn move_mouse_many(&mut self, moves: &[CalculatedMouseMove]) -> Result<(), io::Error> {
-        let event = Self::make_event()?;
-        let mut mouse_position = event.location();
+        let origin = self.mouse_origin()?;
+        let mouse_position = Self::moved_position_many(origin, moves, &Self::display_bounds());
         let display = CGDisplay::main();
-        for current_move in moves.iter() {
-            Self::apply_calculated_move(current_move, &mut mouse_position);
-        }
         display
             .move_cursor_to_point(mouse_position)
             .map_err(|_| io::Error::other("failed to move mouse"))?;
+        self.record_mouse_position(mouse_position);
         Ok(())
     }
 
     pub fn set_mouse(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         let display = CGDisplay::main();
-        let point = CGPoint::new(x as CGFloat, y as CGFloat);
+        let point = Self::clamp_to_displays(
+            CGPoint::new(x as CGFloat, y as CGFloat),
+            &Self::display_bounds(),
+        );
         display
             .move_cursor_to_point(point)
             .map_err(|_| io::Error::other("failed to move cursor to point"))?;
+        self.record_mouse_position(point);
         Ok(())
+    }
+
+    /// The origin of the next synthesized mouse event: the position kanata
+    /// last drove the cursor to while it is still fresh, otherwise the OS
+    /// cursor. See `driven_mouse_position` for why the OS cursor is not
+    /// trusted while a move sequence is in flight.
+    fn mouse_origin(&mut self) -> Result<CGPoint, io::Error> {
+        Ok(match fresh_driven_position(&self.driven_mouse_position) {
+            Some(position) => position,
+            None => Self::make_event()?.location(),
+        })
+    }
+
+    /// The position a move drives the cursor to, from a given origin: the
+    /// move applied to the origin, pulled back onto the desktop.
+    fn moved_position(origin: CGPoint, mv: &CalculatedMouseMove, displays: &[CGRect]) -> CGPoint {
+        let mut position = origin;
+        Self::apply_calculated_move(mv, &mut position);
+        Self::clamp_move_target(origin, position, displays)
+    }
+
+    /// Folds buffered moves through the per-move clamp semantics, so a
+    /// flushed sequence behaves exactly like the same moves posted one by
+    /// one. Clamping only the final accumulated point instead would pin the
+    /// whole batch to the display the sequence started on: a buffered
+    /// diagonal aimed past the corner of a neighbouring display would have
+    /// its first component — which does reach that display — discarded, and
+    /// the cursor would stick at the inner corner.
+    fn moved_position_many(
+        origin: CGPoint,
+        moves: &[CalculatedMouseMove],
+        displays: &[CGRect],
+    ) -> CGPoint {
+        let mut position = origin;
+        for mv in moves {
+            position = Self::moved_position(position, mv, displays);
+        }
+        position
+    }
+
+    /// Where a move that leaves the desktop should pin.
+    ///
+    /// A target already on some display is used as it is, so moving across a
+    /// display boundary is not an edge. Otherwise the target is pulled back
+    /// into the display the move started from — like a physical mouse, which
+    /// stops at the edge instead of jumping sideways onto a differently-sized
+    /// neighbour. Pinning to the nearest display instead would move the
+    /// cursor perpendicular to the input: a horizontal move whose distance
+    /// exceeds a dead band beside a vertically offset display would teleport
+    /// the cursor up or down onto that display's edge row. Only when the
+    /// origin itself is not on any display (it always should be) does the
+    /// target fall to the nearest display.
+    fn clamp_move_target(origin: CGPoint, target: CGPoint, displays: &[CGRect]) -> CGPoint {
+        if displays.iter().any(|display| display.contains(&target)) {
+            return target;
+        }
+        match displays
+            .iter()
+            .find(|display| Self::can_hold_cursor(display) && display.contains(&origin))
+        {
+            Some(home) => Self::clamp_to_display(target, home),
+            None => Self::clamp_to_displays(target, displays),
+        }
+    }
+
+    /// Records where a posted event drove the cursor, making it the origin of
+    /// the next synthesized move.
+    fn record_mouse_position(&mut self, position: CGPoint) {
+        self.driven_mouse_position = Some((position, SystemTime::now()));
+    }
+
+    /// Pulls a cursor position back onto the desktop if it left it.
+    ///
+    /// The origin of synthesized moves is no longer fed back from the OS
+    /// cursor, so without this a move held against a screen edge would keep
+    /// accumulating past it, and moving back the other way would spend that
+    /// accumulated distance before the cursor visibly leaves the edge. A
+    /// position on any display is left alone, so crossing a display boundary
+    /// is not treated as an edge.
+    fn clamp_to_displays(position: CGPoint, displays: &[CGRect]) -> CGPoint {
+        if displays.iter().any(|display| display.contains(&position)) {
+            return position;
+        }
+        displays
+            .iter()
+            .filter(|display| Self::can_hold_cursor(display))
+            .map(|display| Self::clamp_to_display(position, display))
+            .min_by(|a, b| {
+                distance_squared(*a, position).total_cmp(&distance_squared(*b, position))
+            })
+            .unwrap_or(position)
+    }
+
+    /// Whether a display rectangle can hold a cursor position at all. A
+    /// display that went away between listing the active displays and reading
+    /// their bounds reports a zero-size rectangle, and `f64::clamp` panics
+    /// when the upper bound drops below the lower one — such rectangles are
+    /// skipped rather than clamped into.
+    fn can_hold_cursor(display: &CGRect) -> bool {
+        display.origin.x.is_finite()
+            && display.origin.y.is_finite()
+            && display.size.width >= 1.0
+            && display.size.height >= 1.0
+    }
+
+    /// Clamps a position into one display. `CGRect::contains` excludes the
+    /// far edge, so the last coordinate a cursor may occupy is one short of
+    /// it.
+    fn clamp_to_display(position: CGPoint, display: &CGRect) -> CGPoint {
+        CGPoint::new(
+            position.x.clamp(
+                display.origin.x,
+                display.origin.x + display.size.width - 1.0,
+            ),
+            position.y.clamp(
+                display.origin.y,
+                display.origin.y + display.size.height - 1.0,
+            ),
+        )
+    }
+
+    /// Bounds of every connected display, in global coordinates. Re-read per
+    /// move rather than cached so a monitor hotplug or resolution change
+    /// cannot leave it stale. Empty when the list cannot be read, which
+    /// disables clamping instead of confining the cursor to a guess.
+    fn display_bounds() -> Vec<CGRect> {
+        CGDisplay::active_displays()
+            .map(|ids| {
+                ids.into_iter()
+                    .map(|id| CGDisplay::new(id).bounds())
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     fn make_event_source() -> Result<CGEventSource, Error> {
@@ -1815,4 +1987,295 @@ pub fn ensure_mouse_listener_installed_after_reload() {
     };
     let mapped = crate::kanata::MAPPED_KEYS.lock();
     let _ = start_mouse_listener(tx, &mapped, mmk);
+}
+
+#[cfg(all(test, not(feature = "simulated_output"), not(feature = "passthru_ahk")))]
+mod mouse_move_tests {
+    use super::*;
+    use core_graphics::display::CGSize;
+
+    fn rect(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) -> CGRect {
+        CGRect::new(&CGPoint::new(x, y), &CGSize::new(w, h))
+    }
+
+    fn xy(point: CGPoint) -> (CGFloat, CGFloat) {
+        (point.x, point.y)
+    }
+
+    #[test]
+    fn position_on_a_display_is_left_alone() {
+        let displays = [rect(0.0, 0.0, 2560.0, 1440.0)];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(100.0, 200.0),
+            CGPoint::new(100.0, 200.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (100.0, 200.0));
+    }
+
+    #[test]
+    fn position_past_an_edge_is_pulled_back_onto_the_origin_display() {
+        let displays = [rect(0.0, 0.0, 2560.0, 1440.0)];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(100.0, 200.0),
+            CGPoint::new(9000.0, -300.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (2559.0, 0.0));
+    }
+
+    #[test]
+    fn a_target_on_a_second_display_is_not_an_edge() {
+        let displays = [
+            rect(0.0, 0.0, 2560.0, 1440.0),
+            rect(2560.0, 0.0, 1920.0, 1080.0),
+        ];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(100.0, 500.0),
+            CGPoint::new(2600.0, 500.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (2600.0, 500.0));
+    }
+
+    #[test]
+    fn a_move_into_a_gap_pins_to_the_origin_display_edge() {
+        let displays = [
+            rect(0.0, 0.0, 1000.0, 1000.0),
+            rect(2000.0, 0.0, 1000.0, 1000.0),
+        ];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(900.0, 500.0),
+            CGPoint::new(1050.0, 500.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (999.0, 500.0));
+    }
+
+    #[test]
+    fn a_move_far_enough_lands_on_the_display_across_a_gap() {
+        let displays = [
+            rect(0.0, 0.0, 1000.0, 1000.0),
+            rect(2000.0, 0.0, 1000.0, 1000.0),
+        ];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(900.0, 500.0),
+            CGPoint::new(2100.0, 500.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (2100.0, 500.0));
+    }
+
+    #[test]
+    fn a_move_past_a_dead_band_does_not_jump_perpendicular() {
+        // External display vertically offset below the main one: the band
+        // y in [1380, 1440) beside it belongs to no display.
+        let displays = [
+            rect(0.0, 0.0, 2560.0, 1440.0),
+            rect(2560.0, 300.0, 1920.0, 1080.0),
+        ];
+        let clamped = KbdOut::clamp_move_target(
+            CGPoint::new(2559.0, 1439.0),
+            CGPoint::new(2759.0, 1439.0),
+            &displays,
+        );
+        assert_eq!(xy(clamped), (2559.0, 1439.0));
+    }
+
+    #[test]
+    fn a_teleport_target_falls_to_the_nearest_display() {
+        // set_mouse has no move origin; its target falls to the nearest
+        // display instead.
+        let displays = [
+            rect(0.0, 0.0, 1000.0, 1000.0),
+            rect(2000.0, 0.0, 1000.0, 1000.0),
+        ];
+        let clamped = KbdOut::clamp_to_displays(CGPoint::new(1900.0, 500.0), &displays);
+        assert_eq!(xy(clamped), (2000.0, 500.0));
+    }
+
+    #[test]
+    fn no_known_displays_leaves_the_position_untouched() {
+        let clamped = KbdOut::clamp_to_displays(CGPoint::new(9000.0, 9000.0), &[]);
+        assert_eq!(xy(clamped), (9000.0, 9000.0));
+    }
+
+    #[test]
+    fn a_display_that_went_away_is_skipped_instead_of_panicking() {
+        // A display disconnected between listing the active displays and
+        // reading their bounds reports a zero-size rectangle.
+        let displays = [rect(0.0, 0.0, 0.0, 0.0), rect(0.0, 0.0, 2560.0, 1440.0)];
+        let clamped = KbdOut::clamp_to_displays(CGPoint::new(9000.0, 100.0), &displays);
+        assert_eq!(xy(clamped), (2559.0, 100.0));
+    }
+
+    #[test]
+    fn a_sequence_of_moves_accumulates_from_the_last_posted_position() {
+        let displays = [rect(0.0, 0.0, 2560.0, 1440.0)];
+        let right_5 = CalculatedMouseMove {
+            direction: MoveDirection::Right,
+            distance: 5,
+        };
+        let mut origin = CGPoint::new(100.0, 100.0);
+        for _ in 0..100 {
+            origin = KbdOut::moved_position(origin, &right_5, &displays);
+        }
+        assert_eq!(xy(origin), (600.0, 100.0));
+    }
+
+    #[test]
+    fn a_flushed_diagonal_reaches_the_neighbour_the_moves_reach_one_by_one() {
+        // Two adjacent same-height displays; a buffered [Right, Down] pair
+        // aimed past the shared bottom corner. The Right component reaches
+        // the neighbour, so the flush must land there too, exactly where the
+        // same moves posted one by one land — not back on the first
+        // display's inner corner.
+        let displays = [
+            rect(0.0, 0.0, 1000.0, 1000.0),
+            rect(1000.0, 0.0, 1000.0, 1000.0),
+        ];
+        let moves = [
+            CalculatedMouseMove {
+                direction: MoveDirection::Right,
+                distance: 100,
+            },
+            CalculatedMouseMove {
+                direction: MoveDirection::Down,
+                distance: 100,
+            },
+        ];
+        let flushed = KbdOut::moved_position_many(CGPoint::new(950.0, 950.0), &moves, &displays);
+        let mut sequential = CGPoint::new(950.0, 950.0);
+        for mv in &moves {
+            sequential = KbdOut::moved_position(sequential, mv, &displays);
+        }
+        assert_eq!(xy(flushed), xy(sequential));
+        assert_eq!(xy(flushed), (1050.0, 999.0));
+    }
+
+    #[test]
+    fn a_flush_from_an_inner_corner_does_not_stick() {
+        let displays = [
+            rect(0.0, 0.0, 1000.0, 1000.0),
+            rect(1000.0, 0.0, 1000.0, 1000.0),
+        ];
+        let moves = [
+            CalculatedMouseMove {
+                direction: MoveDirection::Right,
+                distance: 100,
+            },
+            CalculatedMouseMove {
+                direction: MoveDirection::Down,
+                distance: 100,
+            },
+        ];
+        // Holding the same diagonal from the pinned corner must keep moving
+        // the cursor, not reproduce the corner forever: it advances 100 px
+        // per flush until the neighbour's far edge.
+        let mut origin = CGPoint::new(999.0, 999.0);
+        for _ in 0..50 {
+            origin = KbdOut::moved_position_many(origin, &moves, &displays);
+        }
+        assert_eq!(xy(origin), (1999.0, 999.0));
+    }
+
+    #[test]
+    fn a_sequence_into_an_edge_clamps_and_reverses_without_dead_travel() {
+        let displays = [rect(0.0, 0.0, 2560.0, 1440.0)];
+        let right_5 = CalculatedMouseMove {
+            direction: MoveDirection::Right,
+            distance: 5,
+        };
+        let left_5 = CalculatedMouseMove {
+            direction: MoveDirection::Left,
+            distance: 5,
+        };
+        let mut origin = CGPoint::new(2500.0, 100.0);
+        for _ in 0..100 {
+            origin = KbdOut::moved_position(origin, &right_5, &displays);
+        }
+        assert_eq!(xy(origin), (2559.0, 100.0));
+        origin = KbdOut::moved_position(origin, &left_5, &displays);
+        assert_eq!(xy(origin), (2554.0, 100.0));
+    }
+
+    #[test]
+    fn a_fresh_driven_position_is_reused_as_the_origin() {
+        let driven = Some((CGPoint::new(10.0, 20.0), SystemTime::now()));
+        assert_eq!(fresh_driven_position(&driven).map(xy), Some((10.0, 20.0)));
+    }
+
+    #[test]
+    fn a_stale_driven_position_falls_back_to_the_os_cursor() {
+        // Wall-clock age, so a system sleep between the record and the next
+        // move expires the entry too.
+        let stale = SystemTime::now()
+            .checked_sub(MOUSE_RESYNC_AFTER + Duration::from_millis(1))
+            .expect("wall clock is past the epoch");
+        let driven = Some((CGPoint::new(10.0, 20.0), stale));
+        assert_eq!(fresh_driven_position(&driven).map(xy), None);
+    }
+
+    #[test]
+    fn a_wall_clock_step_backwards_counts_as_stale() {
+        let future = SystemTime::now() + Duration::from_secs(60);
+        let driven = Some((CGPoint::new(10.0, 20.0), future));
+        assert_eq!(fresh_driven_position(&driven).map(xy), None);
+    }
+
+    #[test]
+    fn without_a_driven_position_the_os_cursor_is_used() {
+        assert_eq!(fresh_driven_position(&None).map(xy), None);
+    }
+
+    /// Posts real mouse events: warps the cursor to a known position and then
+    /// moves it right for a fraction of a second. Opt in with
+    /// `cargo test move_mouse_posts_accumulate -- --ignored --nocapture`;
+    /// it is ignored so it never runs in CI or a plain `cargo test`.
+    #[test]
+    #[ignore = "moves the real cursor for ~1s"]
+    fn move_mouse_posts_accumulate_instead_of_re_reading_the_os_cursor() {
+        let mut kbd = KbdOut::new().expect("KbdOut::new");
+
+        // Start from a known position with plenty of room to the right, on
+        // whatever machine runs this.
+        let main = CGDisplay::main().bounds();
+        let start = CGPoint::new(
+            main.origin.x + 100.0,
+            main.origin.y + main.size.height / 2.0,
+        );
+        kbd.set_mouse(start.x as u16, start.y as u16)
+            .expect("set_mouse");
+
+        const MOVES: u16 = 100;
+        const DISTANCE: u16 = 5; // 500 px total, within any main display width
+        let expected = f64::from(MOVES) * f64::from(DISTANCE);
+
+        // Let the warp settle so the pre-move reading is accurate.
+        std::thread::sleep(Duration::from_millis(250));
+        let before = KbdOut::make_event().unwrap().location();
+
+        for _ in 0..MOVES {
+            kbd.move_mouse(CalculatedMouseMove {
+                direction: MoveDirection::Right,
+                distance: DISTANCE,
+            })
+            .expect("move_mouse");
+            // kanata's tick loop posts moves roughly every millisecond.
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        // Let the last posted move settle so the post-move reading is final.
+        std::thread::sleep(Duration::from_millis(250));
+        let after = KbdOut::make_event().unwrap().location();
+
+        let traveled = after.x - before.x;
+        println!(
+            "posted {MOVES} moves x {DISTANCE}px = {expected}px; cursor traveled {traveled}px"
+        );
+        assert!(
+            traveled >= expected * 0.9,
+            "expected at least 90% of {expected}px, got {traveled}px"
+        );
+    }
 }
