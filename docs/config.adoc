@@ -922,7 +922,61 @@ defined in a `deflayer` entry.
 
 You may also use `layer-toggle` in place of `layer-while-held`; they behave
 exactly the same. The `layer-toggle` name is slightly shorter but is a bit
-inaccurate with regards to its meaning.
+inaccurate with regards to its meaning. If you want a layer that stays on
+after the key is released, see <<layer-lock-toggle,`layer-lock-toggle`>>.
+
+[[layer-lock-toggle]]
+=== layer-lock-toggle
+
+**Reference**
+
+A list action that locks a layer on, and unlocks it when pressed again.
+
+.Syntax:
+[source]
+----
+(layer-lock-toggle $layer-name)
+----
+
+[cols="1,5"]
+|===
+| `$layer-name`
+| Layer name to lock or unlock.
+|===
+
+**Description**
+
+Unlike `layer-while-held`, the layer stays active after the key is released.
+Pressing the key a second time releases it. This is the behaviour of QMK's
+`TG()`, and is useful for a numpad or mouse layer that you want to stay on
+while both hands are busy.
+
+The action tracks its own lock rather than the state of the layer, so it
+only releases a layer that it locked. If the layer is already active because
+of a `layer-while-held` key or a `layer-switch`, pressing the lock key adds a
+lock on top instead of turning the layer off.
+
+The lock is added to the same stack of temporary layers that
+`layer-while-held` uses, so it sits on top of the base layer. While it is
+held, `layer-switch` has no visible effect, because the locked layer stays
+above the base layer that `layer-switch` changes. Make sure the locked layer
+leaves the lock key reachable, either as the same alias or as `_`, otherwise
+there is no way to unlock it. `release-layer` also releases the lock.
+
+Each locked layer reserves one virtual key slot, so the number of locked
+layers plus the number of `defvirtualkeys` and `deffakekeys` entries cannot
+exceed the maximum number of virtual keys.
+
+.Example:
+[source]
+----
+(defalias
+  ;; lock or unlock the numpad layer
+  num (layer-lock-toggle numpad)
+  ;; tap to lock or unlock the numpad layer, hold for right ctrl
+  rctl (tap-hold-press 200 200 @num rctl)
+)
+----
 
 [[transparent-key]]
 === Transparent key
