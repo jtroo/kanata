@@ -291,6 +291,13 @@ pub struct Cfg {
     /// The potential outputs for a physical key position. The intention behind this is for sending
     /// key repeats.
     pub key_outputs: KeyOutputs,
+    /// Whether the config ever *outputs* a mouse button (`mlft`/`mrgt`/`mmid`/`mbck`/`mfwd` or
+    /// their `-tap` forms), anywhere — including inside nested actions, virtual keys, macros,
+    /// aliases and the on-load action. Tracked while parsing (see `mouse_button`) rather than by
+    /// walking the layout, so it does not depend on where the action ends up. macOS uses this to
+    /// gate installing the mouse event tap so configs that never emit mouse buttons do not request
+    /// extra permissions.
+    pub emits_mouse_buttons: bool,
     /// Layer info used for printing to the logs.
     pub layer_info: Vec<LayerInfo>,
     /// Configuration items in `defcfg`.
@@ -357,6 +364,10 @@ fn parse_cfg(p: &Path) -> MResult<Cfg> {
 fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
     let (layers, allocations) = icfg.klayers.get();
     let key_outputs = create_key_outputs(&layers, &icfg.overrides, &icfg.chords_v2);
+    // Tracked while parsing mouse-button actions (mlft/mrgt/… and their -tap
+    // forms), so it covers those actions wherever they end up — layers, virtual
+    // keys, macros, aliases, the on-load action — without walking the layout.
+    let emits_mouse_buttons = s.emits_mouse_buttons.get();
     let max_key_timing_check = std::cmp::max(
         s.max_key_timing_check.get(),
         icfg.options.tap_hold_require_prior_idle,
@@ -391,6 +402,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
         mapped_keys: icfg.mapped_keys,
         layer_info: icfg.layer_info,
         key_outputs,
+        emits_mouse_buttons,
         layout,
         sequences: icfg.sequences,
         overrides: icfg.overrides,
@@ -1170,6 +1182,11 @@ pub struct ParserState {
     block_unmapped_keys: bool,
     max_key_timing_check: Cell<u16>,
     multi_action_nest_count: Cell<u16>,
+    /// Set while parsing whenever a mouse-button output action (`mlft`/`mrgt`/
+    /// `mmid`/`mfwd`/`mbck`) is constructed, wherever it ends up — a layer, a
+    /// virtual key, a macro, an alias, or the on-load action. macOS reads this
+    /// (via `Cfg::emits_mouse_buttons`) to gate installing the mouse event tap.
+    emits_mouse_buttons: Cell<bool>,
     input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
     pctx: ParserContext,
     pub lsp_hints: RefCell<LspHints>,
@@ -1203,6 +1220,7 @@ impl Default for ParserState {
             block_unmapped_keys: default_cfg.block_unmapped_keys,
             max_key_timing_check: Cell::new(0),
             multi_action_nest_count: Cell::new(0),
+            emits_mouse_buttons: Cell::new(false),
             input_devices: None,
             lsp_hints: Default::default(),
             hand_map: None,
@@ -1367,6 +1385,16 @@ fn custom(ca: CustomAction, a: &Allocations) -> Result<&'static KanataAction> {
     Ok(a.sref(Action::Custom(a.sref(ca))))
 }
 
+/// Like [`custom`], but also records that this config outputs a mouse button so
+/// macOS can gate the mouse event tap on actual usage. Used for both the direct
+/// button actions (`mlft`…) and the tap variants (`mltp`…); because every
+/// mouse-button action is constructed here, the flag is set regardless of where
+/// the action ends up (layer, virtual key, macro, alias, on-load action).
+fn mouse_button(ca: CustomAction, s: &ParserState) -> Result<&'static KanataAction> {
+    s.emits_mouse_buttons.set(true);
+    custom(ca, &s.a)
+}
+
 /// Parse a `kanata_keyberon::action::Action` from a string.
 fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'static KanataAction> {
     let ac = &*ac_span.t;
@@ -1400,16 +1428,18 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
             );
         }
         "scnl" => return custom(CustomAction::SequenceCancel, &s.a),
-        "mlft" | "mouseleft" => return custom(CustomAction::Mouse(Btn::Left), &s.a),
-        "mrgt" | "mouseright" => return custom(CustomAction::Mouse(Btn::Right), &s.a),
-        "mmid" | "mousemid" => return custom(CustomAction::Mouse(Btn::Mid), &s.a),
-        "mfwd" | "mouseforward" => return custom(CustomAction::Mouse(Btn::Forward), &s.a),
-        "mbck" | "mousebackward" => return custom(CustomAction::Mouse(Btn::Backward), &s.a),
-        "mltp" | "mousetapleft" => return custom(CustomAction::MouseTap(Btn::Left), &s.a),
-        "mrtp" | "mousetapright" => return custom(CustomAction::MouseTap(Btn::Right), &s.a),
-        "mmtp" | "mousetapmid" => return custom(CustomAction::MouseTap(Btn::Mid), &s.a),
-        "mftp" | "mousetapforward" => return custom(CustomAction::MouseTap(Btn::Forward), &s.a),
-        "mbtp" | "mousetapbackward" => return custom(CustomAction::MouseTap(Btn::Backward), &s.a),
+        "mlft" | "mouseleft" => return mouse_button(CustomAction::Mouse(Btn::Left), s),
+        "mrgt" | "mouseright" => return mouse_button(CustomAction::Mouse(Btn::Right), s),
+        "mmid" | "mousemid" => return mouse_button(CustomAction::Mouse(Btn::Mid), s),
+        "mfwd" | "mouseforward" => return mouse_button(CustomAction::Mouse(Btn::Forward), s),
+        "mbck" | "mousebackward" => return mouse_button(CustomAction::Mouse(Btn::Backward), s),
+        "mltp" | "mousetapleft" => return mouse_button(CustomAction::MouseTap(Btn::Left), s),
+        "mrtp" | "mousetapright" => return mouse_button(CustomAction::MouseTap(Btn::Right), s),
+        "mmtp" | "mousetapmid" => return mouse_button(CustomAction::MouseTap(Btn::Mid), s),
+        "mftp" | "mousetapforward" => return mouse_button(CustomAction::MouseTap(Btn::Forward), s),
+        "mbtp" | "mousetapbackward" => {
+            return mouse_button(CustomAction::MouseTap(Btn::Backward), s);
+        }
         "mwu" | "mousewheelup" => {
             return custom(
                 CustomAction::MWheelNotch {

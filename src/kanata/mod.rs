@@ -326,6 +326,12 @@ pub struct Kanata {
         target_os = "unknown"
     ))]
     pub(crate) mouse_movement_key: Arc<Mutex<Option<OsCode>>>,
+    /// Whether the loaded config outputs mouse buttons. Gates installing the
+    /// macOS mouse event tap (for drag-assist) so configs that never emit mouse
+    /// buttons do not request the extra Accessibility / Input Monitoring
+    /// permission. Shared with the tap's install gate and updated on reload.
+    #[cfg(target_os = "macos")]
+    pub(crate) emits_mouse_buttons: Arc<Mutex<bool>>,
     /// Time when kanata started (for uptime tracking)
     #[cfg(feature = "tcp_server")]
     start_time: web_time::Instant,
@@ -554,6 +560,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(target_os = "macos")]
+            emits_mouse_buttons: Arc::new(Mutex::new(cfg.emits_mouse_buttons)),
             #[cfg(feature = "tcp_server")]
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
@@ -709,6 +717,8 @@ impl Kanata {
                 target_os = "unknown"
             ))]
             mouse_movement_key: Arc::new(Mutex::new(cfg.options.mouse_movement_key)),
+            #[cfg(target_os = "macos")]
+            emits_mouse_buttons: Arc::new(Mutex::new(cfg.emits_mouse_buttons)),
             #[cfg(feature = "tcp_server")]
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
@@ -840,6 +850,16 @@ impl Kanata {
             }
 
             *self.mouse_movement_key.lock() = cfg.options.mouse_movement_key;
+
+            // Refresh the mouse-button-output flag so the reload install gate
+            // (below) sees whether the new config emits mouse buttons. The tap
+            // reads this Arc live, so a reload that starts emitting mouse
+            // buttons installs the tap; the tap is process-lifetime and is not
+            // uninstalled if a later reload stops emitting them.
+            #[cfg(target_os = "macos")]
+            {
+                *self.emits_mouse_buttons.lock() = cfg.emits_mouse_buttons;
+            }
 
             #[cfg(target_os = "macos")]
             crate::oskbd::ensure_mouse_listener_installed_after_reload();

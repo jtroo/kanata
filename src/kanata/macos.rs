@@ -112,9 +112,12 @@ impl Kanata {
         // the project-wide lock order `kanata -> MAPPED_KEYS`. Reversing it here
         // would create a new ordering edge with the rest of this file.
         {
-            let mmk = kanata.lock().mouse_movement_key.clone();
+            let (mmk, emb) = {
+                let k = kanata.lock();
+                (k.mouse_movement_key.clone(), k.emits_mouse_buttons.clone())
+            };
             let mapped = MAPPED_KEYS.lock();
-            let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped, mmk);
+            let _ = crate::oskbd::start_mouse_listener(tx.clone(), &mapped, mmk, emb);
         }
 
         // Toggles `is_screen_grab_paused()` on lock / fast-user-switch.
