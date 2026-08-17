@@ -1194,6 +1194,11 @@ pub struct KbdOut {
     /// in between (#2133), so while kanata is driving the cursor the position
     /// it last posted is kept as the origin of the next move instead.
     driven_mouse_position: Option<(CGPoint, SystemTime)>,
+    /// Buttons kanata is holding, in `NSEvent::pressedMouseButtons` bit order.
+    /// That API reports what the window server has settled on, which lags the
+    /// press kanata just posted, so it cannot be the only source for the
+    /// move-versus-drag decision.
+    held_buttons: usize,
 }
 
 /// Number of distinct mouse buttons kanata can synthesize.
@@ -1283,6 +1288,7 @@ impl KbdOut {
             click_state: [1; BUTTON_INDEX_COUNT],
             button_path: [None; BUTTON_INDEX_COUNT],
             driven_mouse_position: None,
+            held_buttons: 0,
         })
     }
 
@@ -1703,33 +1709,74 @@ impl KbdOut {
         }
     }
 
+    /// `NSEvent::pressedMouseButtons` bit for the buttons that have a CGEvent
+    /// drag type. The side buttons have none, so they cannot start a drag.
+    fn button_mask(btn: Btn) -> Option<usize> {
+        match btn {
+            Btn::Left => Some(1),
+            Btn::Right => Some(2),
+            Btn::Mid | Btn::Backward | Btn::Forward => None,
+        }
+    }
+
     pub fn click_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, btn, true)
+        Self::button_action(self, btn, true)?;
+        if let Some(mask) = Self::button_mask(btn) {
+            self.held_buttons |= mask;
+        }
+        Ok(())
     }
 
     pub fn release_btn(&mut self, btn: Btn) -> Result<(), io::Error> {
-        Self::button_action(self, btn, false)
+        Self::button_action(self, btn, false)?;
+        if let Some(mask) = Self::button_mask(btn) {
+            self.held_buttons &= !mask;
+        }
+        Ok(())
     }
 
     pub fn move_mouse(&mut self, mv: CalculatedMouseMove) -> Result<(), io::Error> {
-        let pressed = Self::pressed_buttons();
+        let pressed = Self::pressed_buttons() | self.held_buttons;
 
-        let event_type = if pressed & 1 > 0 {
-            CGEventType::LeftMouseDragged
+        let (event_type, dragged_index) = if pressed & 1 > 0 {
+            (
+                CGEventType::LeftMouseDragged,
+                Some(Self::button_index(Btn::Left)),
+            )
         } else if pressed & 2 > 0 {
-            CGEventType::RightMouseDragged
+            (
+                CGEventType::RightMouseDragged,
+                Some(Self::button_index(Btn::Right)),
+            )
         } else {
-            CGEventType::MouseMoved
+            (CGEventType::MouseMoved, None)
         };
 
+        // A drag carries the same source as the button that started it, so a
+        // consumer that only trusts HID input does not see the press and the
+        // motion come from two different devices.
+        let event_source = match dragged_index {
+            Some(_) => Self::make_event_source_hid()?,
+            None => Self::make_event_source()?,
+        };
         let origin = self.mouse_origin()?;
         let mouse_position = Self::moved_position(origin, &mv, &Self::display_bounds());
         if let Ok(event) = CGEvent::new_mouse_event(
-            Self::make_event_source()?,
+            event_source,
             event_type,
             mouse_position,
             CGMouseButton::Left,
         ) {
+            if let Some(index) = dragged_index {
+                // Without the count of the press that started it, a
+                // double-click-drag decays into a fresh single click on its
+                // first move, and selection falls back from words to
+                // characters.
+                event.set_integer_value_field(
+                    EventField::MOUSE_EVENT_CLICK_STATE,
+                    self.click_state[index],
+                );
+            }
             event.post(CGEventTapLocation::HID);
             self.record_mouse_position(mouse_position);
         }
