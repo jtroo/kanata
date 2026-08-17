@@ -10,7 +10,10 @@ pub struct InputDeviceMatcher {
     pub product_id: Option<u16>,
 }
 
-pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDeviceMatcher)>> {
+pub fn parse_definputdevices(
+    expr: &[SExpr],
+    vars: &HashMap<String, SExpr>,
+) -> Result<Vec<(NonZeroU8, InputDeviceMatcher)>> {
     let mut exprs = check_first_expr(expr.iter(), "definputdevices")?;
     let mut seen_ids = HashSet::default();
     let mut devices = vec![];
@@ -23,7 +26,7 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
             );
         };
         let id_str = id_expr
-            .atom(None)
+            .atom(Some(vars))
             .ok_or_else(|| anyhow_expr!(id_expr, "device ID must be a number (1-255)"))?;
         let id_num: u8 = id_str
             .parse()
@@ -34,7 +37,7 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
             bail_expr!(id_expr, "duplicate device ID: {id_num}");
         }
         let matcher_list = matchers_expr
-            .list(None)
+            .list(Some(vars))
             .ok_or_else(|| anyhow_expr!(matchers_expr, "device matchers must be a list"))?;
         if matcher_list.is_empty() {
             bail_expr!(
@@ -45,7 +48,7 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
         }
         let mut matcher = InputDeviceMatcher::default();
         for m in matcher_list.iter() {
-            let props = m.list(None).ok_or_else(|| {
+            let props = m.list(Some(vars)).ok_or_else(|| {
                 anyhow_expr!(m, "each matcher must be a list, e.g. (name \"...\")")
             })?;
             if props.len() != 2 {
@@ -55,10 +58,10 @@ pub fn parse_definputdevices(expr: &[SExpr]) -> Result<Vec<(NonZeroU8, InputDevi
                 );
             }
             let prop_name = props[0]
-                .atom(None)
+                .atom(Some(vars))
                 .ok_or_else(|| anyhow_expr!(&props[0], "matcher property must be an atom"))?;
             let prop_val = props[1]
-                .atom(None)
+                .atom(Some(vars))
                 .ok_or_else(|| anyhow_expr!(&props[1], "matcher value must be an atom"))?;
             // Matcher values are commonly written as quoted strings in definputdevices.
             // Strip those syntax quotes before name matching or numeric/hash parsing.

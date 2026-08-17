@@ -7,6 +7,7 @@ pub(crate) fn parse_distance(expr: &SExpr, s: &ParserState, label: &str) -> Resu
     expr.atom(s.vars())
         .map(str::parse::<u16>)
         .and_then(|d| d.ok())
+        .filter(|&dist| (1..=30000).contains(&dist))
         .ok_or_else(|| anyhow_expr!(expr, "{label} must be 1-30000"))
 }
 

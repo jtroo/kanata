@@ -1,8 +1,6 @@
 name: build-everything
 
-on:
-  workflow_dispatch:
-    branches: [ "main" ]
+on: workflow_dispatch
 
 env:
   CARGO_TERM_COLOR: always

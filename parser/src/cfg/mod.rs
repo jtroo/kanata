@@ -652,11 +652,6 @@ pub fn parse_cfg_raw_string(
     }
     let (mut mapped_keys, mapping_order) = parse_defsrc(src_expr, &cfg)?;
 
-    let input_devices = root_exprs
-        .iter()
-        .find(gen_first_atom_filter("definputdevices"))
-        .map(|expr| parse_definputdevices(expr))
-        .transpose()?;
     if let Some(spanned) = spanned_root_exprs
         .iter()
         .filter(gen_first_atom_filter_spanned("definputdevices"))
@@ -673,6 +668,14 @@ pub fn parse_cfg_raw_string(
         .filter(gen_first_atom_filter("defvar"))
         .collect::<Vec<_>>();
     let vars = parse_vars(&var_exprs, &mut lsp_hints)?;
+
+    // Parsed after defvar so that device IDs can be written as variables, which is what the
+    // configuration guide recommends.
+    let input_devices = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("definputdevices"))
+        .map(|expr| parse_definputdevices(expr, &vars))
+        .transpose()?;
 
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
