@@ -569,8 +569,16 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
         match cfg {
             HoldTapConfig::Default => (),
             HoldTapConfig::HoldOnOtherKeyPress => {
-                if queued.iter().any(|s| s.event.is_press()) {
-                    return Some(WaitingAction::Hold);
+                for s in queued.iter() {
+                    if s.event.coord() == self.coord {
+                        if s.event.is_release() {
+                            break;
+                        }
+                        continue;
+                    }
+                    if s.event.is_press() {
+                        return Some(WaitingAction::Hold);
+                    }
                 }
             }
             HoldTapConfig::Order { buffer, .. } => {
@@ -583,13 +591,19 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 // fast typing to resolve as Tap regardless of release order.
                 let mut queued = queued.iter();
                 while let Some(q) = queued.next() {
+                    let (i, j) = q.event.coord();
+                    if (i, j) == self.coord {
+                        if q.event.is_release() {
+                            break;
+                        }
+                        continue;
+                    }
                     if q.event.is_press() {
                         // Elapsed ticks since this key entered the queue, compared against buffer window.
                         let press_tick = self.ticks.saturating_sub(q.since);
                         if press_tick < buffer {
                             continue;
                         }
-                        let (i, j) = q.event.coord();
                         let target = Event::Release(i, j);
                         if queued.clone().any(|q| q.event == target) {
                             return Some(WaitingAction::Hold);
@@ -600,8 +614,14 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
             HoldTapConfig::PermissiveHold => {
                 let mut queued = queued.iter();
                 while let Some(q) = queued.next() {
+                    let (i, j) = q.event.coord();
+                    if (i, j) == self.coord {
+                        if q.event.is_release() {
+                            break;
+                        }
+                        continue;
+                    }
                     if q.event.is_press() {
-                        let (i, j) = q.event.coord();
                         let target = Event::Release(i, j);
                         if queued.clone().any(|q| q.event == target) {
                             return Some(WaitingAction::Hold);

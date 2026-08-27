@@ -1366,3 +1366,21 @@ fn tap_hold_order_late_press_does_not_resolve_hold() {
         result
     );
 }
+
+#[test]
+fn tap_hold_press_second_press_of_same_key_does_not_end_the_scan() {
+    let result = simulate(
+        "
+        (defsrc a s d)
+        (deflayer base (tap-hold-press 0 200 a (layer-while-held nav))
+                       (tap-hold 0 500 s lctl) d)
+        (deflayer nav 1 2 3)
+        ",
+        "d:s t:50 d:a t:20 d:a t:20 d:d t:20 u:a t:20 u:d t:20 u:s t:300",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:150ms dn:S t:13ms dn:Kb1 t:1ms dn:Kb3 t:1ms up:Kb1 t:1ms up:Kb3 t:1ms up:S",
+        result
+    );
+}
