@@ -1279,3 +1279,90 @@ fn tap_hold_order_no_prior_idle_enters_normal_resolution() {
         result
     );
 }
+
+#[test]
+fn tap_hold_press_own_repress_does_not_resolve_hold() {
+    let result = simulate(
+        "
+        (defsrc a s)
+        (deflayer base (tap-hold-press 0 200 a (layer-while-held nav))
+                       (tap-hold 0 500 s lctl))
+        (deflayer nav 1 2)
+        ",
+        "d:s t:50 d:a t:20 u:a t:20 d:a t:20 u:a t:100 u:s t:300",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:210ms dn:S t:7ms dn:A t:6ms up:A t:2ms dn:A t:6ms up:A t:1ms up:S",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_release_own_repress_does_not_resolve_hold() {
+    let result = simulate(
+        "
+        (defsrc a s)
+        (deflayer base (tap-hold-release 0 200 a lsft) (tap-hold 0 500 s lctl))
+        ",
+        "d:s t:50 d:a t:20 u:a t:20 d:a t:20 u:a t:100 u:s t:300",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:210ms dn:S t:7ms dn:A t:6ms up:A t:2ms dn:A t:6ms up:A t:1ms up:S",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_press_late_press_does_not_resolve_hold() {
+    let result = simulate(
+        "
+        (defsrc a s d)
+        (deflayer base (tap-hold-press 0 200 a (layer-while-held nav))
+                       (tap-hold 0 500 s lctl) d)
+        (deflayer nav 1 2 3)
+        ",
+        "t:74 d:s t:92 d:a t:50 u:a t:55 d:d t:69 u:d t:18 u:s t:600",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:358ms dn:S t:7ms dn:A t:6ms up:A t:1ms dn:D t:1ms up:D t:1ms up:S",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_release_late_press_does_not_resolve_hold() {
+    let result = simulate(
+        "
+        (defsrc a s d)
+        (deflayer base (tap-hold-release 0 200 a (layer-while-held nav))
+                       (tap-hold 0 500 s lctl) d)
+        (deflayer nav 1 2 3)
+        ",
+        "t:74 d:s t:92 d:a t:50 u:a t:55 d:d t:69 u:d t:18 u:s t:600",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:358ms dn:S t:7ms dn:A t:6ms up:A t:1ms dn:D t:1ms up:D t:1ms up:S",
+        result
+    );
+}
+
+#[test]
+fn tap_hold_order_late_press_does_not_resolve_hold() {
+    let result = simulate(
+        "
+        (defsrc a s d)
+        (deflayer base @a (tap-hold 0 500 s lctl) d)
+        (defalias a (tap-hold-order 0 0 a lsft))
+        ",
+        "t:74 d:s t:92 d:a t:50 u:a t:55 d:d t:69 u:d t:18 u:s t:600",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:358ms dn:S t:7ms dn:A t:6ms up:A t:1ms dn:D t:1ms up:D t:1ms up:S",
+        result
+    );
+}
