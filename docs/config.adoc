@@ -3746,7 +3746,7 @@ Its parameters in order are:
 NOTE: Template expansion happens after file includes and before any other parsing.
 One consequence of this early parsing is that variables defined in `defvar`
 are **not** substituted when used inside of `template-expand`.
-This has consequences for condtional content, e.g. with `if-equal`.
+This has consequences for conditional content, e.g. with `if-equal`.
 This is discussed further in Example 5.
 
 Example 1:
