@@ -127,7 +127,7 @@ fn init_logger(args: &Args) {
         log_lvl,
         log_cfg.build(),
         TerminalMode::Mixed,
-        ColorChoice::AlwaysAnsi,
+        ColorChoice::Auto,
     )])
     .expect("init logger");
     log::info!(

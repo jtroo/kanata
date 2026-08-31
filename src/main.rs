@@ -60,7 +60,7 @@ mod cli {
             log_lvl,
             log_cfg.build(),
             TerminalMode::Mixed,
-            ColorChoice::AlwaysAnsi,
+            ColorChoice::Auto,
         )])
         .expect("logger can init");
 

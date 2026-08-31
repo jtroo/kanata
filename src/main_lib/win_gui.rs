@@ -25,7 +25,7 @@ fn cli_init() -> Result<ValidatedArgs> {
                         LevelFilter::Debug,
                         log_cfg.build(),
                         TerminalMode::Mixed,
-                        ColorChoice::AlwaysAnsi,
+                        ColorChoice::Auto,
                     ),
                     log_win::windbg_simple_combo(LevelFilter::Debug, noti_lvl),
                 ])
@@ -99,7 +99,7 @@ fn cli_init() -> Result<ValidatedArgs> {
                 log_lvl,
                 log_cfg.build(),
                 TerminalMode::Mixed,
-                ColorChoice::AlwaysAnsi,
+                ColorChoice::Auto,
             ),
             log_win::windbg_simple_combo(log_lvl, noti_lvl),
         ])

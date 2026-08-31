@@ -95,7 +95,7 @@ fn log_init() {
         LevelFilter::Info,
         log_cfg.build(),
         TerminalMode::Stderr,
-        ColorChoice::AlwaysAnsi,
+        ColorChoice::Auto,
     )])
     .expect("logger can init");
 }

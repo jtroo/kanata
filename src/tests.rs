@@ -33,7 +33,7 @@ fn init_log() {
             LevelFilter::Off,
             log_cfg.build(),
             TerminalMode::Stderr,
-            ColorChoice::AlwaysAnsi,
+            ColorChoice::Auto,
         )])
         .expect("logger can init");
     });

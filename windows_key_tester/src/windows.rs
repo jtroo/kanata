@@ -43,7 +43,7 @@ fn cli_init() {
         log_lvl,
         log_cfg.build(),
         TerminalMode::Mixed,
-        ColorChoice::AlwaysAnsi,
+        ColorChoice::Auto,
     )])
     .expect("logger can init");
     log::info!("windows_key_tester v{} starting", env!("CARGO_PKG_VERSION"));
