@@ -26,7 +26,8 @@ pub(crate) fn parse_defchordv2(
     let mut all_participating_key_sets = FxHashSet::default();
 
     let all_chords = chunks
-        .0.iter()
+        .0
+        .iter()
         .flat_map(|chunk| match chunk[0] {
             // Match a line like
             // (include filename.txt) () 100 all-released (layer1 layer2)
