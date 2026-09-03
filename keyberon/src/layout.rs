@@ -1123,14 +1123,24 @@ impl OneShotState {
         if self.keys.is_empty() {
             return (true, None);
         }
+        // A coordinate can legitimately appear in both `keys` (as the original
+        // activator) and `other_pressed_keys` (fix #2049): if the activator's
+        // physical key is re-pressed as a normal, non-oneshot key after the
+        // activating layer is gone, that press is registered in
+        // `other_pressed_keys`, but the activator coordinate still lingers in
+        // `keys` until the oneshot terminates. In that case the release must
+        // terminate the oneshot rather than be swallowed as an "activator
+        // release", so the `other_pressed_keys` check has to win over the
+        // `keys` membership check below.
+        if matches!(
+            self.end_config,
+            OneShotEndConfig::EndOnFirstRelease | OneShotEndConfig::EndOnFirstReleaseOrRepress
+        ) && self.other_pressed_keys.contains(&(i, j))
+        {
+            self.release_on_next_tick = true;
+            return (true, None);
+        }
         if !self.keys.contains(&(i, j)) {
-            if matches!(
-                self.end_config,
-                OneShotEndConfig::EndOnFirstRelease | OneShotEndConfig::EndOnFirstReleaseOrRepress
-            ) && self.other_pressed_keys.contains(&(i, j))
-            {
-                self.release_on_next_tick = true;
-            }
             (true, None)
         } else {
             // delay release for one shot keys
@@ -4002,6 +4012,66 @@ mod test {
         layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[LShift], layout.keycodes());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+    }
+
+    #[test]
+    fn one_shot_end_on_release_activator_repressed_on_other_layer() {
+        // Regression test for #2049.
+        //
+        // The one-shot activator's physical key is re-pressed as a normal key
+        // on a different layer (the activating layer is momentary and gone by
+        // then). The re-press's release must terminate the one-shot; before the
+        // fix it was swallowed as an "activator release" because the activator
+        // coordinate still lingered in `OneShotState::keys`, so the modifier
+        // leaked onto every subsequent keypress until the timeout.
+        //
+        // Layout:
+        //   (0,0): base -> momentary Layer(1) ("tab"),      nav -> Trans
+        //   (0,1): base -> k(A) ("d"),                      nav -> one-shot LShift
+        //   (0,2): base -> k(B) ("p"),                      nav -> Trans
+        static LAYERS: Layers<3, 1> = &[
+            [[Layer(1), k(A), k(B)]],
+            [[
+                Trans,
+                OneShot(&crate::action::OneShot {
+                    timeout: 100,
+                    action: &k(LShift),
+                    end_config: OneShotEndConfig::EndOnFirstRelease,
+                }),
+                Trans,
+            ]],
+        ];
+        let mut layout = Layout::new(LAYERS);
+
+        // Activate the one-shot from the nav layer, then leave that layer.
+        layout.event(Press(0, 0)); // hold "tab" -> nav layer
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        layout.event(Press(0, 1)); // "d" on nav -> one-shot LShift
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 1)); // activator release, swallowed while waiting
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+        layout.event(Release(0, 0)); // release "tab" -> back to base layer
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[LShift], layout.keycodes());
+
+        // Re-press the activator's physical key; on base it is a normal `A`.
+        layout.event(Press(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[A, LShift], layout.keycodes());
+        // Releasing it must release both `A` and end the one-shot.
+        layout.event(Release(0, 1));
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[], layout.keycodes());
+
+        // A subsequent, unrelated keypress must not carry the modifier.
+        layout.event(Press(0, 2)); // "p" -> B, no LShift
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+        assert_keys(&[B], layout.keycodes());
+        layout.event(Release(0, 2));
         assert_eq!(CustomEvent::NoEvent, layout.tick());
         assert_keys(&[], layout.keycodes());
     }

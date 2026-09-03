@@ -75,3 +75,25 @@ fn oneshot_multi_with_layer() {
     //                                         v
     assert_eq!("dn:A t:10ms up:A t:10ms dn:B t:5ms up:B", result);
 }
+
+#[test]
+fn oneshot_release_activator_repressed_on_other_layer() {
+    // Regression test for #2049.
+    // `tab` momentarily activates the `nav` layer where `d` is a
+    // `one-shot-release lalt`. After leaving `nav`, re-pressing the same
+    // physical `d` key (now a normal key on `base`) and releasing it must
+    // terminate the one-shot. Previously LAlt leaked onto every subsequent
+    // key (here `p`) until the 2000ms timeout.
+    let result = simulate(
+        "(defsrc tab d p)
+         (deflayer base (layer-while-held nav) d p)
+         (deflayer nav _ (one-shot-release 2000 lalt) _)",
+        "d:Tab t:10 d:KeyD t:10 u:KeyD t:10 u:Tab t:10 \
+         d:KeyD t:10 u:KeyD t:10 d:KeyP t:10 u:KeyP t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:10ms dn:LAlt t:30ms dn:D t:10ms up:LAlt up:D t:10ms dn:P t:10ms up:P",
+        result
+    );
+}
