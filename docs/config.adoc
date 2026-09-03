@@ -2180,8 +2180,8 @@ The input event sequence is:
 
 With `(defvar $tap-repress-timeout 0)`, the output event sequence is:
 
-- 50 ms elapses
 - press `a`
+- 50 ms elapses
 - release `a`
 - 250 ms elapses
 - press `lctl`
@@ -2194,8 +2194,8 @@ between and including `0` and `99`.
 For a value of `100` or greater for `$tap-repress-timeout`,
 the output event sequence is instead:
 
-- 50 ms elapses
 - press `a`
+- 50 ms elapses
 - release `a`
 - 50 ms elapses
 - press `a`
