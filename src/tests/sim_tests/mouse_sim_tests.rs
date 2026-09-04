@@ -60,3 +60,25 @@ fn mwheel_accel_stops_decel_on_mod_press() {
         );
     }
 }
+
+#[test]
+fn movemouse_accel_resets_on_direction_reversal() {
+    // Regression test for #2142.
+    // With `movemouse-inherit-accel-state yes`, reversing direction on the
+    // same axis (accel-left held, then accel-right pressed) must reset the
+    // acceleration back to the minimum distance instead of inheriting the
+    // maxed-out speed, matching the fixed QMK behavior.
+    let result = simulate(
+        "(defcfg movemouse-inherit-accel-state yes)
+         (defsrc a b)
+         (deflayermap (base)
+           a (movemouse-accel-left 1 3 1 4)
+           b (movemouse-accel-right 1 3 1 4))",
+        "d:a t:6 d:b t:6 u:a u:b t:2",
+    )
+    .to_ascii();
+    assert_eq!(
+        "out🖰:move Left,1 t:1ms out🖰:move Left,2 t:1ms out🖰:move Left,3 t:1ms out🖰:move Left,4 t:1ms out🖰:move Left,4 t:1ms out🖰:move Left,4 t:1ms out🖰:move Right,1 t:1ms out🖰:move Right,2 t:1ms out🖰:move Right,3 t:1ms out🖰:move Right,4 t:1ms out🖰:move Right,4 t:1ms out🖰:move Right,4 t:1ms out🖰:move Right,4",
+        result
+    );
+}

@@ -1626,43 +1626,65 @@ impl Kanata {
                         min_distance,
                         max_distance,
                     } => {
-                        let move_mouse_accel_state = match (
-                            self.movemouse_inherit_accel_state,
-                            &self.move_mouse_state_horizontal,
-                            &self.move_mouse_state_vertical,
-                        ) {
-                            (
-                                true,
-                                Some(MoveMouseState {
-                                    move_mouse_accel_state: Some(s),
-                                    ..
-                                }),
-                                _,
-                            )
-                            | (
-                                true,
-                                _,
-                                Some(MoveMouseState {
-                                    move_mouse_accel_state: Some(s),
-                                    ..
-                                }),
-                            ) => *s,
-                            _ => {
-                                let f_max_distance: f64 = *max_distance as f64;
-                                let f_min_distance: f64 = *min_distance as f64;
-                                let f_accel_time: f64 = *accel_time as f64;
-                                let increment =
-                                    (f_max_distance - f_min_distance) / f_accel_time;
-
-                                MoveMouseAccelState {
-                                    accel_ticks_from_min: 0,
-                                    accel_ticks_until_max: *accel_time,
-                                    accel_increment: increment,
-                                    min_distance: *min_distance,
-                                    max_distance: *max_distance,
-                                }
+                        // Fix #2142: when reversing direction on the same axis
+                        // (e.g. accel-left then accel-right), the acceleration
+                        // must reset instead of being inherited, matching the
+                        // fixed QMK behavior (qmk/qmk_firmware#4242). Inheriting
+                        // here would carry a maxed-out speed into the reversed
+                        // movement, causing a jarring turnaround on overshoot.
+                        let same_axis_state = match direction {
+                            MoveDirection::Up | MoveDirection::Down => {
+                                &self.move_mouse_state_vertical
+                            }
+                            MoveDirection::Left | MoveDirection::Right => {
+                                &self.move_mouse_state_horizontal
                             }
                         };
+                        let reversing_direction = matches!(
+                            same_axis_state,
+                            Some(MoveMouseState { direction: active, .. })
+                                if is_opposite_move_direction(*active, *direction)
+                        );
+                        let inherited_accel_state = if self.movemouse_inherit_accel_state
+                            && !reversing_direction
+                        {
+                            match (
+                                &self.move_mouse_state_horizontal,
+                                &self.move_mouse_state_vertical,
+                            ) {
+                                (
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                    _,
+                                )
+                                | (
+                                    _,
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                ) => Some(*s),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        };
+                        let move_mouse_accel_state = inherited_accel_state.unwrap_or_else(|| {
+                            let f_max_distance: f64 = *max_distance as f64;
+                            let f_min_distance: f64 = *min_distance as f64;
+                            let f_accel_time: f64 = *accel_time as f64;
+                            let increment = (f_max_distance - f_min_distance) / f_accel_time;
+
+                            MoveMouseAccelState {
+                                accel_ticks_from_min: 0,
+                                accel_ticks_until_max: *accel_time,
+                                accel_increment: increment,
+                                min_distance: *min_distance,
+                                max_distance: *max_distance,
+                            }
+                        });
 
                         match direction {
                             MoveDirection::Up | MoveDirection::Down => {
@@ -2631,6 +2653,17 @@ fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)
             }
         }
     });
+}
+
+/// Returns true if the two directions are exact opposites on the same axis
+/// (up/down or left/right). Used to reset mouse acceleration on direction
+/// reversal (see fix #2142).
+fn is_opposite_move_direction(a: MoveDirection, b: MoveDirection) -> bool {
+    use MoveDirection::*;
+    matches!(
+        (a, b),
+        (Up, Down) | (Down, Up) | (Left, Right) | (Right, Left)
+    )
 }
 
 fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {
