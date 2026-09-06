@@ -321,3 +321,398 @@ impl Projector {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gamepad::analog::{Curve, Motion, MotionKind, Vec2};
+    use crate::gamepad::{Digital, Dir, DirMode, PadControl};
+
+    /// Drive a trace and report what is held afterwards, plus every edge as
+    /// `(code, pressed)`.
+    fn run(config: GamepadConfig, trace: &[PadInput]) -> (Vec<PadCode>, Vec<(PadCode, bool)>) {
+        let mut projector = Projector::new(config);
+        let mut edges = Vec::new();
+        for input in trace {
+            let before = projector.held();
+            edges.extend(
+                before
+                    .edges(projector.feed(*input))
+                    .map(|e| (e.code, e.pressed)),
+            );
+        }
+        (projector.held().iter().collect(), edges)
+    }
+
+    fn held(config: GamepadConfig, trace: &[PadInput]) -> Vec<PadCode> {
+        run(config, trace).0
+    }
+
+    fn digital(control: Directional, digital: Digital) -> GamepadConfig {
+        let mut config = GamepadConfig::default();
+        config.projection_mut(control).digital = Some(digital);
+        config
+    }
+
+    fn eight_way(control: Directional) -> GamepadConfig {
+        digital(
+            control,
+            Digital {
+                mode: DirMode::EightWay,
+                ..Digital::default()
+            },
+        )
+    }
+
+    fn stick(x: f32, y: f32) -> PadInput {
+        PadInput::Stick {
+            side: Side::Left,
+            value: StickPosition::new(x, y),
+        }
+    }
+
+    fn trigger(side: Side, value: f32) -> PadInput {
+        PadInput::Trigger {
+            side,
+            value: Unit::new(value),
+        }
+    }
+
+    fn fast(speed: f32) -> Motion {
+        Motion {
+            deadzone: Unit::ZERO,
+            speed: speed * 1000.0,
+            curve: Curve::Linear,
+            invert: Vec2::KEEP,
+        }
+    }
+
+    fn lstick(dir: Dir) -> PadCode {
+        PadCode::direction(Directional::LeftStick, dir)
+    }
+
+    fn dpad(dir: Dir) -> PadCode {
+        PadCode::direction(Directional::Dpad, dir)
+    }
+
+    fn button(button: PadButton, pressed: bool) -> PadInput {
+        PadInput::Button { button, pressed }
+    }
+
+    #[test]
+    fn a_press_is_one_edge_and_a_repeat_is_none() {
+        let south = PadCode::button(PadButton::South);
+        let (held, edges) = run(
+            GamepadConfig::default(),
+            &[
+                button(PadButton::South, true),
+                button(PadButton::South, true),
+                button(PadButton::South, false),
+                button(PadButton::South, false),
+            ],
+        );
+        assert!(held.is_empty());
+        assert_eq!(edges, vec![(south, true), (south, false)]);
+    }
+
+    #[test]
+    fn a_trigger_reported_as_both_a_button_and_an_axis_fires_once() {
+        // Most pads report a trigger twice. Firing on each would double every
+        // press; firing on neither when only one arrives would drop it.
+        let l2 = vec![PadCode::button(PadButton::L2)];
+        let cfg = GamepadConfig::default();
+        assert_eq!(held(cfg, &[trigger(Side::Left, 1.0)]), l2, "axis alone");
+        assert_eq!(
+            held(cfg, &[button(PadButton::L2, true)]),
+            l2,
+            "button alone"
+        );
+        assert_eq!(
+            run(
+                cfg,
+                &[
+                    button(PadButton::L2, true),
+                    trigger(Side::Left, 1.0),
+                    trigger(Side::Left, 0.0),
+                    button(PadButton::L2, false),
+                ]
+            )
+            .1
+            .len(),
+            2,
+            "together they must still be one press and one release"
+        );
+
+        // A slow squeeze crosses the band once each way rather than chattering.
+        let squeeze: Vec<_> = (0..=100)
+            .chain((0..100).rev())
+            .map(|i| trigger(Side::Right, i as f32 / 100.0))
+            .collect();
+        let (held, edges) = run(cfg, &squeeze);
+        assert!(held.is_empty());
+        assert_eq!(edges.len(), 2, "squeeze chattered: {edges:?}");
+    }
+
+    #[test]
+    fn four_way_presses_both_cardinals_and_eight_way_presses_the_diagonal() {
+        let four = digital(Directional::LeftStick, Digital::default());
+        assert_eq!(
+            held(four, &[stick(0.8, 0.8)]),
+            vec![lstick(Dir::Up), lstick(Dir::Right)]
+        );
+        let eight = eight_way(Directional::LeftStick);
+        assert_eq!(held(eight, &[stick(0.8, 0.8)]), vec![lstick(Dir::UpRight)]);
+        // A straight push still presses its cardinal, so all eight are usable.
+        assert_eq!(held(eight, &[stick(0.0, 0.8)]), vec![lstick(Dir::Up)]);
+    }
+
+    #[test]
+    fn a_stick_never_asserts_both_directions_of_an_axis() {
+        // Each axis is one signed number, so there is nothing for SOCD to
+        // arbitrate on a stick -- which is why the mode is inert there.
+        let config = digital(Directional::LeftStick, Digital::default());
+        for step in -12i32..=12 {
+            let (x, y) = (step as f32 / 8.0, (12 - step.abs()) as f32 / 8.0);
+            let set = Projector::new(config).feed(stick(x, y));
+            for (a, b) in [(Dir::Up, Dir::Down), (Dir::Left, Dir::Right)] {
+                assert!(
+                    !(set.contains(lstick(a)) && set.contains(lstick(b))),
+                    "({x}, {y}) asserted both of {a:?}/{b:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_stick_moving_between_cardinals_releases_before_it_presses() {
+        // Holding both for even one event is a diagonal as far as a game is
+        // concerned.
+        let config = digital(Directional::LeftStick, Digital::default());
+        assert_eq!(
+            run(config, &[stick(0.0, 1.0), stick(-1.0, 0.0)]).1,
+            vec![
+                (lstick(Dir::Up), true),
+                (lstick(Dir::Up), false),
+                (lstick(Dir::Left), true),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_stick_resting_exactly_on_its_threshold_does_not_chatter() {
+        let config = digital(Directional::LeftStick, Digital::default());
+        let threshold = Digital::default().threshold.get();
+        let trace: Vec<_> = (0..500).map(|_| stick(0.0, threshold)).collect();
+        assert!(
+            run(config, &trace).1.is_empty(),
+            "a threshold rested at its boundary must stay quiet"
+        );
+    }
+
+    #[test]
+    fn a_dpad_needs_no_declaration_and_unifies_its_two_reportings() {
+        // It is digital hardware, and controllers report it either as four
+        // contacts or as a hat axis depending on the driver.
+        let (held, edges) = run(
+            GamepadConfig::default(),
+            &[
+                PadInput::Contacts(CardinalSet::of(&[Cardinal::Up])),
+                PadInput::Hat(CardinalSet::of(&[Cardinal::Up])),
+                PadInput::Contacts(CardinalSet::EMPTY),
+            ],
+        );
+        assert_eq!(edges.len(), 1, "the second source re-pressed: {edges:?}");
+        assert_eq!(held, vec![dpad(Dir::Up)]);
+
+        // And it takes the sticks' eight-way mode, because it is the same kind
+        // of control.
+        assert_eq!(
+            self::held(
+                eight_way(Directional::Dpad),
+                &[PadInput::Hat(CardinalSet::of(&[
+                    Cardinal::Down,
+                    Cardinal::Left,
+                ]))]
+            ),
+            vec![dpad(Dir::DownLeft)]
+        );
+    }
+
+    /// The d-pad directions held after driving a contact trace.
+    fn socd_after(mode: Socd, trace: &[(Dir, bool)]) -> Vec<Dir> {
+        let config = digital(
+            Directional::Dpad,
+            Digital {
+                socd: mode,
+                ..Digital::default()
+            },
+        );
+        let mut contacts = CardinalSet::EMPTY;
+        let inputs: Vec<_> = trace
+            .iter()
+            .map(|(dir, pressed)| {
+                contacts.set(
+                    Cardinal::try_from(*dir).expect("test trace uses cardinals"),
+                    *pressed,
+                );
+                PadInput::Contacts(contacts)
+            })
+            .collect();
+        held(config, &inputs)
+            .into_iter()
+            .map(|code| match code.control() {
+                PadControl::Direction(Directional::Dpad, dir) => dir,
+                other => panic!("unexpected {other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn socd_resolves_an_opposed_axis_the_way_the_mode_says() {
+        let opposed = [(Dir::Left, true), (Dir::Right, true)];
+        for (mode, expected) in [
+            (Socd::Off, vec![Dir::Left, Dir::Right]),
+            (Socd::Neutral, vec![]),
+            (Socd::Last, vec![Dir::Right]),
+            (Socd::First, vec![Dir::Left]),
+            (Socd::Positive, vec![Dir::Right]),
+            (Socd::Negative, vec![Dir::Left]),
+        ] {
+            assert_eq!(socd_after(mode, &opposed), expected, "{mode:?}");
+        }
+        // `last` and `first` follow the order the contacts arrived in, which is
+        // why resolution keeps state at all.
+        let reversed = [
+            (Dir::Left, true),
+            (Dir::Right, true),
+            (Dir::Right, false),
+            (Dir::Left, false),
+            (Dir::Right, true),
+            (Dir::Left, true),
+        ];
+        assert_eq!(socd_after(Socd::Last, &reversed), vec![Dir::Left]);
+        assert_eq!(socd_after(Socd::First, &reversed), vec![Dir::Right]);
+    }
+
+    #[test]
+    fn simultaneous_opposites_do_not_invent_an_order() {
+        let both = PadInput::Contacts(CardinalSet::of(&[Cardinal::Left, Cardinal::Right]));
+        for mode in [Socd::Last, Socd::First] {
+            let config = digital(
+                Directional::Dpad,
+                Digital {
+                    socd: mode,
+                    ..Digital::default()
+                },
+            );
+            assert!(
+                held(config, &[both]).is_empty(),
+                "{mode:?} invented a winner"
+            );
+        }
+    }
+
+    #[test]
+    fn socd_only_rewrites_the_axis_that_is_opposed() {
+        // A genuine diagonal is an answer, not a conflict.
+        for mode in [Socd::Neutral, Socd::Last, Socd::First, Socd::Positive] {
+            assert_eq!(
+                socd_after(mode, &[(Dir::Up, true), (Dir::Right, true)]),
+                vec![Dir::Up, Dir::Right],
+                "{mode:?} disturbed a diagonal"
+            );
+        }
+        assert_eq!(
+            socd_after(
+                Socd::Neutral,
+                &[(Dir::Up, true), (Dir::Left, true), (Dir::Right, true)]
+            ),
+            vec![Dir::Up],
+            "the unopposed axis should survive"
+        );
+    }
+
+    #[test]
+    fn a_reset_or_a_reload_releases_everything_and_forgets_the_history() {
+        let config = digital(Directional::LeftStick, Digital::default());
+        let mut projector = Projector::new(config);
+        projector.feed(button(PadButton::South, true));
+        let before = projector.feed(stick(1.0, 0.0));
+        assert!(!before.is_empty());
+
+        projector.reset();
+        assert!(projector.held().is_empty());
+        assert!(
+            before.edges(projector.held()).all(|edge| !edge.pressed),
+            "a reset may only release"
+        );
+        // The stick has to re-cross its threshold rather than resume held.
+        assert!(projector.feed(stick(0.4, 0.0)).is_empty());
+
+        // A reload to a declaration without that stick is the same, plus the
+        // stick stops projecting: this is what a deleted `defgamepad` lands on.
+        projector.feed(stick(1.0, 0.0));
+        projector.reconfigure(GamepadConfig::default());
+        assert!(projector.held().is_empty());
+        assert!(projector.feed(stick(1.0, 1.0)).is_empty());
+    }
+
+    #[test]
+    fn only_a_bound_backend_code_reaches_a_slot() {
+        let mut config = GamepadConfig::default();
+        config.slots[2] = Some(0x2c0);
+        let press = |code| PadInput::Native {
+            code,
+            pressed: true,
+        };
+        assert_eq!(
+            held(config, &[press(0x2c0)]),
+            vec![PadCode::slot(2).expect("a slot")]
+        );
+        assert!(held(config, &[press(0x2c1)]).is_empty(), "unbound code");
+    }
+
+    #[test]
+    fn every_kind_of_control_can_drive_motion() {
+        // The threshold and the displacement read the same value without
+        // disturbing each other, so a stick may do both; a d-pad reads as a
+        // stick at full deflection; and a trigger is a scalar pushed along the
+        // direction it was given.
+        let mut config = digital(Directional::LeftStick, Digital::default());
+        config
+            .projection_mut(Directional::LeftStick)
+            .motions
+            .set(MotionKind::Mouse, fast(10.0));
+        config
+            .projection_mut(Directional::LeftStick)
+            .motions
+            .set(MotionKind::Scroll, fast(2.0));
+        config
+            .projection_mut(Directional::Dpad)
+            .motions
+            .set(MotionKind::Mouse, fast(6.0));
+        config.trigger_mut(Side::Right).motions.set(
+            MotionKind::Scroll,
+            crate::gamepad::TriggerMotion {
+                direction: Cardinal::Down,
+                motion: fast(4.0),
+            },
+        );
+
+        let mut projector = Projector::new(config);
+        assert!(projector.demand().is_idle());
+
+        let held = projector.feed(stick(1.0, 0.0)).iter().collect::<Vec<_>>();
+        assert_eq!(held, vec![lstick(Dir::Right)], "the stick still presses");
+        assert!((projector.demand()[MotionKind::Mouse].x - 10.0).abs() < 1e-3);
+        assert!((projector.demand()[MotionKind::Scroll].x - 2.0).abs() < 1e-3);
+
+        projector.feed(PadInput::Hat(CardinalSet::of(&[Cardinal::Right])));
+        assert!((projector.demand()[MotionKind::Mouse].x - 16.0).abs() < 1e-3);
+
+        projector.feed(trigger(Side::Right, 0.5));
+        assert_eq!(
+            projector.demand()[MotionKind::Scroll],
+            Vec2 { x: 2.0, y: -2.0 }
+        );
+    }
+}
