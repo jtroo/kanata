@@ -183,6 +183,25 @@ pub struct Kanata {
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
     /// A list of mouse speed modifiers in percentages by which mouse travel distance is scaled.
     pub move_mouse_speed_modifiers: Vec<u16>,
+    /// Effective controller configuration, retained so that a live reload can
+    /// hand new projections to the running backend. Also present when mapped
+    /// portable buttons require only the defaults and no `defgamepad` block.
+    pub gamepad_config: Option<kanata_parser::gamepad::GamepadConfig>,
+    /// Handle on the controller backend. `None` until `start_gamepad` runs,
+    /// and permanently `None` for configurations that never mention a
+    /// controller, which is what keeps kanata from opening controller devices
+    /// it was not asked to touch.
+    pub gamepad: Option<crate::gamepad::GamepadHandle>,
+    /// Carries fractional pointer and scroll movement between ticks.
+    gamepad_accumulator: crate::gamepad::Accumulator,
+    /// Whether the last sample found a stick asking for continuous movement.
+    ///
+    /// Read by `is_idle`. A stick held at a deflection reports *nothing* — it
+    /// is already where the user put it — so without this the processing loop
+    /// would conclude it had nothing to do and block, and the pointer would
+    /// freeze mid-push until the controller happened to send another event.
+    /// The keyboard-driven mouse states are in `is_idle` for the same reason.
+    gamepad_moving: bool,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -364,7 +383,7 @@ enum ReloadAction {
     ReloadFile(String),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CalculatedMouseMove {
     pub direction: MoveDirection,
     pub distance: u16,
@@ -468,6 +487,10 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
+            gamepad_config: cfg.gamepad,
+            gamepad: None,
+            gamepad_accumulator: Default::default(),
+            gamepad_moving: false,
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -624,6 +647,10 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
+            gamepad_config: cfg.gamepad,
+            gamepad: None,
+            gamepad_accumulator: Default::default(),
+            gamepad_moving: false,
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -739,7 +766,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(k)))
     }
 
-    fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+    pub(crate) fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
             Err(e) => {
@@ -801,6 +828,37 @@ impl Kanata {
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
+        // Hand the new projections over *after* MAPPED_KEYS is current, so the
+        // releases this produces are gated against the new mapping rather than
+        // the old one.
+        self.gamepad_config = cfg.gamepad;
+        {
+            // Whatever the new declaration is, the pointer starts from rest:
+            // a fraction of a pixel left over from the old projection has no
+            // meaning under the new one.
+            self.gamepad_accumulator.reset();
+            self.gamepad_moving = false;
+            let mut edges = Vec::new();
+            match (&mut self.gamepad, self.gamepad_config) {
+                // A declaration that was removed is a reconfiguration to
+                // "nothing declared", not merely a release: the projectors have
+                // to stop projecting too, or the deleted stick keeps producing
+                // edges under the thresholds of a config that is no longer in
+                // the file. Buttons and triggers carry on, because they never
+                // needed a declaration in the first place.
+                (Some(gamepad), config) => {
+                    gamepad.reconfigure(config.unwrap_or_default(), &mut edges)
+                }
+                // Adding controller input to a running instance needs the
+                // channel that only startup has, so it takes a restart.
+                (None, Some(_)) => log::warn!(
+                    "controller input was added by this reload, but its backend starts \
+                     at launch. Restart kanata to pick up the controller."
+                ),
+                (None, None) => {}
+            }
+            self.apply_gamepad_edges(&edges)?;
+        }
         #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
         // The macOS mouse-tap reload hook is invoked further down, *after* the
@@ -1044,6 +1102,7 @@ impl Kanata {
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
+        self.handle_gamepad_motion()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
         self.tick_physical_idle_timeout();
@@ -1058,6 +1117,85 @@ impl Kanata {
             self.kbd_out.tick();
         }
         Ok(())
+    }
+
+    /// Drive the pointer and wheel from any control with a motion projection.
+    ///
+    /// Sampled here rather than pushed from the controller thread because a
+    /// deflection is a rate: how fast the pointer moves should depend on the
+    /// clock, not on how often a particular controller reports.
+    fn handle_gamepad_motion(&mut self) -> Result<()> {
+        let Some(gamepad) = self.gamepad.as_ref().filter(|g| g.drives_motion()) else {
+            return Ok(());
+        };
+        let demand = gamepad.demand();
+        // Recorded before the early return so `is_idle` sees both edges of it.
+        self.gamepad_moving = !demand.is_idle();
+        if demand.is_idle() {
+            // Drop any partial movement so a leftover fraction cannot surface
+            // as a stray pixel the next time a stick is pushed.
+            self.gamepad_accumulator.reset();
+            return Ok(());
+        }
+        let accrued = self.gamepad_accumulator.accrue(demand);
+        if accrued.is_empty() {
+            return Ok(());
+        }
+        // A controller pointer is still kanata's pointer, so `movemouse-speed`
+        // scales it exactly as it scales the mousemove actions.
+        let moves = accrued.mouse_moves(|distance| {
+            apply_mouse_distance_modifiers(distance, &self.move_mouse_speed_modifiers)
+        });
+        match moves {
+            // Both axes in one call, which is what keeps a diagonal from being
+            // delivered as two perpendicular steps.
+            [Some(x), Some(y)] => self.kbd_out.move_mouse_many(&[x, y])?,
+            [Some(mv), None] | [None, Some(mv)] => self.kbd_out.move_mouse(mv)?,
+            [None, None] => {}
+        }
+        for (direction, distance) in accrued.scrolls().into_iter().flatten() {
+            self.kbd_out.scroll(direction, distance)?;
+        }
+        Ok(())
+    }
+
+    /// Feed edges a controller produced into the processing loop.
+    ///
+    /// For the callers that already run *on* the processing thread: a live
+    /// reload and a state clean. They hand the events straight to
+    /// `handle_input_event` rather than down the input channel, because the
+    /// channel's only reader is this very thread and a self-send has to be a
+    /// `try_send` that drops a release when the queue is full.
+    ///
+    /// The controller thread cannot use this — it is a different thread — and
+    /// sends `KeyEvent`s down the channel instead. Both paths pass through the
+    /// same `defsrc` gate, and neither holds a lock across the delivery.
+    pub(crate) fn apply_gamepad_edges(
+        &mut self,
+        edges: &[kanata_parser::gamepad::PadEdge],
+    ) -> Result<()> {
+        let mut events = Vec::new();
+        crate::gamepad::gate_on_defsrc(edges, &mut events);
+        for event in events {
+            self.handle_input_event(&event)?;
+        }
+        Ok(())
+    }
+
+    /// Start controller input if the configuration maps a controller control
+    /// or declares an analog projection.
+    ///
+    /// Separate from `new` because the backend needs the channel into the
+    /// processing loop, which does not exist until the caller has built it.
+    pub fn start_gamepad(kanata: &Arc<Mutex<Self>>, tx: Sender<KeyEvent>) {
+        let mut k = kanata.lock();
+        let Some(config) = k.gamepad_config else {
+            return;
+        };
+        let devices = k.input_devices.clone();
+        let handle = crate::gamepad::GamepadHandle::new(config, devices.as_deref());
+        handle.spawn_backend(tx);
+        k.gamepad = Some(handle);
     }
 
     fn handle_scrolling(&mut self) -> Result<()> {
@@ -2270,7 +2408,12 @@ impl Kanata {
                     {
                         let mut k = kanata.lock();
                         info!("Init: releasing {:?}", kev.code);
-                        k.kbd_out.release_key(kev.code).expect("key released");
+                        // Through `output_logic`, not `KbdOut` directly: this
+                        // drain runs while the controller backend is already
+                        // delivering, and a pad code has no scancode for the
+                        // OS layer to emit. On macOS writing one is an `Err`
+                        // that the `expect` below would turn into a panic.
+                        release_key(&mut k.kbd_out, kev.code).expect("key released");
                     }
                     std::thread::sleep(time::Duration::from_millis(1));
                 }
@@ -2556,6 +2699,9 @@ impl Kanata {
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
+        if self.gamepad_moving {
+            return false;
+        }
         let layout = self.layout.b();
         layout.queue.is_empty()
             && zippy_is_idle()
@@ -2656,6 +2802,16 @@ pub fn clean_state(kanata: &Arc<Mutex<Kanata>>, tick: u128) -> Result<()> {
     let layout = k.layout.bm();
     #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]
     release_normalkey_states(layout);
+    // Controller input never enters PRESSED_KEYS — it arrives on the channel
+    // rather than from the OS hook — so the sweep below cannot reach a control
+    // a pad is holding. Release those from the engine that does know.
+    {
+        let mut edges = Vec::new();
+        if let Some(gamepad) = &mut k.gamepad {
+            gamepad.release_all(&mut edges);
+        }
+        k.apply_gamepad_edges(&edges)?;
+    }
     k.tick_ms(tick, &None)?;
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
     {
