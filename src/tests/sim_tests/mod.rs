@@ -45,6 +45,76 @@ fn apply_fakekey_action(k: &mut Kanata, name: &str, action: FakeKeyAction) {
     handle_fakekey_action(action, k.layout.bm(), FAKE_KEY_ROW, *index as u16);
 }
 
+/// The controller the `pad:` verb speaks for.
+///
+/// One is enough: merging several is the engine's own concern and is covered
+/// there, without needing a processing loop.
+const SIM_PAD: crate::gamepad::PadDeviceId = crate::gamepad::PadDeviceId::new(0);
+
+/// Move an analog control, as the controller backend would.
+///
+/// `spec` is `<control>:<value>`, where a stick takes `<x>,<y>` in
+/// `-1.0..=1.0` (y-up) and a trigger takes a single `0.0..=1.0`:
+///
+/// ```text
+/// pad:left:0.5,-0.25   pad:right:0,1   pad:lt:0.8
+/// ```
+///
+/// This stands in for the backend thread, which needs hardware; everything
+/// downstream of it — projection, the `defsrc` gate, the layout, the tick
+/// loop's motion sampling — is exactly what runs in production. Digital
+/// controls need none of this: they are ordinary `OsCode`s, so `d:pad-a`
+/// already works.
+fn apply_pad_analog(k: &mut Kanata, spec: &str) {
+    use kanata_parser::gamepad::{PadInput, Side, StickPosition, Unit};
+
+    let (control, value) = spec
+        .split_once(':')
+        .unwrap_or_else(|| panic!("pad spec must be <control>:<value>, got: {spec}"));
+    let number = |text: &str| {
+        text.parse::<f32>()
+            .unwrap_or_else(|_| panic!("expected a number in the pad spec, got: {text}"))
+    };
+    let input = match control {
+        "left" | "right" => {
+            let side = match control {
+                "left" => Side::Left,
+                _ => Side::Right,
+            };
+            let (x, y) = value
+                .split_once(',')
+                .unwrap_or_else(|| panic!("a stick takes <x>,<y>, got: {value}"));
+            PadInput::Stick {
+                side,
+                value: StickPosition::new(number(x), number(y)),
+            }
+        }
+        "lt" | "rt" => PadInput::Trigger {
+            side: match control {
+                "lt" => Side::Left,
+                _ => Side::Right,
+            },
+            value: Unit::new(number(value)),
+        },
+        other => panic!("unknown analog control: {other}\nvalid: left, right, lt, rt"),
+    };
+
+    // Created on first use: `Kanata::start_gamepad` is a startup step the sim
+    // does not run, since it would spawn a thread looking for real hardware.
+    let gamepad = k.gamepad.get_or_insert_with(|| {
+        let config = k
+            .gamepad_config
+            .expect("the config must declare defgamepad to drive an analog control");
+        let handle = crate::gamepad::GamepadHandle::new(config, k.input_devices.as_deref());
+        handle.connect(SIM_PAD, Default::default());
+        handle
+    });
+    let mut edges = Vec::new();
+    gamepad.feed(SIM_PAD, input, &mut edges);
+    k.apply_gamepad_edges(&edges)
+        .expect("controller edges apply fine");
+}
+
 /// Apply a layer switch to the kanata instance
 fn apply_layer_switch(k: &mut Kanata, layer_name: &str) {
     let layer_idx = k
@@ -59,6 +129,7 @@ mod block_keys_tests;
 mod capsword_sim_tests;
 mod chord_sim_tests;
 mod delay_tests;
+mod gamepad_sim_tests;
 mod layer_sim_tests;
 mod macro_sim_tests;
 mod mouse_sim_tests;
@@ -147,6 +218,8 @@ fn simulate_with_file_content<S: AsRef<str>>(
                 "ls" | "layer-switch" | "🔀" => {
                     apply_layer_switch(&mut k, val);
                 }
+                // Controller analog control: pad:left:0.5,-0.25 or pad:lt:0.8
+                "pad" => apply_pad_analog(&mut k, val),
                 _ => panic!("invalid item {pair}"),
             },
             None => panic!("invalid item {pair}"),
