@@ -470,3 +470,123 @@ fn slot(
     cfg.slots[index as usize] = Some(code);
     Ok(())
 }
+
+// ----------------------------------------------------------------- helpers
+
+fn motion_kind(keyword: &str) -> Option<MotionKind> {
+    match keyword {
+        "mouse" => Some(MotionKind::Mouse),
+        "scroll" => Some(MotionKind::Scroll),
+        _ => None,
+    }
+}
+
+const fn motion_name(kind: MotionKind) -> &'static str {
+    match kind {
+        MotionKind::Mouse => "mouse",
+        MotionKind::Scroll => "scroll",
+    }
+}
+
+/// `invert-x yes` as the axis sign it becomes: `Motion::invert` is a pair of
+/// multipliers, so applying it is one componentwise multiply.
+fn sign(invert: bool) -> f32 {
+    match invert {
+        true => -1.0,
+        false => 1.0,
+    }
+}
+
+/// Destructure `(keyword rest ...)`, which every item and option is.
+fn keyed<'a>(
+    expr: &'a SExpr,
+    vars: &'a HashMap<String, SExpr>,
+    expected: &str,
+) -> Result<(&'a str, &'a [SExpr])> {
+    let (head, rest) = expr
+        .list(Some(vars))
+        .and_then(|list| list.split_first())
+        .ok_or_else(|| anyhow_expr!(expr, "expected {expected}"))?;
+    let keyword = head
+        .atom(Some(vars))
+        .ok_or_else(|| anyhow_expr!(head, "expected an option name"))?;
+    Ok((keyword, rest))
+}
+
+/// The single value of `(keyword value)`.
+fn value<'a>(values: &'a [SExpr], at: &SExpr, keyword: &str) -> Result<&'a SExpr> {
+    match values {
+        [value] => Ok(value),
+        _ => bail_expr!(at, "{keyword} takes exactly one value"),
+    }
+}
+
+fn atom<'a>(expr: &'a SExpr, vars: &'a HashMap<String, SExpr>, what: &str) -> Result<&'a str> {
+    expr.atom(Some(vars))
+        .map(|atom| atom.trim_atom_quotes())
+        .ok_or_else(|| anyhow_expr!(expr, "expected {what}"))
+}
+
+/// Look one of a fixed set of names up, and list them all if it is not there.
+///
+/// Every enumerated option goes through here, so the spellings a name accepts
+/// and the spellings its error message offers cannot drift apart.
+fn one_of<T: Copy>(
+    expr: &SExpr,
+    vars: &HashMap<String, SExpr>,
+    what: &str,
+    table: &[(&str, T)],
+) -> Result<T> {
+    let text = atom(expr, vars, what)?;
+    table
+        .iter()
+        .find(|(name, _)| *name == text)
+        .map(|(_, value)| *value)
+        .ok_or_else(|| {
+            anyhow_expr!(
+                expr,
+                "unknown {what}: {text}\nvalid: {}",
+                table
+                    .iter()
+                    .map(|(name, _)| *name)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
+}
+
+fn number(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str, max: f32) -> Result<f32> {
+    let text = atom(expr, vars, "a number")?;
+    let parsed: f32 = text
+        .parse()
+        .ok()
+        .filter(|value: &f32| value.is_finite())
+        .ok_or_else(|| anyhow_expr!(expr, "expected a number for {what}, got: {text}"))?;
+    if !(0.0..=max).contains(&parsed) {
+        bail_expr!(expr, "{what} must be between 0 and {max}, got: {parsed}");
+    }
+    Ok(parsed)
+}
+
+/// A value that must land in `[0, 1]`.
+///
+/// Out of range is an error rather than a clamp: at runtime clamping protects
+/// against misbehaving hardware, but in a configuration it is always a typo,
+/// and silently reading `(deadzone 15)` as `1.0` would leave a stick that
+/// never responds and no clue why.
+fn unit(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str) -> Result<Unit> {
+    Ok(Unit::new(number(expr, vars, what, 1.0)?))
+}
+
+fn device_id(expr: &SExpr, vars: &HashMap<String, SExpr>) -> Result<NonZeroU8> {
+    atom(expr, vars, "device ID")?
+        .parse::<u8>()
+        .ok()
+        .and_then(NonZeroU8::new)
+        .ok_or_else(|| {
+            anyhow_expr!(
+                expr,
+                "device ID must be a number 1-255 matching an entry in definputdevices"
+            )
+        })
+}
