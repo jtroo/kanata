@@ -198,3 +198,138 @@ fn matches_device(matcher: &InputDeviceMatcher, info: &PadDeviceInfo) -> bool {
             .product_id
             .is_none_or(|product| Some(product) == info.product_id)
 }
+
+/// Kanata's handle on the running controller backend.
+///
+/// Nothing here reaches the processing loop by itself. Every method that can
+/// produce edges hands them back to the caller, because those callers run *on*
+/// the processing thread: pushing releases down the input channel from there
+/// would be a thread sending to itself, which can only be done with a
+/// `try_send` that drops a release when the queue is full.
+pub struct GamepadHandle {
+    engine: Arc<Mutex<PadEngine>>,
+    /// Whether anything drives the pointer or the wheel. Kept out here so the
+    /// tick loop can skip sampling -- and so skip taking the engine lock a
+    /// thousand times a second -- for the common keys-only configuration.
+    drives_motion: bool,
+}
+
+impl GamepadHandle {
+    /// Build the controller state machine, without a backend behind it.
+    ///
+    /// `devices` is the parsed `definputdevices` table, used to resolve the
+    /// `(device N)` reference if the declaration has one.
+    ///
+    /// Separate from [`GamepadHandle::spawn_backend`] so everything downstream
+    /// of the hardware can be driven from a recorded trace; the simulated
+    /// input tests stand in for the backend that way.
+    pub fn new(
+        config: GamepadConfig,
+        devices: Option<&[(std::num::NonZeroU8, InputDeviceMatcher)]>,
+    ) -> GamepadHandle {
+        GamepadHandle {
+            drives_motion: config.drives_motion(),
+            engine: Arc::new(Mutex::new(PadEngine::new(
+                config,
+                resolve_matcher(&config, devices),
+            ))),
+        }
+    }
+
+    /// Start the thread that reads real controllers into this engine.
+    pub fn spawn_backend(&self, tx: SyncSender<KeyEvent>) {
+        source::spawn(self.engine.clone(), tx);
+    }
+
+    /// Swap in a reloaded declaration, returning the edges the caller has to
+    /// apply.
+    ///
+    /// Every control the old declaration held is released first, so a
+    /// projection that disappears cannot strand a key down.
+    ///
+    /// Which controller is selected is fixed at startup and not revisited
+    /// here, matching the existing rule that `definputdevices` is not re-read
+    /// on live reload.
+    pub fn reconfigure(&mut self, config: GamepadConfig, edges: &mut Vec<PadEdge>) {
+        self.drives_motion = config.drives_motion();
+        self.engine.lock().reconfigure(config, edges);
+    }
+
+    /// Let go of everything the controllers are holding, without changing what
+    /// they project.
+    ///
+    /// `drives_motion` deliberately survives: it describes the declaration,
+    /// not the held state.
+    pub fn release_all(&mut self, edges: &mut Vec<PadEdge>) {
+        self.engine.lock().release_all(edges);
+    }
+
+    /// Whether the tick loop has anything to sample.
+    pub fn drives_motion(&self) -> bool {
+        self.drives_motion
+    }
+
+    /// What the continuous projections want this tick.
+    pub fn demand(&self) -> Demand {
+        self.engine.lock().demand()
+    }
+
+    /// Offer a controller to the engine, as the backend does on connection.
+    ///
+    /// Public for the simulated-input tests, which have no hardware to
+    /// connect; the backend thread owns the engine directly.
+    pub fn connect(&self, id: PadDeviceId, info: PadDeviceInfo) -> Connection {
+        self.engine.lock().connect(id, info)
+    }
+
+    /// Feed one reading from a connected controller, as the backend does.
+    pub fn feed(&self, id: PadDeviceId, input: PadInput, edges: &mut Vec<PadEdge>) {
+        self.engine.lock().feed(id, input, edges);
+    }
+}
+
+fn resolve_matcher(
+    config: &GamepadConfig,
+    devices: Option<&[(std::num::NonZeroU8, InputDeviceMatcher)]>,
+) -> Option<InputDeviceMatcher> {
+    let wanted = config.device?;
+    let (_, matcher) = devices?.iter().find(|(id, _)| *id == wanted)?;
+    // `hash` is a keyboard-only concept. Reported rather than silently
+    // ignored, because a config that looks like it selects one device but
+    // actually accepts all of them is worse than a warning.
+    if matcher.hash.is_some() {
+        log::warn!(
+            "gamepad: definputdevices entry {wanted} matches on `hash`, which controllers \
+             do not report. Match on name, vendor_id or product_id instead."
+        );
+    }
+    Some(matcher.clone())
+}
+
+/// Turn the edges a controller produced into input events for the processing
+/// loop, dropping any control `defsrc` does not map.
+///
+/// This is the same gate the keyboard path uses. There is no passthrough
+/// branch because the controller was never seized: the OS already saw the
+/// original event.
+///
+/// Filtering is separated from delivery so that no caller holds the
+/// `MAPPED_KEYS` lock while doing anything that can block. A live reload
+/// replaces `MAPPED_KEYS` from the thread that drains the input channel, so a
+/// send under this lock would let the two wait on each other.
+pub(crate) fn gate_on_defsrc(edges: &[PadEdge], out: &mut Vec<KeyEvent>) {
+    if edges.is_empty() {
+        return;
+    }
+    let mapped = MAPPED_KEYS.lock();
+    out.extend(edges.iter().filter_map(|edge| {
+        let code = edge.code.os_code();
+        mapped.contains(&code).then(|| {
+            let value = match edge.pressed {
+                true => KeyValue::Press,
+                false => KeyValue::Release,
+            };
+            KeyEvent::new(code, value)
+        })
+    }));
+}
