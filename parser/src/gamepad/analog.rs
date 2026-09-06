@@ -346,3 +346,183 @@ impl Add for Demand {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v(x: f32, y: f32) -> Vec2 {
+        Vec2 { x, y }
+    }
+
+    fn plain(speed: f32) -> Motion {
+        Motion {
+            deadzone: Unit::ZERO,
+            speed: speed * 1000.0,
+            curve: Curve::Linear,
+            invert: Vec2::KEEP,
+        }
+    }
+
+    #[test]
+    fn garbage_readings_are_clamped_or_read_as_at_rest() {
+        // Hardware overshoots its own range, and a disconnecting controller
+        // reports NaN. Treating NaN as full deflection would jam a direction
+        // on; letting it reach the deadzone rescale would poison the result.
+        assert_eq!(Unit::new(1.4), Unit::ONE);
+        assert_eq!(Unit::new(-0.2), Unit::ZERO);
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert_eq!(Unit::new(bad), Unit::ZERO);
+        }
+        assert_eq!(AxisValue::new(1.4).get(), 1.0);
+        assert_eq!(AxisValue::new(-1.4).get(), -1.0);
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert_eq!(AxisValue::new(bad), AxisValue::ZERO);
+        }
+        assert_eq!(StickPosition::new(2.0, f32::NAN).vector(), v(1.0, 0.0));
+        for bad in [v(f32::NAN, 0.0), v(0.0, f32::NAN), v(f32::NAN, f32::NAN)] {
+            assert_eq!(Motion::MOUSE.displace(bad), Vec2::ZERO, "{bad:?}");
+        }
+        for bad_speed in [f32::NAN, f32::INFINITY, -1.0] {
+            assert_eq!(
+                Motion {
+                    speed: bad_speed,
+                    ..Motion::MOUSE
+                }
+                .displace(v(1.0, 0.0)),
+                Vec2::ZERO
+            );
+        }
+    }
+
+    #[test]
+    fn the_deadzone_silences_the_center_without_a_jump_at_its_edge() {
+        let dz = Motion {
+            deadzone: Unit::new(0.15),
+            ..plain(1.0)
+        };
+        for inside in [v(0.0, 0.0), v(0.10, 0.0), v(0.10, 0.10), v(-0.14, 0.0)] {
+            assert_eq!(dz.displace(inside), Vec2::ZERO, "{inside:?}");
+        }
+        // Just past the edge is near zero, not near 0.15, and full deflection
+        // survives unattenuated.
+        assert!(dz.displace(v(0.16, 0.0)).x < 0.02);
+        assert!((dz.displace(v(1.0, 0.0)).x - 1.0).abs() < 1e-6);
+        // A deadzone of one silences the control instead of dividing by zero.
+        let all = Motion {
+            deadzone: Unit::ONE,
+            ..plain(1.0)
+        };
+        assert_eq!(all.displace(v(1.0, 1.0)), Vec2::ZERO);
+    }
+
+    #[test]
+    fn a_diagonal_keeps_its_direction_and_does_not_outrun_a_cardinal() {
+        // A hardware corner reads (1, 1), a radius of 1.41. Left alone that
+        // makes a diagonal 41% faster than a straight push.
+        let m = plain(10.0);
+        assert!((m.displace(v(1.0, 0.0)).x - 10.0).abs() < 1e-4);
+        for corner in [v(1.0, 1.0), v(-1.0, 1.0), v(1.0, -1.0)] {
+            let out = m.displace(corner);
+            assert!((out.radius() - 10.0).abs() < 1e-3, "{corner:?} -> {out:?}");
+            assert!((out.x.abs() - out.y.abs()).abs() < 1e-4, "off the diagonal");
+        }
+    }
+
+    #[test]
+    fn the_curve_applies_to_the_magnitude_not_to_each_axis() {
+        // Curving the axes independently would bend a diagonal toward an axis.
+        let cubic = Motion {
+            curve: Curve::Cubic,
+            ..plain(100.0)
+        };
+        let s = std::f32::consts::FRAC_1_SQRT_2 * 0.5;
+        let out = cubic.displace(v(s, s));
+        assert!((out.x - out.y).abs() < 1e-4, "{out:?}");
+        // magnitude 0.5, cubed to 0.125, times 100 units per tick.
+        assert!((out.radius() - 12.5).abs() < 1e-2, "{out:?}");
+        // Steeper curves give finer control near center, and every curve fixes
+        // the endpoints.
+        let half = Unit::new(0.5);
+        assert!(Curve::Cubic.apply(half) < Curve::Quadratic.apply(half));
+        assert!(Curve::Quadratic.apply(half) < Curve::Linear.apply(half));
+        for curve in [Curve::Linear, Curve::Quadratic, Curve::Cubic] {
+            assert_eq!(curve.apply(Unit::ZERO), Unit::ZERO, "{curve:?}");
+            assert_eq!(curve.apply(Unit::ONE), Unit::ONE, "{curve:?}");
+        }
+    }
+
+    #[test]
+    fn inversion_flips_only_the_requested_axis() {
+        assert!(
+            Motion::MOUSE.displace(v(0.0, 1.0)).y < 0.0,
+            "push away moves the pointer up the screen"
+        );
+        assert!(
+            Motion::SCROLL.displace(v(0.0, 1.0)).y > 0.0,
+            "push away scrolls up"
+        );
+        assert_eq!(Motion::MOUSE.invert.x, 1.0, "x is not flipped by default");
+    }
+
+    #[test]
+    fn a_scalar_control_gets_the_same_response_as_an_axis() {
+        // A trigger is one number, but the deadzone, curve and speed have to
+        // mean the same thing there as on a stick.
+        let m = Motion {
+            curve: Curve::Quadratic,
+            ..plain(8.0)
+        };
+        assert_eq!(m.rate(0.0), 0.0);
+        assert!((m.rate(0.5) - 2.0).abs() < 1e-4, "{}", m.rate(0.5));
+        assert!((m.displace(v(1.0, 0.0)).x - m.rate(1.0)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn a_threshold_is_strict_at_its_boundary() {
+        let threshold = Unit::new(0.5);
+        assert!(!(Unit::new(0.49) > threshold));
+        assert!(!(Unit::new(0.50) > threshold));
+        assert!(Unit::new(0.51) > threshold);
+    }
+
+    #[test]
+    fn demands_sum_per_output_and_report_idleness() {
+        let mut a = Demand::default();
+        assert!(a.is_idle());
+        a[MotionKind::Mouse] = v(1.0, 2.0);
+        let mut b = Demand::default();
+        b[MotionKind::Mouse] = v(-1.0, 0.5);
+        b[MotionKind::Scroll] = v(0.0, 3.0);
+        assert!(!a.is_idle());
+        let sum = a + b;
+        assert_eq!(sum[MotionKind::Mouse], v(0.0, 2.5));
+        assert_eq!(sum[MotionKind::Scroll], v(0.0, 3.0));
+    }
+
+    #[test]
+    fn whole_units_accumulate_exactly_across_ticks() {
+        // Rounding each tick independently would make a 7.5 px/ms demand run
+        // permanently 7% slow or 25% fast, and a demand below one unit would
+        // round to nothing forever.
+        let mut carry = Vec2::ZERO;
+        let total: i32 = (0..1000)
+            .map(|_| {
+                carry += v(7.5, 0.0);
+                carry.take_whole().0
+            })
+            .sum();
+        assert_eq!(total, 7500);
+
+        // The two axes carry separately: a fast horizontal push must not drag
+        // the vertical axis along with it.
+        let mut slow = Vec2::ZERO;
+        let crawl: i32 = (0..10)
+            .map(|_| {
+                slow += v(0.25, -0.25);
+                slow.take_whole().0
+            })
+            .sum();
+        assert_eq!(crawl, 2, "0.25 a tick over 10 ticks is 2.5 pixels");
+        assert_eq!(slow.take_whole(), (0, 0));
+    }
+}
