@@ -416,3 +416,278 @@ fn split<T>(amount: i32, positive: T, negative: T) -> Option<(T, u16)> {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use kanata_parser::gamepad::{
+        Curve, Directional, Motion, PadButton, PadCode, Side, StickPosition, Unit,
+    };
+
+    fn pad(n: u32) -> PadDeviceId {
+        PadDeviceId::new(n)
+    }
+
+    fn info(name: &str) -> PadDeviceInfo {
+        PadDeviceInfo {
+            name: name.to_string(),
+            vendor_id: Some(0x054c),
+            product_id: Some(0x0ce6),
+        }
+    }
+
+    fn engine() -> PadEngine {
+        PadEngine::new(GamepadConfig::default(), None)
+    }
+
+    fn feed(e: &mut PadEngine, id: PadDeviceId, input: PadInput) -> Vec<PadEdge> {
+        let mut edges = Vec::new();
+        e.feed(id, input, &mut edges);
+        edges
+    }
+
+    fn stick(x: f32) -> PadInput {
+        PadInput::Stick {
+            side: Side::Left,
+            value: StickPosition::new(x, 0.0),
+        }
+    }
+
+    const SOUTH: PadCode = PadCode::button(PadButton::South);
+    const PRESS: PadInput = PadInput::Button {
+        button: PadButton::South,
+        pressed: true,
+    };
+    const RELEASE: PadInput = PadInput::Button {
+        button: PadButton::South,
+        pressed: false,
+    };
+
+    /// A config whose left stick is digital, for the tests that need two pads
+    /// to push one stick different ways.
+    fn digital() -> GamepadConfig {
+        let mut config = GamepadConfig::default();
+        config.projection_mut(Directional::LeftStick).digital = Some(Default::default());
+        config
+    }
+
+    #[test]
+    fn several_controllers_merge_into_one_logical_pad() {
+        let mut e = engine();
+        // A backend can report for a device the engine rejected or never saw.
+        assert!(feed(&mut e, pad(1), PRESS).is_empty());
+
+        e.connect(pad(1), info("one"));
+        e.connect(pad(2), info("two"));
+        assert_eq!(
+            feed(&mut e, pad(1), PRESS).len(),
+            1,
+            "first press is visible"
+        );
+        assert!(
+            feed(&mut e, pad(2), PRESS).is_empty(),
+            "the second controller must not re-press a held control"
+        );
+        assert!(
+            feed(&mut e, pad(1), RELEASE).is_empty(),
+            "still held by the other controller"
+        );
+        assert_eq!(
+            feed(&mut e, pad(2), RELEASE),
+            vec![PadEdge {
+                code: SOUTH,
+                pressed: false
+            }],
+            "the last release must be visible"
+        );
+    }
+
+    #[test]
+    fn one_controllers_stick_does_not_cancel_anothers() {
+        let mut e = PadEngine::new(digital(), None);
+        e.connect(pad(1), info("one"));
+        e.connect(pad(2), info("two"));
+        assert_eq!(feed(&mut e, pad(1), stick(1.0)).len(), 1);
+        // The second pad pushing the opposite way presses its own direction
+        // rather than resolving against the first pad's.
+        let edges = feed(&mut e, pad(2), stick(-1.0));
+        assert_eq!(edges.len(), 1);
+        assert!(edges[0].pressed);
+    }
+
+    #[test]
+    fn disconnecting_releases_only_what_that_controller_held() {
+        // A pad unplugged mid-press leaves a key down with nothing left that
+        // could ever release it.
+        let mut e = engine();
+        e.connect(pad(1), info("one"));
+        e.connect(pad(2), info("two"));
+        feed(&mut e, pad(1), PRESS);
+
+        let mut edges = Vec::new();
+        e.disconnect(pad(2), &mut edges);
+        assert!(edges.is_empty(), "pad 2 held nothing: {edges:?}");
+        e.disconnect(pad(1), &mut edges);
+        assert_eq!(
+            edges,
+            vec![PadEdge {
+                code: SOUTH,
+                pressed: false
+            }]
+        );
+        assert_eq!(e.connected_count(), 0);
+        e.disconnect(pad(9), &mut edges); // an unknown device is harmless
+
+        // And a reconnecting controller starts from a clean slate: if its
+        // projector had survived, this press would be swallowed as a repeat.
+        e.connect(pad(1), info("one"));
+        assert_eq!(feed(&mut e, pad(1), PRESS).len(), 1);
+    }
+
+    #[test]
+    fn every_matcher_field_the_user_gave_has_to_match() {
+        let named = |name: &str| InputDeviceMatcher {
+            name: Some(name.into()),
+            ..Default::default()
+        };
+        for (matcher, expected) in [
+            (named("DualSense"), Connection::Accepted),
+            (named("Xbox"), Connection::NotSelected),
+            (
+                InputDeviceMatcher {
+                    vendor_id: Some(0x054c),
+                    product_id: Some(0x9999),
+                    ..named("DualSense")
+                },
+                Connection::NotSelected,
+            ),
+            // Nothing specified is not a constraint at all.
+            (InputDeviceMatcher::default(), Connection::Accepted),
+        ] {
+            let mut e = PadEngine::new(GamepadConfig::default(), Some(matcher.clone()));
+            assert_eq!(
+                e.connect(pad(1), info("DualSense")),
+                expected,
+                "{matcher:?}"
+            );
+            // A rejected controller never reaches the layout either.
+            assert_eq!(
+                feed(&mut e, pad(1), PRESS).is_empty(),
+                expected == Connection::NotSelected
+            );
+        }
+    }
+
+    #[test]
+    fn reconfigure_releases_across_every_controller() {
+        let mut e = PadEngine::new(digital(), None);
+        e.connect(pad(1), info("one"));
+        e.connect(pad(2), info("two"));
+        feed(&mut e, pad(1), PRESS);
+        feed(&mut e, pad(2), stick(1.0));
+
+        let mut edges = Vec::new();
+        e.reconfigure(GamepadConfig::default(), &mut edges);
+        assert_eq!(edges.len(), 2, "both controllers should release: {edges:?}");
+        assert!(edges.iter().all(|edge| !edge.pressed));
+        // The new declaration is in force, and nothing is stuck held.
+        assert!(feed(&mut e, pad(2), stick(1.0)).is_empty());
+        assert_eq!(feed(&mut e, pad(1), PRESS).len(), 1);
+    }
+
+    #[test]
+    fn motion_demand_sums_across_controllers_and_leaves_with_them() {
+        // Two controllers behave like two hands on one pointer.
+        let mut config = GamepadConfig::default();
+        config.trigger_mut(Side::Right).motions.set(
+            MotionKind::Scroll,
+            kanata_parser::gamepad::TriggerMotion {
+                direction: kanata_parser::gamepad::Cardinal::Up,
+                motion: Motion {
+                    deadzone: Unit::ZERO,
+                    speed: 10_000.0,
+                    curve: Curve::Linear,
+                    invert: Vec2::KEEP,
+                },
+            },
+        );
+        let mut e = PadEngine::new(config, None);
+        e.connect(pad(1), info("one"));
+        e.connect(pad(2), info("two"));
+        assert!(e.demand().is_idle());
+
+        let squeeze = PadInput::Trigger {
+            side: Side::Right,
+            value: Unit::ONE,
+        };
+        feed(&mut e, pad(1), squeeze);
+        assert!((e.demand()[MotionKind::Scroll].y - 10.0).abs() < 1e-3);
+        feed(&mut e, pad(2), squeeze);
+        assert!((e.demand()[MotionKind::Scroll].y - 20.0).abs() < 1e-3);
+        e.disconnect(pad(2), &mut Vec::new());
+        assert!((e.demand()[MotionKind::Scroll].y - 10.0).abs() < 1e-3);
+    }
+
+    fn mouse(x: f32, y: f32) -> Demand {
+        let mut demand = Demand::default();
+        demand[MotionKind::Mouse] = Vec2 { x, y };
+        demand
+    }
+
+    #[test]
+    fn the_accumulator_keeps_the_average_rate_exact() {
+        let mut acc = Accumulator::default();
+        assert!(acc.accrue(Demand::default()).is_empty());
+        // Rounding independently each tick would give 7000 or 8000.
+        let total: i32 = (0..1000)
+            .map(|_| acc.accrue(mouse(7.5, 0.0)).0[MotionKind::Mouse as usize].0)
+            .sum();
+        assert_eq!(total, 7500);
+        // A reset drops the partial move rather than letting it surface as a
+        // stray pixel on the next push.
+        acc.accrue(mouse(0.9, 0.0));
+        acc.reset();
+        assert!(acc.accrue(mouse(0.2, 0.0)).is_empty());
+    }
+
+    #[test]
+    fn accrued_movement_splits_by_axis_and_direction() {
+        let mut acc = Accumulator::default();
+        let mut demand = mouse(-1.0, -2.0);
+        demand[MotionKind::Scroll] = Vec2 { x: 4.0, y: -3.0 };
+        let accrued = acc.accrue(demand);
+
+        assert_eq!(
+            accrued
+                .mouse_moves(|distance| distance)
+                .map(|m| m.map(|m| (m.direction, m.distance))),
+            [Some((MoveDirection::Left, 1)), Some((MoveDirection::Up, 2))]
+        );
+        assert_eq!(
+            accrued.scrolls(),
+            [
+                Some((MWheelDirection::Right, 4)),
+                Some((MWheelDirection::Down, 3))
+            ]
+        );
+        // An axis at rest produces nothing at all, and a controller pointer is
+        // still kanata's pointer, so movemouse-speed has to reach it.
+        let scaled = acc.accrue(mouse(5.0, 0.0)).mouse_moves(|d| d * 2);
+        assert_eq!(scaled.map(|m| m.map(|m| m.distance)), [Some(10), None]);
+    }
+
+    #[test]
+    fn an_extreme_demand_saturates_rather_than_wrapping() {
+        let accrued = Accrued([(i32::MAX, i32::MIN), (i32::MIN, 0)]);
+        let moves = accrued.mouse_moves(|d| d);
+        assert_eq!(moves[0].map(|m| m.distance), Some(u16::MAX));
+        assert_eq!(
+            moves[1].map(|m| (m.direction, m.distance)),
+            Some((MoveDirection::Up, u16::MAX))
+        );
+        assert_eq!(
+            accrued.scrolls()[0],
+            Some((MWheelDirection::Left, u16::MAX))
+        );
+    }
+}
