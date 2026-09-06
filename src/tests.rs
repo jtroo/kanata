@@ -57,6 +57,20 @@ mod parse_samples {
     }
 
     #[test]
+    fn parse_gamepad() {
+        init_log();
+        let _lk = match CFG_PARSE_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let cfg = new_from_file(&std::path::PathBuf::from("./cfg_samples/gamepad.kbd")).unwrap();
+        // The sample is the documentation's worked example, so it should
+        // exercise the declaration rather than merely parse.
+        let gamepad = cfg.gamepad.expect("the sample declares a controller");
+        assert!(gamepad.drives_motion());
+    }
+
+    #[test]
     fn parse_minimal() {
         init_log();
         let _lk = match CFG_PARSE_LOCK.lock() {
