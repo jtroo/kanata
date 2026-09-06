@@ -250,3 +250,254 @@ fn thresholds_have_one_value_and_reject_the_old_two_value_spelling() {
     assert!(dpad.contains("no threshold"), "{dpad}");
 }
 
+#[test]
+fn out_of_range_numbers_are_rejected_rather_than_clamped() {
+    // In a config an out-of-range value is always a typo, and reading
+    // `(deadzone 15)` as `1.0` would leave a stick that never responds.
+    for (declaration, expected) in [
+        (
+            "(defgamepad (stick left (mouse (deadzone 15))))",
+            "between 0 and 1",
+        ),
+        (
+            "(defgamepad (stick left (mouse (speed 100001))))",
+            "between 0 and 100000",
+        ),
+        (
+            "(defgamepad (stick left (digital (threshold 2))))",
+            "between 0 and 1",
+        ),
+        (
+            "(defgamepad (stick left (mouse (speed nope))))",
+            "expected a number",
+        ),
+    ] {
+        let message = err("", declaration);
+        assert!(message.contains(expected), "{declaration} gave {message}");
+    }
+}
+
+#[test]
+fn duplicate_declarations_are_rejected() {
+    // Letting the second one quietly win makes a typo look like it worked.
+    for declaration in [
+        "(defgamepad (stick left (digital)) (stick left (mouse)))",
+        "(defgamepad (trigger right (threshold 0.4)) (trigger right (threshold 0.5)))",
+        "(defgamepad (dpad (digital)) (dpad (digital)))",
+        "(defgamepad (device 1) (device 1))",
+    ] {
+        assert!(err("", declaration).contains("duplicate"), "{declaration}");
+    }
+    // But the two sides of one control are not duplicates.
+    ok(
+        "",
+        "(defgamepad (stick left (digital)) (stick right (digital)))",
+    );
+    let two = err("", "(defgamepad) (defgamepad (dpad off))");
+    assert!(two.contains("Only one defgamepad"), "{two}");
+}
+
+#[test]
+fn unknown_names_are_reported_with_the_valid_set() {
+    for (declaration, expected) in [
+        ("(defgamepad (wobble left))", "unknown defgamepad item"),
+        ("(defgamepad (stick middle (digital)))", "unknown side"),
+        ("(defgamepad (stick left (wiggle)))", "unknown projection"),
+        (
+            "(defgamepad (stick left (digital (mode 6way))))",
+            "unknown mode",
+        ),
+        (
+            "(defgamepad (dpad (digital (socd sometimes))))",
+            "unknown socd mode",
+        ),
+        (
+            "(defgamepad (stick left (mouse (curve sigmoid))))",
+            "unknown curve",
+        ),
+        (
+            "(defgamepad (stick left (mouse (spede 3))))",
+            "unknown mouse option",
+        ),
+        // An unknown option is reported as one, rather than as an arity error
+        // about a name that means nothing here.
+        (
+            "(defgamepad (stick left (mouse (spede 3 4))))",
+            "unknown mouse option",
+        ),
+        (
+            "(defgamepad (stick left (digital (jitter 3))))",
+            "unknown digital option",
+        ),
+        (
+            "(defgamepad (trigger left (wobble 3)))",
+            "unknown trigger option",
+        ),
+    ] {
+        let message = err("", declaration);
+        assert!(message.contains(expected), "{declaration} gave {message}");
+    }
+    // And an unknown value lists what would have worked.
+    let listed = err("", "(defgamepad (stick left (mouse (curve sigmoid))))");
+    assert!(listed.contains("linear, quadratic, cubic"), "{listed}");
+}
+
+#[test]
+fn mapping_a_direction_without_a_projection_says_what_would_fix_it() {
+    // These are the failures that otherwise present as "kanata runs, my
+    // controller does nothing".
+    let message = err("pad-lstick-up", "(defgamepad)");
+    assert!(message.contains("no digital projection"), "{message}");
+    assert!(message.contains("(stick left (digital))"), "{message}");
+
+    // Motion alone is not a digital projection: a mouse stick presses nothing.
+    let motion_only = err("pad-rstick-up", "(defgamepad (stick right (mouse)))");
+    assert!(
+        motion_only.contains("no digital projection"),
+        "{motion_only}"
+    );
+    // Adding the digital half makes it legal, on the same stick.
+    ok(
+        "pad-rstick-up",
+        "(defgamepad (stick right (mouse) (digital)))",
+    );
+    // And declaring the left stick must not excuse a mapped right-stick
+    // direction.
+    let other = err("pad-rstick-up", "(defgamepad (stick left (digital)))");
+    assert!(other.contains("right stick"), "{other}");
+}
+
+#[test]
+fn four_way_mode_rejects_a_mapped_diagonal_and_eight_way_accepts_both() {
+    let message = err(
+        "pad-lstick-upleft",
+        "(defgamepad (stick left (digital (mode 4way))))",
+    );
+    assert!(
+        message.contains("4way") && message.contains("(mode 8way)"),
+        "{message}"
+    );
+    ok(
+        "pad-lstick-upleft pad-lstick-up",
+        "(defgamepad (stick left (digital (mode 8way))))",
+    );
+    // The same rule reaches the d-pad, which is the point of sharing a type.
+    let dpad = err("pad-dpad-upleft", "(defgamepad)");
+    assert!(dpad.contains("4way"), "{dpad}");
+    ok(
+        "pad-dpad-upleft",
+        "(defgamepad (dpad (digital (mode 8way))))",
+    );
+}
+
+#[test]
+fn slots_must_be_bound_and_unique() {
+    let unbound = err("pad-button-0", "(defgamepad)");
+    assert!(unbound.contains("(button-slot 0"), "{unbound}");
+    assert_eq!(
+        ok("pad-button-0", "(defgamepad (button-slot 0 0x2c1))").slots[0],
+        Some(0x2c1)
+    );
+    assert_eq!(
+        ok("", "(defgamepad (button-slot 0 705))").slots[0],
+        Some(705)
+    );
+
+    for (declaration, expected) in [
+        (
+            "(defgamepad (button-slot 0 1) (button-slot 0 2))",
+            "duplicate button-slot",
+        ),
+        (
+            "(defgamepad (button-slot 0 1) (button-slot 1 1))",
+            "already bound",
+        ),
+        ("(defgamepad (button-slot 99 1))", "slot index must be 0-15"),
+        ("(defgamepad (button-slot 0))", "button-slot takes"),
+    ] {
+        let message = err("", declaration);
+        assert!(message.contains(expected), "{declaration} gave {message}");
+    }
+}
+
+#[test]
+fn a_device_reference_must_match_definputdevices() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let with_devices = |id: &str| {
+        format!(
+            "(defcfg process-unmapped-keys no)
+             (definputdevices 1 ((name \"DualSense\")))
+             (defsrc a) (deflayer base a)
+             (defgamepad (device {id}))"
+        )
+    };
+    assert!(new_from_str(&with_devices("1"), HashMap::default()).is_ok());
+    let message = match new_from_str(&with_devices("2"), HashMap::default()) {
+        Ok(_) => panic!("an undeclared device ID should be rejected"),
+        Err(e) => flatten(&e),
+    };
+    assert!(
+        message.contains("definputdevices has no entry"),
+        "{message}"
+    );
+}
+
+#[test]
+fn digital_values_can_be_written_as_variables() {
+    // defgamepad is parsed after defvar, so this has to work.
+    let cfg = ok(
+        "",
+        "(defvar threshold 0.75 curve linear)
+         (defgamepad (stick left (digital (threshold $threshold)) (mouse (curve $curve))))",
+    );
+    assert_eq!(
+        digital(&cfg, Directional::LeftStick).threshold,
+        Unit::new(0.75)
+    );
+    assert_eq!(motion(&cfg, Directional::LeftStick).1.curve, Curve::Linear);
+}
+
+#[test]
+fn every_reserved_code_is_named_and_input_only() {
+    // The reserved range and the name table are written separately, so a code
+    // with no spelling would be a layout slot nothing could ever occupy. And
+    // no OS can be asked to emit one, so an output position must be refused.
+    let _lk = lock(&CFG_PARSE_LOCK);
+    for index in 0..OsCode::GAMEPAD_COUNT {
+        let osc = OsCode::from_gamepad_index(index).expect("in range");
+        let name = format!("{osc:?}").to_lowercase().replace('_', "-");
+        assert_eq!(str_to_oscode(&name), Some(osc), "{osc} has no name");
+    }
+    for output in ["pad-a", "C-pad-a", "(macro pad-a)", "(unmod pad-a)"] {
+        let src = format!("(defcfg process-unmapped-keys no) (defsrc a) (deflayer base {output})");
+        let message = match new_from_str(&src, HashMap::default()) {
+            Ok(_) => panic!("{output} should be rejected as an output"),
+            Err(e) => flatten(&e),
+        };
+        assert!(
+            message.contains("can only be used as an input"),
+            "{message}"
+        );
+    }
+}
+
+#[test]
+fn pad_names_accept_their_vendor_aliases() {
+    // One positional control, several spellings, so a config written for a
+    // DualSense reads on an Xbox pad.
+    for (canonical, alias) in [
+        ("pad-south", "pad-cross"),
+        ("pad-south", "pad-a"),
+        ("pad-l1", "pad-lb"),
+        ("pad-select", "pad-share"),
+        ("pad-lstick-up", "pad-ls-up"),
+        ("pad-dpad-left", "pad-left"),
+        ("pad-button-3", "pb3"),
+    ] {
+        assert_eq!(
+            str_to_oscode(canonical),
+            str_to_oscode(alias),
+            "{canonical} and {alias} should be one control"
+        );
+    }
+}
