@@ -198,3 +198,275 @@ fn hint(cfg: &GamepadConfig, control: Directional, inner: &str) -> String {
     }
 }
 
+// ------------------------------------------------------------------- items
+
+/// Refuse a second `what`, at every level of the grammar.
+///
+/// Letting the later one quietly win makes a typo look like a working
+/// configuration. Mouse and scroll are distinct projections; repeating either
+/// one is still almost certainly a typo.
+fn once(seen: &mut Vec<String>, at: &SExpr, what: impl Into<String>) -> Result<()> {
+    let what = what.into();
+    if seen.contains(&what) {
+        bail_expr!(at, "duplicate {what}");
+    }
+    seen.push(what);
+    Ok(())
+}
+
+/// Split `(<item> left|right ...)` into the side and the remaining options.
+fn sided<'a>(
+    rest: &'a [SExpr],
+    at: &SExpr,
+    vars: &HashMap<String, SExpr>,
+    what: &str,
+) -> Result<(Side, &'a [SExpr])> {
+    let Some((side, options)) = rest.split_first() else {
+        bail_expr!(
+            at,
+            "{what} needs a side: ({what} left ...) or ({what} right ...)"
+        );
+    };
+    Ok((one_of(side, vars, "side", &SIDES)?, options))
+}
+
+/// Parse the projections of a stick or the d-pad.
+///
+/// A control may take both halves: a stick can drive the pointer *and* press a
+/// key at full deflection, because the threshold and the displacement read the
+/// same value without disturbing each other.
+fn projection(
+    control: Directional,
+    mut projection: Projection,
+    args: &[SExpr],
+    at: &SExpr,
+    vars: &HashMap<String, SExpr>,
+) -> Result<Projection> {
+    if args.is_empty() {
+        bail_expr!(at, "the {} needs one of {PROJECTIONS}", control.as_str());
+    }
+    // `off` is the one bare-atom form, and it is exclusive. `(stick left
+    // (digital) off)` reads to a user exactly like `(stick left off
+    // (digital))` but silently produces the opposite, so neither is allowed.
+    let is_off = |arg: &SExpr| arg.atom(Some(vars)).map(str::trim_atom_quotes) == Some("off");
+    if args.len() > 1 {
+        if let Some(off) = args.iter().find(|arg| is_off(arg)) {
+            bail_expr!(
+                off,
+                "`off` is the whole projection: a control that does nothing has nothing \
+                 else to declare"
+            );
+        }
+    }
+
+    let mut seen: Vec<String> = Vec::new();
+    for arg in args {
+        if is_off(arg) {
+            return Ok(Projection::OFF);
+        }
+        let (keyword, options) = keyed(arg, vars, PROJECTIONS)?;
+        match motion_kind(keyword) {
+            Some(kind) => {
+                once(&mut seen, arg, format!("({} ...)", motion_name(kind)))?;
+                projection
+                    .motions
+                    .set(kind, motion(kind, Axes::Two, options, vars)?);
+            }
+            None if keyword == "digital" => {
+                once(&mut seen, arg, "(digital ...)")?;
+                projection.digital = Some(digital(control, options, vars)?);
+            }
+            None => bail_expr!(
+                arg,
+                "unknown projection: {keyword}\na stick or d-pad takes {PROJECTIONS}"
+            ),
+        }
+    }
+    Ok(projection)
+}
+
+fn digital(control: Directional, args: &[SExpr], vars: &HashMap<String, SExpr>) -> Result<Digital> {
+    let mut digital = Digital::default();
+    let mut seen: Vec<String> = Vec::new();
+    for arg in args {
+        let (keyword, values) = keyed(arg, vars, "a digital option such as (mode 8way)")?;
+        match keyword {
+            "mode" | "socd" | "threshold" => once(&mut seen, arg, format!("({keyword} ...)"))?,
+            _ => bail_expr!(
+                arg,
+                "unknown digital option: {keyword}\nvalid options: mode, socd, threshold"
+            ),
+        }
+        match keyword {
+            "mode" => digital.mode = one_of(value(values, arg, keyword)?, vars, "mode", &MODES)?,
+            // Only a control with independent contacts can assert an opposed
+            // pair, and a stick reports each axis as one signed number.
+            // Accepting this there would be a knob that never fires.
+            "socd" if control.side().is_some() => bail_expr!(
+                arg,
+                "socd belongs to the d-pad: a stick reads each axis as one number, so it \
+                 can never report two opposite directions at once.\n\
+                 Use (dpad (digital (socd ...)))."
+            ),
+            "socd" => {
+                digital.socd = one_of(value(values, arg, keyword)?, vars, "socd mode", &SOCDS)?
+            }
+            _ if control == Directional::Dpad => bail_expr!(
+                arg,
+                "a d-pad has no {keyword} threshold: its contacts are digital before \
+                 they reach kanata, so there is no analog value to compare"
+            ),
+            "threshold" => {
+                digital.threshold = unit(value(values, arg, keyword)?, vars, keyword)?;
+            }
+            _ => unreachable!("validated above"),
+        }
+    }
+    Ok(digital)
+}
+
+fn trigger(args: &[SExpr], vars: &HashMap<String, SExpr>) -> Result<Trigger> {
+    let mut trigger = Trigger::default();
+    let mut seen: Vec<String> = Vec::new();
+    for arg in args {
+        let (keyword, values) = keyed(arg, vars, "a trigger option such as (threshold 0.3)")?;
+        match (keyword, motion_kind(keyword)) {
+            (_, Some(kind)) => {
+                once(&mut seen, arg, format!("({} ...)", motion_name(kind)))?;
+                // The direction has to be an atom, so a leading option is a
+                // missing direction rather than an unreadable one.
+                let named = values
+                    .split_first()
+                    .filter(|(dir, _)| dir.atom(Some(vars)).is_some());
+                let Some((dir, rest)) = named else {
+                    bail_expr!(
+                        arg,
+                        "({keyword} ...) on a trigger needs a direction to push: a trigger is \
+                         one number, not a vector, e.g. ({keyword} down (speed 30))"
+                    );
+                };
+                let dir = one_of(dir, vars, "direction", &PUSH)?;
+                trigger.motions.set(
+                    kind,
+                    TriggerMotion {
+                        direction: dir,
+                        motion: motion(kind, Axes::One, rest, vars)?,
+                    },
+                );
+            }
+            ("threshold", _) => {
+                once(&mut seen, arg, format!("({keyword} ...)"))?;
+                trigger.threshold = unit(value(values, arg, keyword)?, vars, keyword)?;
+            }
+            _ => bail_expr!(
+                arg,
+                "unknown trigger option: {keyword}\n\
+                 valid options: threshold, mouse, scroll"
+            ),
+        }
+    }
+    Ok(trigger)
+}
+
+/// How many axes the control being projected has.
+///
+/// A trigger is a single number that already names the direction it pushes, so
+/// `invert-x` / `invert-y` there would be a second knob for the same thing --
+/// and, since the trigger path never reads `Motion::invert`, one that did
+/// nothing at all.
+#[derive(Clone, Copy, PartialEq)]
+enum Axes {
+    One,
+    Two,
+}
+
+fn motion(
+    kind: MotionKind,
+    axes: Axes,
+    args: &[SExpr],
+    vars: &HashMap<String, SExpr>,
+) -> Result<Motion> {
+    let mut motion = Motion::of(kind);
+    let mut seen: Vec<String> = Vec::new();
+    for arg in args {
+        let (keyword, values) = keyed(arg, vars, "a motion option such as (speed 1200)")?;
+        match keyword {
+            "invert-x" | "invert-y" if axes == Axes::One => bail_expr!(
+                arg,
+                "a trigger has no {keyword}: it is one number, and the direction after \
+                 ({} ...) already says which way it pushes",
+                motion_name(kind)
+            ),
+            "deadzone" | "speed" | "curve" | "invert-x" | "invert-y" => {
+                once(&mut seen, arg, format!("({keyword} ...)"))?
+            }
+            _ => bail_expr!(
+                arg,
+                "unknown {} option: {keyword}\n\
+                 valid options: deadzone, speed, curve, invert-x, invert-y",
+                motion_name(kind)
+            ),
+        }
+        // The value is read after the name is known to be one we handle, so
+        // that an unknown option is reported as one rather than as an arity
+        // error about a name that means nothing here.
+        let value = value(values, arg, keyword)?;
+        match keyword {
+            "deadzone" => motion.deadzone = unit(value, vars, keyword)?,
+            "speed" => motion.speed = number(value, vars, keyword, Motion::MAX_SPEED)?,
+            "curve" => motion.curve = one_of(value, vars, "curve", &CURVES)?,
+            "invert-x" => motion.invert.x = sign(one_of(value, vars, keyword, &BOOLS)?),
+            _ => motion.invert.y = sign(one_of(value, vars, keyword, &BOOLS)?),
+        }
+    }
+    Ok(motion)
+}
+
+fn slot(
+    rest: &[SExpr],
+    at: &SExpr,
+    vars: &HashMap<String, SExpr>,
+    cfg: &mut GamepadConfig,
+) -> Result<()> {
+    let [index_expr, code_expr] = rest else {
+        bail_expr!(
+            at,
+            "button-slot takes a slot index and a backend code, e.g. (button-slot 0 0x2c0)\n\
+             kanata logs the backend code of every control it cannot name"
+        );
+    };
+    let index: u8 = atom(index_expr, vars, "slot index")?
+        .parse()
+        .ok()
+        .filter(|index| *index < PadCode::SLOTS)
+        .ok_or_else(|| {
+            anyhow_expr!(
+                index_expr,
+                "slot index must be 0-{}; that is how many pad-button-N controls exist",
+                PadCode::SLOTS - 1
+            )
+        })?;
+    let text = atom(code_expr, vars, "backend code")?;
+    let code = match text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+        Some(hex) => u32::from_str_radix(hex, 16).ok(),
+        None => text.parse().ok(),
+    }
+    .ok_or_else(|| {
+        anyhow_expr!(
+            code_expr,
+            "backend code must be a number or 0x-prefixed hex"
+        )
+    })?;
+
+    if cfg.slots[index as usize].is_some() {
+        bail_expr!(index_expr, "duplicate button-slot: pad-button-{index}");
+    }
+    if let Some(taken) = cfg.slots.iter().position(|bound| *bound == Some(code)) {
+        bail_expr!(
+            code_expr,
+            "backend code {code} is already bound to pad-button-{taken}"
+        );
+    }
+    cfg.slots[index as usize] = Some(code);
+    Ok(())
+}
