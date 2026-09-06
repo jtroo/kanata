@@ -264,3 +264,300 @@ mod motion {
         );
     }
 }
+
+mod from_the_tick {
+    use super::*;
+    use kanata_parser::gamepad::{
+        Cardinal, CardinalSet, Dir, PadButton, PadInput, Side, StickPosition,
+    };
+
+    // A live reload and a state clean both produce controller releases from
+    // *inside* the tick, on the very thread that drains the input channel.
+    // Pushing them down that channel would be a self-send that drops a release
+    // when the queue is full; they are applied directly instead, and these
+    // cover that path and the engine reset that goes with it.
+
+    /// A `Kanata` with a controller connected but no backend thread.
+    fn with_pad(cfg: &str) -> Kanata {
+        let mut k = Kanata::new_from_str(cfg, Default::default()).expect("the config parses");
+        let handle = crate::gamepad::GamepadHandle::new(
+            k.gamepad_config.expect("defgamepad"),
+            k.input_devices.as_deref(),
+        );
+        handle.connect(SIM_PAD, Default::default());
+        k.gamepad = Some(handle);
+        k
+    }
+
+    /// Feed one reading through the engine, as the backend would, and deliver
+    /// whatever edges come back.
+    fn feed(k: &mut Kanata, input: PadInput) {
+        let mut edges = Vec::new();
+        k.gamepad
+            .as_ref()
+            .expect("a controller")
+            .feed(SIM_PAD, input, &mut edges);
+        k.apply_gamepad_edges(&edges).expect("edges apply");
+    }
+
+    fn south(pressed: bool) -> PadInput {
+        PadInput::Button {
+            button: PadButton::South,
+            pressed,
+        }
+    }
+
+    fn stick(side: Side, x: f32, y: f32) -> PadInput {
+        PadInput::Stick {
+            side,
+            value: StickPosition::new(x, y),
+        }
+    }
+
+    fn lock_cfg() -> impl Drop {
+        match CFG_PARSE_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
+
+    const ONE_BUTTON: &str = "\
+    (defcfg process-unmapped-keys no)
+    (defgamepad (stick left (digital)))
+    (defsrc pad-a)
+    (deflayer base x)
+    ";
+
+    /// Drive a d-pad contact trace and report the key events the OS saw.
+    ///
+    /// Timing is dropped: what these are about is which keys came out and in
+    /// what order, and one contact change can produce two edges, which the
+    /// layout then spreads over as many ticks.
+    fn dpad_output(cfg: &str, trace: &[(Dir, bool)]) -> String {
+        let mut k = with_pad(cfg);
+        let mut contacts = CardinalSet::EMPTY;
+        for (dir, pressed) in trace {
+            contacts.set(
+                Cardinal::try_from(*dir).expect("test trace uses cardinals"),
+                *pressed,
+            );
+            feed(&mut k, PadInput::Contacts(contacts));
+            k.tick_ms(5, &None).expect("ticks fine");
+        }
+        k.kbd_out
+            .outputs
+            .events
+            .join(" ")
+            .to_ascii()
+            .split_whitespace()
+            .filter(|event| event.starts_with("dn:") || event.starts_with("up:"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    #[test]
+    fn socd_resolves_a_dpad_conflict_all_the_way_to_the_output() {
+        // An opposed pair of contacts is something real hardware reports, and
+        // what the OS sees has to be the resolved answer rather than two keys
+        // held at once.
+        let _lk = lock_cfg();
+        let out = dpad_output(
+            "(defcfg process-unmapped-keys no)
+             (defgamepad (dpad (digital (socd neutral))))
+             (defsrc pad-dpad-up pad-dpad-down)
+             (deflayer base w s)",
+            &[
+                (Dir::Up, true),
+                // Down arrives while Up is still held: under neutral both go
+                // away, so the W that was down has to be released.
+                (Dir::Down, true),
+                // Letting go of Up leaves Down unopposed, and S becomes real
+                // without the user having touched Down again.
+                (Dir::Up, false),
+                (Dir::Down, false),
+            ],
+        );
+        assert_eq!(
+            out, "dn:W up:W dn:S up:S",
+            "an opposed pair must leave nothing held, and hand over on release"
+        );
+
+        // The default is to report both, because on a d-pad an opposed pair is
+        // the user pressing two buttons and kanata's job is to say so.
+        let both = dpad_output(
+            "(defcfg process-unmapped-keys no)
+             (defsrc pad-dpad-up pad-dpad-down)
+             (deflayer base w s)
+             (defgamepad)",
+            &[(Dir::Up, true), (Dir::Down, true)],
+        );
+        assert_eq!(both, "dn:W dn:S");
+    }
+
+    #[test]
+    fn an_eight_way_dpad_presses_the_diagonal_all_the_way_to_the_output() {
+        // The d-pad shares the sticks' projection, so eight-way reaches it for
+        // free — and a diagonal has to replace its components, not join them.
+        let _lk = lock_cfg();
+        let out = dpad_output(
+            "(defcfg process-unmapped-keys no)
+             (defgamepad (dpad (digital (mode 8way))))
+             (defsrc pad-dpad-up pad-dpad-right pad-dpad-upright)
+             (deflayer base w d e)",
+            &[(Dir::Up, true), (Dir::Right, true), (Dir::Up, false)],
+        );
+        assert_eq!(out, "dn:W up:W dn:E up:E dn:D");
+    }
+
+    #[test]
+    fn a_release_produced_inside_the_tick_reaches_the_layout() {
+        // The delivery path that replaced the self-send. Nothing here touches
+        // the input channel, and the release must still land.
+        let _lk = lock_cfg();
+        let mut k = with_pad(ONE_BUTTON);
+        feed(&mut k, south(true));
+        k.tick_ms(5, &None).expect("ticks fine");
+        assert!(
+            k.kbd_out.outputs.events.join("\n").contains("↓X"),
+            "the press should have landed"
+        );
+
+        let mut edges = Vec::new();
+        k.gamepad
+            .as_mut()
+            .expect("a controller")
+            .release_all(&mut edges);
+        assert!(!edges.is_empty(), "there was something to release");
+        k.apply_gamepad_edges(&edges).expect("edges apply");
+        k.tick_ms(5, &None).expect("ticks fine");
+
+        let out = k.kbd_out.outputs.events.join("\n");
+        assert!(out.contains("↑X"), "the release was dropped: {out}");
+    }
+
+    /// Reload `k` from a config written to a temporary file.
+    fn reload(k: &mut Kanata, name: &str, cfg: &str) {
+        let path = std::env::temp_dir().join(name);
+        std::fs::write(&path, cfg).expect("a writable config");
+        k.cfg_paths = vec![path.clone()];
+        k.cur_cfg_idx = 0;
+        let outcome = k.do_live_reload(&None);
+        let _ = std::fs::remove_file(&path);
+        outcome.expect("the reload succeeds");
+        k.tick_ms(5, &None).expect("ticks fine");
+    }
+
+    #[test]
+    fn a_live_reload_resets_the_engine_so_a_held_control_works_again() {
+        // A controller held across a reload has already been counted as
+        // pressed. Without the reset the next press is swallowed as a repeat
+        // and the control is dead until it is released and pressed again,
+        // which the user has no way to know they must do.
+        let _lk = lock_cfg();
+        let mut k = with_pad(ONE_BUTTON);
+        feed(&mut k, south(true));
+        k.tick_ms(5, &None).expect("ticks fine");
+        reload(&mut k, "kanata-gamepad-reload.kbd", ONE_BUTTON);
+
+        let before = k.kbd_out.outputs.events.len();
+        feed(&mut k, south(true));
+        k.tick_ms(5, &None).expect("ticks fine");
+        let after: Vec<_> = k.kbd_out.outputs.events[before..].to_vec();
+        assert!(
+            after.iter().any(|e| e.contains("↓X")),
+            "the control was dead after the reload: {after:?}"
+        );
+    }
+
+    #[test]
+    fn a_reload_that_drops_defgamepad_stops_the_projections_it_declared() {
+        // Removing the declaration has to remove what it declared, not merely
+        // release it: the deleted stick must stop projecting entirely, or it
+        // keeps producing edges under thresholds no longer in the file. The
+        // fixture uses a *mouse* stick so `drives_motion` starts out true.
+        let _lk = lock_cfg();
+        let mut k = with_pad(
+            "(defcfg process-unmapped-keys no)
+             (defgamepad
+               (stick left (digital))
+               (stick right (mouse (deadzone 0.0) (speed 20000) (curve linear))))
+             (defsrc pad-a pad-lstick-up)
+             (deflayer base x w)",
+        );
+        feed(&mut k, south(true));
+        feed(&mut k, stick(Side::Left, 0.0, 1.0));
+        k.tick_ms(5, &None).expect("ticks fine");
+        assert!(
+            k.gamepad.as_ref().expect("a controller").drives_motion(),
+            "the fixture has to start out driving the pointer, or the check \
+             below proves nothing"
+        );
+
+        reload(
+            &mut k,
+            "kanata-gamepad-drop.kbd",
+            "(defcfg process-unmapped-keys no)\n(defsrc a)\n(deflayer base y)\n",
+        );
+
+        assert!(
+            !k.gamepad
+                .as_ref()
+                .expect("the handle stays up")
+                .drives_motion(),
+            "a dropped declaration must stop the tick loop sampling"
+        );
+        // The stick that was declared is gone, so pushing it produces nothing
+        // at all: not an edge under the old thresholds, and no motion demand.
+        feed(&mut k, stick(Side::Left, 0.0, -1.0));
+        feed(&mut k, stick(Side::Right, 1.0, 0.0));
+        assert!(
+            k.gamepad.as_ref().expect("a controller").demand().is_idle(),
+            "the deleted mouse projection is still asking for movement"
+        );
+
+        let before = k.kbd_out.outputs.events.len();
+        k.handle_input_event(&KeyEvent::new(
+            str_to_oscode("a").expect("a key"),
+            KeyValue::Press,
+        ))
+        .expect("the press applies");
+        k.tick_ms(5, &None).expect("ticks fine");
+        let after: Vec<_> = k.kbd_out.outputs.events[before..].to_vec();
+        assert!(
+            after.iter().any(|e| e.contains("↓Y")),
+            "the keyboard stopped working after the reload: {after:?}"
+        );
+    }
+
+    #[test]
+    fn a_state_clean_lets_go_without_disabling_the_pointer() {
+        // `clean_state` cleans state, not configuration. Switching the pointer
+        // off here would leave a mouse stick dead for the rest of the process,
+        // with nothing to say why and no reload to put it back.
+        let _lk = lock_cfg();
+        let mut k = with_pad(
+            "(defcfg process-unmapped-keys no)
+             (defgamepad (stick right (mouse (deadzone 0.0) (speed 20000) (curve linear))))
+             (defsrc pad-a)
+             (deflayer base x)",
+        );
+        feed(&mut k, south(true));
+        feed(&mut k, stick(Side::Right, 1.0, 0.0));
+
+        let mut edges = Vec::new();
+        k.gamepad
+            .as_mut()
+            .expect("a controller")
+            .release_all(&mut edges);
+        k.apply_gamepad_edges(&edges).expect("edges apply");
+
+        assert!(
+            k.gamepad.as_ref().expect("a controller").drives_motion(),
+            "a release must not switch the pointer off for good"
+        );
+        // And the stick still drives it: the projection was never the thing
+        // being released.
+        feed(&mut k, stick(Side::Right, 1.0, 0.0));
+        assert!(!k.gamepad.as_ref().expect("a controller").demand().is_idle());
+    }
+}
