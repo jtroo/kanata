@@ -333,3 +333,86 @@ pub(crate) fn gate_on_defsrc(edges: &[PadEdge], out: &mut Vec<KeyEvent>) {
         })
     }));
 }
+
+/// Carries fractional pointer and wheel movement between ticks.
+///
+/// A stick at 30% of a 25,000 px/s speed asks for 7.5 pixels a millisecond.
+/// Rounding each tick independently would run permanently slow or fast, and
+/// rounding a small demand to zero would make slow movement impossible rather
+/// than merely slow.
+#[derive(Default)]
+pub struct Accumulator([Vec2; MotionKind::ALL.len()]);
+
+impl Accumulator {
+    /// Add this tick's demand and take whatever whole units have accrued.
+    pub fn accrue(&mut self, demand: Demand) -> Accrued {
+        let mut accrued = Accrued::default();
+        for kind in MotionKind::ALL {
+            let carry = &mut self.0[kind as usize];
+            *carry += demand[kind];
+            accrued.0[kind as usize] = carry.take_whole();
+        }
+        accrued
+    }
+
+    /// Drop any partial movement.
+    ///
+    /// Called when everything returns to rest, so a fraction left over from
+    /// the last push cannot leak into the next one as a stray pixel.
+    pub fn reset(&mut self) {
+        *self = Accumulator::default();
+    }
+}
+
+/// Whole units ready to send to the OS this tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Accrued([(i32, i32); MotionKind::ALL.len()]);
+
+impl Accrued {
+    pub fn is_empty(self) -> bool {
+        self.0.iter().all(|axes| *axes == (0, 0))
+    }
+
+    /// The pointer moves this tick, as kanata's mouse primitives take them.
+    ///
+    /// One entry per axis, `None` for an axis that is not moving; the caller
+    /// picks `move_mouse` or `move_mouse_many` from what is present. An array
+    /// rather than a `Vec` keeps the per-millisecond tick path allocation
+    /// free.
+    pub fn mouse_moves(self, scale: impl Fn(u16) -> u16) -> [Option<CalculatedMouseMove>; 2] {
+        let (x, y) = self.0[MotionKind::Mouse as usize];
+        [
+            split(x, MoveDirection::Right, MoveDirection::Left),
+            split(y, MoveDirection::Down, MoveDirection::Up),
+        ]
+        .map(|axis| {
+            axis.map(|(direction, distance)| CalculatedMouseMove {
+                direction,
+                distance: scale(distance),
+            })
+        })
+    }
+
+    /// The wheel notches this tick, as (direction, distance) pairs.
+    pub fn scrolls(self) -> [Option<(MWheelDirection, u16)>; 2] {
+        let (x, y) = self.0[MotionKind::Scroll as usize];
+        [
+            split(x, MWheelDirection::Right, MWheelDirection::Left),
+            // Stick Y and wheel-up are both up-positive, so no flip here. The
+            // user-facing invert-y knob was applied in the projection.
+            split(y, MWheelDirection::Up, MWheelDirection::Down),
+        ]
+    }
+}
+
+/// Split a signed amount into a direction and a distance, or `None` for an
+/// axis that is not moving. Saturating, so an absurd demand cannot wrap.
+fn split<T>(amount: i32, positive: T, negative: T) -> Option<(T, u16)> {
+    match amount {
+        0 => None,
+        _ => Some((
+            if amount > 0 { positive } else { negative },
+            amount.unsigned_abs().min(u16::MAX as u32) as u16,
+        )),
+    }
+}
