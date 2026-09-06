@@ -1,3 +1,14 @@
+# Unreleased
+
+* Added `K768` through `K822`, extending the enum past the OS scancode range.
+  kanata reserves that range for inputs no operating system reports as a
+  scancode, currently game controller controls; the names stay generic here
+  because `KeyCode` has no business knowing what they are. `From<OsCode>`
+  transmutes between the two enums, so this range has to cover every `OsCode`.
+* Added `KeyCode::KeyCodeMax`, one past the highest variant. `KeyCode::KeyMax`
+  keeps its value and now marks the end of the OS scancode range rather than
+  the end of the enum.
+
 # v0.2.0
 
 * New Keyboard::leds_mut function for getting underlying leds object.
